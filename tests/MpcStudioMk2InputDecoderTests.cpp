@@ -175,6 +175,32 @@ void testLcdLargePngSizeFlag() {
     assert(message[14] == 0x00);
 }
 
+
+void testLcdPngSizeBoundaries() {
+    const auto check = [](std::size_t size,
+                          std::uint8_t expectedFlag,
+                          std::uint8_t expectedHigh,
+                          std::uint8_t expectedLow) {
+        std::vector<std::uint8_t> png(size, 0);
+        const auto message = mpc::studio::makeLcdChunkSysEx(
+            mpc::studio::lcdChunks[0],
+            std::span<const std::uint8_t>(png.data(), png.size()));
+
+        assert(message[7] == expectedFlag);
+        assert(message[8] == 0x20);
+
+        // PNG size is encoded as a big-endian 16-bit value after the flags.
+        assert(message[13] == expectedHigh);
+        assert(message[14] == expectedLow);
+    };
+
+    check(127, 0x00, 0x00, 0x7F);
+    check(128, 0x20, 0x00, 0x00);
+    check(255, 0x20, 0x00, 0x7F);
+    check(256, 0x00, 0x01, 0x00);
+    check(384, 0x20, 0x01, 0x00);
+}
+
 void testUnknownMessageIsIgnored() {
     const std::uint8_t bytes[] = {0x99, 99, 100};
 
@@ -199,6 +225,7 @@ int main() {
     testLcdPayloadEncoding();
     testLcdChunkHeader();
     testLcdLargePngSizeFlag();
+    testLcdPngSizeBoundaries();
     testUnknownMessageIsIgnored();
     return 0;
 }
