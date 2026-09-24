@@ -16,6 +16,7 @@ add_library(mpcgroovebox SHARED
     src/Midi/NativeMidi.cpp
     src/MPC/MpcStudioMk2ControlMap.cpp
     src/MPC/MpcStudioMk2LedProtocol.cpp
+    src/MPC/Domain/MpcDomain.cpp
 )
 
 target_include_directories(mpcgroovebox PRIVATE src)
