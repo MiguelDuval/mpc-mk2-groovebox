@@ -2,12 +2,18 @@ package com.miguelduval.mpcmk2groovebox;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.Base64;
 import android.view.Gravity;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 public final class MainActivity extends Activity implements AndroidMidiBridge.Listener {
     static {
@@ -20,6 +26,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView midiLog;
 
     private static native String nativeEngineInfo();
+    private static native String nativeAudioLoadSample(byte[] data);
     private static native String nativeAudioStart();
     private static native String nativeAudioStop();
     private static native String nativeAudioStatus();
@@ -38,7 +45,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         title.setGravity(Gravity.CENTER_VERTICAL);
 
         status = new TextView(this);
-        status.setText("Native: " + nativeEngineInfo());
+        status.setText(
+                "Native: " + nativeEngineInfo()
+                        + "\n"
+                        + loadBundledSample());
         status.setTextSize(14.0f);
 
         devices = new TextView(this);
@@ -57,7 +67,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         audioControls.setOrientation(LinearLayout.HORIZONTAL);
 
         Button audioStart = new Button(this);
-        audioStart.setText("Start Audio Probe");
+        audioStart.setText("Start Sampler");
         audioStart.setOnClickListener(v -> status.setText(nativeAudioStart()));
 
         Button audioStop = new Button(this);
@@ -183,5 +193,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     public void onConnection(String description) {
         runOnUiThread(() -> status.setText(description));
+    }
+
+    private String loadBundledSample() {
+        try (InputStream input = getAssets().open("samples/pad01.wav.b64")) {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int count;
+
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+            }
+
+            String encoded = output.toString(StandardCharsets.UTF_8.name());
+            byte[] wavBytes = Base64.decode(encoded, Base64.DEFAULT);
+            return nativeAudioLoadSample(wavBytes);
+        } catch (IOException | IllegalArgumentException e) {
+            return "Sample asset load failed: " + e.getMessage();
+        }
     }
 }
