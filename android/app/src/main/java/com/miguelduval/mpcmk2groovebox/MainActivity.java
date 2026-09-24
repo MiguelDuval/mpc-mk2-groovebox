@@ -189,10 +189,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         try {
+            status.setText("Loading WAV sample...");
             final byte[] wavBytes = readSampleBytes(uri);
-            status.setText(nativeAudioLoadSample(wavBytes));
+
+            // The native engine currently owns the realtime stream exclusively.
+            // Stop it before replacing the immutable sample buffer.
+            nativeAudioStop();
+
+            final String result = nativeAudioLoadSample(wavBytes);
+            status.setText(result);
         } catch (IOException | IllegalArgumentException e) {
-            status.setText("Sample file load failed: " + e.getMessage());
+            status.setText(
+                    "Sample file load failed: "
+                            + e.getClass().getSimpleName()
+                            + ": "
+                            + e.getMessage()
+                            + "\nPrevious sample, if any, was kept.");
         }
     }
 
