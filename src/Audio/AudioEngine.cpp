@@ -50,9 +50,6 @@ public:
         }
 
         auto* output = static_cast<float*>(audioData);
-        const float sourceToOutputRate =
-                static_cast<float>(sample_->sampleRate)
-                / static_cast<float>(sampleRate);
 
         for (std::size_t pad = 0; pad < kPadCount; ++pad) {
             const std::uint32_t sequence =
@@ -125,7 +122,7 @@ public:
                             voice.position
                             - static_cast<double>(sourceFrame));
 
-                if (sourceChannels == 1) {
+                if (sample->channelCount == 1) {
                     const float sample0 =
                             sample->sampleAt(sourceFrame, 0);
                     const float sample1 =
@@ -136,9 +133,9 @@ public:
                     right += value * voice.gain;
                 } else {
                     const float left0 =
-                            sample_->sampleAt(sourceFrame, 0);
+                            sample->sampleAt(sourceFrame, 0);
                     const float left1 =
-                            sample_->sampleAt(nextFrame, 0);
+                            sample->sampleAt(nextFrame, 0);
                     const float right0 =
                             sample->sampleAt(sourceFrame, 1);
                     const float right1 =
