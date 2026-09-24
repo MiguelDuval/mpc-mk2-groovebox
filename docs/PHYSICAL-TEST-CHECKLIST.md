@@ -4,45 +4,45 @@ Run these tests with the public MIDI port.
 
 ## A. Software preflight
 
-- [ ] Latest branch commit has a green Android Actions build.
-- [ ] MPC Studio MkII native decoder tests pass.
-- [ ] Debug APK artifact is produced.
+- [x] Latest branch commit has a green Android Actions build.
+- [x] MPC Studio MkII native decoder tests pass.
+- [x] Debug APK artifact is produced.
 
 ## B. Discovery
 
-- [ ] Controller appears in Refresh MIDI Devices.
-- [ ] Manufacturer/product/name are visible.
-- [ ] The application selects the public port when available.
-- [ ] Connect reports an active MIDI connection.
+- [x] Controller appears in Refresh MIDI Devices.
+- [x] Manufacturer/product/name are visible.
+- [x] The application selects the public port when available.
+- [x] Connect reports an active MIDI connection.
 
 ## C. Incoming MIDI
 
-- [ ] Pad 1 sends Note On.
-- [ ] Pad velocity changes with strike strength.
-- [ ] Pad aftertouch/pressure is observed when supported.
-- [ ] Pad Note Off is observed.
-- [ ] Main button sends its documented note.
-- [ ] Play/Stop/Record are observed.
-- [ ] Jog rotation is observed on CC 100.
-- [ ] Jog press is observed as note 111.
-- [ ] Touch strip sends CC 33.
+- [x] Pad 1 sends Note On.
+- [x] Pad velocity changes with strike strength.
+- [x] Pad aftertouch/pressure is observed when supported.
+- [x] Pad Note Off is observed.
+- [x] Main button sends its documented note.
+- [x] Play/Stop/Record are observed.
+- [x] Jog rotation is observed on CC 100.
+- [x] Jog press is observed as note 111.
+- [x] Touch strip sends CC 33.
 
 ## D. Outgoing feedback
 
-- [ ] One pad can be set red.
-- [ ] One pad can be set blue.
-- [ ] Pad can be turned off.
-- [ ] A button LED can be set dim/full.
-- [ ] Touch-strip indicators respond.
-- [ ] Note Repeat rate indicators respond.
+- [x] One pad can be set red.
+- [x] One pad can be set blue.
+- [x] Pad can be turned off.
+- [x] A button LED can be set dim/full.
+- [x] Touch-strip indicators respond.
+- [x] Note Repeat rate indicators respond.
 
 ## E. LCD
 
-- [ ] A static 160x80 test image is rendered.
-- [ ] Six image chunks are transmitted.
-- [ ] The display reconstructs the expected frame.
-- [ ] Text is readable.
-- [ ] A second frame replaces the first.
+- [x] A static 160x80 test image is rendered.
+- [x] Six image chunks are transmitted.
+- [x] The display reconstructs the expected frame.
+- [x] Text is readable.
+- [x] A second frame replaces the first.
 
 ## Evidence
 
@@ -63,7 +63,7 @@ Never call a protocol behavior confirmed solely from a reverse-engineering docum
 
 **Date:** 2026-09-24  
 **Verified by:** project owner on physical MPC Studio MkII  
-**APK commit:** `005c4bc2a129b1ffb3659deafad21ead23754350`  
+**APK commit:** `005c4bc2a129b1ffb3659deafad21ead23754350` (verified by owner)  
 **CI:** Android Build #72 — GREEN  
 **Detected MIDI identity:** `id=33 name=Akai Professional MPC Studio manufacturer=Akai Professional product=MPC Studio`
 
