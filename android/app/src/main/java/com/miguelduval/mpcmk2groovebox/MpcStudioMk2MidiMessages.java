@@ -116,73 +116,11 @@ public final class MpcStudioMk2MidiMessages {
     }
 
     private static byte[] lcdChunk(int x, int y, byte[] pngBytes) {
-        byte[] encoded = encodeLcdPayload(pngBytes);
-
-        ByteArrayOutputStream message =
-                new ByteArrayOutputStream(encoded.length + 32);
-
-        message.write(0xF0);
-        message.write(0x47);
-        message.write(0x7F);
-        message.write(0x4A);
-        message.write(0x04);
-
-        int magic = (encoded.length / 128) * 128 - 8;
-        int totalSize = encoded.length + 16 + magic;
-        writeU16Be(message, totalSize);
-
-        int pngSize = pngBytes.length;
-        // The LCD transport uses the 0x20 flag when bit 7 of the
-        // least-significant size byte is set, then subtracts 128.
-        if ((pngSize & 0xFF) >= 128) {
-            message.write(0x20);
-            message.write(0x20);
-            pngSize -= 128;
-        } else {
-            message.write(0x00);
-            message.write(0x20);
-        }
-
-        message.write(x & 0x7F);
-        message.write(0x00);
-        message.write(y & 0x7F);
-        message.write(0x00);
-        writeU16Be(message, pngSize);
-
-        message.write(encoded, 0, encoded.length);
-        message.write(0xF7);
-        return message.toByteArray();
+        return nativeLcdChunk(x, y, pngBytes);
     }
 
-    private static byte[] encodeLcdPayload(byte[] pngBytes) {
-        ByteArrayOutputStream encoded =
-                new ByteArrayOutputStream(pngBytes.length + (pngBytes.length + 6) / 7);
-
-        for (int offset = 0; offset < pngBytes.length; offset += 7) {
-            int count = Math.min(7, pngBytes.length - offset);
-            int control = 0;
-
-            for (int i = 0; i < count; ++i) {
-                int value = pngBytes[offset + i] & 0xFF;
-                if (value >= 128) {
-                    control |= 1 << i;
-                }
-            }
-
-            encoded.write(control);
-
-            for (int i = 0; i < count; ++i) {
-                encoded.write(pngBytes[offset + i] & 0x7F);
-            }
-        }
-
-        return encoded.toByteArray();
-    }
-
-    private static void writeU16Be(
-            ByteArrayOutputStream output,
-            int value) {
-        output.write((value >>> 8) & 0xFF);
-        output.write(value & 0xFF);
-    }
+    private static native byte[] nativeLcdChunk(
+            int x,
+            int y,
+            byte[] pngBytes);
 }
