@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -16,6 +17,18 @@ struct Rgb {
 std::array<std::uint8_t, 12> makePadLedSysEx(
     std::uint8_t pad,
     Rgb rgb);
+
+std::array<std::uint8_t, 3> makeCcMessage(
+    std::uint8_t cc,
+    std::uint8_t value);
+
+std::optional<std::array<std::uint8_t, 3>> makeTouchStripLedSegment(
+    std::size_t segment,
+    std::uint8_t brightness);
+
+std::optional<std::array<std::uint8_t, 3>> makeNoteRepeatLed(
+    std::size_t index,
+    std::uint8_t brightness);
 
 inline constexpr std::uint16_t lcdWidth = 160;
 inline constexpr std::uint16_t lcdHeight = 80;
