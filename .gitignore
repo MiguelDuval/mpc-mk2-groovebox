@@ -1,0 +1,20 @@
+# Android/Gradle
+.gradle/
+.idea/
+local.properties
+*.iml
+build/
+**/build/
+captures/
+
+# Native/CMake
+.cxx/
+cmake-build-*/
+out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated/debug
+*.log
