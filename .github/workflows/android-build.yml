@@ -35,21 +35,40 @@ jobs:
       - name: Accept Android SDK licenses
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+
           if [ ! -x "$SDKMANAGER" ]; then
             echo "sdkmanager not found at $SDKMANAGER"
             find "$ANDROID_HOME/cmdline-tools" -maxdepth 2 -type f -name sdkmanager -print || true
             exit 1
           fi
+
+          set +o pipefail
           yes | "$SDKMANAGER" --licenses > /dev/null
+          SDKMANAGER_STATUS=${PIPESTATUS[1]}
+          set -o pipefail
+
+          if [ "$SDKMANAGER_STATUS" -ne 0 ]; then
+            echo "sdkmanager --licenses failed with status $SDKMANAGER_STATUS"
+            exit "$SDKMANAGER_STATUS"
+          fi
 
       - name: Install Android toolchain
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+
+          set +o pipefail
+          yes | "$SDKMANAGER"             "platforms;android-36"             "build-tools;36.0.0"             "ndk;28.2.13676358"             "cmake;3.22.1"
+          SDKMANAGER_STATUS=${PIPESTATUS[1]}
+          set -o pipefail
+
+          if [ "$SDKMANAGER_STATUS" -ne 0 ]; then
+            echo "sdkmanager install failed with status $SDKMANAGER_STATUS"
+            exit "$SDKMANAGER_STATUS"
+          fi
 
       - name: Assemble debug APK
         run: gradle --no-daemon :app:assembleDebug
