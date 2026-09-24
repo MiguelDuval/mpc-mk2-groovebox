@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <tuple>
 
+#include "MpcStudioMk2ControlMap.h"
+
 namespace {
 
 std::pair<std::uint8_t, std::uint8_t> splitU16(std::size_t value) {
@@ -29,6 +31,37 @@ std::array<std::uint8_t, 12> makePadLedSysEx(
         0xF0, 0x47, 0x47, 0x4A, 0x65, 0x00,
         0x04, pad, rgb.red, rgb.green, rgb.blue, 0xF7
     };
+}
+
+
+std::array<std::uint8_t, 3> makeCcMessage(
+    std::uint8_t cc,
+    std::uint8_t value)
+{
+    return {0xB0, static_cast<std::uint8_t>(cc & 0x7Fu),
+        static_cast<std::uint8_t>(value & 0x7Fu)};
+}
+
+std::optional<std::array<std::uint8_t, 3>> makeTouchStripLedSegment(
+    std::size_t segment,
+    std::uint8_t brightness)
+{
+    if (segment >= touchStripLedCcs.size()) {
+        return std::nullopt;
+    }
+
+    return makeCcMessage(touchStripLedCcs[segment], brightness);
+}
+
+std::optional<std::array<std::uint8_t, 3>> makeNoteRepeatLed(
+    std::size_t index,
+    std::uint8_t brightness)
+{
+    if (index >= noteRepeatLedCcs.size()) {
+        return std::nullopt;
+    }
+
+    return makeCcMessage(noteRepeatLedCcs[index], brightness);
 }
 
 std::vector<std::uint8_t> encodeLcdPayload(
