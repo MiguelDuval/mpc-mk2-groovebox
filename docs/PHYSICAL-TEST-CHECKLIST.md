@@ -57,3 +57,26 @@ For each failed test, capture:
 - photo/video when useful.
 
 Never call a protocol behavior confirmed solely from a reverse-engineering document. Confirm on the actual MkII hardware before locking it into the production adapter.
+
+
+## Physical verification record
+
+**Date:** 2026-09-24  
+**Verified by:** project owner on physical MPC Studio MkII  
+**APK commit:** `005c4bc2a129b1ffb3659deafad21ead23754350`  
+**CI:** Android Build #72 — GREEN  
+**Detected MIDI identity:** `id=33 name=Akai Professional MPC Studio manufacturer=Akai Professional product=MPC Studio`
+
+Project owner reported all verification steps in the current hardware smoke test as passing, including:
+
+- MIDI device discovery.
+- Connection to the MPC Studio MkII.
+- Physical pad MIDI input.
+- Button/transport MIDI input.
+- Pad RGB feedback.
+- Play LED feedback.
+- Touch-strip LED feedback.
+- Note Repeat LED feedback.
+- LCD test frame rendering.
+
+This record confirms the tested behavior on the physical controller for this build. It does not imply that every hardware protocol field in the broader reverse-engineered documentation has been physically verified.
