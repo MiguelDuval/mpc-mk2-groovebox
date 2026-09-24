@@ -26,10 +26,10 @@ namespace mpc::audio {
 class AudioEngine::OutputCallback final : public oboe::AudioStreamDataCallback {
 public:
     OutputCallback(
-            std::shared_ptr<const SampleBuffer> sample,
+            std::array<std::shared_ptr<const SampleBuffer>, kPadCount> samples,
             std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence,
             std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity)
-            : sample_(std::move(sample)),
+            : samples_(std::move(samples)),
               triggerSequence_(triggerSequence),
               triggerVelocity_(triggerVelocity) {
     }
@@ -39,18 +39,6 @@ public:
             void* audioData,
             int32_t numFrames) override {
         if (audioStream == nullptr || audioData == nullptr || numFrames <= 0) {
-            return oboe::DataCallbackResult::Continue;
-        }
-
-        if (sample_ == nullptr
-                || sample_->frameCount() == 0
-                || sample_->channelCount == 0) {
-            std::fill_n(
-                    static_cast<float*>(audioData),
-                    static_cast<std::size_t>(numFrames)
-                        * static_cast<std::size_t>(
-                            std::max(audioStream->getChannelCount(), 0)),
-                    0.0f);
             return oboe::DataCallbackResult::Continue;
         }
 
@@ -84,37 +72,54 @@ public:
                         / 127.0f
                         * kPadAmplitude;
 
-                // Each physical pad plays the bundled sample at a distinct
-                // chromatic pitch. This keeps the first sampler slice useful
-                // without adding a larger sample-assignment system yet.
+                const auto& sample = samples_[pad];
+                if (sample == nullptr
+                        || sample->frameCount() == 0
+                        || sample->channelCount == 0) {
+                    voice.active = false;
+                    continue;
+                }
+
+                // Each pad keeps the original chromatic behavior unless it is
+                // later given an explicit musical tuning control. The important
+                // change in this slice is that every pad now owns its sample slot.
                 const float semitoneRatio =
                         std::pow(2.0f, static_cast<float>(pad) / 12.0f);
-                voice.positionStep = sourceToOutputRate * semitoneRatio;
+                const float sampleToOutputRate =
+                        static_cast<float>(sample->sampleRate)
+                        / static_cast<float>(sampleRate);
+                voice.positionStep =
+                        sampleToOutputRate * semitoneRatio;
                 voice.active = velocity != 0;
             }
         }
-
-        const std::size_t sourceChannels = sample_->channelCount;
 
         for (int32_t frame = 0; frame < numFrames; ++frame) {
             float left = 0.0f;
             float right = 0.0f;
 
-            for (auto& voice : voices_) {
+            for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+                auto& voice = voices_[pad];
                 if (!voice.active) {
+                    continue;
+                }
+
+                const auto& sample = samples_[pad];
+                if (sample == nullptr || sample->frameCount() == 0) {
+                    voice.active = false;
                     continue;
                 }
 
                 const std::size_t sourceFrame =
                         static_cast<std::size_t>(voice.position);
 
-                if (sourceFrame >= sample_->frameCount()) {
+                if (sourceFrame >= sample->frameCount()) {
                     voice.active = false;
                     continue;
                 }
 
                 const std::size_t nextFrame =
-                        std::min(sourceFrame + 1, sample_->frameCount() - 1);
+                        std::min(sourceFrame + 1, sample->frameCount() - 1);
                 const float fraction =
                         static_cast<float>(
                             voice.position
@@ -122,9 +127,9 @@ public:
 
                 if (sourceChannels == 1) {
                     const float sample0 =
-                            sample_->sampleAt(sourceFrame, 0);
+                            sample->sampleAt(sourceFrame, 0);
                     const float sample1 =
-                            sample_->sampleAt(nextFrame, 0);
+                            sample->sampleAt(nextFrame, 0);
                     const float value =
                             sample0 + (sample1 - sample0) * fraction;
                     left += value * voice.gain;
@@ -135,9 +140,9 @@ public:
                     const float left1 =
                             sample_->sampleAt(nextFrame, 0);
                     const float right0 =
-                            sample_->sampleAt(sourceFrame, 1);
+                            sample->sampleAt(sourceFrame, 1);
                     const float right1 =
-                            sample_->sampleAt(nextFrame, 1);
+                            sample->sampleAt(nextFrame, 1);
 
                     left += (left0 + (left1 - left0) * fraction) * voice.gain;
                     right += (right0 + (right1 - right0) * fraction) * voice.gain;
@@ -173,7 +178,7 @@ private:
         bool active = false;
     };
 
-    std::shared_ptr<const SampleBuffer> sample_;
+    std::array<std::shared_ptr<const SampleBuffer>, kPadCount> samples_;
     std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence_;
     std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity_;
     std::array<std::uint32_t, kPadCount> consumedSequence_{};
@@ -202,14 +207,40 @@ std::string AudioEngine::loadSample(
         return "Sample load failed: unsupported or invalid PCM WAV";
     }
 
-    auto buffer = std::make_shared<SampleBuffer>(*decoded);
-    sample_ = std::move(buffer);
+    sample_ = std::make_shared<SampleBuffer>(*decoded);
     sampleDescription_ =
             std::to_string(sample_->sampleRate) + " Hz "
             + std::to_string(sample_->channelCount) + " ch "
             + std::to_string(sample_->frameCount()) + " frames";
 
-    return "Sample loaded | " + sampleDescription_;
+    return "Fallback sample loaded | " + sampleDescription_;
+}
+
+std::string AudioEngine::loadSampleForPad(
+        std::span<const std::uint8_t> bytes,
+        std::uint8_t padIndex) {
+    if (stream_ != nullptr) {
+        return "Stop audio before loading a sample";
+    }
+
+    if (padIndex >= kPadCount) {
+        return "Sample load failed: invalid pad";
+    }
+
+    const auto decoded = decodeWav(bytes);
+    if (!decoded.has_value()) {
+        return "Sample load failed: unsupported or invalid PCM WAV";
+    }
+
+    padSamples_[padIndex] = std::make_shared<SampleBuffer>(*decoded);
+    padSampleDescriptions_[padIndex] =
+            std::to_string(padSamples_[padIndex]->sampleRate) + " Hz "
+            + std::to_string(padSamples_[padIndex]->channelCount) + " ch "
+            + std::to_string(padSamples_[padIndex]->frameCount()) + " frames";
+
+    return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " sample loaded | "
+            + padSampleDescriptions_[padIndex];
 }
 
 void AudioEngine::triggerPad(
@@ -232,12 +263,23 @@ std::string AudioEngine::start() {
         return status();
     }
 
-    if (sample_ == nullptr || sample_->frameCount() == 0) {
+    std::array<std::shared_ptr<const SampleBuffer>, kPadCount> samples;
+    bool anySample = false;
+
+    for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+        samples[pad] = padSamples_[pad] != nullptr
+                ? padSamples_[pad]
+                : sample_;
+        anySample = anySample
+                || (samples[pad] != nullptr && samples[pad]->frameCount() > 0);
+    }
+
+    if (!anySample) {
         return "Audio start failed: no sample loaded";
     }
 
     callback_ = std::make_shared<OutputCallback>(
-            sample_,
+            std::move(samples),
             padTriggerSequence_,
             padTriggerVelocity_);
 
@@ -300,7 +342,18 @@ std::string AudioEngine::status() const {
         if (sample_ == nullptr) {
             return "Audio stopped | no sample loaded";
         }
-        return "Audio stopped | sample=" + sampleDescription_;
+
+        std::string result =
+                "Audio stopped | fallback=" + sampleDescription_;
+
+        for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+            if (!padSampleDescriptions_[pad].empty()) {
+                result += " | pad" + std::to_string(pad + 1)
+                        + "=" + padSampleDescriptions_[pad];
+            }
+        }
+
+        return result;
     }
 
     return std::string("Audio output ")
@@ -309,7 +362,7 @@ std::string AudioEngine::status() const {
         + " | rate=" + std::to_string(stream_->getSampleRate())
         + " | channels=" + std::to_string(stream_->getChannelCount())
         + " | burst=" + std::to_string(stream_->getFramesPerBurst())
-        + " | sample=" + sampleDescription_
+        + " | fallback=" + sampleDescription_
         + " | low-latency shared";
 }
 
