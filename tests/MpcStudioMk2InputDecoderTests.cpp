@@ -93,15 +93,18 @@ void testChannelAftertouch() {
 
 void testLedCcBuilders() {
     const auto play = mpc::studio::makeCcMessage(82, 2);
-    assert(play == std::array<std::uint8_t, 3>{0xB0, 82, 2});
+    const std::array<std::uint8_t, 3> expectedPlay{{0xB0, 82, 2}};
+    assert(play == expectedPlay);
 
     const auto touch = mpc::studio::makeTouchStripLedSegment(4, 127);
+    const std::array<std::uint8_t, 3> expectedTouch{{0xB0, 61, 127}};
     assert(touch.has_value());
-    assert(*touch == std::array<std::uint8_t, 3>{0xB0, 61, 127});
+    assert(*touch == expectedTouch);
 
     const auto repeat = mpc::studio::makeNoteRepeatLed(0, 127);
+    const std::array<std::uint8_t, 3> expectedRepeat{{0xB0, 103, 127}};
     assert(repeat.has_value());
-    assert(*repeat == std::array<std::uint8_t, 3>{0xB0, 103, 127});
+    assert(*repeat == expectedRepeat);
 
     assert(!mpc::studio::makeTouchStripLedSegment(9, 127).has_value());
     assert(!mpc::studio::makeNoteRepeatLed(8, 127).has_value());
