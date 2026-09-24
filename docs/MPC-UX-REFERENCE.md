@@ -29,3 +29,12 @@ Important screens/contexts:
 - Project
 
 The visual implementation must be original. Reproduce documented interaction patterns and information architecture without copying proprietary artwork or firmware resources.
+
+
+## Mandatory orientation
+
+The application uses a **horizontal / landscape display orientation** as a hard product requirement.
+
+All primary UI layouts, screen compositions and interaction surfaces must be designed for a landscape canvas. Portrait orientation must not become the default or an alternate application mode.
+
+This matches the intended standalone-workstation presentation and the horizontal display relationship of hardware such as the MPC One.

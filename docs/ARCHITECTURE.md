@@ -4,6 +4,8 @@
 
 MPC Studio MkII is the primary hardware surface. Android supplies the visual/compute surface and the audio engine.
 
+The visual surface is **landscape/horizontal by project requirement**. Screen architecture must assume a horizontal canvas; portrait orientation is not a supported product layout.
+
 ## Layering
 
 Android shell

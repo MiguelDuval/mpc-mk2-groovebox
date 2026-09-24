@@ -516,10 +516,18 @@ They are not permission to copy proprietary Akai artwork, source code, textures 
 
 ## 14. UI rules
 
+### Mandatory display orientation
+
+**The application display must be landscape/horizontal. This is a hard project requirement, not a preference.**
+
+The primary visual composition must use a horizontal aspect ratio and horizontal screen orientation, matching the hardware-oriented workflow of compact standalone MPC workstations such as the MPC One.
+
+Do not introduce portrait-first layouts, portrait-only screens, or responsive behavior that silently switches the application into vertical orientation. Individual screens may adapt their internal layout within the horizontal canvas, but the application's display orientation remains landscape.
+
 The UI must be:
 
 - touch-friendly;
-- landscape-first where practical;
+- landscape-first;
 - high information density without becoming unreadable;
 - performance-oriented;
 - fast to navigate;
