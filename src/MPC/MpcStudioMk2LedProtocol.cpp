@@ -1,6 +1,7 @@
 #include "MpcStudioMk2LedProtocol.h"
 
 #include <algorithm>
+#include <tuple>
 
 namespace {
 
@@ -12,8 +13,8 @@ std::pair<std::uint8_t, std::uint8_t> splitU16(std::size_t value) {
     };
 }
 
-std::size_t lcdMagicNumber(std::size_t encodedLength) {
-    return (encodedLength / 128u) * 128u - 8u;
+std::int64_t lcdMagicNumber(std::size_t encodedLength) {
+    return static_cast<std::int64_t>((encodedLength / 128u) * 128u) - 8;
 }
 
 } // namespace
@@ -76,30 +77,31 @@ std::vector<std::uint8_t> makeLcdChunkSysEx(
     message.push_back(0x4A);
     message.push_back(0x04);
 
-    const auto totalSize = encoded.size() + 16u + lcdMagicNumber(encoded.size());
-    const auto [sizeHigh, sizeLow] = splitU16(totalSize);
+    const auto totalSize = static_cast<std::int64_t>(encoded.size())
+        + 16 + lcdMagicNumber(encoded.size());
+    const auto [sizeHigh, sizeLow] =
+        splitU16(static_cast<std::size_t>(totalSize));
     message.push_back(sizeHigh);
     message.push_back(sizeLow);
 
-    const auto [pngSizeHigh, pngSizeLow] = splitU16(pngBytes.size());
-    if (pngSizeHigh >= 128u) {
+    auto [pngSizeHigh, pngSizeLow] = splitU16(pngBytes.size());
+    if (pngSizeLow >= 128u) {
         message.push_back(0x20);
         message.push_back(0x20);
-        const auto [adjustedHigh, adjustedLow] =
+        std::tie(pngSizeHigh, pngSizeLow) =
             splitU16(pngBytes.size() - 128u);
-        message.push_back(adjustedHigh);
-        message.push_back(adjustedLow);
     } else {
         message.push_back(0x00);
         message.push_back(0x20);
-        message.push_back(pngSizeHigh);
-        message.push_back(pngSizeLow);
     }
 
     message.push_back(chunk.x);
     message.push_back(0x00);
     message.push_back(chunk.y);
     message.push_back(0x00);
+
+    message.push_back(pngSizeHigh);
+    message.push_back(pngSizeLow);
 
     message.insert(message.end(), encoded.begin(), encoded.end());
     message.push_back(0xF7);
