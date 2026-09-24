@@ -1,15 +1,9 @@
 #include <jni.h>
 #include "Audio/AudioEngine.h"
 
-#include <memory>
 #include <string>
 
 namespace {
-
-std::shared_ptr<mpc::audio::AudioEngine> audioEngine() {
-    static const auto engine = std::make_shared<mpc::audio::AudioEngine>();
-    return engine;
-}
 
 jstring toJString(JNIEnv* env, const std::string& text) {
     return env->NewStringUTF(text.c_str());
@@ -32,19 +26,19 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStart(
         JNIEnv* env, jobject /* thiz */)
 {
-    return toJString(env, audioEngine()->start());
+    return toJString(env, mpc::audio::AudioEngine::instance().start());
 }
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStop(
         JNIEnv* env, jobject /* thiz */)
 {
-    return toJString(env, audioEngine()->stop());
+    return toJString(env, mpc::audio::AudioEngine::instance().stop());
 }
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStatus(
         JNIEnv* env, jobject /* thiz */)
 {
-    return toJString(env, audioEngine()->status());
+    return toJString(env, mpc::audio::AudioEngine::instance().status());
 }

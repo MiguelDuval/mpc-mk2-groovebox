@@ -1,10 +1,12 @@
 #include "NativeMidi.h"
+#include "../Audio/AudioEngine.h"
 #include "../MPC/MpcStudioMk2InputDecoder.h"
 #include "../MPC/MpcStudioMk2LedProtocol.h"
 
 #include <android/log.h>
 #include <jni.h>
 
+#include <array>
 #include <cstddef>
 #include <vector>
 
@@ -46,6 +48,13 @@ void handleIncoming(std::span<const std::uint8_t> message, std::int64_t /*timest
             "MIDI %zu-byte message: unrecognized",
             message.size());
         return;
+    }
+
+    if (event->type == mpc::studio::InputEventType::PadNote
+            && event->pressed) {
+        mpc::audio::AudioEngine::instance().triggerPad(
+            event->padIndex,
+            event->value);
     }
 
     if (event->type == mpc::studio::InputEventType::PadNote
@@ -101,7 +110,6 @@ Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeOnMidi(
 
     env->ReleaseByteArrayElements(data, bytes, JNI_ABORT);
 }
-
 
 template <std::size_t Size>
 jbyteArray toJavaByteArray(
