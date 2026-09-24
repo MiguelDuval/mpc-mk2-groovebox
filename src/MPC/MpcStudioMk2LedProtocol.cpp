@@ -85,7 +85,7 @@ std::vector<std::uint8_t> makeLcdChunkSysEx(
     message.push_back(sizeLow);
 
     auto [pngSizeHigh, pngSizeLow] = splitU16(pngBytes.size());
-    if (pngSizeLow >= 128u) {
+    if (pngSizeHigh >= 128u) {
         message.push_back(0x20);
         message.push_back(0x20);
         std::tie(pngSizeHigh, pngSizeLow) =
