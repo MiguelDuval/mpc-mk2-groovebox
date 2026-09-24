@@ -9,13 +9,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(MPC_BUILD_TRACKTION "Build Tracktion Engine integration targets" OFF)
 option(MPC_BUILD_LINK "Build Ableton Link integration target" OFF)
 
-# Oboe is the first native audio dependency in the bootstrap. Tracktion/JUCE
-# and Ableton Link are pinned as submodules but remain disabled in this first
-# Android build until their integration boundaries are validated.
 add_subdirectory(third_party/oboe EXCLUDE_FROM_ALL)
 
 add_library(mpcgroovebox SHARED
     src/NativeEngine.cpp
+    src/Midi/NativeMidi.cpp
     src/MPC/MpcStudioMk2ControlMap.cpp
     src/MPC/MpcStudioMk2LedProtocol.cpp
 )
@@ -31,8 +29,6 @@ if(ANDROID)
 endif()
 
 if(MPC_BUILD_TRACKTION)
-    # Reuse the parent JUCE targets so Tracktion does not require its nested
-    # JUCE checkout for this project.
     add_subdirectory(third_party/JUCE EXCLUDE_FROM_ALL)
     set(TE_ADD_EXAMPLES OFF CACHE BOOL "" FORCE)
     add_subdirectory(third_party/tracktion_engine EXCLUDE_FROM_ALL)
