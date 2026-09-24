@@ -143,6 +143,18 @@ void testLcdChunkHeader() {
     }
 }
 
+void testLcdLargePngSizeFlag() {
+    const std::array<std::uint8_t, 384> png{};
+    const auto message = mpc::studio::makeLcdChunkSysEx(
+        mpc::studio::lcdChunks[0],
+        std::span<const std::uint8_t>(png.data(), png.size()));
+
+    assert(message[7] == 0x20);
+    assert(message[8] == 0x20);
+    assert(message[13] == 0x01);
+    assert(message[14] == 0x00);
+}
+
 void testUnknownMessageIsIgnored() {
     const std::uint8_t bytes[] = {0x99, 99, 100};
 
@@ -165,6 +177,7 @@ int main() {
     testChannelAftertouch();
     testLcdPayloadEncoding();
     testLcdChunkHeader();
+    testLcdLargePngSizeFlag();
     testUnknownMessageIsIgnored();
     return 0;
 }
