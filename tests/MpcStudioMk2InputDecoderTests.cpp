@@ -130,9 +130,11 @@ void testLcdChunkHeader() {
     assert(message[13] == 0x00);
     assert(message[14] == 0x08);
     assert(message[15] == 0x00);
-    assert(message[16] == 0x01);
-    assert(message[22] == 0x06);
-    assert(message[24] == 0x07);
+    assert(message[15] == 0x00);
+    assert(message[16] == 0x00);
+    assert(message[17] == 0x01);
+    assert(message[22] == 0x01);
+    assert(message[23] == 0x07);
     assert(message[25] == 0xF7);
 
     for (std::size_t i = 1; i + 1 < message.size(); ++i) {
