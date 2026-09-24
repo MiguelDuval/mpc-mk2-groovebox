@@ -88,6 +88,18 @@ jobs:
             -o build/native-tests/mpc_input_decoder_tests
           build/native-tests/mpc_input_decoder_tests
 
+      - name: Test PCM WAV sample decoder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/WavSampleTests.cpp \
+            src/Audio/WavSample.cpp \
+            -o build/native-tests/wav_sample_tests
+          build/native-tests/wav_sample_tests
+
       - name: Assemble debug APK
         run: gradle --no-daemon :app:assembleDebug
 
