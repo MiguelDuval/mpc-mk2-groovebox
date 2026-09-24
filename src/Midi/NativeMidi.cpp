@@ -6,6 +6,7 @@
 #include <jni.h>
 
 #include <cstddef>
+#include <vector>
 
 namespace {
 
@@ -99,6 +100,82 @@ Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeOnMidi(
         static_cast<std::int64_t>(timestamp));
 
     env->ReleaseByteArrayElements(data, bytes, JNI_ABORT);
+}
+
+
+template <std::size_t Size>
+jbyteArray toJavaByteArray(
+        JNIEnv* env,
+        const std::array<std::uint8_t, Size>& bytes) {
+    auto result = env->NewByteArray(static_cast<jsize>(Size));
+    if (result == nullptr) {
+        return nullptr;
+    }
+
+    env->SetByteArrayRegion(
+        result,
+        0,
+        static_cast<jsize>(Size),
+        reinterpret_cast<const jbyte*>(bytes.data()));
+    return result;
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MpcStudioMk2MidiMessages_nativePadRgb(
+        JNIEnv* env, jclass, jint pad, jint red, jint green, jint blue) {
+    if (env == nullptr || pad < 0 || red < 0 || green < 0 || blue < 0) {
+        return nullptr;
+    }
+
+    return toJavaByteArray(
+        env,
+        mpc::studio::makePadLedSysEx(
+            static_cast<std::uint8_t>(pad),
+            mpc::studio::Rgb{
+                static_cast<std::uint8_t>(red),
+                static_cast<std::uint8_t>(green),
+                static_cast<std::uint8_t>(blue)
+            }));
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MpcStudioMk2MidiMessages_nativeButtonLed(
+        JNIEnv* env, jclass, jint cc, jint value) {
+    if (env == nullptr || cc < 0 || value < 0) {
+        return nullptr;
+    }
+
+    return toJavaByteArray(
+        env,
+        mpc::studio::makeCcMessage(
+            static_cast<std::uint8_t>(cc),
+            static_cast<std::uint8_t>(value)));
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MpcStudioMk2MidiMessages_nativeTouchStripLedSegment(
+        JNIEnv* env, jclass, jint segment, jint brightness) {
+    if (env == nullptr || segment < 0 || brightness < 0) {
+        return nullptr;
+    }
+
+    const auto message = mpc::studio::makeTouchStripLedSegment(
+        static_cast<std::size_t>(segment),
+        static_cast<std::uint8_t>(brightness));
+    return message ? toJavaByteArray(env, *message) : nullptr;
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MpcStudioMk2MidiMessages_nativeNoteRepeatLed(
+        JNIEnv* env, jclass, jint index, jint brightness) {
+    if (env == nullptr || index < 0 || brightness < 0) {
+        return nullptr;
+    }
+
+    const auto message = mpc::studio::makeNoteRepeatLed(
+        static_cast<std::size_t>(index),
+        static_cast<std::uint8_t>(brightness));
+    return message ? toJavaByteArray(env, *message) : nullptr;
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
