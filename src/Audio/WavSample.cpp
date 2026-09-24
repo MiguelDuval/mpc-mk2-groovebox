@@ -11,8 +11,6 @@ namespace {
 constexpr std::uint16_t kPcmFormat = 1;
 constexpr std::uint16_t kFloatFormat = 3;
 constexpr std::uint16_t kExtensibleFormat = 0xFFFE;
-constexpr std::uint16_t kExtensiblePcm = kPcmFormat;
-constexpr std::uint16_t kExtensibleFloat = kFloatFormat;
 
 std::uint16_t readU16(const std::uint8_t* data) {
     return static_cast<std::uint16_t>(
@@ -123,8 +121,8 @@ std::optional<SampleBuffer> decodeWav(std::span<const std::uint8_t> bytes) {
                 };
 
                 if (!std::equal(
-                        std::begin(kStandardSubtypeTail),
-                        std::end(kStandardSubtypeTail),
+                        kStandardSubtypeTail,
+                        kStandardSubtypeTail + sizeof(kStandardSubtypeTail),
                         payload + 26)) {
                     return std::nullopt;
                 }
