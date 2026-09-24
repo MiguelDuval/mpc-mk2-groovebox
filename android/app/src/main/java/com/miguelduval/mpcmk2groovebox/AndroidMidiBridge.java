@@ -111,10 +111,7 @@ public final class AndroidMidiBridge {
                 continue;
             }
 
-            String haystack = describeDevice(info).toLowerCase(Locale.ROOT);
-
-            if (haystack.contains("mpc studio mk2")
-                    || haystack.contains("mpc studio mk ii")) {
+            if (isMpcStudioDevice(info)) {
                 target = info;
                 break;
             }
@@ -276,6 +273,26 @@ public final class AndroidMidiBridge {
         }
 
         return fallback;
+    }
+
+    private static boolean isMpcStudioDevice(MidiDeviceInfo info) {
+        android.os.Bundle props = info.getProperties();
+
+        String manufacturer = props.getString(
+                MidiDeviceInfo.PROPERTY_MANUFACTURER, "");
+        String product = props.getString(
+                MidiDeviceInfo.PROPERTY_PRODUCT, "");
+        String name = props.getString(
+                MidiDeviceInfo.PROPERTY_NAME, "");
+
+        String manufacturerText = manufacturer.toLowerCase(Locale.ROOT);
+        String identity = (name + " " + product).toLowerCase(Locale.ROOT);
+
+        // Android may expose the MkII simply as "MPC Studio".
+        // Require the Akai manufacturer plus the MPC Studio identity so
+        // unrelated MIDI devices are not selected automatically.
+        return manufacturerText.contains("akai professional")
+                && identity.contains("mpc studio");
     }
 
     private static String describeDevice(MidiDeviceInfo info) {
