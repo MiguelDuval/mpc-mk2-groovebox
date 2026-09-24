@@ -1,6 +1,11 @@
 package com.miguelduval.mpcmk2groovebox;
 
 public final class MpcStudioMk2MidiMessages {
+    private static final int TOUCH_STRIP_LED_BASE_CC = 57;
+    private static final int TOUCH_STRIP_LED_COUNT = 9;
+    private static final int NOTE_REPEAT_LED_BASE_CC = 103;
+    private static final int NOTE_REPEAT_LED_COUNT = 8;
+
     private MpcStudioMk2MidiMessages() {
     }
 
@@ -27,5 +32,25 @@ public final class MpcStudioMk2MidiMessages {
 
     public static byte[] touchStripLed(int cc, int brightness) {
         return buttonLed(cc, brightness);
+    }
+
+    public static byte[] touchStripLedSegment(int segment, int brightness) {
+        if (segment < 0 || segment >= TOUCH_STRIP_LED_COUNT) {
+            throw new IllegalArgumentException("Touch-strip LED segment out of range");
+        }
+
+        return buttonLed(
+                TOUCH_STRIP_LED_BASE_CC + segment,
+                brightness);
+    }
+
+    public static byte[] noteRepeatLed(int index, int brightness) {
+        if (index < 0 || index >= NOTE_REPEAT_LED_COUNT) {
+            throw new IllegalArgumentException("Note Repeat LED index out of range");
+        }
+
+        return buttonLed(
+                NOTE_REPEAT_LED_BASE_CC + index,
+                brightness);
     }
 }
