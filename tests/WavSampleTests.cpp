@@ -97,6 +97,9 @@ void testDecode24BitPcm() {
         bytes.push_back(static_cast<std::uint8_t>((value >> 16) & 0xFF));
     }
 
+    // RIFF chunks with an odd payload size are padded to an even boundary.
+    bytes.push_back(0);
+
     const auto sample = mpc::audio::decodeWav(bytes);
 
     assert(sample.has_value());
