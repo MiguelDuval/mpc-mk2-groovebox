@@ -203,7 +203,11 @@ public final class AndroidMidiBridge {
     }
 
     public void testTouchLed() {
-        send(MpcStudioMk2MidiMessages.touchStripLed(57, 127));
+        send(MpcStudioMk2MidiMessages.touchStripLedSegment(4, 127));
+    }
+
+    public void testNoteRepeatLed() {
+        send(MpcStudioMk2MidiMessages.noteRepeatLed(0, 127));
     }
 
     public void disconnect() {
