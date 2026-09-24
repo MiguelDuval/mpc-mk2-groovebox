@@ -70,6 +70,19 @@ jobs:
             exit "$SDKMANAGER_STATUS"
           fi
 
+      - name: Test MPC Studio MkII MIDI decoder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcStudioMk2InputDecoderTests.cpp \
+            src/MPC/MpcStudioMk2InputDecoder.cpp \
+            src/MPC/MpcStudioMk2ControlMap.cpp \
+            -o build/native-tests/mpc_input_decoder_tests
+          build/native-tests/mpc_input_decoder_tests
+
       - name: Assemble debug APK
         run: gradle --no-daemon :app:assembleDebug
 
