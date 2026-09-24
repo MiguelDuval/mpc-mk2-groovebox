@@ -10,10 +10,11 @@ The current bridge:
 4. Opens one input and one output port.
 5. Receives MIDI through MidiReceiver.
 6. Forwards messages into the native C++ MIDI boundary.
-7. Provides an outgoing send path for hardware feedback.
+7. Decodes recognized MkII messages into hardware-level semantic input events.
+8. Provides an outgoing send path for hardware feedback.
 
-The Android layer owns platform MIDI lifecycle. The native layer receives
-semantic byte streams and will later decode them into MPC Studio actions.
+The Android layer owns platform MIDI lifecycle. The native hardware decoder keeps
+controller-specific MIDI values behind the MPC Studio MkII adapter boundary.
 
 References:
 https://developer.android.com/reference/android/media/midi/package-summary

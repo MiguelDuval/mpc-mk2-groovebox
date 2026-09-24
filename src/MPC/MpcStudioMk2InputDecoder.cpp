@@ -99,7 +99,7 @@ std::optional<InputEvent> decodeInput(std::span<const std::uint8_t> message) {
                     number,
                     message[2],
                     pad->physicalIndex,
-                    true
+                    false
                 };
             }
 

@@ -2,14 +2,20 @@
 
 Run these tests with the public MIDI port.
 
-## A. Discovery
+## A. Software preflight
+
+- [ ] Latest branch commit has a green Android Actions build.
+- [ ] MPC Studio MkII native decoder tests pass.
+- [ ] Debug APK artifact is produced.
+
+## B. Discovery
 
 - [ ] Controller appears in Refresh MIDI Devices.
 - [ ] Manufacturer/product/name are visible.
 - [ ] The application selects the public port when available.
 - [ ] Connect reports an active MIDI connection.
 
-## B. Incoming MIDI
+## C. Incoming MIDI
 
 - [ ] Pad 1 sends Note On.
 - [ ] Pad velocity changes with strike strength.
@@ -21,7 +27,7 @@ Run these tests with the public MIDI port.
 - [ ] Jog press is observed as note 111.
 - [ ] Touch strip sends CC 33.
 
-## C. Outgoing feedback
+## D. Outgoing feedback
 
 - [ ] One pad can be set red.
 - [ ] One pad can be set blue.
@@ -30,7 +36,7 @@ Run these tests with the public MIDI port.
 - [ ] Touch-strip indicators respond.
 - [ ] Note Repeat rate indicators respond.
 
-## D. LCD
+## E. LCD
 
 - [ ] A static 160x80 test image is rendered.
 - [ ] Six image chunks are transmitted.
