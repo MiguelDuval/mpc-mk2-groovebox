@@ -1,5 +1,6 @@
 #include "NativeMidi.h"
 #include "../MPC/MpcStudioMk2InputDecoder.h"
+#include "../MPC/MpcStudioMk2LedProtocol.h"
 
 #include <android/log.h>
 #include <jni.h>
@@ -98,4 +99,60 @@ Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeOnMidi(
         static_cast<std::int64_t>(timestamp));
 
     env->ReleaseByteArrayElements(data, bytes, JNI_ABORT);
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MpcStudioMk2MidiMessages_nativeLcdChunk(
+        JNIEnv* env, jclass, jint x, jint y, jbyteArray pngBytes) {
+    if (env == nullptr || pngBytes == nullptr || x < 0 || x > 255 || y < 0 || y > 255) {
+        return nullptr;
+    }
+
+    const jsize length = env->GetArrayLength(pngBytes);
+    if (length < 0) {
+        return nullptr;
+    }
+
+    jbyte* bytes = env->GetByteArrayElements(pngBytes, nullptr);
+    if (bytes == nullptr && length > 0) {
+        return nullptr;
+    }
+
+    std::vector<std::uint8_t> message;
+    if (length == 0) {
+        message = mpc::studio::makeLcdChunkSysEx(
+            mpc::studio::LcdChunk{
+                static_cast<std::uint8_t>(x),
+                static_cast<std::uint8_t>(y),
+                0,
+                0
+            },
+            {});
+    } else {
+        const auto* raw = reinterpret_cast<const std::uint8_t*>(bytes);
+        message = mpc::studio::makeLcdChunkSysEx(
+            mpc::studio::LcdChunk{
+                static_cast<std::uint8_t>(x),
+                static_cast<std::uint8_t>(y),
+                0,
+                0
+            },
+            std::span<const std::uint8_t>(raw, static_cast<std::size_t>(length)));
+    }
+
+    if (bytes != nullptr) {
+        env->ReleaseByteArrayElements(pngBytes, bytes, JNI_ABORT);
+    }
+
+    auto result = env->NewByteArray(static_cast<jsize>(message.size()));
+    if (result == nullptr) {
+        return nullptr;
+    }
+
+    env->SetByteArrayRegion(
+        result,
+        0,
+        static_cast<jsize>(message.size()),
+        reinterpret_cast<const jbyte*>(message.data()));
+    return result;
 }
