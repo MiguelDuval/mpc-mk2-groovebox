@@ -3,6 +3,7 @@ package com.miguelduval.mpcmk2groovebox;
 import android.content.Context;
 import android.media.midi.MidiDevice;
 import android.media.midi.MidiDeviceInfo;
+import android.media.midi.MidiDeviceStatus;
 import android.media.midi.MidiManager;
 import android.media.midi.MidiOutputPort;
 import android.media.midi.MidiReceiver;
@@ -30,14 +31,18 @@ public final class AndroidMidiBridge {
     private MidiOutputPort outputPort;
 
     private final MidiManager.DeviceCallback deviceCallback = new MidiManager.DeviceCallback() {
-        @Override public void onDeviceAdded(MidiDeviceInfo info) { publishDeviceList(); }
-
-        @Override public void onDeviceRemoved(MidiDeviceInfo info) {
-            if (device != null && device.getInfo().getId() == info.getId()) disconnect();
+        @Override public void onDeviceAdded(MidiDeviceInfo info) {
             publishDeviceList();
         }
 
-        @Override public void onDeviceStatusChanged(MidiDeviceInfo status) {
+        @Override public void onDeviceRemoved(MidiDeviceInfo info) {
+            if (device != null && device.getInfo().getId() == info.getId()) {
+                disconnect();
+            }
+            publishDeviceList();
+        }
+
+        @Override public void onDeviceStatusChanged(MidiDeviceStatus status) {
             publishDeviceList();
         }
     };
@@ -76,6 +81,7 @@ public final class AndroidMidiBridge {
         if (infos.length == 0) return "No MIDI devices detected";
 
         StringBuilder result = new StringBuilder();
+
         for (MidiDeviceInfo info : infos) {
             result.append(describeDevice(info)).append('\n');
 
@@ -101,9 +107,12 @@ public final class AndroidMidiBridge {
         MidiDeviceInfo target = null;
 
         for (MidiDeviceInfo info : midiManager.getDevices()) {
-            if (info.getInputPortCount() == 0 || info.getOutputPortCount() == 0) continue;
+            if (info.getInputPortCount() == 0 || info.getOutputPortCount() == 0) {
+                continue;
+            }
 
             String haystack = describeDevice(info).toLowerCase(Locale.ROOT);
+
             if (haystack.contains("mpc studio mk2")
                     || haystack.contains("mpc studio mk ii")) {
                 target = info;
@@ -120,6 +129,7 @@ public final class AndroidMidiBridge {
         disconnect();
 
         MidiDeviceInfo selected = target;
+
         midiManager.openDevice(selected, opened -> {
             if (opened == null) {
                 listener.onConnection("Could not open " + describeDevice(selected));
@@ -127,6 +137,7 @@ public final class AndroidMidiBridge {
             }
 
             device = opened;
+
             inputPortInfo = choosePort(
                     selected, MidiDeviceInfo.PortInfo.TYPE_INPUT, "public");
             outputPortInfo = choosePort(
@@ -150,7 +161,8 @@ public final class AndroidMidiBridge {
             try {
                 outputPort.connect(receiver);
             } catch (RuntimeException e) {
-                listener.onConnection("MIDI receive connection failed: " + e.getMessage());
+                listener.onConnection(
+                        "MIDI receive connection failed: " + e.getMessage());
                 disconnect();
                 return;
             }
@@ -163,7 +175,9 @@ public final class AndroidMidiBridge {
     }
 
     public void send(byte[] message) {
-        if (inputPort == null || message == null || message.length == 0) return;
+        if (inputPort == null || message == null || message.length == 0) {
+            return;
+        }
 
         try {
             inputPort.send(message, 0, message.length);
@@ -194,17 +208,26 @@ public final class AndroidMidiBridge {
 
     public void disconnect() {
         if (outputPort != null) {
-            try { outputPort.close(); } catch (IOException ignored) {}
+            try {
+                outputPort.close();
+            } catch (IOException ignored) {
+            }
             outputPort = null;
         }
 
         if (inputPort != null) {
-            try { inputPort.close(); } catch (IOException ignored) {}
+            try {
+                inputPort.close();
+            } catch (IOException ignored) {
+            }
             inputPort = null;
         }
 
         if (device != null) {
-            try { device.close(); } catch (IOException ignored) {}
+            try {
+                device.close();
+            } catch (IOException ignored) {
+            }
             device = null;
         }
 
@@ -226,6 +249,7 @@ public final class AndroidMidiBridge {
 
     private static MidiDeviceInfo.PortInfo choosePort(
             MidiDeviceInfo info, int type, String preferredName) {
+
         MidiDeviceInfo.PortInfo fallback = null;
 
         for (MidiDeviceInfo.PortInfo port : info.getPorts()) {
@@ -234,6 +258,7 @@ public final class AndroidMidiBridge {
             if (fallback == null) fallback = port;
 
             String name = port.getName();
+
             if (name != null
                     && name.toLowerCase(Locale.ROOT).contains(preferredName)) {
                 return port;
@@ -265,7 +290,8 @@ public final class AndroidMidiBridge {
         StringBuilder builder = new StringBuilder(data.length * 3);
 
         for (byte value : data) {
-            builder.append(String.format(Locale.ROOT, "%02X ", value & 0xFF));
+            builder.append(String.format(
+                    Locale.ROOT, "%02X ", value & 0xFF));
         }
 
         return builder.toString().trim();
