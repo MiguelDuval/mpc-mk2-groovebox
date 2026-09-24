@@ -9,57 +9,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class MpcStudioMk2MidiMessages {
-    private static final int TOUCH_STRIP_LED_BASE_CC = 57;
-    private static final int TOUCH_STRIP_LED_COUNT = 9;
-    private static final int NOTE_REPEAT_LED_BASE_CC = 103;
-    private static final int NOTE_REPEAT_LED_COUNT = 8;
-
     private MpcStudioMk2MidiMessages() {
     }
 
     public static byte[] padRgb(int pad, int red, int green, int blue) {
-        return new byte[] {
-                (byte) 0xF0,
-                0x47, 0x47, 0x4A, 0x65,
-                0x00, 0x04,
-                (byte) (pad & 0x7F),
-                (byte) (red & 0x7F),
-                (byte) (green & 0x7F),
-                (byte) (blue & 0x7F),
-                (byte) 0xF7
-        };
+        return nativePadRgb(pad, red, green, blue);
     }
 
     public static byte[] buttonLed(int cc, int value) {
-        return new byte[] {
-                (byte) 0xB0,
-                (byte) (cc & 0x7F),
-                (byte) (value & 0x7F)
-        };
+        return nativeButtonLed(cc, value);
     }
 
     public static byte[] touchStripLed(int cc, int brightness) {
-        return buttonLed(cc, brightness);
+        return nativeButtonLed(cc, brightness);
     }
 
     public static byte[] touchStripLedSegment(int segment, int brightness) {
-        if (segment < 0 || segment >= TOUCH_STRIP_LED_COUNT) {
-            throw new IllegalArgumentException("Touch-strip LED segment out of range");
-        }
-
-        return buttonLed(
-                TOUCH_STRIP_LED_BASE_CC + segment,
-                brightness);
+        return nativeTouchStripLedSegment(segment, brightness);
     }
 
     public static byte[] noteRepeatLed(int index, int brightness) {
-        if (index < 0 || index >= NOTE_REPEAT_LED_COUNT) {
-            throw new IllegalArgumentException("Note Repeat LED index out of range");
-        }
-
-        return buttonLed(
-                NOTE_REPEAT_LED_BASE_CC + index,
-                brightness);
+        return nativeNoteRepeatLed(index, brightness);
     }
 
     public static List<byte[]> lcdTestFrame() {
@@ -118,6 +88,24 @@ public final class MpcStudioMk2MidiMessages {
     private static byte[] lcdChunk(int x, int y, byte[] pngBytes) {
         return nativeLcdChunk(x, y, pngBytes);
     }
+
+    private static native byte[] nativePadRgb(
+            int pad,
+            int red,
+            int green,
+            int blue);
+
+    private static native byte[] nativeButtonLed(
+            int cc,
+            int value);
+
+    private static native byte[] nativeTouchStripLedSegment(
+            int segment,
+            int brightness);
+
+    private static native byte[] nativeNoteRepeatLed(
+            int index,
+            int brightness);
 
     private static native byte[] nativeLcdChunk(
             int x,
