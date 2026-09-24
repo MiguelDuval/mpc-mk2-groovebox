@@ -90,6 +90,23 @@ void testChannelAftertouch() {
     assert(event.value == 50);
 }
 
+
+void testLedCcBuilders() {
+    const auto play = mpc::studio::makeCcMessage(82, 2);
+    assert(play == std::array<std::uint8_t, 3>{0xB0, 82, 2});
+
+    const auto touch = mpc::studio::makeTouchStripLedSegment(4, 127);
+    assert(touch.has_value());
+    assert(*touch == std::array<std::uint8_t, 3>{0xB0, 61, 127});
+
+    const auto repeat = mpc::studio::makeNoteRepeatLed(0, 127);
+    assert(repeat.has_value());
+    assert(*repeat == std::array<std::uint8_t, 3>{0xB0, 103, 127});
+
+    assert(!mpc::studio::makeTouchStripLedSegment(9, 127).has_value());
+    assert(!mpc::studio::makeNoteRepeatLed(8, 127).has_value());
+}
+
 void testLcdPayloadEncoding() {
     const std::uint8_t source[] = {0x00, 0x7F, 0x80, 0xFF, 0x01, 0x02, 0x03, 0x04};
 
@@ -175,6 +192,7 @@ int main() {
     testJogPress();
     testTouchStrip();
     testChannelAftertouch();
+    testLedCcBuilders();
     testLcdPayloadEncoding();
     testLcdChunkHeader();
     testLcdLargePngSizeFlag();
