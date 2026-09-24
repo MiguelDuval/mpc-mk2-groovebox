@@ -132,7 +132,9 @@ public final class MpcStudioMk2MidiMessages {
         writeU16Be(message, totalSize);
 
         int pngSize = pngBytes.length;
-        if (((pngSize >>> 8) & 0xFF) >= 128) {
+        // The LCD transport uses the 0x20 flag when bit 7 of the
+        // least-significant size byte is set, then subtracts 128.
+        if ((pngSize & 0xFF) >= 128) {
             message.write(0x20);
             message.write(0x20);
             pngSize -= 128;
