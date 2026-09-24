@@ -50,6 +50,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         connect.setText("Connect MPC Studio MkII");
         connect.setOnClickListener(v -> midiBridge.connectPreferred());
 
+        LinearLayout diagnostics = new LinearLayout(this);
+        diagnostics.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button red = new Button(this);
+        red.setText("Pad 1 Red");
+        red.setOnClickListener(v -> midiBridge.testPadRed());
+
+        Button blue = new Button(this);
+        blue.setText("Pad 1 Blue");
+        blue.setOnClickListener(v -> midiBridge.testPadBlue());
+
+        Button off = new Button(this);
+        off.setText("Pad 1 Off");
+        off.setOnClickListener(v -> midiBridge.testPadOff());
+
+        Button playLed = new Button(this);
+        playLed.setText("Play LED");
+        playLed.setOnClickListener(v -> midiBridge.testPlayLed());
+
+        Button touchLed = new Button(this);
+        touchLed.setText("Touch LED");
+        touchLed.setOnClickListener(v -> midiBridge.testTouchLed());
+
+        diagnostics.addView(red, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        diagnostics.addView(blue, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        diagnostics.addView(off, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        diagnostics.addView(playLed, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        diagnostics.addView(touchLed, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
         midiLog = new TextView(this);
         midiLog.setText("MIDI IN:\n");
         midiLog.setTextSize(13.0f);
@@ -64,6 +93,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         root.addView(scan, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(connect, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(diagnostics, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(devices, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f));
