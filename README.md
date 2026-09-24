@@ -73,3 +73,9 @@ https://github.com/kurtjcu/MPC-project-file-definitions
 
 Official MPC standalone UX reference:
 https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf
+
+## Agent instructions
+
+The canonical project operating brief is [docs/PROJECT_MASTER_PROMPT.md](docs/PROJECT_MASTER_PROMPT.md).
+
+Coding agents should first read [AGENTS.md](AGENTS.md) and then the master prompt plus the relevant documents under `docs/`.
