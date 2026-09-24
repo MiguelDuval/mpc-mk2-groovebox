@@ -113,15 +113,23 @@ std::optional<SampleBuffer> decodeWav(std::span<const std::uint8_t> bytes) {
                 // The first two bytes of the SubFormat GUID contain the
                 // underlying PCM/IEEE-float format; the remaining GUID bytes
                 // are fixed for standard WAV subtype GUIDs.
-                const std::uint32_t subFormatCode = readU16(payload + 24);
-                const std::uint32_t guidTail0 = readU32(payload + 28);
-                const std::uint32_t guidTail1 = readU32(payload + 32);
+                const std::uint16_t subFormatCode = readU16(payload + 24);
 
-                if (guidTail0 != 0x00000000u || guidTail1 != 0x00100000u) {
+                // Standard WAV subtype GUID:
+                // 000000xx-0000-0010-8000-00AA00389B71
+                static constexpr std::uint8_t kStandardSubtypeTail[] = {
+                    0x00, 0x00, 0x10, 0x00, 0x00, 0x00,
+                    0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71
+                };
+
+                if (!std::equal(
+                        std::begin(kStandardSubtypeTail),
+                        std::end(kStandardSubtypeTail),
+                        payload + 26)) {
                     return std::nullopt;
                 }
 
-                format = static_cast<std::uint16_t>(subFormatCode);
+                format = subFormatCode;
             }
 
             haveFormat = true;
