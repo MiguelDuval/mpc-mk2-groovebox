@@ -84,6 +84,7 @@ jobs:
             tests/MpcStudioMk2InputDecoderTests.cpp \
             src/MPC/MpcStudioMk2InputDecoder.cpp \
             src/MPC/MpcStudioMk2ControlMap.cpp \
+            src/MPC/MpcStudioMk2LedProtocol.cpp \
             -o build/native-tests/mpc_input_decoder_tests
           build/native-tests/mpc_input_decoder_tests
 
