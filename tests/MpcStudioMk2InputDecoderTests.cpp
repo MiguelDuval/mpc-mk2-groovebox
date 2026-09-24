@@ -1,6 +1,7 @@
 #include "MPC/MpcStudioMk2InputDecoder.h"
 
 #include <cassert>
+#include <initializer_list>
 #include <cstdint>
 #include <optional>
 #include <span>
