@@ -2,6 +2,7 @@
 #include "Audio/AudioEngine.h"
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
