@@ -1,6 +1,8 @@
 package com.miguelduval.mpcmk2groovebox;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Base64;
 import android.view.Gravity;
@@ -16,6 +18,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 public final class MainActivity extends Activity implements AndroidMidiBridge.Listener {
+    private static final int REQUEST_OPEN_WAV = 1001;
+    private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
+
     static {
         System.loadLibrary("mpcgroovebox");
     }
@@ -66,6 +71,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout audioControls = new LinearLayout(this);
         audioControls.setOrientation(LinearLayout.HORIZONTAL);
 
+        Button loadSample = new Button(this);
+        loadSample.setText("Load WAV Sample");
+        loadSample.setOnClickListener(v -> openWavPicker());
+
         Button audioStart = new Button(this);
         audioStart.setText("Start Sampler");
         audioStart.setOnClickListener(v -> status.setText(nativeAudioStart()));
@@ -78,6 +87,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         audioStatus.setText("Audio Status");
         audioStatus.setOnClickListener(v -> status.setText(nativeAudioStatus()));
 
+        audioControls.addView(loadSample, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         audioControls.addView(audioStart, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         audioControls.addView(audioStop, new LinearLayout.LayoutParams(
@@ -164,6 +175,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode != REQUEST_OPEN_WAV || resultCode != RESULT_OK || data == null) {
+            return;
+        }
+
+        final Uri uri = data.getData();
+        if (uri == null) {
+            status.setText("Sample load failed: no file selected");
+            return;
+        }
+
+        try {
+            final byte[] wavBytes = readSampleBytes(uri);
+            status.setText(nativeAudioLoadSample(wavBytes));
+        } catch (IOException | IllegalArgumentException e) {
+            status.setText("Sample file load failed: " + e.getMessage());
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         nativeAudioStop();
 
@@ -193,6 +226,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     public void onConnection(String description) {
         runOnUiThread(() -> status.setText(description));
+    }
+
+    private void openWavPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        startActivityForResult(intent, REQUEST_OPEN_WAV);
+    }
+
+    private byte[] readSampleBytes(Uri uri) throws IOException {
+        try (InputStream input = getContentResolver().openInputStream(uri)) {
+            if (input == null) {
+                throw new IOException("could not open selected file");
+            }
+
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int count;
+
+            while ((count = input.read(buffer)) != -1) {
+                if (output.size() + count > MAX_SAMPLE_BYTES) {
+                    throw new IOException("file is larger than 32 MB");
+                }
+
+                output.write(buffer, 0, count);
+            }
+
+            if (output.size() == 0) {
+                throw new IOException("selected file is empty");
+            }
+
+            return output.toByteArray();
+        }
     }
 
     private String loadBundledSample() {
