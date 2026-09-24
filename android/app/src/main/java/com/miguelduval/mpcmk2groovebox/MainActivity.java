@@ -77,6 +77,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         repeatLed.setText("Repeat LED");
         repeatLed.setOnClickListener(v -> midiBridge.testNoteRepeatLed());
 
+        Button lcdTest = new Button(this);
+        lcdTest.setText("LCD Test");
+        lcdTest.setOnClickListener(v -> midiBridge.testLcd());
+
         LinearLayout diagnosticsRow1 = new LinearLayout(this);
         diagnosticsRow1.setOrientation(LinearLayout.HORIZONTAL);
 
@@ -89,6 +93,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout diagnosticsRow2 = new LinearLayout(this);
         diagnosticsRow2.setOrientation(LinearLayout.HORIZONTAL);
         diagnosticsRow2.addView(repeatLed, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        diagnosticsRow2.addView(lcdTest, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         diagnostics.addView(diagnosticsRow1, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
