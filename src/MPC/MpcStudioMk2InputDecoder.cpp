@@ -30,10 +30,12 @@ std::optional<InputEvent> decodeInput(std::span<const std::uint8_t> message) {
         return std::nullopt;
     }
 
-    const auto status = message[0];
-    const auto messageType = status & 0xF0;
-    const auto channel = status & 0x0F;
-    const auto number = message[1];
+    const std::uint8_t status = message[0];
+    const std::uint8_t messageType =
+        static_cast<std::uint8_t>(status & 0xF0);
+    const std::uint8_t channel =
+        static_cast<std::uint8_t>(status & 0x0F);
+    const std::uint8_t number = message[1];
 
     switch (messageType) {
         case 0x80:
