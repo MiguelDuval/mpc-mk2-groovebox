@@ -24,6 +24,9 @@ public:
     static AudioEngine& instance();
 
     std::string loadSample(std::span<const std::uint8_t> bytes);
+    std::string loadSampleForPad(
+            std::span<const std::uint8_t> bytes,
+            std::uint8_t padIndex);
     std::string start();
     std::string stop();
     std::string status() const;
@@ -39,6 +42,8 @@ private:
 
     std::shared_ptr<const SampleBuffer> sample_;
     std::string sampleDescription_;
+    std::array<std::shared_ptr<const SampleBuffer>, kPadCount> padSamples_{};
+    std::array<std::string, kPadCount> padSampleDescriptions_{};
     std::shared_ptr<OutputCallback> callback_;
     std::shared_ptr<oboe::AudioStream> stream_;
     std::array<std::atomic<std::uint32_t>, kPadCount> padTriggerSequence_{};
