@@ -1,9 +1,12 @@
 #pragma once
 
+#include "WavSample.h"
+
 #include <array>
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <string>
 
 #include <oboe/Oboe.h>
@@ -20,6 +23,7 @@ public:
 
     static AudioEngine& instance();
 
+    std::string loadSample(std::span<const std::uint8_t> bytes);
     std::string start();
     std::string stop();
     std::string status() const;
@@ -33,6 +37,8 @@ private:
 
     class OutputCallback;
 
+    std::shared_ptr<const SampleBuffer> sample_;
+    std::string sampleDescription_;
     std::shared_ptr<OutputCallback> callback_;
     std::shared_ptr<oboe::AudioStream> stream_;
     std::array<std::atomic<std::uint32_t>, kPadCount> padTriggerSequence_{};
