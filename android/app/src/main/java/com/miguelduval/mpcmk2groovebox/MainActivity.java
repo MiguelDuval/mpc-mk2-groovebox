@@ -29,9 +29,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView status;
     private TextView devices;
     private TextView midiLog;
+    private TextView selectedPadStatus;
+    private int selectedPad = 0;
 
     private static native String nativeEngineInfo();
     private static native String nativeAudioLoadSample(byte[] data);
+    private static native String nativeAudioLoadSampleForPad(byte[] data, int pad);
     private static native String nativeAudioStart();
     private static native String nativeAudioStop();
     private static native String nativeAudioStatus();
@@ -67,6 +70,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Button connect = new Button(this);
         connect.setText("Connect MPC Studio MkII");
         connect.setOnClickListener(v -> midiBridge.connectPreferred());
+
+        selectedPadStatus = new TextView(this);
+        selectedPadStatus.setText("Sample target pad: 1");
+        selectedPadStatus.setTextSize(13.0f);
+
+        LinearLayout padGrid = new LinearLayout(this);
+        padGrid.setOrientation(LinearLayout.VERTICAL);
+
+        for (int row = 0; row < 4; ++row) {
+            LinearLayout padRow = new LinearLayout(this);
+            padRow.setOrientation(LinearLayout.HORIZONTAL);
+
+            for (int column = 0; column < 4; ++column) {
+                final int pad = row * 4 + column;
+                Button padButton = new Button(this);
+                padButton.setText(String.valueOf(pad + 1));
+                padButton.setOnClickListener(v -> selectPad(pad));
+                padRow.addView(padButton, new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            }
+
+            padGrid.addView(padRow, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
 
         LinearLayout audioControls = new LinearLayout(this);
         audioControls.setOrientation(LinearLayout.HORIZONTAL);
@@ -161,6 +189,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(connect, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(selectedPadStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(padGrid, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(audioControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(diagnostics, new LinearLayout.LayoutParams(
@@ -196,7 +228,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             // Stop it before replacing the immutable sample buffer.
             nativeAudioStop();
 
-            final String result = nativeAudioLoadSample(wavBytes);
+            final String result =
+                    nativeAudioLoadSampleForPad(wavBytes, selectedPad);
             status.setText(result);
         } catch (IOException | IllegalArgumentException e) {
             status.setText(
@@ -238,6 +271,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     public void onConnection(String description) {
         runOnUiThread(() -> status.setText(description));
+    }
+
+    private void selectPad(int pad) {
+        if (pad < 0 || pad >= 16) {
+            return;
+        }
+
+        selectedPad = pad;
+        selectedPadStatus.setText("Sample target pad: " + (pad + 1));
     }
 
     private void openWavPicker() {
