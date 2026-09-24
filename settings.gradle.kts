@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "MpcMk2Groovebox"
 include(":app")
+project(":app").projectDir = file("android/app")
