@@ -24,7 +24,7 @@ void appendTag(std::vector<std::uint8_t>& bytes, const char* tag) {
 }
 
 std::vector<std::uint8_t> makeMono16Wav() {
-    const std::initializer_list<std::int16_t> pcm{{-32768, -16384, 0, 16384, 32767}};
+    const std::vector<std::int16_t> pcm{-32768, -16384, 0, 16384, 32767};
     std::vector<std::uint8_t> bytes;
 
     const std::uint32_t dataSize =
