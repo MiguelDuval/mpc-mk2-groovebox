@@ -159,22 +159,19 @@ public final class MpcStudioMk2MidiMessages {
         for (int offset = 0; offset < pngBytes.length; offset += 7) {
             int count = Math.min(7, pngBytes.length - offset);
             int control = 0;
-            int controlIndex = encoded.size();
-            encoded.write(0);
 
             for (int i = 0; i < count; ++i) {
                 int value = pngBytes[offset + i] & 0xFF;
                 if (value >= 128) {
                     control |= 1 << i;
-                    value -= 128;
                 }
-                encoded.write(value);
             }
 
-            byte[] data = encoded.toByteArray();
-            data[controlIndex] = (byte) control;
-            encoded.reset();
-            encoded.write(data, 0, data.length);
+            encoded.write(control);
+
+            for (int i = 0; i < count; ++i) {
+                encoded.write(pngBytes[offset + i] & 0x7F);
+            }
         }
 
         return encoded.toByteArray();
