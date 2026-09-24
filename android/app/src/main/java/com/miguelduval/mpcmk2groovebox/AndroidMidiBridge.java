@@ -210,6 +210,12 @@ public final class AndroidMidiBridge {
         send(MpcStudioMk2MidiMessages.noteRepeatLed(0, 127));
     }
 
+    public void testLcd() {
+        for (byte[] message : MpcStudioMk2MidiMessages.lcdTestFrame()) {
+            send(message);
+        }
+    }
+
     public void disconnect() {
         if (outputPort != null) {
             try {
