@@ -189,6 +189,52 @@ void testDecode32BitFloat() {
     assert(sample->sampleAt(3, 0) == 1.0f);
 }
 
+
+void testDecodeExtensiblePcm() {
+    std::vector<std::uint8_t> bytes;
+    const std::int16_t pcm = 16384;
+    const std::uint32_t dataSize = sizeof(pcm);
+    const std::uint32_t riffSize = 62u;
+
+    appendTag(bytes, "RIFF");
+    appendU32(bytes, riffSize);
+    appendTag(bytes, "WAVE");
+    appendTag(bytes, "fmt ");
+    appendU32(bytes, 40);
+    appendU16(bytes, 0xFFFE);
+    appendU16(bytes, 1);
+    appendU32(bytes, 16000);
+    appendU32(bytes, 32000);
+    appendU16(bytes, 2);
+    appendU16(bytes, 16);
+    appendU16(bytes, 22);
+    appendU16(bytes, 16);
+    appendU32(bytes, 0);
+    appendU16(bytes, 1);
+    appendU16(bytes, 0);
+    appendU16(bytes, 0);
+    appendU16(bytes, 0x0010);
+    bytes.push_back(0x80);
+    bytes.push_back(0x00);
+    bytes.push_back(0x00);
+    bytes.push_back(0xAA);
+    bytes.push_back(0x00);
+    bytes.push_back(0x38);
+    bytes.push_back(0x9B);
+    bytes.push_back(0x71);
+    appendTag(bytes, "data");
+    appendU32(bytes, dataSize);
+    appendU16(bytes, static_cast<std::uint16_t>(pcm));
+
+    const auto sample = mpc::audio::decodeWav(bytes);
+
+    assert(sample.has_value());
+    assert(sample->sampleRate == 16000);
+    assert(sample->channelCount == 1);
+    assert(sample->frameCount() == 1);
+    assert(sample->sampleAt(0, 0) > 0.49f);
+}
+
 void testInvalidHeader() {
     const std::vector<std::uint8_t> bytes{'N', 'O', 'P', 'E'};
     assert(!mpc::audio::decodeWav(bytes).has_value());
@@ -208,6 +254,7 @@ int main() {
     testDecode24BitPcm();
     testDecode32BitPcm();
     testDecode32BitFloat();
+    testDecodeExtensiblePcm();
     testInvalidHeader();
     testUnsupportedFormat();
     return 0;
