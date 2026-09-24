@@ -51,7 +51,7 @@ public final class AndroidMidiBridge {
     };
 
     public AndroidMidiBridge(Context context, Listener listener) {
-        this.midiManager =
+        midiManager =
                 (MidiManager) context.getApplicationContext()
                         .getSystemService(Context.MIDI_SERVICE);
         this.listener = listener;
@@ -74,6 +74,14 @@ public final class AndroidMidiBridge {
         StringBuilder result = new StringBuilder();
         for (MidiDeviceInfo info : infos) {
             result.append(describeDevice(info)).append('\n');
+            for (MidiDeviceInfo.PortInfo port : info.getPorts()) {
+                result.append("  - ")
+                        .append(port.getType() == MidiDeviceInfo.PortInfo.TYPE_INPUT ? "IN " : "OUT ")
+                        .append(port.getPortNumber())
+                        .append(": ")
+                        .append(port.getName())
+                        .append('\n');
+            }
         }
         return result.toString().trim();
     }
@@ -154,6 +162,26 @@ public final class AndroidMidiBridge {
         } catch (IOException e) {
             listener.onConnection("MIDI send failed: " + e.getMessage());
         }
+    }
+
+    public void testPadRed() {
+        send(MpcStudioMk2MidiMessages.padRgb(0, 127, 0, 0));
+    }
+
+    public void testPadBlue() {
+        send(MpcStudioMk2MidiMessages.padRgb(0, 0, 0, 127));
+    }
+
+    public void testPadOff() {
+        send(MpcStudioMk2MidiMessages.padRgb(0, 0, 0, 0));
+    }
+
+    public void testPlayLed() {
+        send(MpcStudioMk2MidiMessages.buttonLed(82, 2));
+    }
+
+    public void testTouchLed() {
+        send(MpcStudioMk2MidiMessages.touchStripLed(57, 127));
     }
 
     public void disconnect() {
