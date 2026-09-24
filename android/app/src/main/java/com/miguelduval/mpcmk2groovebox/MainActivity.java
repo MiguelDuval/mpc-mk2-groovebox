@@ -73,7 +73,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         touchLed.setText("Touch LED");
         touchLed.setOnClickListener(v -> midiBridge.testTouchLed());
 
-        diagnostics.addView(red, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        Button repeatLed = new Button(this);
+        repeatLed.setText("Repeat LED");
+        repeatLed.setOnClickListener(v -> midiBridge.testNoteRepeatLed());
+
+        LinearLayout diagnosticsRow1 = new LinearLayout(this);
+        diagnosticsRow1.setOrientation(LinearLayout.HORIZONTAL);
+
+        diagnosticsRow1.addView(red, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        diagnosticsRow1.addView(blue, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        diagnosticsRow1.addView(off, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        diagnosticsRow1.addView(playLed, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        diagnosticsRow1.addView(touchLed, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        LinearLayout diagnosticsRow2 = new LinearLayout(this);
+        diagnosticsRow2.setOrientation(LinearLayout.HORIZONTAL);
+        diagnosticsRow2.addView(repeatLed, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        diagnostics.addView(diagnosticsRow1, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        diagnostics.addView(diagnosticsRow2, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         diagnostics.addView(blue, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         diagnostics.addView(off, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         diagnostics.addView(playLed, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
