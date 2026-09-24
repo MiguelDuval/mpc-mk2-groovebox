@@ -13,6 +13,7 @@ add_subdirectory(third_party/oboe EXCLUDE_FROM_ALL)
 
 add_library(mpcgroovebox SHARED
     src/NativeEngine.cpp
+    src/Audio/AudioEngine.cpp
     src/Midi/NativeMidi.cpp
     src/MPC/MpcStudioMk2ControlMap.cpp
     src/MPC/MpcStudioMk2LedProtocol.cpp
