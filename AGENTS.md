@@ -13,11 +13,12 @@ Every coding agent working on this repository must read that document before mak
 3. **Build after meaningful changes.** Check the real GitHub Actions result; do not claim success from source inspection alone.
 4. **Fix failures before unrelated features.**
 5. **Keep architecture boundaries intact:** Android platform, MIDI transport, MPC hardware adapter, MPC domain, audio engine, UI and persistence must remain separable.
-6. **Protect realtime audio.** No avoidable blocking I/O, allocations or UI work in the audio callback.
-7. **Do not scatter raw MPC MIDI values through application code.** Keep them in the hardware adapter/map.
-8. **Physical hardware is the authority.** Reverse-engineered mappings remain unconfirmed until tested on the actual MPC Studio MkII.
-9. **Do not copy proprietary Akai code, firmware resources or artwork.** Use documented behavior and original implementation/graphics.
-10. **Keep changes small and traceable.** Prefer one coherent objective per branch/commit.
+6. **The application display is mandatory landscape/horizontal.** Do not introduce portrait-first or portrait-only product layouts.
+7. **Protect realtime audio.** No avoidable blocking I/O, allocations or UI work in the audio callback.
+8. **Do not scatter raw MPC MIDI values through application code.** Keep them in the hardware adapter/map.
+9. **Physical hardware is the authority.** Reverse-engineered mappings remain unconfirmed until tested on the actual MPC Studio MkII.
+10. **Do not copy proprietary Akai code, firmware resources or artwork.** Use documented behavior and original implementation/graphics.
+11. **Keep changes small and traceable.** Prefer one coherent objective per branch/commit.
 
 ## Project source hierarchy
 
