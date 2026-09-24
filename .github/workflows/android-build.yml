@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   android-debug:
@@ -103,8 +103,21 @@ jobs:
       - name: Assemble debug APK
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: mpc-mk2-groovebox-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish direct APK release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/sampler'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="android-latest"
+
+          gh release delete "$RELEASE_TAG" --yes || true
+          gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/git/refs/tags/${RELEASE_TAG}" || true
+
+          gh release create "$RELEASE_TAG" \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            --title "MPC Studio MkII Groovebox — Latest Android APK" \
+            --notes "Automated Android debug build from feature/sampler commit ${GITHUB_SHA}." \
+            --prerelease \
+            --latest=false
