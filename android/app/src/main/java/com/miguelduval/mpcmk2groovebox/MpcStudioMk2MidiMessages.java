@@ -132,7 +132,7 @@ public final class MpcStudioMk2MidiMessages {
         writeU16Be(message, totalSize);
 
         int pngSize = pngBytes.length;
-        if ((pngSize & 0xFF) >= 128) {
+        if (((pngSize >>> 8) & 0xFF) >= 128) {
             message.write(0x20);
             message.write(0x20);
             pngSize -= 128;
