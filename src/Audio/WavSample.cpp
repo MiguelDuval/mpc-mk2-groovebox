@@ -116,7 +116,7 @@ std::optional<SampleBuffer> decodeWav(std::span<const std::uint8_t> bytes) {
                 // Standard WAV subtype GUID:
                 // 000000xx-0000-0010-8000-00AA00389B71
                 static constexpr std::uint8_t kStandardSubtypeTail[] = {
-                    0x00, 0x00, 0x10, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
                     0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71
                 };
 
