@@ -20,6 +20,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView midiLog;
 
     private static native String nativeEngineInfo();
+    private static native String nativeAudioStart();
+    private static native String nativeAudioStop();
+    private static native String nativeAudioStatus();
 
     @Override
     protected void onCreate(Bundle state) {
@@ -49,6 +52,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Button connect = new Button(this);
         connect.setText("Connect MPC Studio MkII");
         connect.setOnClickListener(v -> midiBridge.connectPreferred());
+
+        LinearLayout audioControls = new LinearLayout(this);
+        audioControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button audioStart = new Button(this);
+        audioStart.setText("Start Audio Probe");
+        audioStart.setOnClickListener(v -> status.setText(nativeAudioStart()));
+
+        Button audioStop = new Button(this);
+        audioStop.setText("Stop Audio");
+        audioStop.setOnClickListener(v -> status.setText(nativeAudioStop()));
+
+        Button audioStatus = new Button(this);
+        audioStatus.setText("Audio Status");
+        audioStatus.setOnClickListener(v -> status.setText(nativeAudioStatus()));
+
+        audioControls.addView(audioStart, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        audioControls.addView(audioStop, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        audioControls.addView(audioStatus, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         LinearLayout diagnostics = new LinearLayout(this);
         diagnostics.setOrientation(LinearLayout.HORIZONTAL);
@@ -115,6 +140,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(connect, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(audioControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(diagnostics, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(devices, new LinearLayout.LayoutParams(
@@ -128,6 +155,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     @Override
     protected void onDestroy() {
+        nativeAudioStop();
+
         if (midiBridge != null) {
             midiBridge.close();
             midiBridge = null;
