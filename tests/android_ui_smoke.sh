@@ -19,7 +19,23 @@ dump_debug_state() {
 }
 
 echo "Installing APK..."
-adb install -r "$APK"
+install_ok=false
+for attempt in $(seq 1 3); do
+  if adb install -r "$APK"; then
+    install_ok=true
+    break
+  fi
+
+  echo "APK install attempt $attempt failed; reconnecting ADB..."
+  adb reconnect offline >/dev/null 2>&1 || true
+  sleep 3
+done
+
+if [ "$install_ok" != true ]; then
+  echo "ERROR: APK installation failed after 3 attempts."
+  dump_debug_state
+  exit 1
+fi
 
 echo "Launching UI-only startup diagnostic..."
 adb shell am force-stop "$PACKAGE"
