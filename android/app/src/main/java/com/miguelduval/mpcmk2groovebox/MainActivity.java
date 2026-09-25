@@ -65,11 +65,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         Button scan = new Button(this);
         scan.setText("Refresh MIDI Devices");
-        scan.setOnClickListener(v -> devices.setText(midiBridge.describeDevices()));
+        scan.setOnClickListener(v -> {
+            if (midiBridge == null) {
+                devices.setText("MIDI bridge is still starting...");
+                return;
+            }
+            devices.setText(midiBridge.describeDevices());
+        });
 
         Button connect = new Button(this);
         connect.setText("Connect MPC Studio MkII");
-        connect.setOnClickListener(v -> midiBridge.connectPreferred());
+        connect.setOnClickListener(v -> {
+            if (midiBridge == null) {
+                status.setText("MIDI bridge is still starting...");
+                return;
+            }
+            midiBridge.connectPreferred();
+        });
 
         selectedPadStatus = new TextView(this);
         selectedPadStatus.setText("Sample target pad: 1");
@@ -203,7 +215,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f));
 
         setContentView(root);
-        midiBridge = new AndroidMidiBridge(this, this);
+        root.post(() -> midiBridge = new AndroidMidiBridge(this, this));
     }
 
     @Override
