@@ -431,6 +431,52 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        for (int index = 0; index < 23; ++index) {
+            if (!tuneUp.performClick()) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: could not click +1 st at upper-range step " + index);
+                return;
+            }
+        }
+
+        if (!assertUiTextPresent("Pad 2 tuning: +24.00 st")) {
+            return;
+        }
+
+        if (!tuneUp.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click +1 st at upper clamp");
+            return;
+        }
+
+        if (!assertUiTextPresent("Pad 2 tuning: +24.00 st")) {
+            return;
+        }
+
+        View tuneDown = findViewWithExactText(getWindow().getDecorView(), "-1 st");
+        if (tuneDown == null || !tuneDown.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click -1 st");
+            return;
+        }
+
+        for (int index = 0; index < 47; ++index) {
+            if (!tuneDown.performClick()) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: could not click -1 st at lower-range step " + index);
+                return;
+            }
+        }
+
+        if (!assertUiTextPresent("Pad 2 tuning: -24.00 st")) {
+            return;
+        }
+
+        if (!tuneDown.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click -1 st at lower clamp");
+            return;
+        }
+
+        if (!assertUiTextPresent("Pad 2 tuning: -24.00 st")) {
+            return;
+        }
+
         View padOne = findViewWithExactText(getWindow().getDecorView(), "1");
         if (padOne == null || !padOne.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: could not click pad 1");
