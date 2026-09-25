@@ -13,7 +13,8 @@ adb install -r "$APK"
 
 echo "Launching $ACTIVITY..."
 adb shell am force-stop "$PACKAGE"
-adb shell am start -W -n "$ACTIVITY"
+adb shell am start -n "$ACTIVITY"
+sleep 2
 
 dump_ui() {
   adb shell uiautomator dump /data/local/tmp/mpc-groovebox-ui.xml >/dev/null
@@ -34,6 +35,14 @@ assert_text() {
     exit 1
   fi
 }
+
+for attempt in $(seq 1 15); do
+  dump_ui || true
+  if grep -Fq 'text="MPC Studio MkII GrooveBox' "$DUMP" 2>/dev/null || grep -Fq 'text="MPC Studio MkII Groovebox' "$DUMP" 2>/dev/null; then
+    break
+  fi
+  sleep 1
+done
 
 dump_ui
 assert_text "MPC Studio MkII Groovebox — Hardware Bring-Up"
