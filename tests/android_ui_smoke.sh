@@ -16,8 +16,13 @@ adb shell am force-stop "$PACKAGE"
 adb shell am start -W -n "$ACTIVITY"
 
 dump_ui() {
-  adb shell uiautomator dump /sdcard/mpc-groovebox-ui.xml >/dev/null
-  adb exec-out cat /sdcard/mpc-groovebox-ui.xml > "$DUMP"
+  adb exec-out uiautomator dump /dev/tty > "$DUMP"
+  if ! grep -q '<hierarchy' "$DUMP"; then
+    echo "ERROR: uiautomator did not return a UI hierarchy"
+    cat "$DUMP"
+    adb shell dumpsys activity activities | tail -n 80 || true
+    exit 1
+  fi
 }
 
 assert_text() {
