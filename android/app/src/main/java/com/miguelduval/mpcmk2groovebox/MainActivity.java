@@ -53,10 +53,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         title.setGravity(Gravity.CENTER_VERTICAL);
 
         status = new TextView(this);
-        status.setText(
-                "Native: " + nativeEngineInfo()
-                        + "\n"
-                        + loadBundledSample());
+        status.setText("Starting native engine...");
         status.setTextSize(14.0f);
 
         devices = new TextView(this);
@@ -215,7 +212,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f));
 
         setContentView(root);
-        root.post(() -> midiBridge = new AndroidMidiBridge(this, this));
+        root.post(() -> {
+            status.setText(
+                    "Native: " + nativeEngineInfo()
+                            + "\n"
+                            + loadBundledSample());
+            midiBridge = new AndroidMidiBridge(this, this);
+        });
     }
 
     @Override
