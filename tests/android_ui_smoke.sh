@@ -8,12 +8,22 @@ DUMP="/tmp/mpc-groovebox-ui.xml"
 
 test -f "$APK"
 
+dump_debug_state() {
+  echo "===== ADB STATE ====="
+  adb shell pidof "$PACKAGE" || true
+  adb shell dumpsys activity activities | tail -n 120 || true
+  echo "===== WINDOW STATE ====="
+  adb shell dumpsys window windows | tail -n 120 || true
+  echo "===== RELEVANT LOGCAT ====="
+  adb logcat -d -t 400 | grep -E 'ANR|system_server|ActivityTaskManager|WindowManager|AndroidRuntime|mpcmk2groovebox' | tail -n 160 || true
+}
+
 echo "Installing APK..."
 adb install -r "$APK"
 
-echo "Launching $ACTIVITY..."
+echo "Launching UI-only startup diagnostic..."
 adb shell am force-stop "$PACKAGE"
-adb shell am start -n "$ACTIVITY"
+adb shell am start -n "$ACTIVITY" --es mpc.groovebox.smoke.mode ui-only
 sleep 2
 
 dump_ui() {
@@ -30,11 +40,31 @@ assert_text() {
   if ! grep -Fq "text=\"$expected\"" "$DUMP"; then
     echo "ERROR: UI text not found: $expected"
     cat "$DUMP"
+    dump_debug_state
     exit 1
   fi
 }
 
 for attempt in $(seq 1 15); do
+  if dump_ui && grep -Fq 'text="MPC Studio MkII Groovebox — Hardware Bring-Up"' "$DUMP" \
+      && grep -Fq 'Startup diagnostic: UI-only; native/MIDI deferred' "$DUMP"; then
+    break
+  fi
+  sleep 1
+done
+
+dump_ui
+assert_text "MPC Studio MkII Groovebox — Hardware Bring-Up"
+assert_text "Startup diagnostic: UI-only; native/MIDI deferred"
+
+echo "UI-only startup diagnostic passed."
+
+echo "Launching full application..."
+adb shell am force-stop "$PACKAGE"
+adb shell am start -n "$ACTIVITY"
+sleep 2
+
+for attempt in $(seq 1 30); do
   if dump_ui && grep -Fq 'text="MPC Studio MkII Groovebox — Hardware Bring-Up"' "$DUMP"; then
     break
   fi
@@ -98,7 +128,7 @@ import time
 dump = sys.argv[1]
 xml = open(dump, encoding="utf-8").read()
 match = re.search(
-    r'<node\b(?=[^>]*text="Reset")(?=[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]")',
+    r'<node\b(?=[^>]*text="(?i:Reset)")(?=[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]")',
     xml,
 )
 if not match:
@@ -122,7 +152,7 @@ import time
 
 dump = sys.argv[1]
 xml = open(dump, encoding="utf-8").read()
-match = re.search(r'<node\b(?=[^>]*text="2")(?=[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]")', xml)
+match = re.search(r'<node\b(?=[^>]*text="(?i:2)")(?=[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]")', xml)
 if not match:
     raise SystemExit("ERROR: could not locate pad 2 bounds")
 left, top, right, bottom = map(int, match.groups())
