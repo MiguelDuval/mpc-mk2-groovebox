@@ -91,8 +91,8 @@ wait_for_ui_audit() {
   local interval=2
 
   for attempt in $(seq 1 "$attempts"); do
-    if adb logcat -d -t 500 2>/dev/null | grep -Fq "MpcGroovebox: UI_HIERARCHY_COMPLETE"; then
-      echo "In-process UI hierarchy audit passed."
+    if adb logcat -d -t 500 2>/dev/null | grep -Fq "MpcGroovebox: UI_INTERACTION_COMPLETE"; then
+      echo "In-process UI hierarchy and interaction audit passed."
       return 0
     fi
     if adb logcat -d -t 500 2>/dev/null | grep -Fq "MpcGroovebox: UI_HIERARCHY_FAILED"; then
@@ -101,10 +101,16 @@ wait_for_ui_audit() {
       dump_debug_state
       return 1
     fi
+    if adb logcat -d -t 500 2>/dev/null | grep -Fq "MpcGroovebox: UI_INTERACTION_FAILED"; then
+      echo "ERROR: in-process UI interaction audit failed."
+      adb logcat -d -t 800 2>/dev/null | grep -F "MpcGroovebox" | tail -n 160 || true
+      dump_debug_state
+      return 1
+    fi
     sleep "$interval"
   done
 
-  echo "ERROR: UI hierarchy audit marker did not appear."
+  echo "ERROR: UI interaction audit marker did not appear."
   adb logcat -d -t 800 2>/dev/null | grep -F "MpcGroovebox" | tail -n 160 || true
   dump_debug_state
   return 1
