@@ -3,7 +3,7 @@ set -euo pipefail
 
 APK="android/app/build/outputs/apk/debug/app-debug.apk"
 PACKAGE="com.miguelduval.mpcmk2groovebox.debug"
-ACTIVITY="com.miguelduval.mpcmk2groovebox/.MainActivity"
+ACTIVITY="$PACKAGE/com.miguelduval.mpcmk2groovebox.MainActivity"
 DUMP="/tmp/mpc-groovebox-ui.xml"
 
 test -f "$APK"
