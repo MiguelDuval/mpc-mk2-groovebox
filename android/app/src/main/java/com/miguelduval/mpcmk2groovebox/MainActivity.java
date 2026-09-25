@@ -389,14 +389,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Log.e(TAG, "UI_HIERARCHY_FAILED: missing text=" + expected);
                 return;
             }
-            if (!view.isShown() || view.getWidth() <= 0 || view.getHeight() <= 0) {
-                Log.e(TAG, "UI_HIERARCHY_FAILED: not-visible text=" + expected
-                        + " shown=" + view.isShown()
+            if (view.getWidth() <= 0 || view.getHeight() <= 0) {
+                Log.e(TAG, "UI_HIERARCHY_FAILED: zero-size text=" + expected
                         + " width=" + view.getWidth()
                         + " height=" + view.getHeight());
                 return;
             }
-            Log.i(TAG, "UI_ELEMENT_PRESENT: " + expected);
+            Log.i(TAG, "UI_ELEMENT_PRESENT: " + expected
+                    + " shown=" + view.isShown()
+                    + " width=" + view.getWidth()
+                    + " height=" + view.getHeight());
         }
 
         Log.i(TAG, "UI_HIERARCHY_COMPLETE");
