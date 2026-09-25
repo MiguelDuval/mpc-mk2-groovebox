@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.util.Base64;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -38,6 +39,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView tuningStatus;
     private int selectedPad = 0;
     private boolean uiOnlySmokeMode;
+    private boolean uiAuditSmokeMode;
     private volatile boolean destroyed;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
@@ -53,8 +55,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        uiOnlySmokeMode = "ui-only".equals(
-                getIntent().getStringExtra(SMOKE_MODE_EXTRA));
+        String smokeMode = getIntent().getStringExtra(SMOKE_MODE_EXTRA);
+        uiOnlySmokeMode = "ui-only".equals(smokeMode);
+        uiAuditSmokeMode = "ui-audit".equals(smokeMode);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -283,6 +286,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     midiBridge = new AndroidMidiBridge(this, this);
                     Log.i(TAG, "MIDI_BRIDGE_END");
                     Log.i(TAG, "STARTUP_COMPLETE");
+                    if (uiAuditSmokeMode) {
+                        runUiHierarchySmokeCheck();
+                    }
                 });
             });
         });
@@ -358,6 +364,59 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     public void onConnection(String description) {
         runOnUiThread(() -> status.setText(description));
+    }
+
+    private void runUiHierarchySmokeCheck() {
+        Log.i(TAG, "UI_HIERARCHY_BEGIN");
+
+        String[] expectedTexts = {
+                "MPC Studio MkII Groovebox — Hardware Bring-Up",
+                "Refresh MIDI Devices",
+                "Connect MPC Studio MkII",
+                "Load WAV Sample",
+                "Start Sampler",
+                "Pad 1 tuning: +0.00 st"
+        };
+
+        View root = getWindow().getDecorView();
+        for (String expected : expectedTexts) {
+            View view = findViewWithExactText(root, expected);
+            if (view == null) {
+                Log.e(TAG, "UI_HIERARCHY_FAILED: missing text=" + expected);
+                return;
+            }
+            if (!view.isShown() || view.getWidth() <= 0 || view.getHeight() <= 0) {
+                Log.e(TAG, "UI_HIERARCHY_FAILED: not-visible text=" + expected
+                        + " shown=" + view.isShown()
+                        + " width=" + view.getWidth()
+                        + " height=" + view.getHeight());
+                return;
+            }
+            Log.i(TAG, "UI_ELEMENT_PRESENT: " + expected);
+        }
+
+        Log.i(TAG, "UI_HIERARCHY_COMPLETE");
+    }
+
+    private View findViewWithExactText(View view, String expectedText) {
+        if (view instanceof android.widget.TextView) {
+            CharSequence actualText = ((android.widget.TextView) view).getText();
+            if (expectedText.contentEquals(actualText)) {
+                return view;
+            }
+        }
+
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int index = 0; index < group.getChildCount(); ++index) {
+                View match = findViewWithExactText(group.getChildAt(index), expectedText);
+                if (match != null) {
+                    return match;
+                }
+            }
+        }
+
+        return null;
     }
 
     private void selectPad(int pad) {
