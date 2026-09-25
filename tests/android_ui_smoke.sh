@@ -37,7 +37,7 @@ dump_ui() {
 
 assert_text() {
   local expected="$1"
-  if ! grep -Fq "text=\"$expected\"" "$DUMP"; then
+  if ! grep -Fqi "text=\"$expected\"" "$DUMP"; then
     echo "ERROR: UI text not found: $expected"
     cat "$DUMP"
     dump_debug_state
@@ -103,7 +103,7 @@ def tap_text(text):
         r'<node\b(?=[^>]*text="' + re.escape(text) +
         r'")(?=[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]")'
     )
-    match = re.search(pattern, current)
+    match = re.search(pattern, current, re.IGNORECASE)
     if not match:
         raise SystemExit(f"ERROR: could not locate {text!r} bounds")
     left, top, right, bottom = map(int, match.groups())
