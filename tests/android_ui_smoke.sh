@@ -45,15 +45,19 @@ assert_text() {
   fi
 }
 
-for attempt in $(seq 1 15); do
+for attempt in $(seq 1 30); do
   if dump_ui && grep -Fq 'text="MPC Studio MkII Groovebox — Hardware Bring-Up"' "$DUMP" \
       && grep -Fq 'Startup diagnostic: UI-only; native/MIDI deferred' "$DUMP"; then
     break
   fi
-  sleep 1
+  sleep 2
 done
 
-dump_ui
+if ! dump_ui; then
+  echo "ERROR: UI-only dump could not be obtained after polling."
+  dump_debug_state
+  exit 1
+fi
 assert_text "MPC Studio MkII Groovebox — Hardware Bring-Up"
 assert_text "Startup diagnostic: UI-only; native/MIDI deferred"
 
@@ -68,10 +72,14 @@ for attempt in $(seq 1 30); do
   if dump_ui && grep -Fq 'text="MPC Studio MkII Groovebox — Hardware Bring-Up"' "$DUMP"; then
     break
   fi
-  sleep 1
+  sleep 2
 done
 
-dump_ui
+if ! dump_ui; then
+  echo "ERROR: full-application UI dump could not be obtained after polling."
+  dump_debug_state
+  exit 1
+fi
 assert_text "MPC Studio MkII Groovebox — Hardware Bring-Up"
 assert_text "Sample target pad: 1"
 assert_text "Pad 1 tuning: +0.00 st"
