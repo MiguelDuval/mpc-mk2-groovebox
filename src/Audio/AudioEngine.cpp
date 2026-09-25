@@ -28,10 +28,12 @@ public:
     OutputCallback(
             std::array<std::shared_ptr<const SampleBuffer>, kPadCount> samples,
             std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence,
-            std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity)
+            std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity,
+            std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones)
             : samples_(std::move(samples)),
               triggerSequence_(triggerSequence),
-              triggerVelocity_(triggerVelocity) {
+              triggerVelocity_(triggerVelocity),
+              tuningMilliSemitones_(tuningMilliSemitones) {
     }
 
     oboe::DataCallbackResult onAudioReady(
@@ -77,11 +79,13 @@ public:
                     continue;
                 }
 
-                // Each pad keeps the original chromatic behavior unless it is
-                // later given an explicit musical tuning control. The important
-                // change in this slice is that every pad now owns its sample slot.
+                const float tuningSemitones =
+                        static_cast<float>(
+                            tuningMilliSemitones_[pad].load(
+                                std::memory_order_relaxed))
+                        / 1000.0f;
                 const float semitoneRatio =
-                        std::pow(2.0f, static_cast<float>(pad) / 12.0f);
+                        std::pow(2.0f, tuningSemitones / 12.0f);
                 const float sampleToOutputRate =
                         static_cast<float>(sample->sampleRate)
                         / static_cast<float>(sampleRate);
@@ -178,6 +182,7 @@ private:
     std::array<std::shared_ptr<const SampleBuffer>, kPadCount> samples_;
     std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence_;
     std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity_;
+    std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones_;
     std::array<std::uint32_t, kPadCount> consumedSequence_{};
     std::array<PadVoice, kPadCount> voices_{};
 };
@@ -211,6 +216,21 @@ std::string AudioEngine::loadSample(
             + std::to_string(sample_->frameCount()) + " frames";
 
     return "Fallback sample loaded | " + sampleDescription_;
+}
+
+void AudioEngine::setPadTuningSemitones(
+        std::uint8_t padIndex,
+        float semitones) {
+    if (padIndex >= kPadCount || !std::isfinite(semitones)) {
+        return;
+    }
+
+    const float clamped = std::clamp(semitones, -24.0f, 24.0f);
+    const auto milliSemitones = static_cast<std::int32_t>(
+            std::lround(clamped * 1000.0f));
+    padTuningMilliSemitones_[padIndex].store(
+            milliSemitones,
+            std::memory_order_relaxed);
 }
 
 std::string AudioEngine::loadSampleForPad(
@@ -278,7 +298,8 @@ std::string AudioEngine::start() {
     callback_ = std::make_shared<OutputCallback>(
             std::move(samples),
             padTriggerSequence_,
-            padTriggerVelocity_);
+            padTriggerVelocity_,
+            padTuningMilliSemitones_);
 
     oboe::AudioStreamBuilder builder;
     builder.setDirection(oboe::Direction::Output)
