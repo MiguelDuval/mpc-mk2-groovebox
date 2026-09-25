@@ -75,9 +75,9 @@ wait_for_log_marker "UI_ONLY_COMPLETE" 30 2
 assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
 echo "UI-only startup diagnostic passed."
 
-echo "Launching full application..."
+echo "Launching full application with one-shot UI audit..."
 adb shell am force-stop "$PACKAGE"
-adb shell am start -n "$ACTIVITY"
+adb shell am start -n "$ACTIVITY" --es mpc.groovebox.smoke.mode ui-audit
 
 wait_for_log_marker "UI_READY" 30 2
 wait_for_log_marker "STARTUP_BEGIN" 30 2
@@ -85,34 +85,33 @@ wait_for_log_marker "NATIVE_INFO_END" 30 2
 wait_for_log_marker "BUNDLED_SAMPLE_END" 60 2
 wait_for_log_marker "MIDI_BRIDGE_END" 30 2
 wait_for_log_marker "STARTUP_COMPLETE" 30 2
+
+wait_for_ui_audit() {
+  local attempts=30
+  local interval=2
+
+  for attempt in $(seq 1 "$attempts"); do
+    if adb logcat -d -t 500 2>/dev/null | grep -Fq "MpcGroovebox: UI_HIERARCHY_COMPLETE"; then
+      echo "In-process UI hierarchy audit passed."
+      return 0
+    fi
+    if adb logcat -d -t 500 2>/dev/null | grep -Fq "MpcGroovebox: UI_HIERARCHY_FAILED"; then
+      echo "ERROR: in-process UI hierarchy audit failed."
+      adb logcat -d -t 800 2>/dev/null | grep -F "MpcGroovebox" | tail -n 160 || true
+      dump_debug_state
+      return 1
+    fi
+    sleep "$interval"
+  done
+
+  echo "ERROR: UI hierarchy audit marker did not appear."
+  adb logcat -d -t 800 2>/dev/null | grep -F "MpcGroovebox" | tail -n 160 || true
+  dump_debug_state
+  return 1
+}
+
+wait_for_ui_audit
 assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
 
-echo "Capturing one-shot UI hierarchy..."
-rm -f "$DUMP"
-if ! timeout 20s adb shell uiautomator dump /sdcard/mpc-groovebox-ui.xml >/tmp/mpc-groovebox-uiautomator.log 2>&1; then
-  echo "ERROR: one-shot UI hierarchy dump failed."
-  cat /tmp/mpc-groovebox-uiautomator.log || true
-  dump_debug_state
-  exit 1
-fi
-
-if ! adb shell cat /sdcard/mpc-groovebox-ui.xml >"$DUMP"; then
-  echo "ERROR: could not retrieve UI hierarchy dump."
-  dump_debug_state
-  exit 1
-fi
-
-for expected in   "MPC Studio MkII Groovebox"   "Refresh MIDI Devices"   "Connect MPC Studio MkII"   "Load WAV Sample"   "Start Sampler"   "Pad 1 tuning: +0.00 st"; do
-  if ! grep -Fq "$expected" "$DUMP"; then
-    echo "ERROR: expected UI element text was missing from hierarchy: $expected"
-    echo "===== UI HIERARCHY ====="
-    cat "$DUMP" || true
-    dump_debug_state
-    exit 1
-  fi
-  echo "UI element present: $expected"
-done
-
-echo "One-shot UI hierarchy check passed."
 echo "Android emulator startup smoke test passed."
 
