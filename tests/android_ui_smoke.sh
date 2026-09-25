@@ -24,59 +24,57 @@ adb install -r "$APK"
 echo "Launching UI-only startup diagnostic..."
 adb shell am force-stop "$PACKAGE"
 adb shell am start -n "$ACTIVITY" --es mpc.groovebox.smoke.mode ui-only
-sleep 2
 
-dump_ui() {
-  adb shell uiautomator dump /data/local/tmp/mpc-groovebox-ui.xml >/dev/null || return 1
-  adb exec-out cat /data/local/tmp/mpc-groovebox-ui.xml > "$DUMP" || return 1
-  if ! grep -q '<hierarchy' "$DUMP"; then
-    return 1
-  fi
-  return 0
+wait_for_log_marker() {
+  local marker="$1"
+  local attempts="$2"
+  local interval="$3"
+
+  for attempt in $(seq 1 "$attempts"); do
+    if adb logcat -d -t 500 2>/dev/null | grep -Fq "MpcGroovebox: $marker"; then
+      echo "Log marker appeared: $marker"
+      return 0
+    fi
+    sleep "$interval"
+  done
+
+  echo "ERROR: log marker did not appear: $marker"
+  adb logcat -d -t 800 2>/dev/null | grep -F "MpcGroovebox" | tail -n 120 || true
+  dump_debug_state
+  return 1
 }
 
-assert_text() {
-  local expected="$1"
-  if ! grep -Fqi "text=\"$expected\"" "$DUMP"; then
-    echo "ERROR: UI text not found: $expected"
-    cat "$DUMP"
-    dump_debug_state
-    exit 1
-  fi
+dump_ui_once() {
+  rm -f "$DUMP"
+  timeout 12s adb shell uiautomator dump /data/local/tmp/mpc-groovebox-ui.xml >/dev/null 2>&1 || return 1
+  timeout 12s adb exec-out cat /data/local/tmp/mpc-groovebox-ui.xml > "$DUMP" 2>/dev/null || return 1
+  grep -q '<hierarchy' "$DUMP"
 }
 
-for attempt in $(seq 1 30); do
-  if dump_ui && grep -Fq 'text="MPC Studio MkII Groovebox — Hardware Bring-Up"' "$DUMP" \
-      && grep -Fq 'Startup diagnostic: UI-only; native/MIDI deferred' "$DUMP"; then
-    break
-  fi
-  sleep 2
-done
-
-if ! dump_ui; then
-  echo "ERROR: UI-only dump could not be obtained after polling."
+wait_for_log_marker "UI_READY" 30 2
+wait_for_log_marker "UI_ONLY_COMPLETE" 30 2
+if ! dump_ui_once; then
+  echo "ERROR: final UI-only hierarchy dump failed."
   dump_debug_state
   exit 1
 fi
 assert_text "MPC Studio MkII Groovebox — Hardware Bring-Up"
 assert_text "Startup diagnostic: UI-only; native/MIDI deferred"
-
 echo "UI-only startup diagnostic passed."
 
 echo "Launching full application..."
 adb shell am force-stop "$PACKAGE"
 adb shell am start -n "$ACTIVITY"
-sleep 2
 
-for attempt in $(seq 1 30); do
-  if dump_ui && grep -Fq 'text="MPC Studio MkII Groovebox — Hardware Bring-Up"' "$DUMP"; then
-    break
-  fi
-  sleep 2
-done
+wait_for_log_marker "UI_READY" 30 2
+wait_for_log_marker "STARTUP_BEGIN" 30 2
+wait_for_log_marker "NATIVE_INFO_END" 30 2
+wait_for_log_marker "BUNDLED_SAMPLE_END" 60 2
+wait_for_log_marker "MIDI_BRIDGE_END" 30 2
+wait_for_log_marker "STARTUP_COMPLETE" 30 2
 
-if ! dump_ui; then
-  echo "ERROR: full-application UI dump could not be obtained after polling."
+if ! dump_ui_once; then
+  echo "ERROR: final full-application hierarchy dump failed."
   dump_debug_state
   exit 1
 fi
