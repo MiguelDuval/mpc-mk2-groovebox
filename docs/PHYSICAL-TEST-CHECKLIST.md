@@ -44,6 +44,17 @@ Run these tests with the public MIDI port.
 - [x] Text is readable.
 - [x] A second frame replaces the first.
 
+## F. Sampler tuning
+
+- [ ] With the bundled fallback sample loaded, select pad 1 and confirm the physical pad produces the sample at 0 st.
+- [ ] Set pad 1 to +1 st, strike the physical pad, and confirm the pitch increases audibly.
+- [ ] Set pad 1 to -1 st, strike the physical pad, and confirm the pitch decreases audibly.
+- [ ] Reset pad 1 to 0 st and confirm the baseline pitch returns.
+- [ ] Select pad 2, leave it at 0 st, and confirm changing pad 1 tuning does not change pad 2 pitch.
+- [ ] Confirm the UI range limits remain −24 st to +24 st during physical use.
+
+These tuning checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
+
 ## Evidence
 
 For each failed test, capture:
