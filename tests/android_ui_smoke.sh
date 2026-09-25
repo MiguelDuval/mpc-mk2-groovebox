@@ -66,6 +66,62 @@ import time
 
 dump = sys.argv[1]
 xml = open(dump, encoding="utf-8").read()
+
+def tap_text(text):
+    current = open(dump, encoding="utf-8").read()
+    pattern = (
+        r'<node\\b(?=[^>]*text="' + re.escape(text) +
+        r'")(?=[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]")'
+    )
+    match = re.search(pattern, current)
+    if not match:
+        raise SystemExit(f"ERROR: could not locate {text!r} bounds")
+    left, top, right, bottom = map(int, match.groups())
+    x = (left + right) // 2
+    y = (top + bottom) // 2
+    print(f"Clicking {text!r} at {x},{y}")
+    subprocess.run(["adb", "shell", "input", "tap", str(x), str(y)], check=True)
+    time.sleep(0.3)
+
+tap_text("+1 st")
+PY
+
+dump_ui
+assert_text "Pad 1 tuning: +1.00 st"
+
+python3 - "$DUMP" <<'PY'
+import re
+import subprocess
+import sys
+import time
+
+dump = sys.argv[1]
+xml = open(dump, encoding="utf-8").read()
+match = re.search(
+    r'<node\\b(?=[^>]*text="Reset")(?=[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]")',
+    xml,
+)
+if not match:
+    raise SystemExit("ERROR: could not locate Reset bounds")
+left, top, right, bottom = map(int, match.groups())
+x = (left + right) // 2
+y = (top + bottom) // 2
+print(f"Clicking Reset at {x},{y}")
+subprocess.run(["adb", "shell", "input", "tap", str(x), str(y)], check=True)
+time.sleep(0.3)
+PY
+
+dump_ui
+assert_text "Pad 1 tuning: +0.00 st"
+
+python3 - "$DUMP" <<'PY'
+import re
+import subprocess
+import sys
+import time
+
+dump = sys.argv[1]
+xml = open(dump, encoding="utf-8").read()
 match = re.search(r'<node\b(?=[^>]*text="2")(?=[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]")', xml)
 if not match:
     raise SystemExit("ERROR: could not locate pad 2 bounds")
