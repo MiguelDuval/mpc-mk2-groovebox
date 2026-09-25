@@ -402,6 +402,65 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         Log.i(TAG, "UI_HIERARCHY_COMPLETE");
+        runUiInteractionSmokeCheck();
+    }
+
+    private void runUiInteractionSmokeCheck() {
+        Log.i(TAG, "UI_INTERACTION_BEGIN");
+
+        View padTwo = findViewWithExactText(getWindow().getDecorView(), "2");
+        if (padTwo == null || !padTwo.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click pad 2");
+            return;
+        }
+
+        if (!assertUiTextPresent("Sample target pad: 2")) {
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 tuning: +0.00 st")) {
+            return;
+        }
+
+        View tuneUp = findViewWithExactText(getWindow().getDecorView(), "+1 st");
+        if (tuneUp == null || !tuneUp.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click +1 st");
+            return;
+        }
+
+        if (!assertUiTextPresent("Pad 2 tuning: +1.00 st")) {
+            return;
+        }
+
+        View padOne = findViewWithExactText(getWindow().getDecorView(), "1");
+        if (padOne == null || !padOne.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click pad 1");
+            return;
+        }
+
+        if (!assertUiTextPresent("Sample target pad: 1")) {
+            return;
+        }
+        if (!assertUiTextPresent("Pad 1 tuning: +0.00 st")) {
+            return;
+        }
+
+        Log.i(TAG, "UI_INTERACTION_COMPLETE");
+    }
+
+    private boolean assertUiTextPresent(String expectedText) {
+        View view = findViewWithExactText(getWindow().getDecorView(), expectedText);
+        if (view == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: missing text=" + expectedText);
+            return false;
+        }
+        if (view.getWidth() <= 0 || view.getHeight() <= 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: zero-size text=" + expectedText
+                    + " width=" + view.getWidth()
+                    + " height=" + view.getHeight());
+            return false;
+        }
+        Log.i(TAG, "UI_INTERACTION_STATE: " + expectedText);
+        return true;
     }
 
     private View findViewWithExactText(View view, String expectedText) {
