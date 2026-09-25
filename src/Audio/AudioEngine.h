@@ -48,6 +48,7 @@ private:
     std::shared_ptr<oboe::AudioStream> stream_;
     std::array<std::atomic<std::uint32_t>, kPadCount> padTriggerSequence_{};
     std::array<std::atomic<std::uint32_t>, kPadCount> padTriggerVelocity_{};
+    std::array<std::atomic<std::int32_t>, kPadCount> padTuningMilliSemitones_{};
 };
 
 } // namespace mpc::audio
