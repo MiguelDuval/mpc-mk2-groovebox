@@ -27,7 +27,8 @@ public:
     std::string loadSampleForPad(
             std::span<const std::uint8_t> bytes,
             std::uint8_t padIndex);
-    void setPadTuningSemitones(std::uint8_t padIndex, float semitones);
+    std::string setPadTuningSemitones(std::uint8_t padIndex, float semitones);
+    float padTuningSemitones(std::uint8_t padIndex) const;
     std::string start();
     std::string stop();
     std::string status() const;
