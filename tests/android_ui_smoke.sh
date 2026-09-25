@@ -87,5 +87,5 @@ wait_for_log_marker "MIDI_BRIDGE_END" 30 2
 wait_for_log_marker "STARTUP_COMPLETE" 30 2
 assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
 
-echo "Android emulator startup smoke test passed."
+echo "Capturing one-shot UI hierarchy..."\nrm -f "$DUMP"\nif ! timeout 20s adb shell uiautomator dump /sdcard/mpc-groovebox-ui.xml >/tmp/mpc-groovebox-uiautomator.log 2>&1; then\n  echo "ERROR: one-shot UI hierarchy dump failed."\n  cat /tmp/mpc-groovebox-uiautomator.log || true\n  dump_debug_state\n  exit 1\nfi\n\nif ! adb shell cat /sdcard/mpc-groovebox-ui.xml >"$DUMP"; then\n  echo "ERROR: could not retrieve UI hierarchy dump."\n  dump_debug_state\n  exit 1\nfi\n\nfor expected in \\n  "MPC Studio MkII Groovebox" \\n  "Refresh MIDI Devices" \\n  "Connect MPC Studio MkII" \\n  "Load WAV Sample" \\n  "Start Sampler" \\n  "Pad 1 tuning: +0.00 st"; do\n  if ! grep -Fq "$expected" "$DUMP"; then\n    echo "ERROR: expected UI element text was missing from hierarchy: $expected"\n    echo "===== UI HIERARCHY ====="\n    cat "$DUMP" || true\n    dump_debug_state\n    exit 1\n  fi\n  echo "UI element present: $expected"\ndone\n\necho "One-shot UI hierarchy check passed."\necho "Android emulator startup smoke test passed."
 
