@@ -71,7 +71,7 @@ def tap_text(text):
     current = open(dump, encoding="utf-8").read()
     pattern = (
         r'<node\b(?=[^>]*text="' + re.escape(text) +
-        r'")(?=[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]")'
+        r'")(?=[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]")'
     )
     match = re.search(pattern, current)
     if not match:
@@ -98,7 +98,7 @@ import time
 dump = sys.argv[1]
 xml = open(dump, encoding="utf-8").read()
 match = re.search(
-    r'<node\b(?=[^>]*text="Reset")(?=[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]")',
+    r'<node\b(?=[^>]*text="Reset")(?=[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]")',
     xml,
 )
 if not match:
