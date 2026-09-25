@@ -40,6 +40,17 @@ void testPadRelease() {
     assert(!event.pressed);
 }
 
+void testPadNoteOnZeroIsRelease() {
+    const auto event = decode({0x99, 37, 0});
+
+    assert(event.type == InputEventType::PadNote);
+    assert(event.channel == 9);
+    assert(event.number == 37);
+    assert(event.value == 0);
+    assert(event.padIndex == 0);
+    assert(!event.pressed);
+}
+
 void testPadAftertouch() {
     const auto event = decode({0xA9, 37, 81});
 
@@ -216,6 +227,7 @@ void testUnknownMessageIsIgnored() {
 int main() {
     testPadVelocity();
     testPadRelease();
+    testPadNoteOnZeroIsRelease();
     testPadAftertouch();
     testButton();
     testJogWheel();
