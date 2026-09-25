@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Base64;
 import android.view.Gravity;
 import android.view.ViewGroup;
@@ -18,6 +19,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 public final class MainActivity extends Activity implements AndroidMidiBridge.Listener {
+    private static final String TAG = "MpcGroovebox";
     private static final int REQUEST_OPEN_WAV = 1001;
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
     private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
@@ -249,18 +251,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f));
 
         setContentView(root);
+        Log.i(TAG, "UI_READY");
 
         if (uiOnlySmokeMode) {
             status.setText("Startup diagnostic: UI-only; native/MIDI deferred");
+            Log.i(TAG, "UI_ONLY_COMPLETE");
             return;
         }
 
         root.postOnAnimation(() -> {
-            status.setText(
-                    "Native: " + nativeEngineInfo()
-                            + "\n"
-                            + loadBundledSample());
+            Log.i(TAG, "STARTUP_BEGIN");
+            Log.i(TAG, "NATIVE_INFO_BEGIN");
+            String engineInfo = nativeEngineInfo();
+            Log.i(TAG, "NATIVE_INFO_END");
+            Log.i(TAG, "BUNDLED_SAMPLE_BEGIN");
+            String sampleResult = loadBundledSample();
+            Log.i(TAG, "BUNDLED_SAMPLE_END");
+            status.setText("Native: " + engineInfo + "\n" + sampleResult);
+            Log.i(TAG, "MIDI_BRIDGE_BEGIN");
             midiBridge = new AndroidMidiBridge(this, this);
+            Log.i(TAG, "MIDI_BRIDGE_END");
+            Log.i(TAG, "STARTUP_COMPLETE");
         });
     }
 
@@ -396,6 +407,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private String loadBundledSample() {
+        Log.i(TAG, "loadBundledSample:begin");
         try (InputStream input = getAssets().open("samples/pad01.wav.b64")) {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             byte[] buffer = new byte[4096];
@@ -407,9 +419,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             String encoded = output.toString(StandardCharsets.UTF_8.name());
             byte[] wavBytes = Base64.decode(encoded, Base64.DEFAULT);
-            return nativeAudioLoadSample(wavBytes);
+            String result = nativeAudioLoadSample(wavBytes);
+            Log.i(TAG, "loadBundledSample:nativeResult=" + result);
+            return result;
         } catch (IOException | IllegalArgumentException e) {
+            Log.e(TAG, "loadBundledSample:failed", e);
             return "Sample asset load failed: " + e.getMessage();
+        } finally {
+            Log.i(TAG, "loadBundledSample:end");
         }
     }
 }
