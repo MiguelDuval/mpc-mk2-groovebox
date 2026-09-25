@@ -30,11 +30,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView devices;
     private TextView midiLog;
     private TextView selectedPadStatus;
+    private TextView tuningStatus;
     private int selectedPad = 0;
 
     private static native String nativeEngineInfo();
     private static native String nativeAudioLoadSample(byte[] data);
     private static native String nativeAudioLoadSampleForPad(byte[] data, int pad);
+    private static native String nativeAudioSetPadTuning(int pad, float semitones);
+    private static native float nativeAudioGetPadTuning(int pad);
     private static native String nativeAudioStart();
     private static native String nativeAudioStop();
     private static native String nativeAudioStatus();
@@ -83,6 +86,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         selectedPadStatus = new TextView(this);
         selectedPadStatus.setText("Sample target pad: 1");
         selectedPadStatus.setTextSize(13.0f);
+
+        tuningStatus = new TextView(this);
+        tuningStatus.setText("Pad 1 tuning: +0.00 st");
+        tuningStatus.setTextSize(13.0f);
+
+        LinearLayout tuningControls = new LinearLayout(this);
+        tuningControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button tuneDown = new Button(this);
+        tuneDown.setText("-1 st");
+        tuneDown.setOnClickListener(v -> adjustSelectedPadTuning(-1.0f));
+
+        Button tuneReset = new Button(this);
+        tuneReset.setText("Reset");
+        tuneReset.setOnClickListener(v -> adjustSelectedPadTuning(0.0f, true));
+
+        Button tuneUp = new Button(this);
+        tuneUp.setText("+1 st");
+        tuneUp.setOnClickListener(v -> adjustSelectedPadTuning(1.0f));
+
+        tuningControls.addView(tuneDown, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        tuningControls.addView(tuneReset, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        tuningControls.addView(tuneUp, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         LinearLayout padGrid = new LinearLayout(this);
         padGrid.setOrientation(LinearLayout.VERTICAL);
@@ -200,6 +229,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(selectedPadStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(tuningStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(tuningControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(padGrid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(audioControls, new LinearLayout.LayoutParams(
@@ -295,6 +328,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         selectedPad = pad;
         selectedPadStatus.setText("Sample target pad: " + (pad + 1));
+        updateTuningStatus();
+    }
+
+    private void adjustSelectedPadTuning(float delta) {
+        adjustSelectedPadTuning(delta, false);
+    }
+
+    private void adjustSelectedPadTuning(float delta, boolean reset) {
+        float target = reset ? 0.0f : nativeAudioGetPadTuning(selectedPad) + delta;
+        String result = nativeAudioSetPadTuning(selectedPad, target);
+        status.setText(result);
+        updateTuningStatus();
+    }
+
+    private void updateTuningStatus() {
+        float tuning = nativeAudioGetPadTuning(selectedPad);
+        String sign = tuning >= 0.0f ? "+" : "";
+        tuningStatus.setText(
+                String.format(java.util.Locale.ROOT, "Pad %d tuning: %s%.2f st",
+                        selectedPad + 1, sign, tuning));
     }
 
     private void openWavPicker() {
