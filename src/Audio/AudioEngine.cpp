@@ -218,11 +218,11 @@ std::string AudioEngine::loadSample(
     return "Fallback sample loaded | " + sampleDescription_;
 }
 
-void AudioEngine::setPadTuningSemitones(
+std::string AudioEngine::setPadTuningSemitones(
         std::uint8_t padIndex,
         float semitones) {
     if (padIndex >= kPadCount || !std::isfinite(semitones)) {
-        return;
+        return "Tuning change failed: invalid value";
     }
 
     const float clamped = std::clamp(semitones, -24.0f, 24.0f);
@@ -231,6 +231,23 @@ void AudioEngine::setPadTuningSemitones(
     padTuningMilliSemitones_[padIndex].store(
             milliSemitones,
             std::memory_order_relaxed);
+
+    const float applied = static_cast<float>(milliSemitones) / 1000.0f;
+    const char sign = applied >= 0.0f ? '+' : '-';
+    return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " tuning: " + sign
+            + std::to_string(std::abs(applied)) + " st";
+}
+
+float AudioEngine::padTuningSemitones(std::uint8_t padIndex) const {
+    if (padIndex >= kPadCount) {
+        return 0.0f;
+    }
+
+    return static_cast<float>(
+            padTuningMilliSemitones_[padIndex].load(
+                    std::memory_order_relaxed))
+            / 1000.0f;
 }
 
 std::string AudioEngine::loadSampleForPad(
