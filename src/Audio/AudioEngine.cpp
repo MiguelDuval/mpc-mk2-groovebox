@@ -187,7 +187,13 @@ private:
     std::array<PadVoice, kPadCount> voices_{};
 };
 
-AudioEngine::AudioEngine() = default;
+AudioEngine::AudioEngine() {
+    for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+        padTriggerSequence_[pad].store(0, std::memory_order_relaxed);
+        padTriggerVelocity_[pad].store(0, std::memory_order_relaxed);
+        padTuningMilliSemitones_[pad].store(0, std::memory_order_relaxed);
+    }
+}
 
 AudioEngine::~AudioEngine() {
     stop();
