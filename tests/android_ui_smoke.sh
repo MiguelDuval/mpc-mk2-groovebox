@@ -44,6 +44,10 @@ done
 dump_ui
 assert_text "MPC Studio MkII Groovebox — Hardware Bring-Up"
 assert_text "Sample target pad: 1"
+assert_text "Pad 1 tuning: +0.00 st"
+assert_text "-1 st"
+assert_text "Reset"
+assert_text "+1 st"
 assert_text "Load WAV Sample"
 assert_text "Start Sampler"
 assert_text "Stop Audio"
