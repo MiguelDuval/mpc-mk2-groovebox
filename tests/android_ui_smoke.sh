@@ -17,14 +17,12 @@ adb shell am start -n "$ACTIVITY"
 sleep 2
 
 dump_ui() {
-  adb shell uiautomator dump /data/local/tmp/mpc-groovebox-ui.xml >/dev/null
-  adb exec-out cat /data/local/tmp/mpc-groovebox-ui.xml > "$DUMP"
+  adb shell uiautomator dump /data/local/tmp/mpc-groovebox-ui.xml >/dev/null || return 1
+  adb exec-out cat /data/local/tmp/mpc-groovebox-ui.xml > "$DUMP" || return 1
   if ! grep -q '<hierarchy' "$DUMP"; then
-    echo "ERROR: uiautomator did not return a UI hierarchy"
-    cat "$DUMP"
-    adb shell dumpsys activity activities | tail -n 80 || true
-    exit 1
+    return 1
   fi
+  return 0
 }
 
 assert_text() {
@@ -37,8 +35,7 @@ assert_text() {
 }
 
 for attempt in $(seq 1 15); do
-  dump_ui || true
-  if grep -Fq 'text="MPC Studio MkII GrooveBox' "$DUMP" 2>/dev/null || grep -Fq 'text="MPC Studio MkII Groovebox' "$DUMP" 2>/dev/null; then
+  if dump_ui && grep -Fq 'text="MPC Studio MkII Groovebox — Hardware Bring-Up"' "$DUMP"; then
     break
   fi
   sleep 1
