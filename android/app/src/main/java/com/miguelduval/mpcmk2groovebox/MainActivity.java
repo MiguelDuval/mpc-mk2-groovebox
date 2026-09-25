@@ -212,7 +212,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f));
 
         setContentView(root);
-        root.post(() -> {
+        root.postOnAnimation(() -> {
             status.setText(
                     "Native: " + nativeEngineInfo()
                             + "\n"
