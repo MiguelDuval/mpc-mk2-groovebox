@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 public final class MainActivity extends Activity implements AndroidMidiBridge.Listener {
     private static final int REQUEST_OPEN_WAV = 1001;
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
+    private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
 
     static {
         System.loadLibrary("mpcgroovebox");
@@ -32,6 +33,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView selectedPadStatus;
     private TextView tuningStatus;
     private int selectedPad = 0;
+    private boolean uiOnlySmokeMode;
 
     private static native String nativeEngineInfo();
     private static native String nativeAudioLoadSample(byte[] data);
@@ -45,6 +47,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        uiOnlySmokeMode = "ui-only".equals(
+                getIntent().getStringExtra(SMOKE_MODE_EXTRA));
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -245,6 +249,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f));
 
         setContentView(root);
+
+        if (uiOnlySmokeMode) {
+            status.setText("Startup diagnostic: UI-only; native/MIDI deferred");
+            return;
+        }
+
         root.postOnAnimation(() -> {
             status.setText(
                     "Native: " + nativeEngineInfo()
@@ -291,7 +301,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     @Override
     protected void onDestroy() {
-        nativeAudioStop();
+        if (!uiOnlySmokeMode) {
+            nativeAudioStop();
+        }
 
         if (midiBridge != null) {
             midiBridge.close();
