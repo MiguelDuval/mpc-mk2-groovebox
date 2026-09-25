@@ -17,6 +17,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity implements AndroidMidiBridge.Listener {
     private static final String TAG = "MpcGroovebox";
@@ -36,6 +38,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView tuningStatus;
     private int selectedPad = 0;
     private boolean uiOnlySmokeMode;
+    private volatile boolean destroyed;
+    private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
     private static native String nativeEngineInfo();
     private static native String nativeAudioLoadSample(byte[] data);
@@ -261,17 +265,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         root.postOnAnimation(() -> {
             Log.i(TAG, "STARTUP_BEGIN");
-            Log.i(TAG, "NATIVE_INFO_BEGIN");
-            String engineInfo = nativeEngineInfo();
-            Log.i(TAG, "NATIVE_INFO_END");
-            Log.i(TAG, "BUNDLED_SAMPLE_BEGIN");
-            String sampleResult = loadBundledSample();
-            Log.i(TAG, "BUNDLED_SAMPLE_END");
-            status.setText("Native: " + engineInfo + "\n" + sampleResult);
-            Log.i(TAG, "MIDI_BRIDGE_BEGIN");
-            midiBridge = new AndroidMidiBridge(this, this);
-            Log.i(TAG, "MIDI_BRIDGE_END");
-            Log.i(TAG, "STARTUP_COMPLETE");
+            startupExecutor.execute(() -> {
+                Log.i(TAG, "NATIVE_INFO_BEGIN");
+                String engineInfo = nativeEngineInfo();
+                Log.i(TAG, "NATIVE_INFO_END");
+                Log.i(TAG, "BUNDLED_SAMPLE_BEGIN");
+                String sampleResult = loadBundledSample();
+                Log.i(TAG, "BUNDLED_SAMPLE_END");
+
+                runOnUiThread(() -> {
+                    if (destroyed) {
+                        return;
+                    }
+
+                    status.setText("Native: " + engineInfo + "\n" + sampleResult);
+                    Log.i(TAG, "MIDI_BRIDGE_BEGIN");
+                    midiBridge = new AndroidMidiBridge(this, this);
+                    Log.i(TAG, "MIDI_BRIDGE_END");
+                    Log.i(TAG, "STARTUP_COMPLETE");
+                });
+            });
         });
     }
 
@@ -312,6 +325,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     @Override
     protected void onDestroy() {
+        destroyed = true;
+        startupExecutor.shutdownNow();
+
         if (!uiOnlySmokeMode) {
             nativeAudioStop();
         }
