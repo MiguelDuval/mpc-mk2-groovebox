@@ -229,8 +229,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         midiLog.setText("MIDI IN:\n");
         midiLog.setTextSize(13.0f);
 
-        ScrollView scroll = new ScrollView(this);
-        scroll.addView(midiLog);
+        ScrollView midiScroll = new ScrollView(this);
+        midiScroll.setFillViewport(true);
+        midiScroll.addView(midiLog);
 
         root.addView(title, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -253,11 +254,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         root.addView(diagnostics, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(devices, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f));
-        root.addView(scroll, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f));
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(midiScroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(120)));
 
-        setContentView(root);
+        ScrollView contentScroll = new ScrollView(this);
+        contentScroll.setFillViewport(true);
+        contentScroll.addView(root);
+        setContentView(contentScroll);
         Log.i(TAG, "UI_READY");
 
         if (uiOnlySmokeMode) {
@@ -417,6 +421,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         return null;
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private void selectPad(int pad) {
