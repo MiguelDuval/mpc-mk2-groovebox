@@ -92,6 +92,37 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioLoadSampleForPad(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadTuning(
+        JNIEnv* env, jobject /* thiz */, jint pad, jfloat semitones)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (pad < 0 || pad >= 16) {
+        return toJString(env, "Tuning change failed: invalid pad");
+    }
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setPadTuningSemitones(
+                    static_cast<std::uint8_t>(pad),
+                    semitones));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadTuning(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad)
+{
+    if (pad < 0 || pad >= 16) {
+        return 0.0f;
+    }
+
+    return mpc::audio::AudioEngine::instance().padTuningSemitones(
+            static_cast<std::uint8_t>(pad));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStart(
         JNIEnv* env, jobject /* thiz */)
 {
