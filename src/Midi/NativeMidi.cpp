@@ -60,10 +60,7 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
                 event->value);
         }
 
-        const std::uint8_t level = event->pressed
-                ? static_cast<std::uint8_t>(
-                        std::min<std::uint8_t>(event->value, 127u))
-                : 0u;
+        const std::uint8_t level = event->pressed ? event->value : 0u;
 
         return mpc::studio::makePadLedSysEx(
                 event->padIndex,
