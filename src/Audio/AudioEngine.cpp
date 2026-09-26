@@ -429,15 +429,31 @@ std::string AudioEngine::start() {
     }
 
     std::array<std::array<std::shared_ptr<const SampleBuffer>, kSampleLayerCount>, kPadCount>
-            samples;
+            samples{};
     bool anySample = false;
 
     for (std::size_t pad = 0; pad < kPadCount; ++pad) {
-        samples[pad] = padSamples_[pad] != nullptr
-                ? padSamples_[pad]
-                : sample_;
-        anySample = anySample
-                || (samples[pad] != nullptr && samples[pad]->frameCount() > 0);
+        bool anyExplicitLayer = false;
+
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            samples[pad][layer] = padSamples_[pad][layer];
+            anyExplicitLayer = anyExplicitLayer
+                    || (samples[pad][layer] != nullptr
+                        && samples[pad][layer]->frameCount() > 0);
+        }
+
+        // Keep the existing bundled sample behavior for pads that have no
+        // explicitly assigned layers. Once a pad has any explicit layer,
+        // playback comes only from those assigned layers.
+        if (!anyExplicitLayer && sample_ != nullptr) {
+            samples[pad][0] = sample_;
+        }
+
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            anySample = anySample
+                    || (samples[pad][layer] != nullptr
+                        && samples[pad][layer]->frameCount() > 0);
+        }
     }
 
     if (!anySample) {
