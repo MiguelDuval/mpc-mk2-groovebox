@@ -9,6 +9,7 @@
 namespace {
 
 constexpr std::size_t kPadCount = 16;
+constexpr std::size_t kSampleLayerCount = 8;
 constexpr float kPadAmplitude = 0.85f;
 
 const char* resultText(oboe::Result result) {
@@ -26,7 +27,8 @@ namespace mpc::audio {
 class AudioEngine::OutputCallback final : public oboe::AudioStreamDataCallback {
 public:
     OutputCallback(
-            std::array<std::shared_ptr<const SampleBuffer>, kPadCount> samples,
+            std::array<std::array<std::shared_ptr<const SampleBuffer>, kSampleLayerCount>, kPadCount>
+                    samples,
             std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence,
             std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity,
             std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones,
@@ -86,10 +88,19 @@ public:
                 voice.leftGain = pan > 0.0f ? 1.0f - pan : 1.0f;
                 voice.rightGain = pan < 0.0f ? 1.0f + pan : 1.0f;
 
-                const auto& sample = samples_[pad];
-                if (sample == nullptr
-                        || sample->frameCount() == 0
-                        || sample->channelCount == 0) {
+                bool anyLayer = false;
+                for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+                    auto& layerVoice = voice.layers[layer];
+                    const auto& sample = samples_[pad][layer];
+
+                    layerVoice.position = 0.0;
+                    layerVoice.active = sample != nullptr
+                            && sample->frameCount() > 0
+                            && sample->channelCount > 0;
+                    anyLayer = anyLayer || layerVoice.active;
+                }
+
+                if (!anyLayer) {
                     voice.active = false;
                     continue;
                 }
@@ -104,8 +115,15 @@ public:
                 const float sampleToOutputRate =
                         static_cast<float>(sample->sampleRate)
                         / static_cast<float>(sampleRate);
-                voice.positionStep =
-                        sampleToOutputRate * semitoneRatio;
+                for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+                    const auto& sample = samples_[pad][layer];
+                    auto& layerVoice = voice.layers[layer];
+                    if (!layerVoice.active || sample == nullptr) {
+                        continue;
+                    }
+                    layerVoice.positionStep =
+                            sampleToOutputRate * semitoneRatio;
+                }
                 voice.active = velocity != 0;
             }
         }
@@ -120,53 +138,66 @@ public:
                     continue;
                 }
 
-                const auto& sample = samples_[pad];
-                if (sample == nullptr || sample->frameCount() == 0) {
-                    voice.active = false;
-                    continue;
+                bool anyActiveLayer = false;
+
+                for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+                    auto& layerVoice = voice.layers[layer];
+                    if (!layerVoice.active) {
+                        continue;
+                    }
+
+                    const auto& sample = samples_[pad][layer];
+                    if (sample == nullptr || sample->frameCount() == 0
+                            || sample->channelCount == 0) {
+                        layerVoice.active = false;
+                        continue;
+                    }
+
+                    const std::size_t sourceFrame =
+                            static_cast<std::size_t>(layerVoice.position);
+
+                    if (sourceFrame >= sample->frameCount()) {
+                        layerVoice.active = false;
+                        continue;
+                    }
+
+                    const std::size_t nextFrame =
+                            std::min(sourceFrame + 1, sample->frameCount() - 1);
+                    const float fraction =
+                            static_cast<float>(
+                                layerVoice.position
+                                - static_cast<double>(sourceFrame));
+
+                    if (sample->channelCount == 1) {
+                        const float sample0 =
+                                sample->sampleAt(sourceFrame, 0);
+                        const float sample1 =
+                                sample->sampleAt(nextFrame, 0);
+                        const float value =
+                                sample0 + (sample1 - sample0) * fraction;
+                        left += value * voice.gain * voice.leftGain;
+                        right += value * voice.gain * voice.rightGain;
+                    } else {
+                        const float left0 =
+                                sample->sampleAt(sourceFrame, 0);
+                        const float left1 =
+                                sample->sampleAt(nextFrame, 0);
+                        const float right0 =
+                                sample->sampleAt(sourceFrame, 1);
+                        const float right1 =
+                                sample->sampleAt(nextFrame, 1);
+
+                        left += (left0 + (left1 - left0) * fraction)
+                                * voice.gain * voice.leftGain;
+                        right += (right0 + (right1 - right0) * fraction)
+                                * voice.gain * voice.rightGain;
+                    }
+
+                    layerVoice.position += layerVoice.positionStep;
+                    anyActiveLayer = true;
                 }
 
-                const std::size_t sourceFrame =
-                        static_cast<std::size_t>(voice.position);
-
-                if (sourceFrame >= sample->frameCount()) {
-                    voice.active = false;
-                    continue;
-                }
-
-                const std::size_t nextFrame =
-                        std::min(sourceFrame + 1, sample->frameCount() - 1);
-                const float fraction =
-                        static_cast<float>(
-                            voice.position
-                            - static_cast<double>(sourceFrame));
-
-                if (sample->channelCount == 1) {
-                    const float sample0 =
-                            sample->sampleAt(sourceFrame, 0);
-                    const float sample1 =
-                            sample->sampleAt(nextFrame, 0);
-                    const float value =
-                            sample0 + (sample1 - sample0) * fraction;
-                    left += value * voice.gain * voice.leftGain;
-                    right += value * voice.gain * voice.rightGain;
-                } else {
-                    const float left0 =
-                            sample->sampleAt(sourceFrame, 0);
-                    const float left1 =
-                            sample->sampleAt(nextFrame, 0);
-                    const float right0 =
-                            sample->sampleAt(sourceFrame, 1);
-                    const float right1 =
-                            sample->sampleAt(nextFrame, 1);
-
-                    left += (left0 + (left1 - left0) * fraction)
-                            * voice.gain * voice.leftGain;
-                    right += (right0 + (right1 - right0) * fraction)
-                            * voice.gain * voice.rightGain;
-                }
-
-                voice.position += voice.positionStep;
+                voice.active = anyActiveLayer;
             }
 
             const float mono =
@@ -190,8 +221,13 @@ public:
 
 private:
     struct PadVoice {
-        double position = 0.0;
-        float positionStep = 0.0f;
+        struct LayerVoice {
+            double position = 0.0;
+            float positionStep = 0.0f;
+            bool active = false;
+        };
+
+        std::array<LayerVoice, kSampleLayerCount> layers{};
         float gain = 0.0f;
         float leftGain = 1.0f;
         float rightGain = 1.0f;
@@ -340,12 +376,19 @@ float AudioEngine::padPan(std::uint8_t padIndex) const {
 std::string AudioEngine::loadSampleForPad(
         std::span<const std::uint8_t> bytes,
         std::uint8_t padIndex) {
+    return loadSampleForPadLayer(bytes, padIndex, 0);
+}
+
+std::string AudioEngine::loadSampleForPadLayer(
+        std::span<const std::uint8_t> bytes,
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) {
     if (stream_ != nullptr) {
         return "Stop audio before loading a sample";
     }
 
-    if (padIndex >= kPadCount) {
-        return "Sample load failed: invalid pad";
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return "Sample load failed: invalid pad or layer";
     }
 
     const auto decoded = decodeWav(bytes);
@@ -353,15 +396,16 @@ std::string AudioEngine::loadSampleForPad(
         return "Sample load failed: unsupported or invalid PCM WAV";
     }
 
-    padSamples_[padIndex] = std::make_shared<SampleBuffer>(*decoded);
-    padSampleDescriptions_[padIndex] =
-            std::to_string(padSamples_[padIndex]->sampleRate) + " Hz "
-            + std::to_string(padSamples_[padIndex]->channelCount) + " ch "
-            + std::to_string(padSamples_[padIndex]->frameCount()) + " frames";
+    padSamples_[padIndex][layerIndex] = std::make_shared<SampleBuffer>(*decoded);
+    padSampleDescriptions_[padIndex][layerIndex] =
+            std::to_string(padSamples_[padIndex][layerIndex]->sampleRate) + " Hz "
+            + std::to_string(padSamples_[padIndex][layerIndex]->channelCount) + " ch "
+            + std::to_string(padSamples_[padIndex][layerIndex]->frameCount()) + " frames";
 
     return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " layer " + std::to_string(static_cast<unsigned>(layerIndex + 1))
             + " sample loaded | "
-            + padSampleDescriptions_[padIndex];
+            + padSampleDescriptions_[padIndex][layerIndex];
 }
 
 void AudioEngine::triggerPad(
@@ -384,7 +428,8 @@ std::string AudioEngine::start() {
         return status();
     }
 
-    std::array<std::shared_ptr<const SampleBuffer>, kPadCount> samples;
+    std::array<std::array<std::shared_ptr<const SampleBuffer>, kSampleLayerCount>, kPadCount>
+            samples;
     bool anySample = false;
 
     for (std::size_t pad = 0; pad < kPadCount; ++pad) {
@@ -471,9 +516,12 @@ std::string AudioEngine::status() const {
                 "Audio stopped | fallback=" + sampleDescription_;
 
         for (std::size_t pad = 0; pad < kPadCount; ++pad) {
-            if (!padSampleDescriptions_[pad].empty()) {
-                result += " | pad" + std::to_string(pad + 1)
-                        + "=" + padSampleDescriptions_[pad];
+            for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+                if (!padSampleDescriptions_[pad][layer].empty()) {
+                    result += " | pad" + std::to_string(pad + 1)
+                            + ".layer" + std::to_string(layer + 1)
+                            + "=" + padSampleDescriptions_[pad][layer];
+                }
             }
         }
 
