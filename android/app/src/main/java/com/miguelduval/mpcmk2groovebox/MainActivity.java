@@ -44,6 +44,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView levelStatus;
     private TextView panStatus;
     private TextView layerStatus;
+    private TextView sampleRegionStatus;
     private TextView recordingStatus;
     private int selectedPad = 0;
     private int selectedLayer = 0;
@@ -62,6 +63,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native float nativeAudioGetPadLevel(int pad);
     private static native String nativeAudioSetPadPan(int pad, float pan);
     private static native float nativeAudioGetPadPan(int pad);
+    private static native String nativeAudioSetPadSampleRegion(
+            int pad, int layer, long startFrame, long endFrame);
+    private static native long nativeAudioGetPadSampleRegionStart(int pad, int layer);
+    private static native long nativeAudioGetPadSampleRegionEnd(int pad, int layer);
+    private static native long nativeAudioGetPadSampleFrameCount(int pad, int layer);
     private static native String nativeAudioStart();
     private static native String nativeAudioStop();
     private static native String nativeAudioStatus();
@@ -216,6 +222,44 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         layerControls.addView(layerDown, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         layerControls.addView(layerUp, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        sampleRegionStatus = new TextView(this);
+        sampleRegionStatus.setText("Pad 1 layer 1 sample region: no sample");
+        sampleRegionStatus.setTextSize(13.0f);
+
+        LinearLayout sampleRegionControls = new LinearLayout(this);
+        sampleRegionControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button regionStartDown = new Button(this);
+        regionStartDown.setText("Start -");
+        regionStartDown.setOnClickListener(v -> nudgeSelectedSampleRegionStart(-1000));
+
+        Button regionStartUp = new Button(this);
+        regionStartUp.setText("Start +");
+        regionStartUp.setOnClickListener(v -> nudgeSelectedSampleRegionStart(1000));
+
+        Button regionEndDown = new Button(this);
+        regionEndDown.setText("End -");
+        regionEndDown.setOnClickListener(v -> nudgeSelectedSampleRegionEnd(-1000));
+
+        Button regionEndUp = new Button(this);
+        regionEndUp.setText("End +");
+        regionEndUp.setOnClickListener(v -> nudgeSelectedSampleRegionEnd(1000));
+
+        Button regionFull = new Button(this);
+        regionFull.setText("Full Region");
+        regionFull.setOnClickListener(v -> resetSelectedSampleRegion());
+
+        sampleRegionControls.addView(regionStartDown, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        sampleRegionControls.addView(regionStartUp, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        sampleRegionControls.addView(regionEndDown, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        sampleRegionControls.addView(regionEndUp, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        sampleRegionControls.addView(regionFull, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         LinearLayout padGrid = new LinearLayout(this);
@@ -410,6 +454,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(layerControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(sampleRegionStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(sampleRegionControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(padGrid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(audioControls, new LinearLayout.LayoutParams(
@@ -492,6 +540,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final String result =
                     nativeAudioLoadSampleForPadLayer(wavBytes, selectedPad, selectedLayer);
             status.setText(result);
+            updateSampleRegionStatus();
         } catch (IOException | IllegalArgumentException e) {
             status.setText(
                     "Sample file load failed: "
@@ -621,7 +670,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Pad 1 tuning: +0.00 st",
                 "Pad 1 level: 100%",
                 "Pad 1 pan: C",
-                "Pad 1 sample layer: 1/8"
+                "Pad 1 sample layer: 1/8",
+                "Pad 1 layer 1 sample region: 0-44100 / 44100 frames",
+                "Start -",
+                "Start +",
+                "End -",
+                "End +",
+                "Full Region"
         };
 
         View root = getWindow().getDecorView();
@@ -906,6 +961,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         selectedPadStatus.setText("Sample target pad: " + (pad + 1));
         updatePadToneStatus();
         updateLayerStatus();
+        updateSampleRegionStatus();
     }
 
     private void adjustSelectedPadTuning(float delta) {
@@ -974,11 +1030,75 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void adjustSelectedLayer(int delta) {
         selectedLayer = Math.max(0, Math.min(7, selectedLayer + delta));
         updateLayerStatus();
+        updateSampleRegionStatus();
     }
 
     private void updateLayerStatus() {
         layerStatus.setText("Pad " + (selectedPad + 1)
                 + " sample layer: " + (selectedLayer + 1) + "/8");
+    }
+
+    private void updateSampleRegionStatus() {
+        final long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
+        if (total <= 0) {
+            sampleRegionStatus.setText(
+                    "Pad " + (selectedPad + 1)
+                            + " layer " + (selectedLayer + 1)
+                            + " sample region: no sample");
+            return;
+        }
+
+        final long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
+        final long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
+        sampleRegionStatus.setText(
+                "Pad " + (selectedPad + 1)
+                        + " layer " + (selectedLayer + 1)
+                        + " sample region: " + start + "-" + end
+                        + " / " + total + " frames");
+    }
+
+    private void nudgeSelectedSampleRegionStart(long delta) {
+        final long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
+        if (total <= 0) {
+            status.setText("Sample region change failed: no sample assigned");
+            return;
+        }
+
+        final long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
+        final long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
+        final long nextStart = Math.max(0L, Math.min(total - 1L, start + delta));
+        applySelectedSampleRegion(nextStart, end);
+    }
+
+    private void nudgeSelectedSampleRegionEnd(long delta) {
+        final long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
+        if (total <= 0) {
+            status.setText("Sample region change failed: no sample assigned");
+            return;
+        }
+
+        final long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
+        final long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
+        final long nextEnd = Math.max(1L, Math.min(total, end + delta));
+        applySelectedSampleRegion(start, nextEnd);
+    }
+
+    private void applySelectedSampleRegion(long start, long end) {
+        final String result =
+                nativeAudioSetPadSampleRegion(
+                        selectedPad, selectedLayer, start, end);
+        status.setText(result);
+        updateSampleRegionStatus();
+    }
+
+    private void resetSelectedSampleRegion() {
+        final long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
+        if (total <= 0) {
+            status.setText("Sample region change failed: no sample assigned");
+            return;
+        }
+
+        applySelectedSampleRegion(0L, total);
     }
 
     private void openWavPicker() {
