@@ -38,6 +38,10 @@ public:
             std::uint8_t layerIndex,
             std::size_t startFrame,
             std::size_t endFrame);
+    std::string chopPadSampleToPads(
+            std::uint8_t sourcePadIndex,
+            std::uint8_t sourceLayerIndex,
+            std::uint8_t chopCount);
     SampleRegion padSampleRegion(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
