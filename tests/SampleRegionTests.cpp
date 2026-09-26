@@ -20,9 +20,13 @@ void testPartialRegion() {
 }
 
 void testInvalidRegions() {
-    assert(!mpc::audio::SampleRegion{0, 0}.isValidFor(10));
-    assert(!mpc::audio::SampleRegion{8, 4}.isValidFor(10));
-    assert(!mpc::audio::SampleRegion{2, 11}.isValidFor(10));
+    const mpc::audio::SampleRegion empty{0, 0};
+    const mpc::audio::SampleRegion reversed{8, 4};
+    const mpc::audio::SampleRegion outOfBounds{2, 11};
+
+    assert(!empty.isValidFor(10));
+    assert(!reversed.isValidFor(10));
+    assert(!outOfBounds.isValidFor(10));
 }
 
 } // namespace
