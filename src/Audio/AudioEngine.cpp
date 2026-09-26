@@ -306,6 +306,7 @@ public:
                     }
 
                     const auto& sample = samples_[pad][layer];
+                    const auto& region = regions_[pad][layer];
                     if (sample == nullptr || sample->frameCount() == 0
                             || sample->channelCount == 0) {
                         layerVoice.active = false;
