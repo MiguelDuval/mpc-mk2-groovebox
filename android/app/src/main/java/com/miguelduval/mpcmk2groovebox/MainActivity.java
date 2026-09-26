@@ -45,6 +45,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView panStatus;
     private TextView layerStatus;
     private TextView sampleRegionStatus;
+    private TextView chopStatus;
     private TextView recordingStatus;
     private TextView recordingThresholdStatus;
     private int selectedPad = 0;
@@ -69,6 +70,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native long nativeAudioGetPadSampleRegionStart(int pad, int layer);
     private static native long nativeAudioGetPadSampleRegionEnd(int pad, int layer);
     private static native long nativeAudioGetPadSampleFrameCount(int pad, int layer);
+    private static native String nativeAudioChopPadSampleToPads(
+            int sourcePad, int sourceLayer, int chopCount);
     private static native String nativeAudioStart();
     private static native String nativeAudioStop();
     private static native String nativeAudioStatus();
@@ -263,6 +266,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sampleRegionControls.addView(regionEndUp, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         sampleRegionControls.addView(regionFull, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        chopStatus = new TextView(this);
+        chopStatus.setText("Chop: select a sample, then choose 4, 8 or 16 slices");
+        chopStatus.setTextSize(13.0f);
+
+        LinearLayout chopControls = new LinearLayout(this);
+        chopControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button chop4 = new Button(this);
+        chop4.setText("Chop 4");
+        chop4.setOnClickListener(v -> chopSelectedSample(4));
+
+        Button chop8 = new Button(this);
+        chop8.setText("Chop 8");
+        chop8.setOnClickListener(v -> chopSelectedSample(8));
+
+        Button chop16 = new Button(this);
+        chop16.setText("Chop 16");
+        chop16.setOnClickListener(v -> chopSelectedSample(16));
+
+        chopControls.addView(chop4, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        chopControls.addView(chop8, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        chopControls.addView(chop16, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         LinearLayout padGrid = new LinearLayout(this);
@@ -492,6 +521,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         root.addView(sampleRegionStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(sampleRegionControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(chopStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(chopControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(padGrid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -735,6 +768,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Pad 1 sample layer: 1/8",
                 "Pad 1 layer 1 sample region: 0-" + bundledFrameCount
                         + " / " + bundledFrameCount + " frames",
+                "Chop: select a sample, then choose 4, 8 or 16 slices",
+                "Chop 4",
+                "Chop 8",
+                "Chop 16",
                 "Recording threshold: Off",
                 "Threshold Off",
                 "Threshold 10%",
@@ -1003,6 +1040,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View chop4 = findViewWithExactText(
+                getWindow().getDecorView(), "Chop 4");
+        if (chop4 == null || !chop4.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Chop 4");
+            return;
+        }
+        if (!assertUiTextPresent(
+                "Chop complete: Pad 1 layer 1 -> pads 1-4 (4 slices)")) {
+            return;
+        }
+
         View startUp = findViewWithExactText(getWindow().getDecorView(), "Start +");
         if (startUp == null || !startUp.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: could not click Start +");
@@ -1229,6 +1277,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeAudioSetPadSampleRegion(
                         selectedPad, selectedLayer, start, end);
         status.setText(result);
+        updateSampleRegionStatus();
+    }
+
+    private void chopSelectedSample(int chopCount) {
+        final String result = nativeAudioChopPadSampleToPads(
+                selectedPad, selectedLayer, chopCount);
+        status.setText(result);
+        chopStatus.setText(result);
         updateSampleRegionStatus();
     }
 
