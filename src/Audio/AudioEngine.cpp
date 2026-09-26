@@ -234,7 +234,7 @@ private:
         bool active = false;
     };
 
-    std::array<std::shared_ptr<const SampleBuffer>, kPadCount> samples_;
+    std::array<std::array<std::shared_ptr<const SampleBuffer>, kSampleLayerCount>, kPadCount> samples_;
     std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence_;
     std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity_;
     std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones_;
