@@ -271,7 +271,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingControls.setOrientation(LinearLayout.HORIZONTAL);
 
         Button recordMicrophone = new Button(this);
-        recordMicrophone.setText("Record Microphone");
+        recordMicrophone.setText("Record + Monitor");
         recordMicrophone.setOnClickListener(v -> startRecordingFromUi());
 
         Button stopRecording = new Button(this);
@@ -553,7 +553,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Connect MPC Studio MkII",
                 "Load WAV Sample",
                 "Start Sampler",
-                "Record Microphone",
+                "Record + Monitor",
                 "Recording: idle",
                 "Pad 1 tuning: +0.00 st",
                 "Pad 1 level: 100%",
