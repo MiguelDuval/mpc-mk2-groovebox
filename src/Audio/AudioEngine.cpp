@@ -29,11 +29,15 @@ public:
             std::array<std::shared_ptr<const SampleBuffer>, kPadCount> samples,
             std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence,
             std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity,
-            std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones)
+            std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones,
+            std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli,
+            std::array<std::atomic<std::int32_t>, kPadCount>& panMilli)
             : samples_(std::move(samples)),
               triggerSequence_(triggerSequence),
               triggerVelocity_(triggerVelocity),
-              tuningMilliSemitones_(tuningMilliSemitones) {
+              tuningMilliSemitones_(tuningMilliSemitones),
+              levelMilli_(levelMilli),
+              panMilli_(panMilli) {
     }
 
     oboe::DataCallbackResult onAudioReady(
@@ -65,11 +69,22 @@ public:
 
                 auto& voice = voices_[pad];
                 voice.position = 0.0;
-                voice.gain =
+                const float velocityGain =
                         static_cast<float>(
                             std::min<std::uint32_t>(velocity, 127u))
-                        / 127.0f
-                        * kPadAmplitude;
+                        / 127.0f;
+                const float level =
+                        static_cast<float>(
+                            levelMilli_[pad].load(std::memory_order_relaxed))
+                        / 1000.0f;
+                const float pan =
+                        static_cast<float>(
+                            panMilli_[pad].load(std::memory_order_relaxed))
+                        / 1000.0f;
+
+                voice.gain = velocityGain * level * kPadAmplitude;
+                voice.leftGain = pan > 0.0f ? 1.0f - pan : 1.0f;
+                voice.rightGain = pan < 0.0f ? 1.0f + pan : 1.0f;
 
                 const auto& sample = samples_[pad];
                 if (sample == nullptr
@@ -133,8 +148,8 @@ public:
                             sample->sampleAt(nextFrame, 0);
                     const float value =
                             sample0 + (sample1 - sample0) * fraction;
-                    left += value * voice.gain;
-                    right += value * voice.gain;
+                    left += value * voice.gain * voice.leftGain;
+                    right += value * voice.gain * voice.rightGain;
                 } else {
                     const float left0 =
                             sample->sampleAt(sourceFrame, 0);
@@ -145,8 +160,10 @@ public:
                     const float right1 =
                             sample->sampleAt(nextFrame, 1);
 
-                    left += (left0 + (left1 - left0) * fraction) * voice.gain;
-                    right += (right0 + (right1 - right0) * fraction) * voice.gain;
+                    left += (left0 + (left1 - left0) * fraction)
+                            * voice.gain * voice.leftGain;
+                    right += (right0 + (right1 - right0) * fraction)
+                            * voice.gain * voice.rightGain;
                 }
 
                 voice.position += voice.positionStep;
@@ -176,6 +193,8 @@ private:
         double position = 0.0;
         float positionStep = 0.0f;
         float gain = 0.0f;
+        float leftGain = 1.0f;
+        float rightGain = 1.0f;
         bool active = false;
     };
 
@@ -183,6 +202,8 @@ private:
     std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence_;
     std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity_;
     std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones_;
+    std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli_;
+    std::array<std::atomic<std::int32_t>, kPadCount>& panMilli_;
     std::array<std::uint32_t, kPadCount> consumedSequence_{};
     std::array<PadVoice, kPadCount> voices_{};
 };
@@ -192,6 +213,8 @@ AudioEngine::AudioEngine() {
         padTriggerSequence_[pad].store(0, std::memory_order_relaxed);
         padTriggerVelocity_[pad].store(0, std::memory_order_relaxed);
         padTuningMilliSemitones_[pad].store(0, std::memory_order_relaxed);
+        padLevelMilli_[pad].store(1000, std::memory_order_relaxed);
+        padPanMilli_[pad].store(0, std::memory_order_relaxed);
     }
 }
 
@@ -253,6 +276,64 @@ float AudioEngine::padTuningSemitones(std::uint8_t padIndex) const {
     return static_cast<float>(
             padTuningMilliSemitones_[padIndex].load(
                     std::memory_order_relaxed))
+            / 1000.0f;
+}
+
+std::string AudioEngine::setPadLevel(
+        std::uint8_t padIndex,
+        float level) {
+    if (padIndex >= kPadCount || !std::isfinite(level)) {
+        return "Level change failed: invalid value";
+    }
+
+    const float clamped = std::clamp(level, 0.0f, 1.0f);
+    const auto milli = static_cast<std::int32_t>(std::lround(clamped * 1000.0f));
+    padLevelMilli_[padIndex].store(milli, std::memory_order_relaxed);
+
+    return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " level: " + std::to_string(milli / 10) + "%";
+}
+
+float AudioEngine::padLevel(std::uint8_t padIndex) const {
+    if (padIndex >= kPadCount) {
+        return 1.0f;
+    }
+
+    return static_cast<float>(
+            padLevelMilli_[padIndex].load(std::memory_order_relaxed))
+            / 1000.0f;
+}
+
+std::string AudioEngine::setPadPan(
+        std::uint8_t padIndex,
+        float pan) {
+    if (padIndex >= kPadCount || !std::isfinite(pan)) {
+        return "Pan change failed: invalid value";
+    }
+
+    const float clamped = std::clamp(pan, -1.0f, 1.0f);
+    const auto milli = static_cast<std::int32_t>(std::lround(clamped * 1000.0f));
+    padPanMilli_[padIndex].store(milli, std::memory_order_relaxed);
+
+    const float applied = static_cast<float>(milli) / 1000.0f;
+    if (applied < 0.0f) {
+        return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
+                + " pan: L" + std::to_string(static_cast<int>(std::lround(-applied * 100.0f)));
+    }
+    if (applied > 0.0f) {
+        return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
+                + " pan: R" + std::to_string(static_cast<int>(std::lround(applied * 100.0f)));
+    }
+    return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1)) + " pan: C";
+}
+
+float AudioEngine::padPan(std::uint8_t padIndex) const {
+    if (padIndex >= kPadCount) {
+        return 0.0f;
+    }
+
+    return static_cast<float>(
+            padPanMilli_[padIndex].load(std::memory_order_relaxed))
             / 1000.0f;
 }
 
@@ -322,7 +403,9 @@ std::string AudioEngine::start() {
             std::move(samples),
             padTriggerSequence_,
             padTriggerVelocity_,
-            padTuningMilliSemitones_);
+            padTuningMilliSemitones_,
+            padLevelMilli_,
+            padPanMilli_);
 
     oboe::AudioStreamBuilder builder;
     builder.setDirection(oboe::Direction::Output)
