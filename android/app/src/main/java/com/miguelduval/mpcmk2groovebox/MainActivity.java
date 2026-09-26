@@ -37,6 +37,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView midiLog;
     private TextView selectedPadStatus;
     private TextView tuningStatus;
+    private TextView levelStatus;
+    private TextView panStatus;
     private int selectedPad = 0;
     private boolean uiOnlySmokeMode;
     private boolean uiAuditSmokeMode;
@@ -48,6 +50,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeAudioLoadSampleForPad(byte[] data, int pad);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
+    private static native String nativeAudioSetPadLevel(int pad, float level);
+    private static native float nativeAudioGetPadLevel(int pad);
+    private static native String nativeAudioSetPadPan(int pad, float pan);
+    private static native float nativeAudioGetPadPan(int pad);
     private static native String nativeAudioStart();
     private static native String nativeAudioStop();
     private static native String nativeAudioStatus();
@@ -124,6 +130,58 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         tuningControls.addView(tuneReset, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         tuningControls.addView(tuneUp, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        levelStatus = new TextView(this);
+        levelStatus.setText("Pad 1 level: 100%");
+        levelStatus.setTextSize(13.0f);
+
+        LinearLayout levelControls = new LinearLayout(this);
+        levelControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button levelDown = new Button(this);
+        levelDown.setText("-10%");
+        levelDown.setOnClickListener(v -> adjustSelectedPadLevel(-0.10f));
+
+        Button levelReset = new Button(this);
+        levelReset.setText("Level Reset");
+        levelReset.setOnClickListener(v -> setSelectedPadLevel(1.0f));
+
+        Button levelUp = new Button(this);
+        levelUp.setText("+10%");
+        levelUp.setOnClickListener(v -> adjustSelectedPadLevel(0.10f));
+
+        levelControls.addView(levelDown, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        levelControls.addView(levelReset, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        levelControls.addView(levelUp, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        panStatus = new TextView(this);
+        panStatus.setText("Pad 1 pan: C");
+        panStatus.setTextSize(13.0f);
+
+        LinearLayout panControls = new LinearLayout(this);
+        panControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button panLeft = new Button(this);
+        panLeft.setText("Pan L");
+        panLeft.setOnClickListener(v -> setSelectedPadPan(-1.0f));
+
+        Button panCenter = new Button(this);
+        panCenter.setText("Pan C");
+        panCenter.setOnClickListener(v -> setSelectedPadPan(0.0f));
+
+        Button panRight = new Button(this);
+        panRight.setText("Pan R");
+        panRight.setOnClickListener(v -> setSelectedPadPan(1.0f));
+
+        panControls.addView(panLeft, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        panControls.addView(panCenter, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        panControls.addView(panRight, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         LinearLayout padGrid = new LinearLayout(this);
@@ -246,6 +304,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         root.addView(tuningStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(tuningControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(levelStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(levelControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(panStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(panControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(padGrid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -379,7 +445,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Connect MPC Studio MkII",
                 "Load WAV Sample",
                 "Start Sampler",
-                "Pad 1 tuning: +0.00 st"
+                "Pad 1 tuning: +0.00 st",
+                "Pad 1 level: 100%",
+                "Pad 1 pan: C"
         };
 
         View root = getWindow().getDecorView();
@@ -418,6 +486,49 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (!assertUiTextPresent("Pad 2 tuning: +0.00 st")) {
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 level: 100%")) {
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 pan: C")) {
+            return;
+        }
+
+        View levelUp = findViewWithExactText(getWindow().getDecorView(), "+10%");
+        if (levelUp == null || !levelUp.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click +10%");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 level: 100%")) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: expected level clamp at 100%");
+            return;
+        }
+
+        View levelDown = findViewWithExactText(getWindow().getDecorView(), "-10%");
+        if (levelDown == null || !levelDown.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click -10%");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 level: 90%")) {
+            return;
+        }
+
+        View panRight = findViewWithExactText(getWindow().getDecorView(), "Pan R");
+        if (panRight == null || !panRight.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Pan R");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 pan: R100")) {
+            return;
+        }
+
+        View panCenter = findViewWithExactText(getWindow().getDecorView(), "Pan C");
+        if (panCenter == null || !panCenter.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Pan C");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 pan: C")) {
             return;
         }
 
@@ -489,6 +600,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!assertUiTextPresent("Pad 1 tuning: +0.00 st")) {
             return;
         }
+        if (!assertUiTextPresent("Pad 1 level: 100%")) {
+            return;
+        }
+        if (!assertUiTextPresent("Pad 1 pan: C")) {
+            return;
+        }
 
         Log.i(TAG, "UI_INTERACTION_COMPLETE");
     }
@@ -541,7 +658,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         selectedPad = pad;
         selectedPadStatus.setText("Sample target pad: " + (pad + 1));
-        updateTuningStatus();
+        updatePadToneStatus();
     }
 
     private void adjustSelectedPadTuning(float delta) {
@@ -552,7 +669,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         float target = reset ? 0.0f : nativeAudioGetPadTuning(selectedPad) + delta;
         String result = nativeAudioSetPadTuning(selectedPad, target);
         status.setText(result);
-        updateTuningStatus();
+        updatePadToneStatus();
     }
 
     private void updateTuningStatus() {
@@ -561,6 +678,50 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         tuningStatus.setText(
                 String.format(java.util.Locale.ROOT, "Pad %d tuning: %s%.2f st",
                         selectedPad + 1, sign, tuning));
+    }
+
+    private void adjustSelectedPadLevel(float delta) {
+        setSelectedPadLevel(nativeAudioGetPadLevel(selectedPad) + delta);
+    }
+
+    private void setSelectedPadLevel(float target) {
+        String result = nativeAudioSetPadLevel(selectedPad, target);
+        status.setText(result);
+        updateLevelStatus();
+    }
+
+    private void updateLevelStatus() {
+        int percent = Math.round(nativeAudioGetPadLevel(selectedPad) * 100.0f);
+        levelStatus.setText("Pad " + (selectedPad + 1) + " level: " + percent + "%");
+    }
+
+    private void setSelectedPadPan(float pan) {
+        String result = nativeAudioSetPadPan(selectedPad, pan);
+        status.setText(result);
+        updatePanStatus();
+    }
+
+    private void updatePanStatus() {
+        float pan = nativeAudioGetPadPan(selectedPad);
+        if (pan < -0.001f) {
+            panStatus.setText(String.format(java.util.Locale.ROOT,
+                    "Pad %d pan: L%d",
+                    selectedPad + 1, Math.round(-pan * 100.0f)));
+            return;
+        }
+        if (pan > 0.001f) {
+            panStatus.setText(String.format(java.util.Locale.ROOT,
+                    "Pad %d pan: R%d",
+                    selectedPad + 1, Math.round(pan * 100.0f)));
+            return;
+        }
+        panStatus.setText("Pad " + (selectedPad + 1) + " pan: C");
+    }
+
+    private void updatePadToneStatus() {
+        updateTuningStatus();
+        updateLevelStatus();
+        updatePanStatus();
     }
 
     private void openWavPicker() {
