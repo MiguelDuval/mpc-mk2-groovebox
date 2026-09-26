@@ -192,6 +192,28 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadSampleFrameCo
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioChopPadSampleToPads(
+        JNIEnv* env, jobject /* thiz */, jint sourcePad, jint sourceLayer, jint chopCount)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (sourcePad < 0 || sourcePad >= 16
+            || sourceLayer < 0 || sourceLayer >= 8
+            || chopCount < 0 || chopCount > 255) {
+        return toJString(env, "Chop failed: invalid source or chop count");
+    }
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().chopPadSampleToPads(
+                    static_cast<std::uint8_t>(sourcePad),
+                    static_cast<std::uint8_t>(sourceLayer),
+                    static_cast<std::uint8_t>(chopCount)));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadTuning(
         JNIEnv* env, jobject /* thiz */, jint pad, jfloat semitones)
 {
