@@ -127,6 +127,71 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioLoadSampleForPadLay
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadSampleRegion(
+        JNIEnv* env, jobject /* thiz */, jint pad, jint layer,
+        jlong startFrame, jlong endFrame)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8
+            || startFrame < 0 || endFrame < 0) {
+        return toJString(env, "Sample region change failed: invalid pad, layer or frame");
+    }
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setPadSampleRegion(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer),
+                    static_cast<std::size_t>(startFrame),
+                    static_cast<std::size_t>(endFrame)));
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadSampleRegionStart(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad, jint layer)
+{
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) {
+        return 0;
+    }
+
+    return static_cast<jlong>(
+            mpc::audio::AudioEngine::instance().padSampleRegion(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer)).startFrame);
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadSampleRegionEnd(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad, jint layer)
+{
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) {
+        return 0;
+    }
+
+    return static_cast<jlong>(
+            mpc::audio::AudioEngine::instance().padSampleRegion(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer)).endFrame);
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadSampleFrameCount(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad, jint layer)
+{
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) {
+        return 0;
+    }
+
+    return static_cast<jlong>(
+            mpc::audio::AudioEngine::instance().padSampleFrameCount(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer)));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadTuning(
         JNIEnv* env, jobject /* thiz */, jint pad, jfloat semitones)
 {
