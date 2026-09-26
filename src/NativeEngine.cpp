@@ -123,6 +123,68 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadTuning(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadLevel(
+        JNIEnv* env, jobject /* thiz */, jint pad, jfloat level)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (pad < 0 || pad >= 16) {
+        return toJString(env, "Level change failed: invalid pad");
+    }
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setPadLevel(
+                    static_cast<std::uint8_t>(pad),
+                    level));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadLevel(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad)
+{
+    if (pad < 0 || pad >= 16) {
+        return 1.0f;
+    }
+
+    return mpc::audio::AudioEngine::instance().padLevel(
+            static_cast<std::uint8_t>(pad));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadPan(
+        JNIEnv* env, jobject /* thiz */, jint pad, jfloat pan)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (pad < 0 || pad >= 16) {
+        return toJString(env, "Pan change failed: invalid pad");
+    }
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setPadPan(
+                    static_cast<std::uint8_t>(pad),
+                    pan));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadPan(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad)
+{
+    if (pad < 0 || pad >= 16) {
+        return 0.0f;
+    }
+
+    return mpc::audio::AudioEngine::instance().padPan(
+            static_cast<std::uint8_t>(pad));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStart(
         JNIEnv* env, jobject /* thiz */)
 {
