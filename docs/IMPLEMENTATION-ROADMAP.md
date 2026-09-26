@@ -46,7 +46,7 @@
 - record. **SOFTWARE SLICE IMPLEMENTED — bounded microphone capture in RAM through a dedicated Oboe input stream; now independent from monitor. Physical recording/assignment workflow verified on the real MPC Studio MkII using headphones.**
 - monitor. **SOFTWARE SLICE IMPLEMENTED — independent bounded lock-free RAM monitor path feeding the low-latency output stream; Monitor On/Off is separate from Record. Independent monitor-only physical verification remains pending.**
 - threshold.
-- trim. **SOFTWARE FOUNDATION IMPLEMENTED — each pad/layer now has a non-destructive start/end playback region; sample data is unchanged and realtime playback respects the region. UI editing/chop remain later slices.**
+- trim. **SOFTWARE SLICE IMPLEMENTED — each pad/layer has a non-destructive start/end playback region; sample data is unchanged, realtime playback respects the region, and a bounded diagnostic UI exposes start/end nudging plus Full Region. Full waveform editing/chop remain later slices.**
 - chop.
 - assign. **DONE for imported WAVs; physically verified on Build #135 with two different WAV samples on two different physical pads. RECORDED-AUDIO ASSIGNMENT SOFTWARE SLICE IMPLEMENTED — the last stopped microphone recording can be promoted into a selected pad/layer; physically verified on the real MPC Studio MkII.**
 - multi-layer playback. **SOFTWARE SLICE IMPLEMENTED — 8 layers per pad; physical/audio verification pending.**
