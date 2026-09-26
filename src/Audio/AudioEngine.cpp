@@ -470,6 +470,101 @@ std::string AudioEngine::loadSample(
     return "Fallback sample loaded | " + sampleDescription_;
 }
 
+std::string AudioEngine::chopPadSampleToPads(
+        std::uint8_t sourcePadIndex,
+        std::uint8_t sourceLayerIndex,
+        std::uint8_t chopCount) {
+    if (sourcePadIndex >= kPadCount
+            || sourceLayerIndex >= kSampleLayerCount) {
+        return "Chop failed: invalid source pad or layer";
+    }
+
+    if (stream_ != nullptr) {
+        return "Stop audio before chopping a sample";
+    }
+
+    if (!isSupportedChopCount(chopCount)) {
+        return "Chop failed: supported counts are 4, 8 or 16";
+    }
+
+    std::shared_ptr<const SampleBuffer> sourceSample =
+            padSamples_[sourcePadIndex][sourceLayerIndex];
+    SampleRegion sourceRegion{};
+    std::string sourceDescription;
+
+    if (sourceSample != nullptr) {
+        sourceRegion = padSampleRegions_[sourcePadIndex][sourceLayerIndex];
+        sourceDescription = padSampleDescriptions_[sourcePadIndex][sourceLayerIndex];
+    } else if (sourceLayerIndex == 0) {
+        bool hasExplicitLayer = false;
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            hasExplicitLayer = hasExplicitLayer
+                    || (padSamples_[sourcePadIndex][layer] != nullptr);
+        }
+
+        if (!hasExplicitLayer && sample_ != nullptr) {
+            sourceSample = sample_;
+            sourceRegion = fullSampleRegion(sample_->frameCount());
+            sourceDescription = sampleDescription_;
+        }
+    }
+
+    if (sourceSample == nullptr || sourceSample->frameCount() == 0) {
+        return "Chop failed: no source sample assigned";
+    }
+
+    if (!sourceRegion.isValidFor(sourceSample->frameCount())) {
+        return "Chop failed: invalid source sample region";
+    }
+
+    const auto plan = makeEvenChopPlan(
+            sourceRegion.frameCount(),
+            static_cast<std::size_t>(chopCount));
+    if (!plan.isValid()) {
+        return "Chop failed: source region is too short";
+    }
+
+    for (std::size_t destinationPad = 0;
+            destinationPad < plan.count;
+            ++destinationPad) {
+        for (std::size_t layer = 1;
+                layer < kSampleLayerCount;
+                ++layer) {
+            if (padSamples_[destinationPad][layer] != nullptr) {
+                return "Chop failed: destination pad " 
+                        + std::to_string(destinationPad + 1)
+                        + " has assigned extra layers";
+            }
+        }
+
+        const auto& existing = padSamples_[destinationPad][0];
+        if (existing != nullptr && existing != sourceSample) {
+            return "Chop failed: destination pad "
+                    + std::to_string(destinationPad + 1)
+                    + " layer 1 is already assigned";
+        }
+    }
+
+    for (std::size_t destinationPad = 0;
+            destinationPad < plan.count;
+            ++destinationPad) {
+        const auto relativeRegion = plan.regions[destinationPad];
+        padSamples_[destinationPad][0] = sourceSample;
+        padSampleRegions_[destinationPad][0] = SampleRegion{
+                sourceRegion.startFrame + relativeRegion.startFrame,
+                sourceRegion.startFrame + relativeRegion.endFrame};
+        padSampleDescriptions_[destinationPad][0] = sourceDescription;
+    }
+
+    return "Chop complete: Pad "
+            + std::to_string(static_cast<unsigned>(sourcePadIndex + 1))
+            + " layer "
+            + std::to_string(static_cast<unsigned>(sourceLayerIndex + 1))
+            + " -> pads 1-"
+            + std::to_string(plan.count)
+            + " (" + std::to_string(plan.count) + " slices)";
+}
+
 std::string AudioEngine::setPadTuningSemitones(
         std::uint8_t padIndex,
         float semitones) {
