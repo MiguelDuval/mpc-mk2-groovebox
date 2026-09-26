@@ -535,6 +535,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        for (int index = 0; index < 6; ++index) {
+            if (!layerUp.performClick()) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer + at upper-range step " + index);
+                return;
+            }
+        }
+
+        if (!assertUiTextPresent("Pad 2 sample layer: 8/8")) {
+            return;
+        }
+
+        if (!layerUp.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer + at upper clamp");
+            return;
+        }
+
+        if (!assertUiTextPresent("Pad 2 sample layer: 8/8")) {
+            return;
+        }
+
         View layerDown = findViewWithExactText(getWindow().getDecorView(), "Layer -");
         if (layerDown == null || !layerDown.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer -");
