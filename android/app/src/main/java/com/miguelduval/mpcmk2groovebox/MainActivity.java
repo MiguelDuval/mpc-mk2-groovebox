@@ -1040,17 +1040,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View chop4 = findViewWithExactText(
-                getWindow().getDecorView(), "Chop 4");
-        if (chop4 == null || !chop4.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Chop 4");
-            return;
-        }
-        if (!assertUiTextPresent(
-                "Chop complete: Pad 1 layer 1 -> pads 1-4 (4 slices)")) {
-            return;
-        }
-
         View startUp = findViewWithExactText(getWindow().getDecorView(), "Start +");
         if (startUp == null || !startUp.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: could not click Start +");
@@ -1092,6 +1081,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!assertUiTextPresent(
                 "Pad 1 layer 1 sample region: 0-" + padOneTotal
                         + " / " + padOneTotal + " frames")) {
+            return;
+        }
+
+        View chop4 = findViewWithExactText(
+                getWindow().getDecorView(), "Chop 4");
+        if (chop4 == null || !chop4.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Chop 4");
+            return;
+        }
+        if (!assertUiTextPresent(
+                "Chop complete: Pad 1 layer 1 -> pads 1-4 (4 slices)")) {
             return;
         }
 
