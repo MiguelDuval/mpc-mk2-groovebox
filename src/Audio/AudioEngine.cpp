@@ -234,7 +234,7 @@ public:
             const std::uint32_t available =
                     writeSequence - monitorReadSequence_;
             if (available > kMonitorBufferFrames) {
-                monitorReadSequence =
+                monitorReadSequence_ =
                         writeSequence - kMonitorBufferFrames;
             }
         }
@@ -256,7 +256,7 @@ public:
                     right += monitorSample * kMonitorGain;
                     ++monitorReadSequence_;
                 } else if (available > kMonitorBufferFrames) {
-                    monitorReadSequence =
+                    monitorReadSequence_ =
                             writeSequence - kMonitorBufferFrames;
                 }
             }
