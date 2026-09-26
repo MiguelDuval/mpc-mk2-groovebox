@@ -671,7 +671,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Pad 1 level: 100%",
                 "Pad 1 pan: C",
                 "Pad 1 sample layer: 1/8",
-                "Pad 1 layer 1 sample region: 0-44100 / 44100 frames",
                 "Start -",
                 "Start +",
                 "End -",
@@ -680,6 +679,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         };
 
         View root = getWindow().getDecorView();
+        final long bundledFrameCount =
+                nativeAudioGetPadSampleFrameCount(0, 0);
+        expectedTexts[expectedTexts.length - 5] =
+                "Pad 1 layer 1 sample region: 0-" + bundledFrameCount
+                        + " / " + bundledFrameCount + " frames";
         for (String expected : expectedTexts) {
             View view = findViewWithExactText(root, expected);
             if (view == null) {
@@ -1066,7 +1070,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
         final long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
-        final long nextStart = Math.max(0L, Math.min(total - 1L, start + delta));
+        final long nextStart =
+                Math.max(0L, Math.min(Math.max(0L, end - 1L), start + delta));
         applySelectedSampleRegion(nextStart, end);
     }
 
@@ -1079,7 +1084,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
         final long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
-        final long nextEnd = Math.max(1L, Math.min(total, end + delta));
+        final long nextEnd =
+                Math.min(total, Math.max(Math.min(total, start + 1L), end + delta));
         applySelectedSampleRegion(start, nextEnd);
     }
 
