@@ -656,6 +656,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void runUiHierarchySmokeCheck() {
         Log.i(TAG, "UI_HIERARCHY_BEGIN");
 
+        final long bundledFrameCount =
+                nativeAudioGetPadSampleFrameCount(0, 0);
         String[] expectedTexts = {
                 "MPC Studio MkII Groovebox — Hardware Bring-Up",
                 "Refresh MIDI Devices",
@@ -671,6 +673,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Pad 1 level: 100%",
                 "Pad 1 pan: C",
                 "Pad 1 sample layer: 1/8",
+                "Pad 1 layer 1 sample region: 0-" + bundledFrameCount
+                        + " / " + bundledFrameCount + " frames",
                 "Start -",
                 "Start +",
                 "End -",
@@ -679,11 +683,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         };
 
         View root = getWindow().getDecorView();
-        final long bundledFrameCount =
-                nativeAudioGetPadSampleFrameCount(0, 0);
-        expectedTexts[expectedTexts.length - 5] =
-                "Pad 1 layer 1 sample region: 0-" + bundledFrameCount
-                        + " / " + bundledFrameCount + " frames";
         for (String expected : expectedTexts) {
             View view = findViewWithExactText(root, expected);
             if (view == null) {
@@ -909,6 +908,57 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (!assertUiTextPresent("Pad 1 sample layer: 1/8")) {
+            return;
+        }
+
+        final long padOneTotal = nativeAudioGetPadSampleFrameCount(0, 0);
+        if (!assertUiTextPresent(
+                "Pad 1 layer 1 sample region: 0-" + padOneTotal
+                        + " / " + padOneTotal + " frames")) {
+            return;
+        }
+
+        View startUp = findViewWithExactText(getWindow().getDecorView(), "Start +");
+        if (startUp == null || !startUp.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Start +");
+            return;
+        }
+        if (!assertUiTextPresent(
+                "Pad 1 layer 1 sample region: 1000-" + padOneTotal
+                        + " / " + padOneTotal + " frames")) {
+            return;
+        }
+
+        View endDown = findViewWithExactText(getWindow().getDecorView(), "End -");
+        if (endDown == null || !endDown.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click End -");
+            return;
+        }
+        if (!assertUiTextPresent(
+                "Pad 1 layer 1 sample region: 1000-" + (padOneTotal - 1000)
+                        + " / " + padOneTotal + " frames")) {
+            return;
+        }
+
+        View startDown = findViewWithExactText(getWindow().getDecorView(), "Start -");
+        if (startDown == null || !startDown.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Start -");
+            return;
+        }
+        if (!assertUiTextPresent(
+                "Pad 1 layer 1 sample region: 0-" + (padOneTotal - 1000)
+                        + " / " + padOneTotal + " frames")) {
+            return;
+        }
+
+        View fullRegion = findViewWithExactText(getWindow().getDecorView(), "Full Region");
+        if (fullRegion == null || !fullRegion.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Full Region");
+            return;
+        }
+        if (!assertUiTextPresent(
+                "Pad 1 layer 1 sample region: 0-" + padOneTotal
+                        + " / " + padOneTotal + " frames")) {
             return;
         }
 
