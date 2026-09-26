@@ -44,6 +44,63 @@ Run these tests with the public MIDI port.
 - [x] Text is readable.
 - [x] A second frame replaces the first.
 
+## F. Pad trigger feedback
+
+- [ ] With sampler audio running, strike a physical pad and confirm the matching hardware pad LED turns on with brightness reflecting strike velocity.
+- [ ] Release the pad and confirm the matching hardware pad LED turns off.
+- [ ] Strike pads 1 and 2 separately and confirm each LED responds only to its own pad.
+- [ ] Confirm a zero-velocity Note On behaves as release and does not retrigger the sampler or leave the LED on.
+
+These feedback checks are UNCONFIRMED until performed on the actual MPC Studio MkII.
+
+## F. Sampler tuning
+
+- [ ] With the bundled fallback sample loaded, select pad 1 and confirm the physical pad produces the sample at 0 st.
+- [ ] Set pad 1 to +1 st, strike the physical pad, and confirm the pitch increases audibly.
+- [ ] Set pad 1 to -1 st, strike the physical pad, and confirm the pitch decreases audibly.
+- [ ] Reset pad 1 to 0 st and confirm the baseline pitch returns.
+- [ ] Select pad 2, leave it at 0 st, and confirm changing pad 1 tuning does not change pad 2 pitch.
+- [ ] Confirm the UI range limits remain −24 st to +24 st during physical use.
+
+These tuning checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
+
+## G. Sampler level and pan
+
+- [ ] With pad 1 at 100% level and center pan, confirm its baseline playback level and stereo position.
+- [ ] Set pad 1 level to 90%, strike it repeatedly, and confirm the playback level is reduced without changing pitch.
+- [ ] Set pad 1 pan to L100, strike it with a stereo-capable sample, and confirm output is left-only.
+- [ ] Set pad 1 pan to R100, strike it with a stereo-capable sample, and confirm output is right-only.
+- [ ] Reset pad 1 to center pan and 100% level and confirm the baseline returns.
+- [ ] Select pad 2 and confirm changing pad 1 level/pan does not change pad 2 settings.
+
+These level/pan checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
+
+## G. Sampler recording and monitor
+
+- [x] Start Record with Monitor On, record a short sound, and confirm live microphone monitoring is audible without stopping the sampler. **Verified on the physical MPC Studio MkII using headphones; speaker playback caused acoustic feedback, so the test was completed in headphones.**
+- [x] Stop Recording and confirm the status reports a non-zero frame count and duration.
+- [x] Press Assign Last Recording with the selected pad/layer and confirm the assignment succeeds.
+- [x] Strike the assigned physical pad and confirm the recorded sound plays back.
+- [x] Repeat the assignment to a different pad or layer and confirm the original pad/layer remains unchanged.
+- [x] Press Assign Last Recording before any recording exists and confirm the UI reports `Recording assign failed: no recorded audio` without crashing or altering the existing samples.
+- [ ] Start Record with Monitor Off, record a short sound, and confirm recording works with no live microphone signal in the output.
+- [ ] With recording stopped, turn Monitor On and confirm live microphone monitoring works independently of recording.
+- [ ] Turn Monitor Off while recording and confirm capture continues while microphone output becomes silent.
+- [ ] Re-enable Monitor during recording and confirm live monitoring resumes without restarting the recording.
+
+The first six items are physically verified. The independent Record-only and Monitor-only controls remain intentionally UNCONFIRMED until the next physical test round.
+
+## H. Sampler multi-layer playback
+
+- [ ] Load a sample into pad 1 layer 1, start the sampler, and confirm it plays from the physical pad.
+- [ ] Load a different sample into pad 1 layer 2 and confirm one pad strike audibly triggers both assigned layers together.
+- [ ] Confirm layer 1 and layer 2 each restart from their own sample beginning on a new pad strike.
+- [ ] Confirm changing the selected layer does not change the physical pad selection.
+- [ ] Confirm the 8-layer selection clamps at layer 1 and layer 8.
+- [ ] Confirm a pad with no explicit layer assignment still uses the bundled fallback sample.
+
+These multi-layer checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
+
 ## Evidence
 
 For each failed test, capture:
@@ -80,3 +137,40 @@ Project owner reported all verification steps in the current hardware smoke test
 - LCD test frame rendering.
 
 This record confirms the tested behavior on the physical controller for this build. It does not imply that every hardware protocol field in the broader reverse-engineered documentation has been physically verified.
+
+
+## H. Sampler sample-region playback
+
+- [ ] Load/verify a sample on Pad 1 / Layer 1, stop the sampler, and confirm the displayed region initially spans the full sample.
+- [ ] Move the start forward and strike Pad 1; confirm playback begins at the edited start without modifying the source sample.
+- [ ] Move the end backward and strike Pad 1; confirm playback stops at the edited end.
+- [ ] Set both start and end so the region is very short but still valid; confirm the pad still retriggers cleanly.
+- [ ] Press Full Region and confirm the complete sample is restored.
+- [ ] Start the sampler, attempt a region change, and confirm the app rejects it with a stop-audio message without disturbing playback.
+- [ ] Select a different pad/layer and confirm its region state is independent from Pad 1 / Layer 1.
+
+The sample-region editor is a software/diagnostic slice at this stage; physical confirmation is intentionally pending.
+
+
+## I. Sampler recording threshold
+
+- [ ] Set recording threshold to Off and confirm Record starts immediately as in the existing baseline workflow.
+- [ ] Set recording threshold to 25%, start Record, remain below the threshold, and confirm the recording stays armed with zero recorded frames.
+- [ ] Cross the threshold and confirm recording starts from the threshold-crossing moment without unexpected pre-roll.
+- [ ] Stop the threshold-triggered recording and confirm the captured frame count/duration is non-zero.
+- [ ] Stop an armed threshold recording before crossing the threshold and confirm no audio was captured.
+- [ ] Reset threshold to Off and confirm the original immediate-record behavior is restored.
+
+The recording-threshold implementation is software-verified; physical microphone testing remains pending.
+
+
+## J. Sampler chopping
+
+- [ ] Load/verify a sample on Pad 1 / Layer 1 and choose Chop 4; confirm pads 1-4 trigger four distinct contiguous regions of the source.
+- [ ] Confirm the first and last chop boundaries match the selected source region and no PCM content is destructively changed.
+- [ ] Repeat with Chop 8 and confirm pads 1-8 each retrigger their own slice from the beginning.
+- [ ] Repeat with Chop 16 and confirm pads 1-16 each trigger a distinct slice.
+- [ ] Confirm changing the selected source region before chopping changes the chop span without copying the sample.
+- [ ] Confirm chopping a pad with occupied extra layers is rejected rather than silently destroying those assignments.
+
+The sampler chop implementation is software-verified; physical pad-by-pad playback and audible boundary verification remain pending.

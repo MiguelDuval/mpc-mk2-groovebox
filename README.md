@@ -20,19 +20,24 @@ The Android device is the visual/compute surface. The MPC Studio MkII is the pri
 
 - main — stable reference.
 - foundation/mpc-studio-mk2 — repository architecture/bootstrap.
-- feature/midi-transport — current hardware bring-up work.
+- feature/midi-transport — stable hardware/MIDI foundation reference.
+- feature/sampler — current sampler/audio implementation work.
 
 ## Current stage
 
-The current feature branch adds:
+The current sampler branch builds on the MIDI foundation and adds:
 
-- Android MIDI device enumeration.
-- MPC Studio MkII preference matching.
-- Preference for the controller's public MIDI port.
-- MIDI input logging.
-- Native C++ MIDI boundary.
-- Complete first-pass button/pad control map.
-- Android MIDI capability declaration.
+- PCM WAV decoding and bounded sample playback.
+- Per-pad / per-layer sample assignment with up to 8 layers.
+- Per-pad tuning, level and pan controls.
+- Bounded microphone recording into RAM.
+- Independent microphone monitoring with separate Monitor On/Off controls.
+- Assignment of the last recording to a selected pad/layer.
+- Non-destructive per-pad/layer sample regions with a small diagnostic trim editor.
+- Deterministic 4/8/16-way non-destructive chopping of a selected sample region across pads 1-N.
+- Automated native decoder/region/chop/threshold tests plus Android UI hierarchy/interaction smoke coverage.
+
+The full MPC-style sampler UI and waveform editor remain later stages; the current chop implementation is intentionally a small even-slicing foundation.
 
 ## First hardware milestone
 
