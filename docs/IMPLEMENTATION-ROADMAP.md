@@ -50,7 +50,10 @@
 - chop.
 - assign. **DONE — physically verified on Build #135 with two different WAV samples on two different physical pads.**
 - multi-layer playback.
-- pitch/envelope/filter.
+- pitch/tuning.
+- level.
+- pan.
+- envelope/filter.
 
 ## Stage 6 — Sequencer
 - record/overdub.
