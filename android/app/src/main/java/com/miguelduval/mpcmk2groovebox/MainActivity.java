@@ -66,6 +66,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeAudioStatus();
     private static native String nativeAudioStartRecording();
     private static native String nativeAudioStopRecording();
+    private static native String nativeAudioAssignRecordingToPadLayer(int pad, int layer);
     private static native String nativeAudioRecordingStatus();
 
     @Override
@@ -285,11 +286,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingStatusButton.setText("Recording Status");
         recordingStatusButton.setOnClickListener(v -> refreshRecordingStatus());
 
+        Button assignRecording = new Button(this);
+        assignRecording.setText("Assign Last Recording");
+        assignRecording.setOnClickListener(v -> {
+            status.setText(nativeAudioAssignRecordingToPadLayer(selectedPad, selectedLayer));
+            refreshRecordingStatus();
+        });
+
         recordingControls.addView(recordMicrophone, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         recordingControls.addView(stopRecording, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         recordingControls.addView(recordingStatusButton, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        recordingControls.addView(assignRecording, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         LinearLayout diagnostics = new LinearLayout(this);
@@ -554,6 +564,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Load WAV Sample",
                 "Start Sampler",
                 "Record + Monitor",
+                "Assign Last Recording",
                 "Recording: idle",
                 "Pad 1 tuning: +0.00 st",
                 "Pad 1 level: 100%",
