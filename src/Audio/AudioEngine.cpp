@@ -139,6 +139,7 @@ class AudioEngine::OutputCallback final : public oboe::AudioStreamDataCallback {
 public:
     OutputCallback(
             AudioEngine::SampleLayerGrid samples,
+            AudioEngine::SampleRegionGrid regions,
             std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence,
             std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity,
             std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones,
@@ -148,6 +149,7 @@ public:
             std::atomic<std::uint32_t>& monitorWriteSequence,
             std::atomic<bool>& monitorEnabled)
             : samples_(std::move(samples)),
+              regions_(std::move(regions)),
               triggerSequence_(triggerSequence),
               triggerVelocity_(triggerVelocity),
               tuningMilliSemitones_(tuningMilliSemitones),
@@ -207,11 +209,14 @@ public:
                 for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
                     auto& layerVoice = voice.layers[layer];
                     const auto& sample = samples_[pad][layer];
+                    const auto& region = regions_[pad][layer];
 
-                    layerVoice.position = 0.0;
+                    layerVoice.position =
+                            static_cast<double>(region.startFrame);
                     layerVoice.active = sample != nullptr
                             && sample->frameCount() > 0
-                            && sample->channelCount > 0;
+                            && sample->channelCount > 0
+                            && region.isValidFor(sample->frameCount());
                     anyLayer = anyLayer || layerVoice.active;
                 }
 
@@ -229,6 +234,7 @@ public:
                         std::pow(2.0f, tuningSemitones / 12.0f);
                 for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
                     const auto& sample = samples_[pad][layer];
+                    const auto& region = regions_[pad][layer];
                     auto& layerVoice = voice.layers[layer];
                     if (!layerVoice.active || sample == nullptr) {
                         continue;
@@ -309,13 +315,14 @@ public:
                     const std::size_t sourceFrame =
                             static_cast<std::size_t>(layerVoice.position);
 
-                    if (sourceFrame >= sample->frameCount()) {
+                    if (sourceFrame >= region.endFrame
+                            || sourceFrame >= sample->frameCount()) {
                         layerVoice.active = false;
                         continue;
                     }
 
                     const std::size_t nextFrame =
-                            std::min(sourceFrame + 1, sample->frameCount() - 1);
+                            std::min(sourceFrame + 1, region.endFrame - 1);
                     const float fraction =
                             static_cast<float>(
                                 layerVoice.position
@@ -388,6 +395,7 @@ private:
     };
 
     AudioEngine::SampleLayerGrid samples_;
+    AudioEngine::SampleRegionGrid regions_;
     std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence_;
     std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity_;
     std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones_;
@@ -557,6 +565,8 @@ std::string AudioEngine::loadSampleForPadLayer(
     }
 
     padSamples_[padIndex][layerIndex] = std::make_shared<SampleBuffer>(*decoded);
+    padSampleRegions_[padIndex][layerIndex] =
+            fullSampleRegion(padSamples_[padIndex][layerIndex]->frameCount());
     padSampleDescriptions_[padIndex][layerIndex] =
             std::to_string(padSamples_[padIndex][layerIndex]->sampleRate) + " Hz "
             + std::to_string(padSamples_[padIndex][layerIndex]->channelCount) + " ch "
@@ -566,6 +576,51 @@ std::string AudioEngine::loadSampleForPadLayer(
             + " layer " + std::to_string(static_cast<unsigned>(layerIndex + 1))
             + " sample loaded | "
             + padSampleDescriptions_[padIndex][layerIndex];
+}
+
+std::string AudioEngine::setPadSampleRegion(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex,
+        std::size_t startFrame,
+        std::size_t endFrame) {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return "Sample region change failed: invalid pad or layer";
+    }
+
+    if (stream_ != nullptr) {
+        return "Stop audio before editing sample region";
+    }
+
+    const auto& sample = padSamples_[padIndex][layerIndex];
+    if (sample == nullptr || sample->frameCount() == 0) {
+        return "Sample region change failed: no sample assigned";
+    }
+
+    if (startFrame >= endFrame || endFrame > sample->frameCount()) {
+        return "Sample region change failed: invalid frame range";
+    }
+
+    padSampleRegions_[padIndex][layerIndex] =
+            SampleRegion{startFrame, endFrame};
+
+    return "Pad "
+            + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " layer "
+            + std::to_string(static_cast<unsigned>(layerIndex + 1))
+            + " region: "
+            + std::to_string(startFrame)
+            + "-"
+            + std::to_string(endFrame);
+}
+
+SampleRegion AudioEngine::padSampleRegion(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) const {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return {};
+    }
+
+    return padSampleRegions_[padIndex][layerIndex];
 }
 
 void AudioEngine::triggerPad(
@@ -796,6 +851,8 @@ std::string AudioEngine::assignRecordingToPadLayer(
 
     padSamples_[padIndex][layerIndex] =
             std::make_shared<SampleBuffer>(std::move(recordedSample));
+    padSampleRegions_[padIndex][layerIndex] =
+            fullSampleRegion(padSamples_[padIndex][layerIndex]->frameCount());
     padSampleDescriptions_[padIndex][layerIndex] =
             std::to_string(padSamples_[padIndex][layerIndex]->sampleRate) + " Hz "
             + std::to_string(padSamples_[padIndex][layerIndex]->channelCount) + " ch "
@@ -875,6 +932,7 @@ std::string AudioEngine::start() {
     }
 
     AudioEngine::SampleLayerGrid samples{};
+    AudioEngine::SampleRegionGrid regions{};
     bool anySample = false;
 
     for (std::size_t pad = 0; pad < kPadCount; ++pad) {
@@ -882,6 +940,7 @@ std::string AudioEngine::start() {
 
         for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
             samples[pad][layer] = padSamples_[pad][layer];
+            regions[pad][layer] = padSampleRegions_[pad][layer];
             anyExplicitLayer = anyExplicitLayer
                     || (samples[pad][layer] != nullptr
                         && samples[pad][layer]->frameCount() > 0);
@@ -892,6 +951,7 @@ std::string AudioEngine::start() {
         // playback comes only from those assigned layers.
         if (!anyExplicitLayer && sample_ != nullptr) {
             samples[pad][0] = sample_;
+            regions[pad][0] = fullSampleRegion(sample_->frameCount());
         }
 
         for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
@@ -907,6 +967,7 @@ std::string AudioEngine::start() {
 
     callback_ = std::make_shared<OutputCallback>(
             std::move(samples),
+            std::move(regions),
             padTriggerSequence_,
             padTriggerVelocity_,
             padTuningMilliSemitones_,

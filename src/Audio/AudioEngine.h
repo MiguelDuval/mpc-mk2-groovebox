@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SampleRegion.h"
 #include "WavSample.h"
 
 #include <array>
@@ -32,6 +33,14 @@ public:
             std::span<const std::uint8_t> bytes,
             std::uint8_t padIndex,
             std::uint8_t layerIndex);
+    std::string setPadSampleRegion(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex,
+            std::size_t startFrame,
+            std::size_t endFrame);
+    SampleRegion padSampleRegion(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex) const;
     std::string setPadTuningSemitones(std::uint8_t padIndex, float semitones);
     float padTuningSemitones(std::uint8_t padIndex) const;
     std::string setPadLevel(std::uint8_t padIndex, float level);
@@ -66,6 +75,8 @@ private:
     using SampleLayerGrid =
             std::array<std::array<std::shared_ptr<const SampleBuffer>, kSampleLayerCount>,
                     kPadCount>;
+    using SampleRegionGrid =
+            std::array<std::array<SampleRegion, kSampleLayerCount>, kPadCount>;
 
     class OutputCallback;
     class InputCallback;
@@ -80,6 +91,7 @@ private:
     std::shared_ptr<const SampleBuffer> sample_;
     std::string sampleDescription_;
     SampleLayerGrid padSamples_{};
+    SampleRegionGrid padSampleRegions_{};
     std::array<std::array<std::string, kSampleLayerCount>, kPadCount>
             padSampleDescriptions_{};
     std::shared_ptr<OutputCallback> callback_;
