@@ -542,11 +542,8 @@ std::string AudioEngine::chopPadSampleToPads(
             }
         }
 
-        const bool isSourcePadLayerZero =
-                destinationPad == sourcePadIndex
-                && sourceLayerIndex == 0;
         const auto& existing = padSamples_[destinationPad][0];
-        if (existing != nullptr && !isSourcePadLayerZero) {
+        if (existing != nullptr && existing != sourceSample) {
             return "Chop failed: destination pad "
                     + std::to_string(destinationPad + 1)
                     + " layer 1 is already assigned";
