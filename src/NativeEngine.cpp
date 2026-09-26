@@ -299,6 +299,27 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStop(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetRecordingThreshold(
+        JNIEnv* env, jobject /* thiz */, jfloat threshold)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setRecordingThreshold(
+                    threshold));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetRecordingThreshold(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return mpc::audio::AudioEngine::instance().recordingThreshold();
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStartRecording(
         JNIEnv* env, jobject /* thiz */)
 {

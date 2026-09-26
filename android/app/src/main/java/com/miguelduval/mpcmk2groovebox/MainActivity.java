@@ -46,6 +46,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView layerStatus;
     private TextView sampleRegionStatus;
     private TextView recordingStatus;
+    private TextView recordingThresholdStatus;
     private int selectedPad = 0;
     private int selectedLayer = 0;
     private boolean uiOnlySmokeMode;
@@ -71,6 +72,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeAudioStart();
     private static native String nativeAudioStop();
     private static native String nativeAudioStatus();
+    private static native String nativeAudioSetRecordingThreshold(float threshold);
+    private static native float nativeAudioGetRecordingThreshold();
     private static native String nativeAudioStartRecording();
     private static native String nativeAudioStopRecording();
     private static native String nativeAudioStartMonitor();
@@ -315,11 +318,43 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingStatus.setText("Recording: idle");
         recordingStatus.setTextSize(13.0f);
 
+        recordingThresholdStatus = new TextView(this);
+        recordingThresholdStatus.setText("Recording threshold: Off");
+        recordingThresholdStatus.setTextSize(13.0f);
+
+        LinearLayout recordingThresholdControls = new LinearLayout(this);
+        recordingThresholdControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button thresholdOff = new Button(this);
+        thresholdOff.setText("Threshold Off");
+        thresholdOff.setOnClickListener(v -> setRecordingThreshold(0.0f));
+
+        Button threshold10 = new Button(this);
+        threshold10.setText("Threshold 10%");
+        threshold10.setOnClickListener(v -> setRecordingThreshold(0.10f));
+
+        Button threshold25 = new Button(this);
+        threshold25.setText("Threshold 25%");
+        threshold25.setOnClickListener(v -> setRecordingThreshold(0.25f));
+
+        Button threshold50 = new Button(this);
+        threshold50.setText("Threshold 50%");
+        threshold50.setOnClickListener(v -> setRecordingThreshold(0.50f));
+
+        recordingThresholdControls.addView(thresholdOff, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        recordingThresholdControls.addView(threshold10, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        recordingThresholdControls.addView(threshold25, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        recordingThresholdControls.addView(threshold50, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
         LinearLayout recordingControls = new LinearLayout(this);
         recordingControls.setOrientation(LinearLayout.HORIZONTAL);
 
         Button recordMicrophone = new Button(this);
-        recordMicrophone.setText("Record");
+                recordMicrophone.setText("Record");
         recordMicrophone.setOnClickListener(v -> startRecordingFromUi());
 
         Button stopRecording = new Button(this);
@@ -464,6 +499,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(recordingStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(recordingThresholdStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(recordingThresholdControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(recordingControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(monitorControls, new LinearLayout.LayoutParams(
@@ -504,6 +543,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
                     status.setText("Native: " + engineInfo + "\n" + sampleResult);
                     updateSampleRegionStatus();
+                    updateRecordingThresholdStatus();
                     Log.i(TAG, "MIDI_BRIDGE_BEGIN");
                     midiBridge = new AndroidMidiBridge(this, this);
                     Log.i(TAG, "MIDI_BRIDGE_END");
@@ -578,6 +618,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         status.setText(nativeAudioStartMonitor());
         refreshRecordingStatus();
+    }
+
+    private void setRecordingThreshold(float threshold) {
+        final String result = nativeAudioSetRecordingThreshold(threshold);
+        status.setText(result);
+        updateRecordingThresholdStatus();
+        refreshRecordingStatus();
+    }
+
+    private void updateRecordingThresholdStatus() {
+        final int percent = Math.round(
+                nativeAudioGetRecordingThreshold() * 100.0f);
+        if (percent <= 0) {
+            recordingThresholdStatus.setText("Recording threshold: Off");
+            return;
+        }
+
+        recordingThresholdStatus.setText(
+                "Recording threshold: " + percent + "%");
     }
 
     private void refreshRecordingStatus() {
@@ -676,6 +735,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Pad 1 sample layer: 1/8",
                 "Pad 1 layer 1 sample region: 0-" + bundledFrameCount
                         + " / " + bundledFrameCount + " frames",
+                "Recording threshold: Off",
+                "Threshold Off",
+                "Threshold 10%",
+                "Threshold 25%",
+                "Threshold 50%",
                 "Start -",
                 "Start +",
                 "End -",
@@ -708,6 +772,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void runUiInteractionSmokeCheck() {
         Log.i(TAG, "UI_INTERACTION_BEGIN");
+
+        View threshold25 = findViewWithExactText(
+                getWindow().getDecorView(), "Threshold 25%");
+        if (threshold25 == null || !threshold25.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Threshold 25%");
+            return;
+        }
+        if (!assertUiTextPresent("Recording threshold: 25%")) {
+            return;
+        }
+
+        View thresholdOff = findViewWithExactText(
+                getWindow().getDecorView(), "Threshold Off");
+        if (thresholdOff == null || !thresholdOff.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Threshold Off");
+            return;
+        }
+        if (!assertUiTextPresent("Recording threshold: Off")) {
+            return;
+        }
 
         View assignRecording = findViewWithExactText(
                 getWindow().getDecorView(), "Assign Last Recording");

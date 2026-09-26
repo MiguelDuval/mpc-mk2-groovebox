@@ -56,6 +56,8 @@ public:
 
     // Starts a bounded microphone capture buffer in RAM.
     // The capture callback writes only into preallocated storage.
+    std::string setRecordingThreshold(float threshold);
+    float recordingThreshold() const;
     std::string startRecording();
     std::string stopRecording();
     // Enables live microphone monitoring independently from recording.
@@ -109,6 +111,8 @@ private:
     std::atomic<std::uint32_t> monitorWriteSequence_{0};
     std::atomic<bool> monitorEnabled_{false};
     std::atomic<bool> recordingEnabled_{false};
+    std::atomic<bool> recordingArmed_{false};
+    std::atomic<std::int32_t> recordingThresholdMilli_{0};
 
     std::vector<float> recordedSamples_;
     std::atomic<std::uint32_t> recordedFrameCount_{0};

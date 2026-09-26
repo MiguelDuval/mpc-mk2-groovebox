@@ -1,4 +1,5 @@
 #include "AudioEngine.h"
+#include "RecordingThreshold.h"
 
 #include <algorithm>
 #include <cmath>
@@ -46,24 +47,21 @@ public:
             return oboe::DataCallbackResult::Continue;
         }
 
-        const bool recordingEnabled =
+        bool recordingEnabled =
                 owner_.recordingEnabled_.load(std::memory_order_acquire);
+        const bool recordingArmed =
+                owner_.recordingArmed_.load(std::memory_order_acquire);
+        const float recordingThreshold =
+                static_cast<float>(
+                    owner_.recordingThresholdMilli_.load(
+                        std::memory_order_relaxed))
+                / 1000.0f;
         const bool monitorEnabled =
                 owner_.monitorEnabled_.load(std::memory_order_acquire);
         const auto* input = static_cast<const float*>(audioData);
 
-        const auto recordingFrameStart =
+        auto recordingFrameCount =
                 owner_.recordedFrameCount_.load(std::memory_order_relaxed);
-        const auto framesAvailable =
-                recordingFrameStart < kMaxRecordingFrames
-                    ? kMaxRecordingFrames - recordingFrameStart
-                    : 0u;
-        const auto framesToRecord =
-                recordingEnabled
-                    ? std::min<std::uint32_t>(
-                            static_cast<std::uint32_t>(numFrames),
-                            framesAvailable)
-                    : 0u;
 
         const auto monitorFrameStart =
                 monitorEnabled
@@ -76,6 +74,7 @@ public:
                     ? owner_.recordingPeakMilli_.load(
                             std::memory_order_relaxed)
                     : 0u;
+        bool recordingOverflowed = false;
 
         for (std::uint32_t frame = 0;
                 frame < static_cast<std::uint32_t>(numFrames);
@@ -89,15 +88,32 @@ public:
             mono /= static_cast<float>(channelCount);
             mono = std::clamp(mono, -1.0f, 1.0f);
 
-            if (frame < framesToRecord) {
-                owner_.recordedSamples_[recordingFrameStart + frame] = mono;
+            if (!recordingEnabled
+                    && recordingArmed
+                    && recordingThresholdCrossed(mono, recordingThreshold)) {
+                recordingEnabled = true;
+                owner_.recordingArmed_.store(
+                        false,
+                        std::memory_order_release);
+                owner_.recordingEnabled_.store(
+                        true,
+                        std::memory_order_release);
+            }
 
-                const auto absValue =
-                        std::min(1.0f, std::abs(mono));
-                const auto samplePeakMilli =
-                        static_cast<std::uint32_t>(
-                                std::lround(absValue * 1000.0f));
-                peakMilli = std::max(peakMilli, samplePeakMilli);
+            if (recordingEnabled) {
+                if (recordingFrameCount < kMaxRecordingFrames) {
+                    owner_.recordedSamples_[recordingFrameCount] = mono;
+                    ++recordingFrameCount;
+
+                    const auto absValue =
+                            std::min(1.0f, std::abs(mono));
+                    const auto samplePeakMilli =
+                            static_cast<std::uint32_t>(
+                                    std::lround(absValue * 1000.0f));
+                    peakMilli = std::max(peakMilli, samplePeakMilli);
+                } else {
+                    recordingOverflowed = true;
+                }
             }
 
             if (monitorEnabled) {
@@ -112,10 +128,10 @@ public:
                     peakMilli,
                     std::memory_order_relaxed);
             owner_.recordedFrameCount_.store(
-                    recordingFrameStart + framesToRecord,
+                    recordingFrameCount,
                     std::memory_order_release);
 
-            if (framesToRecord < static_cast<std::uint32_t>(numFrames)) {
+            if (recordingOverflowed) {
                 owner_.recordingOverflowed_.store(
                         true,
                         std::memory_order_release);
@@ -413,6 +429,8 @@ private:
 
 AudioEngine::AudioEngine() {
     recordedSamples_.resize(kMaxRecordingFrames);
+    recordingThresholdMilli_.store(0, std::memory_order_relaxed);
+    recordingArmed_.store(false, std::memory_order_relaxed);
 
     for (std::size_t pad = 0; pad < kPadCount; ++pad) {
         padTriggerSequence_[pad].store(0, std::memory_order_relaxed);
@@ -711,8 +729,41 @@ std::string AudioEngine::stopInputStream() {
     return "Input stream stopped";
 }
 
+std::string AudioEngine::setRecordingThreshold(float threshold) {
+    if (!std::isfinite(threshold)) {
+        return "Recording threshold change failed: invalid value";
+    }
+
+    if (recordingEnabled_.load(std::memory_order_acquire)
+            || recordingArmed_.load(std::memory_order_acquire)) {
+        return "Recording threshold change failed: stop recording first";
+    }
+
+    const float clamped = std::clamp(threshold, 0.0f, 1.0f);
+    const auto milli = static_cast<std::int32_t>(
+            std::lround(clamped * 1000.0f));
+    recordingThresholdMilli_.store(
+            milli,
+            std::memory_order_release);
+
+    if (milli == 0) {
+        return "Recording threshold: Off";
+    }
+
+    return "Recording threshold: "
+            + std::to_string(milli / 10) + "%";
+}
+
+float AudioEngine::recordingThreshold() const {
+    return static_cast<float>(
+            recordingThresholdMilli_.load(
+                    std::memory_order_acquire))
+            / 1000.0f;
+}
+
 std::string AudioEngine::startRecording() {
-    if (recordingEnabled_.load(std::memory_order_acquire)) {
+    if (recordingEnabled_.load(std::memory_order_acquire)
+            || recordingArmed_.load(std::memory_order_acquire)) {
         return recordingStatus();
     }
 
@@ -724,7 +775,15 @@ std::string AudioEngine::startRecording() {
     recordingPeakMilli_.store(0, std::memory_order_relaxed);
     recordingSampleRate_.store(0, std::memory_order_relaxed);
     recordingOverflowed_.store(false, std::memory_order_relaxed);
-    recordingEnabled_.store(false, std::memory_order_release);
+    const bool thresholdEnabled =
+            recordingThresholdMilli_.load(
+                    std::memory_order_acquire) > 0;
+    recordingArmed_.store(
+            thresholdEnabled,
+            std::memory_order_release);
+    recordingEnabled_.store(
+            !thresholdEnabled,
+            std::memory_order_release);
 
     if (inputStream_ == nullptr) {
         const std::string inputResult = openInputStream();
@@ -736,12 +795,15 @@ std::string AudioEngine::startRecording() {
     recordingSampleRate_.store(
             inputStream_->getSampleRate(),
             std::memory_order_release);
-    recordingEnabled_.store(true, std::memory_order_release);
+    if (!thresholdEnabled) {
+        recordingEnabled_.store(true, std::memory_order_release);
+    }
     return recordingStatus();
 }
 
 std::string AudioEngine::stopRecording() {
     recordingEnabled_.store(false, std::memory_order_release);
+    recordingArmed_.store(false, std::memory_order_release);
 
     if (!monitorEnabled_.load(std::memory_order_acquire)
             && inputStream_ != nullptr) {
@@ -826,7 +888,8 @@ std::string AudioEngine::assignRecordingToPadLayer(
         return "Recording assign failed: invalid pad or layer";
     }
 
-    if (recordingEnabled_.load(std::memory_order_acquire)) {
+    if (recordingEnabled_.load(std::memory_order_acquire)
+            || recordingArmed_.load(std::memory_order_acquire)) {
         return "Recording assign failed: stop recording first";
     }
 
@@ -902,8 +965,17 @@ std::string AudioEngine::recordingStatus() const {
             recordingOverflowed_.load(std::memory_order_acquire);
     const bool recordingActive =
             recordingEnabled_.load(std::memory_order_acquire);
+    const bool recordingArmed =
+            recordingArmed_.load(std::memory_order_acquire);
     const bool monitorEnabled =
             monitorEnabled_.load(std::memory_order_acquire);
+    const int thresholdPercent =
+            static_cast<int>(
+                std::lround(
+                    static_cast<double>(
+                        recordingThresholdMilli_.load(
+                            std::memory_order_relaxed))
+                    / 10.0));
 
     double milliseconds = 0.0;
     if (sampleRate > 0) {
@@ -919,11 +991,17 @@ std::string AudioEngine::recordingStatus() const {
     std::string result =
             recordingActive
                 ? "Recording active"
-                : (frameCount == 0
-                    ? "Recording idle"
-                    : "Recording stopped");
+                : (recordingArmed
+                    ? "Recording armed"
+                    : (frameCount == 0
+                        ? "Recording idle"
+                        : "Recording stopped"));
 
-    result += " | rate=" + std::to_string(sampleRate) + " Hz"
+    result += " | threshold="
+            + (thresholdPercent == 0
+                ? std::string("Off")
+                : std::to_string(thresholdPercent) + "%")
+            + " | rate=" + std::to_string(sampleRate) + " Hz"
             + " | frames=" + std::to_string(frameCount)
             + " | duration=" + std::to_string(
                     static_cast<std::int64_t>(std::lround(milliseconds)))
@@ -1025,6 +1103,7 @@ std::string AudioEngine::stop() {
     const bool hadInput = inputStream_ != nullptr;
     monitorEnabled_.store(false, std::memory_order_release);
     recordingEnabled_.store(false, std::memory_order_release);
+    recordingArmed_.store(false, std::memory_order_release);
 
     const std::string inputResult =
             hadInput ? stopInputStream() : std::string();

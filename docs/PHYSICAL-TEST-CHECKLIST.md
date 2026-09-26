@@ -150,3 +150,15 @@ This record confirms the tested behavior on the physical controller for this bui
 - [ ] Select a different pad/layer and confirm its region state is independent from Pad 1 / Layer 1.
 
 The sample-region editor is a software/diagnostic slice at this stage; physical confirmation is intentionally pending.
+
+
+## I. Sampler recording threshold
+
+- [ ] Set recording threshold to Off and confirm Record starts immediately as in the existing baseline workflow.
+- [ ] Set recording threshold to 25%, start Record, remain below the threshold, and confirm the recording stays armed with zero recorded frames.
+- [ ] Cross the threshold and confirm recording starts from the threshold-crossing moment without unexpected pre-roll.
+- [ ] Stop the threshold-triggered recording and confirm the captured frame count/duration is non-zero.
+- [ ] Stop an armed threshold recording before crossing the threshold and confirm no audio was captured.
+- [ ] Reset threshold to Off and confirm the original immediate-record behavior is restored.
+
+The recording-threshold implementation is software-verified; physical microphone testing remains pending.
