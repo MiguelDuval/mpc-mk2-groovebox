@@ -162,3 +162,15 @@ The sample-region editor is a software/diagnostic slice at this stage; physical 
 - [ ] Reset threshold to Off and confirm the original immediate-record behavior is restored.
 
 The recording-threshold implementation is software-verified; physical microphone testing remains pending.
+
+
+## J. Sampler chopping
+
+- [ ] Load/verify a sample on Pad 1 / Layer 1 and choose Chop 4; confirm pads 1-4 trigger four distinct contiguous regions of the source.
+- [ ] Confirm the first and last chop boundaries match the selected source region and no PCM content is destructively changed.
+- [ ] Repeat with Chop 8 and confirm pads 1-8 each retrigger their own slice from the beginning.
+- [ ] Repeat with Chop 16 and confirm pads 1-16 each trigger a distinct slice.
+- [ ] Confirm changing the selected source region before chopping changes the chop span without copying the sample.
+- [ ] Confirm chopping a pad with occupied extra layers is rejected rather than silently destroying those assignments.
+
+The sampler chop implementation is software-verified; physical pad-by-pad playback and audible boundary verification remain pending.
