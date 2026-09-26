@@ -41,6 +41,9 @@ public:
     SampleRegion padSampleRegion(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
+    std::size_t padSampleFrameCount(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex) const;
     std::string setPadTuningSemitones(std::uint8_t padIndex, float semitones);
     float padTuningSemitones(std::uint8_t padIndex) const;
     std::string setPadLevel(std::uint8_t padIndex, float level);
