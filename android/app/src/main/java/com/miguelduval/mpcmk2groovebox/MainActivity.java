@@ -503,6 +503,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     }
 
                     status.setText("Native: " + engineInfo + "\n" + sampleResult);
+                    updateSampleRegionStatus();
                     Log.i(TAG, "MIDI_BRIDGE_BEGIN");
                     midiBridge = new AndroidMidiBridge(this, this);
                     Log.i(TAG, "MIDI_BRIDGE_END");
@@ -1203,7 +1204,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             String encoded = output.toString(StandardCharsets.UTF_8.name());
             byte[] wavBytes = Base64.decode(encoded, Base64.DEFAULT);
-            String result = nativeAudioLoadSample(wavBytes);
+            String fallbackResult = nativeAudioLoadSample(wavBytes);
+            String padLayerResult =
+                    nativeAudioLoadSampleForPadLayer(wavBytes, 0, 0);
+            String result = fallbackResult + " | " + padLayerResult;
             Log.i(TAG, "loadBundledSample:nativeResult=" + result);
             return result;
         } catch (IOException | IllegalArgumentException e) {
