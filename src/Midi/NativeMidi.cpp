@@ -97,6 +97,23 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
 
 } // namespace mpc::midi
 
+template <std::size_t Size>
+jbyteArray toJavaByteArray(
+        JNIEnv* env,
+        const std::array<std::uint8_t, Size>& bytes) {
+    auto result = env->NewByteArray(static_cast<jsize>(Size));
+    if (result == nullptr) {
+        return nullptr;
+    }
+
+    env->SetByteArrayRegion(
+        result,
+        0,
+        static_cast<jsize>(Size),
+        reinterpret_cast<const jbyte*>(bytes.data()));
+    return result;
+}
+
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeOnMidi(
         JNIEnv* env, jclass, jbyteArray data, jlong timestamp) {
@@ -126,23 +143,6 @@ Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeOnMidi(
     }
 
     return toJavaByteArray(env, *feedback);
-}
-
-template <std::size_t Size>
-jbyteArray toJavaByteArray(
-        JNIEnv* env,
-        const std::array<std::uint8_t, Size>& bytes) {
-    auto result = env->NewByteArray(static_cast<jsize>(Size));
-    if (result == nullptr) {
-        return nullptr;
-    }
-
-    env->SetByteArrayRegion(
-        result,
-        0,
-        static_cast<jsize>(Size),
-        reinterpret_cast<const jbyte*>(bytes.data()));
-    return result;
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
