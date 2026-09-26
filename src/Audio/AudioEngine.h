@@ -29,6 +29,10 @@ public:
             std::uint8_t padIndex);
     std::string setPadTuningSemitones(std::uint8_t padIndex, float semitones);
     float padTuningSemitones(std::uint8_t padIndex) const;
+    std::string setPadLevel(std::uint8_t padIndex, float level);
+    float padLevel(std::uint8_t padIndex) const;
+    std::string setPadPan(std::uint8_t padIndex, float pan);
+    float padPan(std::uint8_t padIndex) const;
     std::string start();
     std::string stop();
     std::string status() const;
@@ -51,6 +55,8 @@ private:
     std::array<std::atomic<std::uint32_t>, kPadCount> padTriggerSequence_{};
     std::array<std::atomic<std::uint32_t>, kPadCount> padTriggerVelocity_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padTuningMilliSemitones_{};
+    std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
+    std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
 };
 
 } // namespace mpc::audio
