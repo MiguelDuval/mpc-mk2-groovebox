@@ -34,9 +34,10 @@ The current sampler branch builds on the MIDI foundation and adds:
 - Independent microphone monitoring with separate Monitor On/Off controls.
 - Assignment of the last recording to a selected pad/layer.
 - Non-destructive per-pad/layer sample regions with a small diagnostic trim editor.
-- Automated native decoder/region tests plus Android UI hierarchy/interaction smoke coverage.
+- Deterministic 4/8/16-way non-destructive chopping of a selected sample region across pads 1-N.
+- Automated native decoder/region/chop/threshold tests plus Android UI hierarchy/interaction smoke coverage.
 
-The full MPC-style sampler UI, waveform editing and chop workflow are still later stages.
+The full MPC-style sampler UI and waveform editor remain later stages; the current chop implementation is intentionally a small even-slicing foundation.
 
 ## First hardware milestone
 
