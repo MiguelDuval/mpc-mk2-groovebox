@@ -70,7 +70,6 @@ public:
                         triggerVelocity_[pad].load(std::memory_order_relaxed);
 
                 auto& voice = voices_[pad];
-                voice.position = 0.0;
                 const float velocityGain =
                         static_cast<float>(
                             std::min<std::uint32_t>(velocity, 127u))
@@ -112,15 +111,16 @@ public:
                         / 1000.0f;
                 const float semitoneRatio =
                         std::pow(2.0f, tuningSemitones / 12.0f);
-                const float sampleToOutputRate =
-                        static_cast<float>(sample->sampleRate)
-                        / static_cast<float>(sampleRate);
                 for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
                     const auto& sample = samples_[pad][layer];
                     auto& layerVoice = voice.layers[layer];
                     if (!layerVoice.active || sample == nullptr) {
                         continue;
                     }
+
+                    const float sampleToOutputRate =
+                            static_cast<float>(sample->sampleRate)
+                            / static_cast<float>(sampleRate);
                     layerVoice.positionStep =
                             sampleToOutputRate * semitoneRatio;
                 }
