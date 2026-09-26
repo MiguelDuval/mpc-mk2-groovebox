@@ -8,6 +8,7 @@
 
 #include <array>
 #include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace {
@@ -34,9 +35,11 @@ const char* eventTypeName(mpc::studio::InputEventType type) {
 
 namespace mpc::midi {
 
-void handleIncoming(std::span<const std::uint8_t> message, std::int64_t /*timestamp*/) {
+std::optional<std::array<std::uint8_t, 12>> handleIncoming(
+        std::span<const std::uint8_t> message,
+        std::int64_t /*timestamp*/) {
     if (message.empty()) {
-        return;
+        return std::nullopt;
     }
 
     const auto event = mpc::studio::decodeInput(message);
@@ -47,18 +50,27 @@ void handleIncoming(std::span<const std::uint8_t> message, std::int64_t /*timest
             kTag,
             "MIDI %zu-byte message: unrecognized",
             message.size());
-        return;
+        return std::nullopt;
     }
 
-    if (event->type == mpc::studio::InputEventType::PadNote
-            && event->pressed) {
-        mpc::audio::AudioEngine::instance().triggerPad(
-            event->padIndex,
-            event->value);
+    if (event->type == mpc::studio::InputEventType::PadNote) {
+        if (event->pressed) {
+            mpc::audio::AudioEngine::instance().triggerPad(
+                event->padIndex,
+                event->value);
+        }
+
+        const std::uint8_t level = event->pressed
+                ? static_cast<std::uint8_t>(
+                        std::min<std::uint8_t>(event->value, 127u))
+                : 0u;
+
+        return mpc::studio::makePadLedSysEx(
+                event->padIndex,
+                mpc::studio::Rgb{level, level, level});
     }
 
-    if (event->type == mpc::studio::InputEventType::PadNote
-            || event->type == mpc::studio::InputEventType::Button
+    if (event->type == mpc::studio::InputEventType::Button
             || event->type == mpc::studio::InputEventType::JogPress) {
         __android_log_print(
             ANDROID_LOG_DEBUG,
@@ -70,7 +82,7 @@ void handleIncoming(std::span<const std::uint8_t> message, std::int64_t /*timest
             event->pressed ? "true" : "false",
             static_cast<unsigned>(event->channel),
             static_cast<unsigned>(event->padIndex));
-        return;
+        return std::nullopt;
     }
 
     __android_log_print(
@@ -82,33 +94,41 @@ void handleIncoming(std::span<const std::uint8_t> message, std::int64_t /*timest
         static_cast<unsigned>(event->value),
         static_cast<unsigned>(event->channel),
         static_cast<unsigned>(event->padIndex));
+
+    return std::nullopt;
 }
 
 } // namespace mpc::midi
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeOnMidi(
         JNIEnv* env, jclass, jbyteArray data, jlong timestamp) {
-    if (data == nullptr) {
-        return;
+    if (env == nullptr || data == nullptr) {
+        return nullptr;
     }
 
     const jsize length = env->GetArrayLength(data);
     if (length <= 0) {
-        return;
+        return nullptr;
     }
 
     jbyte* bytes = env->GetByteArrayElements(data, nullptr);
     if (bytes == nullptr) {
-        return;
+        return nullptr;
     }
 
     auto* raw = reinterpret_cast<const std::uint8_t*>(bytes);
-    mpc::midi::handleIncoming(
+    const auto feedback = mpc::midi::handleIncoming(
         std::span<const std::uint8_t>(raw, static_cast<std::size_t>(length)),
         static_cast<std::int64_t>(timestamp));
 
     env->ReleaseByteArrayElements(data, bytes, JNI_ABORT);
+
+    if (!feedback.has_value()) {
+        return nullptr;
+    }
+
+    return toJavaByteArray(env, *feedback);
 }
 
 template <std::size_t Size>
