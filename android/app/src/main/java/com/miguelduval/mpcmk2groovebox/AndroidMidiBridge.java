@@ -56,7 +56,7 @@ public final class AndroidMidiBridge {
 
             byte[] feedback = nativeOnMidi(message, timestamp);
             if (feedback != null && feedback.length > 0) {
-                send(feedback);
+                AndroidMidiBridge.this.send(feedback);
             }
             listener.onMidi(toHex(message));
         }
