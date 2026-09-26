@@ -10,6 +10,7 @@ namespace {
 
 constexpr std::size_t kPadCount = 16;
 constexpr std::size_t kSampleLayerCount = 8;
+constexpr std::uint32_t kMaxRecordingFrames = 960000u;
 constexpr float kPadAmplitude = 0.85f;
 
 const char* resultText(oboe::Result result) {
@@ -23,6 +24,83 @@ const char* streamStateText(oboe::StreamState state) {
 } // namespace
 
 namespace mpc::audio {
+
+class AudioEngine::InputCallback final : public oboe::AudioStreamDataCallback {
+public:
+    explicit InputCallback(AudioEngine& owner)
+            : owner_(owner) {
+    }
+
+    oboe::DataCallbackResult onAudioReady(
+            oboe::AudioStream* audioStream,
+            void* audioData,
+            int32_t numFrames) override {
+        if (audioStream == nullptr || audioData == nullptr || numFrames <= 0) {
+            return oboe::DataCallbackResult::Continue;
+        }
+
+        const int32_t channelCount = audioStream->getChannelCount();
+        if (channelCount <= 0) {
+            return oboe::DataCallbackResult::Continue;
+        }
+
+        const auto frameStart =
+                owner_.recordedFrameCount_.load(std::memory_order_relaxed);
+        if (frameStart >= kMaxRecordingFrames) {
+            owner_.recordingOverflowed_.store(true, std::memory_order_release);
+            return oboe::DataCallbackResult::Continue;
+        }
+
+        const auto framesAvailable =
+                kMaxRecordingFrames - frameStart;
+        const auto framesToWrite =
+                std::min<std::uint32_t>(
+                        static_cast<std::uint32_t>(numFrames),
+                        framesAvailable);
+        const auto* input = static_cast<const float*>(audioData);
+
+        std::uint32_t peakMilli =
+                owner_.recordingPeakMilli_.load(std::memory_order_relaxed);
+
+        for (std::uint32_t frame = 0; frame < framesToWrite; ++frame) {
+            float mono = 0.0f;
+            for (int32_t channel = 0; channel < channelCount; ++channel) {
+                mono += input[
+                        static_cast<std::size_t>(frame) * channelCount
+                        + static_cast<std::size_t>(channel)];
+            }
+            mono /= static_cast<float>(channelCount);
+            mono = std::clamp(mono, -1.0f, 1.0f);
+
+            owner_.recordedSamples_[frameStart + frame] = mono;
+
+            const auto absValue =
+                    std::min(1.0f, std::abs(mono));
+            const auto samplePeakMilli =
+                    static_cast<std::uint32_t>(
+                            std::lround(absValue * 1000.0f));
+            peakMilli = std::max(peakMilli, samplePeakMilli);
+        }
+
+        owner_.recordingPeakMilli_.store(
+                peakMilli,
+                std::memory_order_relaxed);
+        owner_.recordedFrameCount_.store(
+                frameStart + framesToWrite,
+                std::memory_order_release);
+
+        if (framesToWrite < static_cast<std::uint32_t>(numFrames)) {
+            owner_.recordingOverflowed_.store(
+                    true,
+                    std::memory_order_release);
+        }
+
+        return oboe::DataCallbackResult::Continue;
+    }
+
+private:
+    AudioEngine& owner_;
+};
 
 class AudioEngine::OutputCallback final : public oboe::AudioStreamDataCallback {
 public:
@@ -244,6 +322,8 @@ private:
 };
 
 AudioEngine::AudioEngine() {
+    recordedSamples_.resize(kMaxRecordingFrames);
+
     for (std::size_t pad = 0; pad < kPadCount; ++pad) {
         padTriggerSequence_[pad].store(0, std::memory_order_relaxed);
         padTriggerVelocity_[pad].store(0, std::memory_order_relaxed);
@@ -422,6 +502,124 @@ void AudioEngine::triggerPad(
             std::memory_order_release);
 }
 
+std::string AudioEngine::startRecording() {
+    if (inputStream_ != nullptr) {
+        return recordingStatus();
+    }
+
+    if (recordedSamples_.size() != kMaxRecordingFrames) {
+        recordedSamples_.resize(kMaxRecordingFrames);
+    }
+
+    recordedFrameCount_.store(0, std::memory_order_relaxed);
+    recordingPeakMilli_.store(0, std::memory_order_relaxed);
+    recordingSampleRate_.store(0, std::memory_order_relaxed);
+    recordingOverflowed_.store(false, std::memory_order_relaxed);
+
+    inputCallback_ = std::make_shared<InputCallback>(*this);
+
+    oboe::AudioStreamBuilder builder;
+    builder.setDirection(oboe::Direction::Input)
+        ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
+        ->setSharingMode(oboe::SharingMode::Shared)
+        ->setFormat(oboe::AudioFormat::Float)
+        ->setFormatConversionAllowed(true)
+        ->setChannelCount(1)
+        ->setChannelConversionAllowed(true)
+        ->setDataCallback(inputCallback_);
+
+    const oboe::Result openResult = builder.openStream(inputStream_);
+    if (openResult != oboe::Result::OK || inputStream_ == nullptr) {
+        inputStream_.reset();
+        inputCallback_.reset();
+        return std::string("Recording open failed: ") + resultText(openResult);
+    }
+
+    recordingSampleRate_.store(
+            inputStream_->getSampleRate(),
+            std::memory_order_release);
+
+    const oboe::Result startResult = inputStream_->start();
+    if (startResult != oboe::Result::OK) {
+        const std::string message =
+                std::string("Recording start failed: ")
+                + resultText(startResult);
+        inputStream_->close();
+        inputStream_.reset();
+        inputCallback_.reset();
+        recordingSampleRate_.store(0, std::memory_order_release);
+        return message;
+    }
+
+    return recordingStatus();
+}
+
+std::string AudioEngine::stopRecording() {
+    if (inputStream_ == nullptr) {
+        return recordingStatus();
+    }
+
+    const oboe::Result stopResult = inputStream_->stop();
+    const oboe::Result closeResult = inputStream_->close();
+
+    inputStream_.reset();
+    inputCallback_.reset();
+
+    if (stopResult != oboe::Result::OK) {
+        return std::string("Recording stop failed: ")
+                + resultText(stopResult);
+    }
+
+    if (closeResult != oboe::Result::OK) {
+        return std::string("Recording close failed: ")
+                + resultText(closeResult);
+    }
+
+    return recordingStatus();
+}
+
+std::string AudioEngine::recordingStatus() const {
+    const auto frameCount =
+            recordedFrameCount_.load(std::memory_order_acquire);
+    const auto sampleRate =
+            recordingSampleRate_.load(std::memory_order_acquire);
+    const auto peakMilli =
+            recordingPeakMilli_.load(std::memory_order_relaxed);
+    const bool overflowed =
+            recordingOverflowed_.load(std::memory_order_acquire);
+
+    double milliseconds = 0.0;
+    if (sampleRate > 0) {
+        milliseconds =
+                static_cast<double>(frameCount) * 1000.0
+                / static_cast<double>(sampleRate);
+    }
+
+    const int peakPercent =
+            static_cast<int>(std::lround(
+                    static_cast<double>(peakMilli) / 10.0));
+
+    std::string result =
+            inputStream_ != nullptr
+                ? "Recording active"
+                : (frameCount == 0
+                    ? "Recording idle"
+                    : "Recording stopped");
+
+    result += " | rate=" + std::to_string(sampleRate) + " Hz"
+            + " | frames=" + std::to_string(frameCount)
+            + " | duration=" + std::to_string(
+                    static_cast<std::int64_t>(std::lround(milliseconds)))
+            + " ms"
+            + " | peak=" + std::to_string(peakPercent) + "%";
+
+    if (overflowed) {
+        result += " | buffer full";
+    }
+
+    return result;
+}
+
 std::string AudioEngine::start() {
     if (stream_ != nullptr) {
         return status();
@@ -499,8 +697,12 @@ std::string AudioEngine::start() {
 }
 
 std::string AudioEngine::stop() {
+    const bool hadRecording = inputStream_ != nullptr;
+    const std::string recordingResult =
+            hadRecording ? stopRecording() : std::string();
+
     if (stream_ == nullptr) {
-        return "Audio stopped";
+        return hadRecording ? recordingResult : "Audio stopped";
     }
 
     const oboe::Result stopResult = stream_->stop();
@@ -515,6 +717,10 @@ std::string AudioEngine::stop() {
 
     if (closeResult != oboe::Result::OK) {
         return std::string("Audio close failed: ") + resultText(closeResult);
+    }
+
+    if (hadRecording) {
+        return std::string("Audio stopped | ") + recordingResult;
     }
 
     return "Audio stopped";
