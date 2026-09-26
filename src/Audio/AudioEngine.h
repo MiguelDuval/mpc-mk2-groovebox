@@ -27,6 +27,10 @@ public:
     std::string loadSampleForPad(
             std::span<const std::uint8_t> bytes,
             std::uint8_t padIndex);
+    std::string loadSampleForPadLayer(
+            std::span<const std::uint8_t> bytes,
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex);
     std::string setPadTuningSemitones(std::uint8_t padIndex, float semitones);
     float padTuningSemitones(std::uint8_t padIndex) const;
     std::string setPadLevel(std::uint8_t padIndex, float level);
@@ -43,13 +47,16 @@ public:
 
 private:
     static constexpr std::size_t kPadCount = 16;
+    static constexpr std::size_t kSampleLayerCount = 8;
 
     class OutputCallback;
 
     std::shared_ptr<const SampleBuffer> sample_;
     std::string sampleDescription_;
-    std::array<std::shared_ptr<const SampleBuffer>, kPadCount> padSamples_{};
-    std::array<std::string, kPadCount> padSampleDescriptions_{};
+    std::array<std::array<std::shared_ptr<const SampleBuffer>, kSampleLayerCount>, kPadCount>
+            padSamples_{};
+    std::array<std::array<std::string, kSampleLayerCount>, kPadCount>
+            padSampleDescriptions_{};
     std::shared_ptr<OutputCallback> callback_;
     std::shared_ptr<oboe::AudioStream> stream_;
     std::array<std::atomic<std::uint32_t>, kPadCount> padTriggerSequence_{};
