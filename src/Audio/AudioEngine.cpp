@@ -624,6 +624,17 @@ SampleRegion AudioEngine::padSampleRegion(
     return padSampleRegions_[padIndex][layerIndex];
 }
 
+std::size_t AudioEngine::padSampleFrameCount(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) const {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return 0;
+    }
+
+    const auto& sample = padSamples_[padIndex][layerIndex];
+    return sample != nullptr ? sample->frameCount() : 0;
+}
+
 void AudioEngine::triggerPad(
         std::uint8_t padIndex,
         std::uint8_t velocity) {
