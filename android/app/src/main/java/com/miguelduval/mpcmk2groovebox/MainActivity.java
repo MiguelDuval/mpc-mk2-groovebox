@@ -289,8 +289,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Button assignRecording = new Button(this);
         assignRecording.setText("Assign Last Recording");
         assignRecording.setOnClickListener(v -> {
-            status.setText(nativeAudioAssignRecordingToPadLayer(selectedPad, selectedLayer));
-            refreshRecordingStatus();
+            final String result =
+                    nativeAudioAssignRecordingToPadLayer(selectedPad, selectedLayer);
+            status.setText(result);
+            recordingStatus.setText(nativeAudioRecordingStatus());
         });
 
         recordingControls.addView(recordMicrophone, new LinearLayout.LayoutParams(
