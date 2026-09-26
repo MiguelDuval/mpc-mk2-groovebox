@@ -649,6 +649,76 @@ std::string AudioEngine::stopRecording() {
     return recordingStatus();
 }
 
+std::string AudioEngine::assignRecordingToPadLayer(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return "Recording assign failed: invalid pad or layer";
+    }
+
+    if (inputStream_ != nullptr) {
+        return "Recording assign failed: stop recording first";
+    }
+
+    const auto frameCount =
+            recordedFrameCount_.load(std::memory_order_acquire);
+    const auto sampleRate =
+            recordingSampleRate_.load(std::memory_order_acquire);
+
+    if (frameCount == 0u) {
+        return "Recording assign failed: no recorded audio";
+    }
+
+    if (sampleRate <= 0) {
+        return "Recording assign failed: invalid recording sample rate";
+    }
+
+    const bool restartOutput = stream_ != nullptr;
+    if (restartOutput) {
+        const std::string stopResult = stop();
+        if (stream_ != nullptr
+                || stopResult.rfind("Audio stop failed:", 0) == 0
+                || stopResult.rfind("Audio close failed:", 0) == 0) {
+            return "Recording assign failed: could not stop sampler | "
+                    + stopResult;
+        }
+    }
+
+    SampleBuffer recordedSample;
+    recordedSample.sampleRate = static_cast<std::uint32_t>(sampleRate);
+    recordedSample.channelCount = 1;
+    recordedSample.interleaved.assign(
+            recordedSamples_.begin(),
+            recordedSamples_.begin() + frameCount);
+
+    padSamples_[padIndex][layerIndex] =
+            std::make_shared<SampleBuffer>(std::move(recordedSample));
+    padSampleDescriptions_[padIndex][layerIndex] =
+            std::to_string(padSamples_[padIndex][layerIndex]->sampleRate) + " Hz "
+            + std::to_string(padSamples_[padIndex][layerIndex]->channelCount) + " ch "
+            + std::to_string(padSamples_[padIndex][layerIndex]->frameCount())
+            + " frames (recording)";
+
+    const std::string assigned =
+            "Recording assigned | pad "
+            + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " layer "
+            + std::to_string(static_cast<unsigned>(layerIndex + 1))
+            + " | "
+            + padSampleDescriptions_[padIndex][layerIndex];
+
+    if (!restartOutput) {
+        return assigned;
+    }
+
+    const std::string startResult = start();
+    if (stream_ == nullptr) {
+        return assigned + " | sampler restart failed | " + startResult;
+    }
+
+    return assigned + " | sampler restarted";
+}
+
 std::string AudioEngine::recordingStatus() const {
     const auto frameCount =
             recordedFrameCount_.load(std::memory_order_acquire);

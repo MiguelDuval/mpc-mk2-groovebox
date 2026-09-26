@@ -46,6 +46,11 @@ public:
     // The capture callback writes only into preallocated storage.
     std::string startRecording();
     std::string stopRecording();
+    // Promotes the last stopped RAM recording into the selected pad/layer.
+    // The operation is control-thread only; realtime callbacks never resize/copy this buffer.
+    std::string assignRecordingToPadLayer(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex);
     std::string recordingStatus() const;
 
     // Queues a single-shot musical trigger for one physical MPC pad.
