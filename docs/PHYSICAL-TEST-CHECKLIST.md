@@ -64,6 +64,17 @@ These feedback checks are UNCONFIRMED until performed on the actual MPC Studio M
 
 These tuning checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
 
+## G. Sampler level and pan
+
+- [ ] With pad 1 at 100% level and center pan, confirm its baseline playback level and stereo position.
+- [ ] Set pad 1 level to 90%, strike it repeatedly, and confirm the playback level is reduced without changing pitch.
+- [ ] Set pad 1 pan to L100, strike it with a stereo-capable sample, and confirm output is left-only.
+- [ ] Set pad 1 pan to R100, strike it with a stereo-capable sample, and confirm output is right-only.
+- [ ] Reset pad 1 to center pan and 100% level and confirm the baseline returns.
+- [ ] Select pad 2 and confirm changing pad 1 level/pan does not change pad 2 settings.
+
+These level/pan checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
+
 ## Evidence
 
 For each failed test, capture:
