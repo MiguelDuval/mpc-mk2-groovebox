@@ -63,6 +63,7 @@ private:
     class InputCallback;
 
     static constexpr std::size_t kMaxRecordingFrames = 960000;
+    static constexpr std::size_t kMonitorBufferFrames = 8192;
 
     std::shared_ptr<const SampleBuffer> sample_;
     std::string sampleDescription_;
@@ -76,6 +77,10 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount> padTuningMilliSemitones_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
+
+    std::array<float, kMonitorBufferFrames> monitorSamples_{};
+    std::atomic<std::uint32_t> monitorWriteSequence_{0};
+    std::atomic<bool> monitorEnabled_{false};
 
     std::vector<float> recordedSamples_;
     std::atomic<std::uint32_t> recordedFrameCount_{0};
