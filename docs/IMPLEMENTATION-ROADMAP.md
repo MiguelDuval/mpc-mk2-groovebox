@@ -43,12 +43,12 @@
 - Q-Link.
 
 ## Stage 5 — Sampler
-- record. **SOFTWARE SLICE IMPLEMENTED — bounded microphone capture in RAM through a dedicated Oboe input stream; physical verification pending.**
-- monitor.
+- record. **SOFTWARE SLICE IMPLEMENTED — bounded microphone capture in RAM through a dedicated Oboe input stream; physical recording verification pending.**
+- monitor. **SOFTWARE SLICE IMPLEMENTED — bounded lock-free RAM monitor path feeding the low-latency output stream; physical verification pending.**
 - threshold.
 - trim.
 - chop.
-- assign. **DONE — physically verified on Build #135 with two different WAV samples on two different physical pads.**
+- assign. **DONE for imported WAVs; physically verified on Build #135 with two different WAV samples on two different physical pads. RECORDED-AUDIO ASSIGNMENT SOFTWARE SLICE IMPLEMENTED — the last stopped microphone recording can be promoted into a selected pad/layer; physical verification pending.**
 - multi-layer playback. **SOFTWARE SLICE IMPLEMENTED — 8 layers per pad; physical/audio verification pending.**
 - pitch/tuning.
 - level.

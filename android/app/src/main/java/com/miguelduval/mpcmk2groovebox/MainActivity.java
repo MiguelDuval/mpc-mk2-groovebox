@@ -598,6 +598,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void runUiInteractionSmokeCheck() {
         Log.i(TAG, "UI_INTERACTION_BEGIN");
 
+        View assignRecording = findViewWithExactText(
+                getWindow().getDecorView(), "Assign Last Recording");
+        if (assignRecording == null || !assignRecording.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Assign Last Recording");
+            return;
+        }
+        if (!assertUiTextPresent("Recording assign failed: no recorded audio")) {
+            return;
+        }
+        Log.i(TAG, "UI_RECORDING_ASSIGN_EMPTY_COMPLETE");
+
         View padTwo = findViewWithExactText(getWindow().getDecorView(), "2");
         if (padTwo == null || !padTwo.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: could not click pad 2");

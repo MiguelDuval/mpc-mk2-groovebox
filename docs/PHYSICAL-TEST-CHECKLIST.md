@@ -75,6 +75,17 @@ These tuning checks are intentionally UNCONFIRMED until performed on the actual 
 
 These level/pan checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
 
+## G. Sampler recording assignment
+
+- [ ] Start Record + Monitor, record a short sound, and confirm live microphone monitoring is audible without stopping the sampler.
+- [ ] Stop Recording and confirm the status reports a non-zero frame count and duration.
+- [ ] Press Assign Last Recording with the selected pad/layer and confirm the assignment succeeds.
+- [ ] Strike the assigned physical pad and confirm the recorded sound plays back.
+- [ ] Repeat the assignment to a different pad or layer and confirm the original pad/layer remains unchanged.
+- [ ] Press Assign Last Recording before any recording exists and confirm the UI reports `Recording assign failed: no recorded audio` without crashing or altering the existing samples.
+
+These recording checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio path.
+
 ## H. Sampler multi-layer playback
 
 - [ ] Load a sample into pad 1 layer 1, start the sampler, and confirm it plays from the physical pad.
