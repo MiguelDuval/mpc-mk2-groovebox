@@ -75,6 +75,17 @@ These tuning checks are intentionally UNCONFIRMED until performed on the actual 
 
 These level/pan checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
 
+## H. Sampler multi-layer playback
+
+- [ ] Load a sample into pad 1 layer 1, start the sampler, and confirm it plays from the physical pad.
+- [ ] Load a different sample into pad 1 layer 2 and confirm one pad strike audibly triggers both assigned layers together.
+- [ ] Confirm layer 1 and layer 2 each restart from their own sample beginning on a new pad strike.
+- [ ] Confirm changing the selected layer does not change the physical pad selection.
+- [ ] Confirm the 8-layer selection clamps at layer 1 and layer 8.
+- [ ] Confirm a pad with no explicit layer assignment still uses the bundled fallback sample.
+
+These multi-layer checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
+
 ## Evidence
 
 For each failed test, capture:
