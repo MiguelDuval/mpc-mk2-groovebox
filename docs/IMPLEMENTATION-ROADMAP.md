@@ -43,7 +43,7 @@
 - Q-Link.
 
 ## Stage 5 — Sampler
-- record.
+- record. **SOFTWARE SLICE IMPLEMENTED — bounded microphone capture in RAM through a dedicated Oboe input stream; physical verification pending.**
 - monitor.
 - threshold.
 - trim.
