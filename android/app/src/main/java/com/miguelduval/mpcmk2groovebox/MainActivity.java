@@ -556,10 +556,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         View layerDown = findViewWithExactText(getWindow().getDecorView(), "Layer -");
-        if (layerDown == null || !layerDown.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer -");
+        if (layerDown == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not find Layer -");
             return;
         }
+
+        for (int index = 0; index < 7; ++index) {
+            if (!layerDown.performClick()) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer - at lower-range step " + index);
+                return;
+            }
+        }
+
+        if (!assertUiTextPresent("Pad 2 sample layer: 1/8")) {
+            return;
+        }
+
+        if (!layerDown.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer - at lower clamp");
+            return;
+        }
+
         if (!assertUiTextPresent("Pad 2 sample layer: 1/8")) {
             return;
         }
