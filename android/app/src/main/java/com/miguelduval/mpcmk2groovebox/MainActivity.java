@@ -39,7 +39,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView tuningStatus;
     private TextView levelStatus;
     private TextView panStatus;
+    private TextView layerStatus;
     private int selectedPad = 0;
+    private int selectedLayer = 0;
     private boolean uiOnlySmokeMode;
     private boolean uiAuditSmokeMode;
     private volatile boolean destroyed;
@@ -48,6 +50,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeEngineInfo();
     private static native String nativeAudioLoadSample(byte[] data);
     private static native String nativeAudioLoadSampleForPad(byte[] data, int pad);
+    private static native String nativeAudioLoadSampleForPadLayer(byte[] data, int pad, int layer);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
     private static native String nativeAudioSetPadLevel(int pad, float level);
@@ -184,6 +187,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         panControls.addView(panRight, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
+        layerStatus = new TextView(this);
+        layerStatus.setText("Pad 1 sample layer: 1/8");
+        layerStatus.setTextSize(13.0f);
+
+        LinearLayout layerControls = new LinearLayout(this);
+        layerControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button layerDown = new Button(this);
+        layerDown.setText("Layer -");
+        layerDown.setOnClickListener(v -> adjustSelectedLayer(-1));
+
+        Button layerUp = new Button(this);
+        layerUp.setText("Layer +");
+        layerUp.setOnClickListener(v -> adjustSelectedLayer(1));
+
+        layerControls.addView(layerDown, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        layerControls.addView(layerUp, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
         LinearLayout padGrid = new LinearLayout(this);
         padGrid.setOrientation(LinearLayout.VERTICAL);
 
@@ -313,6 +336,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(panControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(layerStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(layerControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(padGrid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(audioControls, new LinearLayout.LayoutParams(
@@ -387,7 +414,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             nativeAudioStop();
 
             final String result =
-                    nativeAudioLoadSampleForPad(wavBytes, selectedPad);
+                    nativeAudioLoadSampleForPadLayer(wavBytes, selectedPad, selectedLayer);
             status.setText(result);
         } catch (IOException | IllegalArgumentException e) {
             status.setText(
@@ -447,7 +474,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Start Sampler",
                 "Pad 1 tuning: +0.00 st",
                 "Pad 1 level: 100%",
-                "Pad 1 pan: C"
+                "Pad 1 pan: C",
+                "Pad 1 sample layer: 1/8"
         };
 
         View root = getWindow().getDecorView();
@@ -492,6 +520,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (!assertUiTextPresent("Pad 2 pan: C")) {
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 sample layer: 1/8")) {
+            return;
+        }
+
+        View layerUp = findViewWithExactText(getWindow().getDecorView(), "Layer +");
+        if (layerUp == null || !layerUp.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer +");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 sample layer: 2/8")) {
+            return;
+        }
+
+        View layerDown = findViewWithExactText(getWindow().getDecorView(), "Layer -");
+        if (layerDown == null || !layerDown.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer -");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 sample layer: 1/8")) {
             return;
         }
 
@@ -606,6 +655,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!assertUiTextPresent("Pad 1 pan: C")) {
             return;
         }
+        if (!assertUiTextPresent("Pad 1 sample layer: 1/8")) {
+            return;
+        }
 
         Log.i(TAG, "UI_INTERACTION_COMPLETE");
     }
@@ -659,6 +711,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         selectedPad = pad;
         selectedPadStatus.setText("Sample target pad: " + (pad + 1));
         updatePadToneStatus();
+        updateLayerStatus();
     }
 
     private void adjustSelectedPadTuning(float delta) {
@@ -722,6 +775,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         updateTuningStatus();
         updateLevelStatus();
         updatePanStatus();
+    }
+
+    private void adjustSelectedLayer(int delta) {
+        selectedLayer = Math.max(0, Math.min(7, selectedLayer + delta));
+        updateLayerStatus();
+    }
+
+    private void updateLayerStatus() {
+        layerStatus.setText("Pad " + (selectedPad + 1)
+                + " sample layer: " + (selectedLayer + 1) + "/8");
     }
 
     private void openWavPicker() {
