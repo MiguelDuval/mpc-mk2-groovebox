@@ -46,25 +46,40 @@ public:
             return oboe::DataCallbackResult::Continue;
         }
 
-        const auto frameStart =
-                owner_.recordedFrameCount_.load(std::memory_order_relaxed);
-        if (frameStart >= kMaxRecordingFrames) {
-            owner_.recordingOverflowed_.store(true, std::memory_order_release);
-            return oboe::DataCallbackResult::Continue;
-        }
-
-        const auto framesAvailable =
-                kMaxRecordingFrames - frameStart;
-        const auto framesToWrite =
-                std::min<std::uint32_t>(
-                        static_cast<std::uint32_t>(numFrames),
-                        framesAvailable);
+        const bool recordingEnabled =
+                owner_.recordingEnabled_.load(std::memory_order_acquire);
+        const bool monitorEnabled =
+                owner_.monitorEnabled_.load(std::memory_order_acquire);
         const auto* input = static_cast<const float*>(audioData);
 
-        std::uint32_t peakMilli =
-                owner_.recordingPeakMilli_.load(std::memory_order_relaxed);
+        const auto recordingFrameStart =
+                owner_.recordedFrameCount_.load(std::memory_order_relaxed);
+        const auto framesAvailable =
+                recordingFrameStart < kMaxRecordingFrames
+                    ? kMaxRecordingFrames - recordingFrameStart
+                    : 0u;
+        const auto framesToRecord =
+                recordingEnabled
+                    ? std::min<std::uint32_t>(
+                            static_cast<std::uint32_t>(numFrames),
+                            framesAvailable)
+                    : 0u;
 
-        for (std::uint32_t frame = 0; frame < framesToWrite; ++frame) {
+        const auto monitorFrameStart =
+                monitorEnabled
+                    ? owner_.monitorWriteSequence_.load(
+                            std::memory_order_relaxed)
+                    : 0u;
+
+        std::uint32_t peakMilli =
+                recordingEnabled
+                    ? owner_.recordingPeakMilli_.load(
+                            std::memory_order_relaxed)
+                    : 0u;
+
+        for (std::uint32_t frame = 0;
+                frame < static_cast<std::uint32_t>(numFrames);
+                ++frame) {
             float mono = 0.0f;
             for (int32_t channel = 0; channel < channelCount; ++channel) {
                 mono += input[
@@ -74,33 +89,42 @@ public:
             mono /= static_cast<float>(channelCount);
             mono = std::clamp(mono, -1.0f, 1.0f);
 
-            owner_.recordedSamples_[frameStart + frame] = mono;
+            if (frame < framesToRecord) {
+                owner_.recordedSamples_[recordingFrameStart + frame] = mono;
 
-            const auto monitorIndex =
-                    (frameStart + frame) % kMonitorBufferFrames;
-            owner_.monitorSamples_[monitorIndex] = mono;
+                const auto absValue =
+                        std::min(1.0f, std::abs(mono));
+                const auto samplePeakMilli =
+                        static_cast<std::uint32_t>(
+                                std::lround(absValue * 1000.0f));
+                peakMilli = std::max(peakMilli, samplePeakMilli);
+            }
 
-            const auto absValue =
-                    std::min(1.0f, std::abs(mono));
-            const auto samplePeakMilli =
-                    static_cast<std::uint32_t>(
-                            std::lround(absValue * 1000.0f));
-            peakMilli = std::max(peakMilli, samplePeakMilli);
+            if (monitorEnabled) {
+                const auto monitorIndex =
+                        (monitorFrameStart + frame) % kMonitorBufferFrames;
+                owner_.monitorSamples_[monitorIndex] = mono;
+            }
         }
 
-        owner_.recordingPeakMilli_.store(
-                peakMilli,
-                std::memory_order_relaxed);
-        owner_.monitorWriteSequence_.store(
-                frameStart + framesToWrite,
-                std::memory_order_release);
-        owner_.recordedFrameCount_.store(
-                frameStart + framesToWrite,
-                std::memory_order_release);
+        if (recordingEnabled) {
+            owner_.recordingPeakMilli_.store(
+                    peakMilli,
+                    std::memory_order_relaxed);
+            owner_.recordedFrameCount_.store(
+                    recordingFrameStart + framesToRecord,
+                    std::memory_order_release);
 
-        if (framesToWrite < static_cast<std::uint32_t>(numFrames)) {
-            owner_.recordingOverflowed_.store(
-                    true,
+            if (framesToRecord < static_cast<std::uint32_t>(numFrames)) {
+                owner_.recordingOverflowed_.store(
+                        true,
+                        std::memory_order_release);
+            }
+        }
+
+        if (monitorEnabled) {
+            owner_.monitorWriteSequence_.store(
+                    monitorFrameStart + static_cast<std::uint32_t>(numFrames),
                     std::memory_order_release);
         }
 
@@ -559,28 +583,9 @@ void AudioEngine::triggerPad(
             std::memory_order_release);
 }
 
-std::string AudioEngine::startRecording() {
+std::string AudioEngine::openInputStream() {
     if (inputStream_ != nullptr) {
-        return recordingStatus();
-    }
-
-    if (recordedSamples_.size() != kMaxRecordingFrames) {
-        recordedSamples_.resize(kMaxRecordingFrames);
-    }
-
-    recordedFrameCount_.store(0, std::memory_order_relaxed);
-    recordingPeakMilli_.store(0, std::memory_order_relaxed);
-    recordingSampleRate_.store(0, std::memory_order_relaxed);
-    recordingOverflowed_.store(false, std::memory_order_relaxed);
-    monitorWriteSequence_.store(0, std::memory_order_relaxed);
-    monitorEnabled_.store(false, std::memory_order_relaxed);
-
-    if (stream_ == nullptr) {
-        const std::string outputResult = start();
-        if (stream_ == nullptr) {
-            return "Recording start failed: monitor output unavailable | "
-                    + outputResult;
-        }
+        return "Input stream already active";
     }
 
     inputCallback_ = std::make_shared<InputCallback>(*this);
@@ -600,34 +605,26 @@ std::string AudioEngine::startRecording() {
     if (openResult != oboe::Result::OK || inputStream_ == nullptr) {
         inputStream_.reset();
         inputCallback_.reset();
-        return std::string("Recording open failed: ") + resultText(openResult);
+        return std::string("microphone open failed: ") + resultText(openResult);
     }
-
-    recordingSampleRate_.store(
-            inputStream_->getSampleRate(),
-            std::memory_order_release);
 
     const oboe::Result startResult = inputStream_->start();
     if (startResult != oboe::Result::OK) {
         const std::string message =
-                std::string("Recording start failed: ")
+                std::string("microphone start failed: ")
                 + resultText(startResult);
         inputStream_->close();
         inputStream_.reset();
         inputCallback_.reset();
-        recordingSampleRate_.store(0, std::memory_order_release);
         return message;
     }
 
-    monitorEnabled_.store(true, std::memory_order_release);
-    return recordingStatus();
+    return "Input stream active";
 }
 
-std::string AudioEngine::stopRecording() {
-    monitorEnabled_.store(false, std::memory_order_release);
-
+std::string AudioEngine::stopInputStream() {
     if (inputStream_ == nullptr) {
-        return recordingStatus();
+        return "Input stream already stopped";
     }
 
     const oboe::Result stopResult = inputStream_->stop();
@@ -637,16 +634,122 @@ std::string AudioEngine::stopRecording() {
     inputCallback_.reset();
 
     if (stopResult != oboe::Result::OK) {
-        return std::string("Recording stop failed: ")
-                + resultText(stopResult);
+        return std::string("Input stop failed: ") + resultText(stopResult);
     }
 
     if (closeResult != oboe::Result::OK) {
-        return std::string("Recording close failed: ")
-                + resultText(closeResult);
+        return std::string("Input close failed: ") + resultText(closeResult);
+    }
+
+    return "Input stream stopped";
+}
+
+std::string AudioEngine::startRecording() {
+    if (recordingEnabled_.load(std::memory_order_acquire)) {
+        return recordingStatus();
+    }
+
+    if (recordedSamples_.size() != kMaxRecordingFrames) {
+        recordedSamples_.resize(kMaxRecordingFrames);
+    }
+
+    recordedFrameCount_.store(0, std::memory_order_relaxed);
+    recordingPeakMilli_.store(0, std::memory_order_relaxed);
+    recordingSampleRate_.store(0, std::memory_order_relaxed);
+    recordingOverflowed_.store(false, std::memory_order_relaxed);
+    recordingEnabled_.store(false, std::memory_order_release);
+
+    if (inputStream_ == nullptr) {
+        const std::string inputResult = openInputStream();
+        if (inputStream_ == nullptr) {
+            return "Recording start failed: " + inputResult;
+        }
+    }
+
+    recordingSampleRate_.store(
+            inputStream_->getSampleRate(),
+            std::memory_order_release);
+    recordingEnabled_.store(true, std::memory_order_release);
+    return recordingStatus();
+}
+
+std::string AudioEngine::stopRecording() {
+    recordingEnabled_.store(false, std::memory_order_release);
+
+    if (!monitorEnabled_.load(std::memory_order_acquire)
+            && inputStream_ != nullptr) {
+        const std::string inputResult = stopInputStream();
+        if (inputStream_ != nullptr) {
+            return "Recording stop failed: " + inputResult;
+        }
     }
 
     return recordingStatus();
+}
+
+std::string AudioEngine::startMonitor() {
+    if (monitorEnabled_.load(std::memory_order_acquire)) {
+        return recordingStatus();
+    }
+
+    bool startedOutput = false;
+    if (stream_ == nullptr) {
+        const std::string outputResult = start();
+        if (stream_ == nullptr) {
+            return "Monitor start failed: sampler output unavailable | "
+                    + outputResult;
+        }
+        startedOutput = true;
+    }
+
+    if (inputStream_ == nullptr) {
+        const std::string inputResult = openInputStream();
+        if (inputStream_ == nullptr) {
+            if (startedOutput) {
+                stopOutputStream();
+            }
+            return "Monitor start failed: " + inputResult;
+        }
+    }
+
+    monitorEnabled_.store(true, std::memory_order_release);
+    return recordingStatus();
+}
+
+std::string AudioEngine::stopMonitor() {
+    monitorEnabled_.store(false, std::memory_order_release);
+
+    if (!recordingEnabled_.load(std::memory_order_acquire)
+            && inputStream_ != nullptr) {
+        const std::string inputResult = stopInputStream();
+        if (inputStream_ != nullptr) {
+            return "Monitor stop failed: " + inputResult;
+        }
+    }
+
+    return recordingStatus();
+}
+
+std::string AudioEngine::stopOutputStream() {
+    if (stream_ == nullptr) {
+        return "Audio output already stopped";
+    }
+
+    const oboe::Result stopResult = stream_->stop();
+    const oboe::Result closeResult = stream_->close();
+
+    stream_.reset();
+    callback_.reset();
+
+    if (stopResult != oboe::Result::OK) {
+        return std::string("Audio stop failed: ") + resultText(stopResult);
+    }
+
+    if (closeResult != oboe::Result::OK) {
+        return std::string("Audio close failed: ") + resultText(closeResult);
+    }
+
+    return "Audio output stopped";
 }
 
 std::string AudioEngine::assignRecordingToPadLayer(
@@ -656,7 +759,7 @@ std::string AudioEngine::assignRecordingToPadLayer(
         return "Recording assign failed: invalid pad or layer";
     }
 
-    if (inputStream_ != nullptr) {
+    if (recordingEnabled_.load(std::memory_order_acquire)) {
         return "Recording assign failed: stop recording first";
     }
 
@@ -675,7 +778,7 @@ std::string AudioEngine::assignRecordingToPadLayer(
 
     const bool restartOutput = stream_ != nullptr;
     if (restartOutput) {
-        const std::string stopResult = stop();
+        const std::string stopResult = stopOutputStream();
         if (stream_ != nullptr
                 || stopResult.rfind("Audio stop failed:", 0) == 0
                 || stopResult.rfind("Audio close failed:", 0) == 0) {
@@ -728,6 +831,10 @@ std::string AudioEngine::recordingStatus() const {
             recordingPeakMilli_.load(std::memory_order_relaxed);
     const bool overflowed =
             recordingOverflowed_.load(std::memory_order_acquire);
+    const bool recordingActive =
+            recordingEnabled_.load(std::memory_order_acquire);
+    const bool monitorEnabled =
+            monitorEnabled_.load(std::memory_order_acquire);
 
     double milliseconds = 0.0;
     if (sampleRate > 0) {
@@ -741,7 +848,7 @@ std::string AudioEngine::recordingStatus() const {
                     static_cast<double>(peakMilli) / 10.0));
 
     std::string result =
-            inputStream_ != nullptr
+            recordingActive
                 ? "Recording active"
                 : (frameCount == 0
                     ? "Recording idle"
@@ -753,7 +860,7 @@ std::string AudioEngine::recordingStatus() const {
                     static_cast<std::int64_t>(std::lround(milliseconds)))
             + " ms"
             + " | peak=" + std::to_string(peakPercent) + "%"
-            + (inputStream_ != nullptr ? " | monitor=on" : " | monitor=off");
+            + (monitorEnabled ? " | monitor=on" : " | monitor=off");
 
     if (overflowed) {
         result += " | buffer full";
@@ -842,30 +949,26 @@ std::string AudioEngine::start() {
 }
 
 std::string AudioEngine::stop() {
-    const bool hadRecording = inputStream_ != nullptr;
-    const std::string recordingResult =
-            hadRecording ? stopRecording() : std::string();
+    const bool hadInput = inputStream_ != nullptr;
+    monitorEnabled_.store(false, std::memory_order_release);
+    recordingEnabled_.store(false, std::memory_order_release);
 
-    if (stream_ == nullptr) {
-        return hadRecording ? recordingResult : "Audio stopped";
+    const std::string inputResult =
+            hadInput ? stopInputStream() : std::string();
+    const std::string outputResult = stopOutputStream();
+
+    if (outputResult.rfind("Audio stop failed:", 0) == 0
+            || outputResult.rfind("Audio close failed:", 0) == 0) {
+        return outputResult;
     }
 
-    const oboe::Result stopResult = stream_->stop();
-    const oboe::Result closeResult = stream_->close();
-
-    stream_.reset();
-    callback_.reset();
-
-    if (stopResult != oboe::Result::OK) {
-        return std::string("Audio stop failed: ") + resultText(stopResult);
+    if (inputResult.rfind("Input stop failed:", 0) == 0
+            || inputResult.rfind("Input close failed:", 0) == 0) {
+        return inputResult;
     }
 
-    if (closeResult != oboe::Result::OK) {
-        return std::string("Audio close failed: ") + resultText(closeResult);
-    }
-
-    if (hadRecording) {
-        return std::string("Audio stopped | ") + recordingResult;
+    if (hadInput) {
+        return std::string("Audio stopped | ") + recordingStatus();
     }
 
     return "Audio stopped";

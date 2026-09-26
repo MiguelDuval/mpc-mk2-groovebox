@@ -27,6 +27,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final String TAG = "MpcGroovebox";
     private static final int REQUEST_OPEN_WAV = 1001;
     private static final int REQUEST_RECORD_AUDIO = 1002;
+    private static final int REQUEST_MONITOR_AUDIO = 1003;
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
     private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
 
@@ -66,6 +67,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeAudioStatus();
     private static native String nativeAudioStartRecording();
     private static native String nativeAudioStopRecording();
+    private static native String nativeAudioStartMonitor();
+    private static native String nativeAudioStopMonitor();
     private static native String nativeAudioAssignRecordingToPadLayer(int pad, int layer);
     private static native String nativeAudioRecordingStatus();
 
@@ -272,7 +275,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingControls.setOrientation(LinearLayout.HORIZONTAL);
 
         Button recordMicrophone = new Button(this);
-        recordMicrophone.setText("Record + Monitor");
+        recordMicrophone.setText("Record");
         recordMicrophone.setOnClickListener(v -> startRecordingFromUi());
 
         Button stopRecording = new Button(this);
@@ -286,6 +289,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingStatusButton.setText("Recording Status");
         recordingStatusButton.setOnClickListener(v -> refreshRecordingStatus());
 
+        recordingControls.addView(recordMicrophone, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        recordingControls.addView(stopRecording, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        recordingControls.addView(recordingStatusButton, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        LinearLayout monitorControls = new LinearLayout(this);
+        monitorControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button monitorOn = new Button(this);
+        monitorOn.setText("Monitor On");
+        monitorOn.setOnClickListener(v -> startMonitorFromUi());
+
+        Button monitorOff = new Button(this);
+        monitorOff.setText("Monitor Off");
+        monitorOff.setOnClickListener(v -> {
+            status.setText(nativeAudioStopMonitor());
+            refreshRecordingStatus();
+        });
+
         Button assignRecording = new Button(this);
         assignRecording.setText("Assign Last Recording");
         assignRecording.setOnClickListener(v -> {
@@ -295,13 +319,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             recordingStatus.setText(nativeAudioRecordingStatus());
         });
 
-        recordingControls.addView(recordMicrophone, new LinearLayout.LayoutParams(
+        monitorControls.addView(monitorOn, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        recordingControls.addView(stopRecording, new LinearLayout.LayoutParams(
+        monitorControls.addView(monitorOff, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        recordingControls.addView(recordingStatusButton, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        recordingControls.addView(assignRecording, new LinearLayout.LayoutParams(
+        monitorControls.addView(assignRecording, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         LinearLayout diagnostics = new LinearLayout(this);
@@ -395,6 +417,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         root.addView(recordingStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(recordingControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(monitorControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(diagnostics, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -492,6 +516,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshRecordingStatus();
     }
 
+    private void startMonitorFromUi() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                    new String[] {Manifest.permission.RECORD_AUDIO},
+                    REQUEST_MONITOR_AUDIO);
+            status.setText("Microphone permission requested for monitor");
+            return;
+        }
+
+        status.setText(nativeAudioStartMonitor());
+        refreshRecordingStatus();
+    }
+
     private void refreshRecordingStatus() {
         final String result = nativeAudioRecordingStatus();
         recordingStatus.setText(result);
@@ -505,17 +543,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (requestCode != REQUEST_RECORD_AUDIO) {
+        if (requestCode == REQUEST_RECORD_AUDIO) {
+            if (grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                status.setText(nativeAudioStartRecording());
+                refreshRecordingStatus();
+            } else {
+                status.setText("Microphone permission denied");
+                recordingStatus.setText("Recording: permission denied");
+            }
             return;
         }
 
-        if (grantResults.length > 0
-                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            status.setText(nativeAudioStartRecording());
-            refreshRecordingStatus();
-        } else {
-            status.setText("Microphone permission denied");
-            recordingStatus.setText("Recording: permission denied");
+        if (requestCode == REQUEST_MONITOR_AUDIO) {
+            if (grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                status.setText(nativeAudioStartMonitor());
+                refreshRecordingStatus();
+            } else {
+                status.setText("Microphone permission denied for monitor");
+                recordingStatus.setText("Monitor: permission denied");
+            }
         }
     }
 
@@ -565,7 +613,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Connect MPC Studio MkII",
                 "Load WAV Sample",
                 "Start Sampler",
-                "Record + Monitor",
+                "Record",
+                "Monitor On",
+                "Monitor Off",
                 "Assign Last Recording",
                 "Recording: idle",
                 "Pad 1 tuning: +0.00 st",

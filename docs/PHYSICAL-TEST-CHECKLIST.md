@@ -75,16 +75,20 @@ These tuning checks are intentionally UNCONFIRMED until performed on the actual 
 
 These level/pan checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
 
-## G. Sampler recording assignment
+## G. Sampler recording and monitor
 
-- [ ] Start Record + Monitor, record a short sound, and confirm live microphone monitoring is audible without stopping the sampler.
-- [ ] Stop Recording and confirm the status reports a non-zero frame count and duration.
-- [ ] Press Assign Last Recording with the selected pad/layer and confirm the assignment succeeds.
-- [ ] Strike the assigned physical pad and confirm the recorded sound plays back.
-- [ ] Repeat the assignment to a different pad or layer and confirm the original pad/layer remains unchanged.
-- [ ] Press Assign Last Recording before any recording exists and confirm the UI reports `Recording assign failed: no recorded audio` without crashing or altering the existing samples.
+- [x] Start Record with Monitor On, record a short sound, and confirm live microphone monitoring is audible without stopping the sampler. **Verified on the physical MPC Studio MkII using headphones; speaker playback caused acoustic feedback, so the test was completed in headphones.**
+- [x] Stop Recording and confirm the status reports a non-zero frame count and duration.
+- [x] Press Assign Last Recording with the selected pad/layer and confirm the assignment succeeds.
+- [x] Strike the assigned physical pad and confirm the recorded sound plays back.
+- [x] Repeat the assignment to a different pad or layer and confirm the original pad/layer remains unchanged.
+- [x] Press Assign Last Recording before any recording exists and confirm the UI reports `Recording assign failed: no recorded audio` without crashing or altering the existing samples.
+- [ ] Start Record with Monitor Off, record a short sound, and confirm recording works with no live microphone signal in the output.
+- [ ] With recording stopped, turn Monitor On and confirm live microphone monitoring works independently of recording.
+- [ ] Turn Monitor Off while recording and confirm capture continues while microphone output becomes silent.
+- [ ] Re-enable Monitor during recording and confirm live monitoring resumes without restarting the recording.
 
-These recording checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio path.
+The first six items are physically verified. The independent Record-only and Monitor-only controls remain intentionally UNCONFIRMED until the next physical test round.
 
 ## H. Sampler multi-layer playback
 

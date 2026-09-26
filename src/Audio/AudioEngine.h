@@ -46,6 +46,9 @@ public:
     // The capture callback writes only into preallocated storage.
     std::string startRecording();
     std::string stopRecording();
+    // Enables live microphone monitoring independently from recording.
+    std::string startMonitor();
+    std::string stopMonitor();
     // Promotes the last stopped RAM recording into the selected pad/layer.
     // The operation is control-thread only; realtime callbacks never resize/copy this buffer.
     std::string assignRecordingToPadLayer(
@@ -67,6 +70,10 @@ private:
     class OutputCallback;
     class InputCallback;
 
+    std::string openInputStream();
+    std::string stopInputStream();
+    std::string stopOutputStream();
+
     static constexpr std::size_t kMaxRecordingFrames = 960000;
     static constexpr std::size_t kMonitorBufferFrames = 8192;
 
@@ -86,6 +93,7 @@ private:
     std::array<float, kMonitorBufferFrames> monitorSamples_{};
     std::atomic<std::uint32_t> monitorWriteSequence_{0};
     std::atomic<bool> monitorEnabled_{false};
+    std::atomic<bool> recordingEnabled_{false};
 
     std::vector<float> recordedSamples_;
     std::atomic<std::uint32_t> recordedFrameCount_{0};

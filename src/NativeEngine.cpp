@@ -252,6 +252,20 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStopRecording(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStartMonitor(
+        JNIEnv* env, jobject /* thiz */)
+{
+    return toJString(env, mpc::audio::AudioEngine::instance().startMonitor());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStopMonitor(
+        JNIEnv* env, jobject /* thiz */)
+{
+    return toJString(env, mpc::audio::AudioEngine::instance().stopMonitor());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioAssignRecordingToPadLayer(
         JNIEnv* env, jobject /* thiz */, jint pad, jint layer)
 {
