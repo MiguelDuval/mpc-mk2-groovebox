@@ -44,6 +44,15 @@ Run these tests with the public MIDI port.
 - [x] Text is readable.
 - [x] A second frame replaces the first.
 
+## F. Pad trigger feedback
+
+- [ ] With sampler audio running, strike a physical pad and confirm the matching hardware pad LED turns on with brightness reflecting strike velocity.
+- [ ] Release the pad and confirm the matching hardware pad LED turns off.
+- [ ] Strike pads 1 and 2 separately and confirm each LED responds only to its own pad.
+- [ ] Confirm a zero-velocity Note On behaves as release and does not retrigger the sampler or leave the LED on.
+
+These feedback checks are UNCONFIRMED until performed on the actual MPC Studio MkII.
+
 ## F. Sampler tuning
 
 - [ ] With the bundled fallback sample loaded, select pad 1 and confirm the physical pad produces the sample at 0 st.
