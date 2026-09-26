@@ -11,6 +11,8 @@ namespace {
 constexpr std::size_t kPadCount = 16;
 constexpr std::size_t kSampleLayerCount = 8;
 constexpr std::uint32_t kMaxRecordingFrames = 960000u;
+constexpr std::size_t kMonitorBufferFrames = 8192;
+constexpr float kMonitorGain = 0.65f;
 constexpr float kPadAmplitude = 0.85f;
 
 const char* resultText(oboe::Result result) {
@@ -74,6 +76,10 @@ public:
 
             owner_.recordedSamples_[frameStart + frame] = mono;
 
+            const auto monitorIndex =
+                    (frameStart + frame) % kMonitorBufferFrames;
+            owner_.monitorSamples_[monitorIndex] = mono;
+
             const auto absValue =
                     std::min(1.0f, std::abs(mono));
             const auto samplePeakMilli =
@@ -85,6 +91,9 @@ public:
         owner_.recordingPeakMilli_.store(
                 peakMilli,
                 std::memory_order_relaxed);
+        owner_.monitorWriteSequence_.store(
+                frameStart + framesToWrite,
+                std::memory_order_release);
         owner_.recordedFrameCount_.store(
                 frameStart + framesToWrite,
                 std::memory_order_release);
@@ -110,13 +119,19 @@ public:
             std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity,
             std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones,
             std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli,
-            std::array<std::atomic<std::int32_t>, kPadCount>& panMilli)
+            std::array<std::atomic<std::int32_t>, kPadCount>& panMilli,
+            std::array<float, kMonitorBufferFrames>& monitorSamples,
+            std::atomic<std::uint32_t>& monitorWriteSequence,
+            std::atomic<bool>& monitorEnabled)
             : samples_(std::move(samples)),
               triggerSequence_(triggerSequence),
               triggerVelocity_(triggerVelocity),
               tuningMilliSemitones_(tuningMilliSemitones),
               levelMilli_(levelMilli),
-              panMilli_(panMilli) {
+              panMilli_(panMilli),
+              monitorSamples_(monitorSamples),
+              monitorWriteSequence_(monitorWriteSequence),
+              monitorEnabled_(monitorEnabled) {
     }
 
     oboe::DataCallbackResult onAudioReady(
@@ -205,9 +220,46 @@ public:
             }
         }
 
+        const bool monitorEnabled =
+                monitorEnabled_.load(std::memory_order_acquire);
+        if (monitorEnabled && !monitorWasEnabled_) {
+            monitorReadSequence_ =
+                    monitorWriteSequence_.load(std::memory_order_acquire);
+        }
+        monitorWasEnabled_ = monitorEnabled;
+
+        if (monitorEnabled) {
+            const std::uint32_t writeSequence =
+                    monitorWriteSequence_.load(std::memory_order_acquire);
+            const std::uint32_t available =
+                    writeSequence - monitorReadSequence_;
+            if (available > kMonitorBufferFrames) {
+                monitorReadSequence =
+                        writeSequence - kMonitorBufferFrames;
+            }
+        }
+
         for (int32_t frame = 0; frame < numFrames; ++frame) {
             float left = 0.0f;
             float right = 0.0f;
+
+            if (monitorEnabled) {
+                const std::uint32_t writeSequence =
+                        monitorWriteSequence_.load(std::memory_order_acquire);
+                const std::uint32_t available =
+                        writeSequence - monitorReadSequence_;
+                if (available > 0u && available <= kMonitorBufferFrames) {
+                    const float monitorSample =
+                            monitorSamples_[monitorReadSequence_
+                                            % kMonitorBufferFrames];
+                    left += monitorSample * kMonitorGain;
+                    right += monitorSample * kMonitorGain;
+                    ++monitorReadSequence_;
+                } else if (available > kMonitorBufferFrames) {
+                    monitorReadSequence =
+                            writeSequence - kMonitorBufferFrames;
+                }
+            }
 
             for (std::size_t pad = 0; pad < kPadCount; ++pad) {
                 auto& voice = voices_[pad];
@@ -317,6 +369,11 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones_;
     std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli_;
     std::array<std::atomic<std::int32_t>, kPadCount>& panMilli_;
+    std::array<float, kMonitorBufferFrames>& monitorSamples_;
+    std::atomic<std::uint32_t>& monitorWriteSequence_;
+    std::atomic<bool>& monitorEnabled_;
+    std::uint32_t monitorReadSequence_ = 0;
+    bool monitorWasEnabled_ = false;
     std::array<std::uint32_t, kPadCount> consumedSequence_{};
     std::array<PadVoice, kPadCount> voices_{};
 };
@@ -515,6 +572,16 @@ std::string AudioEngine::startRecording() {
     recordingPeakMilli_.store(0, std::memory_order_relaxed);
     recordingSampleRate_.store(0, std::memory_order_relaxed);
     recordingOverflowed_.store(false, std::memory_order_relaxed);
+    monitorWriteSequence_.store(0, std::memory_order_relaxed);
+    monitorEnabled_.store(false, std::memory_order_relaxed);
+
+    if (stream_ == nullptr) {
+        const std::string outputResult = start();
+        if (stream_ == nullptr) {
+            return "Recording start failed: monitor output unavailable | "
+                    + outputResult;
+        }
+    }
 
     inputCallback_ = std::make_shared<InputCallback>(*this);
 
@@ -524,6 +591,7 @@ std::string AudioEngine::startRecording() {
         ->setSharingMode(oboe::SharingMode::Shared)
         ->setFormat(oboe::AudioFormat::Float)
         ->setFormatConversionAllowed(true)
+        ->setSampleRate(stream_ != nullptr ? stream_->getSampleRate() : 0)
         ->setChannelCount(1)
         ->setChannelConversionAllowed(true)
         ->setDataCallback(inputCallback_);
@@ -551,10 +619,13 @@ std::string AudioEngine::startRecording() {
         return message;
     }
 
+    monitorEnabled_.store(true, std::memory_order_release);
     return recordingStatus();
 }
 
 std::string AudioEngine::stopRecording() {
+    monitorEnabled_.store(false, std::memory_order_release);
+
     if (inputStream_ == nullptr) {
         return recordingStatus();
     }
@@ -611,7 +682,8 @@ std::string AudioEngine::recordingStatus() const {
             + " | duration=" + std::to_string(
                     static_cast<std::int64_t>(std::lround(milliseconds)))
             + " ms"
-            + " | peak=" + std::to_string(peakPercent) + "%";
+            + " | peak=" + std::to_string(peakPercent) + "%"
+            + (inputStream_ != nullptr ? " | monitor=on" : " | monitor=off");
 
     if (overflowed) {
         result += " | buffer full";
@@ -662,7 +734,10 @@ std::string AudioEngine::start() {
             padTriggerVelocity_,
             padTuningMilliSemitones_,
             padLevelMilli_,
-            padPanMilli_);
+            padPanMilli_,
+            monitorSamples_,
+            monitorWriteSequence_,
+            monitorEnabled_);
 
     oboe::AudioStreamBuilder builder;
     builder.setDirection(oboe::Direction::Output)
