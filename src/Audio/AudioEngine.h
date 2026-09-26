@@ -48,13 +48,15 @@ public:
 private:
     static constexpr std::size_t kPadCount = 16;
     static constexpr std::size_t kSampleLayerCount = 8;
+    using SampleLayerGrid =
+            std::array<std::array<std::shared_ptr<const SampleBuffer>, kSampleLayerCount>,
+                    kPadCount>;
 
     class OutputCallback;
 
     std::shared_ptr<const SampleBuffer> sample_;
     std::string sampleDescription_;
-    std::array<std::array<std::shared_ptr<const SampleBuffer>, kSampleLayerCount>, kPadCount>
-            padSamples_{};
+    SampleLayerGrid padSamples_{};
     std::array<std::array<std::string, kSampleLayerCount>, kPadCount>
             padSampleDescriptions_{};
     std::shared_ptr<OutputCallback> callback_;
