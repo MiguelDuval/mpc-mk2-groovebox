@@ -49,7 +49,7 @@
 - trim.
 - chop.
 - assign. **DONE — physically verified on Build #135 with two different WAV samples on two different physical pads.**
-- multi-layer playback.
+- multi-layer playback. **SOFTWARE SLICE IMPLEMENTED — 8 layers per pad; physical/audio verification pending.**
 - pitch/tuning.
 - level.
 - pan.
