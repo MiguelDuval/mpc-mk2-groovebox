@@ -8,6 +8,7 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <vector>
 
 #include <oboe/Oboe.h>
 
@@ -41,6 +42,12 @@ public:
     std::string stop();
     std::string status() const;
 
+    // Starts a bounded microphone capture buffer in RAM.
+    // The capture callback writes only into preallocated storage.
+    std::string startRecording();
+    std::string stopRecording();
+    std::string recordingStatus() const;
+
     // Queues a single-shot musical trigger for one physical MPC pad.
     // The request is consumed by the realtime audio callback without locks.
     void triggerPad(std::uint8_t padIndex, std::uint8_t velocity);
@@ -53,6 +60,9 @@ private:
                     kPadCount>;
 
     class OutputCallback;
+    class InputCallback;
+
+    static constexpr std::size_t kMaxRecordingFrames = 960000;
 
     std::shared_ptr<const SampleBuffer> sample_;
     std::string sampleDescription_;
@@ -66,6 +76,14 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount> padTuningMilliSemitones_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
+
+    std::vector<float> recordedSamples_;
+    std::atomic<std::uint32_t> recordedFrameCount_{0};
+    std::atomic<std::uint32_t> recordingPeakMilli_{0};
+    std::atomic<std::int32_t> recordingSampleRate_{0};
+    std::atomic<bool> recordingOverflowed_{false};
+    std::shared_ptr<InputCallback> inputCallback_;
+    std::shared_ptr<oboe::AudioStream> inputStream_;
 };
 
 } // namespace mpc::audio
