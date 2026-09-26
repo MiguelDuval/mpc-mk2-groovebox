@@ -1,5 +1,6 @@
 #include "AudioEngine.h"
 #include "RecordingThreshold.h"
+#include "SampleChop.h"
 
 #include <algorithm>
 #include <cmath>
