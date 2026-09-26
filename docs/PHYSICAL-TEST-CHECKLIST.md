@@ -137,3 +137,16 @@ Project owner reported all verification steps in the current hardware smoke test
 - LCD test frame rendering.
 
 This record confirms the tested behavior on the physical controller for this build. It does not imply that every hardware protocol field in the broader reverse-engineered documentation has been physically verified.
+
+
+## H. Sampler sample-region playback
+
+- [ ] Load/verify a sample on Pad 1 / Layer 1, stop the sampler, and confirm the displayed region initially spans the full sample.
+- [ ] Move the start forward and strike Pad 1; confirm playback begins at the edited start without modifying the source sample.
+- [ ] Move the end backward and strike Pad 1; confirm playback stops at the edited end.
+- [ ] Set both start and end so the region is very short but still valid; confirm the pad still retriggers cleanly.
+- [ ] Press Full Region and confirm the complete sample is restored.
+- [ ] Start the sampler, attempt a region change, and confirm the app rejects it with a stop-audio message without disturbing playback.
+- [ ] Select a different pad/layer and confirm its region state is independent from Pad 1 / Layer 1.
+
+The sample-region editor is a software/diagnostic slice at this stage; physical confirmation is intentionally pending.
