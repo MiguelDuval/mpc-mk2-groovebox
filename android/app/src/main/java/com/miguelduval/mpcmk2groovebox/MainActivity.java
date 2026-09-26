@@ -1,7 +1,9 @@
 package com.miguelduval.mpcmk2groovebox;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -24,6 +26,7 @@ import java.util.concurrent.Executors;
 public final class MainActivity extends Activity implements AndroidMidiBridge.Listener {
     private static final String TAG = "MpcGroovebox";
     private static final int REQUEST_OPEN_WAV = 1001;
+    private static final int REQUEST_RECORD_AUDIO = 1002;
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
     private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
 
@@ -40,6 +43,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView levelStatus;
     private TextView panStatus;
     private TextView layerStatus;
+    private TextView recordingStatus;
     private int selectedPad = 0;
     private int selectedLayer = 0;
     private boolean uiOnlySmokeMode;
@@ -60,6 +64,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeAudioStart();
     private static native String nativeAudioStop();
     private static native String nativeAudioStatus();
+    private static native String nativeAudioStartRecording();
+    private static native String nativeAudioStopRecording();
+    private static native String nativeAudioRecordingStatus();
 
     @Override
     protected void onCreate(Bundle state) {
@@ -256,6 +263,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         audioControls.addView(audioStatus, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
+        recordingStatus = new TextView(this);
+        recordingStatus.setText("Recording: idle");
+        recordingStatus.setTextSize(13.0f);
+
+        LinearLayout recordingControls = new LinearLayout(this);
+        recordingControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button recordMicrophone = new Button(this);
+        recordMicrophone.setText("Record Microphone");
+        recordMicrophone.setOnClickListener(v -> startRecordingFromUi());
+
+        Button stopRecording = new Button(this);
+        stopRecording.setText("Stop Recording");
+        stopRecording.setOnClickListener(v -> {
+            status.setText(nativeAudioStopRecording());
+            refreshRecordingStatus();
+        });
+
+        Button recordingStatusButton = new Button(this);
+        recordingStatusButton.setText("Recording Status");
+        recordingStatusButton.setOnClickListener(v -> refreshRecordingStatus());
+
+        recordingControls.addView(recordMicrophone, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        recordingControls.addView(stopRecording, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        recordingControls.addView(recordingStatusButton, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
         LinearLayout diagnostics = new LinearLayout(this);
         diagnostics.setOrientation(LinearLayout.HORIZONTAL);
 
@@ -344,6 +380,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(audioControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(recordingStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(recordingControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(diagnostics, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(devices, new LinearLayout.LayoutParams(
@@ -426,6 +466,47 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private void startRecordingFromUi() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                    new String[] {Manifest.permission.RECORD_AUDIO},
+                    REQUEST_RECORD_AUDIO);
+            status.setText("Microphone permission requested");
+            return;
+        }
+
+        status.setText(nativeAudioStartRecording());
+        refreshRecordingStatus();
+    }
+
+    private void refreshRecordingStatus() {
+        final String result = nativeAudioRecordingStatus();
+        recordingStatus.setText(result);
+        status.setText(result);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            String[] permissions,
+            int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode != REQUEST_RECORD_AUDIO) {
+            return;
+        }
+
+        if (grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            status.setText(nativeAudioStartRecording());
+            refreshRecordingStatus();
+        } else {
+            status.setText("Microphone permission denied");
+            recordingStatus.setText("Recording: permission denied");
+        }
+    }
+
     @Override
     protected void onDestroy() {
         destroyed = true;
@@ -472,6 +553,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Connect MPC Studio MkII",
                 "Load WAV Sample",
                 "Start Sampler",
+                "Record Microphone",
+                "Recording: idle",
                 "Pad 1 tuning: +0.00 st",
                 "Pad 1 level: 100%",
                 "Pad 1 pan: C",
