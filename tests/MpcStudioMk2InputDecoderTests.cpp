@@ -103,6 +103,19 @@ void testChannelAftertouch() {
 }
 
 
+void testPadLedBuilder() {
+    const auto message = mpc::studio::makePadLedSysEx(
+        3,
+        mpc::studio::Rgb{64, 32, 127});
+
+    const std::array<std::uint8_t, 12> expected{{
+        0xF0, 0x47, 0x47, 0x4A, 0x65, 0x00,
+        0x04, 0x03, 0x40, 0x20, 0x7F, 0xF7
+    }};
+
+    assert(message == expected);
+}
+
 void testLedCcBuilders() {
     const auto play = mpc::studio::makeCcMessage(82, 2);
     const std::array<std::uint8_t, 3> expectedPlay{{0xB0, 82, 2}};
@@ -234,6 +247,7 @@ int main() {
     testJogPress();
     testTouchStrip();
     testChannelAftertouch();
+    testPadLedBuilder();
     testLedCcBuilders();
     testLcdPayloadEncoding();
     testLcdChunkHeader();
