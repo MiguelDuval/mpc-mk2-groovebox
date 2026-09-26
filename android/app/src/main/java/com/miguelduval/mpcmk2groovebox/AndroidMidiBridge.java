@@ -54,7 +54,10 @@ public final class AndroidMidiBridge {
             byte[] message = new byte[count];
             System.arraycopy(data, offset, message, 0, count);
 
-            nativeOnMidi(message, timestamp);
+            byte[] feedback = nativeOnMidi(message, timestamp);
+            if (feedback != null && feedback.length > 0) {
+                send(feedback);
+            }
             listener.onMidi(toHex(message));
         }
     };
@@ -324,5 +327,5 @@ public final class AndroidMidiBridge {
         return builder.toString().trim();
     }
 
-    private static native void nativeOnMidi(byte[] data, long timestamp);
+    private static native byte[] nativeOnMidi(byte[] data, long timestamp);
 }
