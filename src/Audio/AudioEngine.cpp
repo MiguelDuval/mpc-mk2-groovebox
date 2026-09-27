@@ -1,6 +1,7 @@
 #include "AudioEngine.h"
 #include "RecordingThreshold.h"
 #include "SampleChop.h"
+#include "SampleLayerParameters.h"
 #include "SampleCrop.h"
 
 #include <algorithm>
@@ -163,6 +164,7 @@ public:
             std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones,
             std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli,
             std::array<std::atomic<std::int32_t>, kPadCount>& panMilli,
+            std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli,
             std::array<float, kMonitorBufferFrames>& monitorSamples,
             std::atomic<std::uint32_t>& monitorWriteSequence,
             std::atomic<bool>& monitorEnabled)
@@ -173,6 +175,7 @@ public:
               tuningMilliSemitones_(tuningMilliSemitones),
               levelMilli_(levelMilli),
               panMilli_(panMilli),
+              layerGainMilli_(layerGainMilli),
               monitorSamples_(monitorSamples),
               monitorWriteSequence_(monitorWriteSequence),
               monitorEnabled_(monitorEnabled) {
@@ -231,6 +234,9 @@ public:
 
                     layerVoice.position =
                             static_cast<double>(region.startFrame);
+                    layerVoice.gain = sampleLayerGainFromMilli(
+                            layerGainMilli_[pad][layer].load(
+                                    std::memory_order_relaxed));
                     layerVoice.active = sample != nullptr
                             && sample->frameCount() > 0
                             && sample->channelCount > 0
@@ -354,8 +360,8 @@ public:
                                 sample->sampleAt(nextFrame, 0);
                         const float value =
                                 sample0 + (sample1 - sample0) * fraction;
-                        left += value * voice.gain * voice.leftGain;
-                        right += value * voice.gain * voice.rightGain;
+                        left += value * voice.gain * layerVoice.gain * voice.leftGain;
+                        right += value * voice.gain * layerVoice.gain * voice.rightGain;
                     } else {
                         const float left0 =
                                 sample->sampleAt(sourceFrame, 0);
@@ -403,6 +409,7 @@ private:
         struct LayerVoice {
             double position = 0.0;
             float positionStep = 0.0f;
+            float gain = 1.0f;
             bool active = false;
         };
 
@@ -420,6 +427,7 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones_;
     std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli_;
     std::array<std::atomic<std::int32_t>, kPadCount>& panMilli_;
+    std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli_;
     std::array<float, kMonitorBufferFrames>& monitorSamples_;
     std::atomic<std::uint32_t>& monitorWriteSequence_;
     std::atomic<bool>& monitorEnabled_;
@@ -440,6 +448,9 @@ AudioEngine::AudioEngine() {
         padTuningMilliSemitones_[pad].store(0, std::memory_order_relaxed);
         padLevelMilli_[pad].store(1000, std::memory_order_relaxed);
         padPanMilli_[pad].store(0, std::memory_order_relaxed);
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            padLayerGainMilli_[pad][layer].store(1000, std::memory_order_relaxed);
+        }
     }
 }
 
@@ -634,6 +645,37 @@ std::string AudioEngine::cropPadSampleRegion(
             + " | source="
             + sourceDescription
             + " | frames=" + std::to_string(croppedFrames);
+}
+
+std::string AudioEngine::setPadLayerGain(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex,
+        float gain) {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount
+            || !std::isfinite(gain)) {
+        return "Layer gain change failed: invalid value";
+    }
+
+    const auto milli = normalizeSampleLayerGainMilli(gain);
+    padLayerGainMilli_[padIndex][layerIndex].store(
+            milli,
+            std::memory_order_relaxed);
+
+    return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " layer " + std::to_string(static_cast<unsigned>(layerIndex + 1))
+            + " gain: " + std::to_string(milli / 10) + "%";
+}
+
+float AudioEngine::padLayerGain(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) const {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return 1.0f;
+    }
+
+    return sampleLayerGainFromMilli(
+            padLayerGainMilli_[padIndex][layerIndex].load(
+                    std::memory_order_relaxed));
 }
 
 std::string AudioEngine::setPadTuningSemitones(
