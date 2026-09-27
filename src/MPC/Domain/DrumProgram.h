@@ -2,9 +2,9 @@
 
 #include <array>
 #include <cstdint>
-#include <string>
 
-#include "Audio/SampleLayerVelocityRange.h"
+#include "MPC/Domain/SampleLayerVelocityRange.h"
+#include "MPC/Domain/SampleRegion.h"
 
 namespace mpc::domain {
 
@@ -23,11 +23,12 @@ struct SampleLayer final {
     SampleId sample{};
     std::uint8_t velocityMinimum = 0;
     std::uint8_t velocityMaximum = 127;
+    SampleRegion region{};
     float gain = 1.0f;
     float tuningSemitones = 0.0f;
     float pan = 0.0f;
 
-    constexpr mpc::audio::SampleLayerVelocityRange velocityRange() const noexcept {
+    constexpr SampleLayerVelocityRange velocityRange() const noexcept {
         return {velocityMinimum, velocityMaximum};
     }
 
@@ -38,6 +39,9 @@ struct SampleLayer final {
 
 struct Pad final {
     std::array<SampleLayer, sampleLayersPerPad> layers{};
+    float tuningSemitones = 0.0f;
+    float level = 1.0f;
+    float pan = 0.0f;
 
     constexpr SampleLayer& layer(std::size_t index) noexcept {
         return layers[index];
