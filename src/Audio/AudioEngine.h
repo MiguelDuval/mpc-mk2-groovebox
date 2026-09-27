@@ -5,6 +5,7 @@
 #include "SampleRegion.h"
 #include "WavSample.h"
 #include "MPC/Domain/DrumProgram.h"
+#include "MPC/MpcProjectState.h"
 
 #include <array>
 #include <atomic>
@@ -20,7 +21,7 @@ namespace mpc::audio {
 
 class AudioEngine final {
 public:
-    AudioEngine();
+    explicit AudioEngine(mpc::MpcProjectState& projectState);
     ~AudioEngine();
 
     AudioEngine(const AudioEngine&) = delete;
@@ -149,8 +150,7 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount> padTuningMilliSemitones_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
-    mpc::domain::DrumProgram drumProgram_{};
-    std::uint32_t nextSampleId_ = 1;
+    mpc::MpcProjectState& projectState_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>
             padLayerGainMilli_{};
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>
