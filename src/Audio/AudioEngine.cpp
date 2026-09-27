@@ -1271,6 +1271,7 @@ std::string AudioEngine::start() {
             padTuningMilliSemitones_,
             padLevelMilli_,
             padPanMilli_,
+            padLayerGainMilli_,
             monitorSamples_,
             monitorWriteSequence_,
             monitorEnabled_);
