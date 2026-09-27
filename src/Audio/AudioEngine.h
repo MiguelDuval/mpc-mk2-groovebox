@@ -66,6 +66,13 @@ public:
     float padLayerTuningSemitones(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
+    std::string setPadLayerPan(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex,
+            float pan);
+    float padLayerPan(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex) const;
     std::string setPadTuningSemitones(std::uint8_t padIndex, float semitones);
     float padTuningSemitones(std::uint8_t padIndex) const;
     std::string setPadLevel(std::uint8_t padIndex, float level);
@@ -132,6 +139,8 @@ private:
             padLayerGainMilli_{};
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>
             padLayerTuningMilliSemitones_{};
+    std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>
+            padLayerPanMilli_{};
 
     std::array<float, kMonitorBufferFrames> monitorSamples_{};
     std::atomic<std::uint32_t> monitorWriteSequence_{0};
