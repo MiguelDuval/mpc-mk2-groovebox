@@ -45,6 +45,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView panStatus;
     private TextView layerStatus;
     private TextView layerGainStatus;
+    private TextView layerTuningStatus;
     private TextView sampleRegionStatus;
     private TextView chopStatus;
     private TextView recordingStatus;
@@ -66,6 +67,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native float nativeAudioGetPadLevel(int pad);
     private static native String nativeAudioSetPadLayerGain(int pad, int layer, float gain);
     private static native float nativeAudioGetPadLayerGain(int pad, int layer);
+    private static native String nativeAudioSetPadLayerTuning(int pad, int layer, float semitones);
+    private static native float nativeAudioGetPadLayerTuning(int pad, int layer);
     private static native String nativeAudioSetPadPan(int pad, float pan);
     private static native float nativeAudioGetPadPan(int pad);
     private static native String nativeAudioSetPadSampleRegion(
@@ -259,6 +262,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         layerGainControls.addView(layerGainReset, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         layerGainControls.addView(layerGainUp, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        layerTuningStatus = new TextView(this);
+        layerTuningStatus.setText("Pad 1 layer 1 tuning: +0.00 st");
+        layerTuningStatus.setTextSize(13.0f);
+
+        LinearLayout layerTuningControls = new LinearLayout(this);
+        layerTuningControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button layerTuningDown = new Button(this);
+        layerTuningDown.setText("Layer Tune -1 st");
+        layerTuningDown.setOnClickListener(v -> adjustSelectedLayerTuning(-1.0f));
+
+        Button layerTuningReset = new Button(this);
+        layerTuningReset.setText("Layer Tune Reset");
+        layerTuningReset.setOnClickListener(v -> setSelectedLayerTuning(0.0f));
+
+        Button layerTuningUp = new Button(this);
+        layerTuningUp.setText("Layer Tune +1 st");
+        layerTuningUp.setOnClickListener(v -> adjustSelectedLayerTuning(1.0f));
+
+        layerTuningControls.addView(layerTuningDown, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        layerTuningControls.addView(layerTuningReset, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        layerTuningControls.addView(layerTuningUp, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         sampleRegionStatus = new TextView(this);
@@ -559,6 +588,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(layerGainControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(layerTuningStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(layerTuningControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(sampleRegionStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(sampleRegionControls, new LinearLayout.LayoutParams(
@@ -808,6 +841,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Pad 1 pan: C",
                 "Pad 1 sample layer: 1/8",
                 "Pad 1 layer 1 gain: 100%",
+                "Pad 1 layer 1 tuning: +0.00 st",
                 "Pad 1 layer 1 sample region: 0-" + bundledFrameCount
                         + " / " + bundledFrameCount + " frames",
                 "Chop: select a sample, then choose 4, 8 or 16 slices",
@@ -917,6 +951,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!assertUiTextPresent("Pad 2 layer 2 gain: 100%")) {
             return;
         }
+        if (!assertUiTextPresent("Pad 2 layer 2 tuning: +0.00 st")) {
+            return;
+        }
+
+        View layerTuningDown = findViewWithExactText(
+                getWindow().getDecorView(), "Layer Tune -1 st");
+        if (layerTuningDown == null || !layerTuningDown.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Tune -1 st");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 layer 2 tuning: -1.00 st")) {
+            return;
+        }
+
+        View layerTuningUp = findViewWithExactText(
+                getWindow().getDecorView(), "Layer Tune +1 st");
+        if (layerTuningUp == null || !layerTuningUp.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Tune +1 st");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 layer 2 tuning: +0.00 st")) {
+            return;
+        }
+
+        View layerTuningReset = findViewWithExactText(
+                getWindow().getDecorView(), "Layer Tune Reset");
+        if (layerTuningReset == null || !layerTuningReset.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Tune Reset");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 layer 2 tuning: +0.00 st")) {
+            return;
+        }
 
         View layerGainDown = findViewWithExactText(
                 getWindow().getDecorView(), "Layer -10%");
@@ -994,6 +1061,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (!assertUiTextPresent("Pad 2 layer 1 gain: 100%")) {
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 layer 1 tuning: +0.00 st")) {
             return;
         }
 
@@ -1112,6 +1182,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (!assertUiTextPresent("Pad 1 layer 1 gain: 100%")) {
+            return;
+        }
+        if (!assertUiTextPresent("Pad 1 layer 1 tuning: +0.00 st")) {
             return;
         }
 
@@ -1306,6 +1379,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void updateLayerStatus() {
         layerStatus.setText("Pad " + (selectedPad + 1)
                 + " sample layer: " + (selectedLayer + 1) + "/8");
+    }
+
+    private void adjustSelectedLayerTuning(float delta) {
+        setSelectedLayerTuning(
+                nativeAudioGetPadLayerTuning(selectedPad, selectedLayer) + delta);
+    }
+
+    private void setSelectedLayerTuning(float target) {
+        final String result =
+                nativeAudioSetPadLayerTuning(selectedPad, selectedLayer, target);
+        status.setText(result);
+        updateLayerTuningStatus();
+    }
+
+    private void updateLayerTuningStatus() {
+        final float tuning =
+                nativeAudioGetPadLayerTuning(selectedPad, selectedLayer);
+        final String sign = tuning >= 0.0f ? "+" : "";
+        layerTuningStatus.setText(
+                String.format(java.util.Locale.ROOT,
+                        "Pad %d layer %d tuning: %s%.2f st",
+                        selectedPad + 1, selectedLayer + 1, sign, tuning));
     }
 
     private void adjustSelectedLayerGain(float delta) {
