@@ -532,7 +532,8 @@ AudioEngine::~AudioEngine() {
 }
 
 AudioEngine& AudioEngine::instance() {
-    static AudioEngine engine;
+    static mpc::MpcProjectState projectState;
+    static AudioEngine engine(projectState);
     return engine;
 }
 
@@ -615,7 +616,11 @@ std::string AudioEngine::chopPadSampleToPads(
 
     mpc::domain::SampleId resolvedSourceSampleId = sourceSampleId;
     if (!resolvedSourceSampleId.isAssigned()) {
-        resolvedSourceSampleId = allocateSampleId();
+        resolvedSourceSampleId = projectState_.registerSample(
+                "Chop source sample",
+                "",
+                static_cast<double>(sourceSample->sampleRate),
+                static_cast<std::int64_t>(sourceSample->frameCount()));
     }
 
     for (std::size_t destinationPad = 0;
