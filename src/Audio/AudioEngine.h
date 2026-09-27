@@ -121,6 +121,8 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount> padTuningMilliSemitones_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
+    std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>
+            padLayerGainMilli_{};
 
     std::array<float, kMonitorBufferFrames> monitorSamples_{};
     std::atomic<std::uint32_t> monitorWriteSequence_{0};
