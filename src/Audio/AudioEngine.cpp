@@ -373,9 +373,9 @@ public:
                                 sample->sampleAt(nextFrame, 1);
 
                         left += (left0 + (left1 - left0) * fraction)
-                                * voice.gain * voice.leftGain;
+                                * voice.gain * layerVoice.gain * voice.leftGain;
                         right += (right0 + (right1 - right0) * fraction)
-                                * voice.gain * voice.rightGain;
+                                * voice.gain * layerVoice.gain * voice.rightGain;
                     }
 
                     layerVoice.position += layerVoice.positionStep;
