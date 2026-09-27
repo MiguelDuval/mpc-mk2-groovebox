@@ -12,8 +12,8 @@
 
 namespace {
 
-constexpr std::size_t kPadCount = 16;
-constexpr std::size_t kSampleLayerCount = 8;
+constexpr std::size_t kPadCount = mpc::domain::kMaxProgramPads;
+constexpr std::size_t kSampleLayerCount = mpc::domain::kMaxSampleLayers;
 constexpr std::uint32_t kMaxRecordingFrames = 960000u;
 constexpr std::size_t kMonitorBufferFrames = 8192;
 constexpr float kMonitorGain = 0.65f;
