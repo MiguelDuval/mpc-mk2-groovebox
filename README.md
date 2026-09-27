@@ -30,6 +30,7 @@ The current sampler branch builds on the MIDI foundation and adds:
 - PCM WAV decoding and bounded sample playback.
 - Per-pad / per-layer sample assignment with up to 8 layers.
 - Per-pad tuning, level and pan controls.
+- Per-layer velocity ranges (0–127) for velocity-split multi-samples.
 - Bounded microphone recording into RAM.
 - Independent microphone monitoring with separate Monitor On/Off controls.
 - Assignment of the last recording to a selected pad/layer.
