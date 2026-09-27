@@ -21,7 +21,8 @@ int main() {
     static_assert(high.contains(64));
     static_assert(high.contains(127));
 
-    assert(!SampleLayerVelocityRange{100, 99}.isValid());
-    assert(!SampleLayerVelocityRange{100, 99}.contains(110));
+    constexpr SampleLayerVelocityRange invalid{100, 99};
+    assert(!invalid.isValid());
+    assert(!invalid.contains(110));
     return 0;
 }
