@@ -46,6 +46,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView layerStatus;
     private TextView layerGainStatus;
     private TextView layerTuningStatus;
+    private TextView layerPanStatus;
     private TextView sampleRegionStatus;
     private TextView chopStatus;
     private TextView recordingStatus;
@@ -69,6 +70,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native float nativeAudioGetPadLayerGain(int pad, int layer);
     private static native String nativeAudioSetPadLayerTuning(int pad, int layer, float semitones);
     private static native float nativeAudioGetPadLayerTuning(int pad, int layer);
+    private static native String nativeAudioSetPadLayerPan(int pad, int layer, float pan);
+    private static native float nativeAudioGetPadLayerPan(int pad, int layer);
     private static native String nativeAudioSetPadPan(int pad, float pan);
     private static native float nativeAudioGetPadPan(int pad);
     private static native String nativeAudioSetPadSampleRegion(
@@ -288,6 +291,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         layerTuningControls.addView(layerTuningReset, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         layerTuningControls.addView(layerTuningUp, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        layerPanStatus = new TextView(this);
+        layerPanStatus.setText("Pad 1 layer 1 pan: C");
+        layerPanStatus.setTextSize(13.0f);
+
+        LinearLayout layerPanControls = new LinearLayout(this);
+        layerPanControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button layerPanLeft = new Button(this);
+        layerPanLeft.setText("Layer Pan L");
+        layerPanLeft.setOnClickListener(v -> setSelectedLayerPan(-1.0f));
+
+        Button layerPanCenter = new Button(this);
+        layerPanCenter.setText("Layer Pan C");
+        layerPanCenter.setOnClickListener(v -> setSelectedLayerPan(0.0f));
+
+        Button layerPanRight = new Button(this);
+        layerPanRight.setText("Layer Pan R");
+        layerPanRight.setOnClickListener(v -> setSelectedLayerPan(1.0f));
+
+        layerPanControls.addView(layerPanLeft, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        layerPanControls.addView(layerPanCenter, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        layerPanControls.addView(layerPanRight, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         sampleRegionStatus = new TextView(this);
@@ -592,6 +621,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(layerTuningControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(layerPanStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(layerPanControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(sampleRegionStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(sampleRegionControls, new LinearLayout.LayoutParams(
@@ -842,6 +875,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Pad 1 sample layer: 1/8",
                 "Pad 1 layer 1 gain: 100%",
                 "Pad 1 layer 1 tuning: +0.00 st",
+                "Pad 1 layer 1 pan: C",
                 "Pad 1 layer 1 sample region: 0-" + bundledFrameCount
                         + " / " + bundledFrameCount + " frames",
                 "Chop: select a sample, then choose 4, 8 or 16 slices",
@@ -954,6 +988,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!assertUiTextPresent("Pad 2 layer 2 tuning: +0.00 st")) {
             return;
         }
+        if (!assertUiTextPresent("Pad 2 layer 2 pan: C")) {
+            return;
+        }
+
+        View layerPanRight = findViewWithExactText(
+                getWindow().getDecorView(), "Layer Pan R");
+        if (layerPanRight == null || !layerPanRight.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Pan R");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 layer 2 pan: R100")) {
+            return;
+        }
+
+        View layerPanCenter = findViewWithExactText(
+                getWindow().getDecorView(), "Layer Pan C");
+        if (layerPanCenter == null || !layerPanCenter.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Pan C");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 layer 2 pan: C")) {
+            return;
+        }
 
         View layerTuningDown = findViewWithExactText(
                 getWindow().getDecorView(), "Layer Tune -1 st");
@@ -1064,6 +1121,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (!assertUiTextPresent("Pad 2 layer 1 tuning: +0.00 st")) {
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 layer 1 pan: C")) {
             return;
         }
 
@@ -1187,6 +1247,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!assertUiTextPresent("Pad 1 layer 1 tuning: +0.00 st")) {
             return;
         }
+        if (!assertUiTextPresent("Pad 1 layer 1 pan: C")) {
+            return;
+        }
 
         final long padOneTotal = nativeAudioGetPadSampleFrameCount(0, 0);
         if (!assertUiTextPresent(
@@ -1304,6 +1367,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         updateLayerStatus();
         updateLayerGainStatus();
         updateLayerTuningStatus();
+        updateLayerPanStatus();
         updateSampleRegionStatus();
     }
 
@@ -1402,6 +1466,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 String.format(java.util.Locale.ROOT,
                         "Pad %d layer %d tuning: %s%.2f st",
                         selectedPad + 1, selectedLayer + 1, sign, tuning));
+    }
+
+    private void setSelectedLayerPan(float pan) {
+        final String result =
+                nativeAudioSetPadLayerPan(selectedPad, selectedLayer, pan);
+        status.setText(result);
+        updateLayerPanStatus();
+    }
+
+    private void updateLayerPanStatus() {
+        final float pan = nativeAudioGetPadLayerPan(selectedPad, selectedLayer);
+        if (pan < -0.001f) {
+            layerPanStatus.setText(String.format(java.util.Locale.ROOT,
+                    "Pad %d layer %d pan: L%d",
+                    selectedPad + 1, selectedLayer + 1,
+                    Math.round(-pan * 100.0f)));
+            return;
+        }
+        if (pan > 0.001f) {
+            layerPanStatus.setText(String.format(java.util.Locale.ROOT,
+                    "Pad %d layer %d pan: R%d",
+                    selectedPad + 1, selectedLayer + 1,
+                    Math.round(pan * 100.0f)));
+            return;
+        }
+        layerPanStatus.setText(
+                "Pad " + (selectedPad + 1)
+                        + " layer " + (selectedLayer + 1)
+                        + " pan: C");
     }
 
     private void adjustSelectedLayerGain(float delta) {
