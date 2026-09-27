@@ -42,6 +42,9 @@ public:
             std::uint8_t sourcePadIndex,
             std::uint8_t sourceLayerIndex,
             std::uint8_t chopCount);
+    std::string cropPadSampleRegion(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex);
     SampleRegion padSampleRegion(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
