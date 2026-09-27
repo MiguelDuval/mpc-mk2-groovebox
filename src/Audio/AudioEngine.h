@@ -118,8 +118,8 @@ public:
     void triggerPad(std::uint8_t padIndex, std::uint8_t velocity);
 
 private:
-    static constexpr std::size_t kPadCount = 16;
-    static constexpr std::size_t kSampleLayerCount = 8;
+    static constexpr std::size_t kPadCount = mpc::domain::kMaxProgramPads;
+    static constexpr std::size_t kSampleLayerCount = mpc::domain::kMaxSampleLayers;
     using SampleLayerGrid =
             std::array<std::array<std::shared_ptr<const SampleBuffer>, kSampleLayerCount>,
                     kPadCount>;
