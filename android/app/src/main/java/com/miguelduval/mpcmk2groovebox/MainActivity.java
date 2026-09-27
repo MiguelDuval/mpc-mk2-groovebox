@@ -1303,6 +1303,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         updatePadToneStatus();
         updateLayerStatus();
         updateLayerGainStatus();
+        updateLayerTuningStatus();
         updateSampleRegionStatus();
     }
 
