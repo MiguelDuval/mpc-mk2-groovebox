@@ -605,10 +605,12 @@ std::string AudioEngine::chopPadSampleToPads(
         return "Chop failed: no source sample assigned";
     }
 
-    mpc::domain::SampleId sourceSampleId =
-            drumProgram_.pad(sourcePadIndex).layer(sourceLayerIndex).sample;
+    auto& sourceLayerState =
+            drumProgram_.pad(sourcePadIndex).layer(sourceLayerIndex);
+    mpc::domain::SampleId sourceSampleId = sourceLayerState.sample;
     if (!sourceSampleId.isAssigned()) {
         sourceSampleId = allocateSampleId();
+        sourceLayerState.sample = sourceSampleId;
     }
 
     if (!sourceRegion.isValidFor(sourceSample->frameCount())) {
