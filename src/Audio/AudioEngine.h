@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SampleLayerParameters.h"
 #include "SampleRegion.h"
 #include "WavSample.h"
 
@@ -49,6 +50,13 @@ public:
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
     std::size_t padSampleFrameCount(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex) const;
+    std::string setPadLayerGain(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex,
+            float gain);
+    float padLayerGain(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
     std::string setPadTuningSemitones(std::uint8_t padIndex, float semitones);
