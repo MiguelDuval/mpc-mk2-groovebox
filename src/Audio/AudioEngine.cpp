@@ -397,8 +397,7 @@ public:
                                 sample->sampleAt(sourceFrame, 0);
                         const float sample1 =
                                 sample->sampleAt(nextFrame, 0);
-                        const float value =
-                                sample0 + (sample1 - sample0) * fraction;
+                        const float value =                                sample0 + (sample1 - sample0) * fraction;
                         left += value * voice.gain * layerVoice.gain * voice.leftGain * layerVoice.leftGain;
                         right += value * voice.gain * layerVoice.gain * voice.rightGain * layerVoice.rightGain;
                     } else {
@@ -491,21 +490,51 @@ AudioEngine::AudioEngine() {
     for (std::size_t pad = 0; pad < kPadCount; ++pad) {
         padTriggerSequence_[pad].store(0, std::memory_order_relaxed);
         padTriggerVelocity_[pad].store(0, std::memory_order_relaxed);
-        padTuningMilliSemitones_[pad].store(0, std::memory_order_relaxed);
-        padLevelMilli_[pad].store(1000, std::memory_order_relaxed);
-        padPanMilli_[pad].store(0, std::memory_order_relaxed);
+        padTuningMilliSemitones_[pad].store(
+                static_cast<std::int32_t>(
+                    std::lround(drumProgram_.pad(pad).tuningSemitones * 1000.0f)),
+                std::memory_order_relaxed);
+        padLevelMilli_[pad].store(
+                static_cast<std::int32_t>(
+                    std::lround(drumProgram_.pad(pad).level * 1000.0f)),
+                std::memory_order_relaxed);
+        padPanMilli_[pad].store(
+                static_cast<std::int32_t>(
+                    std::lround(drumProgram_.pad(pad).pan * 1000.0f)),
+                std::memory_order_relaxed);
         for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
-            padLayerGainMilli_[pad][layer].store(1000, std::memory_order_relaxed);
-            padLayerTuningMilliSemitones_[pad][layer].store(0, std::memory_order_relaxed);
-            padLayerPanMilli_[pad][layer].store(0, std::memory_order_relaxed);
-            padLayerVelocityMin_[pad][layer].store(0, std::memory_order_relaxed);
-            padLayerVelocityMax_[pad][layer].store(127, std::memory_order_relaxed);
+            const auto& layerState = drumProgram_.pad(pad).layer(layer);
+            padLayerGainMilli_[pad][layer].store(
+                    static_cast<std::int32_t>(
+                        std::lround(layerState.gain * 1000.0f)),
+                    std::memory_order_relaxed);
+            padLayerTuningMilliSemitones_[pad][layer].store(
+                    static_cast<std::int32_t>(
+                        std::lround(layerState.tuningSemitones * 1000.0f)),
+                    std::memory_order_relaxed);
+            padLayerPanMilli_[pad][layer].store(
+                    static_cast<std::int32_t>(
+                        std::lround(layerState.pan * 1000.0f)),
+                    std::memory_order_relaxed);
+            padLayerVelocityMin_[pad][layer].store(
+                    static_cast<std::int32_t>(layerState.velocityMinimum),
+                    std::memory_order_relaxed);
+            padLayerVelocityMax_[pad][layer].store(
+                    static_cast<std::int32_t>(layerState.velocityMaximum),
+                    std::memory_order_relaxed);
         }
     }
 }
 
 AudioEngine::~AudioEngine() {
     stop();
+}
+
+mpc::domain::SampleId AudioEngine::allocateSampleId() {
+    if (nextSampleId_ == 0) {
+        nextSampleId_ = 1;
+    }
+    return mpc::domain::SampleId{nextSampleId_++};
 }
 
 AudioEngine& AudioEngine::instance() {
@@ -556,7 +585,7 @@ std::string AudioEngine::chopPadSampleToPads(
     std::string sourceDescription;
 
     if (sourceSample != nullptr) {
-        sourceRegion = padSampleRegions_[sourcePadIndex][sourceLayerIndex];
+        sourceRegion = drumProgram_.pad(sourcePadIndex).layer(sourceLayerIndex).region;
         sourceDescription = padSampleDescriptions_[sourcePadIndex][sourceLayerIndex];
     } else if (sourceLayerIndex == 0) {
         bool hasExplicitLayer = false;
@@ -574,6 +603,12 @@ std::string AudioEngine::chopPadSampleToPads(
 
     if (sourceSample == nullptr || sourceSample->frameCount() == 0) {
         return "Chop failed: no source sample assigned";
+    }
+
+    mpc::domain::SampleId sourceSampleId =
+            drumProgram_.pad(sourcePadIndex).layer(sourceLayerIndex).sample;
+    if (!sourceSampleId.isAssigned()) {
+        sourceSampleId = allocateSampleId();
     }
 
     if (!sourceRegion.isValidFor(sourceSample->frameCount())) {
@@ -617,7 +652,10 @@ std::string AudioEngine::chopPadSampleToPads(
             ++destinationPad) {
         const auto relativeRegion = plan.regions[destinationPad];
         padSamples_[destinationPad][0] = sourceSample;
-        padSampleRegions_[destinationPad][0] = SampleRegion{
+        auto& destinationLayerState =
+                drumProgram_.pad(destinationPad).layer(0);
+        destinationLayerState.sample = sourceSampleId;
+        destinationLayerState.region = SampleRegion{
                 sourceRegion.startFrame + relativeRegion.startFrame,
                 sourceRegion.startFrame + relativeRegion.endFrame};
         padSampleDescriptions_[destinationPad][0] = sourceDescription;
@@ -649,7 +687,7 @@ std::string AudioEngine::cropPadSampleRegion(
     std::string sourceDescription;
 
     if (sourceSample != nullptr) {
-        sourceRegion = padSampleRegions_[padIndex][layerIndex];
+        sourceRegion = drumProgram_.pad(padIndex).layer(layerIndex).region;
         sourceDescription = padSampleDescriptions_[padIndex][layerIndex];
     } else if (layerIndex == 0) {
         bool hasExplicitLayer = false;
@@ -681,8 +719,9 @@ std::string AudioEngine::cropPadSampleRegion(
     auto croppedSample = std::make_shared<SampleBuffer>(*cropped);
     const std::size_t croppedFrames = croppedSample->frameCount();
     padSamples_[padIndex][layerIndex] = croppedSample;
-    padSampleRegions_[padIndex][layerIndex] =
-            fullSampleRegion(croppedFrames);
+    auto& layerState = drumProgram_.pad(padIndex).layer(layerIndex);
+    layerState.sample = allocateSampleId();
+    layerState.region = fullSampleRegion(croppedFrames);
     padSampleDescriptions_[padIndex][layerIndex] =
             std::to_string(croppedSample->sampleRate) + " Hz "
             + std::to_string(croppedSample->channelCount) + " ch "
@@ -707,6 +746,8 @@ std::string AudioEngine::setPadLayerGain(
     }
 
     const auto milli = normalizeSampleLayerGainMilli(gain);
+    const float applied = sampleLayerGainFromMilli(milli);
+    drumProgram_.pad(padIndex).layer(layerIndex).gain = applied;
     padLayerGainMilli_[padIndex][layerIndex].store(
             milli,
             std::memory_order_relaxed);
@@ -723,9 +764,7 @@ float AudioEngine::padLayerGain(
         return 1.0f;
     }
 
-    return sampleLayerGainFromMilli(
-            padLayerGainMilli_[padIndex][layerIndex].load(
-                    std::memory_order_relaxed));
+    return drumProgram_.pad(padIndex).layer(layerIndex).gain;
 }
 
 std::string AudioEngine::setPadLayerTuningSemitones(
@@ -739,6 +778,8 @@ std::string AudioEngine::setPadLayerTuningSemitones(
 
     const auto milli =
             normalizeSampleLayerTuningMilli(semitones);
+    const float applied = sampleLayerTuningFromMilli(milli);
+    drumProgram_.pad(padIndex).layer(layerIndex).tuningSemitones = applied;
     padLayerTuningMilliSemitones_[padIndex][layerIndex].store(
             milli,
             std::memory_order_relaxed);
@@ -759,9 +800,7 @@ float AudioEngine::padLayerTuningSemitones(
         return 0.0f;
     }
 
-    return sampleLayerTuningFromMilli(
-            padLayerTuningMilliSemitones_[padIndex][layerIndex].load(
-                    std::memory_order_relaxed));
+    return drumProgram_.pad(padIndex).layer(layerIndex).tuningSemitones;
 }
 
 std::string AudioEngine::setPadLayerPan(
@@ -774,6 +813,8 @@ std::string AudioEngine::setPadLayerPan(
     }
 
     const auto milli = normalizeSampleLayerPanMilli(pan);
+    const float applied = sampleLayerPanFromMilli(milli);
+    drumProgram_.pad(padIndex).layer(layerIndex).pan = applied;
     padLayerPanMilli_[padIndex][layerIndex].store(
             milli,
             std::memory_order_relaxed);
@@ -797,15 +838,12 @@ std::string AudioEngine::setPadLayerPan(
 }
 
 float AudioEngine::padLayerPan(
-        std::uint8_t padIndex,
-        std::uint8_t layerIndex) const {
+        std::uint8_t padIndex,        std::uint8_t layerIndex) const {
     if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
         return 0.0f;
     }
 
-    return sampleLayerPanFromMilli(
-            padLayerPanMilli_[padIndex][layerIndex].load(
-                    std::memory_order_relaxed));
+    return drumProgram_.pad(padIndex).layer(layerIndex).pan;
 }
 
 std::string AudioEngine::setPadLayerVelocityRange(
@@ -821,6 +859,9 @@ std::string AudioEngine::setPadLayerVelocityRange(
         return "Layer velocity range failed: minimum exceeds maximum";
     }
 
+    auto& layerState = drumProgram_.pad(padIndex).layer(layerIndex);
+    layerState.velocityMinimum = minimum;
+    layerState.velocityMaximum = maximum;
     padLayerVelocityMin_[padIndex][layerIndex].store(
             static_cast<std::int32_t>(minimum),
             std::memory_order_relaxed);
@@ -843,22 +884,7 @@ SampleLayerVelocityRange AudioEngine::padLayerVelocityRange(
         return {};
     }
 
-    const auto minimum = static_cast<std::uint8_t>(
-            std::clamp(
-                    padLayerVelocityMin_[padIndex][layerIndex].load(
-                            std::memory_order_relaxed),
-                    0,
-                    127));
-    const auto maximum = static_cast<std::uint8_t>(
-            std::clamp(
-                    padLayerVelocityMax_[padIndex][layerIndex].load(
-                            std::memory_order_relaxed),
-                    0,
-                    127));
-
-    return {
-            minimum,
-            maximum >= minimum ? maximum : minimum};
+    return drumProgram_.pad(padIndex).layer(layerIndex).velocityRange();
 }
 
 std::string AudioEngine::setPadTuningSemitones(
@@ -871,6 +897,8 @@ std::string AudioEngine::setPadTuningSemitones(
     const float clamped = std::clamp(semitones, -24.0f, 24.0f);
     const auto milliSemitones = static_cast<std::int32_t>(
             std::lround(clamped * 1000.0f));
+    drumProgram_.pad(padIndex).tuningSemitones =
+            static_cast<float>(milliSemitones) / 1000.0f;
     padTuningMilliSemitones_[padIndex].store(
             milliSemitones,
             std::memory_order_relaxed);
@@ -887,10 +915,7 @@ float AudioEngine::padTuningSemitones(std::uint8_t padIndex) const {
         return 0.0f;
     }
 
-    return static_cast<float>(
-            padTuningMilliSemitones_[padIndex].load(
-                    std::memory_order_relaxed))
-            / 1000.0f;
+    return drumProgram_.pad(padIndex).tuningSemitones;
 }
 
 std::string AudioEngine::setPadLevel(
@@ -902,6 +927,8 @@ std::string AudioEngine::setPadLevel(
 
     const float clamped = std::clamp(level, 0.0f, 1.0f);
     const auto milli = static_cast<std::int32_t>(std::lround(clamped * 1000.0f));
+    drumProgram_.pad(padIndex).level =
+            static_cast<float>(milli) / 1000.0f;
     padLevelMilli_[padIndex].store(milli, std::memory_order_relaxed);
 
     return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
@@ -913,9 +940,7 @@ float AudioEngine::padLevel(std::uint8_t padIndex) const {
         return 1.0f;
     }
 
-    return static_cast<float>(
-            padLevelMilli_[padIndex].load(std::memory_order_relaxed))
-            / 1000.0f;
+    return drumProgram_.pad(padIndex).level;
 }
 
 std::string AudioEngine::setPadPan(
@@ -927,6 +952,8 @@ std::string AudioEngine::setPadPan(
 
     const float clamped = std::clamp(pan, -1.0f, 1.0f);
     const auto milli = static_cast<std::int32_t>(std::lround(clamped * 1000.0f));
+    drumProgram_.pad(padIndex).pan =
+            static_cast<float>(milli) / 1000.0f;
     padPanMilli_[padIndex].store(milli, std::memory_order_relaxed);
 
     const float applied = static_cast<float>(milli) / 1000.0f;
@@ -946,9 +973,7 @@ float AudioEngine::padPan(std::uint8_t padIndex) const {
         return 0.0f;
     }
 
-    return static_cast<float>(
-            padPanMilli_[padIndex].load(std::memory_order_relaxed))
-            / 1000.0f;
+    return drumProgram_.pad(padIndex).pan;
 }
 
 std::string AudioEngine::loadSampleForPad(
@@ -975,7 +1000,9 @@ std::string AudioEngine::loadSampleForPadLayer(
     }
 
     padSamples_[padIndex][layerIndex] = std::make_shared<SampleBuffer>(*decoded);
-    padSampleRegions_[padIndex][layerIndex] =
+    auto& layerState = drumProgram_.pad(padIndex).layer(layerIndex);
+    layerState.sample = allocateSampleId();
+    layerState.region =
             fullSampleRegion(padSamples_[padIndex][layerIndex]->frameCount());
     padSampleDescriptions_[padIndex][layerIndex] =
             std::to_string(padSamples_[padIndex][layerIndex]->sampleRate) + " Hz "
@@ -1010,7 +1037,7 @@ std::string AudioEngine::setPadSampleRegion(
         return "Sample region change failed: invalid frame range";
     }
 
-    padSampleRegions_[padIndex][layerIndex] =
+    drumProgram_.pad(padIndex).layer(layerIndex).region =
             SampleRegion{startFrame, endFrame};
 
     return "Pad "
@@ -1030,7 +1057,7 @@ SampleRegion AudioEngine::padSampleRegion(
         return {};
     }
 
-    return padSampleRegions_[padIndex][layerIndex];
+    return drumProgram_.pad(padIndex).layer(layerIndex).region;
 }
 
 std::size_t AudioEngine::padSampleFrameCount(
@@ -1197,8 +1224,7 @@ std::string AudioEngine::stopRecording() {
     recordingArmed_.store(false, std::memory_order_release);
 
     if (!monitorEnabled_.load(std::memory_order_acquire)
-            && inputStream_ != nullptr) {
-        const std::string inputResult = stopInputStream();
+            && inputStream_ != nullptr) {        const std::string inputResult = stopInputStream();
         if (inputStream_ != nullptr) {
             return "Recording stop failed: " + inputResult;
         }
@@ -1317,7 +1343,9 @@ std::string AudioEngine::assignRecordingToPadLayer(
 
     padSamples_[padIndex][layerIndex] =
             std::make_shared<SampleBuffer>(std::move(recordedSample));
-    padSampleRegions_[padIndex][layerIndex] =
+    auto& layerState = drumProgram_.pad(padIndex).layer(layerIndex);
+    layerState.sample = allocateSampleId();
+    layerState.region =
             fullSampleRegion(padSamples_[padIndex][layerIndex]->frameCount());
     padSampleDescriptions_[padIndex][layerIndex] =
             std::to_string(padSamples_[padIndex][layerIndex]->sampleRate) + " Hz "
@@ -1421,7 +1449,7 @@ std::string AudioEngine::start() {
 
         for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
             samples[pad][layer] = padSamples_[pad][layer];
-            regions[pad][layer] = padSampleRegions_[pad][layer];
+            regions[pad][layer] = drumProgram_.pad(pad).layer(layer).region;
             anyExplicitLayer = anyExplicitLayer
                     || (samples[pad][layer] != nullptr
                         && samples[pad][layer]->frameCount() > 0);
