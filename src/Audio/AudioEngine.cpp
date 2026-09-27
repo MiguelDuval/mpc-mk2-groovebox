@@ -1,6 +1,7 @@
 #include "AudioEngine.h"
 #include "RecordingThreshold.h"
 #include "SampleChop.h"
+#include "SampleCrop.h"
 
 #include <algorithm>
 #include <cmath>
@@ -568,6 +569,71 @@ std::string AudioEngine::chopPadSampleToPads(
             + " -> pads 1-"
             + std::to_string(plan.count)
             + " (" + std::to_string(plan.count) + " slices)";
+}
+
+std::string AudioEngine::cropPadSampleRegion(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return "Crop failed: invalid pad or layer";
+    }
+
+    if (stream_ != nullptr) {
+        return "Stop audio before cropping a sample";
+    }
+
+    std::shared_ptr<const SampleBuffer> sourceSample =
+            padSamples_[padIndex][layerIndex];
+    SampleRegion sourceRegion{};
+    std::string sourceDescription;
+
+    if (sourceSample != nullptr) {
+        sourceRegion = padSampleRegions_[padIndex][layerIndex];
+        sourceDescription = padSampleDescriptions_[padIndex][layerIndex];
+    } else if (layerIndex == 0) {
+        bool hasExplicitLayer = false;
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            hasExplicitLayer = hasExplicitLayer
+                    || (padSamples_[padIndex][layer] != nullptr);
+        }
+
+        if (!hasExplicitLayer && sample_ != nullptr) {
+            sourceSample = sample_;
+            sourceRegion = fullSampleRegion(sample_->frameCount());
+            sourceDescription = sampleDescription_;
+        }
+    }
+
+    if (sourceSample == nullptr || sourceSample->frameCount() == 0) {
+        return "Crop failed: no source sample assigned";
+    }
+
+    if (!sourceRegion.isValidFor(sourceSample->frameCount())) {
+        return "Crop failed: invalid source sample region";
+    }
+
+    const auto cropped = cropSampleToRegion(*sourceSample, sourceRegion);
+    if (!cropped.has_value()) {
+        return "Crop failed: invalid source region or sample format";
+    }
+
+    auto croppedSample = std::make_shared<SampleBuffer>(*cropped);
+    const std::size_t croppedFrames = croppedSample->frameCount();
+    padSamples_[padIndex][layerIndex] = croppedSample;
+    padSampleRegions_[padIndex][layerIndex] =
+            fullSampleRegion(croppedFrames);
+    padSampleDescriptions_[padIndex][layerIndex] =
+            std::to_string(croppedSample->sampleRate) + " Hz "
+            + std::to_string(croppedSample->channelCount) + " ch "
+            + std::to_string(croppedFrames) + " frames";
+
+    return "Crop complete: Pad "
+            + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " layer "
+            + std::to_string(static_cast<unsigned>(layerIndex + 1))
+            + " | source="
+            + sourceDescription
+            + " | frames=" + std::to_string(croppedFrames);
 }
 
 std::string AudioEngine::setPadTuningSemitones(
