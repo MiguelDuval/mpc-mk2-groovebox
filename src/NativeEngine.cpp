@@ -299,6 +299,39 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadLayerTuning(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadLayerPan(
+        JNIEnv* env, jobject /* thiz */, jint pad, jint layer, jfloat pan)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) {
+        return toJString(env, "Layer pan change failed: invalid pad or layer");
+    }
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setPadLayerPan(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer),
+                    pan));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadLayerPan(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad, jint layer)
+{
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) {
+        return 0.0f;
+    }
+
+    return mpc::audio::AudioEngine::instance().padLayerPan(
+            static_cast<std::uint8_t>(pad),
+            static_cast<std::uint8_t>(layer));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadTuning(
         JNIEnv* env, jobject /* thiz */, jint pad, jfloat semitones)
 {
