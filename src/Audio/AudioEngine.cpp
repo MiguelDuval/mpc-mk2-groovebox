@@ -167,6 +167,8 @@ public:
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerTuningMilliSemitones,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerPanMilli,
+            std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerVelocityMin,
+            std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerVelocityMax,
             std::array<float, kMonitorBufferFrames>& monitorSamples,
             std::atomic<std::uint32_t>& monitorWriteSequence,
             std::atomic<bool>& monitorEnabled)
@@ -180,6 +182,8 @@ public:
               layerGainMilli_(layerGainMilli),
               layerTuningMilliSemitones_(layerTuningMilliSemitones),
               layerPanMilli_(layerPanMilli),
+              layerVelocityMin_(layerVelocityMin),
+              layerVelocityMax_(layerVelocityMax),
               monitorSamples_(monitorSamples),
               monitorWriteSequence_(monitorWriteSequence),
               monitorEnabled_(monitorEnabled) {
@@ -249,10 +253,31 @@ public:
                                     std::memory_order_relaxed));
                     layerVoice.leftGain = layerPan > 0.0f ? 1.0f - layerPan : 1.0f;
                     layerVoice.rightGain = layerPan < 0.0f ? 1.0f + layerPan : 1.0f;
+                    const auto velocityMin =
+                            static_cast<std::uint8_t>(
+                                    std::clamp(
+                                            layerVelocityMin_[pad][layer].load(
+                                                    std::memory_order_relaxed),
+                                            0,
+                                            127));
+                    const auto velocityMax =
+                            static_cast<std::uint8_t>(
+                                    std::clamp(
+                                            layerVelocityMax_[pad][layer].load(
+                                                    std::memory_order_relaxed),
+                                            0,
+                                            127));
+                    const SampleLayerVelocityRange velocityRange{
+                            velocityMin,
+                            velocityMax};
+                    const auto clampedVelocity =
+                            static_cast<std::uint8_t>(
+                                    std::min<std::uint32_t>(velocity, 127u));
                     layerVoice.active = sample != nullptr
                             && sample->frameCount() > 0
                             && sample->channelCount > 0
-                            && region.isValidFor(sample->frameCount());
+                            && region.isValidFor(sample->frameCount())
+                            && velocityRange.contains(clampedVelocity);
                     anyLayer = anyLayer || layerVoice.active;
                 }
 
@@ -447,6 +472,8 @@ private:
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerTuningMilliSemitones_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerPanMilli_;
+    std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerVelocityMin_;
+    std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerVelocityMax_;
     std::array<float, kMonitorBufferFrames>& monitorSamples_;
     std::atomic<std::uint32_t>& monitorWriteSequence_;
     std::atomic<bool>& monitorEnabled_;
@@ -471,6 +498,8 @@ AudioEngine::AudioEngine() {
             padLayerGainMilli_[pad][layer].store(1000, std::memory_order_relaxed);
             padLayerTuningMilliSemitones_[pad][layer].store(0, std::memory_order_relaxed);
             padLayerPanMilli_[pad][layer].store(0, std::memory_order_relaxed);
+            padLayerVelocityMin_[pad][layer].store(0, std::memory_order_relaxed);
+            padLayerVelocityMax_[pad][layer].store(127, std::memory_order_relaxed);
         }
     }
 }
@@ -777,6 +806,59 @@ float AudioEngine::padLayerPan(
     return sampleLayerPanFromMilli(
             padLayerPanMilli_[padIndex][layerIndex].load(
                     std::memory_order_relaxed));
+}
+
+std::string AudioEngine::setPadLayerVelocityRange(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex,
+        std::uint8_t minimum,
+        std::uint8_t maximum) {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return "Layer velocity range failed: invalid pad or layer";
+    }
+
+    if (minimum > maximum) {
+        return "Layer velocity range failed: minimum exceeds maximum";
+    }
+
+    padLayerVelocityMin_[padIndex][layerIndex].store(
+            static_cast<std::int32_t>(minimum),
+            std::memory_order_relaxed);
+    padLayerVelocityMax_[padIndex][layerIndex].store(
+            static_cast<std::int32_t>(maximum),
+            std::memory_order_relaxed);
+
+    return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " layer " + std::to_string(static_cast<unsigned>(layerIndex + 1))
+            + " velocity: "
+            + std::to_string(static_cast<unsigned>(minimum))
+            + "-"
+            + std::to_string(static_cast<unsigned>(maximum));
+}
+
+SampleLayerVelocityRange AudioEngine::padLayerVelocityRange(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) const {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return {};
+    }
+
+    const auto minimum = static_cast<std::uint8_t>(
+            std::clamp(
+                    padLayerVelocityMin_[padIndex][layerIndex].load(
+                            std::memory_order_relaxed),
+                    0,
+                    127));
+    const auto maximum = static_cast<std::uint8_t>(
+            std::clamp(
+                    padLayerVelocityMax_[padIndex][layerIndex].load(
+                            std::memory_order_relaxed),
+                    0,
+                    127));
+
+    return {
+            minimum,
+            maximum >= minimum ? maximum : minimum};
 }
 
 std::string AudioEngine::setPadTuningSemitones(
@@ -1375,6 +1457,8 @@ std::string AudioEngine::start() {
             padLayerGainMilli_,
             padLayerTuningMilliSemitones_,
             padLayerPanMilli_,
+            padLayerVelocityMin_,
+            padLayerVelocityMax_,
             monitorSamples_,
             monitorWriteSequence_,
             monitorEnabled_);
