@@ -47,6 +47,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView layerGainStatus;
     private TextView layerTuningStatus;
     private TextView layerPanStatus;
+    private TextView layerVelocityStatus;
     private TextView sampleRegionStatus;
     private TextView chopStatus;
     private TextView recordingStatus;
@@ -72,6 +73,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native float nativeAudioGetPadLayerTuning(int pad, int layer);
     private static native String nativeAudioSetPadLayerPan(int pad, int layer, float pan);
     private static native float nativeAudioGetPadLayerPan(int pad, int layer);
+    private static native String nativeAudioSetPadLayerVelocityRange(
+            int pad, int layer, int minimum, int maximum);
+    private static native int nativeAudioGetPadLayerVelocityMin(int pad, int layer);
+    private static native int nativeAudioGetPadLayerVelocityMax(int pad, int layer);
     private static native String nativeAudioSetPadPan(int pad, float pan);
     private static native float nativeAudioGetPadPan(int pad);
     private static native String nativeAudioSetPadSampleRegion(
@@ -317,6 +322,44 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         layerPanControls.addView(layerPanCenter, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         layerPanControls.addView(layerPanRight, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        layerVelocityStatus = new TextView(this);
+        layerVelocityStatus.setText("Pad 1 layer 1 velocity: 0-127");
+        layerVelocityStatus.setTextSize(13.0f);
+
+        LinearLayout layerVelocityControls = new LinearLayout(this);
+        layerVelocityControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button layerVelocityMinDown = new Button(this);
+        layerVelocityMinDown.setText("Vel Min -8");
+        layerVelocityMinDown.setOnClickListener(v -> adjustSelectedLayerVelocityMin(-8));
+
+        Button layerVelocityMinUp = new Button(this);
+        layerVelocityMinUp.setText("Vel Min +8");
+        layerVelocityMinUp.setOnClickListener(v -> adjustSelectedLayerVelocityMin(8));
+
+        Button layerVelocityReset = new Button(this);
+        layerVelocityReset.setText("Vel Full");
+        layerVelocityReset.setOnClickListener(v -> setSelectedLayerVelocityRange(0, 127));
+
+        Button layerVelocityMaxDown = new Button(this);
+        layerVelocityMaxDown.setText("Vel Max -8");
+        layerVelocityMaxDown.setOnClickListener(v -> adjustSelectedLayerVelocityMax(-8));
+
+        Button layerVelocityMaxUp = new Button(this);
+        layerVelocityMaxUp.setText("Vel Max +8");
+        layerVelocityMaxUp.setOnClickListener(v -> adjustSelectedLayerVelocityMax(8));
+
+        layerVelocityControls.addView(layerVelocityMinDown, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        layerVelocityControls.addView(layerVelocityMinUp, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        layerVelocityControls.addView(layerVelocityReset, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        layerVelocityControls.addView(layerVelocityMaxDown, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        layerVelocityControls.addView(layerVelocityMaxUp, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         sampleRegionStatus = new TextView(this);
@@ -624,6 +667,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         root.addView(layerPanStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(layerPanControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(layerVelocityStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(layerVelocityControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(sampleRegionStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -1368,6 +1415,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         updateLayerGainStatus();
         updateLayerTuningStatus();
         updateLayerPanStatus();
+        updateLayerVelocityStatus();
         updateSampleRegionStatus();
     }
 
@@ -1440,6 +1488,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         updateLayerGainStatus();
         updateLayerTuningStatus();
         updateLayerPanStatus();
+        updateLayerVelocityStatus();
         updateSampleRegionStatus();
     }
 
@@ -1497,6 +1546,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Pad " + (selectedPad + 1)
                         + " layer " + (selectedLayer + 1)
                         + " pan: C");
+    }
+
+    private void setSelectedLayerVelocityRange(int minimum, int maximum) {
+        final String result = nativeAudioSetPadLayerVelocityRange(
+                selectedPad, selectedLayer, minimum, maximum);
+        status.setText(result);
+        updateLayerVelocityStatus();
+    }
+
+    private void adjustSelectedLayerVelocityMin(int delta) {
+        final int maximum =
+                nativeAudioGetPadLayerVelocityMax(selectedPad, selectedLayer);
+        final int current =
+                nativeAudioGetPadLayerVelocityMin(selectedPad, selectedLayer);
+        final int target = Math.max(0, Math.min(maximum, current + delta));
+        setSelectedLayerVelocityRange(target, maximum);
+    }
+
+    private void adjustSelectedLayerVelocityMax(int delta) {
+        final int minimum =
+                nativeAudioGetPadLayerVelocityMin(selectedPad, selectedLayer);
+        final int current =
+                nativeAudioGetPadLayerVelocityMax(selectedPad, selectedLayer);
+        final int target = Math.max(minimum, Math.min(127, current + delta));
+        setSelectedLayerVelocityRange(minimum, target);
+    }
+
+    private void updateLayerVelocityStatus() {
+        final int minimum =
+                nativeAudioGetPadLayerVelocityMin(selectedPad, selectedLayer);
+        final int maximum =
+                nativeAudioGetPadLayerVelocityMax(selectedPad, selectedLayer);
+        layerVelocityStatus.setText(
+                "Pad " + (selectedPad + 1)
+                        + " layer " + (selectedLayer + 1)
+                        + " velocity: " + minimum + "-" + maximum);
     }
 
     private void adjustSelectedLayerGain(float delta) {
