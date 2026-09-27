@@ -90,6 +90,17 @@ These level/pan checks are intentionally UNCONFIRMED until performed on the actu
 
 The first six items are physically verified. The independent Record-only and Monitor-only controls remain intentionally UNCONFIRMED until the next physical test round.
 
+## H. Sampler layer tuning
+
+- [ ] Load different samples into Pad 1 layers 1 and 2 and confirm both layers start at 0 st relative layer tuning.
+- [ ] Set Pad 1 Layer 2 to +1 st while Pad tuning stays at 0 st; confirm Layer 2 rises by one semitone while Layer 1 is unchanged.
+- [ ] Set Pad 1 Layer 2 to -1 st; confirm Layer 2 drops by one semitone while Layer 1 remains unchanged.
+- [ ] Set Pad 1 Pad tuning to +1 st and Layer 2 tuning to +1 st; confirm Layer 1 follows the Pad transpose while Layer 2 receives both transpositions.
+- [ ] Confirm layer tuning remains independent when switching between layers and clamps at ±24 st.
+- [ ] Reset Pad tuning and layer tuning to 0 st and confirm the baseline returns.
+
+These per-layer tuning checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
+
 ## H. Sampler layer gain
 
 - [ ] Load different samples into Pad 1 layers 1 and 2 at 100% gain and confirm both layers play together.
