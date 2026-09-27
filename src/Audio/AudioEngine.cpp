@@ -882,6 +882,10 @@ SampleLayerVelocityRange AudioEngine::padLayerVelocityRange(
     return drumProgram_.pad(padIndex).layer(layerIndex).velocityRange();
 }
 
+mpc::domain::DrumProgram AudioEngine::drumProgramSnapshot() const {
+    return drumProgram_;
+}
+
 std::string AudioEngine::setPadTuningSemitones(
         std::uint8_t padIndex,
         float semitones) {
