@@ -214,6 +214,25 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioChopPadSampleToPads
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioCropPadSampleRegion(
+        JNIEnv* env, jobject /* thiz */, jint pad, jint layer)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) {
+        return toJString(env, "Crop failed: invalid pad or layer");
+    }
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().cropPadSampleRegion(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer)));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadTuning(
         JNIEnv* env, jobject /* thiz */, jint pad, jfloat semitones)
 {
