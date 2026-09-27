@@ -605,13 +605,8 @@ std::string AudioEngine::chopPadSampleToPads(
         return "Chop failed: no source sample assigned";
     }
 
-    auto& sourceLayerState =
-            drumProgram_.pad(sourcePadIndex).layer(sourceLayerIndex);
-    mpc::domain::SampleId sourceSampleId = sourceLayerState.sample;
-    if (!sourceSampleId.isAssigned()) {
-        sourceSampleId = allocateSampleId();
-        sourceLayerState.sample = sourceSampleId;
-    }
+    const auto sourceSampleId =
+            drumProgram_.pad(sourcePadIndex).layer(sourceLayerIndex).sample;
 
     if (!sourceRegion.isValidFor(sourceSample->frameCount())) {
         return "Chop failed: invalid source sample region";
@@ -622,6 +617,11 @@ std::string AudioEngine::chopPadSampleToPads(
             static_cast<std::size_t>(chopCount));
     if (!plan.isValid()) {
         return "Chop failed: source region is too short";
+    }
+
+    mpc::domain::SampleId resolvedSourceSampleId = sourceSampleId;
+    if (!resolvedSourceSampleId.isAssigned()) {
+        resolvedSourceSampleId = allocateSampleId();
     }
 
     for (std::size_t destinationPad = 0;
@@ -656,7 +656,7 @@ std::string AudioEngine::chopPadSampleToPads(
         padSamples_[destinationPad][0] = sourceSample;
         auto& destinationLayerState =
                 drumProgram_.pad(destinationPad).layer(0);
-        destinationLayerState.sample = sourceSampleId;
+        destinationLayerState.sample = resolvedSourceSampleId;
         destinationLayerState.region = SampleRegion{
                 sourceRegion.startFrame + relativeRegion.startFrame,
                 sourceRegion.startFrame + relativeRegion.endFrame};
