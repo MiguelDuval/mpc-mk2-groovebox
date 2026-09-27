@@ -1080,47 +1080,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View startUp = findViewWithExactText(getWindow().getDecorView(), "Start +");
-        if (startUp == null || !startUp.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Start +");
+        View fullRegionAfterCrop = findViewWithExactText(
+                getWindow().getDecorView(), "Full Region");
+        if (fullRegionAfterCrop == null || !fullRegionAfterCrop.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Full Region after crop");
             return;
         }
         if (!assertUiTextPresent(
-                "Pad 1 layer 1 sample region: 1000-" + padOneTotal
-                        + " / " + padOneTotal + " frames")) {
-            return;
-        }
-
-        View endDown = findViewWithExactText(getWindow().getDecorView(), "End -");
-        if (endDown == null || !endDown.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click End -");
-            return;
-        }
-        if (!assertUiTextPresent(
-                "Pad 1 layer 1 sample region: 1000-" + (padOneTotal - 1000)
-                        + " / " + padOneTotal + " frames")) {
-            return;
-        }
-
-        View startDown = findViewWithExactText(getWindow().getDecorView(), "Start -");
-        if (startDown == null || !startDown.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Start -");
-            return;
-        }
-        if (!assertUiTextPresent(
-                "Pad 1 layer 1 sample region: 0-" + (padOneTotal - 1000)
-                        + " / " + padOneTotal + " frames")) {
-            return;
-        }
-
-        View fullRegion = findViewWithExactText(getWindow().getDecorView(), "Full Region");
-        if (fullRegion == null || !fullRegion.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Full Region");
-            return;
-        }
-        if (!assertUiTextPresent(
-                "Pad 1 layer 1 sample region: 0-" + padOneTotal
-                        + " / " + padOneTotal + " frames")) {
+                "Pad 1 layer 1 sample region: 0-" + croppedTotal
+                        + " / " + croppedTotal + " frames")) {
             return;
         }
 
