@@ -34,4 +34,18 @@ inline float sampleLayerTuningFromMilli(std::int32_t milli) noexcept {
     return static_cast<float>(clamped) / 1000.0f;
 }
 
+inline std::int32_t normalizeSampleLayerPanMilli(float pan) noexcept {
+    if (!std::isfinite(pan)) {
+        return 0;
+    }
+
+    const float clamped = std::clamp(pan, -1.0f, 1.0f);
+    return static_cast<std::int32_t>(std::lround(clamped * 1000.0f));
+}
+
+inline float sampleLayerPanFromMilli(std::int32_t milli) noexcept {
+    const auto clamped = std::clamp(milli, -1000, 1000);
+    return static_cast<float>(clamped) / 1000.0f;
+}
+
 } // namespace mpc::audio
