@@ -4,6 +4,7 @@
 #include "SampleLayerVelocityRange.h"
 #include "SampleRegion.h"
 #include "WavSample.h"
+#include "MPC/Domain/DrumProgram.h"
 
 #include <array>
 #include <atomic>
@@ -125,6 +126,7 @@ private:
     class InputCallback;
 
     std::string openInputStream();
+    mpc::domain::SampleId allocateSampleId();
     std::string stopInputStream();
     std::string stopOutputStream();
 
@@ -134,7 +136,6 @@ private:
     std::shared_ptr<const SampleBuffer> sample_;
     std::string sampleDescription_;
     SampleLayerGrid padSamples_{};
-    SampleRegionGrid padSampleRegions_{};
     std::array<std::array<std::string, kSampleLayerCount>, kPadCount>
             padSampleDescriptions_{};
     std::shared_ptr<OutputCallback> callback_;
@@ -144,6 +145,8 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount> padTuningMilliSemitones_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
+    mpc::domain::DrumProgram drumProgram_{};
+    std::uint32_t nextSampleId_ = 1;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>
             padLayerGainMilli_{};
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>
