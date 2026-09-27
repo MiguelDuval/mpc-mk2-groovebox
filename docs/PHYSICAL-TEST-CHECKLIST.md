@@ -174,3 +174,14 @@ The recording-threshold implementation is software-verified; physical microphone
 - [ ] Confirm chopping a pad with occupied extra layers is rejected rather than silently destroying those assignments.
 
 The sampler chop implementation is software-verified; physical pad-by-pad playback and audible boundary verification remain pending.
+
+
+## K. Sampler crop
+
+- [ ] Set a partial region on Pad 1 / Layer 1 and choose Crop Region; confirm the resulting sample contains only the selected frames.
+- [ ] Confirm the cropped region resets to 0-full-length and the displayed frame count equals the original region length.
+- [ ] Confirm another pad/layer that referenced the original sample remains unchanged after cropping the selected layer.
+- [ ] Confirm Crop Region is rejected while audio is running and playback remains undisturbed.
+- [ ] Confirm the cropped sample can still be retriggered and can subsequently be chopped.
+
+The sampler crop implementation is software-verified; destructive audio editing remains pending physical verification.
