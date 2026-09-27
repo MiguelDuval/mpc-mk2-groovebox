@@ -90,6 +90,16 @@ These level/pan checks are intentionally UNCONFIRMED until performed on the actu
 
 The first six items are physically verified. The independent Record-only and Monitor-only controls remain intentionally UNCONFIRMED until the next physical test round.
 
+## H. Sampler layer gain
+
+- [ ] Load different samples into Pad 1 layers 1 and 2 at 100% gain and confirm both layers play together.
+- [ ] Set Pad 1 Layer 2 gain to 50% while leaving Layer 1 at 100%, then confirm Layer 2 is audibly reduced without changing Layer 1.
+- [ ] Set the selected layer gain to 0% and confirm that layer becomes silent while the other assigned layer still plays.
+- [ ] Change Pad 1 Layer 2 gain, switch to Layer 1, and confirm Layer 1 gain remains independent.
+- [ ] Reset Layer 2 gain to 100% and confirm both layers return to their prior relative balance.
+
+These per-layer gain checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
+
 ## H. Sampler multi-layer playback
 
 - [ ] Load a sample into pad 1 layer 1, start the sampler, and confirm it plays from the physical pad.
