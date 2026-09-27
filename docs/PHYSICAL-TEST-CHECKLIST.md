@@ -90,6 +90,17 @@ These level/pan checks are intentionally UNCONFIRMED until performed on the actu
 
 The first six items are physically verified. The independent Record-only and Monitor-only controls remain intentionally UNCONFIRMED until the next physical test round.
 
+## H. Sampler layer pan
+
+- [ ] Load different samples into Pad 1 layers 1 and 2 and confirm both layers start centered.
+- [ ] Set Pad 1 Layer 2 to L100 while Layer 1 remains centered; confirm only Layer 2 moves fully left.
+- [ ] Set Pad 1 Layer 2 to R100; confirm only Layer 2 moves fully right.
+- [ ] Change the parent Pad pan and confirm it affects both assigned layers while preserving each layer's relative pan.
+- [ ] Switch between layers and confirm their pan settings remain independent.
+- [ ] Reset the layer and Pad pan values to center and confirm the baseline stereo position returns.
+
+These per-layer pan checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
+
 ## H. Sampler layer tuning
 
 - [ ] Load different samples into Pad 1 layers 1 and 2 and confirm both layers start at 0 st relative layer tuning.
