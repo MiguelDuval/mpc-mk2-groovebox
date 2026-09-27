@@ -44,6 +44,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView levelStatus;
     private TextView panStatus;
     private TextView layerStatus;
+    private TextView layerGainStatus;
     private TextView sampleRegionStatus;
     private TextView chopStatus;
     private TextView recordingStatus;
@@ -63,6 +64,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native float nativeAudioGetPadTuning(int pad);
     private static native String nativeAudioSetPadLevel(int pad, float level);
     private static native float nativeAudioGetPadLevel(int pad);
+    private static native String nativeAudioSetPadLayerGain(int pad, int layer, float gain);
+    private static native float nativeAudioGetPadLayerGain(int pad, int layer);
     private static native String nativeAudioSetPadPan(int pad, float pan);
     private static native float nativeAudioGetPadPan(int pad);
     private static native String nativeAudioSetPadSampleRegion(
@@ -230,6 +233,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         layerControls.addView(layerDown, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         layerControls.addView(layerUp, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        layerGainStatus = new TextView(this);
+        layerGainStatus.setText("Pad 1 layer 1 gain: 100%");
+        layerGainStatus.setTextSize(13.0f);
+
+        LinearLayout layerGainControls = new LinearLayout(this);
+        layerGainControls.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button layerGainDown = new Button(this);
+        layerGainDown.setText("Layer -10%");
+        layerGainDown.setOnClickListener(v -> adjustSelectedLayerGain(-0.10f));
+
+        Button layerGainReset = new Button(this);
+        layerGainReset.setText("Layer Gain Reset");
+        layerGainReset.setOnClickListener(v -> setSelectedLayerGain(1.0f));
+
+        Button layerGainUp = new Button(this);
+        layerGainUp.setText("Layer +10%");
+        layerGainUp.setOnClickListener(v -> adjustSelectedLayerGain(0.10f));
+
+        layerGainControls.addView(layerGainDown, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        layerGainControls.addView(layerGainReset, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        layerGainControls.addView(layerGainUp, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         sampleRegionStatus = new TextView(this);
@@ -526,6 +555,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(layerControls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(layerGainStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(layerGainControls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(sampleRegionStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(sampleRegionControls, new LinearLayout.LayoutParams(
@@ -774,6 +807,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Pad 1 level: 100%",
                 "Pad 1 pan: C",
                 "Pad 1 sample layer: 1/8",
+                "Pad 1 layer 1 gain: 100%",
                 "Pad 1 layer 1 sample region: 0-" + bundledFrameCount
                         + " / " + bundledFrameCount + " frames",
                 "Chop: select a sample, then choose 4, 8 or 16 slices",
@@ -880,6 +914,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!assertUiTextPresent("Pad 2 sample layer: 2/8")) {
             return;
         }
+        if (!assertUiTextPresent("Pad 2 layer 2 gain: 100%")) {
+            return;
+        }
+
+        View layerGainDown = findViewWithExactText(
+                getWindow().getDecorView(), "Layer -10%");
+        if (layerGainDown == null || !layerGainDown.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer -10%");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 layer 2 gain: 90%")) {
+            return;
+        }
+
+        View layerGainReset = findViewWithExactText(
+                getWindow().getDecorView(), "Layer Gain Reset");
+        if (layerGainReset == null || !layerGainReset.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Gain Reset");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 layer 2 gain: 100%")) {
+            return;
+        }
+
+        View layerGainUp = findViewWithExactText(
+                getWindow().getDecorView(), "Layer +10%");
+        if (layerGainUp == null || !layerGainUp.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer +10%");
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 layer 2 gain: 100%")) {
+            return;
+        }
 
         for (int index = 0; index < 6; ++index) {
             if (!layerUp.performClick()) {
@@ -924,6 +991,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         if (!assertUiTextPresent("Pad 2 sample layer: 1/8")) {
+            return;
+        }
+        if (!assertUiTextPresent("Pad 2 layer 1 gain: 100%")) {
             return;
         }
 
@@ -1041,6 +1111,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!assertUiTextPresent("Pad 1 sample layer: 1/8")) {
             return;
         }
+        if (!assertUiTextPresent("Pad 1 layer 1 gain: 100%")) {
+            return;
+        }
 
         final long padOneTotal = nativeAudioGetPadSampleFrameCount(0, 0);
         if (!assertUiTextPresent(
@@ -1156,6 +1229,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         selectedPadStatus.setText("Sample target pad: " + (pad + 1));
         updatePadToneStatus();
         updateLayerStatus();
+        updateLayerGainStatus();
         updateSampleRegionStatus();
     }
 
@@ -1225,12 +1299,33 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void adjustSelectedLayer(int delta) {
         selectedLayer = Math.max(0, Math.min(7, selectedLayer + delta));
         updateLayerStatus();
+        updateLayerGainStatus();
         updateSampleRegionStatus();
     }
 
     private void updateLayerStatus() {
         layerStatus.setText("Pad " + (selectedPad + 1)
                 + " sample layer: " + (selectedLayer + 1) + "/8");
+    }
+
+    private void adjustSelectedLayerGain(float delta) {
+        setSelectedLayerGain(nativeAudioGetPadLayerGain(selectedPad, selectedLayer) + delta);
+    }
+
+    private void setSelectedLayerGain(float target) {
+        final String result =
+                nativeAudioSetPadLayerGain(selectedPad, selectedLayer, target);
+        status.setText(result);
+        updateLayerGainStatus();
+    }
+
+    private void updateLayerGainStatus() {
+        final int percent = Math.round(
+                nativeAudioGetPadLayerGain(selectedPad, selectedLayer) * 100.0f);
+        layerGainStatus.setText(
+                "Pad " + (selectedPad + 1)
+                        + " layer " + (selectedLayer + 1)
+                        + " gain: " + percent + "%");
     }
 
     private void updateSampleRegionStatus() {
