@@ -165,6 +165,7 @@ public:
             std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli,
             std::array<std::atomic<std::int32_t>, kPadCount>& panMilli,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli,
+            std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerTuningMilliSemitones,
             std::array<float, kMonitorBufferFrames>& monitorSamples,
             std::atomic<std::uint32_t>& monitorWriteSequence,
             std::atomic<bool>& monitorEnabled)
@@ -176,6 +177,7 @@ public:
               levelMilli_(levelMilli),
               panMilli_(panMilli),
               layerGainMilli_(layerGainMilli),
+              layerTuningMilliSemitones_(layerTuningMilliSemitones),
               monitorSamples_(monitorSamples),
               monitorWriteSequence_(monitorWriteSequence),
               monitorEnabled_(monitorEnabled) {
@@ -237,6 +239,9 @@ public:
                     layerVoice.gain = sampleLayerGainFromMilli(
                             layerGainMilli_[pad][layer].load(
                                     std::memory_order_relaxed));
+                    layerVoice.tuningSemitones = sampleLayerTuningFromMilli(
+                            layerTuningMilliSemitones_[pad][layer].load(
+                                    std::memory_order_relaxed));
                     layerVoice.active = sample != nullptr
                             && sample->frameCount() > 0
                             && sample->channelCount > 0
@@ -267,8 +272,10 @@ public:
                     const float sampleToOutputRate =
                             static_cast<float>(sample->sampleRate)
                             / static_cast<float>(sampleRate);
+                    const float layerSemitoneRatio =
+                            std::pow(2.0f, layerVoice.tuningSemitones / 12.0f);
                     layerVoice.positionStep =
-                            sampleToOutputRate * semitoneRatio;
+                            sampleToOutputRate * semitoneRatio * layerSemitoneRatio;
                 }
                 voice.active = velocity != 0;
             }
@@ -410,6 +417,7 @@ private:
             double position = 0.0;
             float positionStep = 0.0f;
             float gain = 1.0f;
+            float tuningSemitones = 0.0f;
             bool active = false;
         };
 
@@ -428,6 +436,7 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli_;
     std::array<std::atomic<std::int32_t>, kPadCount>& panMilli_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli_;
+    std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerTuningMilliSemitones_;
     std::array<float, kMonitorBufferFrames>& monitorSamples_;
     std::atomic<std::uint32_t>& monitorWriteSequence_;
     std::atomic<bool>& monitorEnabled_;
@@ -450,6 +459,7 @@ AudioEngine::AudioEngine() {
         padPanMilli_[pad].store(0, std::memory_order_relaxed);
         for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
             padLayerGainMilli_[pad][layer].store(1000, std::memory_order_relaxed);
+            padLayerTuningMilliSemitones_[pad][layer].store(0, std::memory_order_relaxed);
         }
     }
 }
@@ -675,6 +685,42 @@ float AudioEngine::padLayerGain(
 
     return sampleLayerGainFromMilli(
             padLayerGainMilli_[padIndex][layerIndex].load(
+                    std::memory_order_relaxed));
+}
+
+std::string AudioEngine::setPadLayerTuningSemitones(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex,
+        float semitones) {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount
+            || !std::isfinite(semitones)) {
+        return "Layer tuning change failed: invalid value";
+    }
+
+    const auto milli =
+            normalizeSampleLayerTuningMilli(semitones);
+    padLayerTuningMilliSemitones_[padIndex][layerIndex].store(
+            milli,
+            std::memory_order_relaxed);
+
+    const float applied =
+            sampleLayerTuningFromMilli(milli);
+    const char sign = applied >= 0.0f ? '+' : '-';
+    return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " layer " + std::to_string(static_cast<unsigned>(layerIndex + 1))
+            + " tuning: " + sign
+            + std::to_string(std::abs(applied)) + " st";
+}
+
+float AudioEngine::padLayerTuningSemitones(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) const {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return 0.0f;
+    }
+
+    return sampleLayerTuningFromMilli(
+            padLayerTuningMilliSemitones_[padIndex][layerIndex].load(
                     std::memory_order_relaxed));
 }
 
@@ -1272,6 +1318,7 @@ std::string AudioEngine::start() {
             padLevelMilli_,
             padPanMilli_,
             padLayerGainMilli_,
+            padLayerTuningMilliSemitones_,
             monitorSamples_,
             monitorWriteSequence_,
             monitorEnabled_);
