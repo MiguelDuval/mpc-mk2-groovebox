@@ -5,9 +5,12 @@
 #include <string>
 #include <vector>
 
+#include "MPC/Domain/SampleLayerVelocityRange.h"
+#include "MPC/Domain/SampleRegion.h"
+
 namespace mpc::domain {
 
-inline constexpr std::size_t kMaxProgramPads = 128;
+inline constexpr std::size_t kMaxProgramPads = 16;
 inline constexpr std::size_t kMaxSampleLayers = 8;
 
 enum class ProgramType : std::uint8_t {
@@ -23,26 +26,44 @@ enum class TriggerMode : std::uint8_t {
     Loop
 };
 
+struct SampleId final {
+    std::uint32_t value = 0;
+
+    constexpr bool isAssigned() const noexcept {
+        return value != 0;
+    }
+};
+
 struct SampleRef {
     std::string id;
     std::string name;
     std::string path;
     double sampleRate = 0.0;
     std::int64_t lengthSamples = 0;
+    SampleId assetId{};
 };
 
 struct SampleLayer {
-    SampleRef sample;
-    std::int64_t startSample = 0;
-    std::int64_t endSample = 0;
+    SampleId sample{};
+    SampleRegion region{};
+    float gain = 1.0f;
+    float pan = 0.0f;
+    float tuningSemitones = 0.0f;
+    std::uint8_t velocityMinimum = 0;
+    std::uint8_t velocityMaximum = 127;
+
+    // Project-facing sampler metadata retained for later loop/envelope work.
     std::int64_t loopStartSample = 0;
     std::int64_t loopEndSample = 0;
-    float volumeDb = 0.0f;
-    float pan = 0.0f;
-    float tuneSemitones = 0.0f;
-    std::uint8_t velocityMin = 0;
-    std::uint8_t velocityMax = 127;
-    bool enabled = false;
+    bool enabled = true;
+
+    constexpr SampleLayerVelocityRange velocityRange() const noexcept {
+        return {velocityMinimum, velocityMaximum};
+    }
+
+    constexpr bool isAssigned() const noexcept {
+        return sample.isAssigned();
+    }
 };
 
 struct Pad {
@@ -51,9 +72,9 @@ struct Pad {
     std::uint8_t midiNote = 0;
     TriggerMode triggerMode = TriggerMode::OneShot;
 
-    float volumeDb = 0.0f;
+    float tuningSemitones = 0.0f;
+    float level = 1.0f;
     float pan = 0.0f;
-    float tuneSemitones = 0.0f;
     float velocityScale = 1.0f;
 
     std::uint8_t muteGroup = 0;
@@ -62,6 +83,14 @@ struct Pad {
     bool soloed = false;
 
     std::array<SampleLayer, kMaxSampleLayers> layers{};
+
+    constexpr SampleLayer& layer(std::size_t layerIndex) noexcept {
+        return layers[layerIndex];
+    }
+
+    constexpr const SampleLayer& layer(std::size_t layerIndex) const noexcept {
+        return layers[layerIndex];
+    }
 };
 
 struct DrumProgram {
@@ -69,6 +98,14 @@ struct DrumProgram {
     std::string name;
     ProgramType type = ProgramType::Drum;
     std::array<Pad, kMaxProgramPads> pads{};
+
+    constexpr Pad& pad(std::size_t padIndex) noexcept {
+        return pads[padIndex];
+    }
+
+    constexpr const Pad& pad(std::size_t padIndex) const noexcept {
+        return pads[padIndex];
+    }
 };
 
 struct MidiNoteEvent {
