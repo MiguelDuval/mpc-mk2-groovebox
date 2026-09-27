@@ -165,6 +165,17 @@ jobs:
             -o build/native-tests/sample_layer_parameters_tests
           build/native-tests/sample_layer_parameters_tests
 
+      - name: Test sample layer velocity ranges
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/SampleLayerVelocityRangeTests.cpp \
+            -o build/native-tests/sample_layer_velocity_range_tests
+          build/native-tests/sample_layer_velocity_range_tests
+
       - name: Assemble debug APK
         run: gradle --no-daemon :app:assembleDebug
 
