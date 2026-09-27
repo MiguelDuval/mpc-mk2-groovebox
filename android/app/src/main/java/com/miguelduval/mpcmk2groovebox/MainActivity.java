@@ -72,6 +72,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native long nativeAudioGetPadSampleFrameCount(int pad, int layer);
     private static native String nativeAudioChopPadSampleToPads(
             int sourcePad, int sourceLayer, int chopCount);
+    private static native String nativeAudioCropPadSampleRegion(
+            int pad, int layer);
     private static native String nativeAudioStart();
     private static native String nativeAudioStop();
     private static native String nativeAudioStatus();
@@ -287,11 +289,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         chop16.setText("Chop 16");
         chop16.setOnClickListener(v -> chopSelectedSample(16));
 
+        Button cropRegion = new Button(this);
+        cropRegion.setText("Crop Region");
+        cropRegion.setOnClickListener(v -> cropSelectedSampleRegion());
+
         chopControls.addView(chop4, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         chopControls.addView(chop8, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         chopControls.addView(chop16, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        chopControls.addView(cropRegion, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
         LinearLayout padGrid = new LinearLayout(this);
@@ -772,6 +780,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Chop 4",
                 "Chop 8",
                 "Chop 16",
+                "Crop Region",
                 "Recording threshold: Off",
                 "Threshold Off",
                 "Threshold 10%",
@@ -1095,6 +1104,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        final long preCropTotal = nativeAudioGetPadSampleFrameCount(0, 0);
+        View cropRegion = findViewWithExactText(
+                getWindow().getDecorView(), "Crop Region");
+        if (cropRegion == null || !cropRegion.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Crop Region");
+            return;
+        }
+        if (!assertUiTextPresent(
+                "Crop complete: Pad 1 layer 1 | source=3840 Hz 1 ch 3840 frames | frames="
+                        + preCropTotal)) {
+            return;
+        }
+
         Log.i(TAG, "UI_INTERACTION_COMPLETE");
     }
 
@@ -1283,6 +1305,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void chopSelectedSample(int chopCount) {
         final String result = nativeAudioChopPadSampleToPads(
                 selectedPad, selectedLayer, chopCount);
+        status.setText(result);
+        chopStatus.setText(result);
+        updateSampleRegionStatus();
+    }
+
+    private void cropSelectedSampleRegion() {
+        final String result = nativeAudioCropPadSampleRegion(
+                selectedPad, selectedLayer);
         status.setText(result);
         chopStatus.setText(result);
         updateSampleRegionStatus();
