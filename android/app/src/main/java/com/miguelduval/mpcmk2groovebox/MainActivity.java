@@ -1049,6 +1049,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View startUpForCrop = findViewWithExactText(
+                getWindow().getDecorView(), "Start +");
+        if (startUpForCrop == null || !startUpForCrop.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Start + before crop");
+            return;
+        }
+        View endDownForCrop = findViewWithExactText(
+                getWindow().getDecorView(), "End -");
+        if (endDownForCrop == null || !endDownForCrop.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click End - before crop");
+            return;
+        }
+        if (!assertUiTextPresent(
+                "Pad 1 layer 1 sample region: 1000-" + (padOneTotal - 1000)
+                        + " / " + padOneTotal + " frames")) {
+            return;
+        }
+
+        View cropRegion = findViewWithExactText(
+                getWindow().getDecorView(), "Crop Region");
+        if (cropRegion == null || !cropRegion.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Crop Region");
+            return;
+        }
+        final long croppedTotal = padOneTotal - 2000;
+        if (!assertUiTextPresent(
+                "Pad 1 layer 1 sample region: 0-" + croppedTotal
+                        + " / " + croppedTotal + " frames")) {
+            return;
+        }
+
         View startUp = findViewWithExactText(getWindow().getDecorView(), "Start +");
         if (startUp == null || !startUp.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: could not click Start +");
@@ -1101,19 +1132,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if (!assertUiTextPresent(
                 "Chop complete: Pad 1 layer 1 -> pads 1-4 (4 slices)")) {
-            return;
-        }
-
-        final long preCropTotal = nativeAudioGetPadSampleFrameCount(0, 0);
-        View cropRegion = findViewWithExactText(
-                getWindow().getDecorView(), "Crop Region");
-        if (cropRegion == null || !cropRegion.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Crop Region");
-            return;
-        }
-        if (!assertUiTextPresent(
-                "Crop complete: Pad 1 layer 1 | source=3840 Hz 1 ch 3840 frames | frames="
-                        + preCropTotal)) {
             return;
         }
 
