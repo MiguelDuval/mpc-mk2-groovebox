@@ -20,4 +20,18 @@ inline float sampleLayerGainFromMilli(std::int32_t milli) noexcept {
     return static_cast<float>(clamped) / 1000.0f;
 }
 
+inline std::int32_t normalizeSampleLayerTuningMilli(float semitones) noexcept {
+    if (!std::isfinite(semitones)) {
+        return 0;
+    }
+
+    const float clamped = std::clamp(semitones, -24.0f, 24.0f);
+    return static_cast<std::int32_t>(std::lround(clamped * 1000.0f));
+}
+
+inline float sampleLayerTuningFromMilli(std::int32_t milli) noexcept {
+    const auto clamped = std::clamp(milli, -24000, 24000);
+    return static_cast<float>(clamped) / 1000.0f;
+}
+
 } // namespace mpc::audio
