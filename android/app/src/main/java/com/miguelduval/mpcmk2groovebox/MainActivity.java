@@ -1438,6 +1438,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         selectedLayer = Math.max(0, Math.min(7, selectedLayer + delta));
         updateLayerStatus();
         updateLayerGainStatus();
+        updateLayerTuningStatus();
+        updateLayerPanStatus();
         updateSampleRegionStatus();
     }
 
