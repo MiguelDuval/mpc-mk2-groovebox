@@ -34,6 +34,7 @@ The current sampler branch builds on the MIDI foundation and adds:
 - Independent microphone monitoring with separate Monitor On/Off controls.
 - Assignment of the last recording to a selected pad/layer.
 - Non-destructive per-pad/layer sample regions with a small diagnostic trim editor.
+- Control-thread crop of a selected region into an independent PCM buffer.
 - Deterministic 4/8/16-way non-destructive chopping of a selected sample region across pads 1-N.
 - Automated native decoder/region/chop/threshold tests plus Android UI hierarchy/interaction smoke coverage.
 
