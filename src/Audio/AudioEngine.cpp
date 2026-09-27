@@ -783,9 +783,6 @@ std::string AudioEngine::setPadLayerTuningSemitones(
     padLayerTuningMilliSemitones_[padIndex][layerIndex].store(
             milli,
             std::memory_order_relaxed);
-
-    const float applied =
-            sampleLayerTuningFromMilli(milli);
     const char sign = applied >= 0.0f ? '+' : '-';
     return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
             + " layer " + std::to_string(static_cast<unsigned>(layerIndex + 1))
@@ -818,8 +815,6 @@ std::string AudioEngine::setPadLayerPan(
     padLayerPanMilli_[padIndex][layerIndex].store(
             milli,
             std::memory_order_relaxed);
-
-    const float applied = sampleLayerPanFromMilli(milli);
     if (applied < 0.0f) {
         return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
                 + " layer " + std::to_string(static_cast<unsigned>(layerIndex + 1))
