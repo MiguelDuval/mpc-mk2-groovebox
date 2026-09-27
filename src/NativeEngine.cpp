@@ -332,6 +332,57 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadLayerPan(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadLayerVelocityRange(
+        JNIEnv* env, jobject /* thiz */, jint pad, jint layer, jint minimum, jint maximum)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8
+            || minimum < 0 || minimum > 127
+            || maximum < 0 || maximum > 127) {
+        return toJString(env, "Layer velocity range failed: invalid value");
+    }
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setPadLayerVelocityRange(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer),
+                    static_cast<std::uint8_t>(minimum),
+                    static_cast<std::uint8_t>(maximum)));
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadLayerVelocityMin(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad, jint layer)
+{
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) {
+        return 0;
+    }
+
+    return static_cast<jint>(
+            mpc::audio::AudioEngine::instance().padLayerVelocityRange(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer)).minimum);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadLayerVelocityMax(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad, jint layer)
+{
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) {
+        return 127;
+    }
+
+    return static_cast<jint>(
+            mpc::audio::AudioEngine::instance().padLayerVelocityRange(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer)).maximum);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadTuning(
         JNIEnv* env, jobject /* thiz */, jint pad, jfloat semitones)
 {
