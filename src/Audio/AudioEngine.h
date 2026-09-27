@@ -83,6 +83,10 @@ public:
     SampleLayerVelocityRange padLayerVelocityRange(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
+
+    // Control-thread snapshot for future sequencer, browser and project-state code.
+    mpc::domain::DrumProgram drumProgramSnapshot() const;
+
     std::string setPadTuningSemitones(std::uint8_t padIndex, float semitones);
     float padTuningSemitones(std::uint8_t padIndex) const;
     std::string setPadLevel(std::uint8_t padIndex, float level);
