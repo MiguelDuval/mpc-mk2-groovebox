@@ -57,8 +57,22 @@ inline std::size_t recordNotes(
         return 0;
     }
 
+    std::size_t validCount = 0;
+    for (const auto& source : captured) {
+        if (source.durationTicks >= 0 && source.ratchet != 0) {
+            ++validCount;
+        }
+    }
+
+    if (validCount == 0) {
+        return 0;
+    }
+
     if (mode == PatternRecordMode::Replace) {
+        pattern.notes.reserve(validCount);
         pattern.notes.clear();
+    } else {
+        pattern.notes.reserve(pattern.notes.size() + validCount);
     }
 
     const auto length = static_cast<std::int64_t>(pattern.lengthTicks);

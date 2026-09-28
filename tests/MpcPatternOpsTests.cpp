@@ -58,6 +58,17 @@ int main() {
     assert(pattern.notes[1].tick == 481);
     assert(pattern.notes[2].tick == 3720);
 
+    pattern.lengthTicks = 3840;
+    pattern.notes = {{960, 120, 60, 100, 127, 1}};
+    const std::array<mpc::domain::MidiNoteEvent, 1> invalidOnly{{{
+            0, -1, 61, 100, 127, 1}}};
+    assert(mpc::sequencer::recordNotes(
+                   pattern,
+                   invalidOnly,
+                   mpc::sequencer::PatternRecordMode::Replace) == 0);
+    assert(pattern.notes.size() == 1);
+    assert(pattern.notes[0].tick == 960);
+
     pattern.lengthTicks = 0;
     assert(mpc::sequencer::recordNotes(
                    pattern,
