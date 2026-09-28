@@ -722,10 +722,10 @@ std::string AudioEngine::cropPadSampleRegion(
     padSamples_[padIndex][layerIndex] = croppedSample;
     auto& layerState = projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex);
     layerState.sample = projectState_.registerSample(
-            "Imported sample",
+            "Cropped sample",
             "",
-            static_cast<double>(padSamples_[padIndex][layerIndex]->sampleRate),
-            static_cast<std::int64_t>(padSamples_[padIndex][layerIndex]->frameCount()));
+            static_cast<double>(croppedSample->sampleRate),
+            static_cast<std::int64_t>(croppedSample->frameCount()));
     layerState.region = fullSampleRegion(croppedFrames);
     padSampleDescriptions_[padIndex][layerIndex] =
             std::to_string(croppedSample->sampleRate) + " Hz "
@@ -1006,10 +1006,10 @@ std::string AudioEngine::loadSampleForPadLayer(
     padSamples_[padIndex][layerIndex] = std::make_shared<SampleBuffer>(*decoded);
     auto& layerState = projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex);
     layerState.sample = projectState_.registerSample(
-            "Cropped sample",
+            "Imported sample",
             "",
-            static_cast<double>(croppedSample->sampleRate),
-            static_cast<std::int64_t>(croppedSample->frameCount()));
+            static_cast<double>(padSamples_[padIndex][layerIndex]->sampleRate),
+            static_cast<std::int64_t>(padSamples_[padIndex][layerIndex]->frameCount()));
     layerState.region =
             fullSampleRegion(padSamples_[padIndex][layerIndex]->frameCount());
     padSampleDescriptions_[padIndex][layerIndex] =
