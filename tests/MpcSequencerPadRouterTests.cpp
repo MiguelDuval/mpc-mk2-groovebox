@@ -9,9 +9,9 @@ int main() {
     program.pads[1].midiNote = 42;
 
     const std::array<mpc::sequencer::ScheduledMidiEvent, 3> input{{
-            {10, 100, 36, 90, 1, 0},
-            {20, 100, 99, 80, 2, 1},
-            {30, 100, 42, 110, 1, 2}}};
+            {10, 100, 60, 36, 90, 1, 0},
+            {20, 100, 60, 99, 80, 2, 1},
+            {30, 100, 60, 42, 110, 1, 2}}};
 
     std::array<mpc::sequencer::ScheduledPadEvent, 2> output{};
 
