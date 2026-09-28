@@ -205,13 +205,13 @@ public:
 
         auto* output = static_cast<float*>(audioData);
 
-        AudioTriggerEvent event;
-        while (triggerQueue_.tryDequeue(event)) {
-            if (event.padIndex >= kPadCount || event.velocity == 0) {
-                continue;
-            }
-
-            startVoice(event.padIndex, event.velocity, sampleRate);
+        while (pendingTriggerCount_ < pendingTriggerEvents_.size()
+                && triggerQueue_.tryDequeue(
+                        pendingTriggerEvents_[pendingTriggerCount_])) {
+            auto& pending =
+                    pendingTriggerEvents_[pendingTriggerCount_];
+            pending.offsetFrames = std::max(pending.offsetFrames, 0);
+            ++pendingTriggerCount_;
         }
 
         const bool monitorEnabled =
@@ -234,6 +234,27 @@ public:
         }
 
         for (int32_t frame = 0; frame < numFrames; ++frame) {
+            for (std::size_t index = 0; index < pendingTriggerCount_;) {
+                auto& pending = pendingTriggerEvents_[index];
+                if (pending.offsetFrames > frame) {
+                    ++index;
+                    continue;
+                }
+
+                if (pending.padIndex < kPadCount && pending.velocity != 0) {
+                    startVoice(
+                            pending.padIndex,
+                            pending.velocity,
+                            sampleRate);
+                }
+
+                --pendingTriggerCount_;
+                if (index != pendingTriggerCount_) {
+                    pendingTriggerEvents_[index] =
+                            pendingTriggerEvents_[pendingTriggerCount_];
+                }
+            }
+
             float left = 0.0f;
             float right = 0.0f;
 
@@ -349,6 +370,10 @@ public:
                     output[frame * channelCount + channel] = mono;
                 }
             }
+        }
+
+        for (std::size_t index = 0; index < pendingTriggerCount_; ++index) {
+            pendingTriggerEvents_[index].offsetFrames -= numFrames;
         }
 
         return oboe::DataCallbackResult::Continue;
@@ -505,6 +530,8 @@ private:
     bool monitorWasEnabled_ = false;
     std::array<std::array<PadVoice, kMaxPadVoices>, kPadCount> voices_{};
     std::array<std::uint8_t, kPadCount> nextVoiceIndex_{};
+    std::array<AudioTriggerEvent, kAudioTriggerQueueCapacity> pendingTriggerEvents_{};
+    std::size_t pendingTriggerCount_ = 0;
 };
 
 AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
@@ -1103,12 +1130,23 @@ std::size_t AudioEngine::padSampleFrameCount(
 void AudioEngine::triggerPad(
         std::uint8_t padIndex,
         std::uint8_t velocity) {
+    triggerPadAtOffset(padIndex, velocity, 0);
+}
+
+void AudioEngine::triggerPadAtOffset(
+        std::uint8_t padIndex,
+        std::uint8_t velocity,
+        std::int32_t offsetFrames) {
     if (padIndex >= kPadCount || velocity == 0) {
         return;
     }
 
+    const auto clampedOffset = std::max(offsetFrames, 0);
     static_cast<void>(triggerQueue_.tryEnqueue(
-            AudioTriggerEvent{padIndex, velocity}));
+            AudioTriggerEvent{
+                padIndex,
+                velocity,
+                clampedOffset}));
 }
 
 std::string AudioEngine::openInputStream() {
