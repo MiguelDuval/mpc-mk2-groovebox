@@ -58,6 +58,38 @@ int main() {
     assert(pattern.notes[1].tick == 481);
     assert(pattern.notes[2].tick == 3720);
 
+    mpc::domain::Pattern stepPattern;
+    stepPattern.lengthTicks = 1920;
+    assert(mpc::sequencer::setStepNote(
+                   stepPattern, 0, 120, 36, 110, 120, 127, 1));
+    assert(mpc::sequencer::setStepNote(
+                   stepPattern, 4, 120, 38, 100, 120, 96, 2));
+    assert(stepPattern.notes.size() == 2);
+    assert(stepPattern.notes[0].tick == 0);
+    assert(stepPattern.notes[0].note == 36);
+    assert(stepPattern.notes[1].tick == 480);
+    assert(stepPattern.notes[1].probability == 96);
+    assert(stepPattern.notes[1].ratchet == 2);
+
+    assert(mpc::sequencer::setStepNote(
+                   stepPattern, 4, 120, 38, 90, 240, 64, 3));
+    assert(stepPattern.notes.size() == 2);
+    assert(stepPattern.notes[1].velocity == 90);
+    assert(stepPattern.notes[1].durationTicks == 240);
+
+    assert(mpc::sequencer::eraseStepNote(stepPattern, 4, 120, 38));
+    assert(stepPattern.notes.size() == 1);
+    assert(!mpc::sequencer::eraseStepNote(stepPattern, 4, 120, 38));
+
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, 16, 120, 40, 100));
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, -1, 120, 40, 100));
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, 1, 0, 40, 100));
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, 1, 120, 40, 0));
+
     pattern.lengthTicks = 3840;
     pattern.notes = {{960, 120, 60, 100, 127, 1}};
     const std::array<mpc::domain::MidiNoteEvent, 1> invalidOnly{{{
