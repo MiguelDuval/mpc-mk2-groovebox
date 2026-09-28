@@ -116,8 +116,12 @@ public:
     std::string recordingStatus() const;
 
     // Queues a single-shot musical trigger for one physical MPC pad.
-    // The request is consumed by the realtime audio callback without locks.
+    // offsetFrames is relative to the next output callback.
     void triggerPad(std::uint8_t padIndex, std::uint8_t velocity);
+    void triggerPadAtOffset(
+            std::uint8_t padIndex,
+            std::uint8_t velocity,
+            std::int32_t offsetFrames);
 
 private:
     static constexpr std::size_t kPadCount = mpc::domain::kMaxProgramPads;
