@@ -90,6 +90,21 @@ int main() {
     assert(!mpc::sequencer::setStepNote(
             stepPattern, 1, 120, 40, 0));
 
+    mpc::domain::MidiNoteEvent probabilityNote{0, 120, 36, 100, 64, 4};
+    assert(mpc::sequencer::shouldTriggerNote(probabilityNote, 1234u) ==
+           mpc::sequencer::shouldTriggerNote(probabilityNote, 1234u));
+    assert(mpc::sequencer::shouldTriggerNote(
+                   domain::MidiNoteEvent{0, 120, 36, 100, 0, 1},
+                   1234u) == false);
+    assert(mpc::sequencer::shouldTriggerNote(
+                   domain::MidiNoteEvent{0, 120, 36, 100, 127, 1},
+                   1234u) == true);
+    assert(mpc::sequencer::ratchetCount(probabilityNote) == 4);
+    assert(mpc::sequencer::ratchetCount(
+                   domain::MidiNoteEvent{0, 120, 36, 100, 127, 0}) == 1);
+    assert(mpc::sequencer::ratchetCount(
+                   domain::MidiNoteEvent{0, 120, 36, 100, 127, 12}) == 8);
+
     pattern.lengthTicks = 3840;
     pattern.notes = {{960, 120, 60, 100, 127, 1}};
     const std::array<mpc::domain::MidiNoteEvent, 1> invalidOnly{{{

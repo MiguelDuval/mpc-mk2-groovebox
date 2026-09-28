@@ -101,6 +101,35 @@ inline std::size_t applySwing(
 }
 
 
+inline std::uint32_t deterministicProbabilityRoll(
+        const domain::MidiNoteEvent& note,
+        std::uint32_t seed) noexcept {
+    std::uint32_t state = seed ^ (static_cast<std::uint32_t>(note.tick) * 0x9E3779B9u);
+    state ^= static_cast<std::uint32_t>(note.note) * 0x85EBCA6Bu;
+    state ^= static_cast<std::uint32_t>(note.velocity) * 0xC2B2AE35u;
+    state ^= state >> 16;
+    state *= 0x7FEB352Du;
+    state ^= state >> 15;
+    return state & 127u;
+}
+
+inline bool shouldTriggerNote(
+        const domain::MidiNoteEvent& note,
+        std::uint32_t seed) noexcept {
+    if (note.probability == 0 || note.velocity == 0) {
+        return false;
+    }
+    if (note.probability >= 127) {
+        return true;
+    }
+    return deterministicProbabilityRoll(note, seed) < note.probability;
+}
+
+inline std::size_t ratchetCount(
+        const domain::MidiNoteEvent& note) noexcept {
+    return std::clamp<std::size_t>(note.ratchet, 1, 8);
+}
+
 inline bool setStepNote(
         domain::Pattern& pattern,
         std::int32_t stepIndex,
