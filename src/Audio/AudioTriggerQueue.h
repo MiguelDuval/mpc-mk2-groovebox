@@ -11,6 +11,7 @@ namespace mpc::audio {
 struct AudioTriggerEvent final {
     std::uint8_t padIndex = 0;
     std::uint8_t velocity = 0;
+    std::int32_t offsetFrames = 0;
 };
 
 template <typename T, std::size_t Capacity>
