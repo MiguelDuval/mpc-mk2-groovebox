@@ -545,7 +545,7 @@ private:
                     std::max(
                             1.0,
                             std::ceil(
-                                    static_cast<double>(region.frameCount())
+                                    static_cast<double>(regions_[padIndex][layer].frameCount())
                                     / static_cast<double>(
                                             std::max(
                                                     0.000001f,
