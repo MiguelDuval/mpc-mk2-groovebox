@@ -75,5 +75,42 @@ int main() {
     assert(dropped.dropped == 3);
     assert(dropped.invalid == 0);
 
+    mpc::audio::AudioTriggerQueue timingQueue;
+    const auto timingInput = std::array<mpc::sequencer::ScheduledPadEvent, 2>{{
+            {960, 3, 100, 0},
+            {1920, 4, 110, 1}}};
+
+    const auto timing =
+            mpc::sequencer::enqueueScheduledPadEvents(
+                    timingQueue,
+                    timingInput,
+                    120.0,
+                    48000);
+
+    assert(timing.input == 2);
+    assert(timing.written == 2);
+    assert(timing.dropped == 0);
+    assert(timing.invalid == 0);
+
+    mpc::audio::AudioTriggerEvent firstTiming;
+    mpc::audio::AudioTriggerEvent secondTiming;
+    assert(timingQueue.tryDequeue(firstTiming));
+    assert(timingQueue.tryDequeue(secondTiming));
+    assert(firstTiming.offsetFrames == 24000);
+    assert(secondTiming.offsetFrames == 48000);
+    assert(firstTiming.padIndex == 3);
+    assert(secondTiming.padIndex == 4);
+
+    const auto invalidTiming =
+            mpc::sequencer::enqueueScheduledPadEvents(
+                    timingQueue,
+                    timingInput,
+                    0.0,
+                    48000);
+    assert(invalidTiming.input == 2);
+    assert(invalidTiming.written == 0);
+    assert(invalidTiming.dropped == 0);
+    assert(invalidTiming.invalid == 2);
+
     return 0;
 }
