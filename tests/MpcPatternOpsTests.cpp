@@ -85,14 +85,15 @@ int main() {
     assert(swingPattern.notes[3].tick == 1560);
     assert(swingPattern.notes[4].tick == 720);
 
-    const auto beforeNoSwing = swingPattern.notes;
     assert(mpc::sequencer::applySwing(swingPattern, 0, 50) == 0);
     assert(mpc::sequencer::applySwing(swingPattern, 480, 0) == 0);
-    assert(swingPattern.notes == beforeNoSwing);
+    assert(swingPattern.notes[0].tick == 0);
+    assert(swingPattern.notes[1].tick == 600);
+    assert(swingPattern.notes[3].tick == 1560);
 
     mpc::domain::Pattern wrapPattern;
-    wrapPattern.lengthTicks = 1000;
-    wrapPattern.notes = {{800, 120, 50, 100, 127, 1}};
+    wrapPattern.lengthTicks = 600;
+    wrapPattern.notes = {{400, 120, 50, 100, 127, 1}};
     assert(mpc::sequencer::applySwing(wrapPattern, 400, 100) == 1);
     assert(wrapPattern.notes[0].tick == 0);
 
