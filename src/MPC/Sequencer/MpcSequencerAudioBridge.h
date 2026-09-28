@@ -2,6 +2,7 @@
 
 #include "Audio/AudioTriggerQueue.h"
 #include "MPC/Sequencer/MpcSequencerPadRouter.h"
+#include "MPC/Sequencer/MpcTickFrameConverter.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -44,6 +45,42 @@ struct AudioBridgeResult final {
             static_cast<std::uint8_t>(event.padIndex),
             event.velocity,
             frameOffset};
+
+        if (queue.tryEnqueue(trigger)) {
+            ++result.written;
+        } else {
+            ++result.dropped;
+        }
+    }
+
+    return result;
+}
+
+
+
+[[nodiscard]] inline AudioBridgeResult enqueueScheduledPadEvents(
+        audio::AudioTriggerQueue& queue,
+        std::span<const ScheduledPadEvent> input,
+        double tempoBpm,
+        std::int32_t sampleRate) noexcept {
+    AudioBridgeResult result;
+    result.input = input.size();
+
+    for (const auto& event : input) {
+        const auto frameOffset =
+                ticksToFrames(event.offsetTicks, tempoBpm, sampleRate);
+
+        if (!frameOffset.has_value()
+                || event.velocity == 0
+                || event.padIndex > std::numeric_limits<std::uint8_t>::max()) {
+            ++result.invalid;
+            continue;
+        }
+
+        const audio::AudioTriggerEvent trigger{
+            static_cast<std::uint8_t>(event.padIndex),
+            event.velocity,
+            *frameOffset};
 
         if (queue.tryEnqueue(trigger)) {
             ++result.written;
