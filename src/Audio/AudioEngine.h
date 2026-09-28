@@ -4,6 +4,7 @@
 #include "SampleLayerVelocityRange.h"
 #include "SampleRegion.h"
 #include "WavSample.h"
+#include "AudioTriggerQueue.h"
 #include "MPC/Domain/DrumProgram.h"
 #include "MPC/MpcProjectState.h"
 
@@ -145,8 +146,7 @@ private:
             padSampleDescriptions_{};
     std::shared_ptr<OutputCallback> callback_;
     std::shared_ptr<oboe::AudioStream> stream_;
-    std::array<std::atomic<std::uint32_t>, kPadCount> padTriggerSequence_{};
-    std::array<std::atomic<std::uint32_t>, kPadCount> padTriggerVelocity_{};
+    AudioTriggerQueue triggerQueue_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padTuningMilliSemitones_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
