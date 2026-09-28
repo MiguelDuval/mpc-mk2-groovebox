@@ -476,6 +476,93 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadPan(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadEnvelope(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint pad,
+        jfloat attackMs,
+        jfloat decayMs,
+        jfloat sustain,
+        jfloat releaseMs)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+    if (pad < 0 || pad >= 16) {
+        return toJString(env, "Envelope change failed: invalid pad");
+    }
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setPadEnvelopeParameters(
+                    static_cast<std::uint8_t>(pad),
+                    attackMs,
+                    decayMs,
+                    sustain,
+                    releaseMs));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadEnvelopeAttack(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad)
+{
+    if (pad < 0 || pad >= 16) return 0.0f;
+    return mpc::audio::AudioEngine::instance().padEnvelopeParameters(
+            static_cast<std::uint8_t>(pad)).attackMs;
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadEnvelopeDecay(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad)
+{
+    if (pad < 0 || pad >= 16) return 0.0f;
+    return mpc::audio::AudioEngine::instance().padEnvelopeParameters(
+            static_cast<std::uint8_t>(pad)).decayMs;
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadEnvelopeSustain(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad)
+{
+    if (pad < 0 || pad >= 16) return 1.0f;
+    return mpc::audio::AudioEngine::instance().padEnvelopeParameters(
+            static_cast<std::uint8_t>(pad)).sustain;
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadEnvelopeRelease(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad)
+{
+    if (pad < 0 || pad >= 16) return 0.0f;
+    return mpc::audio::AudioEngine::instance().padEnvelopeParameters(
+            static_cast<std::uint8_t>(pad)).releaseMs;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadFilterCutoff(
+        JNIEnv* env, jobject /* thiz */, jint pad, jfloat cutoffHz)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+    if (pad < 0 || pad >= 16) {
+        return toJString(env, "Filter cutoff change failed: invalid pad");
+    }
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setPadFilterCutoff(
+                    static_cast<std::uint8_t>(pad), cutoffHz));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadFilterCutoff(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad)
+{
+    if (pad < 0 || pad >= 16) return 20000.0f;
+    return mpc::audio::AudioEngine::instance().padFilterCutoff(
+            static_cast<std::uint8_t>(pad));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStart(
         JNIEnv* env, jobject /* thiz */)
 {

@@ -165,6 +165,17 @@ jobs:
             -o build/native-tests/sample_layer_parameters_tests
           build/native-tests/sample_layer_parameters_tests
 
+      - name: Test sample envelope and filter parameters
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/SampleEnvelopeFilterTests.cpp \
+            -o build/native-tests/sample_envelope_filter_tests
+          build/native-tests/sample_envelope_filter_tests
+
       - name: Test sample layer velocity ranges
         shell: bash
         run: |

@@ -77,6 +77,12 @@ struct Pad {
     float pan = 0.0f;
     float velocityScale = 1.0f;
 
+    float envelopeAttackMs = 0.0f;
+    float envelopeDecayMs = 0.0f;
+    float envelopeSustain = 1.0f;
+    float envelopeReleaseMs = 0.0f;
+    float filterCutoffHz = 20000.0f;
+
     std::uint8_t muteGroup = 0;
     std::uint8_t polyphony = 32;
     bool muted = false;

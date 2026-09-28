@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SampleLayerParameters.h"
+#include "SampleEnvelope.h"
 #include "SampleLayerVelocityRange.h"
 #include "SampleRegion.h"
 #include "WavSample.h"
@@ -95,6 +96,19 @@ public:
     float padLevel(std::uint8_t padIndex) const;
     std::string setPadPan(std::uint8_t padIndex, float pan);
     float padPan(std::uint8_t padIndex) const;
+    std::string setPadEnvelopeParameters(
+            std::uint8_t padIndex,
+            float attackMs,
+            float decayMs,
+            float sustain,
+            float releaseMs);
+    SampleEnvelopeParameters padEnvelopeParameters(
+            std::uint8_t padIndex) const;
+    std::string setPadFilterCutoff(
+            std::uint8_t padIndex,
+            float cutoffHz);
+    float padFilterCutoff(
+            std::uint8_t padIndex) const;
     std::string start();
     std::string stop();
     std::string status() const;
@@ -154,6 +168,11 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount> padTuningMilliSemitones_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
+    std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeAttackMilliMs_{};
+    std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeDecayMilliMs_{};
+    std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeSustainMilli_{};
+    std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeReleaseMilliMs_{};
+    std::array<std::atomic<std::int32_t>, kPadCount> padFilterCutoffMilliHz_{};
     mpc::MpcProjectState& projectState_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>
             padLayerGainMilli_{};

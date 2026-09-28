@@ -4,6 +4,8 @@
 #include "SampleChop.h"
 #include "SampleLayerParameters.h"
 #include "SampleCrop.h"
+#include "SampleEnvelope.h"
+#include "OnePoleLowPass.h"
 
 #include <algorithm>
 #include <cmath>
@@ -169,6 +171,11 @@ public:
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerPanMilli,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerVelocityMin,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerVelocityMax,
+            std::array<std::atomic<std::int32_t>, kPadCount>& envelopeAttackMilliMs,
+            std::array<std::atomic<std::int32_t>, kPadCount>& envelopeDecayMilliMs,
+            std::array<std::atomic<std::int32_t>, kPadCount>& envelopeSustainMilli,
+            std::array<std::atomic<std::int32_t>, kPadCount>& envelopeReleaseMilliMs,
+            std::array<std::atomic<std::int32_t>, kPadCount>& filterCutoffMilliHz,
             std::array<float, kMonitorBufferFrames>& monitorSamples,
             std::atomic<std::uint32_t>& monitorWriteSequence,
             std::atomic<bool>& monitorEnabled)
@@ -183,6 +190,11 @@ public:
               layerPanMilli_(layerPanMilli),
               layerVelocityMin_(layerVelocityMin),
               layerVelocityMax_(layerVelocityMax),
+              envelopeAttackMilliMs_(envelopeAttackMilliMs),
+              envelopeDecayMilliMs_(envelopeDecayMilliMs),
+              envelopeSustainMilli_(envelopeSustainMilli),
+              envelopeReleaseMilliMs_(envelopeReleaseMilliMs),
+              filterCutoffMilliHz_(filterCutoffMilliHz),
               monitorSamples_(monitorSamples),
               monitorWriteSequence_(monitorWriteSequence),
               monitorEnabled_(monitorEnabled) {
@@ -319,13 +331,40 @@ public:
                                     layerVoice.position
                                     - static_cast<double>(sourceFrame));
 
+                        const SampleEnvelopeParameters envelope{
+                                static_cast<float>(
+                                        envelopeAttackMilliMs_[pad]
+                                                .load(std::memory_order_relaxed))
+                                        / 1000.0f,
+                                static_cast<float>(
+                                        envelopeDecayMilliMs_[pad]
+                                                .load(std::memory_order_relaxed))
+                                        / 1000.0f,
+                                static_cast<float>(
+                                        envelopeSustainMilli_[pad]
+                                                .load(std::memory_order_relaxed))
+                                        / 1000.0f,
+                                static_cast<float>(
+                                        envelopeReleaseMilliMs_[pad]
+                                                .load(std::memory_order_relaxed))
+                                        / 1000.0f};
+                        const float envelopeGain =
+                                sampleEnvelopeGain(
+                                        static_cast<std::size_t>(layerVoice.ageFrames),
+                                        static_cast<std::size_t>(layerVoice.lifeFrames),
+                                        sampleRate,
+                                        envelope);
+
                         if (sample->channelCount == 1) {
                             const float sample0 =
                                     sample->sampleAt(sourceFrame, 0);
                             const float sample1 =
                                     sample->sampleAt(nextFrame, 0);
+                            const float filteredValue =
+                                    layerVoice.filterLeft.process(
+                                            sample0 + (sample1 - sample0) * fraction);
                             const float value =
-                                    sample0 + (sample1 - sample0) * fraction;
+                                    filteredValue * envelopeGain;
                             left += value * voice.gain * layerVoice.gain
                                     * voice.leftGain * layerVoice.leftGain;
                             right += value * voice.gain * layerVoice.gain
@@ -340,15 +379,22 @@ public:
                             const float right1 =
                                     sample->sampleAt(nextFrame, 1);
 
-                            left += (left0 + (left1 - left0) * fraction)
+                            const float filteredLeft =
+                                    layerVoice.filterLeft.process(
+                                            left0 + (left1 - left0) * fraction);
+                            const float filteredRight =
+                                    layerVoice.filterRight.process(
+                                            right0 + (right1 - right0) * fraction);
+
+                            left += filteredLeft * envelopeGain
                                     * voice.gain * layerVoice.gain
                                     * voice.leftGain;
-                            right += (right0 + (right1 - right0) * fraction)
+                            right += filteredRight * envelopeGain
                                     * voice.gain * layerVoice.gain
                                     * voice.rightGain;
                         }
 
-                        layerVoice.position += layerVoice.positionStep;
+                        ++layerVoice.ageFrames;
                         anyActiveLayer = true;
                     }
 
@@ -409,6 +455,11 @@ private:
         const float pan =
                 static_cast<float>(
                     panMilli_[padIndex].load(std::memory_order_relaxed))
+                / 1000.0f;
+        const float filterCutoffHz =
+                static_cast<float>(
+                        filterCutoffMilliHz_[padIndex]
+                                .load(std::memory_order_relaxed))
                 / 1000.0f;
 
         voice.gain = velocityGain * level * kPadAmplitude;
@@ -489,6 +540,20 @@ private:
                     std::pow(2.0f, layerVoice.tuningSemitones / 12.0f);
             layerVoice.positionStep =
                     sampleToOutputRate * semitoneRatio * layerSemitoneRatio;
+            layerVoice.ageFrames = 0;
+            layerVoice.lifeFrames = static_cast<std::uint64_t>(
+                    std::max(
+                            1.0,
+                            std::ceil(
+                                    static_cast<double>(region.frameCount())
+                                    / static_cast<double>(
+                                            std::max(
+                                                    0.000001f,
+                                                    layerVoice.positionStep)))));
+            layerVoice.filterLeft.configure(filterCutoffHz, sampleRate);
+            layerVoice.filterRight.configure(filterCutoffHz, sampleRate);
+            layerVoice.filterLeft.reset();
+            layerVoice.filterRight.reset();
         }
 
         voice.active = true;
@@ -502,6 +567,10 @@ private:
             float tuningSemitones = 0.0f;
             float leftGain = 1.0f;
             float rightGain = 1.0f;
+            std::uint64_t ageFrames = 0;
+            std::uint64_t lifeFrames = 1;
+            OnePoleLowPass filterLeft;
+            OnePoleLowPass filterRight;
             bool active = false;
         };
 
@@ -523,6 +592,11 @@ private:
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerPanMilli_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerVelocityMin_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerVelocityMax_;
+    std::array<std::atomic<std::int32_t>, kPadCount>& envelopeAttackMilliMs_;
+    std::array<std::atomic<std::int32_t>, kPadCount>& envelopeDecayMilliMs_;
+    std::array<std::atomic<std::int32_t>, kPadCount>& envelopeSustainMilli_;
+    std::array<std::atomic<std::int32_t>, kPadCount>& envelopeReleaseMilliMs_;
+    std::array<std::atomic<std::int32_t>, kPadCount>& filterCutoffMilliHz_;
     std::array<float, kMonitorBufferFrames>& monitorSamples_;
     std::atomic<std::uint32_t>& monitorWriteSequence_;
     std::atomic<bool>& monitorEnabled_;
@@ -552,6 +626,32 @@ AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
         padPanMilli_[pad].store(
                 static_cast<std::int32_t>(
                     std::lround(projectState_.activeDrumProgram().pad(pad).pan * 1000.0f)),
+                std::memory_order_relaxed);
+        const auto& padState = projectState_.activeDrumProgram().pad(pad);
+        const auto envelopeParameters =
+                normalizeSampleEnvelopeParameters(
+                        padState.envelopeAttackMs,
+                        padState.envelopeDecayMs,
+                        padState.envelopeSustain,
+                        padState.envelopeReleaseMs);
+        padEnvelopeAttackMilliMs_[pad].store(
+                static_cast<std::int32_t>(
+                        std::lround(envelopeParameters.attackMs * 1000.0f)),
+                std::memory_order_relaxed);
+        padEnvelopeDecayMilliMs_[pad].store(
+                static_cast<std::int32_t>(
+                        std::lround(envelopeParameters.decayMs * 1000.0f)),
+                std::memory_order_relaxed);
+        padEnvelopeSustainMilli_[pad].store(
+                static_cast<std::int32_t>(
+                        std::lround(envelopeParameters.sustain * 1000.0f)),
+                std::memory_order_relaxed);
+        padEnvelopeReleaseMilliMs_[pad].store(
+                static_cast<std::int32_t>(
+                        std::lround(envelopeParameters.releaseMs * 1000.0f)),
+                std::memory_order_relaxed);
+        padFilterCutoffMilliHz_[pad].store(
+                normalizeSampleFilterCutoffMilliHz(padState.filterCutoffHz),
                 std::memory_order_relaxed);
         for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
             const auto& layerState = projectState_.activeDrumProgram().pad(pad).layer(layer);
@@ -1026,6 +1126,82 @@ float AudioEngine::padPan(std::uint8_t padIndex) const {
     }
 
     return projectState_.activeDrumProgram().pad(padIndex).pan;
+}
+
+std::string AudioEngine::setPadEnvelopeParameters(
+        std::uint8_t padIndex,
+        float attackMs,
+        float decayMs,
+        float sustain,
+        float releaseMs) {
+    if (padIndex >= kPadCount) {
+        return "Envelope change failed: invalid pad";
+    }
+
+    const auto parameters =
+            normalizeSampleEnvelopeParameters(
+                    attackMs, decayMs, sustain, releaseMs);
+    auto& pad = projectState_.activeDrumProgram().pad(padIndex);
+    pad.envelopeAttackMs = parameters.attackMs;
+    pad.envelopeDecayMs = parameters.decayMs;
+    pad.envelopeSustain = parameters.sustain;
+    pad.envelopeReleaseMs = parameters.releaseMs;
+
+    padEnvelopeAttackMilliMs_[padIndex].store(
+            static_cast<std::int32_t>(std::lround(parameters.attackMs * 1000.0f)),
+            std::memory_order_relaxed);
+    padEnvelopeDecayMilliMs_[padIndex].store(
+            static_cast<std::int32_t>(std::lround(parameters.decayMs * 1000.0f)),
+            std::memory_order_relaxed);
+    padEnvelopeSustainMilli_[padIndex].store(
+            static_cast<std::int32_t>(std::lround(parameters.sustain * 1000.0f)),
+            std::memory_order_relaxed);
+    padEnvelopeReleaseMilliMs_[padIndex].store(
+            static_cast<std::int32_t>(std::lround(parameters.releaseMs * 1000.0f)),
+            std::memory_order_relaxed);
+
+    return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " envelope: A=" + std::to_string(parameters.attackMs)
+            + "ms D=" + std::to_string(parameters.decayMs)
+            + "ms S=" + std::to_string(parameters.sustain)
+            + " R=" + std::to_string(parameters.releaseMs) + "ms";
+}
+
+SampleEnvelopeParameters AudioEngine::padEnvelopeParameters(
+        std::uint8_t padIndex) const {
+    if (padIndex >= kPadCount) {
+        return {};
+    }
+    const auto& pad = projectState_.activeDrumProgram().pad(padIndex);
+    return normalizeSampleEnvelopeParameters(
+            pad.envelopeAttackMs,
+            pad.envelopeDecayMs,
+            pad.envelopeSustain,
+            pad.envelopeReleaseMs);
+}
+
+std::string AudioEngine::setPadFilterCutoff(
+        std::uint8_t padIndex,
+        float cutoffHz) {
+    if (padIndex >= kPadCount || !std::isfinite(cutoffHz)) {
+        return "Filter cutoff change failed: invalid value";
+    }
+
+    const auto milliHz = normalizeSampleFilterCutoffMilliHz(cutoffHz);
+    const float applied = sampleFilterCutoffFromMilliHz(milliHz);
+    projectState_.activeDrumProgram().pad(padIndex).filterCutoffHz = applied;
+    padFilterCutoffMilliHz_[padIndex].store(
+            milliHz, std::memory_order_relaxed);
+
+    return "Pad " + std::to_string(static_cast<unsigned>(padIndex + 1))
+            + " filter cutoff: " + std::to_string(applied) + " Hz";
+}
+
+float AudioEngine::padFilterCutoff(std::uint8_t padIndex) const {
+    if (padIndex >= kPadCount) {
+        return 20000.0f;
+    }
+    return projectState_.activeDrumProgram().pad(padIndex).filterCutoffHz;
 }
 
 std::string AudioEngine::loadSampleForPad(
@@ -1553,6 +1729,11 @@ std::string AudioEngine::start() {
             padLayerPanMilli_,
             padLayerVelocityMin_,
             padLayerVelocityMax_,
+            padEnvelopeAttackMilliMs_,
+            padEnvelopeDecayMilliMs_,
+            padEnvelopeSustainMilli_,
+            padEnvelopeReleaseMilliMs_,
+            padFilterCutoffMilliHz_,
             monitorSamples_,
             monitorWriteSequence_,
             monitorEnabled_);

@@ -217,3 +217,16 @@ The sampler chop implementation is software-verified; physical pad-by-pad playba
 - [ ] Confirm the cropped sample can still be retriggered and can subsequently be chopped.
 
 The sampler crop implementation is software-verified; destructive audio editing remains pending physical verification.
+
+
+## L. Sampler envelope and filter
+
+- [ ] With Pad 1 at the neutral envelope/filter defaults, confirm playback matches the existing sample baseline.
+- [ ] Set a non-zero attack and confirm the pad fades in rather than clicking at the sample start.
+- [ ] Set decay and sustain below 100% and confirm the body of the one-shot follows the programmed level.
+- [ ] Set a non-zero release and confirm the one-shot tail fades smoothly before the region ends.
+- [ ] Set Pad 1 filter cutoff low, strike a bright sample, and confirm high frequencies are reduced.
+- [ ] Restore Pad 1 envelope and filter defaults and confirm the original playback character returns.
+- [ ] Change Pad 1 envelope/filter settings and confirm Pad 2 remains unchanged.
+
+These envelope/filter checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
