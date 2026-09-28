@@ -9,7 +9,8 @@
 int main() {
     mpc::audio::AudioTriggerQueue queue;
 
-    mpc::audio::AudioTriggerEvent initiallyEmpty;\n    assert(!queue.tryDequeue(initiallyEmpty));
+    mpc::audio::AudioTriggerEvent initiallyEmpty;
+    assert(!queue.tryDequeue(initiallyEmpty));
 
     for (std::uint8_t index = 0; index < 16; ++index) {
         assert(queue.tryEnqueue(
