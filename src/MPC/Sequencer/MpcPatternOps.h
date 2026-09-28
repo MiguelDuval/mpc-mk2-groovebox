@@ -49,6 +49,57 @@ inline std::size_t quantizePattern(
     return changed;
 }
 
+
+inline std::size_t applySwing(
+        domain::Pattern& pattern,
+        std::int32_t gridTicks,
+        std::int32_t swingPercent) {
+    if (gridTicks <= 0 || pattern.lengthTicks <= 0 ||
+        pattern.notes.empty()) {
+        return 0;
+    }
+
+    const auto length = static_cast<std::int64_t>(pattern.lengthTicks);
+    const auto grid = static_cast<std::int64_t>(gridTicks);
+    const auto clampedSwing = std::clamp(swingPercent, 0, 100);
+    if (clampedSwing == 0) {
+        return 0;
+    }
+
+    const auto maxDelay = grid / 2;
+    const auto delay =
+            (maxDelay * static_cast<std::int64_t>(clampedSwing)) / 100;
+
+    std::size_t changed = 0;
+    for (auto& note : pattern.notes) {
+        if (note.tick < 0 || note.tick % grid != 0) {
+            continue;
+        }
+
+        const auto step = static_cast<std::int64_t>(note.tick) / grid;
+        if ((step & 1) == 0) {
+            continue;
+        }
+
+        const auto shifted =
+                (static_cast<std::int64_t>(note.tick) + delay) % length;
+        note.tick = static_cast<std::int32_t>(shifted);
+        ++changed;
+    }
+
+    if (changed != 0) {
+        std::stable_sort(
+                pattern.notes.begin(),
+                pattern.notes.end(),
+                [](const domain::MidiNoteEvent& lhs,
+                   const domain::MidiNoteEvent& rhs) {
+                    return lhs.tick < rhs.tick;
+                });
+    }
+
+    return changed;
+}
+
 inline std::size_t recordNotes(
         domain::Pattern& pattern,
         std::span<const domain::MidiNoteEvent> captured,

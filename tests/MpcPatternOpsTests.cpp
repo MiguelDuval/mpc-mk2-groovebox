@@ -69,6 +69,33 @@ int main() {
     assert(pattern.notes.size() == 1);
     assert(pattern.notes[0].tick == 960);
 
+    mpc::domain::Pattern swingPattern;
+    swingPattern.lengthTicks = 3840;
+    swingPattern.notes = {
+            {0, 120, 36, 100, 127, 1},
+            {480, 120, 38, 100, 127, 1},
+            {960, 120, 40, 100, 127, 1},
+            {1440, 120, 42, 100, 127, 1},
+            {720, 120, 44, 100, 127, 1}};
+
+    assert(mpc::sequencer::applySwing(swingPattern, 480, 50) == 2);
+    assert(swingPattern.notes[0].tick == 0);
+    assert(swingPattern.notes[1].tick == 600);
+    assert(swingPattern.notes[2].tick == 960);
+    assert(swingPattern.notes[3].tick == 1560);
+    assert(swingPattern.notes[4].tick == 720);
+
+    const auto beforeNoSwing = swingPattern.notes;
+    assert(mpc::sequencer::applySwing(swingPattern, 0, 50) == 0);
+    assert(mpc::sequencer::applySwing(swingPattern, 480, 0) == 0);
+    assert(swingPattern.notes == beforeNoSwing);
+
+    mpc::domain::Pattern wrapPattern;
+    wrapPattern.lengthTicks = 1000;
+    wrapPattern.notes = {{800, 120, 50, 100, 127, 1}};
+    assert(mpc::sequencer::applySwing(wrapPattern, 400, 100) == 1);
+    assert(wrapPattern.notes[0].tick == 0);
+
     pattern.lengthTicks = 0;
     assert(mpc::sequencer::recordNotes(
                    pattern,
