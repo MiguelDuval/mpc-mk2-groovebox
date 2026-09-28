@@ -39,10 +39,10 @@ int main() {
 
     assert(recorded == 2);
     assert(pattern.notes.size() == 2);
-    assert(pattern.notes[0].tick == 3720);
-    assert(pattern.notes[0].note == 50);
-    assert(pattern.notes[1].tick == 481);
-    assert(pattern.notes[1].note == 51);
+    assert(pattern.notes[0].tick == 481);
+    assert(pattern.notes[0].note == 51);
+    assert(pattern.notes[1].tick == 3720);
+    assert(pattern.notes[1].note == 50);
 
     std::array<mpc::domain::MidiNoteEvent, 1> overdub{{
             {240, 120, 54, 110, 127, 1}}};
