@@ -3,7 +3,6 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
-#include <limits>
 
 int main() {
     mpc::audio::AudioTriggerQueue queue;
@@ -63,11 +62,7 @@ int main() {
                 mpc::audio::AudioTriggerEvent{
                     0,
                     100,
-                    static_cast<std::int32_t>(
-                            std::min<std::size_t>(
-                                    index,
-                                    static_cast<std::size_t>(
-                                            std::numeric_limits<std::int32_t>::max())))}));
+                    static_cast<std::int32_t>(index)}));
     }
 
     const auto dropped =
