@@ -30,12 +30,16 @@ TickWindow MpcSequencerCursor::advanceTicks(
     }
 
     const auto length = static_cast<std::int64_t>(sequenceLengthTicks_);
-    const auto total = positionTicks_ + deltaTicks;
+    const auto fullCycles =
+            static_cast<std::uint64_t>(deltaTicks / length);
+    const auto remainder = deltaTicks % length;
+    const auto advanced = positionTicks_ + remainder;
 
     TickWindow result;
     result.begin = positionTicks_;
-    result.completedCycles = static_cast<std::uint64_t>(total / length);
-    result.end = total % length;
+    result.completedCycles = fullCycles
+            + static_cast<std::uint64_t>(advanced >= length);
+    result.end = advanced >= length ? advanced - length : advanced;
 
     positionTicks_ = result.end;
     return result;
