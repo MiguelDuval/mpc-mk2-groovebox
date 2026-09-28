@@ -76,11 +76,39 @@ public:
         result.scheduled = schedule.written;
         result.schedulingTruncated = schedule.truncated;
 
+        std::size_t expandedWritten = 0;
+        for (std::size_t index = 0; index < schedule.written; ++index) {
+            const auto& scheduled = scheduledEvents_[index];
+            const auto count = scheduled.ratchetCount == 0
+                    ? std::size_t{1}
+                    : static_cast<std::size_t>(scheduled.ratchetCount);
+
+            if (count == 1) {
+                if (expandedWritten >= expandedScheduledEvents_.size()) {
+                    result.schedulingTruncated = true;
+                    continue;
+                }
+                expandedScheduledEvents_[expandedWritten++] = scheduled;
+                continue;
+            }
+
+            const auto expanded = expandScheduledRatchets(
+                    std::span<const ScheduledMidiEvent>(&scheduled, 1),
+                    scheduled.durationTicks,
+                    std::span<ScheduledMidiEvent>(
+                            expandedScheduledEvents_.data() + expandedWritten,
+                            expandedScheduledEvents_.size() - expandedWritten));
+            result.invalid += expanded.invalid ? 1 : 0;
+            result.schedulingTruncated =
+                    result.schedulingTruncated || expanded.truncated;
+            expandedWritten += expanded.written;
+        }
+
         const auto route = routeScheduledEventsToPads(
                 program_,
                 std::span<const ScheduledMidiEvent>(
-                        scheduledEvents_.data(),
-                        schedule.written),
+                        expandedScheduledEvents_.data(),
+                        expandedWritten),
                 routedEvents_);
         result.routed = route.routed;
         result.unmapped = route.unmapped;
@@ -108,6 +136,7 @@ private:
     MpcSequencerRuntime runtime_;
     audio::AudioTriggerQueue& audioQueue_;
     std::array<ScheduledMidiEvent, kMaxPlaybackEvents> scheduledEvents_{};
+    std::array<ScheduledMidiEvent, kMaxPlaybackEvents> expandedScheduledEvents_{};
     std::array<ScheduledPadEvent, kMaxPlaybackEvents> routedEvents_{};
 };
 
