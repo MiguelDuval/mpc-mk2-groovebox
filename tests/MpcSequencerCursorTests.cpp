@@ -1,6 +1,6 @@
 #include "MPC/Sequencer/MpcSequencerCursor.h"
 
-#include <cassert>
+#include <cassert>\n#include <cstdint>\n#include <limits>
 
 int main() {
     mpc::domain::Sequence sequence;
@@ -47,6 +47,28 @@ int main() {
     sequence.lengthTicks = 0;
     mpc::sequencer::MpcSequencerCursor minimumLengthCursor(sequence);
     assert(minimumLengthCursor.sequenceLengthTicks() == 1);
+
+    mpc::domain::Sequence hugeDeltaSequence;
+    hugeDeltaSequence.lengthTicks = 3840;
+    mpc::sequencer::MpcSequencerCursor hugeDeltaCursor(hugeDeltaSequence);
+    hugeDeltaCursor.start();
+    hugeDeltaCursor.setPositionTicks(3839);
+
+    constexpr std::int64_t hugeDelta = std::numeric_limits<std::int64_t>::max();
+    const auto hugeWindow = hugeDeltaCursor.advanceTicks(hugeDelta);
+
+    const auto length = static_cast<std::int64_t>(
+            hugeDeltaSequence.lengthTicks);
+    const auto fullCycles = static_cast<std::uint64_t>(hugeDelta / length);
+    const auto remainder = hugeDelta % length;
+    const auto advanced = static_cast<std::int64_t>(3839) + remainder;
+
+    assert(hugeWindow.begin == 3839);
+    assert(hugeWindow.completedCycles ==
+           fullCycles + static_cast<std::uint64_t>(advanced >= length));
+    assert(hugeWindow.end ==
+           (advanced >= length ? advanced - length : advanced));
+    assert(hugeDeltaCursor.positionTicks() == hugeWindow.end);
 
     return 0;
 }
