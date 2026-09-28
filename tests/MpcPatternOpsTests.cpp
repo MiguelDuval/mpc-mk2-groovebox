@@ -113,15 +113,17 @@ int main() {
     assert(mpc::sequencer::applySwing(swingPattern, 480, 50) == 2);
     assert(swingPattern.notes[0].tick == 0);
     assert(swingPattern.notes[1].tick == 600);
-    assert(swingPattern.notes[2].tick == 960);
-    assert(swingPattern.notes[3].tick == 1560);
-    assert(swingPattern.notes[4].tick == 720);
+    assert(swingPattern.notes[2].tick == 720);
+    assert(swingPattern.notes[3].tick == 960);
+    assert(swingPattern.notes[4].tick == 1560);
 
     assert(mpc::sequencer::applySwing(swingPattern, 0, 50) == 0);
     assert(mpc::sequencer::applySwing(swingPattern, 480, 0) == 0);
     assert(swingPattern.notes[0].tick == 0);
     assert(swingPattern.notes[1].tick == 600);
-    assert(swingPattern.notes[3].tick == 1560);
+    assert(swingPattern.notes[2].tick == 720);
+    assert(swingPattern.notes[3].tick == 960);
+    assert(swingPattern.notes[4].tick == 1560);
 
     mpc::domain::Pattern wrapPattern;
     wrapPattern.lengthTicks = 600;
