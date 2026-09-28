@@ -260,71 +260,79 @@ public:
                         voiceIndex < kMaxPadVoices;
                         ++voiceIndex) {
                     auto& voice = voices_[pad][voiceIndex];
-                if (!voice.active) {
-                    continue;
+                    if (!voice.active) {
+                        continue;
+                    }
+
+                    bool anyActiveLayer = false;
+
+                    for (std::size_t layer = 0;
+                            layer < kSampleLayerCount;
+                            ++layer) {
+                        auto& layerVoice = voice.layers[layer];
+                        if (!layerVoice.active) {
+                            continue;
+                        }
+
+                        const auto& sample = samples_[pad][layer];
+                        const auto& region = regions_[pad][layer];
+                        if (sample == nullptr || sample->frameCount() == 0
+                                || sample->channelCount == 0) {
+                            layerVoice.active = false;
+                            continue;
+                        }
+
+                        const std::size_t sourceFrame =
+                                static_cast<std::size_t>(layerVoice.position);
+
+                        if (sourceFrame >= region.endFrame
+                                || sourceFrame >= sample->frameCount()) {
+                            layerVoice.active = false;
+                            continue;
+                        }
+
+                        const std::size_t nextFrame =
+                                std::min(sourceFrame + 1, region.endFrame - 1);
+                        const float fraction =
+                                static_cast<float>(
+                                    layerVoice.position
+                                    - static_cast<double>(sourceFrame));
+
+                        if (sample->channelCount == 1) {
+                            const float sample0 =
+                                    sample->sampleAt(sourceFrame, 0);
+                            const float sample1 =
+                                    sample->sampleAt(nextFrame, 0);
+                            const float value =
+                                    sample0 + (sample1 - sample0) * fraction;
+                            left += value * voice.gain * layerVoice.gain
+                                    * voice.leftGain * layerVoice.leftGain;
+                            right += value * voice.gain * layerVoice.gain
+                                    * voice.rightGain * layerVoice.rightGain;
+                        } else {
+                            const float left0 =
+                                    sample->sampleAt(sourceFrame, 0);
+                            const float left1 =
+                                    sample->sampleAt(nextFrame, 0);
+                            const float right0 =
+                                    sample->sampleAt(sourceFrame, 1);
+                            const float right1 =
+                                    sample->sampleAt(nextFrame, 1);
+
+                            left += (left0 + (left1 - left0) * fraction)
+                                    * voice.gain * layerVoice.gain
+                                    * voice.leftGain;
+                            right += (right0 + (right1 - right0) * fraction)
+                                    * voice.gain * layerVoice.gain
+                                    * voice.rightGain;
+                        }
+
+                        layerVoice.position += layerVoice.positionStep;
+                        anyActiveLayer = true;
+                    }
+
+                    voice.active = anyActiveLayer;
                 }
-
-                bool anyActiveLayer = false;
-
-                for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
-                    auto& layerVoice = voice.layers[layer];
-                    if (!layerVoice.active) {
-                        continue;
-                    }
-
-                    const auto& sample = samples_[pad][layer];
-                    const auto& region = regions_[pad][layer];
-                    if (sample == nullptr || sample->frameCount() == 0
-                            || sample->channelCount == 0) {
-                        layerVoice.active = false;
-                        continue;
-                    }
-
-                    const std::size_t sourceFrame =
-                            static_cast<std::size_t>(layerVoice.position);
-
-                    if (sourceFrame >= region.endFrame
-                            || sourceFrame >= sample->frameCount()) {
-                        layerVoice.active = false;
-                        continue;
-                    }
-
-                    const std::size_t nextFrame =
-                            std::min(sourceFrame + 1, region.endFrame - 1);
-                    const float fraction =
-                            static_cast<float>(
-                                layerVoice.position
-                                - static_cast<double>(sourceFrame));
-
-                    if (sample->channelCount == 1) {
-                        const float sample0 =
-                                sample->sampleAt(sourceFrame, 0);
-                        const float sample1 =
-                                sample->sampleAt(nextFrame, 0);
-                        const float value =                                sample0 + (sample1 - sample0) * fraction;
-                        left += value * voice.gain * layerVoice.gain * voice.leftGain * layerVoice.leftGain;
-                        right += value * voice.gain * layerVoice.gain * voice.rightGain * layerVoice.rightGain;
-                    } else {
-                        const float left0 =
-                                sample->sampleAt(sourceFrame, 0);
-                        const float left1 =
-                                sample->sampleAt(nextFrame, 0);
-                        const float right0 =
-                                sample->sampleAt(sourceFrame, 1);
-                        const float right1 =
-                                sample->sampleAt(nextFrame, 1);
-
-                        left += (left0 + (left1 - left0) * fraction)
-                                * voice.gain * layerVoice.gain * voice.leftGain;
-                        right += (right0 + (right1 - right0) * fraction)
-                                * voice.gain * layerVoice.gain * voice.rightGain;
-                    }
-
-                    layerVoice.position += layerVoice.positionStep;
-                    anyActiveLayer = true;
-                }
-
-                voice.active = anyActiveLayer;
             }
 
             const float mono =
@@ -341,12 +349,10 @@ public:
                     output[frame * channelCount + channel] = mono;
                 }
             }
-                    }
         }
 
         return oboe::DataCallbackResult::Continue;
     }
-
 private:
     static constexpr std::size_t kMaxPadVoices = 8;
 
