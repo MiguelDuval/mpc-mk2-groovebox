@@ -6,7 +6,7 @@
 
 int main() {
     const mpc::sequencer::ScheduledMidiEvent input{
-            100, 480, 36, 100, 4, 7};
+            100, 200, 480, 36, 100, 4, 7};
 
     std::array<mpc::sequencer::ScheduledMidiEvent, 8> output{};
     const auto result = mpc::sequencer::expandScheduledRatchets(
