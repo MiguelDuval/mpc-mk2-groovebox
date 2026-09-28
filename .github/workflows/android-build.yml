@@ -226,6 +226,14 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -Werror -pthread             -Isrc             tests/AudioTriggerQueueTests.cpp             -o build/native-tests/audio_trigger_queue_tests
           build/native-tests/audio_trigger_queue_tests
 
+      - name: Test composed sequencer playback
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcSequencerPlaybackTests.cpp             src/MPC/Sequencer/MpcSequencerCursor.cpp             src/MPC/Sequencer/MpcPatternScheduler.cpp             -o build/native-tests/mpc_sequencer_playback_tests
+          build/native-tests/mpc_sequencer_playback_tests
+
       - name: Test sequencer to audio trigger bridge
         shell: bash
         run: |
