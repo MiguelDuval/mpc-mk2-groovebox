@@ -50,7 +50,7 @@ int main() {
     assert(truncated.truncated);
 
     const mpc::sequencer::ScheduledMidiEvent clampedInput{
-            0, 120, 36, 90, 12, 2};
+            0, 120, 80, 36, 90, 12, 2};
     const auto clamped = mpc::sequencer::expandScheduledRatchets(
             std::span<const mpc::sequencer::ScheduledMidiEvent>(
                     &clampedInput,
