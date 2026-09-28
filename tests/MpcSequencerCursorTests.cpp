@@ -1,6 +1,8 @@
 #include "MPC/Sequencer/MpcSequencerCursor.h"
 
-#include <cassert>\n#include <cstdint>\n#include <limits>
+#include <cassert>
+#include <cstdint>
+#include <limits>
 
 int main() {
     mpc::domain::Sequence sequence;
