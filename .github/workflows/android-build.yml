@@ -176,6 +176,14 @@ jobs:
             -o build/native-tests/sample_layer_velocity_range_tests
           build/native-tests/sample_layer_velocity_range_tests
 
+      - name: Test MPC sequencer cursor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcSequencerCursorTests.cpp             src/MPC/Sequencer/MpcSequencerCursor.cpp             -o build/native-tests/mpc_sequencer_cursor_tests
+          build/native-tests/mpc_sequencer_cursor_tests
+
       - name: Test MPC project state
         shell: bash
         run: |
