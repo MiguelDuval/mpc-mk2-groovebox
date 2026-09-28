@@ -87,5 +87,37 @@ int main() {
     assert(stoppedAgain.queued == 0);
     assert(playback.positionTicks() == 960);
 
+    mpc::domain::Pattern ratchetPattern;
+    ratchetPattern.lengthTicks = 3840;
+    ratchetPattern.notes = {
+            {0, 480, 36, 100, 127, 4}};
+
+    mpc::audio::AudioTriggerQueue ratchetQueue;
+    mpc::sequencer::MpcSequencerPlayback ratchetPlayback(
+            sequence,
+            ratchetPattern,
+            program,
+            ratchetQueue);
+
+    ratchetPlayback.start();
+    const auto ratchetResult =
+            ratchetPlayback.advance(960, 99u, 48000);
+
+    assert(ratchetResult.scheduled == 1);
+    assert(ratchetResult.routed == 4);
+    assert(ratchetResult.queued == 4);
+
+    std::array<mpc::audio::AudioTriggerEvent, 4> ratchetEvents{};
+    for (std::size_t index = 0; index < ratchetEvents.size(); ++index) {
+        assert(ratchetQueue.tryDequeue(ratchetEvents[index]));
+        assert(ratchetEvents[index].padIndex == 0);
+        assert(ratchetEvents[index].velocity == 100);
+    }
+    assert(ratchetEvents[0].offsetFrames == 0);
+    assert(ratchetEvents[1].offsetFrames == 3000);
+    assert(ratchetEvents[2].offsetFrames == 6000);
+    assert(ratchetEvents[3].offsetFrames == 9000);
+    assert(!ratchetQueue.tryDequeue(ratchetEvents[0]));
+
     return 0;
 }
