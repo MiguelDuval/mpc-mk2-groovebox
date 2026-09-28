@@ -33,3 +33,10 @@ to/from the audio engine.
 
 The model is not an MPC file-format implementation and does not claim complete
 XPJ/XPM compatibility.
+
+Timing contract:
+
+- Sequencer tick resolution is 960 ticks per quarter note in the current runtime foundation.
+- A default 4/4 pattern of 3840 ticks therefore represents one bar at the domain level.
+- Tick-to-frame conversion is kept in the sequencer layer and requires explicit tempo and output sample rate.
+- The audio layer consumes frame offsets and does not own BPM or PPQN policy.
