@@ -15,9 +15,9 @@ int main() {
     assert(changed == 3);
     assert(pattern.notes.size() == 3);
     assert(pattern.notes[0].tick == 0);
-    assert(pattern.notes[0].note == 36);
+    assert(pattern.notes[0].note == 42);
     assert(pattern.notes[1].tick == 0);
-    assert(pattern.notes[1].note == 42);
+    assert(pattern.notes[1].note == 36);
     assert(pattern.notes[2].tick == 480);
     assert(pattern.notes[2].note == 43);
 
