@@ -64,7 +64,7 @@ int main() {
     std::array<mpc::sequencer::ScheduledMidiEvent, 1> tinyOutput{};
     const auto truncated = mpc::sequencer::schedulePatternWindow(
             pattern,
-            mpc::sequencer::TickWindow{0, 1000, 0},
+            mpc::sequencer::TickWindow{0, 999, 0},
             1234u,
             tinyOutput);
 
