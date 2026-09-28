@@ -5,10 +5,16 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 
 namespace mpc::sequencer {
 
 inline constexpr std::int32_t kDefaultQuantizeGridTicks = 120;
+
+enum class PatternRecordMode : std::uint8_t {
+    Replace,
+    Overdub
+};
 
 inline std::size_t quantizePattern(
         domain::Pattern& pattern,
@@ -41,6 +47,46 @@ inline std::size_t quantizePattern(
             });
 
     return changed;
+}
+
+inline std::size_t recordNotes(
+        domain::Pattern& pattern,
+        std::span<const domain::MidiNoteEvent> captured,
+        PatternRecordMode mode) {
+    if (pattern.lengthTicks <= 0) {
+        return 0;
+    }
+
+    if (mode == PatternRecordMode::Replace) {
+        pattern.notes.clear();
+    }
+
+    const auto length = static_cast<std::int64_t>(pattern.lengthTicks);
+    std::size_t accepted = 0;
+
+    for (const auto& source : captured) {
+        if (source.durationTicks < 0 || source.ratchet == 0) {
+            continue;
+        }
+
+        auto note = source;
+        const auto normalized =
+                static_cast<std::int64_t>(note.tick) % length;
+        note.tick = static_cast<std::int32_t>(
+                normalized < 0 ? normalized + length : normalized);
+        pattern.notes.push_back(note);
+        ++accepted;
+    }
+
+    std::stable_sort(
+            pattern.notes.begin(),
+            pattern.notes.end(),
+            [](const domain::MidiNoteEvent& lhs,
+               const domain::MidiNoteEvent& rhs) {
+                return lhs.tick < rhs.tick;
+            });
+
+    return accepted;
 }
 
 } // namespace mpc::sequencer

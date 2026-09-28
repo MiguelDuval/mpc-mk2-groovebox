@@ -58,7 +58,7 @@
 - envelope/filter.
 
 ## Stage 6 — Sequencer
-- record/overdub.
+- record/overdub. **SOFTWARE FOUNDATION IMPLEMENTED — deterministic record/overdub commit operations now accept captured MIDI note events, normalize ticks to the pattern loop, reject malformed duration/ratchet values, and provide Replace vs Overdub semantics.**
 - quantize.
 - swing.
 - step sequencing.
