@@ -160,8 +160,7 @@ public:
     OutputCallback(
             AudioEngine::SampleLayerGrid samples,
             AudioEngine::SampleRegionGrid regions,
-            std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence,
-            std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity,
+            AudioTriggerQueue& triggerQueue,
             std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones,
             std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli,
             std::array<std::atomic<std::int32_t>, kPadCount>& panMilli,
@@ -175,8 +174,7 @@ public:
             std::atomic<bool>& monitorEnabled)
             : samples_(std::move(samples)),
               regions_(std::move(regions)),
-              triggerSequence_(triggerSequence),
-              triggerVelocity_(triggerVelocity),
+              triggerQueue_(triggerQueue),
               tuningMilliSemitones_(tuningMilliSemitones),
               levelMilli_(levelMilli),
               panMilli_(panMilli),
@@ -207,111 +205,13 @@ public:
 
         auto* output = static_cast<float*>(audioData);
 
-        for (std::size_t pad = 0; pad < kPadCount; ++pad) {
-            const std::uint32_t sequence =
-                    triggerSequence_[pad].load(std::memory_order_acquire);
-
-            if (sequence != consumedSequence_[pad]) {
-                consumedSequence_[pad] = sequence;
-
-                const std::uint32_t velocity =
-                        triggerVelocity_[pad].load(std::memory_order_relaxed);
-
-                auto& voice = voices_[pad];
-                const float velocityGain =
-                        static_cast<float>(
-                            std::min<std::uint32_t>(velocity, 127u))
-                        / 127.0f;
-                const float level =
-                        static_cast<float>(
-                            levelMilli_[pad].load(std::memory_order_relaxed))
-                        / 1000.0f;
-                const float pan =
-                        static_cast<float>(
-                            panMilli_[pad].load(std::memory_order_relaxed))
-                        / 1000.0f;
-
-                voice.gain = velocityGain * level * kPadAmplitude;
-                voice.leftGain = pan > 0.0f ? 1.0f - pan : 1.0f;
-                voice.rightGain = pan < 0.0f ? 1.0f + pan : 1.0f;
-
-                bool anyLayer = false;
-                for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
-                    auto& layerVoice = voice.layers[layer];
-                    const auto& sample = samples_[pad][layer];
-                    const auto& region = regions_[pad][layer];
-
-                    layerVoice.position =
-                            static_cast<double>(region.startFrame);
-                    layerVoice.gain = sampleLayerGainFromMilli(
-                            layerGainMilli_[pad][layer].load(
-                                    std::memory_order_relaxed));
-                    layerVoice.tuningSemitones = sampleLayerTuningFromMilli(
-                            layerTuningMilliSemitones_[pad][layer].load(
-                                    std::memory_order_relaxed));
-                    const float layerPan = sampleLayerPanFromMilli(
-                            layerPanMilli_[pad][layer].load(
-                                    std::memory_order_relaxed));
-                    layerVoice.leftGain = layerPan > 0.0f ? 1.0f - layerPan : 1.0f;
-                    layerVoice.rightGain = layerPan < 0.0f ? 1.0f + layerPan : 1.0f;
-                    const auto velocityMin =
-                            static_cast<std::uint8_t>(
-                                    std::clamp(
-                                            layerVelocityMin_[pad][layer].load(
-                                                    std::memory_order_relaxed),
-                                            0,
-                                            127));
-                    const auto velocityMax =
-                            static_cast<std::uint8_t>(
-                                    std::clamp(
-                                            layerVelocityMax_[pad][layer].load(
-                                                    std::memory_order_relaxed),
-                                            0,
-                                            127));
-                    const SampleLayerVelocityRange velocityRange{
-                            velocityMin,
-                            velocityMax};
-                    const auto clampedVelocity =
-                            static_cast<std::uint8_t>(
-                                    std::min<std::uint32_t>(velocity, 127u));
-                    layerVoice.active = sample != nullptr
-                            && sample->frameCount() > 0
-                            && sample->channelCount > 0
-                            && region.isValidFor(sample->frameCount())
-                            && velocityRange.contains(clampedVelocity);
-                    anyLayer = anyLayer || layerVoice.active;
-                }
-
-                if (!anyLayer) {
-                    voice.active = false;
-                    continue;
-                }
-
-                const float tuningSemitones =
-                        static_cast<float>(
-                            tuningMilliSemitones_[pad].load(
-                                std::memory_order_relaxed))
-                        / 1000.0f;
-                const float semitoneRatio =
-                        std::pow(2.0f, tuningSemitones / 12.0f);
-                for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
-                    const auto& sample = samples_[pad][layer];
-                    const auto& region = regions_[pad][layer];
-                    auto& layerVoice = voice.layers[layer];
-                    if (!layerVoice.active || sample == nullptr) {
-                        continue;
-                    }
-
-                    const float sampleToOutputRate =
-                            static_cast<float>(sample->sampleRate)
-                            / static_cast<float>(sampleRate);
-                    const float layerSemitoneRatio =
-                            std::pow(2.0f, layerVoice.tuningSemitones / 12.0f);
-                    layerVoice.positionStep =
-                            sampleToOutputRate * semitoneRatio * layerSemitoneRatio;
-                }
-                voice.active = velocity != 0;
+        AudioTriggerEvent event;
+        while (triggerQueue_.tryDequeue(event)) {
+            if (event.padIndex >= kPadCount || event.velocity == 0) {
+                continue;
             }
+
+            startVoice(event.padIndex, event.velocity, sampleRate);
         }
 
         const bool monitorEnabled =
@@ -356,7 +256,10 @@ public:
             }
 
             for (std::size_t pad = 0; pad < kPadCount; ++pad) {
-                auto& voice = voices_[pad];
+                for (std::size_t voiceIndex = 0;
+                        voiceIndex < kMaxPadVoices;
+                        ++voiceIndex) {
+                    auto& voice = voices_[pad][voiceIndex];
                 if (!voice.active) {
                     continue;
                 }
@@ -438,12 +341,128 @@ public:
                     output[frame * channelCount + channel] = mono;
                 }
             }
+                    }
         }
 
         return oboe::DataCallbackResult::Continue;
     }
 
 private:
+    static constexpr std::size_t kMaxPadVoices = 8;
+
+    void startVoice(
+            std::uint8_t padIndex,
+            std::uint8_t velocity,
+            int32_t sampleRate) noexcept {
+        std::size_t selectedIndex = nextVoiceIndex_[padIndex];
+        for (std::size_t offset = 0; offset < kMaxPadVoices; ++offset) {
+            const std::size_t candidate =
+                    (selectedIndex + offset) % kMaxPadVoices;
+            if (!voices_[padIndex][candidate].active) {
+                selectedIndex = candidate;
+                break;
+            }
+        }
+
+        nextVoiceIndex_[padIndex] =
+                static_cast<std::uint8_t>((selectedIndex + 1) % kMaxPadVoices);
+
+        auto& voice = voices_[padIndex][selectedIndex];
+        const float velocityGain =
+                static_cast<float>(std::min<std::uint8_t>(velocity, 127u))
+                / 127.0f;
+        const float level =
+                static_cast<float>(
+                    levelMilli_[padIndex].load(std::memory_order_relaxed))
+                / 1000.0f;
+        const float pan =
+                static_cast<float>(
+                    panMilli_[padIndex].load(std::memory_order_relaxed))
+                / 1000.0f;
+
+        voice.gain = velocityGain * level * kPadAmplitude;
+        voice.leftGain = pan > 0.0f ? 1.0f - pan : 1.0f;
+        voice.rightGain = pan < 0.0f ? 1.0f + pan : 1.0f;
+
+        bool anyLayer = false;
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            auto& layerVoice = voice.layers[layer];
+            const auto& sample = samples_[padIndex][layer];
+            const auto& region = regions_[padIndex][layer];
+
+            layerVoice.position = static_cast<double>(region.startFrame);
+            layerVoice.gain = sampleLayerGainFromMilli(
+                    layerGainMilli_[padIndex][layer].load(
+                            std::memory_order_relaxed));
+            layerVoice.tuningSemitones = sampleLayerTuningFromMilli(
+                    layerTuningMilliSemitones_[padIndex][layer].load(
+                            std::memory_order_relaxed));
+            const float layerPan = sampleLayerPanFromMilli(
+                    layerPanMilli_[padIndex][layer].load(
+                            std::memory_order_relaxed));
+            layerVoice.leftGain =
+                    layerPan > 0.0f ? 1.0f - layerPan : 1.0f;
+            layerVoice.rightGain =
+                    layerPan < 0.0f ? 1.0f + layerPan : 1.0f;
+            const auto velocityMin =
+                    static_cast<std::uint8_t>(
+                            std::clamp(
+                                    layerVelocityMin_[padIndex][layer].load(
+                                            std::memory_order_relaxed),
+                                    0,
+                                    127));
+            const auto velocityMax =
+                    static_cast<std::uint8_t>(
+                            std::clamp(
+                                    layerVelocityMax_[padIndex][layer].load(
+                                            std::memory_order_relaxed),
+                                    0,
+                                    127));
+            const SampleLayerVelocityRange velocityRange{
+                    velocityMin,
+                    velocityMax};
+            const auto clampedVelocity =
+                    static_cast<std::uint8_t>(std::min<std::uint8_t>(velocity, 127u));
+            layerVoice.active = sample != nullptr
+                    && sample->frameCount() > 0
+                    && sample->channelCount > 0
+                    && region.isValidFor(sample->frameCount())
+                    && velocityRange.contains(clampedVelocity);
+            anyLayer = anyLayer || layerVoice.active;
+        }
+
+        if (!anyLayer) {
+            voice.active = false;
+            return;
+        }
+
+        const float tuningSemitones =
+                static_cast<float>(
+                    tuningMilliSemitones_[padIndex].load(
+                        std::memory_order_relaxed))
+                / 1000.0f;
+        const float semitoneRatio =
+                std::pow(2.0f, tuningSemitones / 12.0f);
+
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            const auto& sample = samples_[padIndex][layer];
+            auto& layerVoice = voice.layers[layer];
+            if (!layerVoice.active || sample == nullptr) {
+                continue;
+            }
+
+            const float sampleToOutputRate =
+                    static_cast<float>(sample->sampleRate)
+                    / static_cast<float>(sampleRate);
+            const float layerSemitoneRatio =
+                    std::pow(2.0f, layerVoice.tuningSemitones / 12.0f);
+            layerVoice.positionStep =
+                    sampleToOutputRate * semitoneRatio * layerSemitoneRatio;
+        }
+
+        voice.active = true;
+    }
+
     struct PadVoice {
         struct LayerVoice {
             double position = 0.0;
@@ -464,8 +483,7 @@ private:
 
     AudioEngine::SampleLayerGrid samples_;
     AudioEngine::SampleRegionGrid regions_;
-    std::array<std::atomic<std::uint32_t>, kPadCount>& triggerSequence_;
-    std::array<std::atomic<std::uint32_t>, kPadCount>& triggerVelocity_;
+    AudioTriggerQueue& triggerQueue_;
     std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones_;
     std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli_;
     std::array<std::atomic<std::int32_t>, kPadCount>& panMilli_;
@@ -479,8 +497,8 @@ private:
     std::atomic<bool>& monitorEnabled_;
     std::uint32_t monitorReadSequence_ = 0;
     bool monitorWasEnabled_ = false;
-    std::array<std::uint32_t, kPadCount> consumedSequence_{};
-    std::array<PadVoice, kPadCount> voices_{};
+    std::array<std::array<PadVoice, kMaxPadVoices>, kPadCount> voices_{};
+    std::array<std::uint8_t, kPadCount> nextVoiceIndex_{};
 };
 
 AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
@@ -490,8 +508,6 @@ AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
     recordingArmed_.store(false, std::memory_order_relaxed);
 
     for (std::size_t pad = 0; pad < kPadCount; ++pad) {
-        padTriggerSequence_[pad].store(0, std::memory_order_relaxed);
-        padTriggerVelocity_[pad].store(0, std::memory_order_relaxed);
         padTuningMilliSemitones_[pad].store(
                 static_cast<std::int32_t>(
                     std::lround(projectState_.activeDrumProgram().pad(pad).tuningSemitones * 1000.0f)),
@@ -1085,12 +1101,8 @@ void AudioEngine::triggerPad(
         return;
     }
 
-    padTriggerVelocity_[padIndex].store(
-            velocity,
-            std::memory_order_relaxed);
-    padTriggerSequence_[padIndex].fetch_add(
-            1,
-            std::memory_order_release);
+    static_cast<void>(triggerQueue_.tryEnqueue(
+            AudioTriggerEvent{padIndex, velocity}));
 }
 
 std::string AudioEngine::openInputStream() {
@@ -1488,8 +1500,7 @@ std::string AudioEngine::start() {
     callback_ = std::make_shared<OutputCallback>(
             std::move(samples),
             std::move(regions),
-            padTriggerSequence_,
-            padTriggerVelocity_,
+            triggerQueue_,
             padTuningMilliSemitones_,
             padLevelMilli_,
             padPanMilli_,
