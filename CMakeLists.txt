@@ -23,6 +23,7 @@ add_library(mpcgroovebox SHARED
     src/MPC/MpcProjectState.cpp
     src/MPC/MpcCore.cpp
     src/MPC/Sequencer/MpcSequencerCursor.cpp
+    src/MPC/Sequencer/MpcPatternScheduler.cpp
 )
 
 target_include_directories(mpcgroovebox PRIVATE src)
