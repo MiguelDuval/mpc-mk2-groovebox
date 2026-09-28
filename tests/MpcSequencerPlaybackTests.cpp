@@ -58,21 +58,28 @@ int main() {
     assert(events[1].offsetFrames == 24000);
 
     const auto second = playback.advance(1920, 99u, 48000);
-    assert(second.scheduled == 2);
-    assert(second.routed == 2);
-    assert(second.queued == 2);
+    assert(second.scheduled == 1);
+    assert(second.routed == 1);
+    assert(second.queued == 1);
     assert(playback.positionTicks() == 0);
 
     assert(queue.tryDequeue(events[0]));
-    assert(queue.tryDequeue(events[1]));
-
     assert(events[0].padIndex == 2);
     assert(events[0].velocity == 90);
     assert(events[0].offsetFrames == 0);
+    assert(!queue.tryDequeue(events[1]));
 
-    assert(events[1].padIndex == 0);
-    assert(events[1].velocity == 100);
-    assert(events[1].offsetFrames == 0);
+    const auto third = playback.advance(960, 99u, 48000);
+    assert(third.scheduled == 1);
+    assert(third.routed == 1);
+    assert(third.queued == 1);
+    assert(playback.positionTicks() == 960);
+
+    assert(queue.tryDequeue(events[0]));
+    assert(events[0].padIndex == 0);
+    assert(events[0].velocity == 100);
+    assert(events[0].offsetFrames == 0);
+    assert(!queue.tryDequeue(events[1]));
 
     playback.stop();
     const auto stoppedAgain = playback.advance(960, 99u, 48000);
