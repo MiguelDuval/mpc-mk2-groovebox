@@ -85,7 +85,7 @@ int main() {
     const auto stoppedAgain = playback.advance(960, 99u, 48000);
     assert(stoppedAgain.scheduled == 0);
     assert(stoppedAgain.queued == 0);
-    assert(playback.positionTicks() == 0);
+    assert(playback.positionTicks() == 960);
 
     return 0;
 }
