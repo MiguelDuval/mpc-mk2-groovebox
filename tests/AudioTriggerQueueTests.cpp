@@ -14,7 +14,10 @@ int main() {
 
     for (std::uint8_t index = 0; index < 16; ++index) {
         assert(queue.tryEnqueue(
-                mpc::audio::AudioTriggerEvent{index, static_cast<std::uint8_t>(80 + index)}));
+                mpc::audio::AudioTriggerEvent{
+                    index,
+                    static_cast<std::uint8_t>(80 + index),
+                    static_cast<std::int32_t>(index * 3)}));
     }
 
     for (std::uint8_t index = 0; index < 16; ++index) {
@@ -22,6 +25,7 @@ int main() {
         assert(queue.tryDequeue(event));
         assert(event.padIndex == index);
         assert(event.velocity == static_cast<std::uint8_t>(80 + index));
+        assert(event.offsetFrames == static_cast<std::int32_t>(index * 3));
     }
 
     mpc::audio::AudioTriggerEvent empty;
