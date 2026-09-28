@@ -1,4 +1,5 @@
 #include "AudioEngine.h"
+#include "MPC/MpcCore.h"
 #include "RecordingThreshold.h"
 #include "SampleChop.h"
 #include "SampleLayerParameters.h"
@@ -532,9 +533,7 @@ AudioEngine::~AudioEngine() {
 }
 
 AudioEngine& AudioEngine::instance() {
-    static mpc::MpcProjectState projectState;
-    static AudioEngine engine(projectState);
-    return engine;
+    return mpc::MpcCore::instance().audio();
 }
 
 std::string AudioEngine::loadSample(
