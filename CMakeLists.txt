@@ -15,6 +15,7 @@ add_library(mpcgroovebox SHARED
     src/NativeEngine.cpp
     src/Audio/AudioEngine.cpp
     src/Audio/WavSample.cpp
+    src/Audio/Waveform.cpp
     src/Midi/NativeMidi.cpp
     src/MPC/MpcStudioMk2ControlMap.cpp
     src/MPC/MpcStudioMk2LedProtocol.cpp
