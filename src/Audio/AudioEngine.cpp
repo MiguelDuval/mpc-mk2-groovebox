@@ -2050,7 +2050,6 @@ std::string AudioEngine::start() {
         return status();
     }
 
-    const auto policy = recommendedAudioOutputPolicy();
     outputCallbackCount_.store(0, std::memory_order_relaxed);
     outputCallbackFrames_.store(0, std::memory_order_relaxed);
     outputPeakMilli_.store(0, std::memory_order_relaxed);
@@ -2158,7 +2157,7 @@ std::string AudioEngine::start() {
         const auto bufferResult =
                 stream_->setBufferSizeInFrames(
                         outputConfiguration_.bufferSizeFrames);
-        if (!bufferResult) {
+        if (bufferResult.error() != oboe::Result::OK) {
             outputLastErrorCode_.store(
                     static_cast<std::int32_t>(bufferResult.error()),
                     std::memory_order_release);
