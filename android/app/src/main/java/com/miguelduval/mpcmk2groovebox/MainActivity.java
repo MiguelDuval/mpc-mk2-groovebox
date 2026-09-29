@@ -686,13 +686,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
-        page.addView(sectionLabel("INPUT / SAMPLER"));
 
         recordingInfo = label("", 13, TEXT);
         recordingInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
         recordingInfo.setPadding(dp(12), 0, dp(12), 0);
         page.addView(recordingInfo, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
         recordingWaveform = new WaveformView(this);
         recordingWaveform.setContentDescription("Recording waveform monitor");
@@ -755,7 +754,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 });
         controls2.addView(threshold, weight());
         page.addView(controls2, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
         content.addView(page);
         refreshRecordingInfo();
