@@ -1202,6 +1202,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             }
 
+            final int previousOutputId = selectedOutputDeviceId();
+            final int previousInputId = selectedInputDeviceId();
+
             audioSettingsBinding = true;
             outputDeviceSpinner.setAdapter(new ArrayAdapter<>(
                     this,
@@ -1211,8 +1214,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     this,
                     android.R.layout.simple_spinner_dropdown_item,
                     audioInputLabels()));
-            outputDeviceSpinner.setSelection(0);
-            inputDeviceSpinner.setSelection(0);
+            outputDeviceSpinner.setSelection(
+                    indexForDeviceId(outputDevices, previousOutputId));
+            inputDeviceSpinner.setSelection(
+                    indexForDeviceId(inputDevices, previousInputId));
             audioSettingsBinding = false;
         });
     }
@@ -1267,6 +1272,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case AudioDeviceInfo.TYPE_DOCK: return "DOCK";
             default: return "TYPE " + type;
         }
+    }
+
+    private int indexForDeviceId(List<AudioDeviceInfo> devices, int deviceId) {
+        if (deviceId < 0) return 0;
+        for (int i = 0; i < devices.size(); i++) {
+            if (devices.get(i).getId() == deviceId) return i + 1;
+        }
+        return 0;
     }
 
     private int selectedOutputDeviceId() {
