@@ -678,6 +678,60 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPad(
             static_cast<std::uint8_t>(velocity));
 }
 
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioConfigureOutput(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint deviceId,
+        jint sampleRate,
+        jint bufferSizeFrames,
+        jboolean exclusive,
+        jboolean lowLatency)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    mpc::audio::AudioEngine::OutputConfiguration configuration;
+    configuration.deviceId = static_cast<int>(deviceId);
+    configuration.sampleRate = static_cast<int>(sampleRate);
+    configuration.bufferSizeFrames = static_cast<int>(bufferSizeFrames);
+    configuration.exclusive = exclusive == JNI_TRUE;
+    configuration.lowLatency = lowLatency == JNI_TRUE;
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().configureOutput(configuration));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioConfigureInputDevice(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint deviceId)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    mpc::audio::AudioEngine::InputConfiguration configuration;
+    configuration.deviceId = static_cast<int>(deviceId);
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().configureInputDevice(configuration));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTestOutput(
+        JNIEnv* env, jobject /* thiz */)
+{
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().testOutputTone());
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStart(
         JNIEnv* env, jobject /* thiz */)
