@@ -36,20 +36,18 @@ std::vector<WaveformPeak> buildWaveformPeaks(
         for (std::size_t frame = frameBegin;
                 frame < std::min(frameEnd, frameCount);
                 ++frame) {
-            float mono = 0.0f;
             const std::size_t base =
                     frame * static_cast<std::size_t>(channelCount);
             for (std::size_t channel = 0; channel < channelCount; ++channel) {
-                mono += interleaved[base + channel];
+                float value = interleaved[base + channel];
+                if (!std::isfinite(value)) {
+                    value = 0.0f;
+                }
+                value = std::clamp(value, -1.0f, 1.0f);
+                minimum = std::min(minimum, value);
+                maximum = std::max(maximum, value);
+                haveValue = true;
             }
-            mono /= static_cast<float>(channelCount);
-            if (!std::isfinite(mono)) {
-                mono = 0.0f;
-            }
-            mono = std::clamp(mono, -1.0f, 1.0f);
-            minimum = std::min(minimum, mono);
-            maximum = std::max(maximum, mono);
-            haveValue = true;
         }
 
         if (haveValue) {
