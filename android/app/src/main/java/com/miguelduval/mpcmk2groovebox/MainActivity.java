@@ -1754,6 +1754,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final boolean active = result != null
                 && (result.startsWith("Audio output")
+                || result.startsWith("Output test")
                 || result.startsWith("Recording active")
                 || result.startsWith("Recording stopped")
                 || result.startsWith("Recording armed"));
