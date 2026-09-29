@@ -22,6 +22,9 @@ constexpr std::uint32_t kMaxRecordingFrames = 960000u;
 constexpr std::size_t kMonitorBufferFrames = 8192;
 constexpr float kMonitorGain = 0.65f;
 constexpr float kPadAmplitude = 0.85f;
+constexpr std::uint32_t kOutputTestToneFrames = 24000u;
+constexpr float kOutputTestToneFrequencyHz = 440.0f;
+constexpr float kOutputTestToneAmplitude = 0.10f;
 
 const char* resultText(oboe::Result result) {
     return oboe::convertToText(result);
@@ -233,7 +236,8 @@ public:
             std::atomic<bool>& monitorEnabled,
             std::atomic<std::uint64_t>& outputCallbackCount,
             std::atomic<std::uint64_t>& outputCallbackFrames,
-            std::atomic<std::uint32_t>& outputPeakMilli)
+            std::atomic<std::uint32_t>& outputPeakMilli,
+            std::atomic<std::uint32_t>& testToneRequestFrames)
             : samples_(std::move(samples)),
               regions_(std::move(regions)),
               triggerQueue_(triggerQueue),
@@ -255,7 +259,8 @@ public:
               monitorEnabled_(monitorEnabled),
               outputCallbackCount_(outputCallbackCount),
               outputCallbackFrames_(outputCallbackFrames),
-              outputPeakMilli_(outputPeakMilli) {
+              outputPeakMilli_(outputPeakMilli),
+              testToneRequestFrames_(testToneRequestFrames) {
     }
 
     oboe::DataCallbackResult onAudioReady(
@@ -279,6 +284,13 @@ public:
                 static_cast<std::uint64_t>(numFrames),
                 std::memory_order_relaxed);
         std::uint32_t renderedPeakMilli = 0;
+        const auto requestedToneFrames =
+                testToneRequestFrames_.exchange(0, std::memory_order_acq_rel);
+        if (requestedToneFrames > 0u) {
+            testToneFramesRemaining_ =
+                    std::min(requestedToneFrames, kOutputTestToneFrames);
+            testTonePhase_ = 0.0;
+        }
 
         while (pendingTriggerCount_ < pendingTriggerEvents_.size()
                 && triggerQueue_.tryDequeue(
@@ -332,6 +344,23 @@ public:
 
             float left = 0.0f;
             float right = 0.0f;
+
+            if (testToneFramesRemaining_ > 0u) {
+                const float phaseIncrement =
+                        2.0f * static_cast<float>(M_PI)
+                        * kOutputTestToneFrequencyHz
+                        / static_cast<float>(sampleRate);
+                const float tone =
+                        std::sin(static_cast<float>(testTonePhase_))
+                        * kOutputTestToneAmplitude;
+                left += tone;
+                right += tone;
+                testTonePhase_ += static_cast<double>(phaseIncrement);
+                if (testTonePhase_ >= 2.0 * M_PI) {
+                    testTonePhase_ -= 2.0 * M_PI;
+                }
+                --testToneFramesRemaining_;
+            }
 
             if (monitorEnabled) {
                 const std::uint32_t writeSequence =
@@ -678,8 +707,11 @@ private:
     std::atomic<std::uint64_t>& outputCallbackCount_;
     std::atomic<std::uint64_t>& outputCallbackFrames_;
     std::atomic<std::uint32_t>& outputPeakMilli_;
+    std::atomic<std::uint32_t>& testToneRequestFrames_;
     std::uint32_t monitorReadSequence_ = 0;
     bool monitorWasEnabled_ = false;
+    std::uint32_t testToneFramesRemaining_ = 0;
+    double testTonePhase_ = 0.0;
     std::array<std::array<PadVoice, kMaxPadVoices>, kPadCount> voices_{};
     std::array<std::uint8_t, kPadCount> nextVoiceIndex_{};
     std::array<AudioTriggerEvent, kAudioTriggerQueueCapacity> pendingTriggerEvents_{};
@@ -1492,7 +1524,10 @@ std::string AudioEngine::openInputStream() {
 
     oboe::AudioStreamBuilder builder;
     builder.setDirection(oboe::Direction::Input)
-        ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
+        ->setPerformanceMode(
+                outputConfiguration_.lowLatency
+                    ? oboe::PerformanceMode::LowLatency
+                    : oboe::PerformanceMode::None)
         ->setSharingMode(oboe::SharingMode::Shared)
         ->setFormat(oboe::AudioFormat::Float)
         ->setFormatConversionAllowed(true)
@@ -1500,6 +1535,10 @@ std::string AudioEngine::openInputStream() {
         ->setChannelCount(1)
         ->setChannelConversionAllowed(true)
         ->setDataCallback(inputCallback_);
+
+    if (inputConfiguration_.deviceId >= 0) {
+        builder.setDeviceId(inputConfiguration_.deviceId);
+    }
 
     const oboe::Result openResult = builder.openStream(inputStream_);
     if (openResult != oboe::Result::OK || inputStream_ == nullptr) {
@@ -1901,6 +1940,110 @@ std::string AudioEngine::recordingStatus() const {
     return result;
 }
 
+std::string AudioEngine::validateOutputConfiguration(
+        const OutputConfiguration& configuration) {
+    if (configuration.deviceId < -1) {
+        return "Audio output config failed: invalid device id";
+    }
+    if (configuration.sampleRate != 0
+            && (configuration.sampleRate < 8000 || configuration.sampleRate > 192000)) {
+        return "Audio output config failed: invalid sample rate";
+    }
+    if (configuration.bufferSizeFrames != 0
+            && (configuration.bufferSizeFrames < 32 || configuration.bufferSizeFrames > 8192)) {
+        return "Audio output config failed: invalid buffer size";
+    }
+    return {};
+}
+
+std::string AudioEngine::validateInputConfiguration(
+        const InputConfiguration& configuration) {
+    if (configuration.deviceId < -1) {
+        return "Audio input config failed: invalid device id";
+    }
+    return {};
+}
+
+std::string AudioEngine::configureOutput(
+        const OutputConfiguration& configuration) {
+    const auto validation = validateOutputConfiguration(configuration);
+    if (!validation.empty()) {
+        return validation;
+    }
+
+    const bool wasRunning = stream_ != nullptr;
+    if (wasRunning) {
+        const auto stopResult = stopOutputStream();
+        if (stream_ != nullptr) {
+            return "Audio output config failed: " + stopResult;
+        }
+    }
+
+    outputConfiguration_ = configuration;
+    if (!wasRunning) {
+        return "Audio output config applied";
+    }
+
+    const auto startResult = start();
+    if (stream_ == nullptr) {
+        return "Audio output config applied | restart failed | " + startResult;
+    }
+    return "Audio output config applied | " + startResult;
+}
+
+std::string AudioEngine::configureInputDevice(
+        const InputConfiguration& configuration) {
+    const auto validation = validateInputConfiguration(configuration);
+    if (!validation.empty()) {
+        return validation;
+    }
+
+    const bool wasOpen = inputStream_ != nullptr;
+    const bool wasMonitoring = monitorEnabled_.load(std::memory_order_acquire);
+    if (wasOpen) {
+        if (recordingEnabled_.load(std::memory_order_acquire)
+                || recordingArmed_.load(std::memory_order_acquire)) {
+            return "Audio input config failed: stop recording first";
+        }
+        const auto stopResult = stopInputStream();
+        if (inputStream_ != nullptr) {
+            return "Audio input config failed: " + stopResult;
+        }
+    }
+
+    inputConfiguration_ = configuration;
+    if (wasMonitoring) {
+        const auto openResult = openInputStream();
+        if (inputStream_ == nullptr) {
+            return "Audio input config applied | monitor restart failed | " + openResult;
+        }
+    }
+
+    return "Audio input config applied";
+}
+
+AudioEngine::OutputConfiguration AudioEngine::outputConfiguration() const {
+    return outputConfiguration_;
+}
+
+AudioEngine::InputConfiguration AudioEngine::inputConfiguration() const {
+    return inputConfiguration_;
+}
+
+std::string AudioEngine::testOutputTone() {
+    if (stream_ == nullptr) {
+        const auto result = start();
+        if (stream_ == nullptr) {
+            return "Output test failed: " + result;
+        }
+    }
+
+    testToneRequestFrames_.store(
+            kOutputTestToneFrames,
+            std::memory_order_release);
+    return "Output test: 440 Hz / 0.5 s | " + status();
+}
+
 std::string AudioEngine::start() {
     if (stream_ != nullptr) {
         return status();
@@ -1944,9 +2087,9 @@ std::string AudioEngine::start() {
         }
     }
 
-    if (!anySample) {
-        return "Audio start failed: no sample loaded";
-    }
+    // Opening the device is intentionally independent of sample availability.
+    // This lets Audio Settings prove the physical output route even before a
+    // sample is assigned to a pad.
 
     callback_ = std::make_shared<OutputCallback>(
             std::move(samples),
@@ -1970,15 +2113,22 @@ std::string AudioEngine::start() {
             monitorEnabled_,
             outputCallbackCount_,
             outputCallbackFrames_,
-            outputPeakMilli_);
+            outputPeakMilli_,
+            testToneRequestFrames_);
 
     outputErrorCallback_ =
             std::make_shared<OutputErrorCallback>(outputLastErrorCode_);
 
     oboe::AudioStreamBuilder builder;
     builder.setDirection(oboe::Direction::Output)
-        ->setPerformanceMode(policy.performanceMode)
-        ->setSharingMode(policy.preferredSharingMode)
+        ->setPerformanceMode(
+                outputConfiguration_.lowLatency
+                    ? oboe::PerformanceMode::LowLatency
+                    : oboe::PerformanceMode::None)
+        ->setSharingMode(
+                outputConfiguration_.exclusive
+                    ? oboe::SharingMode::Exclusive
+                    : oboe::SharingMode::Shared)
         ->setFormat(oboe::AudioFormat::Float)
         ->setFormatConversionAllowed(true)
         ->setChannelCount(2)
@@ -1988,12 +2138,30 @@ std::string AudioEngine::start() {
         ->setDataCallback(callback_)
         ->setErrorCallback(outputErrorCallback_);
 
+    if (outputConfiguration_.deviceId >= 0) {
+        builder.setDeviceId(outputConfiguration_.deviceId);
+    }
+    if (outputConfiguration_.sampleRate > 0) {
+        builder.setSampleRate(outputConfiguration_.sampleRate);
+    }
+
     const oboe::Result openResult = builder.openStream(stream_);
     if (openResult != oboe::Result::OK || stream_ == nullptr) {
         stream_.reset();
         callback_.reset();
         outputErrorCallback_.reset();
         return std::string("Audio open failed: ") + resultText(openResult);
+    }
+
+    if (outputConfiguration_.bufferSizeFrames > 0) {
+        const auto bufferResult =
+                stream_->setBufferSizeInFrames(
+                        outputConfiguration_.bufferSizeFrames);
+        if (!bufferResult) {
+            outputLastErrorCode_.store(
+                    static_cast<std::int32_t>(bufferResult.error()),
+                    std::memory_order_release);
+        }
     }
 
     const oboe::Result startResult = stream_->requestStart();
@@ -2040,11 +2208,15 @@ std::string AudioEngine::stop() {
 std::string AudioEngine::status() const {
     if (stream_ == nullptr) {
         if (sample_ == nullptr) {
-            return "Audio stopped | no sample loaded";
+            return "Audio stopped | no sample loaded"
+                    + std::string(" | outputDevice=")
+                    + std::to_string(outputConfiguration_.deviceId);
         }
 
         std::string result =
-                "Audio stopped | fallback=" + sampleDescription_;
+                "Audio stopped | outputDevice="
+                + std::to_string(outputConfiguration_.deviceId)
+                + " | fallback=" + sampleDescription_;
 
         for (std::size_t pad = 0; pad < kPadCount; ++pad) {
             for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
@@ -2063,10 +2235,13 @@ std::string AudioEngine::status() const {
             std::string("Audio output ")
             + streamStateText(stream_->getState())
             + " | API=" + oboe::convertToText(stream_->getAudioApi())
+            + " | deviceId=" + std::to_string(stream_->getDeviceId())
             + " | rate=" + std::to_string(stream_->getSampleRate())
             + " | channels=" + std::to_string(stream_->getChannelCount())
             + " | sharing=" + sharingModeText(stream_->getSharingMode())
             + " | performance=" + performanceModeText(stream_->getPerformanceMode())
+            + " | buffer=" + std::to_string(stream_->getBufferSizeInFrames())
+            + " | capacity=" + std::to_string(stream_->getBufferCapacityInFrames())
             + " | burst=" + std::to_string(stream_->getFramesPerBurst())
             + " | callbacks=" + std::to_string(
                     outputCallbackCount_.load(std::memory_order_relaxed))
