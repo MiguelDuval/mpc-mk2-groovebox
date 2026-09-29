@@ -77,7 +77,11 @@ public final class WaveformView extends View {
 
     public void setSelection(float start, float end) {
         startNormalized = clamp(start, 0f, 1f);
-        endNormalized = clamp(end, startNormalized + 0.0001f, 1f);
+        final float minimumEnd = Math.min(1f, startNormalized + 0.0001f);
+        endNormalized = clamp(end, minimumEnd, 1f);
+        if (endNormalized <= startNormalized) {
+            startNormalized = Math.max(0f, endNormalized - 0.0001f);
+        }
         invalidate();
     }
 
@@ -123,8 +127,7 @@ public final class WaveformView extends View {
         final float bottom = getHeight() - dp(24);
         final float centerY = (top + bottom) * 0.5f;
 
-        drawGrid(canvas, left, right, top, bottom);
-        drawWave(canvas, left, right, top, bottom, centerY);
+        drawGrid(canvas, left, right, top, bottom, centerY);
 
         if (durationMs > 0f) {
             drawTimeLabels(canvas, left, right, bottom);
@@ -132,12 +135,19 @@ public final class WaveformView extends View {
 
         final float sx = left + (right - left) * startNormalized;
         final float ex = left + (right - left) * endNormalized;
+
+        fillPaint.setColor(0x7a0b0f12);
+        canvas.drawRect(left, top, sx, bottom, fillPaint);
+        canvas.drawRect(ex, top, right, bottom, fillPaint);
+
         fillPaint.setColor(RANGE);
         canvas.drawRect(sx, top, ex, bottom, fillPaint);
 
-        if (peaks != null && peaks.length >= 2) {
-            drawWave(canvas, left, right, top, bottom, centerY);
-        }
+        drawWave(canvas, left, right, top, bottom, centerY);
+
+        linePaint.setColor(GRID);
+        linePaint.setStrokeWidth(dp(1));
+        canvas.drawLine(left, centerY, right, centerY, linePaint);
 
         if (recording) {
             final float px = left + (right - left) * progressNormalized;
@@ -163,13 +173,20 @@ public final class WaveformView extends View {
         canvas.drawLine(left, centerY, right, centerY, linePaint);
     }
 
-    private void drawGrid(Canvas canvas, float left, float right, float top, float bottom) {
+    private void drawGrid(
+            Canvas canvas,
+            float left,
+            float right,
+            float top,
+            float bottom,
+            float centerY) {
         linePaint.setColor(GRID);
         linePaint.setStrokeWidth(dp(1));
         for (int i = 0; i <= 8; i++) {
             float x = left + (right - left) * i / 8f;
             canvas.drawLine(x, top, x, bottom, linePaint);
         }
+        canvas.drawLine(left, centerY, right, centerY, linePaint);
         canvas.drawLine(left, top, right, top, linePaint);
         canvas.drawLine(left, bottom, right, bottom, linePaint);
     }
