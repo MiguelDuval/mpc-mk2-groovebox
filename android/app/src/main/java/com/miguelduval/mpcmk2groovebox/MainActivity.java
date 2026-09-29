@@ -7,6 +7,9 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.media.AudioDeviceCallback;
+import android.media.AudioDeviceInfo;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
@@ -24,12 +27,16 @@ import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.ArrayAdapter;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -58,6 +65,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private AndroidMidiBridge midiBridge;
+    private AudioManager audioManager;
+    private AudioDeviceCallback audioDeviceCallback;
+    private Spinner outputDeviceSpinner;
+    private Spinner inputDeviceSpinner;
+    private Spinner sampleRateSpinner;
+    private Spinner bufferSizeSpinner;
+    private Spinner sharingModeSpinner;
+    private Spinner performanceModeSpinner;
+    private TextView audioRoutingDiagnostics;
+    private final List<AudioDeviceInfo> outputDevices = new ArrayList<>();
+    private final List<AudioDeviceInfo> inputDevices = new ArrayList<>();
+    private boolean audioSettingsBinding;
     private FrameLayout content;
     private TextView pageTitle;
     private TextView audioState;
@@ -125,6 +144,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native float nativeAudioGetPadEnvelopeRelease(int pad);
     private static native String nativeAudioSetPadFilterCutoff(int pad, float cutoffHz);
     private static native float nativeAudioGetPadFilterCutoff(int pad);
+    private static native String nativeAudioConfigureOutput(
+            int deviceId, int sampleRate, int bufferSizeFrames,
+            boolean exclusive, boolean lowLatency);
+    private static native String nativeAudioConfigureInputDevice(int deviceId);
+    private static native String nativeAudioTestOutput();
     private static native String nativeAudioStart();
     private static native String nativeAudioStop();
     private static native String nativeAudioStatus();
@@ -150,6 +174,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         uiAuditSmokeMode = "ui-audit".equals(smokeMode);
 
         applyFullscreenWindowPolicy();
+
+        audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (audioManager != null) {
+            audioDeviceCallback = new AudioDeviceCallback() {
+                @Override
+                public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
+                    refreshAudioDevicesFromSystem();
+                }
+
+                @Override
+                public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
+                    refreshAudioDevicesFromSystem();
+                }
+            };
+            audioManager.registerAudioDeviceCallback(
+                    audioDeviceCallback,
+                    new Handler(Looper.getMainLooper()));
+        }
 
         setContentView(buildApplicationShell());
         applyFullscreenWindowPolicy();
@@ -931,8 +973,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         grid.setColumnCount(4);
         String[][] items = {
                 {"MAIN", "MAIN"}, {"BROWSER", "BROWSE"}, {"SAMPLE", "SAMPLE"}, {"RECORDER", "REC"},
-                {"SEQUENCER", "SEQ"}, {"MIXER", "MIX"}, {"GRID", "GRID"}, {"STEP", "STEP"},
-                {"TRACK EDIT", "TRACK"}, {"PAD MIX", "PAD"}, {"Q-LINK", "QLINK"}, {"PROJECT", "PROJECT"}
+                {"SEQUENCER", "SEQ"}, {"MIXER", "MIX"}, {"AUDIO SETTINGS", "AUDIO"}, {"GRID", "GRID"},
+                {"STEP", "STEP"}, {"TRACK EDIT", "TRACK"}, {"PAD MIX", "PAD"}, {"Q-LINK", "QLINK"},
+                {"PROJECT", "PROJECT"}
         };
 
         for (String[] item : items) {
@@ -946,6 +989,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     case "REC": showRecordPage(); break;
                     case "SEQ": showSequencePage(); break;
                     case "MIX": showMixPage(); break;
+                    case "AUDIO": showAudioSettingsPage(); break;
                     default: setBottomStatus(menuLabel + " shell reserved for the next UI slice");
                 }
             });
@@ -959,6 +1003,347 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(grid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         content.addView(page);
+    }
+
+
+    private void showAudioSettingsPage() {
+        currentPage = "AUDIO";
+        pageTitle.setText("AUDIO");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+
+        LinearLayout columns = row();
+
+        LinearLayout routing = panel();
+        routing.addView(sectionLabel("ROUTING"));
+
+        routing.addView(label("OUTPUT DEVICE", 11, MUTED),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+        outputDeviceSpinner = new Spinner(this);
+        routing.addView(outputDeviceSpinner,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+
+        routing.addView(label("INPUT DEVICE", 11, MUTED),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+        inputDeviceSpinner = new Spinner(this);
+        routing.addView(inputDeviceSpinner,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+
+        TextView routingNote = label(
+                "Default leaves Android's primary route selected. USB audio devices are shown when Android exposes them as audio endpoints.",
+                11, MUTED);
+        routingNote.setPadding(dp(4), dp(8), dp(4), dp(8));
+        routing.addView(routingNote,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        columns.addView(routing,
+                new LinearLayout.LayoutParams(0,
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0.50f));
+
+        LinearLayout engine = panel();
+        engine.addView(sectionLabel("ENGINE"));
+
+        engine.addView(label("SAMPLE RATE", 11, MUTED),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+        sampleRateSpinner = new Spinner(this);
+        engine.addView(sampleRateSpinner,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        engine.addView(label("BUFFER", 11, MUTED),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+        bufferSizeSpinner = new Spinner(this);
+        engine.addView(bufferSizeSpinner,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        LinearLayout modeRow = row();
+        LinearLayout sharingColumn = column();
+        sharingColumn.addView(label("SHARING", 11, MUTED),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+        sharingModeSpinner = new Spinner(this);
+        sharingColumn.addView(sharingModeSpinner,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+        modeRow.addView(sharingColumn,
+                new LinearLayout.LayoutParams(0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+
+        LinearLayout performanceColumn = column();
+        performanceColumn.addView(label("PERFORMANCE", 11, MUTED),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+        performanceModeSpinner = new Spinner(this);
+        performanceColumn.addView(performanceModeSpinner,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+        modeRow.addView(performanceColumn,
+                new LinearLayout.LayoutParams(0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        engine.addView(modeRow);
+
+        TextView engineNote = label(
+                "AUTO keeps Android/Oboe free to negotiate the native device rate and burst size.",
+                11, MUTED);
+        engineNote.setPadding(dp(4), dp(8), dp(4), dp(8));
+        engine.addView(engineNote,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        columns.addView(engine,
+                new LinearLayout.LayoutParams(0,
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0.50f));
+
+        page.addView(columns,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout actions = row();
+        actions.addView(actionButton("REFRESH DEVICES",
+                v -> refreshAudioSettingsPage()), weight());
+        actions.addView(actionButton("TEST OUTPUT",
+                v -> {
+                    final String result = nativeAudioTestOutput();
+                    setBottomStatus(result);
+                    refreshAudioRoutingDiagnostics();
+                }), weight());
+        actions.addView(actionButton("APPLY & RESTART",
+                v -> applyAudioSettings()), weight());
+        page.addView(actions,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+
+        audioRoutingDiagnostics = label("", 10, MUTED);
+        audioRoutingDiagnostics.setBackground(
+                strokeBackground(SURFACE_2, LINE, 8));
+        audioRoutingDiagnostics.setPadding(dp(10), dp(6), dp(10), dp(6));
+        page.addView(audioRoutingDiagnostics,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(58)));
+
+        content.addView(page);
+        setupAudioSettingSpinners();
+        refreshAudioDevicesFromSystem();
+        refreshAudioRoutingDiagnostics();
+        updateModeRailSelection();
+    }
+
+    private void setupAudioSettingSpinners() {
+        audioSettingsBinding = true;
+        sampleRateSpinner.setAdapter(new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"AUTO", "44100 Hz", "48000 Hz", "88200 Hz", "96000 Hz"}));
+        bufferSizeSpinner.setAdapter(new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"AUTO", "64", "96", "128", "192", "256", "384", "512", "1024"}));
+        sharingModeSpinner.setAdapter(new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"SHARED", "EXCLUSIVE"}));
+        performanceModeSpinner.setAdapter(new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_dropdown_item,
+                new String[]{"LOW LATENCY", "NORMAL"}));
+
+        sampleRateSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {}
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+        audioSettingsBinding = false;
+    }
+
+    private void refreshAudioSettingsPage() {
+        if (!"AUDIO".equals(currentPage)) {
+            showAudioSettingsPage();
+            return;
+        }
+        refreshAudioDevicesFromSystem();
+        refreshAudioRoutingDiagnostics();
+    }
+
+    private void refreshAudioDevicesFromSystem() {
+        if (audioManager == null) return;
+
+        final AudioDeviceInfo[] outputs =
+                audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS);
+        final AudioDeviceInfo[] inputs =
+                audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS);
+
+        outputDevices.clear();
+        inputDevices.clear();
+        for (AudioDeviceInfo device : outputs) {
+            if (device != null && device.isSink()) outputDevices.add(device);
+        }
+        for (AudioDeviceInfo device : inputs) {
+            if (device != null && device.isSource()) inputDevices.add(device);
+        }
+
+        if (!"AUDIO".equals(currentPage)
+                || outputDeviceSpinner == null
+                || inputDeviceSpinner == null) {
+            return;
+        }
+
+        runOnUiThread(() -> {
+            if (!"AUDIO".equals(currentPage)
+                    || outputDeviceSpinner == null
+                    || inputDeviceSpinner == null) {
+                return;
+            }
+
+            audioSettingsBinding = true;
+            outputDeviceSpinner.setAdapter(new ArrayAdapter<>(
+                    this,
+                    android.R.layout.simple_spinner_dropdown_item,
+                    audioOutputLabels()));
+            inputDeviceSpinner.setAdapter(new ArrayAdapter<>(
+                    this,
+                    android.R.layout.simple_spinner_dropdown_item,
+                    audioInputLabels()));
+            outputDeviceSpinner.setSelection(0);
+            inputDeviceSpinner.setSelection(0);
+            audioSettingsBinding = false;
+        });
+    }
+
+    private List<String> audioOutputLabels() {
+        final List<String> result = new ArrayList<>();
+        result.add("DEFAULT / Android primary route");
+        for (AudioDeviceInfo device : outputDevices) {
+            result.add(formatAudioDevice(device));
+        }
+        return result;
+    }
+
+    private List<String> audioInputLabels() {
+        final List<String> result = new ArrayList<>();
+        result.add("DEFAULT / Android input");
+        for (AudioDeviceInfo device : inputDevices) {
+            result.add(formatAudioDevice(device));
+        }
+        return result;
+    }
+
+    private String formatAudioDevice(AudioDeviceInfo device) {
+        final String name = String.valueOf(device.getProductName());
+        final String type = audioDeviceTypeName(device.getType());
+        final int[] channels = device.getChannelCounts();
+        final int channelCount = channels.length > 0 ? channels[0] : 0;
+        return "#" + device.getId() + "  " + type
+                + "  " + name
+                + (channelCount > 0 ? "  •  " + channelCount + "ch" : "");
+    }
+
+    private String audioDeviceTypeName(int type) {
+        switch (type) {
+            case AudioDeviceInfo.TYPE_BUILTIN_SPEAKER: return "BUILT-IN SPEAKER";
+            case AudioDeviceInfo.TYPE_BUILTIN_EARPIECE: return "EARPIECE";
+            case AudioDeviceInfo.TYPE_BUILTIN_MIC: return "BUILT-IN MIC";
+            case AudioDeviceInfo.TYPE_WIRED_HEADSET: return "WIRED HEADSET";
+            case AudioDeviceInfo.TYPE_WIRED_HEADPHONES: return "WIRED HEADPHONES";
+            case AudioDeviceInfo.TYPE_BLUETOOTH_A2DP: return "BLUETOOTH A2DP";
+            case AudioDeviceInfo.TYPE_BLUETOOTH_SCO: return "BLUETOOTH SCO";
+            case AudioDeviceInfo.TYPE_BLE_HEADSET: return "BLE HEADSET";
+            case AudioDeviceInfo.TYPE_USB_DEVICE: return "USB AUDIO";
+            case AudioDeviceInfo.TYPE_USB_ACCESSORY: return "USB ACCESSORY";
+            case AudioDeviceInfo.TYPE_USB_HEADSET: return "USB HEADSET";
+            case AudioDeviceInfo.TYPE_HDMI: return "HDMI";
+            case AudioDeviceInfo.TYPE_HDMI_ARC: return "HDMI ARC";
+            case AudioDeviceInfo.TYPE_HDMI_EARC: return "HDMI EARC";
+            case AudioDeviceInfo.TYPE_LINE_ANALOG: return "LINE ANALOG";
+            case AudioDeviceInfo.TYPE_LINE_DIGITAL: return "LINE DIGITAL";
+            case AudioDeviceInfo.TYPE_AUX_LINE: return "AUX LINE";
+            case AudioDeviceInfo.TYPE_DOCK: return "DOCK";
+            default: return "TYPE " + type;
+        }
+    }
+
+    private int selectedOutputDeviceId() {
+        final int position = outputDeviceSpinner == null
+                ? 0 : outputDeviceSpinner.getSelectedItemPosition();
+        return position <= 0 || position - 1 >= outputDevices.size()
+                ? -1 : outputDevices.get(position - 1).getId();
+    }
+
+    private int selectedInputDeviceId() {
+        final int position = inputDeviceSpinner == null
+                ? 0 : inputDeviceSpinner.getSelectedItemPosition();
+        return position <= 0 || position - 1 >= inputDevices.size()
+                ? -1 : inputDevices.get(position - 1).getId();
+    }
+
+    private int selectedSampleRate() {
+        if (sampleRateSpinner == null) return 0;
+        switch (sampleRateSpinner.getSelectedItemPosition()) {
+            case 1: return 44100;
+            case 2: return 48000;
+            case 3: return 88200;
+            case 4: return 96000;
+            default: return 0;
+        }
+    }
+
+    private int selectedBufferSize() {
+        if (bufferSizeSpinner == null) return 0;
+        switch (bufferSizeSpinner.getSelectedItemPosition()) {
+            case 1: return 64;
+            case 2: return 96;
+            case 3: return 128;
+            case 4: return 192;
+            case 5: return 256;
+            case 6: return 384;
+            case 7: return 512;
+            case 8: return 1024;
+            default: return 0;
+        }
+    }
+
+    private boolean selectedExclusive() {
+        return sharingModeSpinner != null
+                && sharingModeSpinner.getSelectedItemPosition() == 1;
+    }
+
+    private boolean selectedLowLatency() {
+        return performanceModeSpinner == null
+                || performanceModeSpinner.getSelectedItemPosition() == 0;
+    }
+
+    private void applyAudioSettings() {
+        if (audioSettingsBinding) return;
+
+        final String inputResult = nativeAudioConfigureInputDevice(
+                selectedInputDeviceId());
+        final String outputResult = nativeAudioConfigureOutput(
+                selectedOutputDeviceId(),
+                selectedSampleRate(),
+                selectedBufferSize(),
+                selectedExclusive(),
+                selectedLowLatency());
+
+        setBottomStatus(inputResult + " | " + outputResult);
+        setAudioStateFromResult(outputResult);
+        refreshAudioRoutingDiagnostics();
+    }
+
+    private void refreshAudioRoutingDiagnostics() {
+        if (audioRoutingDiagnostics == null) return;
+
+        final String status = nativeAudioStatus();
+        audioRoutingDiagnostics.setText(
+                "ROUTE / ENGINE\n" + status
+                        + "\nInput device: #"
+                        + selectedInputDeviceId());
     }
 
     private View parameterRow(String name, String minus, String plus,
@@ -1687,6 +2072,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (midiBridge != null) {
             midiBridge.close();
             midiBridge = null;
+        }
+        if (audioManager != null && audioDeviceCallback != null) {
+            audioManager.unregisterAudioDeviceCallback(audioDeviceCallback);
+            audioDeviceCallback = null;
         }
         super.onDestroy();
     }
