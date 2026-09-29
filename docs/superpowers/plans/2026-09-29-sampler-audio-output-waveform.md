@@ -61,3 +61,8 @@
 - [ ] Step 5: Run the complete Android build/smoke suite.
 
 ---
+
+## Implementation notes
+- Added Oboe output policy contract, output callback/error diagnostics, and explicit pad audition startup.
+- Expanded sample and recorder waveforms using flexible vertical space with a 144dp floor on the landscape target.
+- CI output-policy test is wired as a single-line compile command to avoid shell continuation ambiguity.
