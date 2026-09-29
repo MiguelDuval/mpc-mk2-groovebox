@@ -179,7 +179,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     if (destroyed) return;
 
                     startupComplete = true;
-                    bottomStatus.setText(engineInfo + " | " + sampleResult);
+                    bottomStatus.setText(
+                            engineInfo + " | " + sampleResult + " | " + audioResult);
                     setAudioStateFromResult(audioResult);
                     refreshAllInspectorState();
 
@@ -1337,13 +1338,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void setAudioStateFromResult(String result) {
         if (audioState == null) return;
-        boolean active = result != null
+
+        final boolean active = result != null
                 && (result.startsWith("Audio output")
                 || result.startsWith("Recording active")
                 || result.startsWith("Recording stopped")
                 || result.startsWith("Recording armed"));
-        audioState.setText(active ? "AUDIO ON" : "AUDIO OFF");
-        audioState.setTextColor(active ? ACTIVE : MUTED);
+        final boolean failed = result != null
+                && (result.contains("failed")
+                || result.contains("Failure")
+                || result.contains("error"));
+
+        audioState.setText(active ? "AUDIO ON" : (failed ? "AUDIO ERR" : "AUDIO OFF"));
+        audioState.setTextColor(
+                active ? ACTIVE : (failed ? DANGER : MUTED));
     }
 
     private void setBottomStatus(String text) {
@@ -1517,12 +1525,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         if (findViewWithExactText(getWindow().getDecorView(), "ENV") == null
-                || findViewWithExactText(getWindow().getDecorView(), "FILTER") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: sample editor tabs");
+                || findViewWithExactText(getWindow().getDecorView(), "FILTER") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Sample waveform editor") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: sample waveform editor");
+            return;
+        }
+
+        View rec = findViewWithExactText(getWindow().getDecorView(), "REC");
+        if (rec == null || !rec.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: REC mode");
+            return;
+        }
+
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "Recording waveform monitor") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: recording waveform");
             return;
         }
 
         Log.i(TAG, "UI_INTERACTION_COMPLETE");
+    }
+
+    private View findViewWithContentDescription(
+            View view, String expectedDescription) {
+        CharSequence actual = view.getContentDescription();
+        if (expectedDescription.contentEquals(actual)) return view;
+
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View match = findViewWithContentDescription(
+                        group.getChildAt(i), expectedDescription);
+                if (match != null) return match;
+            }
+        }
+        return null;
     }
 
     private View findViewWithExactText(View view, String expectedText) {
