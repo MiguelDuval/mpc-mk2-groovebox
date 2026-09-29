@@ -10,6 +10,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -70,6 +72,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView recordingInfo;
     private final Button[] padButtons = new Button[16];
     private final Button[] modeButtons = new Button[7];
+    private final Handler waveformUiHandler = new Handler(Looper.getMainLooper());
+    private Runnable recordingWaveformUpdater;
+    private WaveformView sampleWaveform;
+    private WaveformView recordingWaveform;
+    private TextView recordingTelemetry;
     private int selectedPad = 0;
     private int selectedLayer = 0;
     private String currentPage = "MAIN";
@@ -104,6 +111,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native long nativeAudioGetPadSampleRegionStart(int pad, int layer);
     private static native long nativeAudioGetPadSampleRegionEnd(int pad, int layer);
     private static native long nativeAudioGetPadSampleFrameCount(int pad, int layer);
+    private static native int nativeAudioGetPadSampleRate(int pad, int layer);
+    private static native float[] nativeAudioGetPadWaveformPeaks(
+            int pad, int layer, int points);
     private static native String nativeAudioChopPadSampleToPads(
             int pad, int layer, int chopCount);
     private static native String nativeAudioCropPadSampleRegion(int pad, int layer);
@@ -126,6 +136,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeAudioStopMonitor();
     private static native String nativeAudioAssignRecordingToPadLayer(int pad, int layer);
     private static native String nativeAudioRecordingStatus();
+    private static native float[] nativeAudioGetRecordingWaveformPeaks(int points);
+    private static native int nativeAudioGetRecordingFrameCount();
+    private static native int nativeAudioGetRecordingSampleRate();
+    private static native float nativeAudioGetRecordingPeak();
+    private static native int nativeAudioGetRecordingFrameCapacity();
 
     @Override
     protected void onCreate(Bundle state) {
@@ -471,15 +486,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         header.addView(sectionLabelView("PAD " + (selectedPad + 1)
                 + "  •  LAYER " + (selectedLayer + 1) + "/8",
                 new LinearLayout.LayoutParams(0, dp(34), 1)));
+        header.addView(actionButton("AUDITION", v -> selectAndTriggerPad(selectedPad, 112)),
+                new LinearLayout.LayoutParams(dp(96), dp(38)));
         header.addView(actionButton("LOAD WAV", v -> openWavPicker()),
                 new LinearLayout.LayoutParams(dp(110), dp(38)));
         page.addView(header);
 
-        TextView wave = label("WAVEFORM / SAMPLE REGION", 12, TEXT);
-        wave.setGravity(Gravity.CENTER);
-        wave.setBackground(strokeBackground(SURFACE_2, LINE, 8));
-        page.addView(wave, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(118)));
+        sampleWaveform = new WaveformView(this);
+        sampleWaveform.setContentDescription("Sample waveform editor");
+        sampleWaveform.setEditable(true);
+        page.addView(sampleWaveform, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(184)));
 
         regionInfo = label("", 12, MUTED);
         regionInfo.setPadding(dp(10), 0, dp(10), 0);
@@ -494,10 +511,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(tabs, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
+        sampleWaveform.setOnSelectionCommitListener(
+                (startNormalized, endNormalized) -> {
+                    final long total = nativeAudioGetPadSampleFrameCount(
+                            selectedPad, selectedLayer);
+                    if (total <= 0) {
+                        setBottomStatus("Waveform edit failed: no sample assigned");
+                        return;
+                    }
+                    final long start = Math.max(
+                            0, Math.min(total - 1,
+                                    Math.round(startNormalized * total)));
+                    final long end = Math.max(
+                            start + 1, Math.min(total,
+                                    Math.round(endNormalized * total)));
+                    final String result = nativeAudioSetPadSampleRegion(
+                            selectedPad, selectedLayer, start, end);
+                    setBottomStatus(result);
+                    refreshRegionInfo();
+                });
+
         showSampleEditPanel(page);
         content.addView(page);
         refreshSampleInfo();
         refreshRegionInfo();
+        refreshSampleWaveform();
     }
 
     private void showSampleEditPanel(LinearLayout page) {
@@ -640,6 +678,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(recordingInfo, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
 
+        recordingWaveform = new WaveformView(this);
+        recordingWaveform.setContentDescription("Recording waveform monitor");
+        recordingWaveform.setEditable(false);
+        recordingWaveform.setRecording(false);
+        page.addView(recordingWaveform, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(184)));
+
+        recordingTelemetry = label("No recorded audio", 11, MUTED);
+        recordingTelemetry.setGravity(Gravity.CENTER_VERTICAL);
+        page.addView(recordingTelemetry, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+
         LinearLayout controls1 = row();
         Button record = actionButton("RECORD", v -> {
             if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
@@ -696,6 +746,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         content.addView(page);
         refreshRecordingInfo();
+        startRecordingWaveformUpdates();
     }
 
     private void showBrowserPage() {
@@ -971,10 +1022,100 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void refreshRecordingInfo() {
+        final String status = nativeAudioRecordingStatus();
         if (recordingInfo != null) {
-            recordingInfo.setText(nativeAudioRecordingStatus());
+            recordingInfo.setText(status);
+        }
+
+        if (recordingTelemetry != null) {
+            final int frames = nativeAudioGetRecordingFrameCount();
+            final int sampleRate = nativeAudioGetRecordingSampleRate();
+            final float peak = nativeAudioGetRecordingPeak();
+            final double seconds = sampleRate > 0
+                    ? ((double) frames / (double) sampleRate)
+                    : 0.0;
+            recordingTelemetry.setText(String.format(
+                    Locale.ROOT,
+                    "Duration %.2fs  •  Peak %d%%  •  Frames %d",
+                    seconds,
+                    Math.round(peak * 100.0f),
+                    frames));
         }
     }
+
+    private void refreshSampleWaveform() {
+        if (sampleWaveform == null) return;
+
+        final long frames = nativeAudioGetPadSampleFrameCount(
+                selectedPad, selectedLayer);
+        final int sampleRate = nativeAudioGetPadSampleRate(
+                selectedPad, selectedLayer);
+
+        if (frames <= 0) {
+            sampleWaveform.setPeaks(null);
+            sampleWaveform.setSelection(0f, 1f);
+            sampleWaveform.setDurationMs(0f);
+            return;
+        }
+
+        final float[] peaks = nativeAudioGetPadWaveformPeaks(
+                selectedPad, selectedLayer, 768);
+        sampleWaveform.setPeaks(peaks);
+        final long start = nativeAudioGetPadSampleRegionStart(
+                selectedPad, selectedLayer);
+        final long end = nativeAudioGetPadSampleRegionEnd(
+                selectedPad, selectedLayer);
+        sampleWaveform.setSelection(
+                start / (float) frames,
+                end / (float) frames);
+        sampleWaveform.setDurationMs(
+                sampleRate > 0
+                        ? frames * 1000.0f / sampleRate
+                        : 0.0f);
+        sampleWaveform.setRecording(false);
+    }
+
+    private void startRecordingWaveformUpdates() {
+        if (recordingWaveformUpdater == null) {
+            recordingWaveformUpdater = new Runnable() {
+                @Override
+                public void run() {
+                    if (!"REC".equals(currentPage) || recordingWaveform == null) {
+                        waveformUiHandler.removeCallbacks(this);
+                        return;
+                    }
+                    refreshRecordingWaveform();
+                    waveformUiHandler.postDelayed(this, 100);
+                }
+            };
+        }
+        waveformUiHandler.removeCallbacks(recordingWaveformUpdater);
+        waveformUiHandler.post(recordingWaveformUpdater);
+    }
+
+    private void refreshRecordingWaveform() {
+        if (recordingWaveform == null) return;
+
+        final String status = nativeAudioRecordingStatus();
+        final int frames = nativeAudioGetRecordingFrameCount();
+        final int sampleRate = nativeAudioGetRecordingSampleRate();
+        final int capacity = Math.max(1, nativeAudioGetRecordingFrameCapacity());
+
+        recordingWaveform.setPeaks(
+                nativeAudioGetRecordingWaveformPeaks(512));
+        recordingWaveform.setProgress(
+                Math.min(1.0f, frames / (float) capacity));
+        recordingWaveform.setDurationMs(
+                sampleRate > 0
+                        ? frames * 1000.0f / sampleRate
+                        : 0.0f);
+        recordingWaveform.setRecording(
+                status.startsWith("Recording active")
+                        || status.startsWith("Recording armed"));
+
+        refreshRecordingInfo();
+    }
+
 
     private void changePadTuning(float delta) {
         String result = nativeAudioSetPadTuning(
@@ -1035,12 +1176,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void cropRegion() {
         setBottomStatus(nativeAudioCropPadSampleRegion(selectedPad, selectedLayer));
         refreshAllInspectorState();
+        refreshSampleWaveform();
     }
 
     private void chop(int count) {
         setBottomStatus(nativeAudioChopPadSampleToPads(
                 selectedPad, selectedLayer, count));
         refreshAllInspectorState();
+        refreshSampleWaveform();
     }
 
     private void setEnvelope(float attack, float decay, float sustain, float release) {
@@ -1147,6 +1290,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setAudioStateFromResult(restarted);
             setBottomStatus(loaded + " | " + restarted);
             refreshAllInspectorState();
+            refreshSampleWaveform();
         } catch (IOException | IllegalArgumentException e) {
             final String restarted = nativeAudioStart();
             setAudioStateFromResult(restarted);
@@ -1463,6 +1607,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     protected void onDestroy() {
         destroyed = true;
+        if (recordingWaveformUpdater != null) {
+            waveformUiHandler.removeCallbacks(recordingWaveformUpdater);
+        }
         startupExecutor.shutdownNow();
 
         if (!uiOnlySmokeMode) {
