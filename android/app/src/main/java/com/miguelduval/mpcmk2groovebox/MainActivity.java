@@ -203,7 +203,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         root.setBackgroundColor(BG);
 
         root.addView(buildTopBar(), new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
 
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.HORIZONTAL);
@@ -223,7 +223,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bottomStatus.setPadding(dp(12), 0, dp(12), 0);
         bottomStatus.setGravity(Gravity.CENTER_VERTICAL);
         root.addView(bottomStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
 
         showMainPage();
         updateModeRailSelection();
@@ -298,7 +298,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             modeButtons[i] = button;
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
-            params.topMargin = i == 0 ? 0 : dp(4);
+            params.topMargin = i == 0 ? 0 : dp(3);
             params.bottomMargin = i == pages.length - 1 ? 0 : 0;
             rail.addView(button, params);
         }
@@ -309,8 +309,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Button b = button(text);
         b.setTextSize(12);
         b.setTypeface(Typeface.DEFAULT_BOLD);
-        b.setMinHeight(dp(56));
-        b.setMinimumHeight(dp(56));
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
         b.setPadding(dp(3), 0, dp(3), 0);
         b.setTag(page);
         b.setContentDescription(page + " mode");
@@ -386,7 +386,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         quick.addView(actionButton("REC", v -> showRecordPage()), weight());
         quick.addView(actionButton("MIX", v -> showMixPage()), weight());
         padSurface.addView(quick, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
         workspace.addView(padSurface, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 0.60f));
@@ -497,12 +497,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sampleWaveform.setContentDescription("Sample waveform editor");
         sampleWaveform.setEditable(true);
         page.addView(sampleWaveform, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(184)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(96)));
 
         regionInfo = label("", 12, MUTED);
         regionInfo.setPadding(dp(10), 0, dp(10), 0);
         page.addView(regionInfo, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
         LinearLayout tabs = row();
         tabs.addView(actionButton("EDIT", v -> showSampleEditPanel(page)), weight());
@@ -547,39 +547,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         LinearLayout row1 = row();
-        row1.addView(actionButton("START −1K", v -> nudgeRegionStart(-1000)), weight());
-        row1.addView(actionButton("START +1K", v -> nudgeRegionStart(1000)), weight());
-        row1.addView(actionButton("END −1K", v -> nudgeRegionEnd(-1000)), weight());
-        row1.addView(actionButton("END +1K", v -> nudgeRegionEnd(1000)), weight());
+        row1.addView(actionButton("S −1K", v -> nudgeRegionStart(-1000)), weight());
+        row1.addView(actionButton("S +1K", v -> nudgeRegionStart(1000)), weight());
+        row1.addView(actionButton("E −1K", v -> nudgeRegionEnd(-1000)), weight());
+        row1.addView(actionButton("E +1K", v -> nudgeRegionEnd(1000)), weight());
         page.addView(row1, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
         LinearLayout row2 = row();
-        row2.addView(actionButton("FULL REGION", v -> resetRegion()), weight());
+        row2.addView(actionButton("FULL", v -> resetRegion()), weight());
         row2.addView(actionButton("CROP", v -> cropRegion()), weight());
-        row2.addView(actionButton("CHOP 4", v -> chop(4)), weight());
-        row2.addView(actionButton("CHOP 8", v -> chop(8)), weight());
-        row2.addView(actionButton("CHOP 16", v -> chop(16)), weight());
-        page.addView(row2, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
-
-        LinearLayout row3 = row();
-        row3.addView(actionButton("AUDITION", v -> selectAndTriggerPad(selectedPad, 112)), weight());
-        row3.addView(actionButton("ZOOM +", v -> {
+        row2.addView(actionButton("CH4", v -> chop(4)), weight());
+        row2.addView(actionButton("CH8", v -> chop(8)), weight());
+        row2.addView(actionButton("CH16", v -> chop(16)), weight());
+        row2.addView(actionButton("PLAY", v -> selectAndTriggerPad(selectedPad, 112)), weight());
+        row2.addView(actionButton("ZOOM+", v -> {
             if (sampleWaveform != null) sampleWaveform.zoomIn();
         }), weight());
-        row3.addView(actionButton("ZOOM −", v -> {
+        row2.addView(actionButton("ZOOM−", v -> {
             if (sampleWaveform != null) sampleWaveform.zoomOut();
         }), weight());
-        row3.addView(actionButton("RESET VIEW", v -> {
+        row2.addView(actionButton("RESET", v -> {
             if (sampleWaveform != null) sampleWaveform.resetZoom();
         }), weight());
-        page.addView(row3, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
-
-        page.addView(label("Drag S / E to set the play range. Pinch or use ZOOM to inspect detail; swipe when zoomed to navigate. "
-                        + "CROP is destructive and requires stopped audio.",
-                11, MUTED), marginParams());
+        page.addView(row2, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
     }
 
     private void showSampleEnvelopePanel(LinearLayout page) {
@@ -707,7 +699,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingWaveform.setEditable(false);
         recordingWaveform.setRecording(false);
         page.addView(recordingWaveform, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(184)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(96)));
 
         recordingTelemetry = label("No recorded audio", 11, MUTED);
         recordingTelemetry.setGravity(Gravity.CENTER_VERTICAL);
@@ -741,7 +733,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshRecordingInfo();
         }), weight());
         page.addView(controls1, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
         LinearLayout controls2 = row();
         controls2.addView(actionButton("MONITOR ON", v -> startMonitor()), weight());
@@ -764,9 +756,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         controls2.addView(threshold, weight());
         page.addView(controls2, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
-
-        page.addView(label("Record and Monitor remain independent. Use headphones for live monitoring to avoid acoustic feedback.",
-                11, MUTED), marginParams());
 
         content.addView(page);
         refreshRecordingInfo();
