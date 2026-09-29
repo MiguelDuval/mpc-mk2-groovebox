@@ -28,8 +28,10 @@ int main() {
     const auto stereoPeaks =
             mpc::audio::buildWaveformPeaks(stereo, 2, 2);
     assert(stereoPeaks.size() == 2);
-    assert(std::abs(stereoPeaks[0].minimum + 0.5f) < 0.0001f);
-    assert(std::abs(stereoPeaks[0].maximum - 0.5f) < 0.0001f);
+    assert(std::abs(stereoPeaks[0].minimum + 1.0f) < 0.0001f);
+    assert(std::abs(stereoPeaks[0].maximum - 1.0f) < 0.0001f);
+    assert(std::abs(stereoPeaks[1].minimum + 0.5f) < 0.0001f);
+    assert(std::abs(stereoPeaks[1].maximum - 0.25f) < 0.0001f);
 
     assert(mpc::audio::buildWaveformPeaks({}, 1, 16).empty());
     assert(mpc::audio::buildWaveformPeaks(mono, 0, 4).empty());
