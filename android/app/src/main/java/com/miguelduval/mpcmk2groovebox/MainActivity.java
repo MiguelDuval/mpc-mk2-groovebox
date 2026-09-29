@@ -490,7 +490,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         header.addView(actionButton("AUDITION", v -> selectAndTriggerPad(selectedPad, 112)),
                 new LinearLayout.LayoutParams(dp(96), dp(38)));
         header.addView(actionButton("LOAD WAV", v -> openWavPicker()),
-                new LinearLayout.LayoutParams(dp(110), dp(38)));
+                new LinearLayout.LayoutParams(dp(110), dp(34)));
         page.addView(header);
 
         sampleWaveform = new WaveformView(this);
