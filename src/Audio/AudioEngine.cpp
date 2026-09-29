@@ -1,4 +1,5 @@
 #include "AudioEngine.h"
+#include "AudioOutputPolicy.h"
 #include "MPC/MpcCore.h"
 #include "RecordingThreshold.h"
 #include "SampleChop.h"
@@ -30,6 +31,14 @@ const char* streamStateText(oboe::StreamState state) {
     return oboe::convertToText(state);
 }
 
+const char* sharingModeText(oboe::SharingMode mode) {
+    return mode == oboe::SharingMode::Exclusive ? "exclusive" : "shared";
+}
+
+const char* performanceModeText(oboe::PerformanceMode mode) {
+    return mode == oboe::PerformanceMode::LowLatency ? "low-latency" : "none";
+}
+
 } // namespace
 
 namespace mpc::audio {
@@ -44,6 +53,7 @@ public:
             oboe::AudioStream* audioStream,
             void* audioData,
             int32_t numFrames) override {
+        outputCallbackCount_.fetch_add(1, std::memory_order_relaxed);
         if (audioStream == nullptr || audioData == nullptr || numFrames <= 0) {
             return oboe::DataCallbackResult::Continue;
         }
@@ -174,6 +184,32 @@ private:
     AudioEngine& owner_;
 };
 
+class OutputErrorCallback final : public oboe::AudioStreamErrorCallback {
+public:
+    explicit OutputErrorCallback(std::atomic<std::int32_t>& lastErrorCode)
+            : lastErrorCode_(lastErrorCode) {
+    }
+
+    void onErrorBeforeClose(
+            oboe::AudioStream* /*audioStream*/,
+            oboe::Result error) override {
+        lastErrorCode_.store(
+                static_cast<std::int32_t>(error),
+                std::memory_order_release);
+    }
+
+    void onErrorAfterClose(
+            oboe::AudioStream* /*audioStream*/,
+            oboe::Result error) override {
+        lastErrorCode_.store(
+                static_cast<std::int32_t>(error),
+                std::memory_order_release);
+    }
+
+private:
+    std::atomic<std::int32_t>& lastErrorCode_;
+};
+
 class AudioEngine::OutputCallback final : public oboe::AudioStreamDataCallback {
 public:
     OutputCallback(
@@ -195,7 +231,10 @@ public:
             std::array<std::atomic<std::int32_t>, kPadCount>& filterCutoffMilliHz,
             std::array<float, kMonitorBufferFrames>& monitorSamples,
             std::atomic<std::uint32_t>& monitorWriteSequence,
-            std::atomic<bool>& monitorEnabled)
+            std::atomic<bool>& monitorEnabled,
+            std::atomic<std::uint64_t>& outputCallbackCount,
+            std::atomic<std::uint64_t>& outputCallbackFrames,
+            std::atomic<std::uint32_t>& outputPeakMilli)
             : samples_(std::move(samples)),
               regions_(std::move(regions)),
               triggerQueue_(triggerQueue),
@@ -214,7 +253,10 @@ public:
               filterCutoffMilliHz_(filterCutoffMilliHz),
               monitorSamples_(monitorSamples),
               monitorWriteSequence_(monitorWriteSequence),
-              monitorEnabled_(monitorEnabled) {
+              monitorEnabled_(monitorEnabled),
+              outputCallbackCount_(outputCallbackCount),
+              outputCallbackFrames_(outputCallbackFrames),
+              outputPeakMilli_(outputPeakMilli) {
     }
 
     oboe::DataCallbackResult onAudioReady(
@@ -233,6 +275,10 @@ public:
         }
 
         auto* output = static_cast<float*>(audioData);
+        outputCallbackFrames_.fetch_add(
+                static_cast<std::uint64_t>(numFrames),
+                std::memory_order_relaxed);
+        std::uint32_t renderedPeakMilli = 0;
 
         while (pendingTriggerCount_ < pendingTriggerEvents_.size()
                 && triggerQueue_.tryDequeue(
@@ -419,6 +465,15 @@ public:
                 }
             }
 
+            renderedPeakMilli = std::max(
+                    renderedPeakMilli,
+                    static_cast<std::uint32_t>(
+                            std::lround(
+                                    std::clamp(
+                                            std::max(std::abs(left), std::abs(right)),
+                                            0.0f,
+                                            1.0f)
+                                    * 1000.0f)));
             const float mono =
                     std::clamp((left + right) * 0.5f, -0.98f, 0.98f);
 
@@ -439,6 +494,9 @@ public:
             pendingTriggerEvents_[index].offsetFrames -= numFrames;
         }
 
+        outputPeakMilli_.store(
+                renderedPeakMilli,
+                std::memory_order_relaxed);
         return oboe::DataCallbackResult::Continue;
     }
 private:
@@ -617,6 +675,9 @@ private:
     std::array<float, kMonitorBufferFrames>& monitorSamples_;
     std::atomic<std::uint32_t>& monitorWriteSequence_;
     std::atomic<bool>& monitorEnabled_;
+    std::atomic<std::uint64_t>& outputCallbackCount_;
+    std::atomic<std::uint64_t>& outputCallbackFrames_;
+    std::atomic<std::uint32_t>& outputPeakMilli_;
     std::uint32_t monitorReadSequence_ = 0;
     bool monitorWasEnabled_ = false;
     std::array<std::array<PadVoice, kMaxPadVoices>, kPadCount> voices_{};
@@ -627,6 +688,9 @@ private:
 
 AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
         : projectState_(projectState) {
+    outputLastErrorCode_.store(
+            static_cast<std::int32_t>(oboe::Result::OK),
+            std::memory_order_relaxed);
     recordedSamples_.resize(kMaxRecordingFrames);
     recordingThresholdMilli_.store(0, std::memory_order_relaxed);
     recordingArmed_.store(false, std::memory_order_relaxed);
@@ -1622,6 +1686,7 @@ std::string AudioEngine::stopOutputStream() {
 
     stream_.reset();
     callback_.reset();
+    outputErrorCallback_.reset();
 
     if (stopResult != oboe::Result::OK) {
         return std::string("Audio stop failed: ") + resultText(stopResult);
@@ -1841,6 +1906,14 @@ std::string AudioEngine::start() {
         return status();
     }
 
+    const auto policy = recommendedAudioOutputPolicy();
+    outputCallbackCount_.store(0, std::memory_order_relaxed);
+    outputCallbackFrames_.store(0, std::memory_order_relaxed);
+    outputPeakMilli_.store(0, std::memory_order_relaxed);
+    outputLastErrorCode_.store(
+            static_cast<std::int32_t>(oboe::Result::OK),
+            std::memory_order_relaxed);
+
     AudioEngine::SampleLayerGrid samples{};
     AudioEngine::SampleRegionGrid regions{};
     bool anySample = false;
@@ -1894,34 +1967,43 @@ std::string AudioEngine::start() {
             padFilterCutoffMilliHz_,
             monitorSamples_,
             monitorWriteSequence_,
-            monitorEnabled_);
+            monitorEnabled_,
+            outputCallbackCount_,
+            outputCallbackFrames_,
+            outputPeakMilli_);
+
+    outputErrorCallback_ =
+            std::make_shared<OutputErrorCallback>(outputLastErrorCode_);
 
     oboe::AudioStreamBuilder builder;
     builder.setDirection(oboe::Direction::Output)
-        ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
-        ->setSharingMode(oboe::SharingMode::Shared)
+        ->setPerformanceMode(policy.performanceMode)
+        ->setSharingMode(policy.preferredSharingMode)
         ->setFormat(oboe::AudioFormat::Float)
         ->setFormatConversionAllowed(true)
         ->setChannelCount(2)
         ->setChannelConversionAllowed(true)
         ->setUsage(oboe::Usage::Media)
         ->setContentType(oboe::ContentType::Music)
-        ->setDataCallback(callback_);
+        ->setDataCallback(callback_)
+        ->setErrorCallback(outputErrorCallback_);
 
     const oboe::Result openResult = builder.openStream(stream_);
     if (openResult != oboe::Result::OK || stream_ == nullptr) {
         stream_.reset();
         callback_.reset();
+        outputErrorCallback_.reset();
         return std::string("Audio open failed: ") + resultText(openResult);
     }
 
-    const oboe::Result startResult = stream_->start();
+    const oboe::Result startResult = stream_->requestStart();
     if (startResult != oboe::Result::OK) {
         const std::string message =
                 std::string("Audio start failed: ") + resultText(startResult);
         stream_->close();
         stream_.reset();
         callback_.reset();
+        outputErrorCallback_.reset();
         return message;
     }
 
@@ -1982,9 +2064,23 @@ std::string AudioEngine::status() const {
         + " | API=" + oboe::convertToText(stream_->getAudioApi())
         + " | rate=" + std::to_string(stream_->getSampleRate())
         + " | channels=" + std::to_string(stream_->getChannelCount())
+        + " | sharing=" + sharingModeText(stream_->getSharingMode())
+        + " | performance=" + performanceModeText(stream_->getPerformanceMode())
         + " | burst=" + std::to_string(stream_->getFramesPerBurst())
-        + " | fallback=" + sampleDescription_
-        + " | low-latency shared";
+        + " | callbacks=" + std::to_string(
+                outputCallbackCount_.load(std::memory_order_relaxed))
+        + " | callbackFrames=" + std::to_string(
+                outputCallbackFrames_.load(std::memory_order_relaxed))
+        + " | peak=" + std::to_string(
+                outputPeakMilli_.load(std::memory_order_relaxed)) + "/1000"
+        + " | fallback=" + sampleDescription_;
+    const auto errorCode =
+            outputLastErrorCode_.load(std::memory_order_acquire);
+    if (errorCode != static_cast<std::int32_t>(oboe::Result::OK)) {
+        result += " | lastError="
+                + std::string(resultText(
+                        static_cast<oboe::Result>(errorCode)));
+    }
 }
 
 } // namespace mpc::audio

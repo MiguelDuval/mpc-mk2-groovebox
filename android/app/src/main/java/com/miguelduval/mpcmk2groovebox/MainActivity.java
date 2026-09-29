@@ -496,8 +496,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sampleWaveform = new WaveformView(this);
         sampleWaveform.setContentDescription("Sample waveform editor");
         sampleWaveform.setEditable(true);
+        sampleWaveform.setMinimumHeight(dp(144));
         page.addView(sampleWaveform, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(96)));
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         regionInfo = label("", 12, MUTED);
         regionInfo.setPadding(dp(10), 0, dp(10), 0);
@@ -697,8 +698,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingWaveform.setContentDescription("Recording waveform monitor");
         recordingWaveform.setEditable(false);
         recordingWaveform.setRecording(false);
+        recordingWaveform.setMinimumHeight(dp(144));
         page.addView(recordingWaveform, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(96)));
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         recordingTelemetry = label("No recorded audio", 11, MUTED);
         recordingTelemetry.setGravity(Gravity.CENTER_VERTICAL);
@@ -729,7 +731,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final String result = nativeAudioAssignRecordingToPadLayer(
                     selectedPad, selectedLayer);
             setBottomStatus(result);
-            refreshRecordingInfo();
+            if (result != null
+                    && result.startsWith("Recording assigned")
+                    && !result.contains("sampler restart failed")) {
+                showSamplePage();
+            } else {
+                refreshRecordingInfo();
+            }
         }), weight());
         page.addView(controls1, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
@@ -969,6 +977,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         selectedPad = pad;
         refreshPadSelectionVisuals();
         if (startupComplete) {
+            final String startResult = nativeAudioStart();
+            if (startResult == null
+                    || startResult.toLowerCase(Locale.ROOT).contains("failed")) {
+                setBottomStatus(startResult == null
+                        ? "Audio output unavailable"
+                        : startResult);
+                return;
+            }
             nativeAudioTriggerPad(pad, velocity);
             setBottomStatus("AUDITION • Pad " + (pad + 1)
                     + " • velocity " + velocity
@@ -1427,7 +1443,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private LinearLayout page() {
         LinearLayout p = column();
-        p.setPadding(dp(10), dp(8), dp(10), dp(8));
+        p.setPadding(dp(10), dp(8), dp(10), 0);
         return p;
     }
 
@@ -1550,9 +1566,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        if (findViewWithContentDescription(
-                getWindow().getDecorView(), "Recording waveform monitor") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: recording waveform");
+        View recordingWaveformView = findViewWithContentDescription(
+                getWindow().getDecorView(), "Recording waveform monitor");
+        if (recordingWaveformView == null
+                || recordingWaveformView.getHeight() < dp(144)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: recording waveform height");
             return;
         }
 

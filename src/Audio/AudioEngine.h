@@ -177,7 +177,13 @@ private:
     std::array<std::array<std::string, kSampleLayerCount>, kPadCount>
             padSampleDescriptions_{};
     std::shared_ptr<OutputCallback> callback_;
+    std::shared_ptr<oboe::AudioStreamErrorCallback> outputErrorCallback_;
     std::shared_ptr<oboe::AudioStream> stream_;
+    std::atomic<std::uint64_t> outputCallbackCount_{0};
+    std::atomic<std::uint64_t> outputCallbackFrames_{0};
+    std::atomic<std::uint32_t> outputPeakMilli_{0};
+    std::atomic<std::int32_t> outputLastErrorCode_{
+            static_cast<std::int32_t>(oboe::Result::OK)};
     AudioTriggerQueue triggerQueue_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padTuningMilliSemitones_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
