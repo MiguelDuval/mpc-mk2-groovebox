@@ -43,10 +43,10 @@
 - Q-Link.
 
 ## Stage 5 — Sampler
-- record. **SOFTWARE SLICE IMPLEMENTED — bounded microphone capture in RAM through a dedicated Oboe input stream; now independent from monitor. Physical recording/assignment workflow verified on the real MPC Studio MkII using headphones.**
+- record. **SOFTWARE + UI SLICE IMPLEMENTED — bounded microphone capture in RAM through a dedicated Oboe input stream; the Recorder now shows a live shared waveform, duration, peak, frame count and armed/active/stopped state. Physical recording/assignment workflow remains separately tracked.**
 - monitor. **SOFTWARE SLICE IMPLEMENTED — independent bounded lock-free RAM monitor path feeding the low-latency output stream; Monitor On/Off is separate from Record. Independent monitor-only physical verification remains pending.**
 - threshold. **SOFTWARE SLICE IMPLEMENTED — configurable 0–100% input threshold; with threshold Off recording starts immediately, otherwise recording arms and begins on the first input frame reaching the threshold. No pre-roll is captured. Physical verification remains pending.**
-- trim. **SOFTWARE SLICE IMPLEMENTED — each pad/layer has a non-destructive start/end playback region; sample data is unchanged, realtime playback respects the region, and a bounded diagnostic UI exposes start/end nudging plus Full Region. Full waveform editing/chop remain later slices.**
+- trim. **SOFTWARE + UI SLICE IMPLEMENTED — each pad/layer has a non-destructive start/end playback region; the shared WaveformView exposes finger-draggable S/E handles, zoom and pan, with edits committed to the domain-backed region.**
 - crop. **SOFTWARE SLICE IMPLEMENTED — destructive crop of the selected pad/layer region into a new PCM buffer on the control thread; the source region becomes the full region of the new buffer, while other pad/layer assignments remain untouched. A small diagnostic UI exposes Crop Region. Physical verification remains pending.**
 - chop. **SOFTWARE SLICE IMPLEMENTED — deterministic 4/8/16-way equal chopping of the selected pad/layer region into pads 1-N; all chops share the original PCM buffer and receive independent non-destructive playback regions. A small diagnostic UI exposes Chop 4/8/16. Physical verification remains pending.**
 - assign. **DONE for imported WAVs; physically verified on Build #135 with two different WAV samples on two different physical pads. RECORDED-AUDIO ASSIGNMENT SOFTWARE SLICE IMPLEMENTED — the last stopped microphone recording can be promoted into a selected pad/layer; physically verified on the real MPC Studio MkII.**
@@ -72,8 +72,8 @@
 - UI shell. **IMPLEMENTED FOUNDATION — landscape-only standalone-style shell with persistent transport/status bar, persistent mode rail, fixed main workspace, and no root diagnostic ScrollView.**
 - Main. **UI FOUNDATION IMPLEMENTED — 4x4 software performance pads, selected-pad inspector, quick tone controls, layer selection and direct audition trigger.**
 - Browser. **UI FOUNDATION IMPLEMENTED — dedicated Browser mode with explicit WAV load target; full indexed/searchable browser is a later slice.**
-- Sampler. **UI FOUNDATION IMPLEMENTED — dedicated sample editor context with region/edit, envelope, filter and layer tabs.**
-- Sample Edit. **UI FOUNDATION IMPLEMENTED — region controls, crop and chop actions are isolated to the sample context.**
+- Sampler. **UI FOUNDATION + WAVEFORM IMPLEMENTED — dedicated sample editor context with a shared editable waveform, region/edit, envelope, filter and layer tabs.**
+- Sample Edit. **UI FOUNDATION + WAVEFORM IMPLEMENTED — direct S/E drag editing, zoom/pan, audition, crop and chop actions are isolated to the sample context.**
 - Grid. **SHELL RESERVED — dedicated sequencer editor remains the next implementation slice.**
 - Step. **SHELL RESERVED — dedicated step editor remains the next implementation slice.**
 - Track Edit. **MODE SLOT RESERVED.**
