@@ -2059,21 +2059,23 @@ std::string AudioEngine::status() const {
         return result;
     }
 
-    return std::string("Audio output ")
-        + streamStateText(stream_->getState())
-        + " | API=" + oboe::convertToText(stream_->getAudioApi())
-        + " | rate=" + std::to_string(stream_->getSampleRate())
-        + " | channels=" + std::to_string(stream_->getChannelCount())
-        + " | sharing=" + sharingModeText(stream_->getSharingMode())
-        + " | performance=" + performanceModeText(stream_->getPerformanceMode())
-        + " | burst=" + std::to_string(stream_->getFramesPerBurst())
-        + " | callbacks=" + std::to_string(
-                outputCallbackCount_.load(std::memory_order_relaxed))
-        + " | callbackFrames=" + std::to_string(
-                outputCallbackFrames_.load(std::memory_order_relaxed))
-        + " | peak=" + std::to_string(
-                outputPeakMilli_.load(std::memory_order_relaxed)) + "/1000"
-        + " | fallback=" + sampleDescription_;
+    std::string result =
+            std::string("Audio output ")
+            + streamStateText(stream_->getState())
+            + " | API=" + oboe::convertToText(stream_->getAudioApi())
+            + " | rate=" + std::to_string(stream_->getSampleRate())
+            + " | channels=" + std::to_string(stream_->getChannelCount())
+            + " | sharing=" + sharingModeText(stream_->getSharingMode())
+            + " | performance=" + performanceModeText(stream_->getPerformanceMode())
+            + " | burst=" + std::to_string(stream_->getFramesPerBurst())
+            + " | callbacks=" + std::to_string(
+                    outputCallbackCount_.load(std::memory_order_relaxed))
+            + " | callbackFrames=" + std::to_string(
+                    outputCallbackFrames_.load(std::memory_order_relaxed))
+            + " | peak=" + std::to_string(
+                    outputPeakMilli_.load(std::memory_order_relaxed)) + "/1000"
+            + " | fallback=" + sampleDescription_;
+
     const auto errorCode =
             outputLastErrorCode_.load(std::memory_order_acquire);
     if (errorCode != static_cast<std::int32_t>(oboe::Result::OK)) {
@@ -2081,6 +2083,7 @@ std::string AudioEngine::status() const {
                 + std::string(resultText(
                         static_cast<oboe::Result>(errorCode)));
     }
-}
 
+    return result;
+}
 } // namespace mpc::audio
