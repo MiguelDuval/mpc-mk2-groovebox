@@ -53,7 +53,6 @@ public:
             oboe::AudioStream* audioStream,
             void* audioData,
             int32_t numFrames) override {
-        outputCallbackCount_.fetch_add(1, std::memory_order_relaxed);
         if (audioStream == nullptr || audioData == nullptr || numFrames <= 0) {
             return oboe::DataCallbackResult::Continue;
         }
@@ -263,6 +262,7 @@ public:
             oboe::AudioStream* audioStream,
             void* audioData,
             int32_t numFrames) override {
+        outputCallbackCount_.fetch_add(1, std::memory_order_relaxed);
         if (audioStream == nullptr || audioData == nullptr || numFrames <= 0) {
             return oboe::DataCallbackResult::Continue;
         }
