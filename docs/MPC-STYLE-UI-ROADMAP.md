@@ -170,8 +170,10 @@ Do not copy Akai, Native Instruments or Ableton artwork, textures, logos or prop
 - layer selector.
 
 ### UI-2 — Sample
-- waveform surface;
-- region editing;
+- shared waveform surface;
+- direct S/E region editing;
+- zoom/pan/pinch navigation;
+- live recorder waveform reuse;
 - envelope;
 - filter;
 - layer controls.
@@ -219,4 +221,4 @@ Do not copy Akai, Native Instruments or Ableton artwork, textures, logos or prop
 
 UI-0 and the first UI-1/UI-2 foundation are being introduced on the sampler branch so the physical sampler tests can be performed without the previous diagnostic scroll wall.
 
-The current UI deliberately leaves the future waveform renderer and full sequencer editor as separate slices rather than faking their behavior.
+The shared waveform renderer/editor is now a reusable slice used by Sampler and Recorder. Full Grid/Step editing remains a separate slice; future Looper, audio-clip and slice views should reuse the same waveform component rather than introduce one-off renderers.
