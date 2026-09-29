@@ -133,6 +133,30 @@ These per-layer gain checks are intentionally UNCONFIRMED until performed on the
 
 These multi-layer checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
 
+## M. Unified waveform system
+
+- [ ] Recorder opens with an explicit empty/waiting waveform state.
+- [ ] Starting Record changes the waveform to a live-recording state.
+- [ ] With microphone/audio input present, the waveform visibly grows while recording.
+- [ ] With no input, the waveform remains flat and the status shows armed/active with zero or near-zero peak.
+- [ ] Duration, peak and frame-count telemetry change consistently with captured audio.
+- [ ] Stopping a recording leaves the captured waveform visible.
+- [ ] Assigning the recording to a pad/layer makes the same audio available in the Sampler waveform.
+- [ ] Sampler waveform displays the loaded sample with a time ruler and amplitude envelope.
+- [ ] S and E markers have finger-sized hit areas.
+- [ ] Dragging S changes the playback start without crossing E.
+- [ ] Dragging E changes the playback end without crossing S.
+- [ ] Region text matches the visible S/E selection after a committed drag.
+- [ ] ZOOM + / ZOOM - change detail without changing the selected region.
+- [ ] Pinch zoom changes detail around the touch focus.
+- [ ] Swiping a zoomed waveform pans horizontally.
+- [ ] RESET returns to the complete waveform view.
+- [ ] FULL restores the full sample region.
+- [ ] AUDITION triggers the selected pad from the current region.
+- [ ] CROP replaces the selected range with a new full-range sample and refreshes the waveform.
+- [ ] CHOP 4/8/16 refreshes the waveform/sample state for the resulting pad assignments.
+- [ ] Waveform edit handles are visible only in the EDIT context; ENV/FILTER/LAYER leave the same waveform visible but non-editable.
+
 ## Evidence
 
 For each failed test, capture:
