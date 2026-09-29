@@ -25,6 +25,7 @@ constexpr float kPadAmplitude = 0.85f;
 constexpr std::uint32_t kOutputTestToneFrames = 24000u;
 constexpr float kOutputTestToneFrequencyHz = 440.0f;
 constexpr float kOutputTestToneAmplitude = 0.10f;
+constexpr double kPi = 3.1415926535897932384626433832795;
 
 const char* resultText(oboe::Result result) {
     return oboe::convertToText(result);
@@ -347,7 +348,7 @@ public:
 
             if (testToneFramesRemaining_ > 0u) {
                 const float phaseIncrement =
-                        2.0f * static_cast<float>(M_PI)
+                        2.0f * static_cast<float>(kPi)
                         * kOutputTestToneFrequencyHz
                         / static_cast<float>(sampleRate);
                 const float tone =
@@ -356,7 +357,7 @@ public:
                 left += tone;
                 right += tone;
                 testTonePhase_ += static_cast<double>(phaseIncrement);
-                if (testTonePhase_ >= 2.0 * M_PI) {
+                if (testTonePhase_ >= 2.0 * kPi) {
                     testTonePhase_ -= 2.0 * M_PI;
                 }
                 --testToneFramesRemaining_;
