@@ -27,7 +27,7 @@
 ## Stage 3 — Audio
 - JUCE/Tracktion Android integration.
 - engine lifecycle.
-- audio device management.
+- audio device management. **LANDSCAPE AUDIO SETTINGS SLICE IMPLEMENTED — explicit Android input/output device selection, AUTO or requested sample rate/buffer, shared/exclusive + low-latency/normal policy, runtime route diagnostics and a synthetic output test tone are now exposed through the Audio Settings page.**
 - low-latency stream.
 - one sample playback.
 
