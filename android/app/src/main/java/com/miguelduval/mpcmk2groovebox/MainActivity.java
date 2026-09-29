@@ -192,7 +192,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.HORIZONTAL);
 
-        body.addView(buildModeRail(), new LinearLayout.LayoutParams(dp(78),
+        body.addView(buildModeRail(), new LinearLayout.LayoutParams(dp(112),
                 ViewGroup.LayoutParams.MATCH_PARENT));
 
         content = new FrameLayout(this);
