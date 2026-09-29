@@ -9,10 +9,14 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
@@ -65,6 +69,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView filterInfo;
     private TextView recordingInfo;
     private final Button[] padButtons = new Button[16];
+    private final Button[] modeButtons = new Button[7];
     private int selectedPad = 0;
     private int selectedLayer = 0;
     private String currentPage = "MAIN";
@@ -129,10 +134,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         uiOnlySmokeMode = "ui-only".equals(smokeMode);
         uiAuditSmokeMode = "ui-audit".equals(smokeMode);
 
-        getWindow().setStatusBarColor(BG);
-        getWindow().setNavigationBarColor(BG);
+        applyFullscreenWindowPolicy();
 
         setContentView(buildApplicationShell());
+        applyFullscreenWindowPolicy();
         Log.i(TAG, "UI_READY");
 
         if (uiOnlySmokeMode) {
@@ -205,6 +210,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
         showMainPage();
+        updateModeRailSelection();
         return root;
     }
 
@@ -267,22 +273,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private View buildModeRail() {
         LinearLayout rail = new LinearLayout(this);
         rail.setOrientation(LinearLayout.VERTICAL);
-        rail.setPadding(dp(5), dp(7), dp(5), dp(7));
+        rail.setPadding(dp(6), dp(6), dp(6), dp(6));
         rail.setBackgroundColor(Color.rgb(18, 21, 24));
 
-        rail.addView(modeButton("MAIN", "MAIN"));
-        rail.addView(modeButton("BROWSE", "BROWSE"));
-        rail.addView(modeButton("SAMPLE", "SAMPLE"));
-        rail.addView(modeButton("SEQ", "SEQ"));
-        rail.addView(modeButton("MIX", "MIX"));
-        rail.addView(modeButton("REC", "REC"));
-        rail.addView(modeButton("MENU", "MENU"));
+        String[] pages = {"MAIN", "BROWSE", "SAMPLE", "SEQ", "MIX", "REC", "MENU"};
+        for (int i = 0; i < pages.length; i++) {
+            Button button = modeButton(pages[i], pages[i]);
+            modeButtons[i] = button;
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+            params.topMargin = i == 0 ? 0 : dp(4);
+            params.bottomMargin = i == pages.length - 1 ? 0 : 0;
+            rail.addView(button, params);
+        }
         return rail;
     }
 
     private Button modeButton(String text, String page) {
         Button b = button(text);
-        b.setTextSize(10);
+        b.setTextSize(12);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setMinHeight(dp(56));
+        b.setMinimumHeight(dp(56));
+        b.setPadding(dp(3), 0, dp(3), 0);
+        b.setTag(page);
+        b.setContentDescription(page + " mode");
         b.setOnClickListener(v -> {
             switch (page) {
                 case "MAIN": showMainPage(); break;
@@ -293,9 +308,47 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 case "REC": showRecordPage(); break;
                 default: showMenuPage(); break;
             }
+            updateModeRailSelection();
         });
-        b.setTag(page);
         return b;
+    }
+
+    private void updateModeRailSelection() {
+        for (Button button : modeButtons) {
+            if (button == null) continue;
+            boolean selected = String.valueOf(button.getTag()).equals(currentPage);
+            button.setTextColor(selected ? BG : TEXT);
+            button.setBackground(strokeBackground(
+                    selected ? ACCENT : SURFACE_2,
+                    selected ? ACCENT : LINE,
+                    8));
+        }
+    }
+
+    private void applyFullscreenWindowPolicy() {
+        Window window = getWindow();
+        window.setStatusBarColor(BG);
+        window.setNavigationBarColor(BG);
+
+        View decor = window.getDecorView();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false);
+            WindowInsetsController controller = window.getInsetsController();
+            if (controller != null) {
+                controller.setSystemBarsBehavior(
+                        WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+            }
+            return;
+        }
+
+        int flags = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+        decor.setSystemUiVisibility(flags);
     }
 
     private void showMainPage() {
@@ -328,6 +381,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         content.addView(page);
         refreshPadSelectionVisuals();
+        updateModeRailSelection();
     }
 
     private View buildPadGrid() {
@@ -1395,6 +1449,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             midiState.setTextColor(connected ? ACTIVE : MUTED);
             setBottomStatus(description);
         });
+    }
+
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            applyFullscreenWindowPolicy();
+        }
     }
 
     @Override
