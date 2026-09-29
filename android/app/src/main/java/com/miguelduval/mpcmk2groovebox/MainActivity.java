@@ -4,22 +4,27 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.Base64;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,42 +36,54 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
     private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
 
+    private static final int BG = Color.rgb(14, 16, 18);
+    private static final int SURFACE = Color.rgb(25, 29, 33);
+    private static final int SURFACE_2 = Color.rgb(32, 37, 42);
+    private static final int LINE = Color.rgb(64, 72, 80);
+    private static final int TEXT = Color.rgb(235, 239, 242);
+    private static final int MUTED = Color.rgb(156, 166, 174);
+    private static final int ACCENT = Color.rgb(69, 211, 255);
+    private static final int ACCENT_2 = Color.rgb(255, 180, 72);
+    private static final int DANGER = Color.rgb(236, 83, 83);
+    private static final int ACTIVE = Color.rgb(63, 207, 117);
+
     static {
         System.loadLibrary("mpcgroovebox");
     }
 
     private AndroidMidiBridge midiBridge;
-    private TextView status;
-    private TextView devices;
-    private TextView midiLog;
-    private TextView selectedPadStatus;
-    private TextView tuningStatus;
-    private TextView levelStatus;
-    private TextView panStatus;
-    private TextView layerStatus;
-    private TextView layerGainStatus;
-    private TextView layerTuningStatus;
-    private TextView layerPanStatus;
-    private TextView layerVelocityStatus;
-    private TextView sampleRegionStatus;
-    private TextView chopStatus;
-    private TextView recordingStatus;
-    private TextView recordingThresholdStatus;
+    private FrameLayout content;
+    private TextView pageTitle;
+    private TextView audioState;
+    private TextView midiState;
+    private TextView projectState;
+    private TextView bottomStatus;
+    private TextView selectedPadInfo;
+    private TextView sampleInfo;
+    private TextView regionInfo;
+    private TextView envelopeInfo;
+    private TextView filterInfo;
+    private TextView recordingInfo;
+    private final Button[] padButtons = new Button[16];
     private int selectedPad = 0;
     private int selectedLayer = 0;
+    private String currentPage = "MAIN";
+    private volatile boolean destroyed;
+    private volatile boolean startupComplete;
     private boolean uiOnlySmokeMode;
     private boolean uiAuditSmokeMode;
-    private volatile boolean destroyed;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
     private static native String nativeEngineInfo();
     private static native String nativeAudioLoadSample(byte[] data);
-    private static native String nativeAudioLoadSampleForPad(byte[] data, int pad);
     private static native String nativeAudioLoadSampleForPadLayer(byte[] data, int pad, int layer);
+    private static native void nativeAudioTriggerPad(int pad, int velocity);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
     private static native String nativeAudioSetPadLevel(int pad, float level);
     private static native float nativeAudioGetPadLevel(int pad);
+    private static native String nativeAudioSetPadPan(int pad, float pan);
+    private static native float nativeAudioGetPadPan(int pad);
     private static native String nativeAudioSetPadLayerGain(int pad, int layer, float gain);
     private static native float nativeAudioGetPadLayerGain(int pad, int layer);
     private static native String nativeAudioSetPadLayerTuning(int pad, int layer, float semitones);
@@ -77,17 +94,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int pad, int layer, int minimum, int maximum);
     private static native int nativeAudioGetPadLayerVelocityMin(int pad, int layer);
     private static native int nativeAudioGetPadLayerVelocityMax(int pad, int layer);
-    private static native String nativeAudioSetPadPan(int pad, float pan);
-    private static native float nativeAudioGetPadPan(int pad);
     private static native String nativeAudioSetPadSampleRegion(
             int pad, int layer, long startFrame, long endFrame);
     private static native long nativeAudioGetPadSampleRegionStart(int pad, int layer);
     private static native long nativeAudioGetPadSampleRegionEnd(int pad, int layer);
     private static native long nativeAudioGetPadSampleFrameCount(int pad, int layer);
     private static native String nativeAudioChopPadSampleToPads(
-            int sourcePad, int sourceLayer, int chopCount);
-    private static native String nativeAudioCropPadSampleRegion(
-            int pad, int layer);
+            int pad, int layer, int chopCount);
+    private static native String nativeAudioCropPadSampleRegion(int pad, int layer);
+    private static native String nativeAudioSetPadEnvelope(
+            int pad, float attackMs, float decayMs, float sustain, float releaseMs);
+    private static native float nativeAudioGetPadEnvelopeAttack(int pad);
+    private static native float nativeAudioGetPadEnvelopeDecay(int pad);
+    private static native float nativeAudioGetPadEnvelopeSustain(int pad);
+    private static native float nativeAudioGetPadEnvelopeRelease(int pad);
+    private static native String nativeAudioSetPadFilterCutoff(int pad, float cutoffHz);
+    private static native float nativeAudioGetPadFilterCutoff(int pad);
     private static native String nativeAudioStart();
     private static native String nativeAudioStop();
     private static native String nativeAudioStatus();
@@ -107,760 +129,1270 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         uiOnlySmokeMode = "ui-only".equals(smokeMode);
         uiAuditSmokeMode = "ui-audit".equals(smokeMode);
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(24, 24, 24, 24);
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(BG);
 
-        TextView title = new TextView(this);
-        title.setText("MPC Studio MkII Groovebox — Hardware Bring-Up");
-        title.setTextSize(20.0f);
-        title.setGravity(Gravity.CENTER_VERTICAL);
-
-        status = new TextView(this);
-        status.setText("Starting native engine...");
-        status.setTextSize(14.0f);
-
-        devices = new TextView(this);
-        devices.setText("Scanning MIDI devices...");
-        devices.setTextSize(13.0f);
-
-        Button scan = new Button(this);
-        scan.setText("Refresh MIDI Devices");
-        scan.setOnClickListener(v -> {
-            if (midiBridge == null) {
-                devices.setText("MIDI bridge is still starting...");
-                return;
-            }
-            devices.setText(midiBridge.describeDevices());
-        });
-
-        Button connect = new Button(this);
-        connect.setText("Connect MPC Studio MkII");
-        connect.setOnClickListener(v -> {
-            if (midiBridge == null) {
-                status.setText("MIDI bridge is still starting...");
-                return;
-            }
-            midiBridge.connectPreferred();
-        });
-
-        selectedPadStatus = new TextView(this);
-        selectedPadStatus.setText("Sample target pad: 1");
-        selectedPadStatus.setTextSize(13.0f);
-
-        tuningStatus = new TextView(this);
-        tuningStatus.setText("Pad 1 tuning: +0.00 st");
-        tuningStatus.setTextSize(13.0f);
-
-        LinearLayout tuningControls = new LinearLayout(this);
-        tuningControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button tuneDown = new Button(this);
-        tuneDown.setText("-1 st");
-        tuneDown.setOnClickListener(v -> adjustSelectedPadTuning(-1.0f));
-
-        Button tuneReset = new Button(this);
-        tuneReset.setText("Reset");
-        tuneReset.setOnClickListener(v -> adjustSelectedPadTuning(0.0f, true));
-
-        Button tuneUp = new Button(this);
-        tuneUp.setText("+1 st");
-        tuneUp.setOnClickListener(v -> adjustSelectedPadTuning(1.0f));
-
-        tuningControls.addView(tuneDown, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        tuningControls.addView(tuneReset, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        tuningControls.addView(tuneUp, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        levelStatus = new TextView(this);
-        levelStatus.setText("Pad 1 level: 100%");
-        levelStatus.setTextSize(13.0f);
-
-        LinearLayout levelControls = new LinearLayout(this);
-        levelControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button levelDown = new Button(this);
-        levelDown.setText("-10%");
-        levelDown.setOnClickListener(v -> adjustSelectedPadLevel(-0.10f));
-
-        Button levelReset = new Button(this);
-        levelReset.setText("Level Reset");
-        levelReset.setOnClickListener(v -> setSelectedPadLevel(1.0f));
-
-        Button levelUp = new Button(this);
-        levelUp.setText("+10%");
-        levelUp.setOnClickListener(v -> adjustSelectedPadLevel(0.10f));
-
-        levelControls.addView(levelDown, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        levelControls.addView(levelReset, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        levelControls.addView(levelUp, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        panStatus = new TextView(this);
-        panStatus.setText("Pad 1 pan: C");
-        panStatus.setTextSize(13.0f);
-
-        LinearLayout panControls = new LinearLayout(this);
-        panControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button panLeft = new Button(this);
-        panLeft.setText("Pan L");
-        panLeft.setOnClickListener(v -> setSelectedPadPan(-1.0f));
-
-        Button panCenter = new Button(this);
-        panCenter.setText("Pan C");
-        panCenter.setOnClickListener(v -> setSelectedPadPan(0.0f));
-
-        Button panRight = new Button(this);
-        panRight.setText("Pan R");
-        panRight.setOnClickListener(v -> setSelectedPadPan(1.0f));
-
-        panControls.addView(panLeft, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        panControls.addView(panCenter, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        panControls.addView(panRight, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        layerStatus = new TextView(this);
-        layerStatus.setText("Pad 1 sample layer: 1/8");
-        layerStatus.setTextSize(13.0f);
-
-        LinearLayout layerControls = new LinearLayout(this);
-        layerControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button layerDown = new Button(this);
-        layerDown.setText("Layer -");
-        layerDown.setOnClickListener(v -> adjustSelectedLayer(-1));
-
-        Button layerUp = new Button(this);
-        layerUp.setText("Layer +");
-        layerUp.setOnClickListener(v -> adjustSelectedLayer(1));
-
-        layerControls.addView(layerDown, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        layerControls.addView(layerUp, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        layerGainStatus = new TextView(this);
-        layerGainStatus.setText("Pad 1 layer 1 gain: 100%");
-        layerGainStatus.setTextSize(13.0f);
-
-        LinearLayout layerGainControls = new LinearLayout(this);
-        layerGainControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button layerGainDown = new Button(this);
-        layerGainDown.setText("Layer -10%");
-        layerGainDown.setOnClickListener(v -> adjustSelectedLayerGain(-0.10f));
-
-        Button layerGainReset = new Button(this);
-        layerGainReset.setText("Layer Gain Reset");
-        layerGainReset.setOnClickListener(v -> setSelectedLayerGain(1.0f));
-
-        Button layerGainUp = new Button(this);
-        layerGainUp.setText("Layer +10%");
-        layerGainUp.setOnClickListener(v -> adjustSelectedLayerGain(0.10f));
-
-        layerGainControls.addView(layerGainDown, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        layerGainControls.addView(layerGainReset, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        layerGainControls.addView(layerGainUp, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        layerTuningStatus = new TextView(this);
-        layerTuningStatus.setText("Pad 1 layer 1 tuning: +0.00 st");
-        layerTuningStatus.setTextSize(13.0f);
-
-        LinearLayout layerTuningControls = new LinearLayout(this);
-        layerTuningControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button layerTuningDown = new Button(this);
-        layerTuningDown.setText("Layer Tune -1 st");
-        layerTuningDown.setOnClickListener(v -> adjustSelectedLayerTuning(-1.0f));
-
-        Button layerTuningReset = new Button(this);
-        layerTuningReset.setText("Layer Tune Reset");
-        layerTuningReset.setOnClickListener(v -> setSelectedLayerTuning(0.0f));
-
-        Button layerTuningUp = new Button(this);
-        layerTuningUp.setText("Layer Tune +1 st");
-        layerTuningUp.setOnClickListener(v -> adjustSelectedLayerTuning(1.0f));
-
-        layerTuningControls.addView(layerTuningDown, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        layerTuningControls.addView(layerTuningReset, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        layerTuningControls.addView(layerTuningUp, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        layerPanStatus = new TextView(this);
-        layerPanStatus.setText("Pad 1 layer 1 pan: C");
-        layerPanStatus.setTextSize(13.0f);
-
-        LinearLayout layerPanControls = new LinearLayout(this);
-        layerPanControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button layerPanLeft = new Button(this);
-        layerPanLeft.setText("Layer Pan L");
-        layerPanLeft.setOnClickListener(v -> setSelectedLayerPan(-1.0f));
-
-        Button layerPanCenter = new Button(this);
-        layerPanCenter.setText("Layer Pan C");
-        layerPanCenter.setOnClickListener(v -> setSelectedLayerPan(0.0f));
-
-        Button layerPanRight = new Button(this);
-        layerPanRight.setText("Layer Pan R");
-        layerPanRight.setOnClickListener(v -> setSelectedLayerPan(1.0f));
-
-        layerPanControls.addView(layerPanLeft, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        layerPanControls.addView(layerPanCenter, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        layerPanControls.addView(layerPanRight, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        layerVelocityStatus = new TextView(this);
-        layerVelocityStatus.setText("Pad 1 layer 1 velocity: 0-127");
-        layerVelocityStatus.setTextSize(13.0f);
-
-        LinearLayout layerVelocityControls = new LinearLayout(this);
-        layerVelocityControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button layerVelocityMinDown = new Button(this);
-        layerVelocityMinDown.setText("Vel Min -8");
-        layerVelocityMinDown.setOnClickListener(v -> adjustSelectedLayerVelocityMin(-8));
-
-        Button layerVelocityMinUp = new Button(this);
-        layerVelocityMinUp.setText("Vel Min +8");
-        layerVelocityMinUp.setOnClickListener(v -> adjustSelectedLayerVelocityMin(8));
-
-        Button layerVelocityReset = new Button(this);
-        layerVelocityReset.setText("Vel Full");
-        layerVelocityReset.setOnClickListener(v -> setSelectedLayerVelocityRange(0, 127));
-
-        Button layerVelocityMaxDown = new Button(this);
-        layerVelocityMaxDown.setText("Vel Max -8");
-        layerVelocityMaxDown.setOnClickListener(v -> adjustSelectedLayerVelocityMax(-8));
-
-        Button layerVelocityMaxUp = new Button(this);
-        layerVelocityMaxUp.setText("Vel Max +8");
-        layerVelocityMaxUp.setOnClickListener(v -> adjustSelectedLayerVelocityMax(8));
-
-        layerVelocityControls.addView(layerVelocityMinDown, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        layerVelocityControls.addView(layerVelocityMinUp, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        layerVelocityControls.addView(layerVelocityReset, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        layerVelocityControls.addView(layerVelocityMaxDown, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        layerVelocityControls.addView(layerVelocityMaxUp, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        sampleRegionStatus = new TextView(this);
-        sampleRegionStatus.setText("Pad 1 layer 1 sample region: no sample");
-        sampleRegionStatus.setTextSize(13.0f);
-
-        LinearLayout sampleRegionControls = new LinearLayout(this);
-        sampleRegionControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button regionStartDown = new Button(this);
-        regionStartDown.setText("Start -");
-        regionStartDown.setOnClickListener(v -> nudgeSelectedSampleRegionStart(-1000));
-
-        Button regionStartUp = new Button(this);
-        regionStartUp.setText("Start +");
-        regionStartUp.setOnClickListener(v -> nudgeSelectedSampleRegionStart(1000));
-
-        Button regionEndDown = new Button(this);
-        regionEndDown.setText("End -");
-        regionEndDown.setOnClickListener(v -> nudgeSelectedSampleRegionEnd(-1000));
-
-        Button regionEndUp = new Button(this);
-        regionEndUp.setText("End +");
-        regionEndUp.setOnClickListener(v -> nudgeSelectedSampleRegionEnd(1000));
-
-        Button regionFull = new Button(this);
-        regionFull.setText("Full Region");
-        regionFull.setOnClickListener(v -> resetSelectedSampleRegion());
-
-        sampleRegionControls.addView(regionStartDown, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        sampleRegionControls.addView(regionStartUp, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        sampleRegionControls.addView(regionEndDown, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        sampleRegionControls.addView(regionEndUp, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        sampleRegionControls.addView(regionFull, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        chopStatus = new TextView(this);
-        chopStatus.setText("Chop: select a sample, then choose 4, 8 or 16 slices");
-        chopStatus.setTextSize(13.0f);
-
-        LinearLayout chopControls = new LinearLayout(this);
-        chopControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button chop4 = new Button(this);
-        chop4.setText("Chop 4");
-        chop4.setOnClickListener(v -> chopSelectedSample(4));
-
-        Button chop8 = new Button(this);
-        chop8.setText("Chop 8");
-        chop8.setOnClickListener(v -> chopSelectedSample(8));
-
-        Button chop16 = new Button(this);
-        chop16.setText("Chop 16");
-        chop16.setOnClickListener(v -> chopSelectedSample(16));
-
-        Button cropRegion = new Button(this);
-        cropRegion.setText("Crop Region");
-        cropRegion.setOnClickListener(v -> cropSelectedSampleRegion());
-
-        chopControls.addView(chop4, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        chopControls.addView(chop8, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        chopControls.addView(chop16, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        chopControls.addView(cropRegion, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        LinearLayout padGrid = new LinearLayout(this);
-        padGrid.setOrientation(LinearLayout.VERTICAL);
-
-        for (int row = 0; row < 4; ++row) {
-            LinearLayout padRow = new LinearLayout(this);
-            padRow.setOrientation(LinearLayout.HORIZONTAL);
-
-            for (int column = 0; column < 4; ++column) {
-                final int pad = row * 4 + column;
-                Button padButton = new Button(this);
-                padButton.setText(String.valueOf(pad + 1));
-                padButton.setOnClickListener(v -> selectPad(pad));
-                padRow.addView(padButton, new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-            }
-
-            padGrid.addView(padRow, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT));
-        }
-
-        LinearLayout audioControls = new LinearLayout(this);
-        audioControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button loadSample = new Button(this);
-        loadSample.setText("Load WAV Sample");
-        loadSample.setOnClickListener(v -> openWavPicker());
-
-        Button audioStart = new Button(this);
-        audioStart.setText("Start Sampler");
-        audioStart.setOnClickListener(v -> status.setText(nativeAudioStart()));
-
-        Button audioStop = new Button(this);
-        audioStop.setText("Stop Audio");
-        audioStop.setOnClickListener(v -> status.setText(nativeAudioStop()));
-
-        Button audioStatus = new Button(this);
-        audioStatus.setText("Audio Status");
-        audioStatus.setOnClickListener(v -> status.setText(nativeAudioStatus()));
-
-        audioControls.addView(loadSample, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        audioControls.addView(audioStart, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        audioControls.addView(audioStop, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        audioControls.addView(audioStatus, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        recordingStatus = new TextView(this);
-        recordingStatus.setText("Recording: idle");
-        recordingStatus.setTextSize(13.0f);
-
-        recordingThresholdStatus = new TextView(this);
-        recordingThresholdStatus.setText("Recording threshold: Off");
-        recordingThresholdStatus.setTextSize(13.0f);
-
-        LinearLayout recordingThresholdControls = new LinearLayout(this);
-        recordingThresholdControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button thresholdOff = new Button(this);
-        thresholdOff.setText("Threshold Off");
-        thresholdOff.setOnClickListener(v -> setRecordingThreshold(0.0f));
-
-        Button threshold10 = new Button(this);
-        threshold10.setText("Threshold 10%");
-        threshold10.setOnClickListener(v -> setRecordingThreshold(0.10f));
-
-        Button threshold25 = new Button(this);
-        threshold25.setText("Threshold 25%");
-        threshold25.setOnClickListener(v -> setRecordingThreshold(0.25f));
-
-        Button threshold50 = new Button(this);
-        threshold50.setText("Threshold 50%");
-        threshold50.setOnClickListener(v -> setRecordingThreshold(0.50f));
-
-        recordingThresholdControls.addView(thresholdOff, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        recordingThresholdControls.addView(threshold10, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        recordingThresholdControls.addView(threshold25, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        recordingThresholdControls.addView(threshold50, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        LinearLayout recordingControls = new LinearLayout(this);
-        recordingControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button recordMicrophone = new Button(this);
-                recordMicrophone.setText("Record");
-        recordMicrophone.setOnClickListener(v -> startRecordingFromUi());
-
-        Button stopRecording = new Button(this);
-        stopRecording.setText("Stop Recording");
-        stopRecording.setOnClickListener(v -> {
-            status.setText(nativeAudioStopRecording());
-            refreshRecordingStatus();
-        });
-
-        Button recordingStatusButton = new Button(this);
-        recordingStatusButton.setText("Recording Status");
-        recordingStatusButton.setOnClickListener(v -> refreshRecordingStatus());
-
-        recordingControls.addView(recordMicrophone, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        recordingControls.addView(stopRecording, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        recordingControls.addView(recordingStatusButton, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        LinearLayout monitorControls = new LinearLayout(this);
-        monitorControls.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button monitorOn = new Button(this);
-        monitorOn.setText("Monitor On");
-        monitorOn.setOnClickListener(v -> startMonitorFromUi());
-
-        Button monitorOff = new Button(this);
-        monitorOff.setText("Monitor Off");
-        monitorOff.setOnClickListener(v -> {
-            status.setText(nativeAudioStopMonitor());
-            refreshRecordingStatus();
-        });
-
-        Button assignRecording = new Button(this);
-        assignRecording.setText("Assign Last Recording");
-        assignRecording.setOnClickListener(v -> {
-            final String result =
-                    nativeAudioAssignRecordingToPadLayer(selectedPad, selectedLayer);
-            status.setText(result);
-            recordingStatus.setText(nativeAudioRecordingStatus());
-        });
-
-        monitorControls.addView(monitorOn, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        monitorControls.addView(monitorOff, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        monitorControls.addView(assignRecording, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        LinearLayout diagnostics = new LinearLayout(this);
-        diagnostics.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button red = new Button(this);
-        red.setText("Pad 1 Red");
-        red.setOnClickListener(v -> midiBridge.testPadRed());
-
-        Button blue = new Button(this);
-        blue.setText("Pad 1 Blue");
-        blue.setOnClickListener(v -> midiBridge.testPadBlue());
-
-        Button off = new Button(this);
-        off.setText("Pad 1 Off");
-        off.setOnClickListener(v -> midiBridge.testPadOff());
-
-        Button playLed = new Button(this);
-        playLed.setText("Play LED");
-        playLed.setOnClickListener(v -> midiBridge.testPlayLed());
-
-        Button touchLed = new Button(this);
-        touchLed.setText("Touch LED");
-        touchLed.setOnClickListener(v -> midiBridge.testTouchLed());
-
-        Button repeatLed = new Button(this);
-        repeatLed.setText("Repeat LED");
-        repeatLed.setOnClickListener(v -> midiBridge.testNoteRepeatLed());
-
-        Button lcdTest = new Button(this);
-        lcdTest.setText("LCD Test");
-        lcdTest.setOnClickListener(v -> midiBridge.testLcd());
-
-        LinearLayout diagnosticsRow1 = new LinearLayout(this);
-        diagnosticsRow1.setOrientation(LinearLayout.HORIZONTAL);
-
-        diagnosticsRow1.addView(red, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        diagnosticsRow1.addView(blue, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        diagnosticsRow1.addView(off, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        diagnosticsRow1.addView(playLed, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        diagnosticsRow1.addView(touchLed, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        LinearLayout diagnosticsRow2 = new LinearLayout(this);
-        diagnosticsRow2.setOrientation(LinearLayout.HORIZONTAL);
-        diagnosticsRow2.addView(repeatLed, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        diagnosticsRow2.addView(lcdTest, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-
-        diagnostics.addView(diagnosticsRow1, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        diagnostics.addView(diagnosticsRow2, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        midiLog = new TextView(this);
-        midiLog.setText("MIDI IN:\n");
-        midiLog.setTextSize(13.0f);
-
-        ScrollView midiScroll = new ScrollView(this);
-        midiScroll.setFillViewport(true);
-        midiScroll.addView(midiLog);
-
-        root.addView(title, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(status, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(scan, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(connect, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(selectedPadStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(tuningStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(tuningControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(levelStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(levelControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(panStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(panControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(layerStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(layerControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(layerGainStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(layerGainControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(layerTuningStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(layerTuningControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(layerPanStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(layerPanControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(layerVelocityStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(layerVelocityControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(sampleRegionStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(sampleRegionControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(chopStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(chopControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(padGrid, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(audioControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(recordingStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(recordingThresholdStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(recordingThresholdControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(recordingControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(monitorControls, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(diagnostics, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(devices, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.addView(midiScroll, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(120)));
-
-        ScrollView contentScroll = new ScrollView(this);
-        contentScroll.setFillViewport(true);
-        contentScroll.addView(root);
-        setContentView(contentScroll);
+        setContentView(buildApplicationShell());
         Log.i(TAG, "UI_READY");
 
         if (uiOnlySmokeMode) {
-            status.setText("Startup diagnostic: UI-only; native/MIDI deferred");
+            bottomStatus.setText("UI-only startup diagnostic");
             Log.i(TAG, "UI_ONLY_COMPLETE");
             return;
         }
 
-        root.postOnAnimation(() -> {
+        content.postOnAnimation(() -> {
             Log.i(TAG, "STARTUP_BEGIN");
             startupExecutor.execute(() -> {
                 Log.i(TAG, "NATIVE_INFO_BEGIN");
-                String engineInfo = nativeEngineInfo();
+                final String engineInfo = nativeEngineInfo();
                 Log.i(TAG, "NATIVE_INFO_END");
+
                 Log.i(TAG, "BUNDLED_SAMPLE_BEGIN");
-                String sampleResult = loadBundledSample();
+                final String sampleResult = loadBundledSample();
                 Log.i(TAG, "BUNDLED_SAMPLE_END");
 
-                runOnUiThread(() -> {
-                    if (destroyed) {
-                        return;
-                    }
+                final String audioResult = nativeAudioStart();
+                Log.i(TAG, "AUDIO_START_RESULT=" + audioResult);
 
-                    status.setText("Native: " + engineInfo + "\n" + sampleResult);
-                    updateSampleRegionStatus();
-                    updateRecordingThresholdStatus();
+                runOnUiThread(() -> {
+                    if (destroyed) return;
+
+                    startupComplete = true;
+                    bottomStatus.setText(engineInfo + " | " + sampleResult);
+                    setAudioStateFromResult(audioResult);
+                    refreshAllInspectorState();
+
                     Log.i(TAG, "MIDI_BRIDGE_BEGIN");
                     midiBridge = new AndroidMidiBridge(this, this);
                     Log.i(TAG, "MIDI_BRIDGE_END");
                     Log.i(TAG, "STARTUP_COMPLETE");
+
                     if (uiAuditSmokeMode) {
-                        runUiHierarchySmokeCheck();
+                        runUiAudit();
                     }
                 });
             });
         });
     }
 
+    private View buildApplicationShell() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(BG);
+
+        root.addView(buildTopBar(), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
+
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.HORIZONTAL);
+
+        body.addView(buildModeRail(), new LinearLayout.LayoutParams(dp(78),
+                ViewGroup.LayoutParams.MATCH_PARENT));
+
+        content = new FrameLayout(this);
+        content.setBackgroundColor(BG);
+        body.addView(content, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+        root.addView(body, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        bottomStatus = label("Initializing…", 11, MUTED);
+        bottomStatus.setPadding(dp(12), 0, dp(12), 0);
+        bottomStatus.setGravity(Gravity.CENTER_VERTICAL);
+        root.addView(bottomStatus, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        showMainPage();
+        return root;
+    }
+
+    private View buildTopBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(10), dp(6), dp(10), dp(6));
+        bar.setBackgroundColor(SURFACE);
+
+        projectState = label("UNTITLED", 12, TEXT);
+        projectState.setTypeface(Typeface.DEFAULT_BOLD);
+        bar.addView(projectState, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1.2f));
+
+        pageTitle = label("MAIN", 12, ACCENT);
+        pageTitle.setGravity(Gravity.CENTER);
+        pageTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        bar.addView(pageTitle, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.55f));
+
+        TextView tempo = label("120.0 BPM", 12, TEXT);
+        tempo.setGravity(Gravity.CENTER);
+        bar.addView(tempo, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.75f));
+
+        audioState = statusChip("AUDIO OFF", MUTED);
+        bar.addView(audioState, new LinearLayout.LayoutParams(dp(96), dp(38)));
+
+        midiState = statusChip("MIDI —", MUTED);
+        bar.addView(midiState, new LinearLayout.LayoutParams(dp(96), dp(38)));
+
+        Button play = topButton("PLAY");
+        play.setOnClickListener(v -> {
+            final String result = nativeAudioStart();
+            setAudioStateFromResult(result);
+            setBottomStatus(result);
+        });
+        bar.addView(play, new LinearLayout.LayoutParams(dp(72), dp(38)));
+
+        Button stop = topButton("STOP");
+        stop.setOnClickListener(v -> {
+            final String result = nativeAudioStop();
+            setAudioStateFromResult(result);
+            setBottomStatus(result);
+        });
+        bar.addView(stop, new LinearLayout.LayoutParams(dp(72), dp(38)));
+
+        Button midi = topButton("MIDI");
+        midi.setOnClickListener(v -> showMidiPage());
+        bar.addView(midi, new LinearLayout.LayoutParams(dp(72), dp(38)));
+
+        Button menu = topButton("MENU");
+        menu.setOnClickListener(v -> showMenuPage());
+        bar.addView(menu, new LinearLayout.LayoutParams(dp(72), dp(38)));
+
+        return bar;
+    }
+
+    private View buildModeRail() {
+        LinearLayout rail = new LinearLayout(this);
+        rail.setOrientation(LinearLayout.VERTICAL);
+        rail.setPadding(dp(5), dp(7), dp(5), dp(7));
+        rail.setBackgroundColor(Color.rgb(18, 21, 24));
+
+        rail.addView(modeButton("MAIN", "MAIN"));
+        rail.addView(modeButton("BROWSE", "BROWSE"));
+        rail.addView(modeButton("SAMPLE", "SAMPLE"));
+        rail.addView(modeButton("SEQ", "SEQ"));
+        rail.addView(modeButton("MIX", "MIX"));
+        rail.addView(modeButton("REC", "REC"));
+        rail.addView(modeButton("MENU", "MENU"));
+        return rail;
+    }
+
+    private Button modeButton(String text, String page) {
+        Button b = button(text);
+        b.setTextSize(10);
+        b.setOnClickListener(v -> {
+            switch (page) {
+                case "MAIN": showMainPage(); break;
+                case "BROWSE": showBrowserPage(); break;
+                case "SAMPLE": showSamplePage(); break;
+                case "SEQ": showSequencePage(); break;
+                case "MIX": showMixPage(); break;
+                case "REC": showRecordPage(); break;
+                default: showMenuPage(); break;
+            }
+        });
+        b.setTag(page);
+        return b;
+    }
+
+    private void showMainPage() {
+        currentPage = "MAIN";
+        pageTitle.setText("MAIN");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        LinearLayout workspace = row();
+
+        LinearLayout padSurface = column();
+        padSurface.addView(sectionLabel("PERFORM / 16 PADS"));
+        padSurface.addView(buildPadGrid(), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout quick = row();
+        quick.addView(actionButton("LOAD", v -> openWavPicker()), weight());
+        quick.addView(actionButton("SAMPLE", v -> showSamplePage()), weight());
+        quick.addView(actionButton("REC", v -> showRecordPage()), weight());
+        quick.addView(actionButton("MIX", v -> showMixPage()), weight());
+        padSurface.addView(quick, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        workspace.addView(padSurface, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.60f));
+        workspace.addView(buildInspector(), new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.40f));
+
+        page.addView(workspace, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        content.addView(page);
+        refreshPadSelectionVisuals();
+    }
+
+    private View buildPadGrid() {
+        LinearLayout grid = column();
+        for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
+            LinearLayout row = row();
+            for (int col = 0; col < 4; col++) {
+                final int pad = rowIndex * 4 + col;
+                Button b = button(String.format(Locale.ROOT, "%02d", pad + 1));
+                b.setTextSize(15);
+                b.setTypeface(Typeface.DEFAULT_BOLD);
+                b.setOnClickListener(v -> selectAndTriggerPad(pad, 112));
+                b.setOnLongClickListener(v -> {
+                    selectedPad = pad;
+                    refreshPadSelectionVisuals();
+                    showSamplePage();
+                    return true;
+                });
+                padButtons[pad] = b;
+                row.addView(b, weight());
+            }
+            grid.addView(row, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        }
+        return grid;
+    }
+
+    private View buildInspector() {
+        LinearLayout inspector = panel();
+        inspector.addView(sectionLabel("SELECTED PAD"));
+
+        selectedPadInfo = label("", 15, TEXT);
+        selectedPadInfo.setTypeface(Typeface.DEFAULT_BOLD);
+        inspector.addView(selectedPadInfo, marginParams());
+
+        sampleInfo = label("", 12, MUTED);
+        inspector.addView(sampleInfo, marginParams());
+
+        LinearLayout layerRow = row();
+        Button layerDown = actionButton("LAYER −", v -> {
+            selectedLayer = Math.max(0, selectedLayer - 1);
+            refreshAllInspectorState();
+        });
+        Button layerUp = actionButton("LAYER +", v -> {
+            selectedLayer = Math.min(7, selectedLayer + 1);
+            refreshAllInspectorState();
+        });
+        layerRow.addView(layerDown, weight());
+        layerRow.addView(layerUp, weight());
+        inspector.addView(layerRow);
+
+        inspector.addView(sectionLabel("QUICK TONE"));
+
+        LinearLayout tone1 = row();
+        tone1.addView(actionButton("TUNE −1", v -> changePadTuning(-1)), weight());
+        tone1.addView(actionButton("TUNE +1", v -> changePadTuning(1)), weight());
+        tone1.addView(actionButton("LEVEL −10", v -> changePadLevel(-0.10f)), weight());
+        tone1.addView(actionButton("LEVEL +10", v -> changePadLevel(0.10f)), weight());
+        inspector.addView(tone1);
+
+        LinearLayout tone2 = row();
+        tone2.addView(actionButton("PAN L", v -> setPadPan(-1)), weight());
+        tone2.addView(actionButton("PAN C", v -> setPadPan(0)), weight());
+        tone2.addView(actionButton("PAN R", v -> setPadPan(1)), weight());
+        tone2.addView(actionButton("EDIT", v -> showSamplePage()), weight());
+        inspector.addView(tone2);
+
+        regionInfo = label("", 11, MUTED);
+        inspector.addView(regionInfo, marginParams());
+
+        LinearLayout detail = row();
+        detail.addView(actionButton("SAMPLE", v -> showSamplePage()), weight());
+        detail.addView(actionButton("SEQ", v -> showSequencePage()), weight());
+        detail.addView(actionButton("MIX", v -> showMixPage()), weight());
+        inspector.addView(detail);
+
+        return inspector;
+    }
+
+    private void showSamplePage() {
+        currentPage = "SAMPLE";
+        pageTitle.setText("SAMPLE");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        LinearLayout header = row();
+        header.addView(sectionLabelView("PAD " + (selectedPad + 1)
+                + "  •  LAYER " + (selectedLayer + 1) + "/8"),
+                new LinearLayout.LayoutParams(0, dp(34), 1));
+        header.addView(actionButton("LOAD WAV", v -> openWavPicker()),
+                new LinearLayout.LayoutParams(dp(110), dp(38)));
+        page.addView(header);
+
+        TextView wave = label("WAVEFORM / SAMPLE REGION", 12, TEXT);
+        wave.setGravity(Gravity.CENTER);
+        wave.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        page.addView(wave, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(118)));
+
+        regionInfo = label("", 12, MUTED);
+        regionInfo.setPadding(dp(10), 0, dp(10), 0);
+        page.addView(regionInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+
+        LinearLayout tabs = row();
+        tabs.addView(actionButton("EDIT", v -> showSampleEditPanel(page)), weight());
+        tabs.addView(actionButton("ENV", v -> showSampleEnvelopePanel(page)), weight());
+        tabs.addView(actionButton("FILTER", v -> showSampleFilterPanel(page)), weight());
+        tabs.addView(actionButton("LAYER", v -> showSampleLayerPanel(page)), weight());
+        page.addView(tabs, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        showSampleEditPanel(page);
+        content.addView(page);
+        refreshSampleInfo();
+        refreshRegionInfo();
+    }
+
+    private void showSampleEditPanel(LinearLayout page) {
+        removeBelow(page, 4);
+
+        LinearLayout row1 = row();
+        row1.addView(actionButton("START −1K", v -> nudgeRegionStart(-1000)), weight());
+        row1.addView(actionButton("START +1K", v -> nudgeRegionStart(1000)), weight());
+        row1.addView(actionButton("END −1K", v -> nudgeRegionEnd(-1000)), weight());
+        row1.addView(actionButton("END +1K", v -> nudgeRegionEnd(1000)), weight());
+        page.addView(row1, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+
+        LinearLayout row2 = row();
+        row2.addView(actionButton("FULL REGION", v -> resetRegion()), weight());
+        row2.addView(actionButton("CROP", v -> cropRegion()), weight());
+        row2.addView(actionButton("CHOP 4", v -> chop(4)), weight());
+        row2.addView(actionButton("CHOP 8", v -> chop(8)), weight());
+        row2.addView(actionButton("CHOP 16", v -> chop(16)), weight());
+        page.addView(row2, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+        page.addView(label("Sample editing is control-thread only; stop audio before destructive operations.",
+                11, MUTED), marginParams());
+    }
+
+    private void showSampleEnvelopePanel(LinearLayout page) {
+        removeBelow(page, 4);
+
+        envelopeInfo = label("", 12, TEXT);
+        envelopeInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        envelopeInfo.setGravity(Gravity.CENTER_VERTICAL);
+        envelopeInfo.setPadding(dp(12), 0, dp(12), 0);
+        page.addView(envelopeInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        page.addView(parameterRow("ATTACK", "−100", "+100",
+                v -> changeEnvelope(-100, 0, 0, 0),
+                v -> changeEnvelope(100, 0, 0, 0)), compactHeight());
+        page.addView(parameterRow("DECAY", "−100", "+100",
+                v -> changeEnvelope(0, -100, 0, 0),
+                v -> changeEnvelope(0, 100, 0, 0)), compactHeight());
+        page.addView(parameterRow("SUSTAIN", "−10%", "+10%",
+                v -> changeEnvelope(0, 0, -0.10f, 0),
+                v -> changeEnvelope(0, 0, 0.10f, 0)), compactHeight());
+        page.addView(parameterRow("RELEASE", "−100", "+100",
+                v -> changeEnvelope(0, 0, 0, -100),
+                v -> changeEnvelope(0, 0, 0, 100)), compactHeight());
+        page.addView(actionButton("ENVELOPE RESET", v -> setEnvelope(0, 0, 1, 0)),
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+        refreshEnvelopeInfo();
+    }
+
+    private void showSampleFilterPanel(LinearLayout page) {
+        removeBelow(page, 4);
+
+        filterInfo = label("", 13, TEXT);
+        filterInfo.setGravity(Gravity.CENTER_VERTICAL);
+        page.addView(filterInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        LinearLayout presets = row();
+        float[] values = {300, 800, 1500, 3000, 6000, 12000, 20000};
+        for (float value : values) {
+            presets.addView(actionButton(formatCutoff(value),
+                    v -> setFilter(((Button) v).getText().toString())),
+                    weight());
+        }
+        page.addView(presets, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+
+        SeekBar seek = new SeekBar(this);
+        seek.setMax(20000);
+        seek.setProgress(Math.round(nativeAudioGetPadFilterCutoff(selectedPad)));
+        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    final String result = nativeAudioSetPadFilterCutoff(selectedPad, progress);
+                    setBottomStatus(result);
+                    refreshFilterInfo();
+                }
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {}
+        });
+        page.addView(seek, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+
+        page.addView(actionButton("FILTER RESET / 20 kHz",
+                v -> {
+                    final String result = nativeAudioSetPadFilterCutoff(selectedPad, 20000);
+                    setBottomStatus(result);
+                    refreshFilterInfo();
+                }),
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+        refreshFilterInfo();
+    }
+
+    private void showSampleLayerPanel(LinearLayout page) {
+        removeBelow(page, 4);
+
+        TextView layerInfo = label("", 12, TEXT);
+        layerInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        layerInfo.setPadding(dp(10), 0, dp(10), 0);
+        page.addView(layerInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        page.addView(parameterRow("GAIN", "−10", "+10",
+                v -> changeLayerGain(-0.10f),
+                v -> changeLayerGain(0.10f)), compactHeight());
+        page.addView(parameterRow("TUNE", "−1", "+1",
+                v -> changeLayerTuning(-1),
+                v -> changeLayerTuning(1)), compactHeight());
+        page.addView(parameterRow("PAN", "L", "R",
+                v -> setLayerPan(-1),
+                v -> setLayerPan(1)), compactHeight());
+        page.addView(actionButton("CENTER PAN", v -> setLayerPan(0)),
+                new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+        final int min = nativeAudioGetPadLayerVelocityMin(selectedPad, selectedLayer);
+        final int max = nativeAudioGetPadLayerVelocityMax(selectedPad, selectedLayer);
+        layerInfo.setText("Layer " + (selectedLayer + 1)
+                + "/8  •  Gain " + Math.round(nativeAudioGetPadLayerGain(selectedPad, selectedLayer) * 100)
+                + "%  •  Tune " + formatSigned(nativeAudioGetPadLayerTuning(selectedPad, selectedLayer))
+                + " st  •  Pan " + formatPan(nativeAudioGetPadLayerPan(selectedPad, selectedLayer))
+                + "  •  Vel " + min + "-" + max);
+    }
+
+    private void showRecordPage() {
+        currentPage = "REC";
+        pageTitle.setText("RECORDER");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.addView(sectionLabel("INPUT / SAMPLER"));
+
+        recordingInfo = label("", 13, TEXT);
+        recordingInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        recordingInfo.setPadding(dp(12), 0, dp(12), 0);
+        page.addView(recordingInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+
+        LinearLayout controls1 = row();
+        Button record = actionButton("RECORD", v -> {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},
+                        REQUEST_RECORD_AUDIO);
+                setBottomStatus("Microphone permission requested");
+                return;
+            }
+            final String result = nativeAudioStartRecording();
+            setBottomStatus(result);
+            refreshRecordingInfo();
+        });
+        record.setTextColor(DANGER);
+        controls1.addView(record, weight());
+        controls1.addView(actionButton("STOP", v -> {
+            final String result = nativeAudioStopRecording();
+            setBottomStatus(result);
+            refreshRecordingInfo();
+        }), weight());
+        controls1.addView(actionButton("ASSIGN", v -> {
+            final String result = nativeAudioAssignRecordingToPadLayer(
+                    selectedPad, selectedLayer);
+            setBottomStatus(result);
+            refreshRecordingInfo();
+        }), weight());
+        page.addView(controls1, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
+
+        LinearLayout controls2 = row();
+        controls2.addView(actionButton("MONITOR ON", v -> startMonitor()), weight());
+        controls2.addView(actionButton("MONITOR OFF", v -> {
+            final String result = nativeAudioStopMonitor();
+            setBottomStatus(result);
+            refreshRecordingInfo();
+        }), weight());
+
+        Button threshold = actionButton("THRESHOLD " +
+                Math.round(nativeAudioGetRecordingThreshold() * 100) + "%",
+                v -> {
+                    float next = nativeAudioGetRecordingThreshold() + 0.25f;
+                    if (next > 1.0f) next = 0.0f;
+                    final String result = nativeAudioSetRecordingThreshold(next);
+                    setBottomStatus(result);
+                    refreshRecordingInfo();
+                    showRecordPage();
+                });
+        controls2.addView(threshold, weight());
+        page.addView(controls2, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
+
+        page.addView(label("Record and Monitor remain independent. Use headphones for live monitoring to avoid acoustic feedback.",
+                11, MUTED), marginParams());
+
+        content.addView(page);
+        refreshRecordingInfo();
+    }
+
+    private void showBrowserPage() {
+        currentPage = "BROWSE";
+        pageTitle.setText("BROWSER");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        LinearLayout top = row();
+        top.addView(sectionLabelView("PROJECT / USER AUDIO",
+                new LinearLayout.LayoutParams(0, dp(38), 1)));
+        top.addView(actionButton("LOAD WAV", v -> openWavPicker()),
+                new LinearLayout.LayoutParams(dp(120), dp(40)));
+        page.addView(top);
+
+        TextView target = label("Target: Pad " + (selectedPad + 1)
+                + " / Layer " + (selectedLayer + 1), 13, TEXT);
+        target.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        target.setGravity(Gravity.CENTER_VERTICAL);
+        target.setPadding(dp(12), 0, 0, 0);
+        page.addView(target, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+
+        TextView browserNote = label(
+                "Browser architecture: Places → Content → Search → Results → Preview → Load. "
+                        + "The current slice uses Android's document picker as the transport.",
+                13, MUTED);
+        browserNote.setBackground(strokeBackground(SURFACE, LINE, 8));
+        browserNote.setPadding(dp(12), dp(10), dp(12), dp(10));
+        page.addView(browserNote, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(92)));
+
+        sampleInfo = label("", 12, TEXT);
+        page.addView(sampleInfo, marginParams());
+        refreshSampleInfo();
+
+        content.addView(page);
+    }
+
+    private void showSequencePage() {
+        currentPage = "SEQ";
+        pageTitle.setText("SEQUENCER");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.addView(sectionLabel("PATTERN / GRID / STEP"));
+
+        LinearLayout transport = row();
+        transport.addView(actionButton("PLAY", v -> setBottomStatus(nativeAudioStart())), weight());
+        transport.addView(actionButton("STOP", v -> setBottomStatus(nativeAudioStop())), weight());
+        transport.addView(actionButton("GRID", v -> setBottomStatus("Grid editor shell ready")), weight());
+        transport.addView(actionButton("STEP", v -> setBottomStatus("Step editor shell ready")), weight());
+        page.addView(transport, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+
+        TextView roadmap = label(
+                "16-step performance canvas will live here: pattern length, quantize, swing, "
+                        + "probability, ratchet and event editing without leaving the performance context.",
+                14, TEXT);
+        roadmap.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        roadmap.setPadding(dp(16), dp(16), dp(16), dp(16));
+        page.addView(roadmap, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        content.addView(page);
+    }
+
+    private void showMixPage() {
+        currentPage = "MIX";
+        pageTitle.setText("MIX");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.addView(sectionLabel("PAD / LAYER MIX"));
+
+        LinearLayout strips = row();
+        for (int pad = 0; pad < 4; pad++) {
+            final int p = pad;
+            LinearLayout strip = panel();
+            TextView title = label("PAD " + (p + 1), 12, TEXT);
+            title.setTypeface(Typeface.DEFAULT_BOLD);
+            strip.addView(title);
+
+            SeekBar level = new SeekBar(this);
+            level.setMax(100);
+            level.setProgress(Math.round(nativeAudioGetPadLevel(p) * 100));
+            level.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                    if (fromUser) nativeAudioSetPadLevel(p, progress / 100.0f);
+                }
+                @Override public void onStartTrackingTouch(SeekBar bar) {}
+                @Override public void onStopTrackingTouch(SeekBar bar) {}
+            });
+            strip.addView(level, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+            strip.addView(actionButton("SELECT", v -> {
+                selectedPad = p;
+                refreshPadSelectionVisuals();
+                showMainPage();
+            }), new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+            strips.addView(strip, new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        }
+
+        page.addView(strips, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        content.addView(page);
+    }
+
+    private void showMidiPage() {
+        currentPage = "MIDI";
+        pageTitle.setText("MIDI");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.addView(sectionLabel("MPC STUDIO MKII"));
+
+        LinearLayout controls = row();
+        controls.addView(actionButton("REFRESH", v -> {
+            if (midiBridge == null) {
+                setBottomStatus("MIDI bridge is still starting");
+                return;
+            }
+            bottomStatus.setText(midiBridge.describeDevices());
+        }), weight());
+        controls.addView(actionButton("CONNECT", v -> {
+            if (midiBridge == null) {
+                setBottomStatus("MIDI bridge is still starting");
+                return;
+            }
+            midiBridge.connectPreferred();
+        }), weight());
+        controls.addView(actionButton("PAD LED", v -> {
+            if (midiBridge != null) midiBridge.testPadBlue();
+        }), weight());
+        controls.addView(actionButton("LCD", v -> {
+            if (midiBridge != null) midiBridge.testLcd();
+        }), weight());
+        page.addView(controls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
+
+        TextView devices = label("Tap REFRESH to inspect Android MIDI devices.",
+                13, MUTED);
+        devices.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        devices.setPadding(dp(12), dp(10), dp(12), dp(10));
+        page.addView(devices, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        content.addView(page);
+    }
+
+    private void showMenuPage() {
+        currentPage = "MENU";
+        pageTitle.setText("MENU");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.addView(sectionLabel("WORK MODES"));
+
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(4);
+        String[][] items = {
+                {"MAIN", "MAIN"}, {"BROWSER", "BROWSE"}, {"SAMPLE", "SAMPLE"}, {"RECORDER", "REC"},
+                {"SEQUENCER", "SEQ"}, {"MIXER", "MIX"}, {"GRID", "GRID"}, {"STEP", "STEP"},
+                {"TRACK EDIT", "TRACK"}, {"PAD MIX", "PAD"}, {"Q-LINK", "QLINK"}, {"PROJECT", "PROJECT"}
+        };
+
+        for (String[] item : items) {
+            Button b = actionButton(item[0], v -> {
+                switch (item[1]) {
+                    case "MAIN": showMainPage(); break;
+                    case "BROWSE": showBrowserPage(); break;
+                    case "SAMPLE": showSamplePage(); break;
+                    case "REC": showRecordPage(); break;
+                    case "SEQ": showSequencePage(); break;
+                    case "MIX": showMixPage(); break;
+                    default: setBottomStatus(item[0] + " shell reserved for the next UI slice");
+                }
+            });
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = 0;
+            lp.height = dp(62);
+            lp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+            grid.addView(b, lp);
+        }
+
+        page.addView(grid, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        content.addView(page);
+    }
+
+    private View parameterRow(String name, String minus, String plus,
+                              View.OnClickListener minusAction,
+                              View.OnClickListener plusAction) {
+        LinearLayout row = row();
+        TextView title = label(name, 11, MUTED);
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(title, new LinearLayout.LayoutParams(0, dp(44), 1));
+        row.addView(actionButton(minus, minusAction), new LinearLayout.LayoutParams(dp(82), dp(44)));
+        row.addView(actionButton(plus, plusAction), new LinearLayout.LayoutParams(dp(82), dp(44)));
+        return row;
+    }
+
+    private void selectAndTriggerPad(int pad, int velocity) {
+        selectedPad = pad;
+        refreshPadSelectionVisuals();
+        if (startupComplete) {
+            nativeAudioTriggerPad(pad, velocity);
+            setBottomStatus("AUDITION • Pad " + (pad + 1)
+                    + " • velocity " + velocity);
+        } else {
+            setBottomStatus("Audio engine still starting");
+        }
+    }
+
+    private void refreshPadSelectionVisuals() {
+        for (int i = 0; i < padButtons.length; i++) {
+            if (padButtons[i] == null) continue;
+            int fill = i == selectedPad ? Color.rgb(32, 52, 60) : SURFACE_2;
+            int stroke = i == selectedPad ? ACCENT : LINE;
+            padButtons[i].setBackground(strokeBackground(fill, stroke, 8));
+        }
+        refreshAllInspectorState();
+    }
+
+    private void refreshAllInspectorState() {
+        if (selectedPadInfo != null) {
+            selectedPadInfo.setText("Pad " + (selectedPad + 1)
+                    + "  •  Layer " + (selectedLayer + 1) + "/8");
+        }
+        refreshSampleInfo();
+        refreshRegionInfo();
+    }
+
+    private void refreshSampleInfo() {
+        if (sampleInfo == null) return;
+        long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
+        if (total <= 0) {
+            sampleInfo.setText("No explicit sample • bundled fallback is available on unassigned pads");
+            return;
+        }
+        sampleInfo.setText("Sample assigned • " + total + " frames");
+    }
+
+    private void refreshRegionInfo() {
+        if (regionInfo == null) return;
+        long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
+        if (total <= 0) {
+            regionInfo.setText("Region: no sample");
+            return;
+        }
+        long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
+        long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
+        regionInfo.setText("Region " + start + " → " + end + "  /  " + total + " frames");
+    }
+
+    private void refreshEnvelopeInfo() {
+        if (envelopeInfo == null) return;
+        envelopeInfo.setText(String.format(Locale.ROOT,
+                "A %.0f ms  •  D %.0f ms  •  S %.0f%%  •  R %.0f ms",
+                nativeAudioGetPadEnvelopeAttack(selectedPad),
+                nativeAudioGetPadEnvelopeDecay(selectedPad),
+                nativeAudioGetPadEnvelopeSustain(selectedPad) * 100,
+                nativeAudioGetPadEnvelopeRelease(selectedPad)));
+    }
+
+    private void refreshFilterInfo() {
+        if (filterInfo == null) return;
+        filterInfo.setText("Cutoff " + formatCutoff(nativeAudioGetPadFilterCutoff(selectedPad)));
+    }
+
+    private void refreshRecordingInfo() {
+        if (recordingInfo != null) {
+            recordingInfo.setText(nativeAudioRecordingStatus());
+        }
+    }
+
+    private void changePadTuning(float delta) {
+        String result = nativeAudioSetPadTuning(
+                selectedPad, nativeAudioGetPadTuning(selectedPad) + delta);
+        setBottomStatus(result);
+    }
+
+    private void changePadLevel(float delta) {
+        String result = nativeAudioSetPadLevel(
+                selectedPad, nativeAudioGetPadLevel(selectedPad) + delta);
+        setBottomStatus(result);
+    }
+
+    private void setPadPan(float pan) {
+        String result = nativeAudioSetPadPan(selectedPad, pan);
+        setBottomStatus(result);
+    }
+
+    private void nudgeRegionStart(long delta) {
+        long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
+        if (total <= 0) {
+            setBottomStatus("Sample region change failed: no sample assigned");
+            return;
+        }
+        long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
+        long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
+        long next = Math.max(0, Math.min(end - 1, start + delta));
+        setBottomStatus(nativeAudioSetPadSampleRegion(
+                selectedPad, selectedLayer, next, end));
+        refreshRegionInfo();
+    }
+
+    private void nudgeRegionEnd(long delta) {
+        long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
+        if (total <= 0) {
+            setBottomStatus("Sample region change failed: no sample assigned");
+            return;
+        }
+        long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
+        long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
+        long next = Math.min(total, Math.max(start + 1, end + delta));
+        setBottomStatus(nativeAudioSetPadSampleRegion(
+                selectedPad, selectedLayer, start, next));
+        refreshRegionInfo();
+    }
+
+    private void resetRegion() {
+        long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
+        if (total <= 0) {
+            setBottomStatus("Sample region change failed: no sample assigned");
+            return;
+        }
+        setBottomStatus(nativeAudioSetPadSampleRegion(
+                selectedPad, selectedLayer, 0, total));
+        refreshRegionInfo();
+    }
+
+    private void cropRegion() {
+        setBottomStatus(nativeAudioCropPadSampleRegion(selectedPad, selectedLayer));
+        refreshAllInspectorState();
+    }
+
+    private void chop(int count) {
+        setBottomStatus(nativeAudioChopPadSampleToPads(
+                selectedPad, selectedLayer, count));
+        refreshAllInspectorState();
+    }
+
+    private void setEnvelope(float attack, float decay, float sustain, float release) {
+        setBottomStatus(nativeAudioSetPadEnvelope(
+                selectedPad, attack, decay, sustain, release));
+        refreshEnvelopeInfo();
+    }
+
+    private void changeEnvelope(float attackDelta, float decayDelta,
+                                float sustainDelta, float releaseDelta) {
+        float attack = Math.max(0, Math.min(2000,
+                nativeAudioGetPadEnvelopeAttack(selectedPad) + attackDelta));
+        float decay = Math.max(0, Math.min(2000,
+                nativeAudioGetPadEnvelopeDecay(selectedPad) + decayDelta));
+        float sustain = Math.max(0, Math.min(1,
+                nativeAudioGetPadEnvelopeSustain(selectedPad) + sustainDelta));
+        float release = Math.max(0, Math.min(2000,
+                nativeAudioGetPadEnvelopeRelease(selectedPad) + releaseDelta));
+        setEnvelope(attack, decay, sustain, release);
+    }
+
+    private void setFilter(String label) {
+        String normalized = label.toLowerCase(Locale.ROOT)
+                .replace("khz", "")
+                .replace("hz", "")
+                .trim();
+        float value;
+        try {
+            value = Float.parseFloat(normalized);
+            if (label.toLowerCase(Locale.ROOT).contains("khz")) value *= 1000f;
+        } catch (NumberFormatException e) {
+            value = 20000f;
+        }
+        String result = nativeAudioSetPadFilterCutoff(selectedPad, value);
+        setBottomStatus(result);
+        refreshFilterInfo();
+    }
+
+    private void changeLayerGain(float delta) {
+        setBottomStatus(nativeAudioSetPadLayerGain(
+                selectedPad, selectedLayer,
+                nativeAudioGetPadLayerGain(selectedPad, selectedLayer) + delta));
+    }
+
+    private void changeLayerTuning(float delta) {
+        setBottomStatus(nativeAudioSetPadLayerTuning(
+                selectedPad, selectedLayer,
+                nativeAudioGetPadLayerTuning(selectedPad, selectedLayer) + delta));
+    }
+
+    private void setLayerPan(float pan) {
+        setBottomStatus(nativeAudioSetPadLayerPan(
+                selectedPad, selectedLayer, pan));
+    }
+
+    private void startMonitor() {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},
+                    REQUEST_MONITOR_AUDIO);
+            setBottomStatus("Microphone permission requested for monitor");
+            return;
+        }
+        final String result = nativeAudioStartMonitor();
+        setBottomStatus(result);
+        setAudioStateFromResult(result);
+        refreshRecordingInfo();
+    }
+
+    private void openWavPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("audio/wav");
+        try {
+            startActivityForResult(intent, REQUEST_OPEN_WAV);
+        } catch (RuntimeException e) {
+            intent.setType("*/*");
+            startActivityForResult(intent, REQUEST_OPEN_WAV);
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
         if (requestCode != REQUEST_OPEN_WAV || resultCode != RESULT_OK || data == null) {
             return;
         }
 
-        final Uri uri = data.getData();
+        Uri uri = data.getData();
         if (uri == null) {
-            status.setText("Sample load failed: no file selected");
+            setBottomStatus("Sample load failed: no file selected");
             return;
         }
 
         try {
-            status.setText("Loading WAV sample...");
-            final byte[] wavBytes = readSampleBytes(uri);
+            setBottomStatus("Loading WAV…");
+            byte[] bytes = readSampleBytes(uri);
 
-            // The native engine currently owns the realtime stream exclusively.
-            // Stop it before replacing the immutable sample buffer.
-            nativeAudioStop();
+            final String stopped = nativeAudioStop();
+            final String loaded = nativeAudioLoadSampleForPadLayer(
+                    bytes, selectedPad, selectedLayer);
+            final String restarted = nativeAudioStart();
 
-            final String result =
-                    nativeAudioLoadSampleForPadLayer(wavBytes, selectedPad, selectedLayer);
-            status.setText(result);
-            updateSampleRegionStatus();
+            setAudioStateFromResult(restarted);
+            setBottomStatus(loaded + " | " + restarted);
+            refreshAllInspectorState();
         } catch (IOException | IllegalArgumentException e) {
-            status.setText(
-                    "Sample file load failed: "
-                            + e.getClass().getSimpleName()
-                            + ": "
-                            + e.getMessage()
-                            + "\nPrevious sample, if any, was kept.");
+            final String restarted = nativeAudioStart();
+            setAudioStateFromResult(restarted);
+            setBottomStatus("Sample load failed: "
+                    + e.getClass().getSimpleName() + ": " + e.getMessage()
+                    + " | " + restarted);
         }
     }
 
-    private void startRecordingFromUi() {
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                    new String[] {Manifest.permission.RECORD_AUDIO},
-                    REQUEST_RECORD_AUDIO);
-            status.setText("Microphone permission requested");
+    private byte[] readSampleBytes(Uri uri) throws IOException {
+        try (InputStream input = getContentResolver().openInputStream(uri)) {
+            if (input == null) throw new IOException("could not open selected file");
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                if (output.size() + count > MAX_SAMPLE_BYTES) {
+                    throw new IOException("file is larger than 32 MB");
+                }
+                output.write(buffer, 0, count);
+            }
+            if (output.size() == 0) throw new IOException("selected file is empty");
+            return output.toByteArray();
+        }
+    }
+
+    private String loadBundledSample() {
+        try (InputStream input = getAssets().open("samples/pad01.wav.b64")) {
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int count;
+            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+            byte[] wavBytes = android.util.Base64.decode(
+                    output.toString(StandardCharsets.UTF_8.name()),
+                    android.util.Base64.DEFAULT);
+            String fallback = nativeAudioLoadSample(wavBytes);
+            String padLayer = nativeAudioLoadSampleForPadLayer(
+                    wavBytes, selectedPad, selectedLayer);
+            return fallback + " | " + padLayer;
+        } catch (IOException | IllegalArgumentException e) {
+            return "Sample asset load failed: " + e.getMessage();
+        }
+    }
+
+    private void setAudioStateFromResult(String result) {
+        if (audioState == null) return;
+        boolean active = result != null
+                && (result.startsWith("Audio output")
+                || result.startsWith("Recording active")
+                || result.startsWith("Recording stopped")
+                || result.startsWith("Recording armed"));
+        audioState.setText(active ? "AUDIO ON" : "AUDIO OFF");
+        audioState.setTextColor(active ? ACTIVE : MUTED);
+    }
+
+    private void setBottomStatus(String text) {
+        if (bottomStatus != null && text != null) bottomStatus.setText(text);
+    }
+
+    private TextView sectionLabelView(String text, ViewGroup.LayoutParams params) {
+        TextView view = sectionLabel(text);
+        view.setGravity(Gravity.CENTER_VERTICAL);
+        return view;
+    }
+
+    private TextView sectionLabel(String text) {
+        TextView view = label(text, 11, MUTED);
+        view.setTypeface(Typeface.DEFAULT_BOLD);
+        view.setPadding(dp(4), 0, dp(4), 0);
+        return view;
+    }
+
+    private TextView label(String text, int size, int color) {
+        TextView view = new TextView(this);
+        view.setText(text);
+        view.setTextSize(size);
+        view.setTextColor(color);
+        return view;
+    }
+
+    private Button topButton(String text) {
+        Button b = button(text);
+        b.setTextSize(10);
+        return b;
+    }
+
+    private Button actionButton(String text, View.OnClickListener listener) {
+        Button b = button(text);
+        b.setTextSize(11);
+        b.setOnClickListener(listener);
+        return b;
+    }
+
+    private Button button(String text) {
+        Button b = new Button(this);
+        b.setText(text);
+        b.setTextColor(TEXT);
+        b.setAllCaps(false);
+        b.setGravity(Gravity.CENTER);
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
+        b.setPadding(dp(4), 0, dp(4), 0);
+        b.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        return b;
+    }
+
+    private TextView statusChip(String text, int color) {
+        TextView t = label(text, 10, color);
+        t.setGravity(Gravity.CENTER);
+        t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        return t;
+    }
+
+    private LinearLayout page() {
+        LinearLayout p = column();
+        p.setPadding(dp(10), dp(8), dp(10), dp(8));
+        return p;
+    }
+
+    private LinearLayout column() {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.VERTICAL);
+        return l;
+    }
+
+    private LinearLayout row() {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.HORIZONTAL);
+        l.setGravity(Gravity.CENTER_VERTICAL);
+        return l;
+    }
+
+    private LinearLayout panel() {
+        LinearLayout l = column();
+        l.setPadding(dp(10), dp(8), dp(10), dp(8));
+        l.setBackground(strokeBackground(SURFACE, LINE, 10));
+        return l;
+    }
+
+    private LinearLayout.LayoutParams weight() {
+        return new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+    }
+
+    private LinearLayout.LayoutParams marginParams() {
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34));
+        p.topMargin = dp(5);
+        p.bottomMargin = dp(5);
+        return p;
+    }
+
+    private LinearLayout.LayoutParams compactHeight() {
+        return new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44));
+    }
+
+    private GradientDrawable strokeBackground(int fill, int stroke, int radiusDp) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(fill);
+        g.setCornerRadius(dp(radiusDp));
+        g.setStroke(dp(1), stroke);
+        return g;
+    }
+
+    private void removeBelow(LinearLayout page, int index) {
+        while (page.getChildCount() > index) {
+            page.removeViewAt(index);
+        }
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private String formatSigned(float value) {
+        return String.format(Locale.ROOT, "%+.2f", value);
+    }
+
+    private String formatPan(float pan) {
+        if (pan < -0.001f) return "L" + Math.round(-pan * 100);
+        if (pan > 0.001f) return "R" + Math.round(pan * 100);
+        return "C";
+    }
+
+    private String formatCutoff(float value) {
+        if (value >= 1000) {
+            return String.format(Locale.ROOT, "%.1fkHz", value / 1000.0f);
+        }
+        return Math.round(value) + "Hz";
+    }
+
+    private void runUiAudit() {
+        Log.i(TAG, "UI_HIERARCHY_BEGIN");
+        String[] expected = {
+                "MAIN", "BROWSE", "SAMPLE", "SEQ", "MIX", "REC", "MENU",
+                "PLAY", "STOP", "MIDI", "01", "16", "LOAD"
+        };
+
+        for (String text : expected) {
+            View view = findViewWithExactText(getWindow().getDecorView(), text);
+            if (view == null || view.getWidth() <= 0 || view.getHeight() <= 0) {
+                Log.e(TAG, "UI_HIERARCHY_FAILED: " + text);
+                return;
+            }
+        }
+        Log.i(TAG, "UI_HIERARCHY_COMPLETE");
+        Log.i(TAG, "UI_INTERACTION_BEGIN");
+
+        View pad1 = findViewWithExactText(getWindow().getDecorView(), "01");
+        if (pad1 == null || !pad1.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: pad 01");
+            return;
+        }
+        if (selectedPad != 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: selection did not stick");
             return;
         }
 
-        status.setText(nativeAudioStartRecording());
-        refreshRecordingStatus();
-    }
-
-    private void startMonitorFromUi() {
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                    new String[] {Manifest.permission.RECORD_AUDIO},
-                    REQUEST_MONITOR_AUDIO);
-            status.setText("Microphone permission requested for monitor");
+        View sample = findViewWithExactText(getWindow().getDecorView(), "SAMPLE");
+        if (sample == null || !sample.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLE");
             return;
         }
 
-        status.setText(nativeAudioStartMonitor());
-        refreshRecordingStatus();
-    }
-
-    private void setRecordingThreshold(float threshold) {
-        final String result = nativeAudioSetRecordingThreshold(threshold);
-        status.setText(result);
-        updateRecordingThresholdStatus();
-        refreshRecordingStatus();
-    }
-
-    private void updateRecordingThresholdStatus() {
-        final int percent = Math.round(
-                nativeAudioGetRecordingThreshold() * 100.0f);
-        if (percent <= 0) {
-            recordingThresholdStatus.setText("Recording threshold: Off");
+        if (findViewWithExactText(getWindow().getDecorView(), "ENV") == null
+                || findViewWithExactText(getWindow().getDecorView(), "FILTER") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: sample editor tabs");
             return;
         }
 
-        recordingThresholdStatus.setText(
-                "Recording threshold: " + percent + "%");
+        Log.i(TAG, "UI_INTERACTION_COMPLETE");
     }
 
-    private void refreshRecordingStatus() {
-        final String result = nativeAudioRecordingStatus();
-        recordingStatus.setText(result);
-        status.setText(result);
+    private View findViewWithExactText(View view, String expectedText) {
+        if (view instanceof TextView) {
+            CharSequence actual = ((TextView) view).getText();
+            if (expectedText.contentEquals(actual)) return view;
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View match = findViewWithExactText(group.getChildAt(i), expectedText);
+                if (match != null) return match;
+            }
+        }
+        return null;
     }
 
     @Override
-    public void onRequestPermissionsResult(
-            int requestCode,
-            String[] permissions,
-            int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode,
+                                           String[] permissions,
+                                           int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
+        if (grantResults.length == 0
+                || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+            setBottomStatus("Microphone permission denied");
+            return;
+        }
+
         if (requestCode == REQUEST_RECORD_AUDIO) {
-            if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                status.setText(nativeAudioStartRecording());
-                refreshRecordingStatus();
-            } else {
-                status.setText("Microphone permission denied");
-                recordingStatus.setText("Recording: permission denied");
-            }
+            final String result = nativeAudioStartRecording();
+            setBottomStatus(result);
+            refreshRecordingInfo();
             return;
         }
 
         if (requestCode == REQUEST_MONITOR_AUDIO) {
-            if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                status.setText(nativeAudioStartMonitor());
-                refreshRecordingStatus();
-            } else {
-                status.setText("Microphone permission denied for monitor");
-                recordingStatus.setText("Monitor: permission denied");
-            }
+            final String result = nativeAudioStartMonitor();
+            setBottomStatus(result);
+            refreshRecordingInfo();
+            setAudioStateFromResult(result);
         }
+    }
+
+    @Override
+    public void onDevicesChanged(String description) {
+        if (midiState != null) {
+            runOnUiThread(() -> {
+                if (midiState != null) {
+                    midiState.setText(description.contains("MPC Studio")
+                            ? "MIDI READY" : "MIDI —");
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onMidi(String description) {
+        Log.d(TAG, "MIDI IN " + description);
+    }
+
+    @Override
+    public void onConnection(String description) {
+        runOnUiThread(() -> {
+            boolean connected = description != null
+                    && description.startsWith("Connected:");
+            midiState.setText(connected ? "MIDI ON" : "MIDI —");
+            midiState.setTextColor(connected ? ACTIVE : MUTED);
+            setBottomStatus(description);
+        });
     }
 
     @Override
@@ -877,871 +1409,5 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             midiBridge = null;
         }
         super.onDestroy();
-    }
-
-    @Override
-    public void onDevicesChanged(String description) {
-        runOnUiThread(() -> devices.setText(description));
-    }
-
-    @Override
-    public void onMidi(String description) {
-        runOnUiThread(() -> {
-            String updated = midiLog.getText().toString() + description + "\n";
-            if (updated.length() > 12000) {
-                updated = updated.substring(updated.length() - 12000);
-            }
-            midiLog.setText(updated);
-        });
-    }
-
-    @Override
-    public void onConnection(String description) {
-        runOnUiThread(() -> status.setText(description));
-    }
-
-    private void runUiHierarchySmokeCheck() {
-        Log.i(TAG, "UI_HIERARCHY_BEGIN");
-
-        final long bundledFrameCount =
-                nativeAudioGetPadSampleFrameCount(0, 0);
-        String[] expectedTexts = {
-                "MPC Studio MkII Groovebox — Hardware Bring-Up",
-                "Refresh MIDI Devices",
-                "Connect MPC Studio MkII",
-                "Load WAV Sample",
-                "Start Sampler",
-                "Record",
-                "Monitor On",
-                "Monitor Off",
-                "Assign Last Recording",
-                "Recording: idle",
-                "Pad 1 tuning: +0.00 st",
-                "Pad 1 level: 100%",
-                "Pad 1 pan: C",
-                "Pad 1 sample layer: 1/8",
-                "Pad 1 layer 1 gain: 100%",
-                "Pad 1 layer 1 tuning: +0.00 st",
-                "Pad 1 layer 1 pan: C",
-                "Pad 1 layer 1 sample region: 0-" + bundledFrameCount
-                        + " / " + bundledFrameCount + " frames",
-                "Chop: select a sample, then choose 4, 8 or 16 slices",
-                "Chop 4",
-                "Chop 8",
-                "Chop 16",
-                "Crop Region",
-                "Recording threshold: Off",
-                "Threshold Off",
-                "Threshold 10%",
-                "Threshold 25%",
-                "Threshold 50%",
-                "Start -",
-                "Start +",
-                "End -",
-                "End +",
-                "Full Region"
-        };
-
-        View root = getWindow().getDecorView();
-        for (String expected : expectedTexts) {
-            View view = findViewWithExactText(root, expected);
-            if (view == null) {
-                Log.e(TAG, "UI_HIERARCHY_FAILED: missing text=" + expected);
-                return;
-            }
-            if (view.getWidth() <= 0 || view.getHeight() <= 0) {
-                Log.e(TAG, "UI_HIERARCHY_FAILED: zero-size text=" + expected
-                        + " width=" + view.getWidth()
-                        + " height=" + view.getHeight());
-                return;
-            }
-            Log.i(TAG, "UI_ELEMENT_PRESENT: " + expected
-                    + " shown=" + view.isShown()
-                    + " width=" + view.getWidth()
-                    + " height=" + view.getHeight());
-        }
-
-        Log.i(TAG, "UI_HIERARCHY_COMPLETE");
-        runUiInteractionSmokeCheck();
-    }
-
-    private void runUiInteractionSmokeCheck() {
-        Log.i(TAG, "UI_INTERACTION_BEGIN");
-
-        View threshold25 = findViewWithExactText(
-                getWindow().getDecorView(), "Threshold 25%");
-        if (threshold25 == null || !threshold25.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Threshold 25%");
-            return;
-        }
-        if (!assertUiTextPresent("Recording threshold: 25%")) {
-            return;
-        }
-
-        View thresholdOff = findViewWithExactText(
-                getWindow().getDecorView(), "Threshold Off");
-        if (thresholdOff == null || !thresholdOff.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Threshold Off");
-            return;
-        }
-        if (!assertUiTextPresent("Recording threshold: Off")) {
-            return;
-        }
-
-        View assignRecording = findViewWithExactText(
-                getWindow().getDecorView(), "Assign Last Recording");
-        if (assignRecording == null || !assignRecording.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Assign Last Recording");
-            return;
-        }
-        if (!assertUiTextPresent("Recording assign failed: no recorded audio")) {
-            return;
-        }
-        Log.i(TAG, "UI_RECORDING_ASSIGN_EMPTY_COMPLETE");
-
-        View padTwo = findViewWithExactText(getWindow().getDecorView(), "2");
-        if (padTwo == null || !padTwo.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click pad 2");
-            return;
-        }
-
-        if (!assertUiTextPresent("Sample target pad: 2")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 tuning: +0.00 st")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 level: 100%")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 pan: C")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 sample layer: 1/8")) {
-            return;
-        }
-
-        View layerUp = findViewWithExactText(getWindow().getDecorView(), "Layer +");
-        if (layerUp == null || !layerUp.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer +");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 sample layer: 2/8")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 2 gain: 100%")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 2 tuning: +0.00 st")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 2 pan: C")) {
-            return;
-        }
-
-        View layerPanRight = findViewWithExactText(
-                getWindow().getDecorView(), "Layer Pan R");
-        if (layerPanRight == null || !layerPanRight.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Pan R");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 2 pan: R100")) {
-            return;
-        }
-
-        View layerPanCenter = findViewWithExactText(
-                getWindow().getDecorView(), "Layer Pan C");
-        if (layerPanCenter == null || !layerPanCenter.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Pan C");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 2 pan: C")) {
-            return;
-        }
-
-        View layerTuningDown = findViewWithExactText(
-                getWindow().getDecorView(), "Layer Tune -1 st");
-        if (layerTuningDown == null || !layerTuningDown.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Tune -1 st");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 2 tuning: -1.00 st")) {
-            return;
-        }
-
-        View layerTuningUp = findViewWithExactText(
-                getWindow().getDecorView(), "Layer Tune +1 st");
-        if (layerTuningUp == null || !layerTuningUp.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Tune +1 st");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 2 tuning: +0.00 st")) {
-            return;
-        }
-
-        View layerTuningReset = findViewWithExactText(
-                getWindow().getDecorView(), "Layer Tune Reset");
-        if (layerTuningReset == null || !layerTuningReset.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Tune Reset");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 2 tuning: +0.00 st")) {
-            return;
-        }
-
-        View layerGainDown = findViewWithExactText(
-                getWindow().getDecorView(), "Layer -10%");
-        if (layerGainDown == null || !layerGainDown.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer -10%");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 2 gain: 90%")) {
-            return;
-        }
-
-        View layerGainReset = findViewWithExactText(
-                getWindow().getDecorView(), "Layer Gain Reset");
-        if (layerGainReset == null || !layerGainReset.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer Gain Reset");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 2 gain: 100%")) {
-            return;
-        }
-
-        View layerGainUp = findViewWithExactText(
-                getWindow().getDecorView(), "Layer +10%");
-        if (layerGainUp == null || !layerGainUp.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer +10%");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 2 gain: 100%")) {
-            return;
-        }
-
-        for (int index = 0; index < 6; ++index) {
-            if (!layerUp.performClick()) {
-                Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer + at upper-range step " + index);
-                return;
-            }
-        }
-
-        if (!assertUiTextPresent("Pad 2 sample layer: 8/8")) {
-            return;
-        }
-
-        if (!layerUp.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer + at upper clamp");
-            return;
-        }
-
-        if (!assertUiTextPresent("Pad 2 sample layer: 8/8")) {
-            return;
-        }
-
-        View layerDown = findViewWithExactText(getWindow().getDecorView(), "Layer -");
-        if (layerDown == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not find Layer -");
-            return;
-        }
-
-        for (int index = 0; index < 7; ++index) {
-            if (!layerDown.performClick()) {
-                Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer - at lower-range step " + index);
-                return;
-            }
-        }
-
-        if (!assertUiTextPresent("Pad 2 sample layer: 1/8")) {
-            return;
-        }
-
-        if (!layerDown.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Layer - at lower clamp");
-            return;
-        }
-
-        if (!assertUiTextPresent("Pad 2 sample layer: 1/8")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 1 gain: 100%")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 1 tuning: +0.00 st")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 layer 1 pan: C")) {
-            return;
-        }
-
-        View levelUp = findViewWithExactText(getWindow().getDecorView(), "+10%");
-        if (levelUp == null || !levelUp.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click +10%");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 level: 100%")) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: expected level clamp at 100%");
-            return;
-        }
-
-        View levelDown = findViewWithExactText(getWindow().getDecorView(), "-10%");
-        if (levelDown == null || !levelDown.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click -10%");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 level: 90%")) {
-            return;
-        }
-
-        View panRight = findViewWithExactText(getWindow().getDecorView(), "Pan R");
-        if (panRight == null || !panRight.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Pan R");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 pan: R100")) {
-            return;
-        }
-
-        View panCenter = findViewWithExactText(getWindow().getDecorView(), "Pan C");
-        if (panCenter == null || !panCenter.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Pan C");
-            return;
-        }
-        if (!assertUiTextPresent("Pad 2 pan: C")) {
-            return;
-        }
-
-        View tuneUp = findViewWithExactText(getWindow().getDecorView(), "+1 st");
-        if (tuneUp == null || !tuneUp.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click +1 st");
-            return;
-        }
-
-        if (!assertUiTextPresent("Pad 2 tuning: +1.00 st")) {
-            return;
-        }
-
-        for (int index = 0; index < 23; ++index) {
-            if (!tuneUp.performClick()) {
-                Log.e(TAG, "UI_INTERACTION_FAILED: could not click +1 st at upper-range step " + index);
-                return;
-            }
-        }
-
-        if (!assertUiTextPresent("Pad 2 tuning: +24.00 st")) {
-            return;
-        }
-
-        if (!tuneUp.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click +1 st at upper clamp");
-            return;
-        }
-
-        if (!assertUiTextPresent("Pad 2 tuning: +24.00 st")) {
-            return;
-        }
-
-        View tuneDown = findViewWithExactText(getWindow().getDecorView(), "-1 st");
-        if (tuneDown == null || !tuneDown.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click -1 st");
-            return;
-        }
-
-        for (int index = 0; index < 47; ++index) {
-            if (!tuneDown.performClick()) {
-                Log.e(TAG, "UI_INTERACTION_FAILED: could not click -1 st at lower-range step " + index);
-                return;
-            }
-        }
-
-        if (!assertUiTextPresent("Pad 2 tuning: -24.00 st")) {
-            return;
-        }
-
-        if (!tuneDown.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click -1 st at lower clamp");
-            return;
-        }
-
-        if (!assertUiTextPresent("Pad 2 tuning: -24.00 st")) {
-            return;
-        }
-
-        View padOne = findViewWithExactText(getWindow().getDecorView(), "1");
-        if (padOne == null || !padOne.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click pad 1");
-            return;
-        }
-
-        if (!assertUiTextPresent("Sample target pad: 1")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 1 tuning: +0.00 st")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 1 level: 100%")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 1 pan: C")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 1 sample layer: 1/8")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 1 layer 1 gain: 100%")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 1 layer 1 tuning: +0.00 st")) {
-            return;
-        }
-        if (!assertUiTextPresent("Pad 1 layer 1 pan: C")) {
-            return;
-        }
-
-        final long padOneTotal = nativeAudioGetPadSampleFrameCount(0, 0);
-        if (!assertUiTextPresent(
-                "Pad 1 layer 1 sample region: 0-" + padOneTotal
-                        + " / " + padOneTotal + " frames")) {
-            return;
-        }
-
-        View startUpForCrop = findViewWithExactText(
-                getWindow().getDecorView(), "Start +");
-        if (startUpForCrop == null || !startUpForCrop.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Start + before crop");
-            return;
-        }
-        View endDownForCrop = findViewWithExactText(
-                getWindow().getDecorView(), "End -");
-        if (endDownForCrop == null || !endDownForCrop.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click End - before crop");
-            return;
-        }
-        if (!assertUiTextPresent(
-                "Pad 1 layer 1 sample region: 1000-" + (padOneTotal - 1000)
-                        + " / " + padOneTotal + " frames")) {
-            return;
-        }
-
-        View cropRegion = findViewWithExactText(
-                getWindow().getDecorView(), "Crop Region");
-        if (cropRegion == null || !cropRegion.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Crop Region");
-            return;
-        }
-        final long croppedTotal = padOneTotal - 2000;
-        if (!assertUiTextPresent(
-                "Pad 1 layer 1 sample region: 0-" + croppedTotal
-                        + " / " + croppedTotal + " frames")) {
-            return;
-        }
-
-        View fullRegionAfterCrop = findViewWithExactText(
-                getWindow().getDecorView(), "Full Region");
-        if (fullRegionAfterCrop == null || !fullRegionAfterCrop.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Full Region after crop");
-            return;
-        }
-        if (!assertUiTextPresent(
-                "Pad 1 layer 1 sample region: 0-" + croppedTotal
-                        + " / " + croppedTotal + " frames")) {
-            return;
-        }
-
-        View chop4 = findViewWithExactText(
-                getWindow().getDecorView(), "Chop 4");
-        if (chop4 == null || !chop4.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: could not click Chop 4");
-            return;
-        }
-        if (!assertUiTextPresent(
-                "Chop complete: Pad 1 layer 1 -> pads 1-4 (4 slices)")) {
-            return;
-        }
-
-        Log.i(TAG, "UI_INTERACTION_COMPLETE");
-    }
-
-    private boolean assertUiTextPresent(String expectedText) {
-        View view = findViewWithExactText(getWindow().getDecorView(), expectedText);
-        if (view == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: missing text=" + expectedText);
-            return false;
-        }
-        if (view.getWidth() <= 0 || view.getHeight() <= 0) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: zero-size text=" + expectedText
-                    + " width=" + view.getWidth()
-                    + " height=" + view.getHeight());
-            return false;
-        }
-        Log.i(TAG, "UI_INTERACTION_STATE: " + expectedText);
-        return true;
-    }
-
-    private View findViewWithExactText(View view, String expectedText) {
-        if (view instanceof android.widget.TextView) {
-            CharSequence actualText = ((android.widget.TextView) view).getText();
-            if (expectedText.contentEquals(actualText)) {
-                return view;
-            }
-        }
-
-        if (view instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) view;
-            for (int index = 0; index < group.getChildCount(); ++index) {
-                View match = findViewWithExactText(group.getChildAt(index), expectedText);
-                if (match != null) {
-                    return match;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
-    }
-
-    private void selectPad(int pad) {
-        if (pad < 0 || pad >= 16) {
-            return;
-        }
-
-        selectedPad = pad;
-        selectedPadStatus.setText("Sample target pad: " + (pad + 1));
-        updatePadToneStatus();
-        updateLayerStatus();
-        updateLayerGainStatus();
-        updateLayerTuningStatus();
-        updateLayerPanStatus();
-        updateLayerVelocityStatus();
-        updateSampleRegionStatus();
-    }
-
-    private void adjustSelectedPadTuning(float delta) {
-        adjustSelectedPadTuning(delta, false);
-    }
-
-    private void adjustSelectedPadTuning(float delta, boolean reset) {
-        float target = reset ? 0.0f : nativeAudioGetPadTuning(selectedPad) + delta;
-        String result = nativeAudioSetPadTuning(selectedPad, target);
-        status.setText(result);
-        updatePadToneStatus();
-    }
-
-    private void updateTuningStatus() {
-        float tuning = nativeAudioGetPadTuning(selectedPad);
-        String sign = tuning >= 0.0f ? "+" : "";
-        tuningStatus.setText(
-                String.format(java.util.Locale.ROOT, "Pad %d tuning: %s%.2f st",
-                        selectedPad + 1, sign, tuning));
-    }
-
-    private void adjustSelectedPadLevel(float delta) {
-        setSelectedPadLevel(nativeAudioGetPadLevel(selectedPad) + delta);
-    }
-
-    private void setSelectedPadLevel(float target) {
-        String result = nativeAudioSetPadLevel(selectedPad, target);
-        status.setText(result);
-        updateLevelStatus();
-    }
-
-    private void updateLevelStatus() {
-        int percent = Math.round(nativeAudioGetPadLevel(selectedPad) * 100.0f);
-        levelStatus.setText("Pad " + (selectedPad + 1) + " level: " + percent + "%");
-    }
-
-    private void setSelectedPadPan(float pan) {
-        String result = nativeAudioSetPadPan(selectedPad, pan);
-        status.setText(result);
-        updatePanStatus();
-    }
-
-    private void updatePanStatus() {
-        float pan = nativeAudioGetPadPan(selectedPad);
-        if (pan < -0.001f) {
-            panStatus.setText(String.format(java.util.Locale.ROOT,
-                    "Pad %d pan: L%d",
-                    selectedPad + 1, Math.round(-pan * 100.0f)));
-            return;
-        }
-        if (pan > 0.001f) {
-            panStatus.setText(String.format(java.util.Locale.ROOT,
-                    "Pad %d pan: R%d",
-                    selectedPad + 1, Math.round(pan * 100.0f)));
-            return;
-        }
-        panStatus.setText("Pad " + (selectedPad + 1) + " pan: C");
-    }
-
-    private void updatePadToneStatus() {
-        updateTuningStatus();
-        updateLevelStatus();
-        updatePanStatus();
-    }
-
-    private void adjustSelectedLayer(int delta) {
-        selectedLayer = Math.max(0, Math.min(7, selectedLayer + delta));
-        updateLayerStatus();
-        updateLayerGainStatus();
-        updateLayerTuningStatus();
-        updateLayerPanStatus();
-        updateLayerVelocityStatus();
-        updateSampleRegionStatus();
-    }
-
-    private void updateLayerStatus() {
-        layerStatus.setText("Pad " + (selectedPad + 1)
-                + " sample layer: " + (selectedLayer + 1) + "/8");
-    }
-
-    private void adjustSelectedLayerTuning(float delta) {
-        setSelectedLayerTuning(
-                nativeAudioGetPadLayerTuning(selectedPad, selectedLayer) + delta);
-    }
-
-    private void setSelectedLayerTuning(float target) {
-        final String result =
-                nativeAudioSetPadLayerTuning(selectedPad, selectedLayer, target);
-        status.setText(result);
-        updateLayerTuningStatus();
-    }
-
-    private void updateLayerTuningStatus() {
-        final float tuning =
-                nativeAudioGetPadLayerTuning(selectedPad, selectedLayer);
-        final String sign = tuning >= 0.0f ? "+" : "";
-        layerTuningStatus.setText(
-                String.format(java.util.Locale.ROOT,
-                        "Pad %d layer %d tuning: %s%.2f st",
-                        selectedPad + 1, selectedLayer + 1, sign, tuning));
-    }
-
-    private void setSelectedLayerPan(float pan) {
-        final String result =
-                nativeAudioSetPadLayerPan(selectedPad, selectedLayer, pan);
-        status.setText(result);
-        updateLayerPanStatus();
-    }
-
-    private void updateLayerPanStatus() {
-        final float pan = nativeAudioGetPadLayerPan(selectedPad, selectedLayer);
-        if (pan < -0.001f) {
-            layerPanStatus.setText(String.format(java.util.Locale.ROOT,
-                    "Pad %d layer %d pan: L%d",
-                    selectedPad + 1, selectedLayer + 1,
-                    Math.round(-pan * 100.0f)));
-            return;
-        }
-        if (pan > 0.001f) {
-            layerPanStatus.setText(String.format(java.util.Locale.ROOT,
-                    "Pad %d layer %d pan: R%d",
-                    selectedPad + 1, selectedLayer + 1,
-                    Math.round(pan * 100.0f)));
-            return;
-        }
-        layerPanStatus.setText(
-                "Pad " + (selectedPad + 1)
-                        + " layer " + (selectedLayer + 1)
-                        + " pan: C");
-    }
-
-    private void setSelectedLayerVelocityRange(int minimum, int maximum) {
-        final String result = nativeAudioSetPadLayerVelocityRange(
-                selectedPad, selectedLayer, minimum, maximum);
-        status.setText(result);
-        updateLayerVelocityStatus();
-    }
-
-    private void adjustSelectedLayerVelocityMin(int delta) {
-        final int maximum =
-                nativeAudioGetPadLayerVelocityMax(selectedPad, selectedLayer);
-        final int current =
-                nativeAudioGetPadLayerVelocityMin(selectedPad, selectedLayer);
-        final int target = Math.max(0, Math.min(maximum, current + delta));
-        setSelectedLayerVelocityRange(target, maximum);
-    }
-
-    private void adjustSelectedLayerVelocityMax(int delta) {
-        final int minimum =
-                nativeAudioGetPadLayerVelocityMin(selectedPad, selectedLayer);
-        final int current =
-                nativeAudioGetPadLayerVelocityMax(selectedPad, selectedLayer);
-        final int target = Math.max(minimum, Math.min(127, current + delta));
-        setSelectedLayerVelocityRange(minimum, target);
-    }
-
-    private void updateLayerVelocityStatus() {
-        final int minimum =
-                nativeAudioGetPadLayerVelocityMin(selectedPad, selectedLayer);
-        final int maximum =
-                nativeAudioGetPadLayerVelocityMax(selectedPad, selectedLayer);
-        layerVelocityStatus.setText(
-                "Pad " + (selectedPad + 1)
-                        + " layer " + (selectedLayer + 1)
-                        + " velocity: " + minimum + "-" + maximum);
-    }
-
-    private void adjustSelectedLayerGain(float delta) {
-        setSelectedLayerGain(nativeAudioGetPadLayerGain(selectedPad, selectedLayer) + delta);
-    }
-
-    private void setSelectedLayerGain(float target) {
-        final String result =
-                nativeAudioSetPadLayerGain(selectedPad, selectedLayer, target);
-        status.setText(result);
-        updateLayerGainStatus();
-    }
-
-    private void updateLayerGainStatus() {
-        final int percent = Math.round(
-                nativeAudioGetPadLayerGain(selectedPad, selectedLayer) * 100.0f);
-        layerGainStatus.setText(
-                "Pad " + (selectedPad + 1)
-                        + " layer " + (selectedLayer + 1)
-                        + " gain: " + percent + "%");
-    }
-
-    private void updateSampleRegionStatus() {
-        final long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
-        if (total <= 0) {
-            sampleRegionStatus.setText(
-                    "Pad " + (selectedPad + 1)
-                            + " layer " + (selectedLayer + 1)
-                            + " sample region: no sample");
-            return;
-        }
-
-        final long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
-        final long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
-        sampleRegionStatus.setText(
-                "Pad " + (selectedPad + 1)
-                        + " layer " + (selectedLayer + 1)
-                        + " sample region: " + start + "-" + end
-                        + " / " + total + " frames");
-    }
-
-    private void nudgeSelectedSampleRegionStart(long delta) {
-        final long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
-        if (total <= 0) {
-            status.setText("Sample region change failed: no sample assigned");
-            return;
-        }
-
-        final long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
-        final long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
-        final long nextStart =
-                Math.max(0L, Math.min(Math.max(0L, end - 1L), start + delta));
-        applySelectedSampleRegion(nextStart, end);
-    }
-
-    private void nudgeSelectedSampleRegionEnd(long delta) {
-        final long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
-        if (total <= 0) {
-            status.setText("Sample region change failed: no sample assigned");
-            return;
-        }
-
-        final long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
-        final long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
-        final long nextEnd =
-                Math.min(total, Math.max(Math.min(total, start + 1L), end + delta));
-        applySelectedSampleRegion(start, nextEnd);
-    }
-
-    private void applySelectedSampleRegion(long start, long end) {
-        final String result =
-                nativeAudioSetPadSampleRegion(
-                        selectedPad, selectedLayer, start, end);
-        status.setText(result);
-        updateSampleRegionStatus();
-    }
-
-    private void chopSelectedSample(int chopCount) {
-        final String result = nativeAudioChopPadSampleToPads(
-                selectedPad, selectedLayer, chopCount);
-        status.setText(result);
-        chopStatus.setText(result);
-        updateSampleRegionStatus();
-    }
-
-    private void cropSelectedSampleRegion() {
-        final String result = nativeAudioCropPadSampleRegion(
-                selectedPad, selectedLayer);
-        status.setText(result);
-        chopStatus.setText(result);
-        updateSampleRegionStatus();
-    }
-
-    private void resetSelectedSampleRegion() {
-        final long total = nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer);
-        if (total <= 0) {
-            status.setText("Sample region change failed: no sample assigned");
-            return;
-        }
-
-        applySelectedSampleRegion(0L, total);
-    }
-
-    private void openWavPicker() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("*/*");
-        startActivityForResult(intent, REQUEST_OPEN_WAV);
-    }
-
-    private byte[] readSampleBytes(Uri uri) throws IOException {
-        try (InputStream input = getContentResolver().openInputStream(uri)) {
-            if (input == null) {
-                throw new IOException("could not open selected file");
-            }
-
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            byte[] buffer = new byte[8192];
-            int count;
-
-            while ((count = input.read(buffer)) != -1) {
-                if (output.size() + count > MAX_SAMPLE_BYTES) {
-                    throw new IOException("file is larger than 32 MB");
-                }
-
-                output.write(buffer, 0, count);
-            }
-
-            if (output.size() == 0) {
-                throw new IOException("selected file is empty");
-            }
-
-            return output.toByteArray();
-        }
-    }
-
-    private String loadBundledSample() {
-        Log.i(TAG, "loadBundledSample:begin");
-        try (InputStream input = getAssets().open("samples/pad01.wav.b64")) {
-            ByteArrayOutputStream output = new ByteArrayOutputStream();
-            byte[] buffer = new byte[4096];
-            int count;
-
-            while ((count = input.read(buffer)) != -1) {
-                output.write(buffer, 0, count);
-            }
-
-            String encoded = output.toString(StandardCharsets.UTF_8.name());
-            byte[] wavBytes = Base64.decode(encoded, Base64.DEFAULT);
-            String fallbackResult = nativeAudioLoadSample(wavBytes);
-            String padLayerResult =
-                    nativeAudioLoadSampleForPadLayer(wavBytes, 0, 0);
-            String result = fallbackResult + " | " + padLayerResult;
-            Log.i(TAG, "loadBundledSample:nativeResult=" + result);
-            return result;
-        } catch (IOException | IllegalArgumentException e) {
-            Log.e(TAG, "loadBundledSample:failed", e);
-            return "Sample asset load failed: " + e.getMessage();
-        } finally {
-            Log.i(TAG, "loadBundledSample:end");
-        }
     }
 }

@@ -562,6 +562,19 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadFilterCutoff(
             static_cast<std::uint8_t>(pad));
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPad(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad, jint velocity)
+{
+    if (pad < 0 || pad >= 16 || velocity <= 0 || velocity > 127) {
+        return;
+    }
+
+    mpc::audio::AudioEngine::instance().triggerPad(
+            static_cast<std::uint8_t>(pad),
+            static_cast<std::uint8_t>(velocity));
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStart(
         JNIEnv* env, jobject /* thiz */)
