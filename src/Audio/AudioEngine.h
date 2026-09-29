@@ -5,6 +5,7 @@
 #include "SampleLayerVelocityRange.h"
 #include "SampleRegion.h"
 #include "WavSample.h"
+#include "Waveform.h"
 #include "AudioTriggerQueue.h"
 #include "MPC/Domain/DrumProgram.h"
 #include "MPC/MpcProjectState.h"
@@ -57,6 +58,13 @@ public:
     std::size_t padSampleFrameCount(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
+    std::uint32_t padSampleRate(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex) const;
+    std::vector<WaveformPeak> padWaveformPeaks(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex,
+            std::size_t pointCount) const;
     std::string setPadLayerGain(
             std::uint8_t padIndex,
             std::uint8_t layerIndex,
@@ -128,6 +136,11 @@ public:
             std::uint8_t padIndex,
             std::uint8_t layerIndex);
     std::string recordingStatus() const;
+    std::uint32_t recordingFrameCount() const;
+    std::uint32_t recordingSampleRate() const;
+    float recordingPeak() const;
+    std::vector<WaveformPeak> recordingWaveformPeaks(
+            std::size_t pointCount) const;
 
     // Queues a single-shot musical trigger for one physical MPC pad.
     // offsetFrames is relative to the next output callback.
@@ -156,6 +169,7 @@ private:
 
     static constexpr std::size_t kMaxRecordingFrames = 960000;
     static constexpr std::size_t kMonitorBufferFrames = 8192;
+    static constexpr std::size_t kRecordingWaveformBinCount = 2048;
 
     std::shared_ptr<const SampleBuffer> sample_;
     std::string sampleDescription_;
@@ -191,6 +205,8 @@ private:
     std::atomic<bool> recordingEnabled_{false};
     std::atomic<bool> recordingArmed_{false};
     std::atomic<std::int32_t> recordingThresholdMilli_{0};
+    std::array<std::atomic<std::int32_t>, kRecordingWaveformBinCount>
+            recordingWaveformPeakMilli_{};
 
     std::vector<float> recordedSamples_;
     std::atomic<std::uint32_t> recordedFrameCount_{0};
