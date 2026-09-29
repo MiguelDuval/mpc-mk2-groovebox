@@ -415,8 +415,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout page = page();
         LinearLayout header = row();
         header.addView(sectionLabelView("PAD " + (selectedPad + 1)
-                + "  •  LAYER " + (selectedLayer + 1) + "/8"),
-                new LinearLayout.LayoutParams(0, dp(34), 1));
+                + "  •  LAYER " + (selectedLayer + 1) + "/8",
+                new LinearLayout.LayoutParams(0, dp(34), 1)));
         header.addView(actionButton("LOAD WAV", v -> openWavPicker()),
                 new LinearLayout.LayoutParams(dp(110), dp(38)));
         page.addView(header);

@@ -69,14 +69,15 @@
 - automation.
 
 ## Stage 7 — MPC-like UI
-- Main.
-- Browser.
-- Sampler.
-- Sample Edit.
-- Grid.
-- Step.
-- Track Edit.
-- mixers.
+- UI shell. **IMPLEMENTED FOUNDATION — landscape-only standalone-style shell with persistent transport/status bar, persistent mode rail, fixed main workspace, and no root diagnostic ScrollView.**
+- Main. **UI FOUNDATION IMPLEMENTED — 4x4 software performance pads, selected-pad inspector, quick tone controls, layer selection and direct audition trigger.**
+- Browser. **UI FOUNDATION IMPLEMENTED — dedicated Browser mode with explicit WAV load target; full indexed/searchable browser is a later slice.**
+- Sampler. **UI FOUNDATION IMPLEMENTED — dedicated sample editor context with region/edit, envelope, filter and layer tabs.**
+- Sample Edit. **UI FOUNDATION IMPLEMENTED — region controls, crop and chop actions are isolated to the sample context.**
+- Grid. **SHELL RESERVED — dedicated sequencer editor remains the next implementation slice.**
+- Step. **SHELL RESERVED — dedicated step editor remains the next implementation slice.**
+- Track Edit. **MODE SLOT RESERVED.**
+- mixers. **FOUNDATION IMPLEMENTED — compact Pad Mix view with direct level control; full Track/Pad mixer remains later.**
 - 16 Levels.
 - Pad Perform.
 - Q-Link.
