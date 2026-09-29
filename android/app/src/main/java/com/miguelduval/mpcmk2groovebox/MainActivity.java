@@ -541,6 +541,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showSampleEditPanel(LinearLayout page) {
         removeBelow(page, 4);
+        if (sampleWaveform != null) {
+            sampleWaveform.setEditable(true);
+            sampleWaveform.setRecording(false);
+        }
 
         LinearLayout row1 = row();
         row1.addView(actionButton("START −1K", v -> nudgeRegionStart(-1000)), weight());
@@ -558,12 +562,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         row2.addView(actionButton("CHOP 16", v -> chop(16)), weight());
         page.addView(row2, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
-        page.addView(label("Sample editing is control-thread only; stop audio before destructive operations.",
+
+        LinearLayout row3 = row();
+        row3.addView(actionButton("AUDITION", v -> selectAndTriggerPad(selectedPad, 112)), weight());
+        row3.addView(actionButton("ZOOM +", v -> {
+            if (sampleWaveform != null) sampleWaveform.zoomIn();
+        }), weight());
+        row3.addView(actionButton("ZOOM −", v -> {
+            if (sampleWaveform != null) sampleWaveform.zoomOut();
+        }), weight());
+        row3.addView(actionButton("RESET VIEW", v -> {
+            if (sampleWaveform != null) sampleWaveform.resetZoom();
+        }), weight());
+        page.addView(row3, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+
+        page.addView(label("Drag S / E to set the play range. Pinch or use ZOOM to inspect detail; swipe when zoomed to navigate. "
+                        + "CROP is destructive and requires stopped audio.",
                 11, MUTED), marginParams());
     }
 
     private void showSampleEnvelopePanel(LinearLayout page) {
         removeBelow(page, 4);
+        if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         envelopeInfo = label("", 12, TEXT);
         envelopeInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
@@ -591,6 +612,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showSampleFilterPanel(LinearLayout page) {
         removeBelow(page, 4);
+        if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         filterInfo = label("", 13, TEXT);
         filterInfo.setGravity(Gravity.CENTER_VERTICAL);
@@ -637,6 +659,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showSampleLayerPanel(LinearLayout page) {
         removeBelow(page, 4);
+        if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         TextView layerInfo = label("", 12, TEXT);
         layerInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
@@ -960,7 +983,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (startupComplete) {
             nativeAudioTriggerPad(pad, velocity);
             setBottomStatus("AUDITION • Pad " + (pad + 1)
-                    + " • velocity " + velocity);
+                    + " • velocity " + velocity
+                    + " | " + nativeAudioStatus());
         } else {
             setBottomStatus("Audio engine still starting");
         }
