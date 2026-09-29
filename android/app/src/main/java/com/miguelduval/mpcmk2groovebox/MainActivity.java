@@ -811,15 +811,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         };
 
         for (String[] item : items) {
-            Button b = actionButton(item[0], v -> {
-                switch (item[1]) {
+            final String menuLabel = item[0];
+            final String menuTarget = item[1];
+            Button b = actionButton(menuLabel, v -> {
+                switch (menuTarget) {
                     case "MAIN": showMainPage(); break;
                     case "BROWSE": showBrowserPage(); break;
                     case "SAMPLE": showSamplePage(); break;
                     case "REC": showRecordPage(); break;
                     case "SEQ": showSequencePage(); break;
                     case "MIX": showMixPage(); break;
-                    default: setBottomStatus(item[0] + " shell reserved for the next UI slice");
+                    default: setBottomStatus(menuLabel + " shell reserved for the next UI slice");
                 }
             });
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
@@ -1083,7 +1085,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus("Loading WAV…");
             byte[] bytes = readSampleBytes(uri);
 
-            final String stopped = nativeAudioStop();
+            nativeAudioStop();
             final String loaded = nativeAudioLoadSampleForPadLayer(
                     bytes, selectedPad, selectedLayer);
             final String restarted = nativeAudioStart();

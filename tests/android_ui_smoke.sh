@@ -83,6 +83,7 @@ wait_for_log_marker "UI_READY" 30 2
 wait_for_log_marker "STARTUP_BEGIN" 30 2
 wait_for_log_marker "NATIVE_INFO_END" 30 2
 wait_for_log_marker "BUNDLED_SAMPLE_END" 60 2
+wait_for_log_marker "AUDIO_START_RESULT=" 60 2
 wait_for_log_marker "MIDI_BRIDGE_END" 30 2
 wait_for_log_marker "STARTUP_COMPLETE" 30 2
 
@@ -119,5 +120,6 @@ wait_for_ui_audit() {
 wait_for_ui_audit
 assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
 
+wait_for_log_marker "UI_INTERACTION_COMPLETE" 30 2
 echo "Android emulator startup smoke test passed."
 
