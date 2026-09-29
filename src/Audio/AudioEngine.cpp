@@ -109,7 +109,6 @@ public:
             if (recordingEnabled) {
                 if (recordingFrameCount < kMaxRecordingFrames) {
                     owner_.recordedSamples_[recordingFrameCount] = mono;
-                    ++recordingFrameCount;
 
                     const auto absValue =
                             std::min(1.0f, std::abs(mono));
@@ -117,6 +116,24 @@ public:
                             static_cast<std::uint32_t>(
                                     std::lround(absValue * 1000.0f));
                     peakMilli = std::max(peakMilli, samplePeakMilli);
+
+                    const auto waveformBin = std::min(
+                            static_cast<std::size_t>(
+                                    recordingFrameCount
+                                    * AudioEngine::kRecordingWaveformBinCount
+                                    / kMaxRecordingFrames),
+                            AudioEngine::kRecordingWaveformBinCount - 1);
+                    auto& waveformPeak =
+                            owner_.recordingWaveformPeakMilli_[waveformBin];
+                    const auto previousPeak =
+                            waveformPeak.load(std::memory_order_relaxed);
+                    if (samplePeakMilli > previousPeak) {
+                        waveformPeak.store(
+                                static_cast<std::int32_t>(samplePeakMilli),
+                                std::memory_order_relaxed);
+                    }
+
+                    ++recordingFrameCount;
                 } else {
                     recordingOverflowed = true;
                 }
@@ -1300,7 +1317,84 @@ std::size_t AudioEngine::padSampleFrameCount(
     }
 
     const auto& sample = padSamples_[padIndex][layerIndex];
-    return sample != nullptr ? sample->frameCount() : 0;
+    if (sample != nullptr) {
+        return sample->frameCount();
+    }
+
+    if (layerIndex == 0 && sample_ != nullptr) {
+        bool hasExplicitLayer = false;
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            hasExplicitLayer =
+                    hasExplicitLayer
+                    || (padSamples_[padIndex][layer] != nullptr);
+        }
+        if (!hasExplicitLayer) {
+            return sample_->frameCount();
+        }
+    }
+
+    return 0;
+}
+
+std::uint32_t AudioEngine::padSampleRate(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) const {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return 0;
+    }
+
+    const auto& sample = padSamples_[padIndex][layerIndex];
+    if (sample != nullptr) {
+        return sample->sampleRate;
+    }
+
+    if (layerIndex == 0 && sample_ != nullptr) {
+        bool hasExplicitLayer = false;
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            hasExplicitLayer =
+                    hasExplicitLayer
+                    || (padSamples_[padIndex][layer] != nullptr);
+        }
+        if (!hasExplicitLayer) {
+            return sample_->sampleRate;
+        }
+    }
+
+    return 0;
+}
+
+std::vector<WaveformPeak> AudioEngine::padWaveformPeaks(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex,
+        std::size_t pointCount) const {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount
+            || pointCount == 0) {
+        return {};
+    }
+
+    std::shared_ptr<const SampleBuffer> sample =
+            padSamples_[padIndex][layerIndex];
+
+    if (sample == nullptr && layerIndex == 0 && sample_ != nullptr) {
+        bool hasExplicitLayer = false;
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            hasExplicitLayer =
+                    hasExplicitLayer
+                    || (padSamples_[padIndex][layer] != nullptr);
+        }
+        if (!hasExplicitLayer) {
+            sample = sample_;
+        }
+    }
+
+    if (sample == nullptr || sample->frameCount() == 0) {
+        return {};
+    }
+
+    return buildWaveformPeaks(
+            sample->interleaved,
+            sample->channelCount,
+            pointCount);
 }
 
 void AudioEngine::triggerPad(
@@ -1431,6 +1525,9 @@ std::string AudioEngine::startRecording() {
     recordedFrameCount_.store(0, std::memory_order_relaxed);
     recordingPeakMilli_.store(0, std::memory_order_relaxed);
     recordingSampleRate_.store(0, std::memory_order_relaxed);
+    for (auto& peak : recordingWaveformPeakMilli_) {
+        peak.store(0, std::memory_order_relaxed);
+    }
     recordingOverflowed_.store(false, std::memory_order_relaxed);
     const bool thresholdEnabled =
             recordingThresholdMilli_.load(
@@ -1614,6 +1711,67 @@ std::string AudioEngine::assignRecordingToPadLayer(
     }
 
     return assigned + " | sampler restarted";
+}
+
+std::uint32_t AudioEngine::recordingFrameCount() const {
+    return recordedFrameCount_.load(std::memory_order_acquire);
+}
+
+std::uint32_t AudioEngine::recordingSampleRate() const {
+    const auto value = recordingSampleRate_.load(std::memory_order_acquire);
+    return value > 0 ? static_cast<std::uint32_t>(value) : 0u;
+}
+
+float AudioEngine::recordingPeak() const {
+    return static_cast<float>(
+            recordingPeakMilli_.load(std::memory_order_relaxed)) / 1000.0f;
+}
+
+std::vector<WaveformPeak> AudioEngine::recordingWaveformPeaks(
+        std::size_t pointCount) const {
+    if (pointCount == 0) {
+        return {};
+    }
+
+    const auto frameCount =
+            recordedFrameCount_.load(std::memory_order_acquire);
+    if (frameCount == 0) {
+        return std::vector<WaveformPeak>(pointCount);
+    }
+
+    const auto activeBins = std::min(
+            kRecordingWaveformBinCount,
+            std::max<std::size_t>(
+                    1,
+                    (static_cast<std::size_t>(frameCount)
+                     * kRecordingWaveformBinCount
+                     + kMaxRecordingFrames - 1)
+                    / kMaxRecordingFrames));
+
+    pointCount = std::min(pointCount, activeBins);
+    std::vector<WaveformPeak> result(pointCount);
+
+    for (std::size_t point = 0; point < pointCount; ++point) {
+        const auto binBegin = point * activeBins / pointCount;
+        const auto binEnd = std::max(
+                binBegin + 1,
+                (point + 1) * activeBins / pointCount);
+
+        std::int32_t peakMilli = 0;
+        for (std::size_t bin = binBegin;
+                bin < std::min(binEnd, activeBins);
+                ++bin) {
+            peakMilli = std::max(
+                    peakMilli,
+                    recordingWaveformPeakMilli_[bin].load(
+                            std::memory_order_relaxed));
+        }
+
+        const float peak = static_cast<float>(peakMilli) / 1000.0f;
+        result[point] = WaveformPeak{-peak, peak};
+    }
+
+    return result;
 }
 
 std::string AudioEngine::recordingStatus() const {
