@@ -56,3 +56,14 @@ Important current interpretation:
 - the source-level names `NudgeLeft/NudgeRight` and `SeekBack/SeekForward` are legacy names for the physical Step and Bar navigation buttons. They must not be treated as the sequencer's separate Nudge parameter;
 - the 2021 MkII has no dedicated Q-Link knob bank. Q-Link remains an application feature, but the MkII mapping must use controls that physically exist on this controller.
 
+
+
+## Semantic hardware checkpoint — 2026-09-30
+
+The repository now contains an explicit `MpcStudioMk2SemanticAdapter` between physical MIDI decoding and application behavior. It owns stateful Shift, Mode, Locate, Note Repeat, Full/Half Level, mute contexts and pad-bank semantics, while Android receives stable semantic actions.
+
+The design deliberately preserves the actual MkII surface: Data Dial and Touch Strip are the real continuous controls; no fictional dedicated Q-Link knob bank is introduced.
+
+The sequence transport path now preserves a stopped playhead position when Play is pressed, and mute state is applied without tearing down the active playback session. These are live-workflow behaviors, not cosmetic mappings.
+
+Physical-device verification is still required before repository-level probable mappings are promoted to CONFIRMED.
