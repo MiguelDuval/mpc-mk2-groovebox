@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 
+#include "MPC/MpcCore.h"
+#include "MPC/Sequencer/MpcSequenceSettings.h"
+
 namespace {
 
 jstring toJString(JNIEnv* env, const std::string& text) {
@@ -832,4 +835,255 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStatus(
         JNIEnv* env, jobject /* thiz */)
 {
     return toJString(env, mpc::audio::AudioEngine::instance().status());
+}
+
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStatus(
+        JNIEnv* env, jobject /* thiz */)
+{
+    return toJString(
+            env,
+            mpc::MpcCore::instance().projectState().sequenceStatus());
+}
+
+extern "C" JNIEXPORT jdouble JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTempo(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jdouble>(
+            mpc::MpcCore::instance().projectState().activeSequence().tempoBpm);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTempo(
+        JNIEnv* env, jobject /* thiz */, jdouble tempo)
+{
+    if (mpc::MpcCore::instance().projectState().setSequenceTempo(tempo)) {
+        return toJString(env, "Sequence tempo updated");
+    }
+    return toJString(env, "Sequence tempo failed: use 20–300 BPM");
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetBars(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    return static_cast<jint>(
+            mpc::sequencer::sequenceBars(state.activeSequence()));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetBars(
+        JNIEnv* env, jobject /* thiz */, jint bars)
+{
+    if (mpc::MpcCore::instance().projectState().setSequenceBars(bars)) {
+        return toJString(env, "Sequence length updated");
+    }
+    return toJString(env, "Sequence length failed: invalid bar count");
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetNumerator(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().projectState().activeSequence().numerator);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetDenominator(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().projectState().activeSequence().denominator);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTimeSignature(
+        JNIEnv* env, jobject /* thiz */, jint numerator, jint denominator)
+{
+    if (mpc::MpcCore::instance().projectState().setSequenceTimeSignature(
+            numerator, denominator)) {
+        return toJString(env, "Sequence time signature updated");
+    }
+    return toJString(env, "Time signature failed: 1–16 / 4, 8, 16 or 32");
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsLoopEnabled(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return mpc::MpcCore::instance().projectState().activeSequence().loopEnabled
+            ? JNI_TRUE
+            : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLoopEnabled(
+        JNIEnv* env, jobject /* thiz */, jboolean enabled)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    const auto& sequence = state.activeSequence();
+    const auto bars = mpc::sequencer::sequenceBars(sequence);
+    const auto perBar = mpc::sequencer::barLengthTicks(
+            sequence.numerator, sequence.denominator);
+
+    const auto startBar = sequence.loopStartTicks / std::max(1, perBar) + 1;
+    const auto endBar = std::max(
+            startBar,
+            (sequence.loopEndTicks + std::max(1, perBar) - 1)
+                    / std::max(1, perBar));
+
+    if (state.setSequenceLoop(
+            enabled == JNI_TRUE,
+            startBar,
+            std::min(bars, endBar))) {
+        return toJString(
+                env,
+                enabled == JNI_TRUE ? "Sequence loop ON" : "Sequence loop OFF");
+    }
+    return toJString(env, "Sequence loop change failed");
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetLoopStartBar(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    const auto perBar = std::max(
+            1,
+            mpc::sequencer::barLengthTicks(
+                    state.activeSequence().numerator,
+                    state.activeSequence().denominator));
+    return static_cast<jint>(
+            state.activeSequence().loopStartTicks / perBar + 1);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetLoopEndBar(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    const auto perBar = std::max(
+            1,
+            mpc::sequencer::barLengthTicks(
+                    state.activeSequence().numerator,
+                    state.activeSequence().denominator));
+    return static_cast<jint>(
+            (state.activeSequence().loopEndTicks + perBar - 1) / perBar);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLoopBars(
+        JNIEnv* env, jobject /* thiz */, jint startBar, jint endBar)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (state.setSequenceLoop(
+            state.activeSequence().loopEnabled,
+            startBar,
+            endBar)) {
+        return toJString(env, "Sequence loop range updated");
+    }
+    return toJString(env, "Sequence loop range failed");
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetQuantizeGrid(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().projectState().activeSequence().quantizeGridTicks);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetQuantizeGrid(
+        JNIEnv* env, jobject /* thiz */, jint ticks)
+{
+    if (mpc::MpcCore::instance().projectState().setSequenceQuantizeGrid(ticks)) {
+        return toJString(env, "Sequence quantize grid updated");
+    }
+    return toJString(env, "Quantize grid failed");
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetSwing(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().projectState().activeSequence().swingPercent);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetSwing(
+        JNIEnv* env, jobject /* thiz */, jint percent)
+{
+    if (mpc::MpcCore::instance().projectState().setSequenceSwing(percent)) {
+        return toJString(env, "Sequence swing updated");
+    }
+    return toJString(env, "Swing failed: use 0–100%");
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackCount(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().projectState().activeSequence().tracks.size());
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetSelectedTrack(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().projectState().activeTrackIndex());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelectTrack(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    if (trackIndex < 0) {
+        return toJString(env, "Track selection failed");
+    }
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (state.selectTrack(static_cast<std::size_t>(trackIndex))) {
+        return toJString(
+                env,
+                state.trackStatus(static_cast<std::size_t>(trackIndex)));
+    }
+    return toJString(env, "Track selection failed");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAddTrack(
+        JNIEnv* env, jobject /* thiz */, jint kind)
+{
+    if (kind < 0 || kind > 4) {
+        return toJString(env, "Track creation failed: invalid type");
+    }
+
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (!state.addTrack(
+            static_cast<mpc::domain::TrackKind>(kind))) {
+        return toJString(env, "Track creation failed");
+    }
+    return toJString(
+            env,
+            state.trackStatus(state.activeTrackIndex()));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceTrackStatus(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    if (trackIndex < 0) {
+        return toJString(env, "Track unavailable");
+    }
+    return toJString(
+            env,
+            mpc::MpcCore::instance().projectState().trackStatus(
+                    static_cast<std::size_t>(trackIndex)));
 }
