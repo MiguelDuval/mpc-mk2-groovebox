@@ -25,6 +25,7 @@ inline constexpr std::array<PadDefinition, 16> pads{{
 
 inline constexpr std::array<ButtonDefinition, 39> buttons{{
     {"TouchStripButton", 0, 0},
+    {"TouchStripPress", 78, 78},
     {"PadMute", 4, 4},
     {"Erase", 9, 9},
     {"NoteRepeat", 11, 11},
