@@ -39,7 +39,8 @@ public:
                     && index < replaceCleared_.size();
              ++index) {
             auto& track = state.activeSequence().tracks[index];
-            if (track.kind != domain::TrackKind::Drum
+            if (!track.recordArmed
+                    || track.kind != domain::TrackKind::Drum
                     || track.patterns.empty()) {
                 continue;
             }
@@ -226,6 +227,7 @@ public:
 
                 quantizeAndSwing(
                         note,
+                        static_cast<std::int32_t>(loopLength),
                         state.activeSequence().quantizeGridTicks,
                         state.activeSequence().swingPercent);
 
