@@ -49,6 +49,11 @@ void testStopFreezesPosition() {
 
     assert(clock.positionAtTimestamp(2000000000) == 480);
     assert(!clock.snapshot().playing);
+
+    clock.queueSequence(2);
+    assert(clock.snapshot().queuedSequenceIndex == 2);
+    clock.clearQueuedSequence();
+    assert(clock.snapshot().queuedSequenceIndex == -1);
 }
 
 } // namespace
