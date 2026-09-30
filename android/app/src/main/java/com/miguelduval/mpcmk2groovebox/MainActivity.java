@@ -3663,7 +3663,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 handleHardwareTapTempo();
                 return;
             case MpcStudioMk2SemanticActions.TOUCH_STRIP_VALUE:
-                setBottomStatus("TOUCH STRIP " + value0 + "/127");
+                handleHardwareTouchStrip(value0);
                 return;
             case MpcStudioMk2SemanticActions.LOCATE_STATE:
                 setBottomStatus(value0 != 0 ? "LOCATE HELD" : "LOCATE OFF");
@@ -3742,6 +3742,64 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         setBottomStatus("DATA DIAL " + (delta > 0 ? "+" : "−") + " • no focused selector");
+    }
+
+    private void handleHardwareTouchStrip(int value) {
+        value = Math.max(0, Math.min(127, value));
+
+        if (hardwareFocus == 7 || hardwareFocus == 8) {
+            final long total =
+                    nativeAudioGetPadSampleFrameCount(
+                            selectedPad, selectedLayer);
+            if (total <= 1) {
+                setBottomStatus("TOUCH STRIP • no sample assigned");
+                return;
+            }
+
+            final long start =
+                    nativeAudioGetPadSampleRegionStart(
+                            selectedPad, selectedLayer);
+            final long end =
+                    nativeAudioGetPadSampleRegionEnd(
+                            selectedPad, selectedLayer);
+
+            if (hardwareFocus == 7) {
+                final long nextStart = Math.min(
+                        end - 1L,
+                        Math.round(
+                                (value / 127.0)
+                                        * Math.max(0L, end - 1L)));
+                setBottomStatus(nativeAudioSetPadSampleRegion(
+                        selectedPad, selectedLayer, nextStart, end));
+            } else {
+                final long nextEnd = Math.max(
+                        start + 1L,
+                        Math.round(
+                                start + (value / 127.0)
+                                        * Math.max(
+                                                1L,
+                                                total - start)));
+                setBottomStatus(nativeAudioSetPadSampleRegion(
+                        selectedPad, selectedLayer, start, nextEnd));
+            }
+
+            refreshRegionInfo();
+            if (sampleWaveform != null) {
+                refreshSampleWaveform();
+            }
+            return;
+        }
+
+        if (hardwareFocus == 9) {
+            final float semitones = -24.0f + (48.0f * value / 127.0f);
+            setBottomStatus(nativeAudioSetPadLayerTuning(
+                    selectedPad, selectedLayer, semitones));
+            refreshAllInspectorState();
+            refreshSampleInfo();
+            return;
+        }
+
+        setBottomStatus("TOUCH STRIP " + value + "/127");
     }
 
     private void handleHardwarePlayheadMove(
