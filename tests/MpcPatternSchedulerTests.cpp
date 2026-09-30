@@ -106,10 +106,10 @@ int main() {
             output);
     assert(ranged.written == 2);
     assert(ranged.eligible == 2);
-    assert(output[0].patternTick == 1920);
-    assert(output[0].offsetTicks == 960);
-    assert(output[1].patternTick == 960);
-    assert(output[1].offsetTicks == 1920);
+    assert(output[0].patternTick == 960);
+    assert(output[0].offsetTicks == 0);
+    assert(output[1].patternTick == 1920);
+    assert(output[1].offsetTicks == 960);
 
     pattern.lengthTicks = 0;
     assert(mpc::sequencer::schedulePatternWindow(
