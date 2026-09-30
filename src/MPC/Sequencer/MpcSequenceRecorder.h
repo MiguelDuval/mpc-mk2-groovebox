@@ -39,8 +39,7 @@ public:
                     && index < replaceCleared_.size();
              ++index) {
             auto& track = state.activeSequence().tracks[index];
-            if (!track.recordArmed
-                    || track.kind != domain::TrackKind::Drum
+            if (track.kind != domain::TrackKind::Drum
                     || track.patterns.empty()) {
                 continue;
             }
@@ -125,13 +124,15 @@ public:
             note.tick = static_cast<std::int32_t>(normalizedStart);
             note.durationTicks = static_cast<std::int32_t>(duration);
             note.note = state.activeDrumProgram().pad(padIndex).midiNote;
-            note.velocity = std::clamp<std::uint8_t>(
-                    event.velocity, 1, 127);
+            note.velocity = event.velocity == 0
+                    ? static_cast<std::uint8_t>(1)
+                    : event.velocity;
             note.probability = 127;
             note.ratchet = 1;
 
             quantizeAndSwing(
                     note,
+                    static_cast<std::int32_t>(length),
                     state.activeSequence().quantizeGridTicks,
                     state.activeSequence().swingPercent);
 
@@ -241,14 +242,15 @@ public:
 private:
     static void quantizeAndSwing(
             domain::MidiNoteEvent& note,
+            std::int32_t patternLength,
             std::int32_t gridTicks,
             std::int32_t swingPercent) noexcept {
-        if (gridTicks <= 0) {
+        if (patternLength <= 0 || gridTicks <= 0) {
             return;
         }
 
         const auto length =
-                std::max<std::int64_t>(1, noteTickPatternLength_);
+                static_cast<std::int64_t>(patternLength);
         const auto grid = static_cast<std::int64_t>(gridTicks);
 
         auto tick = static_cast<std::int64_t>(note.tick);
@@ -266,16 +268,6 @@ private:
         }
 
         note.tick = static_cast<std::int32_t>(tick);
-    }
-
-    static void quantizeAndSwingForPattern(
-            domain::MidiNoteEvent& note,
-            std::int32_t patternLength,
-            std::int32_t gridTicks,
-            std::int32_t swingPercent) noexcept {
-        noteTickPatternLength_ = std::max<std::int64_t>(1, patternLength);
-        quantizeAndSwing(note, gridTicks, swingPercent);
-        noteTickPatternLength_ = 1;
     }
 
     void sortTouchedPatterns(MpcProjectState& state) noexcept {
@@ -302,7 +294,6 @@ private:
     std::array<bool, domain::kMaxSequenceTracks> replaceCleared_{};
     PatternRecordMode mode_ = PatternRecordMode::Overdub;
     bool active_ = false;
-    inline static std::int64_t noteTickPatternLength_ = 1;
 };
 
 } // namespace mpc::sequencer
