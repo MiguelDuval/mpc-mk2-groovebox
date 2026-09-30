@@ -28,6 +28,12 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
     r.targetPadIndex=e.padIndex;
     if(e.type!=InputEventType::PadNote) return r;
     if(!e.pressed){
+        if(repeatPadHeld_){
+            r.repeating=true;
+            r.targetPadIndex=repeatPadIndex_;
+            repeatPadHeld_=false;
+            return r;
+        }
         if(sixteenLevel_ && lastPadIndex_!=0xFF){
             r.targetPadIndex=lastPadIndex_;
         }
@@ -37,6 +43,15 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
     if(locateHeld_){ r.consumed=true; r.action=make(Type::LocatePad,e.padIndex); return r; }
     if(padMuteMode_){ r.consumed=true; r.action=make(Type::PadMuteTarget,e.padIndex); return r; }
     if(trackMuteMode_){ r.consumed=true; r.action=make(Type::TrackMuteTarget,e.padIndex); return r; }
+
+    if(noteRepeatActive()){
+        lastPadIndex_=e.padIndex;
+        repeatPadIndex_=e.padIndex;
+        repeatPadHeld_=true;
+        r.repeating=true;
+        if(fullLevel_) r.velocity=127; else if(halfLevel_) r.velocity=64;
+        return r;
+    }
 
     if(sixteenLevel_){
         if(lastPadIndex_==0xFF){
@@ -61,8 +76,21 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
     if(n=="Mode"){ modeHeld_=pressed; return std::nullopt; }
     if(n=="Locate"){ locateHeld_=pressed; return make(Type::LocateState,locateHeld_?1:0); }
     if(n=="NoteRepeat"){
-        if(!pressed){ if(!noteRepeatLatched_) noteRepeatHeld_=false; return make(Type::NoteRepeatState,noteRepeatActive()?1:0,noteRepeatLatched()?1:0); }
-        if(shiftHeld_){ noteRepeatLatched_=!noteRepeatLatched_; noteRepeatHeld_=false; } else noteRepeatHeld_=true;
+        if(!pressed){
+            if(!noteRepeatLatched_) noteRepeatHeld_=false;
+            return make(Type::NoteRepeatState,
+                    noteRepeatActive()?1:0,
+                    noteRepeatLatched()?1:0);
+        }
+        if(shiftHeld_){
+            noteRepeatLatched_=!noteRepeatLatched_;
+            noteRepeatHeld_=false;
+        } else {
+            noteRepeatHeld_=true;
+        }
+        if(noteRepeatActive()) {
+            sixteenLevel_=false;
+        }
         return make(Type::NoteRepeatState,noteRepeatActive()?1:0,noteRepeatLatched()?1:0);
     }
     if(!pressed) return std::nullopt;
