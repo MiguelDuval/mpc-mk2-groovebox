@@ -157,6 +157,55 @@ These multi-layer checks are intentionally UNCONFIRMED until performed on the ac
 - [ ] CHOP 4/8/16 refreshes the waveform/sample state for the resulting pad assignments.
 - [ ] Waveform edit handles are visible only in the EDIT context; ENV/FILTER/LAYER leave the same waveform visible but non-editable.
 
+## MPC Studio MkII semantic control audit
+
+### Hardware input contract
+
+These tests validate not only MIDI reception but the semantic action produced by the controller.
+
+- [ ] Play invokes transport play from the current playhead.
+- [ ] Play Start invokes transport play from sequence start.
+- [ ] Stop stops transport and does not alter project content.
+- [ ] Record arms recording; Play/Play Start starts capture according to the current record mode.
+- [ ] Overdub toggles non-destructive recording.
+- [ ] Main enters MAIN without losing the current project/selection.
+- [ ] Browse enters BROWSER without replacing the selected pad/track.
+- [ ] Data Dial changes the focused value; pressing the dial commits/selects the focused item.
+- [ ] + / - change the focused value in the same context as the Data Dial.
+- [ ] Shift is a modifier and does not trigger an unrelated primary action by itself.
+- [ ] Pad Bank A-D selects the expected bank; Shift + bank reaches E-H.
+- [ ] Note Repeat repeats the selected pad according to current timing settings.
+- [ ] Shift + Note Repeat latches/unlatches repeat.
+- [ ] Full Level forces 127 velocity; Shift + Full Level forces 64.
+- [ ] 16 Level enters/exits the fixed-parameter pad performance context.
+- [ ] Pad Perform enters/exits scale/chord performance context.
+- [ ] Pad Mute enters pad mute; Shift + Pad Mute enters track mute.
+- [ ] Quantize executes the documented sequence quantization action.
+- [ ] TC On/Off changes Timing Correct state; Shift accesses its configuration context.
+- [ ] Zoom changes the active editor/view zoom; Shift + Zoom changes vertical zoom where applicable.
+- [ ] Locate modifies Step/Bar navigation to event/start/end targeting as documented.
+- [ ] Erase deletes only the intended event/pad content in the current context.
+- [ ] Sample Select changes the selected sample/layer context.
+- [ ] Sample Start / Sample End edit the current region without changing another pad/layer.
+- [ ] Tune changes tuning; Shift + Tune exposes fine tuning.
+- [ ] Touch Strip mode button changes expressive-control mode.
+- [ ] Pressing the physical touch strip is recognized as a separate control from the mode-selection button.
+- [ ] Jog rotation changes the current navigation/value context.
+- [ ] Jog press commits/selects/enters according to the active context.
+- [ ] Q-Link 1-4 change the currently assigned contextual parameters without affecting unrelated controls.
+
+### Hardware output contract
+
+- [ ] Transport LEDs reflect Play/Stop/Record/Overdub state.
+- [ ] Mode/navigation LEDs reflect the active context.
+- [ ] Pad-bank LEDs reflect the active bank.
+- [ ] Note Repeat indicators reflect the current repeat rate and enabled state.
+- [ ] Touch Strip indicators reflect the active mode/position where applicable.
+- [ ] Q-Link indicators reflect the selected Q-Link column.
+- [ ] LCD mirrors the active page/context, selected pad/track and key parameter state.
+
+A test is complete only when the physical action, semantic application result and relevant feedback all agree.
+
 ## Evidence
 
 For each failed test, capture:
