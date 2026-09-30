@@ -37,6 +37,10 @@ struct PadRouteResult final {
             continue;
         }
 
+        if (program.pad(*padIndex).muted) {
+            continue;
+        }
+
         if (result.written >= output.size()) {
             result.truncated = true;
             continue;
