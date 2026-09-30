@@ -934,6 +934,15 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetCount(
             std::min<std::size_t>(count, std::numeric_limits<jint>::max()));
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetQueuedIndex(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().sequenceTransportClock()
+                    .queuedSequenceIndex());
+}
+
 namespace {
 
 jstring selectSequenceForUi(
@@ -946,19 +955,21 @@ jstring selectSequenceForUi(
         return toJString(env, "Sequence unavailable");
     }
 
-    const auto position = sequenceSession().positionTicks();
-    if (core.sequenceRecorder().active()) {
-        core.sequenceRecorder().finish(
-                state,
-                core.sequenceRecordQueue(),
-                position);
+    if (sequenceSession().isPlaying()) {
+        core.sequenceTransportClock().queueSequence(sequenceIndex);
+        return toJString(
+                env,
+                "Sequence queued: " + std::to_string(sequenceIndex + 1)
+                        + " | " + state.sequenceStatus());
     }
-    sequenceSession().stop();
+
+    stopSequenceForMutation();
 
     if (!state.selectSequence(sequenceIndex)) {
         return toJString(env, "Sequence selection failed");
     }
 
+    core.sequenceTransportClock().clearQueuedSequence();
     core.sequenceTransportClock().update(
             state.activeSequence(),
             sequenceSession().positionTicks(),
@@ -1289,6 +1300,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStart(
         JNIEnv* env, jobject /* thiz */)
 {
     auto& core = mpc::MpcCore::instance();
+    core.sequenceTransportClock().clearQueuedSequence();
     const auto audioResult = core.audio().start();
     if (audioResult.rfind("Audio output", 0) != 0) {
         return toJString(
@@ -1336,6 +1348,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStop(
         JNIEnv* env, jobject /* thiz */)
 {
     auto& core = mpc::MpcCore::instance();
+    core.sequenceTransportClock().clearQueuedSequence();
     const auto position = sequenceSession().positionTicks();
     const auto recorded = core.sequenceRecorder().finish(
             core.projectState(),
@@ -1362,6 +1375,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceReset(
         JNIEnv* env, jobject /* thiz */)
 {
     auto& core = mpc::MpcCore::instance();
+    core.sequenceTransportClock().clearQueuedSequence();
     const auto position = sequenceSession().positionTicks();
     core.sequenceRecorder().finish(
             core.projectState(),
@@ -1400,19 +1414,54 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdvance(
         return 0;
     }
 
-    sequenceSession().advance(
+    const auto advanceResult = sequenceSession().advance(
             ticks,
             0x53455131u,
             core.audio().outputSampleRate());
 
-    core.sequenceTransportClock().update(
-            sequence,
-            sequenceSession().positionTicks(),
-            monotonicNanos(),
-            sequenceSession().isPlaying());
+    auto& state = core.projectState();
+    const auto queuedIndex =
+            core.sequenceTransportClock().queuedSequenceIndex();
+
+    if (advanceResult.wrapped
+            && queuedIndex >= 0
+            && static_cast<std::size_t>(queuedIndex) < state.sequenceCount()) {
+        const bool wasRecording = core.sequenceRecorder().active();
+        if (wasRecording) {
+            core.sequenceRecorder().finish(
+                    state,
+                    core.sequenceRecordQueue(),
+                    sequenceSession().positionTicks());
+        }
+
+        sequenceSession().stop();
+        core.sequenceTransportClock().clearQueuedSequence();
+
+        if (state.selectSequence(static_cast<std::size_t>(queuedIndex))
+                && sequenceSession().start()) {
+            if (wasRecording) {
+                core.sequenceRecorder().begin(state);
+            }
+            core.sequenceTransportClock().start(
+                    state.activeSequence(),
+                    sequenceSession().positionTicks(),
+                    monotonicNanos());
+        } else {
+            core.sequenceTransportClock().stop(
+                    state.activeSequence(),
+                    sequenceSession().positionTicks(),
+                    monotonicNanos());
+        }
+    } else {
+        core.sequenceTransportClock().update(
+                state.activeSequence(),
+                sequenceSession().positionTicks(),
+                monotonicNanos(),
+                sequenceSession().isPlaying());
+    }
 
     core.sequenceRecorder().drain(
-            core.projectState(),
+            state,
             core.sequenceRecordQueue());
 
     return static_cast<jint>(
@@ -1425,7 +1474,9 @@ extern "C" JNIEXPORT jlong JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePositionTicks(
         JNIEnv* /* env */, jobject /* thiz */)
 {
-    return static_cast<jlong>(sequenceSession().positionTicks());
+    return static_cast<jlong>(
+            mpc::MpcCore::instance().sequenceTransportClock()
+                    .positionAtTimestamp(monotonicNanos()));
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
