@@ -60,8 +60,8 @@
 ## Stage 6 — Sequencer
 - sequence transport/settings. **SOFTWARE + UI SLICE IMPLEMENTED — active Sequence now owns BPM, 1–128 bar length, time signature, loop enabled/range, quantize grid and swing; the landscape Sequencer page exposes these controls plus a bar timeline with draggable red IN/OUT loop range and live playhead.**
 - sequence/track model. **SOFTWARE + UI SLICE IMPLEMENTED — Sequence is the time container; Tracks are independent content lanes with Drum, Keygroup, Plugin, MIDI and Audio kinds, selection and record-arm state.**
-- record/overdub. **SOFTWARE FOUNDATION IMPLEMENTED — deterministic record/overdub commit operations now accept captured MIDI note events, normalize ticks to the pattern loop, reject malformed duration/ratchet values, and provide Replace vs Overdub semantics.**
-- quantize. **SOFTWARE FOUNDATION IMPLEMENTED — deterministic nearest-grid quantization with loop wrapping and stable tie ordering.**
+- record/overdub. **SOFTWARE + TIMING-CORRECT STATE IMPLEMENTED — deterministic record/overdub commit operations normalize/retain timing according to the sequence Timing Correct state, while preserving Replace vs Overdub semantics.**
+- quantize. **SOFTWARE + HARDWARE COMMAND SLICE IMPLEMENTED — deterministic nearest-grid quantization with loop wrapping and stable tie ordering; the MkII Quantize control now applies it to the selected Drum pattern, while Shift+Quantize remains reserved for selection-aware editing.**
 - swing. **SOFTWARE FOUNDATION IMPLEMENTED — deterministic grid-aligned off-beat swing with 0–100% amount, bounded half-grid delay, stable ordering, and loop-wrap.**
 - step sequencing. **SOFTWARE FOUNDATION IMPLEMENTED — grid-aligned set/replace/erase operations for MIDI notes with deterministic ordering and support for velocity, probability, ratchet, nudge and duration metadata.**
 - grid editing.
