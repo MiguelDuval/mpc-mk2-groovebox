@@ -4,6 +4,7 @@
 #include "MPC/Domain/MpcDomain.h"
 #include "MPC/MpcProjectState.h"
 #include "MPC/Sequencer/MpcSequencerPlayback.h"
+#include "MPC/Sequencer/MpcTrackPerformance.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -40,11 +41,12 @@ public:
         const auto& sequence = projectState_.activeSequence();
         const auto& program = projectState_.activeDrumProgram();
 
-        for (const auto& track : sequence.tracks) {
-            if (track.muted || track.patterns.empty()) {
-                continue;
-            }
-            if (track.kind != domain::TrackKind::Drum) {
+        for (std::size_t trackIndex = 0;
+             trackIndex < sequence.tracks.size();
+             ++trackIndex) {
+            const auto& track = sequence.tracks[trackIndex];
+            if (track.patterns.empty()
+                    || track.kind != domain::TrackKind::Drum) {
                 continue;
             }
 
@@ -53,6 +55,7 @@ public:
                     track.patterns.front(),
                     program,
                     audio_.triggerQueue()));
+            playbackTrackIndices_.push_back(trackIndex);
         }
 
         if (playbacks_.empty()) {
@@ -71,6 +74,7 @@ public:
             playback->stop();
         }
         playbacks_.clear();
+        playbackTrackIndices_.clear();
     }
 
     void reset() noexcept {
@@ -93,8 +97,20 @@ public:
             std::uint32_t seed,
             std::int32_t sampleRate) noexcept {
         SequencePlaybackAggregate result;
+        const auto& tracks = projectState_.activeSequence().tracks;
+        const auto anySolo = anyTrackSoloed(
+                std::span<const domain::Track>(tracks.data(), tracks.size()));
 
-        for (auto& playback : playbacks_) {
+        for (std::size_t playbackIndex = 0;
+             playbackIndex < playbacks_.size();
+             ++playbackIndex) {
+            const auto trackIndex = playbackTrackIndices_[playbackIndex];
+            if (trackIndex >= tracks.size()
+                    || !shouldScheduleTrack(tracks[trackIndex], anySolo)) {
+                continue;
+            }
+
+            auto& playback = playbacks_[playbackIndex];
             const auto value = playback->advance(
                     deltaTicks, seed, sampleRate);
             result.scheduled += value.scheduled;
@@ -118,6 +134,7 @@ private:
     MpcProjectState& projectState_;
     audio::AudioEngine& audio_;
     std::vector<std::unique_ptr<MpcSequencerPlayback>> playbacks_;
+    std::vector<std::size_t> playbackTrackIndices_;
 };
 
 } // namespace mpc::sequencer
