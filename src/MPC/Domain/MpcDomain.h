@@ -147,6 +147,8 @@ struct Track {
     bool muted = false;
     bool soloed = false;
     bool recordArmed = false;
+    // 0 means "same length as the parent Sequence".
+    std::int32_t lengthTicks = 0;
     std::vector<Pattern> patterns;
 };
 
