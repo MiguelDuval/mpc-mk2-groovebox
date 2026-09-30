@@ -182,6 +182,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native int nativeAudioGetRecordingFrameCapacity();
 
     private static native String nativeSequenceStatus();
+    private static native int nativeSequenceGetIndex();
+    private static native int nativeSequenceGetCount();
+    private static native String nativeSequenceSelect(int sequenceIndex);
+    private static native String nativeSequencePrevious();
+    private static native String nativeSequenceNext();
+    private static native String nativeSequenceAddSequence();
     private static native double nativeSequenceGetTempo();
     private static native String nativeSequenceSetTempo(double tempo);
     private static native int nativeSequenceGetBars();
@@ -917,7 +923,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
-        page.addView(sectionLabel("SEQUENCE / MAIN"));
+
+        LinearLayout sequenceChooser = row();
+        sequenceChooser.addView(sectionLabel("SEQUENCE / MAIN"),
+                new LinearLayout.LayoutParams(0, dp(38), 1));
+        sequenceChooser.addView(actionButton("PREV", v -> {
+            setBottomStatus(nativeSequencePrevious());
+            showSequencePage();
+        }), new LinearLayout.LayoutParams(dp(70), dp(38)));
+        sequenceChooser.addView(actionButton("NEXT", v -> {
+            setBottomStatus(nativeSequenceNext());
+            showSequencePage();
+        }), new LinearLayout.LayoutParams(dp(70), dp(38)));
+        sequenceChooser.addView(actionButton("NEW", v -> {
+            setBottomStatus(nativeSequenceAddSequence());
+            showSequencePage();
+        }), new LinearLayout.LayoutParams(dp(66), dp(38)));
+        page.addView(sequenceChooser);
 
         sequenceStatusView = label("", 13, TEXT);
         sequenceStatusView.setTypeface(Typeface.DEFAULT_BOLD);
@@ -1358,8 +1380,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final double tempo = nativeSequenceGetTempo();
 
         sequenceOverviewView.setState(
-                0,
-                1,
+                sequenceIndex,
+                sequenceCount,
                 bars,
                 loopStart,
                 loopEnd,
@@ -1369,10 +1391,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 positionTicks,
                 nativeSequenceIsPlaying());
 
+        final int sequenceCount = Math.max(1, nativeSequenceGetCount());
+        final int sequenceIndex = Math.max(
+                0,
+                Math.min(sequenceCount - 1, nativeSequenceGetIndex()));
+
         if (sequenceTransportView != null) {
             sequenceTransportView.setText(String.format(
                     Locale.ROOT,
-                    "S01 %s %.1f",
+                    "S%02d/%02d %s %.1f",
+                    sequenceIndex + 1,
+                    sequenceCount,
                     formatSequencePosition(positionTicks),
                     tempo));
         }
