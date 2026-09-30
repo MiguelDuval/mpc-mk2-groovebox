@@ -99,6 +99,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
     private SequenceOverviewView sequenceOverviewView;
+    private TextView sequenceTransportView;
     private TextView sequenceStatusView;
     private TextView sequenceTempoView;
     private TextView sequenceBarsView;
@@ -346,9 +347,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bar.addView(pageTitle, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 0.55f));
 
-        TextView tempo = label("120.0 BPM", 12, TEXT);
-        tempo.setGravity(Gravity.CENTER);
-        bar.addView(tempo, new LinearLayout.LayoutParams(
+        sequenceTransportView = label("S01 001.1.000 120.0", 10, TEXT);
+        sequenceTransportView.setGravity(Gravity.CENTER);
+        sequenceTransportView.setTypeface(Typeface.DEFAULT_BOLD);
+        sequenceTransportView.setContentDescription("Sequence position and tempo");
+        bar.addView(sequenceTransportView, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 0.75f));
 
         audioState = statusChip("AUDIO OFF", MUTED);
@@ -1160,12 +1163,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private double getSequenceTicksPerBeat() {
+        return Math.max(
+                1.0,
+                960.0 * 4.0 / Math.max(1, nativeSequenceGetDenominator()));
+    }
+
+    private double getSequenceTicksPerBar() {
+        return Math.max(
+                1.0,
+                getSequenceTicksPerBeat() * Math.max(1, nativeSequenceGetNumerator()));
+    }
+
+    private String formatSequencePosition(long positionTicks) {
+        final long ticksPerBeat = Math.max(1L, Math.round(getSequenceTicksPerBeat()));
+        final long ticksPerBar = Math.max(
+                ticksPerBeat,
+                Math.round(getSequenceTicksPerBar()));
+        long normalized = Math.max(0L, positionTicks);
+        final int bar = (int) (normalized / ticksPerBar) + 1;
+        normalized %= ticksPerBar;
+        final int beat = (int) (normalized / ticksPerBeat) + 1;
+        final int tick = (int) (normalized % ticksPerBeat);
+        return String.format(
+                Locale.ROOT, "%03d.%d.%03d", bar, beat, tick);
+    }
+
     private void refreshSequencePlayhead() {
         if (sequenceTimeline == null || !"SEQ".equals(currentPage)) return;
-        final int numerator = nativeSequenceGetNumerator();
-        final int denominator = nativeSequenceGetDenominator();
-        final double ticksPerBar =
-                Math.max(1.0, numerator * 4.0 * 960.0 / denominator);
+        final double ticksPerBar = getSequenceTicksPerBar();
         final double bar = 1.0
                 + nativeSequencePositionTicks() / ticksPerBar;
         sequenceTimeline.setPlayheadBar((float) bar);
@@ -1328,6 +1354,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int loopStart = nativeSequenceGetLoopStartBar();
         final int loopEnd = nativeSequenceGetLoopEndBar();
 
+        final long positionTicks = nativeSequencePositionTicks();
+        final double tempo = nativeSequenceGetTempo();
+
         sequenceOverviewView.setState(
                 0,
                 1,
@@ -1337,8 +1366,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeSequenceGetNumerator(),
                 nativeSequenceGetDenominator(),
                 nativeSequenceIsLoopEnabled(),
-                nativeSequencePositionTicks(),
+                positionTicks,
                 nativeSequenceIsPlaying());
+
+        if (sequenceTransportView != null) {
+            sequenceTransportView.setText(String.format(
+                    Locale.ROOT,
+                    "S01 %s %.1f",
+                    formatSequencePosition(positionTicks),
+                    tempo));
+        }
     }
 
     private void stopSequenceUiUpdater() {
