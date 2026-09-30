@@ -130,11 +130,25 @@ struct Pattern {
     std::vector<MidiNoteEvent> notes;
 };
 
+enum class TrackKind : std::uint8_t {
+    Drum,
+    Keygroup,
+    Plugin,
+    Midi,
+    Audio
+};
+
 struct Track {
     std::string id;
     std::string name;
     ProgramType type = ProgramType::Drum;
+    TrackKind kind = TrackKind::Drum;
     std::string programId;
+    bool muted = false;
+    bool soloed = false;
+    bool recordArmed = false;
+    // 0 means "same length as the parent Sequence".
+    std::int32_t lengthTicks = 0;
     std::vector<Pattern> patterns;
 };
 
@@ -145,6 +159,13 @@ struct Sequence {
     std::int32_t numerator = 4;
     std::int32_t denominator = 4;
     std::int32_t lengthTicks = 3840;
+    bool loopEnabled = true;
+    std::int32_t loopStartTicks = 0;
+    std::int32_t loopEndTicks = 3840;
+    std::int32_t quantizeGridTicks = 240;
+    std::int32_t swingPercent = 0;
+    bool metronomeEnabled = false;
+    bool countInEnabled = false;
     std::vector<Track> tracks;
 };
 

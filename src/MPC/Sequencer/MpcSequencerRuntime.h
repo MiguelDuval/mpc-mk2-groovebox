@@ -50,11 +50,17 @@ public:
             std::uint32_t seed,
             std::span<ScheduledMidiEvent> output) noexcept {
         const auto window = cursor_.advanceTicks(deltaTicks);
-        if (!cursor_.isPlaying()) {
+        if (!cursor_.isPlaying() && window.begin == window.end) {
             return {};
         }
 
-        return schedulePatternWindow(pattern_, window, seed, output);
+        return schedulePatternWindowInRange(
+                pattern_,
+                window,
+                cursor_.loopStartTicks(),
+                cursor_.loopEndTicks(),
+                seed,
+                output);
     }
 
 private:

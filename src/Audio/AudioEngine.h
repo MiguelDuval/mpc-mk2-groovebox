@@ -167,6 +167,19 @@ public:
             std::uint8_t velocity,
             std::int32_t offsetFrames);
 
+    AudioTriggerQueue& triggerQueue() noexcept {
+        return triggerQueue_;
+    }
+
+    std::int32_t outputSampleRate() const noexcept {
+        if (stream_ != nullptr) {
+            return stream_->getSampleRate();
+        }
+        return outputConfiguration_.sampleRate > 0
+                ? outputConfiguration_.sampleRate
+                : 48000;
+    }
+
 private:
     static constexpr std::size_t kPadCount = mpc::domain::kMaxProgramPads;
     static constexpr std::size_t kSampleLayerCount = mpc::domain::kMaxSampleLayers;

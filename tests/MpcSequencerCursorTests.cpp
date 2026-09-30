@@ -46,6 +46,35 @@ int main() {
     assert(stoppedAgain.end == 100);
     assert(cursor.positionTicks() == 100);
 
+    mpc::domain::Sequence rangedSequence;
+    rangedSequence.lengthTicks = 3840;
+    rangedSequence.loopEnabled = true;
+    rangedSequence.loopStartTicks = 960;
+    rangedSequence.loopEndTicks = 2880;
+    mpc::sequencer::MpcSequencerCursor rangedCursor(rangedSequence);
+    rangedCursor.setPositionTicks(960);
+    rangedCursor.start();
+
+    const auto ranged = rangedCursor.advanceTicks(1920);
+    assert(ranged.begin == 960);
+    assert(ranged.end == 960);
+    assert(ranged.completedCycles == 1);
+    assert(rangedCursor.positionTicks() == 960);
+
+    rangedCursor.setPositionTicks(100);
+    assert(rangedCursor.positionTicks() == 2020);
+
+    mpc::domain::Sequence nonLoopSequence;
+    nonLoopSequence.lengthTicks = 1920;
+    nonLoopSequence.loopEnabled = false;
+    mpc::sequencer::MpcSequencerCursor nonLoopCursor(nonLoopSequence);
+    nonLoopCursor.start();
+    const auto finalWindow = nonLoopCursor.advanceTicks(2400);
+    assert(finalWindow.begin == 0);
+    assert(finalWindow.end == 1919);
+    assert(!nonLoopCursor.isPlaying());
+    assert(nonLoopCursor.positionTicks() == 1919);
+
     sequence.lengthTicks = 0;
     mpc::sequencer::MpcSequencerCursor minimumLengthCursor(sequence);
     assert(minimumLengthCursor.sequenceLengthTicks() == 1);
