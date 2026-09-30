@@ -122,6 +122,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Runnable sequenceUiUpdater;
     private int selectedPad = 0;
     private int selectedLayer = 0;
+    private int hardwareFocus = 0;
+    private int hardwarePadBank = 0;
+    private long lastHardwareTapNanos = 0L;
+    private final long[] hardwareTapIntervalsNanos = new long[4];
+    private int hardwareTapIntervalCount = 0;
     private int selectedSequenceStep = -1;
     private String currentPage = "MAIN";
     private volatile boolean destroyed;
@@ -245,10 +250,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceTrackStatus(int trackIndex);
     private static native boolean nativeSequenceIsSelectedTrackArmed();
     private static native String nativeSequenceSetSelectedTrackArmed(boolean armed);
+    private static native String nativeSequenceTogglePadMute(int padIndex);
+    private static native String nativeSequenceToggleTrackMute(int trackIndex);
     private static native String nativeSequenceStart();
     private static native String nativeSequenceStop();
     private static native String nativeSequenceReset();
     private static native int nativeSequenceAdvance(long milliseconds);
+    private static native String nativeSequenceMovePlayheadTicks(long deltaTicks);
     private static native long nativeSequencePositionTicks();
     private static native boolean nativeSequenceIsPlaying();
 
@@ -3483,6 +3491,278 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
             });
         }
+    }
+
+    @Override
+    public void onHardwareAction(int actionType, int value0, int value1, int value2) {
+        applyHardwareAction(actionType, value0, value1, value2);
+    }
+
+    private void applyHardwareAction(
+            int actionType, int value0, int value1, int value2) {
+        switch (actionType) {
+            case MpcStudioMk2SemanticActions.NAVIGATE_MAIN:
+            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_VIEW:
+                hardwareFocus = 0;
+                showMainPage();
+                setBottomStatus(
+                        actionType == MpcStudioMk2SemanticActions.NAVIGATE_MAIN
+                                ? "MAIN" : "TRACK VIEW");
+                return;
+            case MpcStudioMk2SemanticActions.NAVIGATE_GRID:
+                showSequenceGridPage();
+                return;
+            case MpcStudioMk2SemanticActions.NAVIGATE_WAVEFORM:
+            case MpcStudioMk2SemanticActions.NAVIGATE_SAMPLE_EDIT:
+                showSamplePage();
+                return;
+            case MpcStudioMk2SemanticActions.NAVIGATE_PAD_MIXER:
+            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_MIXER:
+                showMixPage();
+                return;
+            case MpcStudioMk2SemanticActions.NAVIGATE_SEQUENCE_LAUNCHER:
+                showSequenceLauncherPage();
+                return;
+            case MpcStudioMk2SemanticActions.NAVIGATE_BROWSE:
+                showBrowserPage();
+                return;
+            case MpcStudioMk2SemanticActions.NAVIGATE_SAMPLER:
+                showRecordPage();
+                return;
+            case MpcStudioMk2SemanticActions.NAVIGATE_STEP:
+                showSequenceStepPage();
+                return;
+            case MpcStudioMk2SemanticActions.BROWSER_UP:
+                showBrowserPage();
+                setBottomStatus("BROWSER UP");
+                return;
+            case MpcStudioMk2SemanticActions.TRACK_SELECTION_CONTEXT:
+                hardwareFocus = 2;
+                showSequencePage();
+                setBottomStatus("TRACK SELECT • DATA DIAL / +/-");
+                return;
+            case MpcStudioMk2SemanticActions.SEQUENCE_SELECTION_CONTEXT:
+                hardwareFocus = 3;
+                showSequencePage();
+                setBottomStatus("SEQUENCE SELECT • DATA DIAL / +/-");
+                return;
+            case MpcStudioMk2SemanticActions.PROGRAM_SELECTION_CONTEXT:
+                hardwareFocus = 4;
+                setBottomStatus("PROGRAM SELECT • reserved");
+                return;
+            case MpcStudioMk2SemanticActions.TRACK_TYPE_SELECTION_CONTEXT:
+                hardwareFocus = 5;
+                setBottomStatus("TRACK TYPE • reserved");
+                return;
+            case MpcStudioMk2SemanticActions.DATA_DIAL_DELTA:
+            case MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA:
+                handleHardwareDialDelta(value0);
+                return;
+            case MpcStudioMk2SemanticActions.DATA_DIAL_PRESS:
+                setBottomStatus("DATA DIAL ENTER");
+                return;
+            case MpcStudioMk2SemanticActions.PAD_BANK_CHANGED:
+                hardwarePadBank = Math.max(0, Math.min(7, value0));
+                if ("SEQ".equals(currentPage)
+                        && pageTitle != null
+                        && "SEQ • LAUNCH".equals(pageTitle.getText().toString())) {
+                    launcherBank = hardwarePadBank;
+                    nativeSequenceSetLauncherContext(true, launcherBank);
+                    refreshSequenceLauncher();
+                    refreshSequenceControls();
+                    setBottomStatus("LAUNCH BANK " + (hardwarePadBank + 1));
+                } else {
+                    setBottomStatus(
+                            "PAD BANK " + (hardwarePadBank + 1)
+                                    + " • normal performance uses current 16-pad domain");
+                }
+                return;
+            case MpcStudioMk2SemanticActions.NOTE_REPEAT_STATE:
+                setBottomStatus(
+                        value0 != 0
+                                ? "NOTE REPEAT ON • "
+                                        + (value1 != 0 ? "LATCHED" : "MOMENTARY")
+                                        + " • repeat scheduler pending"
+                                : "NOTE REPEAT OFF");
+                return;
+            case MpcStudioMk2SemanticActions.FULL_LEVEL_STATE:
+                setBottomStatus(value0 != 0 ? "FULL LEVEL ON • 127" : "FULL LEVEL OFF");
+                return;
+            case MpcStudioMk2SemanticActions.PAD_MUTE_MODE_STATE:
+                setBottomStatus(value0 != 0 ? "PAD MUTE MODE" : "PAD MUTE MODE OFF");
+                return;
+            case MpcStudioMk2SemanticActions.TRACK_MUTE_MODE_STATE:
+                setBottomStatus(value0 != 0 ? "TRACK MUTE MODE" : "TRACK MUTE MODE OFF");
+                return;
+            case MpcStudioMk2SemanticActions.PAD_MUTE_TARGET:
+                setBottomStatus(nativeSequenceTogglePadMute(value0));
+                return;
+            case MpcStudioMk2SemanticActions.TRACK_MUTE_TARGET:
+                setBottomStatus(nativeSequenceToggleTrackMute(value0));
+                refreshSequenceControls();
+                return;
+            case MpcStudioMk2SemanticActions.TRANSPORT_RECORD:
+                setBottomStatus(
+                        nativeSequenceSetSelectedTrackArmed(
+                                !nativeSequenceIsSelectedTrackArmed()));
+                refreshSequenceControls();
+                return;
+            case MpcStudioMk2SemanticActions.TRANSPORT_OVERDUB:
+                setBottomStatus(nativeSequenceSetRecordMode(1));
+                if (!nativeSequenceIsSelectedTrackArmed()) {
+                    setBottomStatus(nativeSequenceSetSelectedTrackArmed(true));
+                }
+                refreshSequenceControls();
+                return;
+            case MpcStudioMk2SemanticActions.TRANSPORT_STOP:
+                setBottomStatus(nativeSequenceStop());
+                refreshSequenceControls();
+                return;
+            case MpcStudioMk2SemanticActions.TRANSPORT_PLAY:
+                setBottomStatus(nativeSequenceStart());
+                refreshSequenceControls();
+                return;
+            case MpcStudioMk2SemanticActions.TRANSPORT_PLAY_START:
+                nativeSequenceReset();
+                setBottomStatus(nativeSequenceStart());
+                refreshSequenceControls();
+                return;
+            case MpcStudioMk2SemanticActions.TRANSPORT_RESET:
+                setBottomStatus(nativeSequenceReset());
+                refreshSequenceControls();
+                return;
+            case MpcStudioMk2SemanticActions.STEP_LEFT:
+                handleHardwarePlayheadMove(value0, -1, false);
+                return;
+            case MpcStudioMk2SemanticActions.STEP_RIGHT:
+                handleHardwarePlayheadMove(value0, 1, false);
+                return;
+            case MpcStudioMk2SemanticActions.BAR_LEFT:
+                handleHardwarePlayheadMove(value0, -1, true);
+                return;
+            case MpcStudioMk2SemanticActions.BAR_RIGHT:
+                handleHardwarePlayheadMove(value0, 1, true);
+                return;
+            case MpcStudioMk2SemanticActions.TAP_TEMPO:
+                handleHardwareTapTempo();
+                return;
+            case MpcStudioMk2SemanticActions.TOUCH_STRIP_VALUE:
+                setBottomStatus("TOUCH STRIP " + value0 + "/127");
+                return;
+            case MpcStudioMk2SemanticActions.LOCATE_STATE:
+                setBottomStatus(value0 != 0 ? "LOCATE HELD" : "LOCATE OFF");
+                return;
+            case MpcStudioMk2SemanticActions.LOCATE_PAD:
+                setBottomStatus("LOCATE PAD " + (value0 + 1) + " • pending");
+                return;
+            case MpcStudioMk2SemanticActions.SAMPLE_SELECT_CONTEXT:
+            case MpcStudioMk2SemanticActions.SAMPLE_START_CONTEXT:
+            case MpcStudioMk2SemanticActions.SAMPLE_END_CONTEXT:
+            case MpcStudioMk2SemanticActions.TUNE_CONTEXT:
+                hardwareFocus = 6;
+                showSamplePage();
+                return;
+            case MpcStudioMk2SemanticActions.QUANTIZE:
+                setBottomStatus("QUANTIZE • action pending");
+                return;
+            case MpcStudioMk2SemanticActions.TIMING_CORRECT_STATE:
+                setBottomStatus(value0 == 1
+                        ? "TIMING CORRECT TOGGLE" : "TIMING CORRECT CONFIG • pending");
+                return;
+            case MpcStudioMk2SemanticActions.ZOOM_CONTEXT:
+                setBottomStatus(value0 != 0
+                        ? "ZOOM VERTICAL CONTEXT" : "ZOOM HORIZONTAL CONTEXT");
+                return;
+            case MpcStudioMk2SemanticActions.COPY_CONTEXT:
+                setBottomStatus(value0 != 0
+                        ? "DELETE CONTEXT • target confirmation required"
+                        : "COPY CONTEXT");
+                return;
+            case MpcStudioMk2SemanticActions.UNDO:
+                setBottomStatus(value0 != 0
+                        ? "REDO • command layer pending"
+                        : "UNDO • command layer pending");
+                return;
+            default:
+                setBottomStatus("MIDI CONTROL RESERVED • " + actionType);
+        }
+    }
+
+    private void handleHardwareDialDelta(int delta) {
+        if (delta == 0) return;
+        if (hardwareFocus == 2) {
+            final int count = nativeSequenceGetTrackCount();
+            if (count <= 0) return;
+            int next = nativeSequenceGetSelectedTrack() + delta;
+            next %= count;
+            if (next < 0) next += count;
+            setBottomStatus(nativeSequenceSelectTrack(next));
+            showSequencePage();
+            return;
+        }
+        if (hardwareFocus == 3) {
+            setBottomStatus(
+                    delta > 0 ? nativeSequenceNext() : nativeSequencePrevious());
+            showSequencePage();
+            return;
+        }
+        setBottomStatus("DATA DIAL " + (delta > 0 ? "+" : "−") + " • no focused selector");
+    }
+
+    private void handleHardwarePlayheadMove(
+            int locateMode, int direction, boolean bar) {
+        if (locateMode != 0) {
+            setBottomStatus(
+                    bar
+                            ? "LOCATE + BAR • pending"
+                            : "LOCATE + STEP • pending");
+            return;
+        }
+        if (nativeSequenceIsPlaying()) {
+            setBottomStatus("NAVIGATION: stop playback first");
+            return;
+        }
+        final int numerator = nativeSequenceGetNumerator();
+        final int denominator = Math.max(1, nativeSequenceGetDenominator());
+        final long beatTicks = Math.max(
+                1L, Math.round(960.0 * 4.0 / denominator));
+        final long deltaTicks = bar
+                ? beatTicks * Math.max(1, numerator) * direction
+                : (long) nativeSequenceGetQuantizeGrid() * direction;
+        setBottomStatus(nativeSequenceMovePlayheadTicks(deltaTicks));
+        refreshSequencePlayhead();
+    }
+
+    private void handleHardwareTapTempo() {
+        final long now = System.nanoTime();
+        if (lastHardwareTapNanos <= 0L
+                || now - lastHardwareTapNanos > 2_000_000_000L) {
+            hardwareTapIntervalCount = 0;
+        } else if (hardwareTapIntervalCount < hardwareTapIntervalsNanos.length) {
+            hardwareTapIntervalsNanos[hardwareTapIntervalCount++] =
+                    now - lastHardwareTapNanos;
+        } else {
+            System.arraycopy(
+                    hardwareTapIntervalsNanos, 1,
+                    hardwareTapIntervalsNanos, 0,
+                    hardwareTapIntervalsNanos.length - 1);
+            hardwareTapIntervalsNanos[hardwareTapIntervalsNanos.length - 1] =
+                    now - lastHardwareTapNanos;
+        }
+        lastHardwareTapNanos = now;
+        if (hardwareTapIntervalCount == 0) {
+            setBottomStatus("TAP TEMPO • tap again");
+            return;
+        }
+        long sum = 0L;
+        for (int i=0; i<hardwareTapIntervalCount; i++) sum += hardwareTapIntervalsNanos[i];
+        final double bpm = Math.max(
+                20.0,
+                Math.min(300.0,
+                        60_000_000_000.0
+                                / ((double) sum / hardwareTapIntervalCount)));
+        setBottomStatus(nativeSequenceSetTempo(bpm));
+        refreshSequenceControls();
     }
 
     @Override

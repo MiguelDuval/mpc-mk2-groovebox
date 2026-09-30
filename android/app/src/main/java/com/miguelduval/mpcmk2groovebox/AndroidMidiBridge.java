@@ -18,6 +18,7 @@ public final class AndroidMidiBridge {
         void onDevicesChanged(String description);
         void onMidi(String description);
         void onSequenceLauncherPad(int padIndex);
+        void onHardwareAction(int actionType, int value0, int value1, int value2);
         void onConnection(String description);
     }
 
@@ -67,6 +68,7 @@ public final class AndroidMidiBridge {
                         listener.onSequenceLauncherPad(launcherPad));
             }
 
+            drainHardwareActions();
             listener.onMidi(toHex(message));
         }
     };
@@ -207,6 +209,18 @@ public final class AndroidMidiBridge {
         send(MpcStudioMk2MidiMessages.padRgb(0, 0, 0, 0));
     }
 
+    private void drainHardwareActions() {
+        while (true) {
+            final int[] action = nativeConsumeHardwareAction();
+            if (action == null || action.length < 4) {
+                return;
+            }
+            mainHandler.post(() ->
+                    listener.onHardwareAction(
+                            action[0], action[1], action[2], action[3]));
+        }
+    }
+
     public void testPlayLed() {
         send(MpcStudioMk2MidiMessages.buttonLed(82, 2));
     }
@@ -338,4 +352,5 @@ public final class AndroidMidiBridge {
 
     private static native byte[] nativeOnMidi(byte[] data, long timestamp);
     private static native int nativeConsumeSequenceLauncherPad();
+    private static native int[] nativeConsumeHardwareAction();
 }

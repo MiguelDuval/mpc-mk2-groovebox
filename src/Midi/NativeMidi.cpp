@@ -2,6 +2,7 @@
 #include "../Audio/AudioEngine.h"
 #include "../MPC/MpcCore.h"
 #include "../MPC/MpcStudioMk2InputDecoder.h"
+#include "../MPC/MpcStudioMk2SemanticAdapter.h"
 #include "../MPC/MpcStudioMk2LedProtocol.h"
 
 #include <android/log.h>
@@ -21,27 +22,49 @@ std::atomic<bool> sequenceLauncherEnabled{false};
 std::atomic<std::size_t> sequenceLauncherBank{0};
 std::atomic<int> pendingSequenceLauncherPad{-1};
 
-const char* eventTypeName(mpc::studio::InputEventType type) {
-    using Type = mpc::studio::InputEventType;
+constexpr std::size_t kSemanticActionQueueCapacity = 128;
+std::array<mpc::studio::SemanticAction, kSemanticActionQueueCapacity>
+        semanticActionQueue{};
+std::atomic<std::size_t> semanticActionHead{0};
+std::atomic<std::size_t> semanticActionTail{0};
+mpc::studio::MpcStudioMk2SemanticAdapter semanticAdapter;
 
-    switch (type) {
-        case Type::PadNote: return "PAD";
-        case Type::PadAftertouch: return "PAD_AFTERTOUCH";
-        case Type::Button: return "BUTTON";
-        case Type::JogWheel: return "JOG";
-        case Type::JogPress: return "JOG_PRESS";
-        case Type::TouchStrip: return "TOUCH_STRIP";
-        case Type::ChannelAftertouch: return "CHANNEL_AFTERTOUCH";
+bool enqueueSemanticAction(
+        const mpc::studio::SemanticAction& action) noexcept {
+    const auto head =
+            semanticActionHead.load(std::memory_order_relaxed);
+    const auto next =
+            (head + 1u) % kSemanticActionQueueCapacity;
+    if (next == semanticActionTail.load(std::memory_order_acquire)) {
+        __android_log_print(
+                ANDROID_LOG_WARN,
+                kTag,
+                "MPC semantic action queue full");
+        return false;
     }
+    semanticActionQueue[head] = action;
+    semanticActionHead.store(next, std::memory_order_release);
+    return true;
+}
 
-    return "UNKNOWN";
+std::optional<mpc::studio::SemanticAction> dequeueSemanticAction() noexcept {
+    const auto tail =
+            semanticActionTail.load(std::memory_order_relaxed);
+    if (tail == semanticActionHead.load(std::memory_order_acquire)) {
+        return std::nullopt;
+    }
+    const auto action = semanticActionQueue[tail];
+    semanticActionTail.store(
+            (tail + 1u) % kSemanticActionQueueCapacity,
+            std::memory_order_release);
+    return action;
 }
 
 } // namespace
 
 namespace mpc::midi {
 
-std::optional<std::array<std::uint8_t, 12>> handleIncoming(
+std::optional<std::vector<std::uint8_t>> handleIncoming(
         std::span<const std::uint8_t> message,
         std::int64_t timestamp) {
     if (message.empty()) {
@@ -61,6 +84,13 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
 
     if (event->type == mpc::studio::InputEventType::PadNote) {
         auto& core = mpc::MpcCore::instance();
+        const auto padRouting = semanticAdapter.handlePad(*event);
+        if (padRouting.action.has_value()) {
+            enqueueSemanticAction(*padRouting.action);
+        }
+        if (padRouting.consumed) {
+            return std::nullopt;
+        }
 
         if (sequenceLauncherEnabled.load(std::memory_order_acquire)) {
             if (event->pressed) {
@@ -78,9 +108,14 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
         }
 
         if (event->pressed) {
-            core.audio().triggerPad(
-                    event->padIndex,
-                    event->value);
+            const auto& pad =
+                    core.projectState().activeDrumProgram()
+                            .pad(event->padIndex);
+            if (!pad.muted) {
+                core.audio().triggerPad(
+                        event->padIndex,
+                        padRouting.velocity);
+            }
         }
 
         const auto& state = core.projectState();
@@ -117,29 +152,15 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
                 mpc::studio::Rgb{level, level, level});
     }
     if (event->type == mpc::studio::InputEventType::Button
-            || event->type == mpc::studio::InputEventType::JogPress) {
-        __android_log_print(
-            ANDROID_LOG_DEBUG,
-            kTag,
-            "MIDI %s number=%u value=%u pressed=%s channel=%u pad=%u",
-            eventTypeName(event->type),
-            static_cast<unsigned>(event->number),
-            static_cast<unsigned>(event->value),
-            event->pressed ? "true" : "false",
-            static_cast<unsigned>(event->channel),
-            static_cast<unsigned>(event->padIndex));
+            || event->type == mpc::studio::InputEventType::JogPress
+            || event->type == mpc::studio::InputEventType::JogWheel
+            || event->type == mpc::studio::InputEventType::TouchStrip) {
+        const auto action = semanticAdapter.handleControl(*event);
+        if (action.has_value()) {
+            enqueueSemanticAction(*action);
+        }
         return std::nullopt;
     }
-
-    __android_log_print(
-        ANDROID_LOG_DEBUG,
-        kTag,
-        "MIDI %s number=%u value=%u channel=%u pad=%u",
-        eventTypeName(event->type),
-        static_cast<unsigned>(event->number),
-        static_cast<unsigned>(event->value),
-        static_cast<unsigned>(event->channel),
-        static_cast<unsigned>(event->padIndex));
 
     return std::nullopt;
 }
@@ -160,6 +181,51 @@ jbyteArray toJavaByteArray(
         0,
         static_cast<jsize>(Size),
         reinterpret_cast<const jbyte*>(bytes.data()));
+    return result;
+}
+
+jbyteArray toJavaByteArray(
+        JNIEnv* env,
+        const std::vector<std::uint8_t>& bytes) {
+    auto result = env->NewByteArray(static_cast<jsize>(bytes.size()));
+    if (result == nullptr) {
+        return nullptr;
+    }
+
+    env->SetByteArrayRegion(
+        result,
+        0,
+        static_cast<jsize>(bytes.size()),
+        reinterpret_cast<const jbyte*>(bytes.data()));
+    return result;
+}
+
+extern "C" JNIEXPORT jintArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeConsumeHardwareAction(
+        JNIEnv* env, jclass /* clazz */) {
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    const auto action = dequeueSemanticAction();
+    if (!action.has_value()) {
+        return env->NewIntArray(0);
+    }
+
+    const std::array<jint, 4> values{{
+        static_cast<jint>(action->type),
+        static_cast<jint>(action->value0),
+        static_cast<jint>(action->value1),
+        static_cast<jint>(action->value2)
+    }};
+    auto result = env->NewIntArray(static_cast<jsize>(values.size()));
+    if (result == nullptr) {
+        return nullptr;
+    }
+    env->SetIntArrayRegion(
+            result, 0,
+            static_cast<jsize>(values.size()),
+            values.data());
     return result;
 }
 
