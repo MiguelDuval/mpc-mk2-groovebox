@@ -932,6 +932,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     refreshTrackGrid();
                 }),
                 new LinearLayout.LayoutParams(dp(92), dp(30)));
+        header.addView(actionButton("+ TRACK", v -> {
+            setBottomStatus(nativeSequenceAddTrack(0));
+            refreshTrackGrid();
+            refreshPadSelectionVisuals();
+        }), new LinearLayout.LayoutParams(dp(78), dp(30)));
         panel.addView(header);
 
         trackGrid = new GridLayout(this);
