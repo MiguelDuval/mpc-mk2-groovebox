@@ -17,6 +17,7 @@ public final class AndroidMidiBridge {
     public interface Listener {
         void onDevicesChanged(String description);
         void onMidi(String description);
+        void onSequenceLauncherPad(int padIndex);
         void onConnection(String description);
     }
 
@@ -58,6 +59,14 @@ public final class AndroidMidiBridge {
             if (feedback != null && feedback.length > 0) {
                 AndroidMidiBridge.this.send(feedback);
             }
+
+            final int launcherPad =
+                    nativeConsumeSequenceLauncherPad();
+            if (launcherPad >= 0) {
+                mainHandler.post(() ->
+                        listener.onSequenceLauncherPad(launcherPad));
+            }
+
             listener.onMidi(toHex(message));
         }
     };
@@ -328,4 +337,5 @@ public final class AndroidMidiBridge {
     }
 
     private static native byte[] nativeOnMidi(byte[] data, long timestamp);
+    private static native int nativeConsumeSequenceLauncherPad();
 }
