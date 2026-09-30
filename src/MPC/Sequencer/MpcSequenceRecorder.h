@@ -112,8 +112,14 @@ public:
             }
 
             auto duration = normalizedEnd - normalizedStart;
-            if (duration <= 0) {
-                duration = loopLength;
+            if (duration < 0) {
+                duration += loopLength;
+            } else if (duration == 0) {
+                duration = std::max<std::int64_t>(
+                        1,
+                        std::min<std::int64_t>(
+                                state.activeSequence().quantizeGridTicks,
+                                loopLength));
             }
             duration = std::clamp<std::int64_t>(
                     duration,
@@ -197,7 +203,9 @@ public:
                 }
 
                 auto duration = normalizedEnd - normalizedStart;
-                if (duration <= 0) {
+                if (duration < 0) {
+                    duration += loopLength;
+                } else if (duration == 0) {
                     duration = std::max<std::int64_t>(
                             1,
                             std::min<std::int64_t>(
