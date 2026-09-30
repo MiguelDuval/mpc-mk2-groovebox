@@ -1066,6 +1066,217 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetGridVelocitie
     return result;
 }
 
+extern "C" JNIEXPORT jintArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetStepParameters(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint padIndex,
+        jint stepIndex,
+        jint gridTicks)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    std::array<jint, 3> values{0, 0, 0};
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)
+            || stepIndex < 0
+            || gridTicks <= 0) {
+        auto* result = env->NewIntArray(static_cast<jsize>(values.size()));
+        if (result != nullptr) {
+            env->SetIntArrayRegion(
+                    result, 0, static_cast<jsize>(values.size()), values.data());
+        }
+        return result;
+    }
+
+    const auto& state = mpc::MpcCore::instance().projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()) {
+        auto* result = env->NewIntArray(static_cast<jsize>(values.size()));
+        if (result != nullptr) {
+            env->SetIntArrayRegion(
+                    result, 0, static_cast<jsize>(values.size()), values.data());
+        }
+        return result;
+    }
+
+    const auto& track = tracks[trackIndex];
+    if (track.kind == mpc::domain::TrackKind::Drum
+            && !track.patterns.empty()) {
+        const auto noteNumber = state.activeDrumProgram()
+                .pads[static_cast<std::size_t>(padIndex)].midiNote;
+        const auto* note = mpc::sequencer::findStepNote(
+                track.patterns.front(),
+                stepIndex,
+                gridTicks,
+                noteNumber);
+        if (note != nullptr) {
+            values[0] = static_cast<jint>(note->velocity);
+            values[1] = static_cast<jint>(note->probability);
+            values[2] = static_cast<jint>(note->ratchet);
+        }
+    }
+
+    auto* result = env->NewIntArray(static_cast<jsize>(values.size()));
+    if (result != nullptr) {
+        env->SetIntArrayRegion(
+                result, 0, static_cast<jsize>(values.size()), values.data());
+    }
+    return result;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepVelocity(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint padIndex,
+        jint stepIndex,
+        jint gridTicks,
+        jint velocity)
+{
+    if (velocity < 1 || velocity > 127) {
+        return toJString(env, "Step velocity failed: use 1–127");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Step edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+
+    auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    auto& tracks = state.activeSequence().tracks;
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)
+            || stepIndex < 0
+            || gridTicks <= 0
+            || trackIndex >= tracks.size()) {
+        return toJString(env, "Step velocity failed: invalid target");
+    }
+
+    auto& track = tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum || track.patterns.empty()) {
+        return toJString(env, "Step velocity failed: selected track is not DRUM");
+    }
+
+    const auto noteNumber = state.activeDrumProgram()
+            .pads[static_cast<std::size_t>(padIndex)].midiNote;
+    if (!mpc::sequencer::setStepNoteVelocity(
+            track.patterns.front(),
+            stepIndex,
+            gridTicks,
+            noteNumber,
+            static_cast<std::uint8_t>(velocity))) {
+        return toJString(env, "Step velocity failed: no event");
+    }
+
+    return toJString(env, "Step velocity " + std::to_string(velocity));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepProbability(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint padIndex,
+        jint stepIndex,
+        jint gridTicks,
+        jint probability)
+{
+    if (probability < 0 || probability > 127) {
+        return toJString(env, "Step probability failed: use 0–127");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Step edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+
+    auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    auto& tracks = state.activeSequence().tracks;
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)
+            || stepIndex < 0
+            || gridTicks <= 0
+            || trackIndex >= tracks.size()) {
+        return toJString(env, "Step probability failed: invalid target");
+    }
+
+    auto& track = tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum || track.patterns.empty()) {
+        return toJString(env, "Step probability failed: selected track is not DRUM");
+    }
+
+    const auto noteNumber = state.activeDrumProgram()
+            .pads[static_cast<std::size_t>(padIndex)].midiNote;
+    if (!mpc::sequencer::setStepNoteProbability(
+            track.patterns.front(),
+            stepIndex,
+            gridTicks,
+            noteNumber,
+            static_cast<std::uint8_t>(probability))) {
+        return toJString(env, "Step probability failed: no event");
+    }
+
+    return toJString(
+            env,
+            "Step probability " + std::to_string(probability));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepRatchet(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint padIndex,
+        jint stepIndex,
+        jint gridTicks,
+        jint ratchet)
+{
+    if (ratchet < 1 || ratchet > 8) {
+        return toJString(env, "Step ratchet failed: use 1–8");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Step edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+
+    auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    auto& tracks = state.activeSequence().tracks;
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)
+            || stepIndex < 0
+            || gridTicks <= 0
+            || trackIndex >= tracks.size()) {
+        return toJString(env, "Step ratchet failed: invalid target");
+    }
+
+    auto& track = tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum || track.patterns.empty()) {
+        return toJString(env, "Step ratchet failed: selected track is not DRUM");
+    }
+
+    const auto noteNumber = state.activeDrumProgram()
+            .pads[static_cast<std::size_t>(padIndex)].midiNote;
+    if (!mpc::sequencer::setStepNoteRatchet(
+            track.patterns.front(),
+            stepIndex,
+            gridTicks,
+            noteNumber,
+            static_cast<std::uint8_t>(ratchet))) {
+        return toJString(env, "Step ratchet failed: no event");
+    }
+
+    return toJString(env, "Step ratchet " + std::to_string(ratchet) + "x");
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleGridStep(
         JNIEnv* env,
