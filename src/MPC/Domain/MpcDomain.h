@@ -12,6 +12,7 @@ namespace mpc::domain {
 
 inline constexpr std::size_t kMaxProgramPads = 16;
 inline constexpr std::size_t kMaxSampleLayers = 8;
+inline constexpr std::size_t kMaxSequenceTracks = 128;
 
 enum class ProgramType : std::uint8_t {
     Drum,
