@@ -1,4 +1,5 @@
 #include "MPC/MpcProjectState.h"
+#include "MPC/Sequencer/MpcPatternOps.h"
 
 #include <cassert>
 
@@ -36,6 +37,22 @@ int main() {
     assert(sequence.loopEndTicks == sequence.lengthTicks);
     assert(sequence.tracks.size() == 1);
     assert(sequence.tracks[0].kind == mpc::domain::TrackKind::Drum);
+
+    auto& pattern = state.activeSequence().tracks[0].patterns.front();
+    assert(mpc::sequencer::setStepNote(
+            pattern, 0, 240, 36, 110, 120, 127, 1));
+    assert(pattern.notes.size() == 1);
+    assert(pattern.notes.front().tick == 0);
+    assert(pattern.notes.front().durationTicks == 120);
+    assert(pattern.notes.front().velocity == 110);
+    assert(mpc::sequencer::setStepNote(
+            pattern, 0, 240, 36, 90, 240, 127, 1));
+    assert(pattern.notes.size() == 1);
+    assert(pattern.notes.front().durationTicks == 240);
+    assert(pattern.notes.front().velocity == 90);
+    assert(mpc::sequencer::eraseStepNote(pattern, 0, 240, 36));
+    assert(pattern.notes.empty());
+    assert(!mpc::sequencer::eraseStepNote(pattern, 0, 240, 36));
 
     assert(state.setSequenceTempo(140.0));
     assert(state.activeSequence().tempoBpm == 140.0);
