@@ -138,6 +138,24 @@ Important hardware actions must have visible counterparts:
 
 The software screen is a companion surface to the MPC Studio MkII, not its replacement.
 
+## MPC Studio MkII hardware parity contract
+
+The UI roadmap is now coupled to the physical controller through the canonical [MPC Studio MkII Control Contract](MPC-STUDIO-MK2-CONTROL-CONTRACT.md).
+
+The hardware-first rule is:
+
+**familiar physical action → stable semantic command → current screen/context**
+
+Examples:
+- Play/Stop/Record always operate transport; the visible screen changes only in response to the resulting state.
+- Data Dial/+/- always operate the currently focused value or navigation context.
+- Main/Browse/Sample/Mix/Seq hardware shortcuts enter the corresponding functional context without requiring the mode rail.
+- Sample Start/End/Tune/Quantize/Zoom operate the currently selected pad/layer or sequence context.
+- Q-Link controls operate visible/contextual musical parameters rather than acting as general navigation.
+- Note Repeat, 16 Level, Pad Perform, Next Sequence and XYFX are performance contexts and must remain reachable without abandoning the live workspace.
+
+The physical controller therefore has priority over decorative UI composition. Every hardware-bound action should have visible state on the Android screen, and critical transport/performance actions should remain usable while other pages are open.
+
 ## Visual language
 
 The implementation uses an original dark instrument UI:
