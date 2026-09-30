@@ -15,7 +15,7 @@ dump_debug_state() {
   echo "===== WINDOW STATE ====="
   adb shell dumpsys window windows | tail -n 120 || true
   echo "===== RELEVANT LOGCAT ====="
-  adb logcat -d -t 400 | grep -E 'ANR|system_server|ActivityTaskManager|WindowManager|AndroidRuntime|mpcmk2groovebox' | tail -n 160 || true
+  adb logcat -d | grep -E 'ANR|system_server|ActivityTaskManager|WindowManager|AndroidRuntime|mpcmk2groovebox' | tail -n 160 || true
 }
 
 echo "Installing APK..."
@@ -39,6 +39,7 @@ fi
 
 echo "Launching UI-only startup diagnostic..."
 adb shell am force-stop "$PACKAGE"
+adb logcat -c
 adb shell am start -n "$ACTIVITY" --es mpc.groovebox.smoke.mode ui-only
 
 wait_for_log_marker() {
@@ -47,7 +48,7 @@ wait_for_log_marker() {
   local interval="$3"
 
   for attempt in $(seq 1 "$attempts"); do
-    if adb logcat -d -t 500 2>/dev/null | grep -Fq "MpcGroovebox: $marker"; then
+    if adb logcat -d 2>/dev/null | grep -Fq "MpcGroovebox: $marker"; then
       echo "Log marker appeared: $marker"
       return 0
     fi
@@ -55,7 +56,7 @@ wait_for_log_marker() {
   done
 
   echo "ERROR: log marker did not appear: $marker"
-  adb logcat -d -t 800 2>/dev/null | grep -F "MpcGroovebox" | tail -n 120 || true
+  adb logcat -d 2>/dev/null | grep -F "MpcGroovebox" | tail -n 120 || true
   dump_debug_state
   return 1
 }
@@ -77,6 +78,7 @@ echo "UI-only startup diagnostic passed."
 
 echo "Launching full application with one-shot UI audit..."
 adb shell am force-stop "$PACKAGE"
+adb logcat -c
 adb shell am start -n "$ACTIVITY" --es mpc.groovebox.smoke.mode ui-audit
 
 wait_for_log_marker "UI_READY" 30 2
