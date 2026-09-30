@@ -39,20 +39,115 @@ MpcProjectState::MpcProjectState() {
     sequence.quantizeGridTicks = 240;
     sequence.swingPercent = 0;
 
-    domain::Track drumTrack;
-    drumTrack.id = "track-1";
-    drumTrack.name = "DRUMS";
-    drumTrack.type = domain::ProgramType::Drum;
-    drumTrack.kind = domain::TrackKind::Drum;
-    drumTrack.programId = "drum-program-1";
-    domain::Pattern pattern;
-    pattern.id = "pattern-1";
-    pattern.name = "Pattern 01";
-    pattern.lengthTicks = sequence.lengthTicks;
-    drumTrack.patterns.push_back(std::move(pattern));
-    sequence.tracks.push_back(std::move(drumTrack));
+    constexpr const char* kDefaultTrackNames[] = {
+            "DRUMS", "PERC", "HATS", "FX",
+            "KICK", "SNARE", "CLAP", "TOMS"
+    };
+
+    for (std::size_t trackIndex = 0;
+            trackIndex < std::size(kDefaultTrackNames);
+            ++trackIndex) {
+        domain::Track track;
+        track.id = "track-" + std::to_string(trackIndex + 1);
+        track.name = kDefaultTrackNames[trackIndex];
+        track.type = domain::ProgramType::Drum;
+        track.kind = domain::TrackKind::Drum;
+        track.programId = "drum-program-1";
+
+        domain::Pattern pattern;
+        pattern.id = track.id + "-pattern-1";
+        pattern.name = "Pattern 01";
+        pattern.lengthTicks = sequence.lengthTicks;
+        track.patterns.push_back(std::move(pattern));
+        sequence.tracks.push_back(std::move(track));
+    }
 
     project_.sequences.push_back(std::move(sequence));
+}
+
+bool MpcProjectState::setTrackMuted(
+        std::size_t trackIndex,
+        bool muted) noexcept {
+    if (trackIndex >= activeSequence().tracks.size()) {
+        return false;
+    }
+    activeSequence().tracks[trackIndex].muted = muted;
+    return true;
+}
+
+bool MpcProjectState::setTrackSoloed(
+        std::size_t trackIndex,
+        bool soloed) noexcept {
+    if (trackIndex >= activeSequence().tracks.size()) {
+        return false;
+    }
+
+    auto& tracks = activeSequence().tracks;
+    if (soloed) {
+        for (auto& track : tracks) {
+            track.soloed = false;
+        }
+    }
+    tracks[trackIndex].soloed = soloed;
+    return true;
+}
+
+bool MpcProjectState::setTrackArmed(
+        std::size_t trackIndex,
+        bool armed) noexcept {
+    if (trackIndex >= activeSequence().tracks.size()) {
+        return false;
+    }
+
+    auto& tracks = activeSequence().tracks;
+    if (armed) {
+        for (auto& track : tracks) {
+            track.recordArmed = false;
+        }
+    }
+    tracks[trackIndex].recordArmed = armed;
+    return true;
+}
+
+bool MpcProjectState::addSequence(std::string name) {
+    if (project_.sequences.size() >= domain::kMaxSequenceTracks) {
+        return false;
+    }
+
+    const auto& source = activeSequence();
+    domain::Sequence sequence;
+    const auto number = project_.sequences.size() + 1;
+    sequence.id = "sequence-" + std::to_string(number);
+    sequence.name = name.empty()
+            ? ("Sequence " + (number < 10 ? "0" : "") + std::to_string(number))
+            : std::move(name);
+    sequence.tempoBpm = source.tempoBpm;
+    sequence.numerator = source.numerator;
+    sequence.denominator = source.denominator;
+    sequence.lengthTicks = source.lengthTicks;
+    sequence.loopEnabled = source.loopEnabled;
+    sequence.loopStartTicks = source.loopStartTicks;
+    sequence.loopEndTicks = source.loopEndTicks;
+    sequence.quantizeGridTicks = source.quantizeGridTicks;
+    sequence.swingPercent = source.swingPercent;
+    sequence.metronomeEnabled = source.metronomeEnabled;
+    sequence.countInEnabled = source.countInEnabled;
+
+    for (const auto& sourceTrack : source.tracks) {
+        domain::Track track = sourceTrack;
+        track.muted = false;
+        track.soloed = false;
+        track.recordArmed = false;
+        for (auto& pattern : track.patterns) {
+            pattern.notes.clear();
+        }
+        sequence.tracks.push_back(std::move(track));
+    }
+
+    project_.sequences.push_back(std::move(sequence));
+    activeSequenceIndex_ = project_.sequences.size() - 1;
+    activeTrackIndex_ = 0;
+    return true;
 }
 
 
