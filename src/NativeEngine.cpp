@@ -58,6 +58,14 @@ void stopSequenceForMutation() {
             monotonicNanos());
 }
 
+void syncSequenceTransportStopped() {
+    auto& core = mpc::MpcCore::instance();
+    core.sequenceTransportClock().stop(
+            core.projectState().activeSequence(),
+            sequenceSession().positionTicks(),
+            monotonicNanos());
+}
+
 jfloatArray toJFloatArray(
         JNIEnv* env,
         const std::vector<mpc::audio::WaveformPeak>& peaks) {
@@ -957,6 +965,12 @@ jstring selectSequenceForUi(
     }
 
     if (sequenceSession().isPlaying()) {
+        if (sequenceIndex == state.activeSequenceIndex()) {
+            core.sequenceTransportClock().clearQueuedSequence();
+            return toJString(
+                    env,
+                    "Sequence queue cleared | " + state.sequenceStatus());
+        }
         core.sequenceTransportClock().queueSequence(sequenceIndex);
         return toJString(
                 env,
@@ -1002,8 +1016,14 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceNext(
     if (state.sequenceCount() == 0) {
         return toJString(env, "Sequence next failed: no sequences");
     }
+    const auto queuedIndex =
+            mpc::MpcCore::instance().sequenceTransportClock().queuedSequenceIndex();
+    const auto baseIndex = queuedIndex >= 0
+            && static_cast<std::size_t>(queuedIndex) < state.sequenceCount()
+            ? static_cast<std::size_t>(queuedIndex)
+            : state.activeSequenceIndex();
     const auto nextIndex =
-            (state.activeSequenceIndex() + 1) % state.sequenceCount();
+            (baseIndex + 1) % state.sequenceCount();
     return selectSequenceForUi(env, nextIndex);
 }
 
@@ -1016,10 +1036,16 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePrevious(
         return toJString(env, "Sequence previous failed: no sequences");
     }
     const auto count = state.sequenceCount();
+    const auto queuedIndex =
+            mpc::MpcCore::instance().sequenceTransportClock().queuedSequenceIndex();
+    const auto baseIndex = queuedIndex >= 0
+            && static_cast<std::size_t>(queuedIndex) < count
+            ? static_cast<std::size_t>(queuedIndex)
+            : state.activeSequenceIndex();
     const auto previous =
-            state.activeSequenceIndex() == 0
+            baseIndex == 0
                     ? count - 1
-                    : state.activeSequenceIndex() - 1;
+                    : baseIndex - 1;
     return selectSequenceForUi(env, previous);
 }
 
@@ -1061,6 +1087,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTempo(
 {
     stopSequenceForMutation();
     if (mpc::MpcCore::instance().projectState().setSequenceTempo(tempo)) {
+        syncSequenceTransportStopped();
         return toJString(env, "Sequence tempo updated");
     }
     return toJString(env, "Sequence tempo failed: use 20–300 BPM");
@@ -1081,6 +1108,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetBars(
 {
     stopSequenceForMutation();
     if (mpc::MpcCore::instance().projectState().setSequenceBars(bars)) {
+        syncSequenceTransportStopped();
         return toJString(env, "Sequence length updated");
     }
     return toJString(env, "Sequence length failed: invalid bar count");
@@ -1109,6 +1137,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTimeSignature
     stopSequenceForMutation();
     if (mpc::MpcCore::instance().projectState().setSequenceTimeSignature(
             numerator, denominator)) {
+        syncSequenceTransportStopped();
         return toJString(env, "Sequence time signature updated");
     }
     return toJString(env, "Time signature failed: 1–16 / 4, 8, 16 or 32");
@@ -1144,6 +1173,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLoopEnabled(
             enabled == JNI_TRUE,
             startBar,
             std::min(bars, endBar))) {
+        syncSequenceTransportStopped();
         return toJString(
                 env,
                 enabled == JNI_TRUE ? "Sequence loop ON" : "Sequence loop OFF");
@@ -1189,6 +1219,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLoopBars(
             state.activeSequence().loopEnabled,
             startBar,
             endBar)) {
+        syncSequenceTransportStopped();
         return toJString(env, "Sequence loop range updated");
     }
     return toJString(env, "Sequence loop range failed");
@@ -1208,6 +1239,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetQuantizeGrid(
 {
     stopSequenceForMutation();
     if (mpc::MpcCore::instance().projectState().setSequenceQuantizeGrid(ticks)) {
+        syncSequenceTransportStopped();
         return toJString(env, "Sequence quantize grid updated");
     }
     return toJString(env, "Quantize grid failed");
@@ -1227,6 +1259,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetSwing(
 {
     stopSequenceForMutation();
     if (mpc::MpcCore::instance().projectState().setSequenceSwing(percent)) {
+        syncSequenceTransportStopped();
         return toJString(env, "Sequence swing updated");
     }
     return toJString(env, "Swing failed: use 0–100%");
