@@ -1833,6 +1833,96 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelectTrack(
     return toJString(env, "Track selection failed");
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackMuted(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    if (trackIndex < 0) return JNI_FALSE;
+    const auto& tracks =
+            mpc::MpcCore::instance().projectState().activeSequence().tracks;
+    if (static_cast<std::size_t>(trackIndex) >= tracks.size()) return JNI_FALSE;
+    return tracks[static_cast<std::size_t>(trackIndex)].muted
+            ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackSolo(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    if (trackIndex < 0) return JNI_FALSE;
+    const auto& tracks =
+            mpc::MpcCore::instance().projectState().activeSequence().tracks;
+    if (static_cast<std::size_t>(trackIndex) >= tracks.size()) return JNI_FALSE;
+    return tracks[static_cast<std::size_t>(trackIndex)].soloed
+            ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackMuted(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    if (trackIndex < 0) return toJString(env, "Track mute failed");
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (static_cast<std::size_t>(trackIndex) >= state.activeSequence().tracks.size()) {
+        return toJString(env, "Track mute failed: invalid track");
+    }
+
+    const auto muted =
+            !state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)].muted;
+    if (!state.setTrackMuted(static_cast<std::size_t>(trackIndex), muted)) {
+        return toJString(env, "Track mute failed");
+    }
+
+    return toJString(
+            env,
+            std::string("Track ")
+                    + std::to_string(trackIndex + 1)
+                    + (muted ? " muted" : " unmuted"));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackSolo(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    if (trackIndex < 0) return toJString(env, "Track solo failed");
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (static_cast<std::size_t>(trackIndex) >= state.activeSequence().tracks.size()) {
+        return toJString(env, "Track solo failed: invalid track");
+    }
+
+    const auto soloed =
+            !state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)].soloed;
+    if (!state.setTrackSoloed(
+            static_cast<std::size_t>(trackIndex), soloed)) {
+        return toJString(env, "Track solo failed");
+    }
+
+    return toJString(
+            env,
+            std::string("Track ")
+                    + std::to_string(trackIndex + 1)
+                    + (soloed ? " soloed" : " solo cleared"));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAllTracksMuted(
+        JNIEnv* env, jobject /* thiz */, jboolean muted)
+{
+    mpc::MpcCore::instance().projectState().setAllTracksMuted(
+            muted == JNI_TRUE);
+    return toJString(
+            env,
+            muted == JNI_TRUE ? "All tracks muted" : "All tracks unmuted");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceClearTrackSolo(
+        JNIEnv* env, jobject /* thiz */)
+{
+    mpc::MpcCore::instance().projectState().clearTrackSolo();
+    return toJString(env, "All track solos cleared");
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAddTrack(
         JNIEnv* env, jobject /* thiz */, jint kind)
