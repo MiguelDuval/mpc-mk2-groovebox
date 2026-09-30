@@ -3238,13 +3238,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View sequence01 = findViewWithContentDescription(
-                getWindow().getDecorView(), "Sequence live launcher target S01");
-        if (sequence01 == null || !sequence01.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: sequence launcher target");
-            return;
-        }
-
         View sample = findViewWithExactText(getWindow().getDecorView(), "SAMPLE");
         if (sample == null || !sample.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLE");
