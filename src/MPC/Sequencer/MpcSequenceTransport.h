@@ -15,6 +15,7 @@ struct SequenceTransportSnapshot final {
     std::int64_t loopStartTicks = 0;
     std::int64_t loopEndTicks = 1;
     std::int64_t tempoMilliBpm = 120000;
+    bool loopEnabled = true;
     bool playing = false;
 };
 
@@ -54,6 +55,8 @@ public:
                 loopEndTicks_.load(std::memory_order_acquire);
         result.tempoMilliBpm =
                 tempoMilliBpm_.load(std::memory_order_acquire);
+        result.loopEnabled =
+                loopEnabled_.load(std::memory_order_acquire);
         result.playing =
                 playing_.load(std::memory_order_acquire);
         return result;
@@ -80,8 +83,17 @@ public:
                         * ticksPerSecond
                         / 1000000000.0));
 
+        const auto advanced =
+                state.positionTicks + std::max<std::int64_t>(0, deltaTicks);
+        if (!state.loopEnabled) {
+            return std::clamp<std::int64_t>(
+                    advanced,
+                    0,
+                    state.loopEndTicks - 1);
+        }
+
         return normalize(
-                state.positionTicks + std::max<std::int64_t>(0, deltaTicks),
+                advanced,
                 state.loopStartTicks,
                 state.loopEndTicks);
     }
@@ -110,6 +122,7 @@ private:
 
         loopStartTicks_.store(loopStart, std::memory_order_release);
         loopEndTicks_.store(loopEnd, std::memory_order_release);
+        loopEnabled_.store(sequence.loopEnabled, std::memory_order_release);
         tempoMilliBpm_.store(
                 static_cast<std::int64_t>(
                         std::llround(sequence.tempoBpm * 1000.0)),
@@ -139,6 +152,7 @@ private:
     std::atomic<std::int64_t> loopStartTicks_{0};
     std::atomic<std::int64_t> loopEndTicks_{1};
     std::atomic<std::int64_t> tempoMilliBpm_{120000};
+    std::atomic<bool> loopEnabled_{true};
     std::atomic<bool> playing_{false};
 };
 
