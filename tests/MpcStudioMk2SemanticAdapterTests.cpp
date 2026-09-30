@@ -10,8 +10,10 @@ int main(){
   MpcStudioMk2SemanticAdapter a;
   static_cast<void>(a.handleControl(btn(114))); auto r=a.handlePad(pad(1)); typeOf(r.action,SemanticActionType::NavigateGrid); assert(r.consumed);
   MpcStudioMk2SemanticAdapter b; static_cast<void>(b.handleControl(btn(49))); auto bank=b.handleControl(btn(36)); typeOf(bank,SemanticActionType::PadBankChanged); assert(bank->value0==5);
-  static_cast<void>(b.handleControl(btn(49,false))); static_cast<void>(b.handleControl(btn(39))); assert(b.handlePad(pad(0)).velocity==127);
+  auto source=b.handlePad(pad(4)); assert(source.targetPadIndex==4); static_cast<void>(b.handleControl(btn(49,false))); static_cast<void>(b.handleControl(btn(39))); assert(b.handlePad(pad(0)).velocity==127);
   static_cast<void>(b.handleControl(btn(49))); auto half=b.handleControl(btn(39)); typeOf(half,SemanticActionType::HalfLevelState); assert(half->value0==1); assert(b.handlePad(pad(0)).velocity==64);
+  static_cast<void>(b.handleControl(btn(49))); auto level16=b.handleControl(btn(40)); typeOf(level16,SemanticActionType::SixteenLevelState); assert(level16->value0==1 && level16->value1==4); auto low=b.handlePad(pad(0)); auto high=b.handlePad(pad(15)); assert(low.targetPadIndex==4 && low.velocity==1); assert(high.targetPadIndex==4 && high.velocity==127); static_cast<void>(b.handleControl(btn(40))); assert(!b.sixteenLevel());
+
   MpcStudioMk2SemanticAdapter c; typeOf(c.handleControl(btn(13)),SemanticActionType::TrackSelectionContext); auto d=c.handleControl(jog(1)); typeOf(d,SemanticActionType::DataDialDelta); assert(d->value0==1);
   MpcStudioMk2SemanticAdapter e; typeOf(e.handleControl(btn(82)),SemanticActionType::TransportPlay); static_cast<void>(e.handleControl(btn(49))); typeOf(e.handleControl(btn(81)),SemanticActionType::TransportReset);
   MpcStudioMk2SemanticAdapter f; auto nr=f.handleControl(btn(11)); typeOf(nr,SemanticActionType::NoteRepeatState); assert(nr->value0==1); static_cast<void>(f.handleControl(btn(4))); auto tm=f.handlePad(pad(2)); typeOf(tm.action,SemanticActionType::TrackMuteTarget); static_cast<void>(f.handleControl(btn(4))); static_cast<void>(f.handleControl(btn(49))); static_cast<void>(f.handleControl(btn(4))); auto pm=f.handlePad(pad(2)); typeOf(pm.action,SemanticActionType::PadMuteTarget);
