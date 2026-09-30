@@ -3045,6 +3045,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        if (!stepCell.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step toggle");
+            return;
+        }
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "Pad 1 step 1 on") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step did not turn on");
+            return;
+        }
+
+        View velocityUp = findViewWithExactText(
+                getWindow().getDecorView(), "VEL +10");
+        View probabilityDown = findViewWithExactText(
+                getWindow().getDecorView(), "PROB −10");
+        View ratchetUp = findViewWithExactText(
+                getWindow().getDecorView(), "RATCH +");
+        if (velocityUp == null || probabilityDown == null || ratchetUp == null
+                || !velocityUp.performClick()
+                || !probabilityDown.performClick()
+                || !ratchetUp.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step event controls");
+            return;
+        }
+        if (findViewWithExactText(
+                getWindow().getDecorView(), "STEP 01  •  VEL 110  •  PROB 117  •  RAT 2x") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step event parameters");
+            return;
+        }
+
         View sample = findViewWithExactText(getWindow().getDecorView(), "SAMPLE");
         if (sample == null || !sample.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLE");
