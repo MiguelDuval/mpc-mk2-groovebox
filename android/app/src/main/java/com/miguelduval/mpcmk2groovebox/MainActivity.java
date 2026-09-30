@@ -197,6 +197,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native int nativeSequenceGetQueuedIndex();
     private static native void nativeSequenceSetLauncherContext(
             boolean enabled, int bank);
+    private static native String nativeSequenceLaunchPad(
+            int bank, int padIndex);
     private static native String nativeSequenceSelect(int sequenceIndex);
     private static native String nativeSequencePrevious();
     private static native String nativeSequenceNext();
@@ -1267,13 +1269,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final int targetBank = sequenceIndex / 16;
             if (sequenceLauncherView != null
                     && targetBank != sequenceLauncherView.getBank()) {
-                sequenceLauncherView.setState(
-                        nativeSequenceGetCount(),
-                        nativeSequenceGetIndex(),
-                        nativeSequenceGetQueuedIndex(),
-                        targetBank);
+                launcherBank = targetBank;
+                nativeSequenceSetLauncherContext(true, launcherBank);
             }
-            setBottomStatus(nativeSequenceSelect(sequenceIndex));
+            setBottomStatus(nativeSequenceLaunchPad(
+                    targetBank, sequenceIndex % 16));
             refreshSequenceLauncher();
             refreshSequenceControls();
         });
@@ -3405,6 +3405,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshRecordingInfo();
             setAudioStateFromResult(result);
         }
+    }
+
+    @Override
+    public void onSequenceLauncherPad(int padIndex) {
+        if (!"SEQ".equals(currentPage)
+                || sequenceLauncherView == null
+                || padIndex < 0 || padIndex >= 16) {
+            return;
+        }
+
+        final int sequenceIndex = launcherBank * 16 + padIndex;
+        setBottomStatus(nativeSequenceLaunchPad(
+                launcherBank, padIndex));
+        refreshSequenceLauncher();
+        refreshSequenceControls();
     }
 
     @Override
