@@ -9,6 +9,13 @@
 - Documentation.
 
 ## Stage 1 — Hardware bring-up
+- MPC Studio MkII semantic control adapter — **NEXT HARDWARE SLICE**. Convert decoded buttons/jog/touch controls into stable semantic controller events without scattering raw MIDI values through UI/domain code.
+- Transport and navigation binding: Play, Play Start, Stop, Record, Overdub, Main, Browse, Data Dial/Enter, +/-, Shift, Track Select, Program Select.
+- Pad bank and performance modifiers: A-H banks, Full/Half Level, Note Repeat/Latch, Pad Mute/Track Mute.
+- Sequencer navigation/edit controls: Step, Bar, Locate, Erase, Quantize, Timing Correct, Zoom.
+- Sampler edit controls: Sample Select, Sample Start/Loop Start, Sample End, Tune/Fine.
+- Touch Strip press/mode separation; current map must distinguish the touch-strip mode button from the physical strip press.
+- Q-Link hardware discovery, semantic parameter targeting and physical verification.
 - USB MIDI discovery.
 - MPC public port detection.
 - MIDI IN/OUT.
