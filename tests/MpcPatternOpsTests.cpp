@@ -77,6 +77,33 @@ int main() {
     assert(stepPattern.notes[1].velocity == 90);
     assert(stepPattern.notes[1].durationTicks == 240);
 
+    const auto* selectedNote = mpc::sequencer::findStepNote(
+            stepPattern, 4, 120, 38);
+    assert(selectedNote != nullptr);
+    assert(selectedNote->probability == 64);
+    assert(selectedNote->ratchet == 3);
+
+    assert(mpc::sequencer::setStepNoteVelocity(
+            stepPattern, 4, 120, 38, 72));
+    assert(mpc::sequencer::setStepNoteProbability(
+            stepPattern, 4, 120, 38, 80));
+    assert(mpc::sequencer::setStepNoteRatchet(
+            stepPattern, 4, 120, 38, 4));
+
+    const auto* editedNote = mpc::sequencer::findStepNote(
+            stepPattern, 4, 120, 38);
+    assert(editedNote != nullptr);
+    assert(editedNote->velocity == 72);
+    assert(editedNote->probability == 80);
+    assert(editedNote->ratchet == 4);
+
+    assert(!mpc::sequencer::setStepNoteVelocity(
+            stepPattern, 7, 120, 38, 100));
+    assert(!mpc::sequencer::setStepNoteProbability(
+            stepPattern, 4, 120, 38, 128));
+    assert(!mpc::sequencer::setStepNoteRatchet(
+            stepPattern, 4, 120, 38, 9));
+
     assert(mpc::sequencer::eraseStepNote(stepPattern, 4, 120, 38));
     assert(stepPattern.notes.size() == 1);
     assert(!mpc::sequencer::eraseStepNote(stepPattern, 4, 120, 38));
