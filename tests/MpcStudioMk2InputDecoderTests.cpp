@@ -256,3 +256,14 @@ int main() {
     testUnknownMessageIsIgnored();
     return 0;
 }
+
+TEST_CASE("MPC Studio touch strip press is decoded separately from touch strip position") {
+    const std::uint8_t message[] = {0x90, 78, 127};
+    const auto event = mpc::studio::decodeInput(message);
+    REQUIRE(event.has_value());
+    REQUIRE(event->type == mpc::studio::InputEventType::TouchStripPress);
+    REQUIRE(event->channel == mpc::studio::buttonChannel);
+    REQUIRE(event->number == 78);
+    REQUIRE(event->value == 127);
+    REQUIRE(event->pressed);
+}
