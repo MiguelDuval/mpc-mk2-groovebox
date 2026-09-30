@@ -2,6 +2,7 @@
 
 #include "MPC/Domain/MpcDomain.h"
 
+#include <algorithm>
 #include <cstdint>
 
 namespace mpc::sequencer {
