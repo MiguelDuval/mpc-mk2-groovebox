@@ -53,9 +53,9 @@ This is the common "context monitor" layer: changing page does not make the user
 
 The project now supports a bounded set of independent Sequences (up to the domain limit). A new Sequence starts as a clean default musical container with its own tempo, time signature, length, loop and initial DRUM track; it does not clone another Sequence's events.
 
-Sequence selection is explicit in the SEQ page. Until quantized/perform-safe launching is implemented, changing Sequence deliberately stops the active sequence and presents the newly selected Sequence at a stopped transport position. This avoids an accidental cross-sequence jump being mistaken for a seamless live transition.
+Sequence selection is explicit in the SEQ page. While stopped, PREV/NEXT select a Sequence immediately. While playing, PREV/NEXT queue the target Sequence without interrupting the current one; the transition is committed only when the current Sequence crosses its loop boundary. The transport context exposes the queued target as a compact `→Sxx` indicator.
 
-This separation follows the useful distinction seen across the references: Sequence/Track are musical containers, while arrangement and quantized launching are higher-level performance mechanisms. We should not overload sequence selection with future song-arrangement behavior.
+This is intentionally a small first live-performance layer. It follows the MPC pattern of selecting another Sequence during playback and having it take over at the end of the current Sequence, while keeping future quantized launch/arrangement rules separate. A destructive sequence edit (tempo, length, time signature, loop, quantize or swing) cancels the queue and stops the transport so the edit cannot create an ambiguous transition.
 
 ## Realtime boundary
 
