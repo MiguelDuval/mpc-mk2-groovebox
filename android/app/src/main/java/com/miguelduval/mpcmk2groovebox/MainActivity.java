@@ -1378,6 +1378,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final long positionTicks = nativeSequencePositionTicks();
         final double tempo = nativeSequenceGetTempo();
+        final int sequenceCount = Math.max(1, nativeSequenceGetCount());
+        final int sequenceIndex = Math.max(
+                0,
+                Math.min(sequenceCount - 1, nativeSequenceGetIndex()));
 
         sequenceOverviewView.setState(
                 sequenceIndex,
@@ -1390,11 +1394,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeSequenceIsLoopEnabled(),
                 positionTicks,
                 nativeSequenceIsPlaying());
-
-        final int sequenceCount = Math.max(1, nativeSequenceGetCount());
-        final int sequenceIndex = Math.max(
-                0,
-                Math.min(sequenceCount - 1, nativeSequenceGetIndex()));
 
         if (sequenceTransportView != null) {
             sequenceTransportView.setText(String.format(
