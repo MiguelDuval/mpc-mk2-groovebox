@@ -27,7 +27,7 @@ int main() {
 
     assert(state.project().sequences.size() == 1);
     assert(state.activeSequence().tracks.size() == 4);
-    assert(state.activeSequence().tracks[0].name == "DRUM KIT");
+    assert(state.activeSequence().tracks[0].name == "SAMPLE 01");
     assert(state.activeSequence().tracks[1].name == "SYNTH 01");
     assert(state.activeSequence().tracks[2].name == "MIDI EXT 01");
     assert(state.activeSequence().tracks[3].name == "AUDIO 01");
