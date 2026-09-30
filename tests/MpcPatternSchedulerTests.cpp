@@ -135,6 +135,25 @@ int main() {
     assert(output[1].patternTick == 1920);
     assert(output[1].offsetTicks == 960);
 
+    // Nudge is applied after loop membership is established. An event exactly
+    // at loopEnd is excluded, while an in-range event may micro-shift across
+    // the loop boundary and wrap safely.
+    mpc::domain::Pattern rangeNudgePattern;
+    rangeNudgePattern.lengthTicks = 3840;
+    rangeNudgePattern.notes = {
+            {960, 30, 42, 100, 127, 1, -120},
+            {2880, 30, 43, 100, 127, 1, 0}};
+    const auto rangeNudged = mpc::sequencer::schedulePatternWindowInRange(
+            rangeNudgePattern,
+            mpc::sequencer::TickWindow{2700, 2800, 0},
+            960,
+            2880,
+            1234u,
+            output);
+    assert(rangeNudged.written == 1);
+    assert(output[0].patternTick == 960);
+    assert(output[0].offsetTicks == 60);
+
     pattern.lengthTicks = 0;
     assert(mpc::sequencer::schedulePatternWindow(
                    pattern,
