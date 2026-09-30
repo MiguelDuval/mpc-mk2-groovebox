@@ -90,8 +90,7 @@ ScheduleResult schedulePatternWindow(
              ++noteIndex) {
             const auto& note = pattern.notes[noteIndex];
             const auto effectiveTick =
-                    normalizedNoteTickInRange(
-                            note, loopStartTicks, loopEndTicks);
+                    normalizedNoteTick(note, length);
             if (effectiveTick < segmentBegin || effectiveTick >= segmentEnd) {
                 continue;
             }
@@ -185,7 +184,8 @@ ScheduleResult schedulePatternWindowInRange(
              ++noteIndex) {
             const auto& note = pattern.notes[noteIndex];
             const auto effectiveTick =
-                    normalizedNoteTick(note, length);
+                    normalizedNoteTickInRange(
+                            note, loopStartTicks, loopEndTicks);
             if (effectiveTick < segmentBegin || effectiveTick >= segmentEnd) {
                 continue;
             }
