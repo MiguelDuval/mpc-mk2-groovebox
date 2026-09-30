@@ -124,6 +124,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int selectedLayer = 0;
     private int selectedSequenceStep = -1;
     private String currentPage = "MAIN";
+    private int trackPerformanceBank = 0;
+    private final Button[] trackPerformanceButtons = new Button[16];
     private volatile boolean destroyed;
     private volatile boolean startupComplete;
     private boolean uiOnlySmokeMode;
@@ -243,6 +245,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceSelectTrack(int trackIndex);
     private static native String nativeSequenceAddTrack(int kind);
     private static native String nativeSequenceTrackStatus(int trackIndex);
+    private static native boolean nativeSequenceGetTrackMuted(int trackIndex);
+    private static native boolean nativeSequenceGetTrackSolo(int trackIndex);
+    private static native String nativeSequenceToggleTrackMuted(int trackIndex);
+    private static native String nativeSequenceToggleTrackSolo(int trackIndex);
+    private static native String nativeSequenceAllTracksMuted(boolean muted);
+    private static native String nativeSequenceClearTrackSolo();
     private static native boolean nativeSequenceIsSelectedTrackArmed();
     private static native String nativeSequenceSetSelectedTrackArmed(boolean armed);
     private static native String nativeSequenceStart();
@@ -1126,6 +1134,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout editActions = row();
         editActions.addView(actionButton("GRID", v -> showSequenceGridPage()), touchButtonWeight());
         editActions.addView(actionButton("STEP", v -> showSequenceStepPage()), touchButtonWeight());
+        editActions.addView(actionButton("MUTE", v -> showSequenceMutePage()), touchButtonWeight());
         editActions.addView(actionButton("LAUNCH", v -> showSequenceLauncherPage()), touchButtonWeight());
         detailPanel.addView(editActions, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
@@ -1223,6 +1232,198 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         + "  •  " + nativeSequenceTrackStatus(
                                 nativeSequenceGetSelectedTrack()));
         refreshSequencePlayhead();
+    }
+
+    private void showSequenceMutePage() {
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "SEQ";
+        pageTitle.setText("SEQ • MUTE");
+        content.removeAllViews();
+        sequenceTimeline = null;
+        sequenceGridView = null;
+        sequenceLauncherView = null;
+        for (int i = 0; i < sequenceStepButtons.length; i++) {
+            sequenceStepButtons[i] = null;
+        }
+
+        LinearLayout page = page();
+
+        LinearLayout header = row();
+        header.addView(actionButton("BACK SEQ", v -> showSequencePage()),
+                new LinearLayout.LayoutParams(dp(86), dp(38)));
+        TextView title = label("TRACK PERFORMANCE", 12, TEXT);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setGravity(Gravity.CENTER);
+        header.addView(title, new LinearLayout.LayoutParams(0, dp(38), 1));
+
+        TextView bankInfo = label("", 11, TEXT);
+        bankInfo.setTypeface(Typeface.DEFAULT_BOLD);
+        bankInfo.setGravity(Gravity.CENTER);
+        bankInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        header.addView(bankInfo, new LinearLayout.LayoutParams(dp(118), dp(38)));
+
+        header.addView(actionButton("◀", v -> moveTrackPerformanceBank(-1)),
+                new LinearLayout.LayoutParams(dp(52), dp(38)));
+        header.addView(actionButton("▶", v -> moveTrackPerformanceBank(1)),
+                new LinearLayout.LayoutParams(dp(52), dp(38)));
+        page.addView(header);
+
+        TextView hint = label(
+                "LIVE MIX  •  TAP = MUTE / UNMUTE  •  LONG-PRESS = SOLO / CLEAR  •  MUTE WINS",
+                10, MUTED);
+        hint.setGravity(Gravity.CENTER_VERTICAL);
+        hint.setPadding(dp(10), 0, dp(10), 0);
+        page.addView(hint, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(4);
+        grid.setRowCount(4);
+        grid.setContentDescription("Sequence track performance controls");
+
+        for (int cell = 0; cell < trackPerformanceButtons.length; cell++) {
+            final int local = cell;
+            Button button = button("—");
+            button.setTextSize(12);
+            button.setTypeface(Typeface.DEFAULT_BOLD);
+            button.setContentDescription("Track performance " + (cell + 1));
+
+            button.setOnClickListener(v -> {
+                final int track = trackPerformanceBank * 16 + local;
+                if (track >= nativeSequenceGetTrackCount()) {
+                    return;
+                }
+                setBottomStatus(nativeSequenceToggleTrackMuted(track));
+                refreshTrackPerformancePage();
+            });
+
+            button.setOnLongClickListener(v -> {
+                final int track = trackPerformanceBank * 16 + local;
+                if (track >= nativeSequenceGetTrackCount()) {
+                    return true;
+                }
+                setBottomStatus(nativeSequenceToggleTrackSolo(track));
+                refreshTrackPerformancePage();
+                return true;
+            });
+
+            trackPerformanceButtons[cell] = button;
+
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = 0;
+            params.height = dp(112);
+            params.columnSpec = GridLayout.spec(cell % 4, 1f);
+            params.rowSpec = GridLayout.spec(cell / 4, 1f);
+            params.setMargins(dp(3), dp(3), dp(3), dp(3));
+            grid.addView(button, params);
+        }
+
+        page.addView(grid, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout footer = row();
+        footer.addView(actionButton("ALL ON", v -> {
+            setBottomStatus(nativeSequenceAllTracksMuted(false));
+            refreshTrackPerformancePage();
+        }), touchButtonWeight());
+
+        footer.addView(actionButton("CLEAR SOLO", v -> {
+            setBottomStatus(nativeSequenceClearTrackSolo());
+            refreshTrackPerformancePage();
+        }), touchButtonWeight());
+
+        TextView footerHint = label(
+                "Transport-safe: mute/solo changes future scheduling without resetting the phrase.",
+                10, MUTED);
+        footerHint.setGravity(Gravity.CENTER_VERTICAL);
+        footer.addView(footerHint, new LinearLayout.LayoutParams(
+                0, dp(44), 2.3f));
+
+        page.addView(footer, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+
+        content.addView(page);
+        refreshTrackPerformancePage();
+    }
+
+    private void refreshTrackPerformancePage() {
+        if (!"SEQ".equals(currentPage)
+                || trackPerformanceButtons[0] == null) {
+            return;
+        }
+
+        final int count = nativeSequenceGetTrackCount();
+        final int bankCount = Math.max(1, (count + 15) / 16);
+        trackPerformanceBank = Math.max(
+                0, Math.min(bankCount - 1, trackPerformanceBank));
+
+        for (int cell = 0; cell < trackPerformanceButtons.length; cell++) {
+            final int track = trackPerformanceBank * 16 + cell;
+            final Button button = trackPerformanceButtons[cell];
+
+            if (track >= count) {
+                button.setText("—");
+                button.setContentDescription("Empty track performance slot");
+                button.setEnabled(false);
+                button.setAlpha(0.3f);
+                continue;
+            }
+
+            button.setEnabled(true);
+            button.setAlpha(1.0f);
+
+            final boolean muted = nativeSequenceGetTrackMuted(track);
+            final boolean soloed = nativeSequenceGetTrackSolo(track);
+            final boolean selected = nativeSequenceGetSelectedTrack() == track;
+            final String state = muted ? "MUTE" : (soloed ? "SOLO" : "ON");
+
+            button.setText(String.format(
+                    Locale.ROOT,
+                    "T%02d\n%s",
+                    track + 1,
+                    state));
+
+            button.setBackground(strokeBackground(
+                    selected ? Color.rgb(32, 52, 60) : SURFACE_2,
+                    muted ? DANGER
+                            : (soloed ? ACCENT_2
+                            : (selected ? ACCENT : LINE)),
+                    10));
+
+            button.setContentDescription(
+                    "Track performance " + (track + 1)
+                            + " " + state.toLowerCase(Locale.ROOT));
+        }
+
+        final View parent = trackPerformanceButtons[0].getParent() instanceof View
+                ? trackPerformanceButtons[0].getParent()
+                : null;
+
+        if (parent instanceof ViewGroup
+                && parent.getParent() instanceof ViewGroup) {
+            final ViewGroup pageRoot = (ViewGroup) parent.getParent();
+            if (pageRoot.getChildCount() > 0
+                    && pageRoot.getChildAt(0) instanceof ViewGroup) {
+                final ViewGroup header = (ViewGroup) pageRoot.getChildAt(0);
+                if (header.getChildCount() > 2
+                        && header.getChildAt(2) instanceof TextView) {
+                    ((TextView) header.getChildAt(2)).setText(String.format(
+                            Locale.ROOT,
+                            "BANK %02d/%02d",
+                            trackPerformanceBank + 1,
+                            bankCount));
+                }
+            }
+        }
+    }
+
+    private void moveTrackPerformanceBank(int delta) {
+        final int count = nativeSequenceGetTrackCount();
+        final int bankCount = Math.max(1, (count + 15) / 16);
+        trackPerformanceBank = Math.max(
+                0,
+                Math.min(bankCount - 1, trackPerformanceBank + delta));
+        refreshTrackPerformancePage();
     }
 
     private void showSequenceLauncherPage() {
@@ -2101,6 +2302,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         refreshSequencePlayhead();
                         refreshSequenceControls();
                         refreshSequenceLauncher();
+                        refreshTrackPerformancePage();
                     }
                 }
 
@@ -3339,6 +3541,50 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (findViewWithExactText(
                 getWindow().getDecorView(), "STEP 01  •  VEL 110  •  PROB 117  •  RAT 2x") == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: step event parameters");
+            return;
+        }
+
+        View mute = findViewWithExactText(
+                getWindow().getDecorView(), "MUTE");
+        if (mute == null || !mute.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MUTE mode");
+            return;
+        }
+
+        View muteGrid = findViewWithContentDescription(
+                getWindow().getDecorView(), "Sequence track performance controls");
+        if (muteGrid == null || muteGrid.getHeight() <= dp(120)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: track performance grid");
+            return;
+        }
+
+        View trackCell = findViewWithContentDescription(
+                getWindow().getDecorView(), "Track performance 1 on");
+        if (trackCell == null || !trackCell.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: track mute toggle");
+            return;
+        }
+
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "Track performance 1 mute") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: track mute state");
+            return;
+        }
+
+        if (!trackCell.performLongClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: track solo gesture");
+            return;
+        }
+
+        View clearSolo = findViewWithExactText(
+                getWindow().getDecorView(), "CLEAR SOLO");
+        View allOn = findViewWithExactText(
+                getWindow().getDecorView(), "ALL ON");
+
+        if (clearSolo == null || allOn == null
+                || !clearSolo.performClick()
+                || !allOn.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: track performance reset");
             return;
         }
 

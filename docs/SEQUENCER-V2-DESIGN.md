@@ -69,6 +69,14 @@ Nudge is bounded to ±960 project ticks in this first slice. This is deliberatel
 
 The software grid follows the project's physical MPC Studio pad convention vertically: Pad 16 is the top lane and Pad 1 the bottom lane. Four-step group separators make 16-step phrasing immediately legible without adding visual chrome.
 
+## Live Track Performance
+
+The Sequencer includes a dedicated Track Performance surface rather than mixing performance actions into GRID or STEP. Sixteen Track slots are visible at once with bank navigation across the available range. Tap toggles MUTE/UNMUTE; long-press toggles SOLO. MUTE takes precedence for the individual Track while SOLO remains a global scheduling constraint.
+
+Mute and Solo are transport-safe controls: they do not reset the sequence position, stop playback, recreate the playback session, or modify note data. Eligible Drum-track playback instances remain alive while each scheduler pass checks the current Track performance state. This lets a performer bring layers in and out without restarting the phrase.
+
+The current surface is software-first. Physical MPC Studio MkII Track Performance mapping remains a separate hardware increment so the established MAIN and Sequence Launcher pad contracts stay stable.
+
 ## Live Sequence Launcher
 
 The live performance surface now includes a dedicated Sequence Launcher rather than overloading the 4x4 MAIN performance pads. It mirrors the MPC Sequence Mode idea that the 16 pads can select/trigger Sequences, while preserving the global 4x4 pad surface for sound performance.

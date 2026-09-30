@@ -69,6 +69,7 @@
 - ratchet. **SOFTWARE FOUNDATION IMPLEMENTED — ratchet metadata normalized to a bounded 1–8 playback count.**
 - realtime event scheduler. **SOFTWARE FOUNDATION IMPLEMENTED — allocation-free pattern-window scheduling now bridges the sequencer cursor, deterministic probability and ratchet metadata into timestamped MIDI events, including loop-wrap windows and bounded output buffers. Ratchet expansion into timed retriggers remains a playback-layer concern.**
 - automation.
+- live track mute/solo. **SOFTWARE + UI SLICE IMPLEMENTED — scheduler filtering reacts to MUTE/SOLO state without restarting playback.**
 
 ## Stage 7 — MPC-like UI
 - UI shell. **IMPLEMENTED FOUNDATION — landscape-only standalone-style shell with persistent transport/status bar, persistent mode rail, fixed main workspace, and no root diagnostic ScrollView.**
@@ -78,6 +79,7 @@
 - Sample Edit. **UI FOUNDATION + WAVEFORM IMPLEMENTED — direct S/E drag editing, zoom/pan, audition, crop and chop actions are isolated to the sample context.**
 - Grid. **SEQUENCE CONTEXT IMPLEMENTED — dedicated track/sequence context is now available from the Sequencer page; detailed note editing remains next.**
 - Step. **SEQUENCE CONTEXT IMPLEMENTED — selected-track Step entry point is available; detailed step note editing remains next.**
+- Track Performance. **SOFTWARE + UI SLICE IMPLEMENTED — dedicated 4×4 Track MUTE/SOLO surface with banks and transport-preserving live toggles.**
 - Track Edit. **MODE SLOT RESERVED.**
 - mixers. **FOUNDATION IMPLEMENTED — compact Pad Mix view with direct level control; full Track/Pad mixer remains later.**
 - 16 Levels.

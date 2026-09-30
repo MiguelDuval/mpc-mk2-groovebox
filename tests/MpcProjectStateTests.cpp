@@ -85,6 +85,20 @@ int main() {
     assert(state.addTrack(mpc::domain::TrackKind::Audio));
     assert(state.activeSequence().tracks.size() == 2);
     assert(state.activeTrackIndex() == 1);
+
+    assert(state.setTrackMuted(0, true));
+    assert(state.activeSequence().tracks[0].muted);
+    assert(state.setTrackSoloed(0, true));
+    assert(state.activeSequence().tracks[0].soloed);
+    assert(state.setTrackMuted(0, false));
+    assert(!state.activeSequence().tracks[0].muted);
+    assert(state.setAllTracksMuted(true));
+    assert(state.activeSequence().tracks[0].muted);
+    assert(state.activeSequence().tracks[1].muted);
+    assert(state.clearTrackSolo());
+    assert(!state.activeSequence().tracks[0].soloed);
+    assert(!state.activeSequence().tracks[1].soloed);
+
     assert(state.selectTrack(0));
     assert(state.activeTrackIndex() == 0);
     assert(!state.selectTrack(99));

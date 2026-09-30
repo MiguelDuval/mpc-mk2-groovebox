@@ -306,6 +306,14 @@ jobs:
             -o build/native-tests/mpc_sequencer_runtime_tests
           build/native-tests/mpc_sequencer_runtime_tests
 
+      - name: Test MPC track performance rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcTrackPerformanceTests.cpp             -o build/native-tests/mpc_track_performance_tests
+          build/native-tests/mpc_track_performance_tests
+
       - name: Test MPC project state
         shell: bash
         run: |
