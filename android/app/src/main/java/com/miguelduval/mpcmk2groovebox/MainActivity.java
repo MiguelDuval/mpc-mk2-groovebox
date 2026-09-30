@@ -3415,7 +3415,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        final int sequenceIndex = launcherBank * 16 + padIndex;
         setBottomStatus(nativeSequenceLaunchPad(
                 launcherBank, padIndex));
         refreshSequenceLauncher();
