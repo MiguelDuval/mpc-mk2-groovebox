@@ -7,26 +7,15 @@
 
 namespace mpc {
 
-MpcProjectState::MpcProjectState() {
-    project_.id = "project-1";
-    project_.name = "Untitled";
+namespace {
 
-    domain::DrumProgram program;
-    program.id = "drum-program-1";
-    program.name = "Drum Program 1";
-    program.type = domain::ProgramType::Drum;
-
-    for (std::size_t pad = 0; pad < domain::kMaxProgramPads; ++pad) {
-        program.pads[pad].index = static_cast<std::uint16_t>(pad);
-        program.pads[pad].midiNote = static_cast<std::uint8_t>(36 + pad);
-        program.pads[pad].name = "Pad " + std::to_string(pad + 1);
-    }
-
-    project_.drumPrograms.push_back(std::move(program));
-
+domain::Sequence makeDefaultSequence(std::size_t sequenceNumber) {
     domain::Sequence sequence;
-    sequence.id = "sequence-1";
-    sequence.name = "Sequence 01";
+    sequence.id = "sequence-" + std::to_string(sequenceNumber);
+    sequence.name = "Sequence " + (
+            sequenceNumber < 10
+                    ? "0" + std::to_string(sequenceNumber)
+                    : std::to_string(sequenceNumber));
     sequence.tempoBpm = 120.0;
     sequence.numerator = 4;
     sequence.denominator = 4;
@@ -44,6 +33,7 @@ MpcProjectState::MpcProjectState() {
     drumTrack.type = domain::ProgramType::Drum;
     drumTrack.kind = domain::TrackKind::Drum;
     drumTrack.programId = "drum-program-1";
+
     domain::Pattern pattern;
     pattern.id = "pattern-1";
     pattern.name = "Pattern 01";
@@ -51,9 +41,78 @@ MpcProjectState::MpcProjectState() {
     drumTrack.patterns.push_back(std::move(pattern));
     sequence.tracks.push_back(std::move(drumTrack));
 
-    project_.sequences.push_back(std::move(sequence));
+    return sequence;
 }
 
+} // namespace
+
+MpcProjectState::MpcProjectState() {
+    project_.id = "project-1";
+    project_.name = "Untitled";
+
+    domain::DrumProgram program;
+    program.id = "drum-program-1";
+    program.name = "Drum Program 1";
+    program.type = domain::ProgramType::Drum;
+
+    for (std::size_t pad = 0; pad < domain::kMaxProgramPads; ++pad) {
+        program.pads[pad].index = static_cast<std::uint16_t>(pad);
+        program.pads[pad].midiNote = static_cast<std::uint8_t>(36 + pad);
+        program.pads[pad].name = "Pad " + std::to_string(pad + 1);
+    }
+
+    project_.drumPrograms.push_back(std::move(program));
+    project_.sequences.push_back(makeDefaultSequence(1));
+}
+
+
+bool MpcProjectState::selectSequence(std::size_t sequenceIndex) noexcept {
+    if (sequenceIndex >= project_.sequences.size()) {
+        return false;
+    }
+
+    activeSequenceIndex_ = sequenceIndex;
+    activeTrackIndex_ = activeSequence().tracks.empty()
+            ? 0
+            : std::min(activeTrackIndex_, activeSequence().tracks.size() - 1);
+    return true;
+}
+
+bool MpcProjectState::selectNextSequence() noexcept {
+    if (project_.sequences.empty()) {
+        return false;
+    }
+    return selectSequence(
+            (activeSequenceIndex_ + 1) % project_.sequences.size());
+}
+
+bool MpcProjectState::selectPreviousSequence() noexcept {
+    if (project_.sequences.empty()) {
+        return false;
+    }
+    const auto count = project_.sequences.size();
+    const auto previous = activeSequenceIndex_ == 0
+            ? count - 1
+            : activeSequenceIndex_ - 1;
+    return selectSequence(previous);
+}
+
+bool MpcProjectState::addSequence(std::string name) {
+    if (project_.sequences.size() >= domain::kMaxSequences) {
+        return false;
+    }
+
+    const auto number = project_.sequences.size() + 1;
+    auto sequence = makeDefaultSequence(number);
+    if (!name.empty()) {
+        sequence.name = std::move(name);
+    }
+
+    project_.sequences.push_back(std::move(sequence));
+    activeSequenceIndex_ = project_.sequences.size() - 1;
+    activeTrackIndex_ = 0;
+    return true;
+}
 
 bool MpcProjectState::setSequenceTempo(double tempoBpm) noexcept {
     if (!std::isfinite(tempoBpm) || tempoBpm < 20.0 || tempoBpm > 300.0) {
@@ -265,7 +324,8 @@ std::string MpcProjectState::sequenceStatus() const {
                     sequence.numerator, sequence.denominator));
 
     std::ostringstream out;
-    out << "SEQ 1  " << sequence.name
+    out << "SEQ " << (activeSequenceIndex_ + 1) << "/" << project_.sequences.size()
+        << "  " << sequence.name
         << "  | " << std::fixed << std::setprecision(1)
         << sequence.tempoBpm << " BPM"
         << "  | " << sequence.numerator << "/" << sequence.denominator
