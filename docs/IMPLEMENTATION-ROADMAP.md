@@ -164,3 +164,16 @@ Later:
 - Save/persistence shortcut.
 
 The complete control-by-control contract is documented in `docs/MPC-STUDIO-MKII-SEMANTIC-MAP.md`.
+
+
+## MPC Studio MkII implementation checkpoint — 2026-09-30
+
+The controller slice has moved from MIDI protocol bring-up to semantic application routing. The canonical path is now:
+
+MPC Studio MkII → InputDecoder → MpcStudioMk2SemanticAdapter → semantic action → domain/sequence/audio command → state → hardware feedback.
+
+P0 code coverage now includes transport, Main/Browse, Track/Sequence selection, Data Dial, pad-bank state, Full/Half Level, mute contexts, stopped Step/Bar navigation, Tap Tempo and Mode+Pad navigation. Sequence playback also preserves a stopped playhead position when Play resumes.
+
+Note Repeat scheduling, Touch Strip contextual control, complete button/pad/LCD feedback, and the remaining P1 production controls stay separate and explicitly incomplete.
+
+This controller work supplements Stages 1, 2 and 7; it does not replace the overall roadmap.
