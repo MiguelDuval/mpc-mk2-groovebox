@@ -2907,6 +2907,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View step = findViewWithExactText(
+                getWindow().getDecorView(), "STEP");
+        if (step == null || !step.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: STEP editor");
+            return;
+        }
+
+        View stepCell = findViewWithContentDescription(
+                getWindow().getDecorView(), "Pad 1 step 1 off");
+        if (stepCell == null || stepCell.getWidth() <= 0
+                || stepCell.getHeight() <= dp(40)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step editor cells");
+            return;
+        }
+
         View sample = findViewWithExactText(getWindow().getDecorView(), "SAMPLE");
         if (sample == null || !sample.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLE");
