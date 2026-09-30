@@ -316,7 +316,7 @@ Semantic contract:
 
 The existing sequencer already has quantize and swing foundations. Hardware actions must dispatch to those same operations.
 
-Status: **DECODED, SEQUENCER FOUNDATION EXISTS, HARDWARE ROUTING NOT IMPLEMENTED**.
+Status: **QUANTIZE ROUTED to the selected Drum pattern; Timing Correct ON/OFF routed to the sequence recorder; Shift+Quantize remains selection-aware and intentionally reserved until an explicit event-selection contract exists**.
 
 Priority: **P1**.
 
