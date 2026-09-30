@@ -157,6 +157,58 @@ These multi-layer checks are intentionally UNCONFIRMED until performed on the ac
 - [ ] CHOP 4/8/16 refreshes the waveform/sample state for the resulting pad assignments.
 - [ ] Waveform edit handles are visible only in the EDIT context; ENV/FILTER/LAYER leave the same waveform visible but non-editable.
 
+## P0 semantic hardware routing
+
+These tests are NOT YET CONFIRMED. Protocol emission/decoding alone is insufficient; each action must produce the expected application state and feedback on the physical MkII.
+
+### Navigation and modifiers
+- [ ] Shift press/release changes the semantic modifier state without changing page/audio state by itself.
+- [ ] Mode + Pads 1–3/5/9/12/13/15 reach the implemented MAIN/GRID/SAMPLE/SAMPLE EDIT/LAUNCH/BROWSE/SAMPLE/STEP contexts.
+- [ ] Main enters MAIN; Shift + Main enters the track context.
+- [ ] Browse enters BROWSE; Shift + Browse moves to parent folder.
+- [ ] Track Select + Dial/+/- selects the active track; Shift + Track Select + Dial/+/- selects the active sequence.
+- [ ] Data Dial rotation changes the focused semantic field; Dial press commits/opens it; +/- changes the same focused field.
+
+### Performance matrix
+- [ ] Pad Bank A–D selects the expected logical 16-pad bank.
+- [ ] Shift + Pad Bank A/E … D/H selects banks E–H.
+- [ ] Full Level forces pad trigger velocity to 127.
+- [ ] Shift + Full Level enables Half Level and forces velocity to 64.
+- [ ] 16 Level makes the last-hit pad the source sound and distributes the selected parameter across the 16 pads.
+- [ ] Shift + 16 Level enters the Pad Perform context rather than 16 Level.
+- [ ] Pad Mute changes pad mute context; Shift + Pad Mute changes track mute context.
+- [ ] Note Repeat held with a pad produces clock-synchronous retriggers; Shift + Note Repeat latches/unlatches the mode.
+- [ ] Sequence Launcher mode routes the physical pads to sequence targets and mirrors active/queued state to pad LEDs.
+
+### Transport and timing
+- [ ] Record arms sequence recording.
+- [ ] Play / Play Start starts the armed recording with the correct current/start playhead semantics.
+- [ ] Overdub toggles non-destructive recording.
+- [ ] Stop stops playback; double Stop follows the documented all-voice-silence behavior when supported by the audio contract.
+- [ ] Shift + Stop returns the playhead to 1:1:0.
+- [ ] Step < / > moves one edit step; Bar << / >> moves one bar.
+- [ ] Locate + Step < / > moves to previous/next event.
+- [ ] Locate + Bar << / >> moves to sequence start/end.
+- [ ] Tap Tempo changes the active local sequence tempo from physical taps.
+
+### Contextual editing
+- [ ] Quantize applies the current Timing Correct grid; Shift + Quantize targets selected events only.
+- [ ] Timing Correct toggles on/off; Shift + Timing Correct opens/selects its configuration.
+- [ ] Zoom + Dial changes horizontal zoom; Shift + Zoom + Dial changes vertical zoom in eligible views.
+- [ ] Sample Select + Dial/+/- changes the selected layer/sample context.
+- [ ] Sample Start, Sample End and Tune address the selected pad/layer without altering another pad/layer.
+- [ ] Copy/Delete shows an explicit target before destructive commit.
+- [ ] Undo / Shift + Undo produce Undo / Redo against the same application command history.
+- [ ] Erase + Pad removes the current playback-position note while playing; stopped Erase opens the erase context.
+
+### Touch strip and feedback
+- [ ] Touch Strip press (MIDI Note 78) is recognized as a dedicated semantic input.
+- [ ] Touch Strip movement (CC 33) controls the active continuous parameter at the expected range.
+- [ ] Touch Strip / Config cycles/selects its mode.
+- [ ] Touch-strip LED segments mirror the active value/mode.
+- [ ] Transport/mode/toggle button LEDs mirror application state rather than merely the last button event.
+- [ ] LCD shows a compact mode/sequence/track/BPM/transport/focus context without attempting to mirror the full Android UI.
+
 ## Evidence
 
 For each failed test, capture:
