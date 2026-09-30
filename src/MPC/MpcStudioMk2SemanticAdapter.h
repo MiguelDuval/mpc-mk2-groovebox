@@ -24,6 +24,7 @@ struct SemanticAction final {
 };
 struct PadRoutingResult final {
     bool consumed=false;
+    bool repeating=false;
     std::uint8_t velocity=0;
     std::uint8_t targetPadIndex=0xFF;
     std::optional<SemanticAction> action;
@@ -54,6 +55,8 @@ private:
     bool fullLevel_=false, halfLevel_=false;
     bool padMuteMode_=false, trackMuteMode_=false, sixteenLevel_=false;
     std::uint8_t lastPadIndex_=0xFF;
+    std::uint8_t repeatPadIndex_=0xFF;
+    bool repeatPadHeld_=false;
     std::uint8_t padBank_=0;
 };
 } // namespace mpc::studio
