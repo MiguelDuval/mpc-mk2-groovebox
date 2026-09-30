@@ -37,8 +37,20 @@ int main() {
     assert(q.pendingTargetForTrack(4).has_value());
     assert(!*q.pendingTargetForTrack(4));
 
+    q.clear();
+
     assert(q.enqueue(5, true, 3800, 0, 3840, 960));
     assert(q.nextDueTicks() == 40);
+
+    q.clear();
+    q.setMode(Mode::TwoBars);
+    assert(q.enqueue(6, true, 3800, 0, 3840, 7680));
+    assert(q.nextDueTicks() == 3880);
+    q.advance(3840);
+    assert(q.nextDueTicks() == 40);
+    q.advance(40);
+    assert(q.takeDue(due) == 1);
+    assert(q.nextDueTicks() > 1'000'000'000);
 
     q.clear();
     assert(q.nextDueTicks() > 1'000'000'000);

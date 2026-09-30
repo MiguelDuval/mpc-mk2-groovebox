@@ -87,9 +87,8 @@ public:
         const auto boundaryDelta = remainder == 0
                 ? resolutionTicks
                 : resolutionTicks - remainder;
-        const auto ticksUntilApply = std::max<std::int64_t>(
-                1,
-                std::min(boundaryDelta, loopEndTicks - position));
+        const auto ticksUntilApply =
+                std::max<std::int64_t>(1, boundaryDelta);
 
         for (std::size_t i = 0; i < size_; ++i) {
             if (commands_[i].trackIndex == trackIndex

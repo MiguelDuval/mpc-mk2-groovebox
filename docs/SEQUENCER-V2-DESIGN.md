@@ -83,7 +83,7 @@ MPC Software provides Time Correct for Track Mute, with divisions from 1/16 thro
 
 This groovebox now follows that live-performance principle with an explicit MUTE Q control: OFF, 1/16, 1/8, 1/4, 1/2, 1 BAR or 2 BAR. OFF is the default and preserves immediate mute behavior. When quantization is enabled during playback, a mute/unmute request becomes a pending target and is applied at the next selected musical boundary inside the native sequence advance window. The software surface and physical pads show a distinct queued state. SOLO remains immediate.
 
-Pending mute commands are transport-safe: they never touch the audio callback, and they are cleared when playback or sequence mutation invalidates the current musical context. A loop boundary is always respected, so a queued action cannot remain stranded beyond the current loop. The silent-cursor rule means muting a track changes audibility without freezing its musical position.
+Pending mute commands are transport-safe: they never touch the audio callback, and they are cleared when playback or sequence mutation invalidates the current musical context. Loop wrap does not destroy a pending musical boundary: larger settings such as 2 BAR may intentionally carry the command into the next loop, while a queued Sequence change clears the old Sequence's pending actions. The silent-cursor rule means muting a track changes audibility without freezing its musical position.
 
 Reference: Akai MPC Software User Guide, Track Mute / Time Correct:
 https://cdn.inmusicbrands.com/akai/214SMPCSTEMS/MPC%20Software%20-%20User%20Guide%20-%20v2.14.pdf
