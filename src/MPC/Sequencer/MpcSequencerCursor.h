@@ -25,7 +25,10 @@ public:
     }
 
     void reset() noexcept {
-        positionTicks_ = 0;
+        positionTicks_ = sequence_.loopEnabled
+                ? std::clamp<std::int64_t>(
+                        sequence_.loopStartTicks, 0, sequenceLengthTicks_ - 1)
+                : 0;
         playing_ = false;
     }
 
@@ -39,6 +42,19 @@ public:
 
     std::int32_t sequenceLengthTicks() const noexcept {
         return sequenceLengthTicks_;
+    }
+
+    std::int64_t loopStartTicks() const noexcept {
+        if (!sequence_.loopEnabled) return 0;
+        return std::clamp<std::int64_t>(
+                sequence_.loopStartTicks, 0, sequenceLengthTicks_ - 1);
+    }
+
+    std::int64_t loopEndTicks() const noexcept {
+        if (!sequence_.loopEnabled) return sequenceLengthTicks_;
+        const auto start = loopStartTicks();
+        return std::clamp<std::int64_t>(
+                sequence_.loopEndTicks, start + 1, sequenceLengthTicks_);
     }
 
     void setPositionTicks(std::int64_t ticks) noexcept;
