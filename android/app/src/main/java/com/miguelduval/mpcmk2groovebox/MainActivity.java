@@ -127,6 +127,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int trackPerformanceBank = 0;
     private String lastTrackPerformanceLedSignature = "";
     private final Button[] trackPerformanceButtons = new Button[16];
+    private Button trackMuteQuantizeButton;
     private volatile boolean destroyed;
     private volatile boolean startupComplete;
     private boolean uiOnlySmokeMode;
@@ -249,6 +250,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceAddTrack(int kind);
     private static native String nativeSequenceTrackStatus(int trackIndex);
     private static native boolean nativeSequenceGetTrackMuted(int trackIndex);
+    private static native int nativeSequenceGetTrackMuteQuantize();
+    private static native String nativeSequenceGetTrackMuteQuantizeLabel();
+    private static native String nativeSequenceSetTrackMuteQuantize(int mode);
+    private static native int nativeSequenceGetTrackMutePending(int trackIndex);
     private static native boolean nativeSequenceGetTrackSolo(int trackIndex);
     private static native String nativeSequenceToggleTrackMuted(int trackIndex);
     private static native String nativeSequenceToggleTrackSolo(int trackIndex);
@@ -1270,6 +1275,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         title.setGravity(Gravity.CENTER);
         header.addView(title, new LinearLayout.LayoutParams(0, dp(38), 1));
 
+        trackMuteQuantizeButton = actionButton("Q OFF", v -> {
+            final int next = (nativeSequenceGetTrackMuteQuantize() + 1) % 7;
+            setBottomStatus(nativeSequenceSetTrackMuteQuantize(next));
+            refreshTrackPerformancePage();
+        });
+        trackMuteQuantizeButton.setContentDescription("Track mute Time Correct");
+        trackMuteQuantizeButton.setTextSize(10);
+        header.addView(trackMuteQuantizeButton,
+                new LinearLayout.LayoutParams(dp(82), dp(38)));
+
         TextView bankInfo = label("", 11, TEXT);
         bankInfo.setTypeface(Typeface.DEFAULT_BOLD);
         bankInfo.setGravity(Gravity.CENTER);
@@ -1283,7 +1298,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(header);
 
         TextView hint = label(
-                "LIVE MIX  •  TAP = MUTE / UNMUTE  •  LONG-PRESS = SOLO / CLEAR  •  MUTE WINS",
+                "LIVE MIX  •  TAP = MUTE / UNMUTE  •  LONG-PRESS = SOLO / CLEAR  •  MUTE Q",
                 10, MUTED);
         hint.setGravity(Gravity.CENTER_VERTICAL);
         hint.setPadding(dp(10), 0, dp(10), 0);
@@ -1347,7 +1362,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }), touchButtonWeight());
 
         TextView footerHint = label(
-                "Transport-safe: mute/solo changes future scheduling without resetting the phrase.",
+                "MUTE Q aligns mutes to the next musical division. SOLO stays immediate.",
                 10, MUTED);
         footerHint.setGravity(Gravity.CENTER_VERTICAL);
         footer.addView(footerHint, new LinearLayout.LayoutParams(
@@ -1368,6 +1383,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final int count = nativeSequenceGetTrackCount();
         final int bankCount = Math.max(1, (count + 15) / 16);
+        if (trackMuteQuantizeButton != null) {
+            trackMuteQuantizeButton.setText(
+                    "Q " + nativeSequenceGetTrackMuteQuantizeLabel());
+        }
         trackPerformanceBank = Math.max(
                 0, Math.min(bankCount - 1, trackPerformanceBank));
 
@@ -1389,24 +1408,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final boolean muted = nativeSequenceGetTrackMuted(track);
             final boolean soloed = nativeSequenceGetTrackSolo(track);
             final boolean selected = nativeSequenceGetSelectedTrack() == track;
+            final int pendingTarget = nativeSequenceGetTrackMutePending(track);
             final String state = muted ? "MUTE" : (soloed ? "SOLO" : "ON");
+            final String displayState = pendingTarget >= 0
+                    ? state + "→" + (pendingTarget == 1 ? "MUTE" : "ON")
+                    : state;
 
             button.setText(String.format(
                     Locale.ROOT,
                     "T%02d\n%s",
                     track + 1,
-                    state));
+                    displayState));
 
             button.setBackground(strokeBackground(
                     selected ? Color.rgb(32, 52, 60) : SURFACE_2,
-                    muted ? DANGER
+                    pendingTarget >= 0 ? ACCENT_2
+                            : (muted ? DANGER
                             : (soloed ? ACCENT_2
-                            : (selected ? ACCENT : LINE)),
+                            : (selected ? ACCENT : LINE))),
                     10));
 
             button.setContentDescription(
                     "Track performance " + (track + 1)
-                            + " " + state.toLowerCase(Locale.ROOT));
+                            + " " + displayState.toLowerCase(Locale.ROOT));
         }
 
         final ViewGroup parent =
@@ -1451,7 +1475,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final boolean muted = nativeSequenceGetTrackMuted(track);
             final boolean soloed = nativeSequenceGetTrackSolo(track);
             final boolean selected = nativeSequenceGetSelectedTrack() == track;
-            signature.append(muted ? 'M' : (soloed ? 'S' : (selected ? 'D' : 'O')));
+            final int pendingTarget = nativeSequenceGetTrackMutePending(track);
+            signature.append(pendingTarget >= 0
+                    ? 'Q'
+                    : (muted ? 'M' : (soloed ? 'S' : (selected ? 'D' : 'O'))));
         }
 
         final String nextSignature = signature.toString();
@@ -1470,8 +1497,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final boolean muted = nativeSequenceGetTrackMuted(track);
             final boolean soloed = nativeSequenceGetTrackSolo(track);
             final boolean selected = nativeSequenceGetSelectedTrack() == track;
+            final int pendingTarget = nativeSequenceGetTrackMutePending(track);
 
-            if (muted) {
+            if (pendingTarget >= 0) {
+                midiBridge.setPadRgb(cell, 96, 26, 112);
+            } else if (muted) {
                 midiBridge.setPadRgb(cell, 127, 18, 18);
             } else if (soloed) {
                 midiBridge.setPadRgb(cell, 127, 82, 10);

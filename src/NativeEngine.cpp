@@ -17,10 +17,31 @@
 #include "MPC/Sequencer/MpcSequenceLauncher.h"
 #include "MPC/Sequencer/MpcSequencePlaybackSession.h"
 #include "MPC/Sequencer/MpcSequenceSettings.h"
+#include "MPC/Sequencer/TrackMuteQuantizer.h"
 
 namespace {
 
 std::unique_ptr<mpc::sequencer::MpcSequencePlaybackSession> sequencePlayback;
+mpc::sequencer::TrackMuteQuantizer trackMuteQuantizer;
+
+void clearTrackMuteQuantizer() noexcept {
+    trackMuteQuantizer.clear();
+}
+
+void applyDueTrackMuteCommands() noexcept {
+    std::array<mpc::sequencer::TrackMuteQuantizer::Command,
+               mpc::sequencer::TrackMuteQuantizer::kCapacity> due{};
+    const auto count = trackMuteQuantizer.takeDue(due);
+    if (count == 0) return;
+
+    auto& state = mpc::MpcCore::instance().projectState();
+    for (std::size_t i = 0; i < count; ++i) {
+        const auto trackIndex = due[i].trackIndex;
+        if (trackIndex < state.activeSequence().tracks.size()) {
+            state.setTrackMuted(trackIndex, due[i].targetMuted);
+        }
+    }
+}
 
 mpc::sequencer::MpcSequencePlaybackSession& sequenceSession() {
     if (!sequencePlayback) {
@@ -55,6 +76,7 @@ void stopSequenceForMutation() {
     }
 
     sequenceSession().stop();
+    clearTrackMuteQuantizer();
     core.sequenceTransportClock().clearQueuedSequence();
     core.sequenceTransportClock().stop(
             state.activeSequence(),
@@ -1833,6 +1855,56 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelectTrack(
     return toJString(env, "Track selection failed");
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackMuteQuantize(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(trackMuteQuantizer.mode());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackMuteQuantizeLabel(
+        JNIEnv* env, jobject /* thiz */)
+{
+    return toJString(env,
+            mpc::sequencer::trackMuteQuantizeLabel(trackMuteQuantizer.mode()));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTrackMuteQuantize(
+        JNIEnv* env, jobject /* thiz */, jint mode)
+{
+    if (mode < 0 || mode > 6) {
+        return toJString(env, "Track mute Q failed: invalid mode");
+    }
+
+    const auto nextMode =
+            static_cast<mpc::sequencer::TrackMuteQuantizeMode>(mode);
+    const auto previousMode = trackMuteQuantizer.mode();
+    trackMuteQuantizer.setMode(nextMode);
+
+    if (nextMode == mpc::sequencer::TrackMuteQuantizeMode::Off
+            && previousMode != nextMode) {
+        trackMuteQuantizer.clear();
+        return toJString(env, "MUTE Q: OFF | pending mute queue cleared");
+    }
+
+    return toJString(env,
+            std::string("MUTE Q: ")
+                    + mpc::sequencer::trackMuteQuantizeLabel(nextMode));
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackMutePending(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    if (trackIndex < 0) return -1;
+    const auto pending =
+            trackMuteQuantizer.pendingTargetForTrack(
+                    static_cast<std::size_t>(trackIndex));
+    return pending.has_value() ? (*pending ? 1 : 0) : -1;
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackMuted(
         JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
@@ -1862,14 +1934,54 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackMuted
         JNIEnv* env, jobject /* thiz */, jint trackIndex)
 {
     if (trackIndex < 0) return toJString(env, "Track mute failed");
-    auto& state = mpc::MpcCore::instance().projectState();
-    if (static_cast<std::size_t>(trackIndex) >= state.activeSequence().tracks.size()) {
+
+    auto& core = mpc::MpcCore::instance();
+    auto& state = core.projectState();
+    const auto index = static_cast<std::size_t>(trackIndex);
+    if (index >= state.activeSequence().tracks.size()) {
         return toJString(env, "Track mute failed: invalid track");
     }
 
-    const auto muted =
-            !state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)].muted;
-    if (!state.setTrackMuted(static_cast<std::size_t>(trackIndex), muted)) {
+    const auto& sequence = state.activeSequence();
+    const auto currentMuted = sequence.tracks[index].muted;
+
+    if (sequenceSession().isPlaying()
+            && trackMuteQuantizer.mode()
+                    != mpc::sequencer::TrackMuteQuantizeMode::Off) {
+        const auto pending = trackMuteQuantizer.pendingTargetForTrack(index);
+        const auto basis = pending.has_value() ? *pending : currentMuted;
+        const auto targetMuted = !basis;
+        const auto resolutionTicks =
+                mpc::sequencer::trackMuteQuantizeTicks(
+                        trackMuteQuantizer.mode(),
+                        sequence.numerator,
+                        sequence.denominator);
+        const auto loopStart = sequence.loopEnabled ? sequence.loopStartTicks : 0;
+        const auto loopEnd = sequence.loopEnabled
+                ? sequence.loopEndTicks
+                : sequence.lengthTicks;
+
+        if (!trackMuteQuantizer.enqueue(
+                    index,
+                    targetMuted,
+                    sequenceSession().positionTicks(),
+                    loopStart,
+                    loopEnd,
+                    resolutionTicks)) {
+            return toJString(env, "Track mute failed: pending queue full");
+        }
+
+        return toJString(
+                env,
+                std::string("Track ")
+                        + std::to_string(trackIndex + 1)
+                        + (targetMuted ? " mute queued" : " unmute queued")
+                        + " • Q "
+                        + mpc::sequencer::trackMuteQuantizeLabel(
+                                trackMuteQuantizer.mode()));
+    }
+
+    if (!state.setTrackMuted(index, !currentMuted)) {
         return toJString(env, "Track mute failed");
     }
 
@@ -1877,7 +1989,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackMuted
             env,
             std::string("Track ")
                     + std::to_string(trackIndex + 1)
-                    + (muted ? " muted" : " unmuted"));
+                    + (!currentMuted ? " muted" : " unmuted"));
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -1961,6 +2073,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStart(
 {
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
+    clearTrackMuteQuantizer();
     const auto audioResult = core.audio().start();
     if (audioResult.rfind("Audio output", 0) != 0) {
         return toJString(
@@ -2009,6 +2122,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStop(
 {
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
+    clearTrackMuteQuantizer();
     const auto position = sequenceSession().positionTicks();
     const auto recorded = core.sequenceRecorder().finish(
             core.projectState(),
@@ -2036,6 +2150,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceReset(
 {
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
+    clearTrackMuteQuantizer();
     const auto position = sequenceSession().positionTicks();
     core.sequenceRecorder().finish(
             core.projectState(),
@@ -2074,51 +2189,68 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdvance(
         return 0;
     }
 
-    const auto advanceResult = sequenceSession().advance(
-            ticks,
-            0x53455131u,
-            core.audio().outputSampleRate());
-
+    std::int64_t remainingTicks = ticks;
     auto& state = core.projectState();
-    const auto queuedIndex =
-            core.sequenceTransportClock().queuedSequenceIndex();
 
-    if (advanceResult.wrapped
-            && queuedIndex >= 0
-            && static_cast<std::size_t>(queuedIndex) < state.sequenceCount()) {
-        const bool wasRecording = core.sequenceRecorder().active();
-        if (wasRecording) {
-            core.sequenceRecorder().finish(
-                    state,
-                    core.sequenceRecordQueue(),
-                    sequenceSession().positionTicks());
+    while (remainingTicks > 0 && sequenceSession().isPlaying()) {
+        const auto nextMuteChange = trackMuteQuantizer.nextDueTicks();
+        if (nextMuteChange == 0) {
+            applyDueTrackMuteCommands();
+            continue;
         }
 
-        sequenceSession().stop();
-        core.sequenceTransportClock().clearQueuedSequence();
+        const auto chunk = std::min(remainingTicks, nextMuteChange);
+        const auto advanceResult = sequenceSession().advance(
+                chunk,
+                0x53455131u,
+                core.audio().outputSampleRate());
 
-        if (state.selectSequence(static_cast<std::size_t>(queuedIndex))
-                && sequenceSession().start()) {
-            if (wasRecording) {
-                core.sequenceRecorder().begin(state);
+        trackMuteQuantizer.advance(chunk);
+        applyDueTrackMuteCommands();
+        remainingTicks -= chunk;
+
+        if (advanceResult.wrapped) {
+            const auto queuedIndex =
+                    core.sequenceTransportClock().queuedSequenceIndex();
+            if (queuedIndex >= 0
+                    && static_cast<std::size_t>(queuedIndex) < state.sequenceCount()) {
+                const bool wasRecording = core.sequenceRecorder().active();
+                if (wasRecording) {
+                    core.sequenceRecorder().finish(
+                            state,
+                            core.sequenceRecordQueue(),
+                            sequenceSession().positionTicks());
+                }
+
+                sequenceSession().stop();
+                core.sequenceTransportClock().clearQueuedSequence();
+                clearTrackMuteQuantizer();
+
+                if (state.selectSequence(static_cast<std::size_t>(queuedIndex))
+                        && sequenceSession().start()) {
+                    if (wasRecording) {
+                        core.sequenceRecorder().begin(state);
+                    }
+                    core.sequenceTransportClock().start(
+                            state.activeSequence(),
+                            sequenceSession().positionTicks(),
+                            monotonicNanos());
+                } else {
+                    core.sequenceTransportClock().stop(
+                            state.activeSequence(),
+                            sequenceSession().positionTicks(),
+                            monotonicNanos());
+                    break;
+                }
             }
-            core.sequenceTransportClock().start(
-                    state.activeSequence(),
-                    sequenceSession().positionTicks(),
-                    monotonicNanos());
-        } else {
-            core.sequenceTransportClock().stop(
-                    state.activeSequence(),
-                    sequenceSession().positionTicks(),
-                    monotonicNanos());
         }
-    } else {
-        core.sequenceTransportClock().update(
-                state.activeSequence(),
-                sequenceSession().positionTicks(),
-                monotonicNanos(),
-                sequenceSession().isPlaying());
     }
+
+    core.sequenceTransportClock().update(
+            state.activeSequence(),
+            sequenceSession().positionTicks(),
+            monotonicNanos(),
+            sequenceSession().isPlaying());
 
     core.sequenceRecorder().drain(
             state,

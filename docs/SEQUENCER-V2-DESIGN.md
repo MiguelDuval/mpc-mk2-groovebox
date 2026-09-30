@@ -75,7 +75,18 @@ The Sequencer includes a dedicated Track Performance surface rather than mixing 
 
 Mute and Solo are transport-safe controls: they do not reset the sequence position, stop playback, recreate the playback session, or modify note data. Eligible Drum-track playback instances remain alive while each scheduler pass checks the current Track performance state. This lets a performer bring layers in and out without restarting the phrase.
 
-The surface now also has a small physical-controller bridge. While Track Performance is active, the visible 16-track bank maps to the physical 16 pads: a pad tap is emitted as a semantic MUTE toggle and a press held for 500 ms or longer is emitted as a semantic SOLO toggle. Gesture decoding stays on the MIDI input side; the resulting action is handed to the Android main thread before domain state changes. The controller pads mirror ON/selected, MUTE and SOLO state with cached LED writes. Physical hardware behavior is implemented but remains pending real-device verification.
+The surface now also has a small physical-controller bridge. While Track Performance is active, the visible 16-track bank maps to the physical 16 pads: a pad tap is emitted as a semantic MUTE toggle and a press held for 500 ms or longer is emitted as a semantic SOLO toggle. Gesture decoding stays on the MIDI input side; the resulting action is handed to the Android main thread before domain state changes. The controller pads mirror ON/selected, MUTE, SOLO and queued-mute state with cached LED writes. Physical hardware behavior is implemented but remains pending real-device verification.
+
+### Track Mute Time Correct
+
+MPC Software provides Time Correct for Track Mute, with divisions from 1/16 through 2 bars; a 1-bar setting aligns the mute to the beginning of the next measure.
+
+This groovebox now follows that live-performance principle with an explicit MUTE Q control: OFF, 1/16, 1/8, 1/4, 1/2, 1 BAR or 2 BAR. OFF is the default and preserves immediate mute behavior. When quantization is enabled during playback, a mute/unmute request becomes a pending target and is applied at the next selected musical boundary inside the native sequence advance window. The software surface and physical pads show a distinct queued state. SOLO remains immediate.
+
+Pending mute commands are transport-safe: they never touch the audio callback, and they are cleared when playback or sequence mutation invalidates the current musical context. A loop boundary is always respected, so a queued action cannot remain stranded beyond the current loop. The silent-cursor rule means muting a track changes audibility without freezing its musical position.
+
+Reference: Akai MPC Software User Guide, Track Mute / Time Correct:
+https://cdn.inmusicbrands.com/akai/214SMPCSTEMS/MPC%20Software%20-%20User%20Guide%20-%20v2.14.pdf
 
 ## Live Sequence Launcher
 

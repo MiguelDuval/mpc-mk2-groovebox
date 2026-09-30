@@ -314,6 +314,17 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcTrackPerformanceTests.cpp             -o build/native-tests/mpc_track_performance_tests
           build/native-tests/mpc_track_performance_tests
 
+      - name: Test MPC track mute quantizer
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcTrackMuteQuantizerTests.cpp \
+            -o build/native-tests/mpc_track_mute_quantizer_tests
+          build/native-tests/mpc_track_mute_quantizer_tests
+
       - name: Test MPC track performance MIDI gesture
         shell: bash
         run: |
