@@ -6,6 +6,7 @@
 #include "MPC/Sequencer/MpcSequencerPadRouter.h"
 #include "MPC/Sequencer/MpcSequencerRuntime.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -20,6 +21,7 @@ struct SequencerPlaybackResult final {
     std::size_t dropped = 0;
     std::size_t invalid = 0;
     bool schedulingTruncated = false;
+    bool wrapped = false;
 };
 
 class MpcSequencerPlayback final {
@@ -67,6 +69,26 @@ public:
         if (sampleRate <= 0) {
             result.invalid = 1;
             return result;
+        }
+
+        if (runtime_.isPlaying()
+                && deltaTicks > 0
+                && sequence_.loopEnabled) {
+            const length = std::max<std::int64_t>(
+                    1,
+                    static_cast<std::int64_t>(sequence_.lengthTicks));
+            const loopStart = std::clamp<std::int64_t>(
+                    sequence_.loopStartTicks,
+                    0,
+                    length - 1);
+            const loopEnd = std::clamp<std::int64_t>(
+                    sequence_.loopEndTicks,
+                    loopStart + 1,
+                    length);
+            const position = runtime_.positionTicks();
+            result.wrapped = deltaTicks >= std::max<std::int64_t>(
+                    1,
+                    loopEnd - position);
         }
 
         const auto schedule = runtime_.advance(
