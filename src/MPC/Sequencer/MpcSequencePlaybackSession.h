@@ -18,6 +18,7 @@ struct SequencePlaybackAggregate final {
     std::size_t queued = 0;
     std::size_t dropped = 0;
     std::size_t invalid = 0;
+    bool wrapped = false;
 };
 
 class MpcSequencePlaybackSession final {
@@ -91,6 +92,31 @@ public:
             std::uint32_t seed,
             std::int32_t sampleRate) noexcept {
         SequencePlaybackAggregate result;
+        if (!playbacks_.empty()
+                && deltaTicks > 0
+                && playbacks_.front()->isPlaying()) {
+            const auto& sequence = projectState_.activeSequence();
+            if (sequence.loopEnabled) {
+                const auto loopLength =
+                        std::max<std::int64_t>(
+                                1,
+                                static_cast<std::int64_t>(
+                                        sequence.loopEndTicks)
+                                - static_cast<std::int64_t>(
+                                        sequence.loopStartTicks));
+                const auto position = playbacks_.front()->positionTicks();
+                const auto loopEnd = std::clamp<std::int64_t>(
+                        sequence.loopEndTicks,
+                        sequence.loopStartTicks + 1,
+                        std::max<std::int64_t>(1, sequence.lengthTicks));
+                result.wrapped =
+                        deltaTicks >= std::max<std::int64_t>(
+                                1,
+                                loopEnd - position)
+                        || deltaTicks >= loopLength;
+            }
+        }
+
         for (auto& playback : playbacks_) {
             const auto value = playback->advance(
                     deltaTicks, seed, sampleRate);
