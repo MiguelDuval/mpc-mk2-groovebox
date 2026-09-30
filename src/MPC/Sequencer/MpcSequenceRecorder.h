@@ -140,11 +140,13 @@ public:
             note.probability = 127;
             note.ratchet = 1;
 
-            quantizeAndSwing(
-                    note,
-                    static_cast<std::int32_t>(length),
-                    state.activeSequence().quantizeGridTicks,
-                    state.activeSequence().swingPercent);
+            if (state.activeSequence().timingCorrectEnabled) {
+                quantizeAndSwing(
+                        note,
+                        static_cast<std::int32_t>(length),
+                        state.activeSequence().quantizeGridTicks,
+                        state.activeSequence().swingPercent);
+            }
 
             if (mode_ == PatternRecordMode::Replace
                     && !replaceCleared_[trackIndex]) {
