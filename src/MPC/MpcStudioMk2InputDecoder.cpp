@@ -72,6 +72,17 @@ std::optional<InputEvent> decodeInput(std::span<const std::uint8_t> message) {
                     };
                 }
 
+                if (number == 78) {
+                    return InputEvent{
+                        InputEventType::TouchStripPress,
+                        channel,
+                        number,
+                        velocity,
+                        0xFF,
+                        pressed
+                    };
+                }
+
                 if (findButton(number) != nullptr) {
                     return InputEvent{
                         InputEventType::Button,
