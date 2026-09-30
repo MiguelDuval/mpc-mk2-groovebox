@@ -3591,6 +3591,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MpcStudioMk2SemanticActions.HALF_LEVEL_STATE:
                 setBottomStatus(value0 != 0 ? "HALF LEVEL ON • 64" : "HALF LEVEL OFF");
                 return;
+            case MpcStudioMk2SemanticActions.SIXTEEN_LEVEL_STATE:
+                if (value0 != 0 && value1 >= 0) {
+                    setBottomStatus(
+                            "16 LEVEL • VELOCITY • SOURCE PAD " + (value1 + 1));
+                } else if (value0 != 0) {
+                    setBottomStatus("16 LEVEL unavailable • hit a pad first");
+                } else {
+                    setBottomStatus("16 LEVEL OFF");
+                }
+                return;
+            case MpcStudioMk2SemanticActions.HALF_LEVEL_STATE:
+                setBottomStatus(value0 != 0 ? "HALF LEVEL ON • 64" : "HALF LEVEL OFF");
+                return;
             case MpcStudioMk2SemanticActions.PAD_MUTE_MODE_STATE:
                 setBottomStatus(value0 != 0 ? "PAD MUTE MODE" : "PAD MUTE MODE OFF");
                 return;
