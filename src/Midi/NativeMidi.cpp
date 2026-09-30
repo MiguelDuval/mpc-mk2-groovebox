@@ -3,11 +3,13 @@
 #include "../MPC/MpcCore.h"
 #include "../MPC/MpcStudioMk2InputDecoder.h"
 #include "../MPC/MpcStudioMk2LedProtocol.h"
+#include "../MPC/Sequencer/MpcSequenceLauncher.h"
 
 #include <android/log.h>
 #include <jni.h>
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <optional>
 #include <vector>
@@ -15,6 +17,9 @@
 namespace {
 
 constexpr const char* kTag = "MpcMk2Groovebox";
+
+std::atomic<bool> sequenceLauncherEnabled{false};
+std::atomic<std::size_t> sequenceLauncherBank{0};
 
 const char* eventTypeName(mpc::studio::InputEventType type) {
     using Type = mpc::studio::InputEventType;
@@ -57,10 +62,43 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
     if (event->type == mpc::studio::InputEventType::PadNote) {
         auto& core = mpc::MpcCore::instance();
 
+        if (sequenceLauncherEnabled.load(std::memory_order_acquire)) {
+            if (!event->pressed) {
+                return std::nullopt;
+            }
+
+            const auto bank =
+                    sequenceLauncherBank.load(std::memory_order_acquire);
+            const auto action =
+                    mpc::sequencer::handleSequencePadPress(
+                            core.projectState(),
+                            core.sequenceTransportClock(),
+                            bank,
+                            event->padIndex,
+                            timestamp);
+            if (action == mpc::sequencer::SequenceLaunchAction::Unavailable) {
+                return std::nullopt;
+            }
+
+            const auto targetIndex = bank * 16u + event->padIndex;
+            const bool isActive =
+                    core.projectState().activeSequenceIndex() == targetIndex;
+            const bool isQueued =
+                    core.sequenceTransportClock().queuedSequenceIndex()
+                    == static_cast<std::int32_t>(targetIndex);
+
+            return mpc::studio::makePadLedSysEx(
+                    event->padIndex,
+                    mpc::studio::Rgb{
+                            isActive ? 96u : 24u,
+                            isQueued ? 127u : 24u,
+                            24u});
+        }
+
         if (event->pressed) {
             core.audio().triggerPad(
-                event->padIndex,
-                event->value);
+                    event->padIndex,
+                    event->value);
         }
 
         const auto& state = core.projectState();
@@ -141,6 +179,21 @@ jbyteArray toJavaByteArray(
         static_cast<jsize>(Size),
         reinterpret_cast<const jbyte*>(bytes.data()));
     return result;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLauncherContext(
+        JNIEnv* /* env */,
+        jclass /* clazz */,
+        jboolean enabled,
+        jint bank)
+{
+    sequenceLauncherEnabled.store(
+            enabled == JNI_TRUE,
+            std::memory_order_release);
+    sequenceLauncherBank.store(
+            bank < 0 ? 0u : static_cast<std::size_t>(bank),
+            std::memory_order_release);
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
