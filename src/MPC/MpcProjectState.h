@@ -57,6 +57,14 @@ public:
         return true;
     }
 
+    bool setTrackLengthBars(
+            std::size_t trackIndex,
+            std::int32_t bars) noexcept;
+    std::int32_t trackLengthTicks(
+            std::size_t trackIndex) const noexcept;
+    std::string trackLengthStatus(
+            std::size_t trackIndex) const;
+
     bool setSequenceTempo(double tempoBpm) noexcept;
     bool setSequenceBars(std::int32_t bars) noexcept;
     bool setSequenceTimeSignature(
