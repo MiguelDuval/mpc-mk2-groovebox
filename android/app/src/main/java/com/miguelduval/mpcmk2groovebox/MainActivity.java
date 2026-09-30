@@ -301,7 +301,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceOverviewView = new SequenceOverviewView(this);
         sequenceOverviewView.setContentDescription("Sequence playback overview");
         root.addView(sequenceOverviewView, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(8)));
 
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.HORIZONTAL);
