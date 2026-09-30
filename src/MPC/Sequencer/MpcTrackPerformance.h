@@ -28,4 +28,13 @@ inline bool shouldScheduleTrack(
     return true;
 }
 
+// Live MUTE/SOLO changes the audible layer, not musical time.
+// A track that is currently inaudible must keep its playback cursor moving
+// so unmuting/unsoloing returns it at the same musical position as the rest.
+inline bool shouldAdvanceTrackSilently(
+        const domain::Track& track,
+        bool anySolo) noexcept {
+    return !shouldScheduleTrack(track, anySolo);
+}
+
 } // namespace mpc::sequencer
