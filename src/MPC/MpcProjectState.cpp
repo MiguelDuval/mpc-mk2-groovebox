@@ -110,7 +110,7 @@ bool MpcProjectState::setTrackArmed(
 }
 
 bool MpcProjectState::addSequence(std::string name) {
-    if (project_.sequences.size() >= domain::kMaxSequenceTracks) {
+    if (project_.sequences.size() >= domain::kMaxSequences) {
         return false;
     }
 
@@ -119,7 +119,7 @@ bool MpcProjectState::addSequence(std::string name) {
     const auto number = project_.sequences.size() + 1;
     sequence.id = "sequence-" + std::to_string(number);
     sequence.name = name.empty()
-            ? ("Sequence " + (number < 10 ? "0" : "") + std::to_string(number))
+            ? (std::string("Sequence ") + (number < 10 ? "0" : "") + std::to_string(number))
             : std::move(name);
     sequence.tempoBpm = source.tempoBpm;
     sequence.numerator = source.numerator;
