@@ -1201,7 +1201,26 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStop(
     auto& core = mpc::MpcCore::instance();
     const auto position = sequenceSession().positionTicks();
     const auto recorded = core.sequenceRecorder().finish(
-            core.projectSextern "C" JNIEXPORT jstring JNICALL
+            core.projectState(),
+            core.sequenceRecordQueue(),
+            position);
+
+    sequenceSession().stop();
+    core.sequenceTransportClock().stop(
+            core.projectState().activeSequence(),
+            position,
+            monotonicNanos());
+
+    return toJString(
+            env,
+            "Sequence stopped"
+                    + std::string(" | recorded=")
+                    + std::to_string(recorded)
+                    + " | "
+                    + core.projectState().sequenceStatus());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceReset(
         JNIEnv* env, jobject /* thiz */)
 {
