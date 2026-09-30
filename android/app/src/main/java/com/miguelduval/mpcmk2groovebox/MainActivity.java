@@ -26,6 +26,7 @@ import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.ByteArrayOutputStream;
@@ -54,6 +55,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int ACCENT_2 = Color.rgb(255, 180, 72);
     private static final int DANGER = Color.rgb(236, 83, 83);
     private static final int ACTIVE = Color.rgb(63, 207, 117);
+    private static final int TYPE_SAMPLE = Color.rgb(69, 211, 255);
+    private static final int TYPE_SYNTH = Color.rgb(188, 124, 255);
+    private static final int TYPE_MIDI = Color.rgb(255, 180, 72);
+    private static final int TYPE_AUDIO = Color.rgb(63, 207, 117);
 
     static {
         System.loadLibrary("mpcgroovebox");
@@ -73,7 +78,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView filterInfo;
     private TextView recordingInfo;
     private final Button[] padButtons = new Button[16];
-    private final Button[] modeButtons = new Button[7];
+    private final Button[] modeButtons = new Button[8];
     private final Handler waveformUiHandler = new Handler(Looper.getMainLooper());
     private Runnable recordingWaveformUpdater;
     private WaveformView sampleWaveform;
@@ -93,8 +98,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView sequenceCounterView;
     private TextView sequencePositionView;
     private TextView tempoView;
-    private int trackControlMode = 0; // 0=perform, 1=pad mute, 2=pad solo.
-    private GridLayout trackGrid;
+    private TextView recordModeView;
+    private LinearLayout trackList;
 
     private static native String nativeEngineInfo();
     private static native String nativeAudioLoadSample(byte[] data);
@@ -291,18 +296,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bar.setPadding(dp(8), dp(5), dp(8), dp(5));
         bar.setBackgroundColor(SURFACE);
 
-        projectState = label("UNTITLED", 11, TEXT);
+        projectState = label("UNTITLED", 12, TEXT);
         projectState.setTypeface(Typeface.DEFAULT_BOLD);
         bar.addView(projectState, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.95f));
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1.05f));
 
-        pageTitle = label("MAIN", 11, ACCENT);
+        pageTitle = label("MAIN", 10, MUTED);
         pageTitle.setGravity(Gravity.CENTER);
         pageTitle.setTypeface(Typeface.DEFAULT_BOLD);
         bar.addView(pageTitle, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.42f));
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.34f));
 
-        sequenceCounterView = statusChip("SEQ 01/01", TEXT);
+        sequenceCounterView = statusChip("SEQ 01", TEXT);
         sequenceCounterView.setTextSize(9);
         sequenceCounterView.setContentDescription("Current sequence counter");
         sequenceCounterView.setOnClickListener(v -> {
@@ -311,32 +316,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshTransportUi();
             refreshTrackGrid();
         });
-        bar.addView(sequenceCounterView, new LinearLayout.LayoutParams(dp(84), dp(36)));
+        bar.addView(sequenceCounterView, new LinearLayout.LayoutParams(dp(62), dp(36)));
 
         sequencePositionView = statusChip("001.1.000", TEXT);
         sequencePositionView.setTextSize(9);
-        bar.addView(sequencePositionView, new LinearLayout.LayoutParams(dp(78), dp(36)));
+        bar.addView(sequencePositionView, new LinearLayout.LayoutParams(dp(82), dp(36)));
 
         tempoView = statusChip("120.0", TEXT);
         tempoView.setTextSize(9);
-        bar.addView(tempoView, new LinearLayout.LayoutParams(dp(66), dp(36)));
+        bar.addView(tempoView, new LinearLayout.LayoutParams(dp(58), dp(36)));
 
-        audioState = statusChip("AUDIO OFF", MUTED);
-        bar.addView(audioState, new LinearLayout.LayoutParams(dp(78), dp(36)));
-
-        midiState = statusChip("MIDI —", MUTED);
-        bar.addView(midiState, new LinearLayout.LayoutParams(dp(78), dp(36)));
-
-        Button play = topButton("PLAY");
-        play.setOnClickListener(v -> {
-            final String result = nativeSequenceStart();
-            setAudioStateFromResult(result);
-            setBottomStatus(result);
-            refreshTransportUi();
-        });
-        bar.addView(play, new LinearLayout.LayoutParams(dp(58), dp(36)));
-
-        Button stop = topButton("STOP");
+        Button stop = transportButton("STOP", SURFACE_2, LINE, TEXT);
         stop.setOnClickListener(v -> {
             final String sequenceResult = nativeSequenceStop();
             final String audioResult = nativeAudioStop();
@@ -344,9 +334,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(sequenceResult + " | " + audioResult);
             refreshTransportUi();
         });
-        bar.addView(stop, new LinearLayout.LayoutParams(dp(58), dp(36)));
+        bar.addView(stop, new LinearLayout.LayoutParams(dp(54), dp(38)));
 
-        Button rec = topButton("REC");
+        Button play = transportButton("PLAY", ACTIVE, ACTIVE, BG);
+        play.setOnClickListener(v -> {
+            final String result = nativeSequenceStart();
+            setAudioStateFromResult(result);
+            setBottomStatus(result);
+            refreshTransportUi();
+        });
+        bar.addView(play, new LinearLayout.LayoutParams(dp(72), dp(40)));
+
+        Button rec = transportButton("REC", DANGER, DANGER, Color.WHITE);
         rec.setContentDescription("Sequence Record");
         rec.setOnClickListener(v -> {
             final String result = nativeSequenceRecordToggle();
@@ -354,31 +353,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshTransportUi();
             refreshTrackGrid();
         });
-        bar.addView(rec, new LinearLayout.LayoutParams(dp(58), dp(36)));
+        bar.addView(rec, new LinearLayout.LayoutParams(dp(72), dp(40)));
 
-        Button arm = topButton("ARM");
-        arm.setContentDescription("Arm selected track");
-        arm.setOnClickListener(v -> {
-            final boolean armed = !nativeSequenceIsSelectedTrackArmed();
-            final String result = nativeSequenceSetSelectedTrackArmed(armed);
-            setBottomStatus(result);
-            refreshTransportUi();
-            refreshTrackGrid();
-        });
-        bar.addView(arm, new LinearLayout.LayoutParams(dp(58), dp(36)));
-
-        Button dub = topButton("DUB");
-        dub.setContentDescription("Toggle overdub");
-        dub.setOnClickListener(v -> {
-            final int nextMode = nativeSequenceGetRecordMode() == 0 ? 1 : 0;
-            setBottomStatus(nativeSequenceSetRecordMode(nextMode));
+        recordModeView = statusChip("REPL", TEXT);
+        recordModeView.setTextSize(8);
+        recordModeView.setContentDescription("Recording mode");
+        recordModeView.setOnClickListener(v -> {
+            final int next = nativeSequenceGetRecordMode() == 0 ? 1 : 0;
+            setBottomStatus(nativeSequenceSetRecordMode(next));
             refreshTransportUi();
         });
-        bar.addView(dub, new LinearLayout.LayoutParams(dp(58), dp(36)));
+        bar.addView(recordModeView, new LinearLayout.LayoutParams(dp(54), dp(36)));
+
+        audioState = statusChip("AUDIO", MUTED);
+        audioState.setTextSize(8);
+        bar.addView(audioState, new LinearLayout.LayoutParams(dp(52), dp(34)));
+
+        midiState = statusChip("MIDI", MUTED);
+        midiState.setTextSize(8);
+        bar.addView(midiState, new LinearLayout.LayoutParams(dp(52), dp(34)));
 
         Button midi = topButton("MIDI");
         midi.setOnClickListener(v -> showMidiPage());
-        bar.addView(midi, new LinearLayout.LayoutParams(dp(58), dp(36)));
+        bar.addView(midi, new LinearLayout.LayoutParams(dp(48), dp(36)));
 
         Button menu = topButton("MENU");
         menu.setOnClickListener(v -> showMenuPage());
@@ -387,20 +384,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return bar;
     }
 
+
     private View buildModeRail() {
         LinearLayout rail = new LinearLayout(this);
         rail.setOrientation(LinearLayout.VERTICAL);
         rail.setPadding(dp(6), dp(6), dp(6), dp(6));
         rail.setBackgroundColor(Color.rgb(18, 21, 24));
 
-        String[] pages = {"MAIN", "BROWSE", "SAMPLE", "SEQ", "MIX", "REC", "MENU"};
+        String[] pages = {
+                "MAIN", "BROWSE", "SAMPLE", "SEQ",
+                "TRACKS", "MIX", "REC", "MENU"
+        };
         for (int i = 0; i < pages.length; i++) {
             Button button = modeButton(pages[i], pages[i]);
             modeButtons[i] = button;
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
             params.topMargin = i == 0 ? 0 : dp(3);
-            params.bottomMargin = i == pages.length - 1 ? 0 : 0;
             rail.addView(button, params);
         }
         return rail;
@@ -408,7 +408,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private Button modeButton(String text, String page) {
         Button b = button(text);
-        b.setTextSize(12);
+        b.setTextSize(11);
         b.setTypeface(Typeface.DEFAULT_BOLD);
         b.setMinHeight(0);
         b.setMinimumHeight(0);
@@ -421,6 +421,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 case "BROWSE": showBrowserPage(); break;
                 case "SAMPLE": showSamplePage(); break;
                 case "SEQ": showSequencePage(); break;
+                case "TRACKS": showTrackPage(); break;
                 case "MIX": showMixPage(); break;
                 case "REC": showRecordPage(); break;
                 default: showMenuPage(); break;
@@ -429,6 +430,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         });
         return b;
     }
+
 
     private void updateModeRailSelection() {
         for (Button button : modeButtons) {
@@ -474,42 +476,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
-        page.addView(buildTrackControlPanel(), new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(112)));
+        page.addView(buildSelectedTrackContext(),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
 
         LinearLayout workspace = row();
 
         LinearLayout padSurface = column();
-        padSurface.addView(sectionLabel("PERFORM / 16 PADS"));
+        padSurface.addView(sectionLabel("PERFORM • 16 PADS"));
         padSurface.addView(buildPadGrid(), new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         LinearLayout quick = row();
         quick.addView(actionButton("LOAD", v -> openWavPicker()), weight());
         quick.addView(actionButton("SAMPLE", v -> showSamplePage()), weight());
+        quick.addView(actionButton("SEQ", v -> showSequencePage()), weight());
+        quick.addView(actionButton("TRACKS", v -> showTrackPage()), weight());
         quick.addView(actionButton("REC", v -> showRecordPage()), weight());
-        quick.addView(actionButton("MIX", v -> showMixPage()), weight());
-        quick.addView(actionButton(
-                trackControlMode == 1 ? "PAD MUTE ON" : "PAD MUTE",
-                v -> {
-                    trackControlMode = trackControlMode == 1 ? 0 : 1;
-                    refreshPadSelectionVisuals();
-                    refreshTrackGrid();
-                }), weight());
-        quick.addView(actionButton(
-                trackControlMode == 2 ? "PAD SOLO ON" : "PAD SOLO",
-                v -> {
-                    trackControlMode = trackControlMode == 2 ? 0 : 2;
-                    refreshPadSelectionVisuals();
-                    refreshTrackGrid();
-                }), weight());
         padSurface.addView(quick, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
 
         workspace.addView(padSurface, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.60f));
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.68f));
         workspace.addView(buildInspector(), new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.40f));
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.32f));
 
         page.addView(workspace, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
@@ -517,6 +507,81 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshPadSelectionVisuals();
         updateModeRailSelection();
     }
+
+    private View buildSelectedTrackContext() {
+        LinearLayout shell = new LinearLayout(this);
+        shell.setOrientation(LinearLayout.HORIZONTAL);
+        shell.setGravity(Gravity.CENTER_VERTICAL);
+        shell.setPadding(dp(8), dp(4), dp(8), dp(4));
+        shell.setBackground(strokeBackground(SURFACE, LINE, 8));
+
+        final int trackCount = nativeSequenceGetTrackCount();
+        if (trackCount <= 0) {
+            shell.addView(label("NO TRACKS", 11, MUTED), new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+            Button tracks = actionButton("TRACKS", v -> showTrackPage());
+            shell.addView(tracks, new LinearLayout.LayoutParams(dp(82), dp(42)));
+            return shell;
+        }
+
+        final int selected = Math.max(0, Math.min(
+                trackCount - 1, nativeSequenceGetSelectedTrack()));
+        final String raw = nativeSequenceTrackStatus(selected);
+        final String type = trackTypeLabel(raw);
+        final String name = trackName(raw);
+
+        TextView index = label(String.format(Locale.ROOT, "%02d", selected + 1),
+                13, trackTypeColor(type));
+        index.setGravity(Gravity.CENTER);
+        index.setTypeface(Typeface.DEFAULT_BOLD);
+        shell.addView(index, new LinearLayout.LayoutParams(dp(38), dp(42)));
+
+        LinearLayout textBlock = column();
+        TextView typeLabel = label(type, 8, trackTypeColor(type));
+        typeLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        textBlock.addView(typeLabel);
+        TextView nameLabel = label(name, 12, TEXT);
+        nameLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        textBlock.addView(nameLabel);
+        shell.addView(textBlock, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+        Button mute = actionButton(
+                nativeSequenceIsTrackMuted(selected) ? "M*" : "M",
+                v -> {
+                    setBottomStatus(nativeSequenceSetTrackMuted(
+                            selected, !nativeSequenceIsTrackMuted(selected)));
+                    showMainPage();
+                });
+        mute.setTextColor(nativeSequenceIsTrackMuted(selected) ? DANGER : TEXT);
+        shell.addView(mute, new LinearLayout.LayoutParams(dp(44), dp(42)));
+
+        Button solo = actionButton(
+                nativeSequenceIsTrackSoloed(selected) ? "S*" : "S",
+                v -> {
+                    setBottomStatus(nativeSequenceSetTrackSoloed(
+                            selected, !nativeSequenceIsTrackSoloed(selected)));
+                    showMainPage();
+                });
+        solo.setTextColor(nativeSequenceIsTrackSoloed(selected) ? TYPE_MIDI : TEXT);
+        shell.addView(solo, new LinearLayout.LayoutParams(dp(44), dp(42)));
+
+        Button arm = actionButton(
+                nativeSequenceIsSelectedTrackArmed() ? "ARM*" : "ARM",
+                v -> {
+                    final boolean next = !nativeSequenceIsSelectedTrackArmed();
+                    setBottomStatus(nativeSequenceSetSelectedTrackArmed(next));
+                    showMainPage();
+                });
+        arm.setTextColor(nativeSequenceIsSelectedTrackArmed() ? DANGER : TEXT);
+        shell.addView(arm, new LinearLayout.LayoutParams(dp(60), dp(42)));
+
+        Button tracks = actionButton("ALL", v -> showTrackPage());
+        shell.addView(tracks, new LinearLayout.LayoutParams(dp(44), dp(42)));
+
+        return shell;
+    }
+
 
     private View buildPadGrid() {
         LinearLayout grid = column();
@@ -527,30 +592,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Button b = button(String.format(Locale.ROOT, "%02d", pad + 1));
                 b.setTextSize(15);
                 b.setTypeface(Typeface.DEFAULT_BOLD);
-                b.setOnClickListener(v -> {
-                    if (trackControlMode != 0) {
-                        final int trackCount = nativeSequenceGetTrackCount();
-                        if (pad >= trackCount) {
-                            setBottomStatus("Pad " + (pad + 1)
-                                    + " has no mapped track yet");
-                            return;
-                        }
-
-                        final String result;
-                        if (trackControlMode == 1) {
-                            result = nativeSequenceSetTrackMuted(
-                                    pad, !nativeSequenceIsTrackMuted(pad));
-                        } else {
-                            result = nativeSequenceSetTrackSoloed(
-                                    pad, !nativeSequenceIsTrackSoloed(pad));
-                        }
-                        setBottomStatus(result);
-                        refreshPadSelectionVisuals();
-                        refreshTrackGrid();
-                        return;
-                    }
-                    selectAndTriggerPad(pad, 112);
-                });
+                b.setOnClickListener(v -> selectAndTriggerPad(pad, 112));
                 b.setOnLongClickListener(v -> {
                     selectedPad = pad;
                     refreshPadSelectionVisuals();
@@ -565,6 +607,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         return grid;
     }
+
 
     private View buildInspector() {
         LinearLayout inspector = panel();
@@ -914,84 +957,116 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout panel = panel();
 
         LinearLayout header = row();
-        header.addView(sectionLabel("TRACKS  •  MUTE / SOLO / ARM"),
-                new LinearLayout.LayoutParams(0, dp(30), 1));
-        header.addView(actionButton(
-                trackControlMode == 1 ? "PAD MUTE ON" : "PAD MUTE",
-                v -> {
-                    trackControlMode = trackControlMode == 1 ? 0 : 1;
-                    refreshPadSelectionVisuals();
-                    refreshTrackGrid();
-                }),
-                new LinearLayout.LayoutParams(dp(92), dp(30)));
-        header.addView(actionButton(
-                trackControlMode == 2 ? "PAD SOLO ON" : "PAD SOLO",
-                v -> {
-                    trackControlMode = trackControlMode == 2 ? 0 : 2;
-                    refreshPadSelectionVisuals();
-                    refreshTrackGrid();
-                }),
-                new LinearLayout.LayoutParams(dp(92), dp(30)));
-        header.addView(actionButton("+ TRACK", v -> {
-            setBottomStatus(nativeSequenceAddTrack(0));
-            refreshTrackGrid();
-            refreshPadSelectionVisuals();
-        }), new LinearLayout.LayoutParams(dp(78), dp(30)));
+        header.addView(sectionLabel("TRACKS • SEQUENCE "
+                + String.format(Locale.ROOT, "%02d", nativeSequenceGetIndex() + 1)),
+                new LinearLayout.LayoutParams(0, dp(32), 1));
+
+        Button seq = actionButton("SEQUENCE", v -> showSequencePage());
+        header.addView(seq, new LinearLayout.LayoutParams(dp(92), dp(32)));
         panel.addView(header);
 
-        trackGrid = new GridLayout(this);
-        trackGrid.setColumnCount(4);
-        panel.addView(trackGrid, new LinearLayout.LayoutParams(
+        LinearLayout add = row();
+        add.addView(trackTypeButton("+ SAMPLE", 0), weight());
+        add.addView(trackTypeButton("+ SYNTH", 1), weight());
+        add.addView(trackTypeButton("+ MIDI", 3), weight());
+        add.addView(trackTypeButton("+ AUDIO", 4), weight());
+        panel.addView(add, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+
+        trackList = column();
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(trackList, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        panel.addView(scroll, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
         refreshTrackGrid();
         return panel;
     }
 
-    private void refreshTrackGrid() {
-        if (trackGrid == null) return;
+    private Button trackTypeButton(String text, int kind) {
+        Button b = actionButton(text, v -> {
+            setBottomStatus(nativeSequenceAddTrack(kind));
+            refreshTrackGrid();
+            refreshTransportUi();
+        });
+        final String type = trackTypeLabelFromKind(kind);
+        final int color = trackTypeColor(type);
+        b.setTextColor(color);
+        b.setBackground(strokeBackground(
+                Color.rgb(29, 33, 37), color, 8));
+        return b;
+    }
 
-        trackGrid.removeAllViews();
-        final int count = Math.min(16, nativeSequenceGetTrackCount());
+    private void refreshTrackGrid() {
+        if (trackList == null) return;
+
+        trackList.removeAllViews();
+        final int count = Math.min(32, nativeSequenceGetTrackCount());
         final int selected = nativeSequenceGetSelectedTrack();
 
         for (int i = 0; i < count; i++) {
             final int track = i;
+            final String raw = nativeSequenceTrackStatus(track);
+            final String type = trackTypeLabel(raw);
+            final String nameText = trackName(raw);
             final boolean muted = nativeSequenceIsTrackMuted(track);
             final boolean soloed = nativeSequenceIsTrackSoloed(track);
-            final String rawStatus = nativeSequenceTrackStatus(track);
-            final String displayName = rawStatus.split("\\|")[0].trim();
+            final boolean armed = track == selected
+                    && nativeSequenceIsSelectedTrackArmed();
 
-            LinearLayout card = column();
-            card.setPadding(dp(4), dp(2), dp(4), dp(2));
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(8), dp(4), dp(6), dp(4));
+
+            final int typeColor = trackTypeColor(type);
             final int fill = selected == track
                     ? Color.rgb(32, 52, 60)
                     : SURFACE_2;
             final int stroke = selected == track ? ACCENT : LINE;
-            card.setBackground(strokeBackground(fill, stroke, 7));
-
-            TextView name = label(String.format(Locale.ROOT,
-                    "%02d  %s", i + 1, displayName), 9, TEXT);
-            name.setTypeface(Typeface.DEFAULT_BOLD);
-            name.setGravity(Gravity.CENTER_VERTICAL);
-            card.addView(name, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
-
-            LinearLayout actions = row();
-            Button select = actionButton("SEL", v -> {
+            row.setBackground(strokeBackground(fill, stroke, 7));
+            row.setOnClickListener(v -> {
                 setBottomStatus(nativeSequenceSelectTrack(track));
                 refreshTrackGrid();
                 refreshTransportUi();
             });
-            actions.addView(select, new LinearLayout.LayoutParams(0, dp(30), 1));
+
+            TextView number = label(String.format(Locale.ROOT, "%02d", i + 1),
+                    12, typeColor);
+            number.setGravity(Gravity.CENTER);
+            number.setTypeface(Typeface.DEFAULT_BOLD);
+            row.addView(number, new LinearLayout.LayoutParams(dp(36), dp(48)));
+
+            TextView kind = label(type, 8, typeColor);
+            kind.setTypeface(Typeface.DEFAULT_BOLD);
+            kind.setGravity(Gravity.CENTER);
+            kind.setBackground(strokeBackground(
+                    Color.rgb(23, 26, 29), typeColor, 6));
+            row.addView(kind, new LinearLayout.LayoutParams(dp(68), dp(32)));
+
+            LinearLayout details = column();
+            TextView name = label(nameText, 12, TEXT);
+            name.setTypeface(Typeface.DEFAULT_BOLD);
+            details.addView(name);
+
+            String meta = raw.contains("events=")
+                    ? raw.substring(raw.indexOf("events=")).replace("|", "•").trim()
+                    : "Pattern";
+            TextView metaView = label(meta, 8, MUTED);
+            details.addView(metaView);
+            row.addView(details, new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
             Button mute = actionButton(muted ? "M*" : "M", v -> {
                 setBottomStatus(nativeSequenceSetTrackMuted(
                         track, !nativeSequenceIsTrackMuted(track)));
                 refreshTrackGrid();
-                refreshPadSelectionVisuals();
             });
             mute.setTextColor(muted ? DANGER : TEXT);
-            actions.addView(mute, new LinearLayout.LayoutParams(0, dp(30), 1));
+            row.addView(mute, new LinearLayout.LayoutParams(dp(44), dp(46)));
 
             Button solo = actionButton(soloed ? "S*" : "S", v -> {
                 setBottomStatus(nativeSequenceSetTrackSoloed(
@@ -999,11 +1074,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 refreshTrackGrid();
                 refreshPadSelectionVisuals();
             });
-            solo.setTextColor(soloed ? ACCENT_2 : TEXT);
-            actions.addView(solo, new LinearLayout.LayoutParams(0, dp(30), 1));
+            solo.setTextColor(soloed ? TYPE_MIDI : TEXT);
+            row.addView(solo, new LinearLayout.LayoutParams(dp(44), dp(46)));
 
-            final boolean armed = track == selected && nativeSequenceIsSelectedTrackArmed();
-            Button arm = actionButton(armed ? "A*" : "A", v -> {
+            Button arm = actionButton(armed ? "ARM*" : "ARM", v -> {
                 if (track != nativeSequenceGetSelectedTrack()) {
                     setBottomStatus(nativeSequenceSelectTrack(track));
                 }
@@ -1013,24 +1087,62 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 refreshTransportUi();
             });
             arm.setTextColor(armed ? DANGER : TEXT);
-            actions.addView(arm, new LinearLayout.LayoutParams(0, dp(30), 1));
+            row.addView(arm, new LinearLayout.LayoutParams(dp(60), dp(46)));
 
-            card.addView(actions);
-
-            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
-            lp.width = 0;
-            lp.height = dp(58);
-            lp.columnSpec = GridLayout.spec(i % 4, 1f);
-            lp.rowSpec = GridLayout.spec(i / 4, 1f);
-            lp.setMargins(dp(2), dp(2), dp(2), dp(2));
-            trackGrid.addView(card, lp);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(58));
+            lp.bottomMargin = dp(4);
+            trackList.addView(row, lp);
         }
 
         if (count == 0) {
-            TextView empty = label("No sequence tracks", 12, MUTED);
-            trackGrid.addView(empty);
+            TextView empty = label("No tracks in this sequence.", 12, MUTED);
+            empty.setGravity(Gravity.CENTER);
+            trackList.addView(empty, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(60)));
         }
     }
+
+    private String trackName(String rawStatus) {
+        if (rawStatus == null) return "Track";
+        String left = rawStatus;
+        final int separator = left.indexOf('|');
+        if (separator >= 0) left = left.substring(0, separator).trim();
+        final String[] parts = left.split("\\s+", 2);
+        return parts.length > 1 ? parts[1].trim() : left;
+    }
+
+    private String trackTypeLabel(String rawStatus) {
+        if (rawStatus == null) return "TRACK";
+        final String left = rawStatus.split("\\s+", 2)[0].trim().toUpperCase(Locale.ROOT);
+        if ("DRUM".equals(left) || "SAMPLE".equals(left)) return "SAMPLE";
+        if ("KEYGROUP".equals(left) || "PLUGIN".equals(left)) return "SYNTH";
+        if ("MIDI".equals(left)) return "MIDI";
+        if ("AUDIO".equals(left)) return "AUDIO";
+        return "TRACK";
+    }
+
+    private String trackTypeLabelFromKind(int kind) {
+        switch (kind) {
+            case 0: return "SAMPLE";
+            case 1:
+            case 2: return "SYNTH";
+            case 3: return "MIDI";
+            case 4: return "AUDIO";
+            default: return "TRACK";
+        }
+    }
+
+    private int trackTypeColor(String type) {
+        switch (type) {
+            case "SAMPLE": return TYPE_SAMPLE;
+            case "SYNTH": return TYPE_SYNTH;
+            case "MIDI": return TYPE_MIDI;
+            case "AUDIO": return TYPE_AUDIO;
+            default: return MUTED;
+        }
+    }
+
 
     private void changeSequenceTempo(double delta) {
         final double tempo = Math.max(20.0,
@@ -1106,6 +1218,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page);
     }
 
+    private void showTrackPage() {
+        currentPage = "TRACKS";
+        pageTitle.setText("TRACKS");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        LinearLayout title = row();
+        title.addView(sectionLabelView("TRACKS • INDEPENDENT OF PADS",
+                new LinearLayout.LayoutParams(0, dp(38), 1)));
+        title.addView(actionButton("SEQ", v -> showSequencePage()),
+                new LinearLayout.LayoutParams(dp(60), dp(36)));
+        title.addView(actionButton("MAIN", v -> showMainPage()),
+                new LinearLayout.LayoutParams(dp(68), dp(36)));
+        page.addView(title);
+
+        page.addView(buildTrackControlPanel(), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        content.addView(page);
+        refreshTrackGrid();
+        refreshTransportUi();
+    }
+
     private void showSequencePage() {
         currentPage = "SEQ";
         pageTitle.setText("SEQUENCER");
@@ -1114,28 +1249,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout page = page();
 
         LinearLayout header = row();
-        header.addView(sectionLabelView("SEQUENCE TRANSPORT",
+        header.addView(sectionLabelView("SEQUENCE",
                 new LinearLayout.LayoutParams(0, dp(38), 1)));
         header.addView(actionButton("RESET", v -> {
             setBottomStatus(nativeSequenceReset());
             refreshTransportUi();
-        }), new LinearLayout.LayoutParams(dp(74), dp(38)));
+        }), new LinearLayout.LayoutParams(dp(70), dp(38)));
         header.addView(actionButton("NEXT", v -> {
             setBottomStatus(nativeSequenceNext());
             refreshTransportUi();
             refreshTrackGrid();
-        }), new LinearLayout.LayoutParams(dp(74), dp(38)));
-        header.addView(actionButton("NEW SEQ", v -> {
+        }), new LinearLayout.LayoutParams(dp(70), dp(38)));
+        header.addView(actionButton("NEW", v -> {
             setBottomStatus(nativeSequenceAddSequence());
             refreshTransportUi();
             refreshTrackGrid();
-        }), new LinearLayout.LayoutParams(dp(82), dp(38)));
+        }), new LinearLayout.LayoutParams(dp(70), dp(38)));
         header.addView(actionButton("CHAIN", v -> {
             final String result = nativeSequenceSetChainEnabled(
                     !nativeSequenceIsChainEnabled());
             setBottomStatus(result);
             refreshTransportUi();
-        }), new LinearLayout.LayoutParams(dp(78), dp(38)));
+        }), new LinearLayout.LayoutParams(dp(70), dp(38)));
         page.addView(header);
 
         LinearLayout controls = row();
@@ -1151,27 +1286,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeSequenceGetNumerator() + "/" + nativeSequenceGetDenominator(),
                 v -> cycleTimeSignature(-1), v -> cycleTimeSignature(1)),
                 new LinearLayout.LayoutParams(0, dp(66), 0.9f));
+
+        recordModeView = recordModeView == null ? statusChip("REPL", TEXT) : recordModeView;
         TextView mode = label(
                 nativeSequenceGetRecordMode() == 0
-                        ? "REC REPLACE"
-                        : "REC OVERDUB",
-                11, TEXT);
+                        ? "REPLACE"
+                        : "OVERDUB",
+                10, nativeSequenceGetRecordMode() == 0 ? TEXT : DANGER);
         mode.setGravity(Gravity.CENTER);
+        mode.setTypeface(Typeface.DEFAULT_BOLD);
         mode.setBackground(strokeBackground(SURFACE_2, LINE, 8));
-        controls.addView(mode, new LinearLayout.LayoutParams(
-                0, dp(66), 1.1f));
-        controls.addView(actionButton("DUB", v -> {
+        mode.setOnClickListener(v -> {
             final int next = nativeSequenceGetRecordMode() == 0 ? 1 : 0;
             setBottomStatus(nativeSequenceSetRecordMode(next));
-            refreshTransportUi();
             showSequencePage();
-        }), new LinearLayout.LayoutParams(dp(72), dp(58)));
-        controls.addView(actionButton("ARM", v -> {
-            final boolean next = !nativeSequenceIsSelectedTrackArmed();
-            setBottomStatus(nativeSequenceSetSelectedTrackArmed(next));
-            refreshTrackGrid();
-            refreshTransportUi();
-        }), new LinearLayout.LayoutParams(dp(72), dp(58)));
+        });
+        controls.addView(mode, new LinearLayout.LayoutParams(
+                0, dp(66), 1.1f));
+
+        Button arm = actionButton(
+                nativeSequenceIsSelectedTrackArmed() ? "ARM*" : "ARM",
+                v -> {
+                    final boolean next = !nativeSequenceIsSelectedTrackArmed();
+                    setBottomStatus(nativeSequenceSetSelectedTrackArmed(next));
+                    refreshTrackGrid();
+                    refreshTransportUi();
+                });
+        arm.setTextColor(nativeSequenceIsSelectedTrackArmed() ? DANGER : TEXT);
+        controls.addView(arm, new LinearLayout.LayoutParams(dp(66), dp(58)));
+
         page.addView(controls, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(72)));
 
@@ -1195,6 +1338,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshTrackGrid();
         refreshTransportUi();
     }
+
 
     private View sequenceValue(
             String title,
@@ -1315,8 +1459,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         grid.setColumnCount(4);
         String[][] items = {
                 {"MAIN", "MAIN"}, {"BROWSER", "BROWSE"}, {"SAMPLE", "SAMPLE"}, {"RECORDER", "REC"},
-                {"SEQUENCER", "SEQ"}, {"MIXER", "MIX"}, {"GRID", "GRID"}, {"STEP", "STEP"},
-                {"TRACK EDIT", "TRACK"}, {"PAD MIX", "PAD"}, {"Q-LINK", "QLINK"}, {"PROJECT", "PROJECT"}
+                {"SEQUENCER", "SEQ"}, {"TRACKS", "TRACKS"}, {"MIXER", "MIX"},
+                {"GRID", "GRID"}, {"STEP", "STEP"}, {"TRACK EDIT", "TRACK"},
+                {"PAD MIX", "PAD"}, {"Q-LINK", "QLINK"}, {"PROJECT", "PROJECT"}
         };
 
         for (String[] item : items) {
@@ -1329,6 +1474,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     case "SAMPLE": showSamplePage(); break;
                     case "REC": showRecordPage(); break;
                     case "SEQ": showSequencePage(); break;
+                    case "TRACKS": showTrackPage(); break;
                     case "MIX": showMixPage(); break;
                     default: setBottomStatus(menuLabel + " shell reserved for the next UI slice");
                 }
@@ -1384,33 +1530,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void refreshPadSelectionVisuals() {
-        final int trackCount = nativeSequenceGetTrackCount();
         for (int i = 0; i < padButtons.length; i++) {
             if (padButtons[i] == null) continue;
 
-            int fill = i == selectedPad ? Color.rgb(32, 52, 60) : SURFACE_2;
-            int stroke = i == selectedPad ? ACCENT : LINE;
-            int textColor = TEXT;
-
-            if (trackControlMode != 0) {
-                if (i >= trackCount) {
-                    fill = SURFACE;
-                    stroke = LINE;
-                    textColor = MUTED;
-                } else if (trackControlMode == 1 && nativeSequenceIsTrackMuted(i)) {
-                    fill = Color.rgb(58, 29, 31);
-                    stroke = DANGER;
-                } else if (trackControlMode == 2 && nativeSequenceIsTrackSoloed(i)) {
-                    fill = Color.rgb(57, 49, 29);
-                    stroke = ACCENT_2;
-                }
-            }
-
-            padButtons[i].setTextColor(textColor);
-            padButtons[i].setBackground(strokeBackground(fill, stroke, 8));
+            final boolean selected = i == selectedPad;
+            padButtons[i].setTextColor(TEXT);
+            padButtons[i].setBackground(strokeBackground(
+                    selected ? Color.rgb(32, 52, 60) : SURFACE_2,
+                    selected ? ACCENT : LINE, 8));
         }
         refreshAllInspectorState();
     }
+
 
     private void refreshAllInspectorState() {
         if (selectedPadInfo != null) {
@@ -1493,6 +1624,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final float progress = (float) Math.max(
                 0.0,
                 Math.min(1.0, position / lengthTicks));
+        sequenceProgressView.setBars(bars);
         sequenceProgressView.setProgress(progress);
         sequenceProgressView.setPlaying(nativeSequenceIsPlaying());
 
@@ -1509,12 +1641,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         tempoView.setText(String.format(
                 Locale.ROOT, "%.1f", nativeSequenceGetTempo()));
 
-        final boolean recording = nativeSequenceGetRecordMode() == 1;
-        if (recording && nativeSequenceIsPlaying()) {
-            sequencePositionView.setTextColor(DANGER);
-        } else {
-            sequencePositionView.setTextColor(TEXT);
+        final boolean overdub = nativeSequenceGetRecordMode() == 1;
+        if (recordModeView != null) {
+            recordModeView.setText(overdub ? "OVER" : "REPL");
+            recordModeView.setTextColor(overdub ? DANGER : TEXT);
+            recordModeView.setBackground(strokeBackground(
+                    overdub ? Color.rgb(50, 29, 31) : SURFACE_2,
+                    overdub ? DANGER : LINE, 7));
         }
+        sequencePositionView.setTextColor(
+                nativeSequenceIsPlaying() ? TEXT : MUTED);
     }
 
     private void refreshRecordingInfo() {
@@ -1876,9 +2012,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private Button topButton(String text) {
         Button b = button(text);
-        b.setTextSize(10);
+        b.setTextSize(9);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
         return b;
     }
+
+    private Button transportButton(String text, int fill, int stroke, int textColor) {
+        Button b = button(text);
+        b.setTextSize(10);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setTextColor(textColor);
+        b.setBackground(strokeBackground(fill, stroke, 8));
+        return b;
+    }
+
 
     private Button actionButton(String text, View.OnClickListener listener) {
         Button b = button(text);
@@ -1989,8 +2136,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void runUiAudit() {
         Log.i(TAG, "UI_HIERARCHY_BEGIN");
         String[] expected = {
-                "MAIN", "BROWSE", "SAMPLE", "SEQ", "MIX", "REC", "MENU",
-                "PLAY", "STOP", "MIDI", "01", "16", "LOAD"
+                "MAIN", "TRACKS", "PLAY", "STOP", "REC", "01", "16", "LOAD"
         };
 
         for (String text : expected) {
@@ -2000,22 +2146,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             }
         }
-        Log.i(TAG, "UI_HIERARCHY_COMPLETE");
-        Log.i(TAG, "UI_INTERACTION_BEGIN");
+
+        View tracksMode = findViewWithContentDescription(
+                getWindow().getDecorView(), "TRACKS mode");
+        if (tracksMode == null || !tracksMode.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: TRACKS mode");
+            return;
+        }
+
+        View sampleMode = findViewWithContentDescription(
+                getWindow().getDecorView(), "SAMPLE mode");
+        if (sampleMode == null || !sampleMode.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLE mode");
+            return;
+        }
 
         View pad1 = findViewWithExactText(getWindow().getDecorView(), "01");
-        if (pad1 == null || !pad1.performClick()) {
+        if (pad1 == null || !pad1.performClick() || selectedPad != 0) {
             Log.e(TAG, "UI_INTERACTION_FAILED: pad 01");
-            return;
-        }
-        if (selectedPad != 0) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: selection did not stick");
-            return;
-        }
-
-        View sample = findViewWithExactText(getWindow().getDecorView(), "SAMPLE");
-        if (sample == null || !sample.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLE");
             return;
         }
 
@@ -2027,8 +2175,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View rec = findViewWithExactText(getWindow().getDecorView(), "REC");
-        if (rec == null || !rec.performClick()) {
+        View recMode = findViewWithContentDescription(
+                getWindow().getDecorView(), "REC mode");
+        if (recMode == null || !recMode.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: REC mode");
             return;
         }
@@ -2043,6 +2192,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         Log.i(TAG, "UI_INTERACTION_COMPLETE");
     }
+
 
     private View findViewWithContentDescription(
             View view, String expectedDescription) {
@@ -2143,10 +2293,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private float progress;
         private boolean playing;
+        private int bars = 4;
 
         SequencerProgressView(android.content.Context context) {
             super(context);
-            paint.setStrokeWidth(1f);
+        }
+
+        void setBars(int value) {
+            final int next = Math.max(1, Math.min(128, value));
+            if (bars != next) {
+                bars = next;
+                invalidate();
+            }
         }
 
         void setProgress(float value) {
@@ -2169,20 +2327,36 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             super.onDraw(canvas);
             final float width = getWidth();
             final float height = getHeight();
+
             paint.setStyle(Paint.Style.FILL);
-            paint.setColor(Color.rgb(44, 24, 26));
+            paint.setColor(Color.rgb(70, 24, 29));
             canvas.drawRect(0, 0, width, height, paint);
 
-            paint.setColor(playing ? DANGER : Color.rgb(98, 53, 56));
-            canvas.drawRect(0, 0, width * progress, height, paint);
-
-            if (playing) {
-                paint.setColor(Color.WHITE);
-                final float x = Math.max(0f, Math.min(width, width * progress));
-                canvas.drawRect(Math.max(0f, x - 1f), 0, Math.min(width, x + 1f), height, paint);
+            paint.setColor(Color.rgb(109, 38, 44));
+            final int markerStep = bars <= 32 ? 1 : 4;
+            for (int i = markerStep; i < bars; i += markerStep) {
+                final float x = width * (i / (float) bars);
+                canvas.drawRect(x, 0, x + dpForView(1), height, paint);
             }
+
+            paint.setColor(DANGER);
+            canvas.drawRect(0, height * 0.18f, width * progress, height * 0.82f, paint);
+
+            final float x = Math.max(0f, Math.min(width, width * progress));
+            paint.setColor(playing ? Color.WHITE : DANGER);
+            canvas.drawRect(
+                    Math.max(0f, x - dpForView(1)),
+                    0,
+                    Math.min(width, x + dpForView(1)),
+                    height,
+                    paint);
+        }
+
+        private float dpForView(int value) {
+            return Math.max(1f, value * getResources().getDisplayMetrics().density);
         }
     }
+
 
     @Override
     protected void onDestroy() {
