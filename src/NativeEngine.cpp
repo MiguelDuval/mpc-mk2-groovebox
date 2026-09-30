@@ -1781,6 +1781,42 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetQuantizeGrid(
     return toJString(env, "Quantize grid failed");
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceQuantizeSelectedTrack(
+        JNIEnv* env, jobject /* thiz */)
+{
+    stopSequenceForMutation();
+
+    auto& state = mpc::MpcCore::instance().projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    auto& tracks = state.activeSequence().tracks;
+
+    if (trackIndex >= tracks.size()) {
+        return toJString(env, "QUANTIZE failed: no selected track");
+    }
+
+    auto& track = tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum
+            || track.patterns.empty()) {
+        return toJString(
+                env,
+                "QUANTIZE unavailable: selected track has no Drum pattern");
+    }
+
+    auto& pattern = track.patterns.front();
+    const auto gridTicks =
+            state.activeSequence().quantizeGridTicks;
+    const auto changed =
+            mpc::sequencer::quantizePattern(pattern, gridTicks);
+
+    syncSequenceTransportStopped();
+
+    return toJString(
+            env,
+            "QUANTIZE " + std::to_string(changed)
+                    + " events • grid=" + std::to_string(gridTicks));
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsTimingCorrectEnabled(
         JNIEnv* /* env */, jobject /* thiz */)
