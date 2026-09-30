@@ -772,3 +772,12 @@ Before marking a control **CONFIRMED**, test on the actual MkII and record:
 - resulting UI/audio state.
 
 The first physical batch should cover P0 only. This keeps failures attributable and protects the current audio/sampler baseline.
+
+
+## 2026-09-30 implementation checkpoint
+
+The MkII path now has a native semantic-adapter layer between MIDI decoding and Android. P0 controls are represented as stable semantic actions rather than raw MIDI identifiers.
+
+Routed at this checkpoint: Mode+implemented-page shortcuts, Main/Browse, Track/Sequence selection, Data Dial direction/press, Pad Bank state, Full Level/Half Level, Pad/Track Mute contexts and targets, transport, stopped Step/Bar navigation, Tap Tempo, launcher-bank selection, and the physical-pad audio/record path.
+
+Not declared complete: clock-synchronous Note Repeat scheduling, contextual Touch Strip parameter control, controller LED state synchronization, LCD product pages, Locate marker/event navigation, and the remaining P1 editing commands. Physical MkII verification remains required before a control is marked CONFIRMED.
