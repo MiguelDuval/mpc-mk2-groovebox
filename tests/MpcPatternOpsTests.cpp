@@ -97,6 +97,15 @@ int main() {
     assert(editedNote->probability == 80);
     assert(editedNote->ratchet == 4);
 
+    mpc::domain::Pattern ratchetDurationPattern;
+    ratchetDurationPattern.lengthTicks = 1920;
+    assert(mpc::sequencer::setStepNote(
+            ratchetDurationPattern, 0, 120, 36, 100));
+    assert(ratchetDurationPattern.notes.front().durationTicks == 0);
+    assert(mpc::sequencer::setStepNoteRatchet(
+            ratchetDurationPattern, 0, 120, 36, 2));
+    assert(ratchetDurationPattern.notes.front().durationTicks == 120);
+
     assert(!mpc::sequencer::setStepNoteVelocity(
             stepPattern, 7, 120, 38, 100));
     assert(!mpc::sequencer::setStepNoteProbability(
