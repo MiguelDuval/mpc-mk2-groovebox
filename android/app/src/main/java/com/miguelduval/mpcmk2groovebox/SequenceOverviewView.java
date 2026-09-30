@@ -239,4 +239,8 @@ public final class SequenceOverviewView extends View {
     private float dp(int value) {
         return value * getResources().getDisplayMetrics().density;
     }
+
+    private float dp(float value) {
+        return value * getResources().getDisplayMetrics().density;
+    }
 }
