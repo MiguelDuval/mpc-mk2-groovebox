@@ -97,3 +97,70 @@
 
 ## Stage 10 — MPC project interoperability
 - research-backed import/export subset.
+
+
+## MPC Studio MkII hardware-control slice
+
+This supplements Stages 1, 2 and 7; it does **not** replace the roadmap sequence.
+
+### Hardware semantic routing — P0
+
+After the existing transport/device foundation is protected, the first controller implementation slice is:
+
+- Shift state and documented Shift chords.
+- Mode + pad shortcuts.
+- Record, Overdub, Stop, Play, Play Start.
+- Data Dial rotation/press and +/-.
+- Main and Browse.
+- Track Select / Sequence Select.
+- Pad Banks A–H.
+- Note Repeat and Full/Half Level.
+- Pad Mute / Track Mute.
+- Step/Bar navigation.
+- Tap Tempo.
+- Sequence Launcher physical-pad routing.
+
+All of these must dispatch semantic actions through the MPC Studio MkII adapter. Do not put controller MIDI numbers in UI code.
+
+### Hardware feedback — P0/P1
+
+Then make hardware state visible:
+
+- transport LED state;
+- mode/context LED state;
+- pad RGB state;
+- launcher active/queued state;
+- Note Repeat indicators;
+- touch-strip indicators.
+
+The existing LED/SysEx generators are protocol foundations, not a completed feedback layer.
+
+### Hardware-context production controls — P1
+
+Add:
+
+- Sample Select;
+- Sample Start/End;
+- Tune/Fine;
+- Quantize;
+- Timing Correct;
+- Zoom;
+- Copy/Delete;
+- Undo/Redo;
+- Locate;
+- Erase;
+- touch-strip contextual control;
+- compact LCD status.
+
+### Advanced hardware surface — P2/P3
+
+Later:
+
+- Automation Read/Write;
+- richer contextual parameter control;
+- Song/arrangement shortcut;
+- Looper shortcut;
+- MIDI Control routing;
+- Save/persistence shortcut.
+
+The complete control-by-control contract is documented in `docs/MPC-STUDIO-MKII-SEMANTIC-MAP.md`.

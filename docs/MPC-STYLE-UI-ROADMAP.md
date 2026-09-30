@@ -222,3 +222,28 @@ Do not copy Akai, Native Instruments or Ableton artwork, textures, logos or prop
 UI-0 and the first UI-1/UI-2 foundation are being introduced on the sampler branch so the physical sampler tests can be performed without the previous diagnostic scroll wall.
 
 The shared waveform renderer/editor is now a reusable slice used by Sampler and Recorder. Full Grid/Step editing remains a separate slice; future Looper, audio-clip and slice views should reuse the same waveform component rather than introduce one-off renderers.
+
+
+## Hardware-first interaction contract
+
+The screen and MPC Studio MkII are two surfaces over the same semantic command model.
+
+The controller contract is documented in:
+
+**[MPC Studio MkII Semantic Control Map](MPC-STUDIO-MKII-SEMANTIC-MAP.md)**
+
+UI design consequences:
+
+- physical transport remains globally meaningful on every page;
+- Mode + pad shortcuts target the same app destinations as their screen equivalents;
+- data dial and +/- edit the currently focused semantic parameter rather than opening arbitrary screens;
+- context-sensitive buttons such as Sample Start/End, Tune, Zoom, Quantize and Locate must operate on the active page without destroying the user's musical context;
+- hardware LEDs mirror actual application state;
+- the 160x80 LCD is a glanceable context monitor, not a second full UI;
+- pads remain first-class and their meaning changes only in explicitly visible performance contexts such as Sequence Launcher, Pad Mute, Note Repeat or Locate;
+- no raw MIDI identifiers may appear in UI code.
+
+### MkII-specific design constraint
+
+Do not design the application around a physical Q-Link knob bank that the MPC Studio MkII does not have. Q-Link remains a valid software/contextual editing concept, but its hardware mapping on MkII must use actual available controls such as the data dial and touch strip, or future external MIDI hardware.
+

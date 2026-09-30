@@ -273,6 +273,21 @@ Protocol confidence should be tracked as:
 
 ---
 
+## 7A. Canonical MPC Studio MkII semantic map
+
+The complete hardware interaction contract is maintained in:
+
+**[docs/MPC-STUDIO-MKII-SEMANTIC-MAP.md](MPC-STUDIO-MKII-SEMANTIC-MAP.md)**
+
+It is the required companion to the protocol map in this section. It records every relevant physical control, semantic action, UI context, current implementation status and P0/P1/P2/P3 priority.
+
+Two constraints are especially important:
+
+- The current repository has working pad performance, but the other physical controls are not yet semantically routed. “Decoded” or “protocol helper exists” must not be reported as “mapped”.
+- The 2021 MPC Studio MkII does not have the dedicated Q-Link knob bank found on other MPC hardware. Do not invent a Q-Link hardware dependency for this controller.
+
+When implementing the controller, use the semantic map's documented chord behavior for Shift, Mode, Locate, and contextual buttons, and keep raw MIDI identifiers isolated inside the hardware adapter.
+
 ## 8. Hardware feedback
 
 Feedback must eventually include:
