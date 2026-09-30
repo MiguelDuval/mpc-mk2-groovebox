@@ -107,7 +107,22 @@ bool MpcProjectState::setSequenceTimeSignature(
         return false;
     }
 
-    const auto bars = sequencer::sequenceBars(activeSequence());
+    const auto& oldSequence = activeSequence();
+    const auto bars = sequencer::sequenceBars(oldSequence);
+    const auto oldPerBar = std::max(
+            1,
+            sequencer::barLengthTicks(
+                    oldSequence.numerator,
+                    oldSequence.denominator));
+    const auto startBar = std::clamp(
+            oldSequence.loopStartTicks / oldPerBar + 1,
+            1,
+            bars);
+    const auto endBar = std::clamp(
+            (oldSequence.loopEndTicks + oldPerBar - 1) / oldPerBar,
+            startBar,
+            bars);
+
     const auto length = sequencer::sequenceLengthForBars(
             bars, numerator, denominator);
     if (length <= 0) {
@@ -118,10 +133,12 @@ bool MpcProjectState::setSequenceTimeSignature(
     sequence.numerator = numerator;
     sequence.denominator = denominator;
     sequence.lengthTicks = length;
-    sequence.loopStartTicks =
-            std::clamp(sequence.loopStartTicks, 0, length - 1);
-    sequence.loopEndTicks =
-            std::clamp(sequence.loopEndTicks, sequence.loopStartTicks + 1, length);
+
+    const auto newPerBar = sequencer::barLengthTicks(numerator, denominator);
+    sequence.loopStartTicks = (startBar - 1) * newPerBar;
+    sequence.loopEndTicks = std::min(
+            length,
+            endBar * newPerBar);
 
     for (auto& track : sequence.tracks) {
         for (auto& pattern : track.patterns) {
