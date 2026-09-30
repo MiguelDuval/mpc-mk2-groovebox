@@ -81,4 +81,12 @@ struct RatchetExpansionResult final {
         std::uint32_t seed,
         std::span<ScheduledMidiEvent> output) noexcept;
 
+[[nodiscard]] ScheduleResult schedulePatternWindowInRange(
+        const domain::Pattern& pattern,
+        const TickWindow& window,
+        std::int64_t loopStartTicks,
+        std::int64_t loopEndTicks,
+        std::uint32_t seed,
+        std::span<ScheduledMidiEvent> output) noexcept;
+
 } // namespace mpc::sequencer
