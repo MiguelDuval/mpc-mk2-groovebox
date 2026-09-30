@@ -86,7 +86,7 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleJog(std::uint8_
     return std::nullopt;
 }
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleJogPress(bool p) noexcept {
-    return p?make(Type::DataDialPress):std::nullopt;
+    if (p) return make(Type::DataDialPress);\n    return std::nullopt;
 }
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::modePadAction(std::uint8_t i) const noexcept {
     if(i>=16) return std::nullopt;
