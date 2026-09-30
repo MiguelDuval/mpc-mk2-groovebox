@@ -188,6 +188,14 @@ jobs:
             -o build/native-tests/sample_envelope_filter_tests
           build/native-tests/sample_envelope_filter_tests
 
+      - name: Test sample playback cursor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/SamplePlaybackCursorTests.cpp             -o build/native-tests/sample_playback_cursor_tests
+          build/native-tests/sample_playback_cursor_tests
+
       - name: Test audio output policy
         shell: bash
         run: |
