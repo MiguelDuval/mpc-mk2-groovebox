@@ -69,11 +69,12 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
                         std::memory_order_release);
             }
 
-            return event->pressed
-                    ? mpc::studio::makePadLedSysEx(
-                            event->padIndex,
-                            mpc::studio::Rgb{24u, 72u, 24u})
-                    : std::nullopt;
+            if (event->pressed) {
+                return mpc::studio::makePadLedSysEx(
+                        event->padIndex,
+                        mpc::studio::Rgb{24u, 72u, 24u});
+            }
+            return std::nullopt;
         }
 
         if (event->pressed) {
