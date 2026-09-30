@@ -54,7 +54,6 @@ MpcProjectState::MpcProjectState() {
     project_.sequences.push_back(std::move(sequence));
 }
 
-
 bool MpcProjectState::selectSequence(std::size_t sequenceIndex) noexcept {
     if (sequenceIndex >= project_.sequences.size()) {
         return false;
@@ -77,7 +76,8 @@ bool MpcProjectState::addSequence(
     const auto number = project_.sequences.size() + 1;
     sequence.id = "sequence-" + std::to_string(number);
     sequence.name = name.empty()
-            ? ("Sequence " + (number < 10 ? "0" : "")
+            ? (std::string("Sequence ")
+                    + (number < 10 ? "0" : "")
                     + std::to_string(number))
             : std::move(name);
     sequence.tempoBpm = 120.0;
@@ -394,7 +394,7 @@ std::string MpcProjectState::sequenceStatus() const {
                     sequence.numerator, sequence.denominator));
 
     std::ostringstream out;
-    out << "SEQ 1  " << sequence.name
+    out << "SEQ " << (activeSequenceIndex_ + 1) << "  " << sequence.name
         << "  | " << std::fixed << std::setprecision(1)
         << sequence.tempoBpm << " BPM"
         << "  | " << sequence.numerator << "/" << sequence.denominator
