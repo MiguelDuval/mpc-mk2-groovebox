@@ -150,6 +150,19 @@ public:
             std::uint8_t velocity,
             std::int32_t offsetFrames);
 
+    // Read-only control-thread access for the sequencer bridge. The audio callback
+    // remains the sole consumer of queued trigger events.
+    AudioTriggerQueue& triggerQueue() noexcept {
+        return triggerQueue_;
+    }
+
+    std::int32_t outputSampleRate() const noexcept {
+        if (stream_ != nullptr) {
+            return stream_->getSampleRate();
+        }
+        return 48000;
+    }
+
 private:
     static constexpr std::size_t kPadCount = mpc::domain::kMaxProgramPads;
     static constexpr std::size_t kSampleLayerCount = mpc::domain::kMaxSampleLayers;
