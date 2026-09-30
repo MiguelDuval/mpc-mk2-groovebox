@@ -120,9 +120,6 @@ ScheduleResult schedulePatternWindow(
     return result;
 }
 
-} // namespace mpc::sequencer
-
-
 ScheduleResult schedulePatternWindowInRange(
         const domain::Pattern& pattern,
         const TickWindow& window,
@@ -210,3 +207,5 @@ ScheduleResult schedulePatternWindowInRange(
     emitSegment(loopStartTicks, window.end, baseOffset, window.completedCycles);
     return result;
 }
+
+} // namespace mpc::sequencer
