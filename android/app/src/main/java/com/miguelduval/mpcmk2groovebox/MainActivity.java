@@ -3210,6 +3210,41 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View backSeq = findViewWithExactText(
+                getWindow().getDecorView(), "BACK SEQ");
+        if (backSeq == null || !backSeq.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: return to SEQ");
+            return;
+        }
+
+        View newSequence = findViewWithExactText(
+                getWindow().getDecorView(), "NEW");
+        if (newSequence == null || !newSequence.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: NEW sequence");
+            return;
+        }
+
+        View launch = findViewWithExactText(
+                getWindow().getDecorView(), "LAUNCH");
+        if (launch == null || !launch.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: LAUNCH mode");
+            return;
+        }
+
+        View launcher = findViewWithContentDescription(
+                getWindow().getDecorView(), "Sequence live launcher");
+        if (launcher == null || launcher.getHeight() <= dp(120)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: sequence launcher");
+            return;
+        }
+
+        View sequence01 = findViewWithContentDescription(
+                getWindow().getDecorView(), "Sequence live launcher target S01");
+        if (sequence01 == null || !sequence01.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: sequence launcher target");
+            return;
+        }
+
         View sample = findViewWithExactText(getWindow().getDecorView(), "SAMPLE");
         if (sample == null || !sample.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLE");
