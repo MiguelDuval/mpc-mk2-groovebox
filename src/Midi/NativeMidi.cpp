@@ -100,9 +100,10 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             }
 
             if (event->pressed) {
-                return mpc::studio::makePadLedSysEx(
+                const auto led = mpc::studio::makePadLedSysEx(
                         event->padIndex,
                         mpc::studio::Rgb{24u, 72u, 24u});
+                return std::vector<std::uint8_t>(led.begin(), led.end());
             }
             return std::nullopt;
         }
@@ -133,7 +134,7 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
                     static_cast<std::uint8_t>(trackIndex),
                     event->padIndex,
                     event->pressed
-                            ? event->value
+                            ? padRouting.velocity
                             : static_cast<std::uint8_t>(0),
                     event->pressed ? static_cast<std::uint8_t>(1) : static_cast<std::uint8_t>(0)};
 
@@ -145,11 +146,12 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             }
         }
 
-        const std::uint8_t level = event->pressed ? event->value : 0u;
+        const std::uint8_t level = event->pressed ? padRouting.velocity : 0u;
 
-        return mpc::studio::makePadLedSysEx(
+        const auto led = mpc::studio::makePadLedSysEx(
                 event->padIndex,
                 mpc::studio::Rgb{level, level, level});
+        return std::vector<std::uint8_t>(led.begin(), led.end());
     }
     if (event->type == mpc::studio::InputEventType::Button
             || event->type == mpc::studio::InputEventType::JogPress
