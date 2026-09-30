@@ -64,6 +64,10 @@ bool MpcProjectState::setSequenceTempo(double tempoBpm) noexcept {
 }
 
 bool MpcProjectState::setSequenceBars(std::int32_t bars) noexcept {
+    if (bars < 1 || bars > 128) {
+        return false;
+    }
+
     const auto& sequence = activeSequence();
     const auto length = sequencer::sequenceLengthForBars(
             bars, sequence.numerator, sequence.denominator);
