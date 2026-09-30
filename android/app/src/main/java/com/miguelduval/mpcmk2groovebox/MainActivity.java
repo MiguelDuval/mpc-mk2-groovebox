@@ -225,6 +225,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceSetQuantizeGrid(int ticks);
     private static native int nativeSequenceGetSwing();
     private static native String nativeSequenceSetSwing(int percent);
+    private static native boolean nativeSequenceIsTimingCorrectEnabled();
+    private static native String nativeSequenceSetTimingCorrectEnabled(boolean enabled);
     private static native boolean nativeSequenceIsGridEditable();
     private static native int[] nativeSequenceGetGridVelocities(
             int firstStep, int gridTicks);
@@ -3698,11 +3700,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         : "TUNE");
                 return;
             case MpcStudioMk2SemanticActions.QUANTIZE:
-                setBottomStatus("QUANTIZE • action pending");
+                if (value0 != 0) {
+                    setBottomStatus(
+                            "QUANTIZE • selection-aware command pending");
+                } else {
+                    setBottomStatus(nativeSequenceQuantizeSelectedTrack());
+                    refreshSequenceControls();
+                }
                 return;
             case MpcStudioMk2SemanticActions.TIMING_CORRECT_STATE:
-                setBottomStatus(value0 == 1
-                        ? "TIMING CORRECT TOGGLE" : "TIMING CORRECT CONFIG • pending");
+                if (value0 == 1) {
+                    setBottomStatus(
+                            nativeSequenceSetTimingCorrectEnabled(
+                                    !nativeSequenceIsTimingCorrectEnabled()));
+                    refreshSequenceControls();
+                } else {
+                    setBottomStatus(
+                            "TIMING CORRECT CONFIG • grid "
+                                    + nativeSequenceGetQuantizeGrid()
+                                    + " ticks, swing "
+                                    + nativeSequenceGetSwing() + "%");
+                }
                 return;
             case MpcStudioMk2SemanticActions.ZOOM_CONTEXT:
                 setBottomStatus(value0 != 0
