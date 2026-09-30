@@ -6,6 +6,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 namespace mpc::sequencer {
 
