@@ -1,6 +1,8 @@
 #include <jni.h>
 #include "Audio/AudioEngine.h"
 
+#include <array>
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -1021,26 +1023,42 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetGridVelocitie
     const auto& pattern = track.patterns.front();
     const auto& program = state.activeDrumProgram();
 
+    std::array<int, 128> noteToPad{};
+    noteToPad.fill(-1);
     for (std::size_t pad = 0; pad < mpc::domain::kMaxProgramPads; ++pad) {
-        const auto noteNumber = program.pads[pad].midiNote;
-        for (std::size_t column = 0; column < 16u; ++column) {
-            const auto step = static_cast<std::int64_t>(firstStep)
-                    + static_cast<std::int64_t>(column);
-            const auto tick = step * static_cast<std::int64_t>(gridTicks);
-            if (tick < 0 || tick >= pattern.lengthTicks) {
-                continue;
-            }
+        noteToPad[program.pads[pad].midiNote] = static_cast<int>(pad);
+    }
 
-            int velocity = 0;
-            for (const auto& note : pattern.notes) {
-                if (note.tick == tick && note.note == noteNumber) {
-                    velocity = std::max(
-                            velocity,
-                            static_cast<int>(note.velocity));
-                }
-            }
-            values[pad * 16u + column] = velocity;
+    for (const auto& note : pattern.notes) {
+        if (note.note >= noteToPad.size() || note.velocity == 0) {
+            continue;
         }
+
+        const auto pad = noteToPad[note.note];
+        if (pad < 0) {
+            continue;
+        }
+
+        if (note.tick < 0 || gridTicks <= 0
+                || note.tick % gridTicks != 0) {
+            continue;
+        }
+
+        const auto absoluteStep =
+                static_cast<std::int64_t>(note.tick)
+                / static_cast<std::int64_t>(gridTicks);
+        const auto column = absoluteStep
+                - static_cast<std::int64_t>(firstStep);
+        if (column < 0 || column >= 16) {
+            continue;
+        }
+
+        auto& velocity = values[
+                static_cast<std::size_t>(pad) * 16u
+                + static_cast<std::size_t>(column)];
+        velocity = std::max(
+                velocity,
+                static_cast<jint>(note.velocity));
     }
 
     env->SetIntArrayRegion(
