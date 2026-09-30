@@ -1331,10 +1331,11 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepNudge(
         return toJString(env, "Step nudge failed: no event");
     }
 
+    const std::string sign = nudgeTicks > 0 ? "+" : "";
     return toJString(
             env,
-            "Step nudge "
-                    + (nudgeTicks > 0 ? "+" : "")
+            std::string("Step nudge ")
+                    + sign
                     + std::to_string(nudgeTicks)
                     + " ticks");
 }
