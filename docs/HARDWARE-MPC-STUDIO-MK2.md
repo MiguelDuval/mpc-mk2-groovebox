@@ -29,7 +29,7 @@ Important mappings confirmed in the public charts:
 
 The MPC Studio MkII is the primary physical performance surface for this project. The canonical semantic mapping is documented in [MPC-STUDIO-MK2-CONTROL-CONTRACT.md](MPC-STUDIO-MK2-CONTROL-CONTRACT.md).
 
-The low-level hardware map covers 16 pads, 39 button-note definitions, jog wheel rotation/press and the touch strip CC. The practical controller mapping also distinguishes a **Touch Strip Press** action on MIDI note 78 from the separate Touch Strip mode-selection button. The adapter must keep these as separate controls.
+The low-level hardware map covers 16 pads, 39 documented panel-button definitions, a separate Touch Strip Press control, jog wheel rotation/press and the touch strip CC. The practical controller mapping also distinguishes a **Touch Strip Press** action on MIDI note 78 from the separate Touch Strip mode-selection button. The adapter must keep these as separate controls.
 
 The controller contract has four distinct implementation states:
 - **decoded** — incoming MIDI/SysEx is recognized;
