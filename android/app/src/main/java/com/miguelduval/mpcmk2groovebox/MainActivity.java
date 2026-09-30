@@ -1735,7 +1735,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 try {
                     getContentResolver().takePersistableUriPermission(
                             uri,
-                            data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 } catch (SecurityException ignored) {
                     // Persistable access is optional; the immediate read still
                     // works with the transient document-provider grant.
