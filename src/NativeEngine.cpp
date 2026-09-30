@@ -38,6 +38,25 @@ jstring toJString(JNIEnv* env, const std::string& text) {
     return env->NewStringUTF(text.c_str());
 }
 
+void stopSequenceForMutation() {
+    auto& core = mpc::MpcCore::instance();
+    auto& state = core.projectState();
+    const auto position = sequenceSession().positionTicks();
+
+    if (core.sequenceRecorder().active()) {
+        core.sequenceRecorder().finish(
+                state,
+                core.sequenceRecordQueue(),
+                position);
+    }
+
+    sequenceSession().stop();
+    core.sequenceTransportClock().stop(
+            state.activeSequence(),
+            position,
+            monotonicNanos());
+}
+
 jfloatArray toJFloatArray(
         JNIEnv* env,
         const std::vector<mpc::audio::WaveformPeak>& peaks) {
@@ -1002,14 +1021,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAddSequence(
         return toJString(env, "Sequence add failed: maximum reached");
     }
 
-    const auto position = sequenceSession().positionTicks();
-    if (core.sequenceRecorder().active()) {
-        core.sequenceRecorder().finish(
-                state,
-                core.sequenceRecordQueue(),
-                position);
-    }
-    sequenceSession().stop();
+    stopSequenceForMutation();
 
     if (!state.addSequence()) {
         return toJString(env, "Sequence add failed");
@@ -1035,7 +1047,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTempo(
         JNIEnv* env, jobject /* thiz */, jdouble tempo)
 {
-    sequenceSession().stop();
+    stopSequenceForMutation();
     if (mpc::MpcCore::instance().projectState().setSequenceTempo(tempo)) {
         return toJString(env, "Sequence tempo updated");
     }
@@ -1055,7 +1067,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetBars(
         JNIEnv* env, jobject /* thiz */, jint bars)
 {
-    sequenceSession().stop();
+    stopSequenceForMutation();
     if (mpc::MpcCore::instance().projectState().setSequenceBars(bars)) {
         return toJString(env, "Sequence length updated");
     }
@@ -1082,7 +1094,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTimeSignature(
         JNIEnv* env, jobject /* thiz */, jint numerator, jint denominator)
 {
-    sequenceSession().stop();
+    stopSequenceForMutation();
     if (mpc::MpcCore::instance().projectState().setSequenceTimeSignature(
             numerator, denominator)) {
         return toJString(env, "Sequence time signature updated");
@@ -1103,7 +1115,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLoopEnabled(
         JNIEnv* env, jobject /* thiz */, jboolean enabled)
 {
-    sequenceSession().stop();
+    stopSequenceForMutation();
     auto& state = mpc::MpcCore::instance().projectState();
     const auto& sequence = state.activeSequence();
     const auto bars = mpc::sequencer::sequenceBars(sequence);
@@ -1159,7 +1171,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLoopBars(
         JNIEnv* env, jobject /* thiz */, jint startBar, jint endBar)
 {
-    sequenceSession().stop();
+    stopSequenceForMutation();
     auto& state = mpc::MpcCore::instance().projectState();
     if (state.setSequenceLoop(
             state.activeSequence().loopEnabled,
@@ -1182,7 +1194,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetQuantizeGrid(
         JNIEnv* env, jobject /* thiz */, jint ticks)
 {
-    sequenceSession().stop();
+    stopSequenceForMutation();
     if (mpc::MpcCore::instance().projectState().setSequenceQuantizeGrid(ticks)) {
         return toJString(env, "Sequence quantize grid updated");
     }
@@ -1201,7 +1213,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetSwing(
         JNIEnv* env, jobject /* thiz */, jint percent)
 {
-    sequenceSession().stop();
+    stopSequenceForMutation();
     if (mpc::MpcCore::instance().projectState().setSequenceSwing(percent)) {
         return toJString(env, "Sequence swing updated");
     }
