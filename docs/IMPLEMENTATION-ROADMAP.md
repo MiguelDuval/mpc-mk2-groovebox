@@ -79,7 +79,7 @@
 - Sample Edit. **UI FOUNDATION + WAVEFORM IMPLEMENTED — direct S/E drag editing, zoom/pan, audition, crop and chop actions are isolated to the sample context.**
 - Grid. **SEQUENCE CONTEXT IMPLEMENTED — dedicated track/sequence context is now available from the Sequencer page; detailed note editing remains next.**
 - Step. **SEQUENCE CONTEXT IMPLEMENTED — selected-track Step entry point is available; detailed step note editing remains next.**
-- Track Performance. **SOFTWARE + UI SLICE IMPLEMENTED — dedicated 4×4 Track MUTE/SOLO surface with banks and transport-preserving live toggles.**
+- Track Performance. **SOFTWARE + UI + MIDI BRIDGE SLICE IMPLEMENTED — dedicated 4×4 Track MUTE/SOLO surface with banks and transport-preserving live toggles; the active bank can now be operated from the physical 16 pads (tap=MUTE, ≥500 ms=SOLO) with state-cached RGB feedback. Physical verification remains pending.**
 - Track Edit. **MODE SLOT RESERVED.**
 - mixers. **FOUNDATION IMPLEMENTED — compact Pad Mix view with direct level control; full Track/Pad mixer remains later.**
 - 16 Levels.

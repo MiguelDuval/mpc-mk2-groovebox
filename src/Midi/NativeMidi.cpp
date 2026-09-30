@@ -1,4 +1,5 @@
 #include "NativeMidi.h"
+#include "TrackPerformanceMidiGesture.h"
 #include "../Audio/AudioEngine.h"
 #include "../MPC/MpcCore.h"
 #include "../MPC/MpcStudioMk2InputDecoder.h"
@@ -20,6 +21,11 @@ constexpr const char* kTag = "MpcMk2Groovebox";
 std::atomic<bool> sequenceLauncherEnabled{false};
 std::atomic<std::size_t> sequenceLauncherBank{0};
 std::atomic<int> pendingSequenceLauncherPad{-1};
+std::atomic<bool> trackPerformanceEnabled{false};
+std::atomic<std::uint32_t> trackPerformanceGeneration{0};
+std::atomic<int> pendingTrackPerformanceAction{-1};
+mpc::midi::TrackPerformanceMidiGesture trackPerformanceGesture;
+std::uint32_t trackPerformanceHandledGeneration = 0;
 
 const char* eventTypeName(mpc::studio::InputEventType type) {
     using Type = mpc::studio::InputEventType;
@@ -73,6 +79,37 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
                 return mpc::studio::makePadLedSysEx(
                         event->padIndex,
                         mpc::studio::Rgb{24u, 72u, 24u});
+            }
+            return std::nullopt;
+        }
+
+        if (trackPerformanceEnabled.load(std::memory_order_acquire)) {
+            const auto generation =
+                    trackPerformanceGeneration.load(std::memory_order_acquire);
+            if (generation != trackPerformanceHandledGeneration) {
+                trackPerformanceGesture.reset();
+                trackPerformanceHandledGeneration = generation;
+            }
+
+            const auto action = trackPerformanceGesture.onPad(
+                    event->padIndex,
+                    event->pressed,
+                    timestamp);
+            if (action.has_value()) {
+                const auto actionCode =
+                        static_cast<int>(event->padIndex)
+                        + (*action == mpc::midi::TrackPerformanceGesture::Solo
+                                ? 16
+                                : 0);
+                pendingTrackPerformanceAction.store(
+                        actionCode,
+                        std::memory_order_release);
+            }
+
+            if (event->pressed) {
+                return mpc::studio::makePadLedSysEx(
+                        event->padIndex,
+                        mpc::studio::Rgb{32u, 64u, 96u});
             }
             return std::nullopt;
         }
@@ -190,6 +227,35 @@ Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeConsumeSequenceLaun
 {
     return static_cast<jint>(
             pendingSequenceLauncherPad.exchange(
+                    -1,
+                    std::memory_order_acq_rel));
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTrackPerformanceContext(
+        JNIEnv* /* env */,
+        jclass /* clazz */,
+        jboolean enabled,
+        jint /* bank */)
+{
+    trackPerformanceEnabled.store(
+            enabled == JNI_TRUE,
+            std::memory_order_release);
+    trackPerformanceGeneration.fetch_add(
+            1u,
+            std::memory_order_acq_rel);
+    pendingTrackPerformanceAction.store(
+            -1,
+            std::memory_order_release);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeConsumeTrackPerformanceAction(
+        JNIEnv* /* env */,
+        jclass /* clazz */)
+{
+    return static_cast<jint>(
+            pendingTrackPerformanceAction.exchange(
                     -1,
                     std::memory_order_acq_rel));
 }

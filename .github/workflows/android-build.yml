@@ -314,6 +314,15 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcTrackPerformanceTests.cpp             -o build/native-tests/mpc_track_performance_tests
           build/native-tests/mpc_track_performance_tests
 
+      - name: Test MPC track performance MIDI gesture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcTrackPerformanceMidiGestureTests.cpp             -o build/native-tests/mpc_track_performance_midi_gesture_tests
+          build/native-tests/mpc_track_performance_midi_gesture_tests
+
+
       - name: Test MPC project state
         shell: bash
         run: |

@@ -75,7 +75,7 @@ The Sequencer includes a dedicated Track Performance surface rather than mixing 
 
 Mute and Solo are transport-safe controls: they do not reset the sequence position, stop playback, recreate the playback session, or modify note data. Eligible Drum-track playback instances remain alive while each scheduler pass checks the current Track performance state. This lets a performer bring layers in and out without restarting the phrase.
 
-The current surface is software-first. Physical MPC Studio MkII Track Performance mapping remains a separate hardware increment so the established MAIN and Sequence Launcher pad contracts stay stable.
+The surface now also has a small physical-controller bridge. While Track Performance is active, the visible 16-track bank maps to the physical 16 pads: a pad tap is emitted as a semantic MUTE toggle and a press held for 500 ms or longer is emitted as a semantic SOLO toggle. Gesture decoding stays on the MIDI input side; the resulting action is handed to the Android main thread before domain state changes. The controller pads mirror ON/selected, MUTE and SOLO state with cached LED writes. Physical hardware behavior is implemented but remains pending real-device verification.
 
 ## Live Sequence Launcher
 

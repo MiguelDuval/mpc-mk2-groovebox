@@ -125,6 +125,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int selectedSequenceStep = -1;
     private String currentPage = "MAIN";
     private int trackPerformanceBank = 0;
+    private String lastTrackPerformanceLedSignature = "";
     private final Button[] trackPerformanceButtons = new Button[16];
     private volatile boolean destroyed;
     private volatile boolean startupComplete;
@@ -198,6 +199,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native int nativeSequenceGetCount();
     private static native int nativeSequenceGetQueuedIndex();
     private static native void nativeSequenceSetLauncherContext(
+            boolean enabled, int bank);
+    private static native void nativeSequenceSetTrackPerformanceContext(
             boolean enabled, int bank);
     private static native String nativeSequenceLaunchPad(
             int bank, int padIndex);
@@ -475,6 +478,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return b;
     }
 
+    private void clearPhysicalPadContexts() {
+        nativeSequenceSetLauncherContext(false, 0);
+        nativeSequenceSetTrackPerformanceContext(false, 0);
+
+        if (!lastTrackPerformanceLedSignature.isEmpty() && midiBridge != null) {
+            midiBridge.allPadsOff();
+        }
+        lastTrackPerformanceLedSignature = "";
+    }
+
     private void updateModeRailSelection() {
         for (Button button : modeButtons) {
             if (button == null) continue;
@@ -514,7 +527,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMainPage() {
-        nativeSequenceSetLauncherContext(false, 0);
+        clearPhysicalPadContexts();
         clearSequenceLauncherLeds();
         currentPage = "MAIN";
         pageTitle.setText("MAIN");
@@ -629,7 +642,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSamplePage() {
-        nativeSequenceSetLauncherContext(false, 0);
+        clearPhysicalPadContexts();
         currentPage = "SAMPLE";
         pageTitle.setText("SAMPLE");
         content.removeAllViews();
@@ -834,7 +847,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showRecordPage() {
-        nativeSequenceSetLauncherContext(false, 0);
+        clearPhysicalPadContexts();
         currentPage = "REC";
         pageTitle.setText("RECORDER");
         content.removeAllViews();
@@ -923,7 +936,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showBrowserPage() {
-        nativeSequenceSetLauncherContext(false, 0);
+        clearPhysicalPadContexts();
         currentPage = "BROWSE";
         pageTitle.setText("BROWSER");
         content.removeAllViews();
@@ -961,7 +974,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequencePage() {
-        nativeSequenceSetLauncherContext(false, 0);
+        clearPhysicalPadContexts();
         currentPage = "SEQ";
         pageTitle.setText("SEQUENCER");
         content.removeAllViews();
@@ -1152,7 +1165,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceGridPage() {
-        nativeSequenceSetLauncherContext(false, 0);
+        clearPhysicalPadContexts();
         currentPage = "SEQ";
         pageTitle.setText("SEQ • GRID");
         content.removeAllViews();
@@ -1235,8 +1248,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceMutePage() {
-        nativeSequenceSetLauncherContext(false, 0);
+        clearPhysicalPadContexts();
         currentPage = "SEQ";
+        nativeSequenceSetTrackPerformanceContext(true, trackPerformanceBank);
         pageTitle.setText("SEQ • MUTE");
         content.removeAllViews();
         sequenceTimeline = null;
@@ -1416,6 +1430,57 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
             }
         }
+
+        refreshTrackPerformanceHardwareLeds();
+    }
+
+    private void refreshTrackPerformanceHardwareLeds() {
+        if (midiBridge == null || !"SEQ".equals(currentPage)
+                || trackPerformanceButtons[0] == null) {
+            return;
+        }
+
+        final int count = nativeSequenceGetTrackCount();
+        final StringBuilder signature = new StringBuilder();
+        for (int cell = 0; cell < 16; cell++) {
+            final int track = trackPerformanceBank * 16 + cell;
+            if (track >= count) {
+                signature.append('E');
+                continue;
+            }
+            final boolean muted = nativeSequenceGetTrackMuted(track);
+            final boolean soloed = nativeSequenceGetTrackSolo(track);
+            final boolean selected = nativeSequenceGetSelectedTrack() == track;
+            signature.append(muted ? 'M' : (soloed ? 'S' : (selected ? 'D' : 'O')));
+        }
+
+        final String nextSignature = signature.toString();
+        if (nextSignature.equals(lastTrackPerformanceLedSignature)) {
+            return;
+        }
+        lastTrackPerformanceLedSignature = nextSignature;
+
+        for (int cell = 0; cell < 16; cell++) {
+            final int track = trackPerformanceBank * 16 + cell;
+            if (track >= count) {
+                midiBridge.setPadRgb(cell, 0, 0, 0);
+                continue;
+            }
+
+            final boolean muted = nativeSequenceGetTrackMuted(track);
+            final boolean soloed = nativeSequenceGetTrackSolo(track);
+            final boolean selected = nativeSequenceGetSelectedTrack() == track;
+
+            if (muted) {
+                midiBridge.setPadRgb(cell, 127, 18, 18);
+            } else if (soloed) {
+                midiBridge.setPadRgb(cell, 127, 82, 10);
+            } else if (selected) {
+                midiBridge.setPadRgb(cell, 10, 82, 127);
+            } else {
+                midiBridge.setPadRgb(cell, 18, 58, 58);
+            }
+        }
     }
 
     private void moveTrackPerformanceBank(int delta) {
@@ -1424,11 +1489,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackPerformanceBank = Math.max(
                 0,
                 Math.min(bankCount - 1, trackPerformanceBank + delta));
+        nativeSequenceSetTrackPerformanceContext(true, trackPerformanceBank);
         refreshTrackPerformancePage();
     }
 
     private void showSequenceLauncherPage() {
-        nativeSequenceSetLauncherContext(false, 0);
+        clearPhysicalPadContexts();
         launcherBank = Math.max(0, nativeSequenceGetIndex() / 16);
         currentPage = "SEQ";
         pageTitle.setText("SEQ • LAUNCH");
@@ -1507,7 +1573,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceStepPage() {
-        nativeSequenceSetLauncherContext(false, 0);
+        clearPhysicalPadContexts();
         currentPage = "SEQ";
         pageTitle.setText("SEQ • STEP");
         content.removeAllViews();
@@ -2366,7 +2432,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMixPage() {
-        nativeSequenceSetLauncherContext(false, 0);
+        clearPhysicalPadContexts();
         currentPage = "MIX";
         pageTitle.setText("MIX");
         content.removeAllViews();
@@ -2452,7 +2518,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMenuPage() {
-        nativeSequenceSetLauncherContext(false, 0);
+        clearPhysicalPadContexts();
         currentPage = "MENU";
         pageTitle.setText("MENU");
         content.removeAllViews();
@@ -3707,6 +3773,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     @Override
+    public void onTrackPerformancePad(int padIndex, boolean solo) {
+        if (!"SEQ".equals(currentPage)
+                || trackPerformanceButtons[0] == null
+                || padIndex < 0 || padIndex >= 16) {
+            return;
+        }
+
+        final int track = trackPerformanceBank * 16 + padIndex;
+        if (track >= nativeSequenceGetTrackCount()) {
+            return;
+        }
+
+        final String result = solo
+                ? nativeSequenceToggleTrackSolo(track)
+                : nativeSequenceToggleTrackMuted(track);
+        setBottomStatus("MIDI PAD " + (padIndex + 1) + " • " + result);
+        refreshTrackPerformancePage();
+    }
+
+    @Override
     public void onSequenceLauncherPad(int padIndex) {
         if (!"SEQ".equals(currentPage)
                 || sequenceLauncherView == null
@@ -3749,6 +3835,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
 
+    private void clearTrackPerformanceHardwareLeds() {
+        if (midiBridge == null || lastTrackPerformanceLedSignature.isEmpty()) {
+            return;
+        }
+        midiBridge.allPadsOff();
+        lastTrackPerformanceLedSignature = "";
+    }
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
@@ -3769,6 +3863,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!uiOnlySmokeMode) {
             nativeAudioStop();
         }
+
+        nativeSequenceSetTrackPerformanceContext(false, 0);
+        clearTrackPerformanceHardwareLeds();
 
         if (midiBridge != null) {
             midiBridge.close();

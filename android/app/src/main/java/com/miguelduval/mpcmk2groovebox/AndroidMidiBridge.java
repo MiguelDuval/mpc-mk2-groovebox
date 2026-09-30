@@ -18,6 +18,7 @@ public final class AndroidMidiBridge {
         void onDevicesChanged(String description);
         void onMidi(String description);
         void onSequenceLauncherPad(int padIndex);
+        void onTrackPerformancePad(int padIndex, boolean solo);
         void onConnection(String description);
     }
 
@@ -65,6 +66,15 @@ public final class AndroidMidiBridge {
             if (launcherPad >= 0) {
                 mainHandler.post(() ->
                         listener.onSequenceLauncherPad(launcherPad));
+            }
+
+            final int trackPerformanceAction =
+                    nativeConsumeTrackPerformanceAction();
+            if (trackPerformanceAction >= 0) {
+                final int padIndex = trackPerformanceAction & 0x0F;
+                final boolean solo = trackPerformanceAction >= 16;
+                mainHandler.post(() ->
+                        listener.onTrackPerformancePad(padIndex, solo));
             }
 
             listener.onMidi(toHex(message));
@@ -195,8 +205,18 @@ public final class AndroidMidiBridge {
         }
     }
 
+    public void setPadRgb(int pad, int red, int green, int blue) {
+        send(MpcStudioMk2MidiMessages.padRgb(pad, red, green, blue));
+    }
+
+    public void allPadsOff() {
+        for (int pad = 0; pad < 16; pad++) {
+            setPadRgb(pad, 0, 0, 0);
+        }
+    }
+
     public void testPadRed() {
-        send(MpcStudioMk2MidiMessages.padRgb(0, 127, 0, 0));
+        setPadRgb(0, 127, 0, 0);
     }
 
     public void testPadBlue() {
@@ -338,4 +358,5 @@ public final class AndroidMidiBridge {
 
     private static native byte[] nativeOnMidi(byte[] data, long timestamp);
     private static native int nativeConsumeSequenceLauncherPad();
+    private static native int nativeConsumeTrackPerformanceAction();
 }
