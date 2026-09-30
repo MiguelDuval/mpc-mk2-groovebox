@@ -50,8 +50,8 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
     }
     if(n=="Level16") return make(Type::Reserved,16);
     if(n=="PadMute"){
-        if(shiftHeld_){ trackMuteMode_=!trackMuteMode_; padMuteMode_=false; return make(Type::TrackMuteModeState,trackMuteMode_?1:0); }
-        padMuteMode_=!padMuteMode_; trackMuteMode_=false; return make(Type::PadMuteModeState,padMuteMode_?1:0);
+        if(shiftHeld_){ padMuteMode_=!padMuteMode_; trackMuteMode_=false; return make(Type::PadMuteModeState,padMuteMode_?1:0); }
+        trackMuteMode_=!trackMuteMode_; padMuteMode_=false; return make(Type::TrackMuteModeState,trackMuteMode_?1:0);
     }
     if(n=="PadBankAE"||n=="PadBankBF"||n=="PadBankCG"||n=="PadBankDH"){
         std::uint8_t p= n=="PadBankBF"?1:n=="PadBankCG"?2:n=="PadBankDH"?3:0;
