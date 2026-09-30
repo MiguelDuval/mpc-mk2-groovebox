@@ -383,6 +383,48 @@ Status: **DECODED, PERFORMANCE MODIFIER NOT ROUTED**.
 
 Priority: **P0**.
 
+### R1. 16 Level / Pad Perform
+
+Physical control:
+- **16 Level / Pad Perform** button.
+
+MIDI:
+- button note: 40;
+- button LED: CC 40;
+- button channel: 1 (zero-based channel 0).
+
+The official MkII guide defines two distinct layers of behavior on this one physical control:
+- normal press → **16 Level**;
+- Shift + press → **Pad Perform**. citeturn548440view0
+
+**16 Level semantic contract**
+- the last-hit pad becomes the source sound;
+- the sixteen physical pads temporarily represent sixteen fixed values of one selected parameter;
+- the parameter is selected with the data dial or +/-;
+- the parameter domain should start with Velocity, Tune, Filter, Layer, Attack and Decay, matching the documented MPC behavior;
+- all sixteen pads still trigger the source sound, but their parameter value is determined by pad position rather than strike velocity;
+- leaving 16 Level restores the normal pad-bank performance context.
+
+**Pad Perform semantic contract**
+- Shift + 16 Level enters a dedicated performance context;
+- the sixteen pads become a musical scale/chord/progression surface rather than sixteen independent drum-pad targets;
+- the selected musical context must remain visible on the Android screen and, later, summarized on the MkII LCD;
+- the application implementation must define its own original scale/chord mapping and must not assume proprietary MPC assets or algorithms.
+
+Status:
+- MIDI control **DECODED**;
+- semantic routing **NOT IMPLEMENTED**;
+- 16 Level UI/domain feature **NOT IMPLEMENTED**;
+- Pad Perform UI/domain feature **NOT IMPLEMENTED**.
+
+Priority:
+- 16 Level semantic routing: **P1**;
+- 16 Level production feature: **P1**;
+- Pad Perform semantic reservation: **P1**;
+- Pad Perform musical implementation: **P2**.
+
+Design rule: this control is a mode switch for the pad matrix, not a parameter button attached to one screen. Hardware and touchscreen must eventually invoke the same semantic mode state.
+
 ### S. Pad Banks A/E, B/F, C/G, D/H
 
 MIDI notes 35–38.
@@ -551,6 +593,8 @@ Reverse-engineered MIDI:
 - slide value: CC 33;
 - button channel: 1 / zero-based 0.
 
+**Implementation gap:** the current MpcStudioMk2InputDecoder recognizes CC 33, but it does not yet expose Note 78 as a dedicated TouchStripPress event. The semantic adapter must add this explicit input before touch-strip mode cycling can be made hardware-complete.
+
 Documented MPC software behavior supports multiple modes, including Note Repeat and expressive parameter control. The application should implement a smaller, coherent set first:
 
 1. **Performance / Note Repeat division**;
@@ -699,6 +743,7 @@ Implement first:
 12. Step/Bar playhead navigation.
 13. Tap Tempo.
 14. Touch Strip basic continuous-value path.
+15. Reserve the 16 Level / Pad Perform mode state in the hardware adapter so the pad matrix has an explicit performance-context contract.
 
 This gives the performer the core controls needed to operate the groovebox without touching the screen for every operation.
 
@@ -706,6 +751,7 @@ This gives the performer the core controls needed to operate the groovebox witho
 
 Then implement:
 
+- 16 Level parameter selection and pad-matrix remapping;
 - Sample Select;
 - Sample Start/End;
 - Tune/Fine;
@@ -727,6 +773,7 @@ Then:
 
 - Automation Read/Write;
 - richer Q-Link semantics using real MkII controls;
+- Pad Perform musical scales/chords/progressions using only controls that actually exist on the MkII;
 - advanced sample/process contexts;
 - extended hardware feedback pages;
 - context-specific shortcuts that are not required for basic live operation.
