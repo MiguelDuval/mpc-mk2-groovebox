@@ -55,16 +55,15 @@ TickWindow MpcSequencerCursor::advanceTicks(
 
     if (!sequence_.loopEnabled) {
         const auto begin = positionTicks_;
-        const auto end = std::min<std::int64_t>(
-                length,
-                begin + deltaTicks);
-        positionTicks_ = std::min<std::int64_t>(end, length - 1);
-
-        TickWindow result{begin, positionTicks_, 0};
-        if (end >= length) {
+        const auto distanceToEnd = length - begin;
+        if (deltaTicks >= distanceToEnd) {
+            positionTicks_ = length - 1;
             playing_ = false;
+            return TickWindow{begin, positionTicks_, 0};
         }
-        return result;
+
+        positionTicks_ = begin + deltaTicks;
+        return TickWindow{begin, positionTicks_, 0};
     }
 
     const auto loopStart = std::clamp<std::int64_t>(
@@ -79,13 +78,21 @@ TickWindow MpcSequencerCursor::advanceTicks(
     const auto begin = positionTicks_;
     const auto distance = static_cast<std::int64_t>(
             positionTicks_ - loopStart);
-    const auto total = distance + deltaTicks;
+
+    const auto deltaCycles = static_cast<std::uint64_t>(
+            deltaTicks / loopLength);
+    const auto deltaRemainder = deltaTicks % loopLength;
+    const auto remainderDistance = distance + deltaRemainder;
+    const auto completedExtraCycle =
+            static_cast<std::uint64_t>(remainderDistance >= loopLength);
 
     TickWindow result;
     result.begin = begin;
-    result.completedCycles =
-            static_cast<std::uint64_t>(total / loopLength);
-    result.end = loopStart + (total % loopLength);
+    result.completedCycles = deltaCycles + completedExtraCycle;
+    const auto finalRemainder = remainderDistance >= loopLength
+            ? remainderDistance - loopLength
+            : remainderDistance;
+    result.end = loopStart + finalRemainder;
     positionTicks_ = result.end;
     return result;
 }
