@@ -71,10 +71,16 @@ bool MpcProjectState::setSequenceBars(std::int32_t bars) noexcept {
         return false;
     }
 
+    const bool loopWasFullLength =
+            sequence.loopStartTicks == 0
+            && sequence.loopEndTicks == sequence.lengthTicks;
+
     auto& mutableSequence = activeSequence();
     mutableSequence.lengthTicks = length;
-    if (mutableSequence.loopEndTicks > length
+    if (loopWasFullLength
+            || mutableSequence.loopEndTicks > length
             || mutableSequence.loopEndTicks <= 0) {
+        mutableSequence.loopStartTicks = 0;
         mutableSequence.loopEndTicks = length;
     }
     mutableSequence.loopStartTicks =
