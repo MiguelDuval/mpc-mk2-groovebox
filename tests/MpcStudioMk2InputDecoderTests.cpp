@@ -93,6 +93,19 @@ void testTouchStrip() {
     assert(event.number == 33);
     assert(event.value == 64);
 }
+void testTouchStripPress() {
+    const auto event = decode({
+        0x90,
+        mpc::studio::touchStripPressNote,
+        127
+    });
+
+    assert(event.type == InputEventType::TouchStripPress);
+    assert(event.channel == mpc::studio::buttonChannel);
+    assert(event.number == mpc::studio::touchStripPressNote);
+    assert(event.value == 127);
+    assert(event.pressed);
+}
 
 void testChannelAftertouch() {
     const auto event = decode({0xD0, 50});
@@ -246,6 +259,7 @@ int main() {
     testJogWheel();
     testJogPress();
     testTouchStrip();
+    testTouchStripPress();
     testChannelAftertouch();
     testPadLedBuilder();
     testLedCcBuilders();
@@ -255,15 +269,4 @@ int main() {
     testLcdPngSizeBoundaries();
     testUnknownMessageIsIgnored();
     return 0;
-}
-
-TEST_CASE("MPC Studio touch strip press is decoded separately from touch strip position") {
-    const std::uint8_t message[] = {0x90, mpc::studio::touchStripPressNote, 127};
-    const auto event = mpc::studio::decodeInput(message);
-    REQUIRE(event.has_value());
-    REQUIRE(event->type == mpc::studio::InputEventType::TouchStripPress);
-    REQUIRE(event->channel == mpc::studio::buttonChannel);
-    REQUIRE(event->number == 78);
-    REQUIRE(event->value == 127);
-    REQUIRE(event->pressed);
 }
