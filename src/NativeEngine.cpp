@@ -51,6 +51,7 @@ void stopSequenceForMutation() {
     }
 
     sequenceSession().stop();
+    core.sequenceTransportClock().clearQueuedSequence();
     core.sequenceTransportClock().stop(
             state.activeSequence(),
             position,
