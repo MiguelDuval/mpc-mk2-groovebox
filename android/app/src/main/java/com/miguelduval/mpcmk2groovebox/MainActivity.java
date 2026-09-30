@@ -226,24 +226,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         applyFullscreenWindowPolicy();
 
-        audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
-        if (audioManager != null) {
-            audioDeviceCallback = new AudioDeviceCallback() {
-                @Override
-                public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
-                    refreshAudioDevicesFromSystem();
-                }
-
-                @Override
-                public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
-                    refreshAudioDevicesFromSystem();
-                }
-            };
-            audioManager.registerAudioDeviceCallback(
-                    audioDeviceCallback,
-                    new Handler(Looper.getMainLooper()));
-        }
-
         setContentView(buildApplicationShell());
         applyFullscreenWindowPolicy();
         Log.i(TAG, "UI_READY");
@@ -265,8 +247,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final String sampleResult = loadBundledSample();
                 Log.i(TAG, "BUNDLED_SAMPLE_END");
 
-                final String audioResult = nativeAudioStart();
-                Log.i(TAG, "AUDIO_START_RESULT=" + audioResult);
+                // Do not open the physical audio output during Activity startup.
+                // The output device is started on first actual audio use (pad audition,
+                // transport, or Audio Settings test). This keeps app launch independent
+                // from device-specific Oboe/Android audio driver behavior.
+                final String audioResult = "Audio startup deferred";
+                Log.i(TAG, "AUDIO_START_DEFERRED");
 
                 runOnUiThread(() -> {
                     if (destroyed) return;
@@ -291,6 +277,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 });
             });
         });
+    }
+
+    private void ensureAudioManager() {
+        if (audioManager != null) return;
+
+        audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (audioManager == null) return;
+
+        audioDeviceCallback = new AudioDeviceCallback() {
+            @Override
+            public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
+                refreshAudioDevicesFromSystem();
+            }
+
+            @Override
+            public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
+                refreshAudioDevicesFromSystem();
+            }
+        };
+        audioManager.registerAudioDeviceCallback(
+                audioDeviceCallback,
+                new Handler(Looper.getMainLooper()));
     }
 
     private View buildApplicationShell() {
@@ -1535,6 +1543,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showAudioSettingsPage() {
+        ensureAudioManager();
         currentPage = "AUDIO";
         pageTitle.setText("AUDIO");
         content.removeAllViews();
