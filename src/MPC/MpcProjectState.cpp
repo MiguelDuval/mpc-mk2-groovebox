@@ -40,8 +40,13 @@ MpcProjectState::MpcProjectState() {
     sequence.swingPercent = 0;
 
     constexpr const char* kDefaultTrackNames[] = {
-            "DRUMS", "PERC", "HATS", "FX",
-            "KICK", "SNARE", "CLAP", "TOMS"
+            "SAMPLE 01", "SYNTH 01", "MIDI EXT 01", "AUDIO 01"
+    };
+    constexpr domain::TrackKind kDefaultTrackKinds[] = {
+            domain::TrackKind::Drum,
+            domain::TrackKind::Plugin,
+            domain::TrackKind::Midi,
+            domain::TrackKind::Audio
     };
 
     for (std::size_t trackIndex = 0;
@@ -50,9 +55,26 @@ MpcProjectState::MpcProjectState() {
         domain::Track track;
         track.id = "track-" + std::to_string(trackIndex + 1);
         track.name = kDefaultTrackNames[trackIndex];
-        track.type = domain::ProgramType::Drum;
-        track.kind = domain::TrackKind::Drum;
-        track.programId = "drum-program-1";
+        track.kind = kDefaultTrackKinds[trackIndex];
+
+        switch (track.kind) {
+            case domain::TrackKind::Drum:
+                track.type = domain::ProgramType::Drum;
+                track.programId = "drum-program-1";
+                break;
+            case domain::TrackKind::Keygroup:
+                track.type = domain::ProgramType::Keygroup;
+                break;
+            case domain::TrackKind::Plugin:
+                track.type = domain::ProgramType::Plugin;
+                break;
+            case domain::TrackKind::Midi:
+                track.type = domain::ProgramType::Audio;
+                break;
+            case domain::TrackKind::Audio:
+                track.type = domain::ProgramType::Audio;
+                break;
+        }
 
         domain::Pattern pattern;
         pattern.id = track.id + "-pattern-1";
@@ -380,9 +402,9 @@ std::string MpcProjectState::trackStatus(std::size_t trackIndex) const {
     const auto& track = tracks[trackIndex];
     std::string kind;
     switch (track.kind) {
-        case domain::TrackKind::Drum: kind = "DRUM"; break;
-        case domain::TrackKind::Keygroup: kind = "KEYGROUP"; break;
-        case domain::TrackKind::Plugin: kind = "PLUGIN"; break;
+        case domain::TrackKind::Drum: kind = "SAMPLE"; break;
+        case domain::TrackKind::Keygroup: kind = "SYNTH"; break;
+        case domain::TrackKind::Plugin: kind = "SYNTH"; break;
         case domain::TrackKind::Midi: kind = "MIDI"; break;
         case domain::TrackKind::Audio: kind = "AUDIO"; break;
     }
