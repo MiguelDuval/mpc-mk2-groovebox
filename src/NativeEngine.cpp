@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "MPC/MpcCore.h"
+#include "MPC/Sequencer/MpcPatternOps.h"
 #include "MPC/Sequencer/MpcSequencePlaybackSession.h"
 #include "MPC/Sequencer/MpcSequenceSettings.h"
 
@@ -950,6 +951,180 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetQueuedIndex(
     return static_cast<jint>(
             mpc::MpcCore::instance().sequenceTransportClock()
                     .queuedSequenceIndex());
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsGridEditable(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    const auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return JNI_FALSE;
+    }
+
+    const auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()) {
+        return JNI_FALSE;
+    }
+
+    const auto& track = tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum
+            || track.patterns.empty()
+            || track.patterns.front().lengthTicks <= 0) {
+        return JNI_FALSE;
+    }
+
+    return JNI_TRUE;
+}
+
+extern "C" JNIEXPORT jintArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetGridVelocities(
+        JNIEnv* env, jobject /* thiz */, jint firstStep, jint gridTicks)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    constexpr std::size_t kGridCells = 16u * 16u;
+    jintArray result = env->NewIntArray(static_cast<jsize>(kGridCells));
+    if (result == nullptr) {
+        return nullptr;
+    }
+
+    std::vector<jint> values(kGridCells, 0);
+
+    if (firstStep < 0 || gridTicks <= 0) {
+        env->SetIntArrayRegion(
+                result, 0, static_cast<jsize>(values.size()), values.data());
+        return result;
+    }
+
+    const auto& state = mpc::MpcCore::instance().projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()) {
+        env->SetIntArrayRegion(
+                result, 0, static_cast<jsize>(values.size()), values.data());
+        return result;
+    }
+
+    const auto& track = tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum
+            || track.patterns.empty()) {
+        env->SetIntArrayRegion(
+                result, 0, static_cast<jsize>(values.size()), values.data());
+        return result;
+    }
+
+    const auto& pattern = track.patterns.front();
+    const auto& program = state.activeDrumProgram();
+
+    for (std::size_t pad = 0; pad < mpc::domain::kMaxProgramPads; ++pad) {
+        const auto noteNumber = program.pads[pad].midiNote;
+        for (std::size_t column = 0; column < 16u; ++column) {
+            const auto step = static_cast<std::int64_t>(firstStep)
+                    + static_cast<std::int64_t>(column);
+            const auto tick = step * static_cast<std::int64_t>(gridTicks);
+            if (tick < 0 || tick >= pattern.lengthTicks) {
+                continue;
+            }
+
+            int velocity = 0;
+            for (const auto& note : pattern.notes) {
+                if (note.tick == tick && note.note == noteNumber) {
+                    velocity = std::max(
+                            velocity,
+                            static_cast<int>(note.velocity));
+                }
+            }
+            values[pad * 16u + column] = velocity;
+        }
+    }
+
+    env->SetIntArrayRegion(
+            result, 0, static_cast<jsize>(values.size()), values.data());
+    return result;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleGridStep(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint padIndex,
+        jint stepIndex,
+        jint gridTicks)
+{
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)
+            || stepIndex < 0
+            || gridTicks <= 0) {
+        return toJString(env, "Grid edit failed: invalid step");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Grid edit blocked: stop playback first");
+    }
+
+    stopSequenceForMutation();
+
+    auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()) {
+        return toJString(env, "Grid edit failed: no selected track");
+    }
+
+    auto& track = tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum
+            || track.patterns.empty()) {
+        return toJString(env, "Grid edit failed: selected track is not DRUM");
+    }
+
+    auto& pattern = track.patterns.front();
+    const auto noteNumber = state.activeDrumProgram()
+            .pads[static_cast<std::size_t>(padIndex)].midiNote;
+
+    const auto tick = static_cast<std::int64_t>(stepIndex)
+            * static_cast<std::int64_t>(gridTicks);
+    if (tick < 0 || tick >= pattern.lengthTicks) {
+        return toJString(env, "Grid edit failed: step is outside pattern");
+    }
+
+    bool occupied = false;
+    for (const auto& note : pattern.notes) {
+        if (note.tick == tick && note.note == noteNumber) {
+            occupied = true;
+            break;
+        }
+    }
+
+    const bool changed = occupied
+            ? mpc::sequencer::eraseStepNote(
+                    pattern, stepIndex, gridTicks, noteNumber)
+            : mpc::sequencer::setStepNote(
+                    pattern,
+                    stepIndex,
+                    gridTicks,
+                    noteNumber,
+                    100,
+                    0,
+                    127,
+                    1);
+
+    if (!changed) {
+        return toJString(env, "Grid edit failed: event unchanged");
+    }
+
+    return toJString(
+            env,
+            std::string("STEP ")
+                    + std::to_string(stepIndex + 1)
+                    + (occupied ? " OFF" : " ON")
+                    + " | PAD "
+                    + std::to_string(padIndex + 1));
 }
 
 namespace {
