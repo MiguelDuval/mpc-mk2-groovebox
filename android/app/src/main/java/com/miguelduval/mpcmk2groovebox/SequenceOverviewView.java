@@ -6,8 +6,6 @@ import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.View;
 
-import java.util.Locale;
-
 /**
  * Thin always-visible sequence context strip.
  *
@@ -26,8 +24,6 @@ public final class SequenceOverviewView extends View {
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
-    private int sequenceIndex;
-    private int sequenceCount;
     private int barCount = 1;
     private int loopStartBar = 1;
     private int loopEndBar = 1;
@@ -69,8 +65,6 @@ public final class SequenceOverviewView extends View {
             boolean loopEnabled,
             long positionTicks,
             boolean playing) {
-        this.sequenceIndex = Math.max(0, sequenceIndex);
-        this.sequenceCount = Math.max(0, sequenceCount);
         this.barCount = Math.max(1, barCount);
         this.loopStartBar = clampBar(loopStartBar);
         this.loopEndBar = clampBar(loopEndBar);
@@ -89,81 +83,27 @@ public final class SequenceOverviewView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        final float labelLeft = dp(8);
-        final float timelineLeft = dp(58);
-        final float labelRight = getWidth() - dp(70);
-        final float timelineRight = getWidth() - dp(58);
+        // This is intentionally a compact visual timeline, not a second
+        // transport readout. Exact sequence/position text lives in the
+        // global transport bar; this strip communicates movement at a glance.
+        final float left = dp(8);
+        final float right = getWidth() - dp(8);
         final float centerY = getHeight() * 0.5f;
-        final float top = Math.max(dp(4), centerY - dp(5));
-        final float bottom = Math.min(getHeight() - dp(4), centerY + dp(5));
-        final float width = Math.max(1f, timelineRight - timelineLeft);
+        final float top = Math.max(dp(1), centerY - dp(2));
+        final float bottom = Math.min(getHeight() - dp(1), centerY + dp(2));
+        final float width = Math.max(1f, right - left);
 
         canvas.drawColor(BG);
 
-        drawText(
-                canvas,
-                String.format(
-                        Locale.ROOT,
-                        "S%02d/%02d",
-                        sequenceIndex + 1,
-                        Math.max(1, sequenceCount)),
-                labelLeft,
-                centerY + dp(3),
-                TEXT,
-                9,
-                true);
-
-        final String position = formatPosition(positionTicks);
-        drawText(
-                canvas,
-                position,
-                labelRight,
-                centerY + dp(3),
-                playing ? TEXT : MUTED,
-                9,
-                true);
-
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(TRACK);
-        canvas.drawRoundRect(
-                timelineLeft,
-                top,
-                timelineRight,
-                bottom,
-                dp(2),
-                dp(2),
-                paint);
-
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(Math.max(dp(1), 0.75f));
-        paint.setColor(GRID);
-        for (int bar = 0; bar <= barCount; bar++) {
-            final float x = timelineLeft + width * bar / (float) barCount;
-            canvas.drawLine(x, top - dp(2), x, bottom + dp(2), paint);
-        }
+        canvas.drawRect(left, top, right, bottom, paint);
 
         if (loopEnabled) {
-            final float loopLeft = timelineLeft
-                    + width * (loopStartBar - 1f) / barCount;
-            final float loopRight = timelineLeft
-                    + width * loopEndBar / (float) barCount;
-
-            paint.setStyle(Paint.Style.FILL);
+            final float loopLeft = left + width * (loopStartBar - 1f) / barCount;
+            final float loopRight = left + width * loopEndBar / (float) barCount;
             paint.setColor(RED_DIM);
-            canvas.drawRoundRect(
-                    loopLeft,
-                    top,
-                    Math.max(loopLeft + dp(2), loopRight),
-                    bottom,
-                    dp(2),
-                    dp(2),
-                    paint);
-
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(dp(1));
-            paint.setColor(RED);
-            canvas.drawLine(loopLeft, top - dp(2), loopLeft, bottom + dp(2), paint);
-            canvas.drawLine(loopRight, top - dp(2), loopRight, bottom + dp(2), paint);
+            canvas.drawRect(loopLeft, top, Math.max(loopLeft + dp(1), loopRight), bottom, paint);
         }
 
         final double ticksPerBar =
@@ -175,25 +115,22 @@ public final class SequenceOverviewView extends View {
                 positionTicks / sequenceTicks,
                 0.0,
                 1.0);
-        final float playheadX = timelineLeft + width * playhead;
+        final float playheadX = left + width * playhead;
 
-        paint.setStyle(Paint.Style.FILL);
         paint.setColor(RED);
-        canvas.drawRect(timelineLeft, top, playheadX, bottom, paint);
+        canvas.drawRect(left, top, playheadX, bottom, paint);
 
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(playing ? dp(2) : dp(1));
-        paint.setColor(PLAYHEAD);
-        canvas.drawLine(
-                playheadX,
-                top - dp(3),
-                playheadX,
-                bottom + dp(3),
-                paint);
-
-        paint.setStyle(Paint.Style.FILL);
-        paint.setColor(RED);
-        canvas.drawCircle(playheadX, centerY, dp(2), paint);
+        if (playing) {
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(dp(1.5f));
+            paint.setColor(PLAYHEAD);
+            canvas.drawLine(
+                    playheadX,
+                    Math.max(0f, top - dp(1)),
+                    playheadX,
+                    Math.min(getHeight(), bottom + dp(1)),
+                    paint);
+        }
     }
 
     private String formatPosition(long ticks) {
