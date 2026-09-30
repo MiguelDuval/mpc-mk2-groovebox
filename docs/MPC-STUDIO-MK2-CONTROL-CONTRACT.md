@@ -64,7 +64,7 @@ These are reverse-engineered/practical mappings, not Akai firmware documentation
 | Q-Link button | Cycle Q-Link parameter column; Shift selects previous; hold exposes Q-Link context | Hardware routing not implemented |
 | Touch Strip | Expressive continuous control | CC decoding exists; semantic modes not implemented |
 | Touch Strip button | Select Touch Strip mode | Input decode exists |
-| Pressing the strip | Dedicated touch/press action used by the practical controller mapping | **Missing from current control map; add explicit protocol support** |
+| Pressing the strip | Dedicated touch/press action used by the practical controller mapping | **Decoded; semantic routing remains next** |
 
 ### Mode and view controls
 
