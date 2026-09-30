@@ -1,6 +1,7 @@
 #include <jni.h>
 #include "Audio/AudioEngine.h"
 
+#include <cmath>
 #include <cstdint>
 #include <span>
 #include <limits>
