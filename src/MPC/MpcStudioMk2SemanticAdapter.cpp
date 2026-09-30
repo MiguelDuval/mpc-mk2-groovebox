@@ -95,10 +95,12 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
     if(n=="Browse") return make(shiftHeld_?Type::BrowserUp:Type::NavigateBrowse);
     if(n=="TrackSelect") return make(shiftHeld_?Type::SequenceSelectionContext:Type::TrackSelectionContext);
     if(n=="ProgramSelect") return make(shiftHeld_?Type::TrackTypeSelectionContext:Type::ProgramSelectionContext);
-    if(n=="SampleSelect") return make(Type::SampleSelectContext);
-    if(n=="SampleStart") return make(Type::SampleStartContext);
-    if(n=="SampleEnd") return make(Type::SampleEndContext);
-    if(n=="Tune") return make(Type::TuneContext);
+    if(n=="Plus") return make(Type::AdjustValueDelta,1,shiftHeld_?1:0);
+    if(n=="Minus") return make(Type::AdjustValueDelta,-1,shiftHeld_?1:0);
+    if(n=="SampleSelect") return make(Type::SampleSelectContext,shiftHeld_?1:0);
+    if(n=="SampleStart") return make(Type::SampleStartContext,shiftHeld_?1:0);
+    if(n=="SampleEnd") return make(Type::SampleEndContext,shiftHeld_?1:0);
+    if(n=="Tune") return make(Type::TuneContext,shiftHeld_?1:0);
     if(n=="Quantize") return make(Type::Quantize,shiftHeld_?1:0);
     if(n=="TCOnOff") return make(Type::TimingCorrectState,shiftHeld_?2:1);
     if(n=="Zoom") return make(Type::ZoomContext,shiftHeld_?1:0);
@@ -118,8 +120,8 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
     return std::nullopt;
 }
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleJog(std::uint8_t v) noexcept {
-    if(v==1) return make(Type::DataDialDelta,1);
-    if(v==127) return make(Type::DataDialDelta,-1);
+    if(v==1) return make(Type::DataDialDelta,1,shiftHeld_?1:0);
+    if(v==127) return make(Type::DataDialDelta,-1,shiftHeld_?1:0);
     return std::nullopt;
 }
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleJogPress(bool p) noexcept {
