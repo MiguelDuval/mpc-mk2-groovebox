@@ -704,7 +704,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPad(
 
     core.audio().triggerPad(padIndex, velocityValue);
 
-    const auto state = core.projectState().sequenceTransportClock().snapshot();
+    const auto state = core.sequenceTransportClock().snapshot();
     const auto& projectState = core.projectState();
     const auto trackIndex = projectState.activeTrackIndex();
     const auto& tracks = projectState.activeSequence().tracks;
