@@ -1,34 +1,16 @@
 #include "MpcNoteRepeatScheduler.h"
+#include "MpcNoteRepeatTiming.h"
 
 #include "MPC/Domain/MpcDomain.h"
 
 #include <algorithm>
-#include <cmath>
-#include <limits>
 
 namespace mpc::sequencer {
 
 namespace {
-constexpr std::int32_t kMinRepeatGridTicks = 60;
-constexpr std::int32_t kMaxRepeatGridTicks = 960;
-constexpr std::int64_t kMinTempoMilliBpm = 20000;
-constexpr std::int64_t kMaxTempoMilliBpm = 300000;
-
 std::int64_t nowNanos() noexcept {
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::steady_clock::now().time_since_epoch()).count();
-}
-
-std::int32_t clampGrid(std::int32_t ticks) noexcept {
-    return std::clamp(
-            ticks, kMinRepeatGridTicks, kMaxRepeatGridTicks);
-}
-
-std::int64_t clampTempoMilliBpm(std::int64_t tempoMilliBpm) noexcept {
-    return std::clamp(
-            tempoMilliBpm,
-            kMinTempoMilliBpm,
-            kMaxTempoMilliBpm);
 }
 } // namespace
 
@@ -110,26 +92,19 @@ std::int64_t MpcNoteRepeatScheduler::ticksToNextBoundary(
         std::int64_t loopStartTicks,
         std::int64_t loopEndTicks,
         std::int32_t gridTicks) noexcept {
-    if (loopEndTicks <= loopStartTicks) {
-        return clampGrid(gridTicks);
-    }
-
-    const auto loopLength = loopEndTicks - loopStartTicks;
-    const auto grid =
-            static_cast<std::int64_t>(clampGrid(gridTicks));
-    const auto relative =
-            ((positionTicks - loopStartTicks) % loopLength + loopLength)
-            % loopLength;
-    const auto remainder = relative % grid;
-
-    return remainder == 0 ? grid : grid - remainder;
+    return note_repeat_timing::ticksToNextBoundary(
+            positionTicks,
+            loopStartTicks,
+            loopEndTicks,
+            gridTicks);
 }
 
 MpcNoteRepeatScheduler::Clock::time_point
 MpcNoteRepeatScheduler::nextDueFromTransport(
         Clock::time_point now,
         const SequenceTransportSnapshot& snapshot) const noexcept {
-    const auto grid = clampGrid(snapshot.quantizeGridTicks);
+    const auto grid =
+            note_repeat_timing::clampGrid(snapshot.quantizeGridTicks);
 
     if (!snapshot.playing
             || snapshot.loopEndTicks <= snapshot.loopStartTicks) {
