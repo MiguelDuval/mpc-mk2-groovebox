@@ -149,7 +149,7 @@ Add:
 - Undo/Redo;
 - Locate;
 - Erase;
-- touch-strip contextual control;
+- touch-strip contextual control. **INITIAL SAMPLE-CONTEXT SLICE IMPLEMENTED — Sample Start/End focus scrubs the corresponding region boundary; Tune focus spans −24..+24 st. Note Repeat timing remains a separate clock-synchronous slice.**
 - compact LCD status.
 
 ### Advanced hardware surface — P2/P3
