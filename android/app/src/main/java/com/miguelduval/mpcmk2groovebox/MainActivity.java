@@ -101,6 +101,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
     private final Button[] sequenceStepButtons = new Button[16];
+    private TextView sequenceStepEventInfo;
     private TextView sequenceTransportView;
     private int sequenceGridPage = 0;
     private int sequenceStepPage = 0;
@@ -118,6 +119,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Runnable sequenceUiUpdater;
     private int selectedPad = 0;
     private int selectedLayer = 0;
+    private int selectedSequenceStep = -1;
     private String currentPage = "MAIN";
     private volatile boolean destroyed;
     private volatile boolean startupComplete;
@@ -216,6 +218,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int firstStep, int gridTicks);
     private static native String nativeSequenceToggleGridStep(
             int padIndex, int stepIndex, int gridTicks);
+    private static native int[] nativeSequenceGetStepParameters(
+            int padIndex, int stepIndex, int gridTicks);
+    private static native String nativeSequenceSetStepVelocity(
+            int padIndex, int stepIndex, int gridTicks, int velocity);
+    private static native String nativeSequenceSetStepProbability(
+            int padIndex, int stepIndex, int gridTicks, int probability);
+    private static native String nativeSequenceSetStepRatchet(
+            int padIndex, int stepIndex, int gridTicks, int ratchet);
     private static native int nativeSequenceGetRecordMode();
     private static native String nativeSequenceSetRecordMode(int mode);
     private static native int nativeSequenceDrainRecordEvents();
@@ -1243,6 +1253,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(context, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
+        LinearLayout eventBar = row();
+        sequenceStepEventInfo = label("STEP —  •  VEL —  •  PROB —  •  RAT —", 11, TEXT);
+        sequenceStepEventInfo.setGravity(Gravity.CENTER_VERTICAL);
+        sequenceStepEventInfo.setPadding(dp(10), 0, dp(10), 0);
+        sequenceStepEventInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        eventBar.addView(sequenceStepEventInfo, new LinearLayout.LayoutParams(
+                0, dp(44), 1.25f));
+        eventBar.addView(actionButton("VEL −10", v -> adjustSelectedStepVelocity(-10)),
+                touchButtonWeight());
+        eventBar.addView(actionButton("VEL +10", v -> adjustSelectedStepVelocity(10)),
+                touchButtonWeight());
+        eventBar.addView(actionButton("PROB −10", v -> adjustSelectedStepProbability(-10)),
+                touchButtonWeight());
+        eventBar.addView(actionButton("PROB +10", v -> adjustSelectedStepProbability(10)),
+                touchButtonWeight());
+        eventBar.addView(actionButton("RATCH −", v -> adjustSelectedStepRatchet(-1)),
+                touchButtonWeight());
+        eventBar.addView(actionButton("RATCH +", v -> adjustSelectedStepRatchet(1)),
+                touchButtonWeight());
+        page.addView(eventBar, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(50)));
+
         LinearLayout steps = row();
         for (int i = 0; i < sequenceStepButtons.length; i++) {
             final int step = i;
@@ -1256,10 +1288,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         1, nativeSequenceGetQuantizeGrid());
                 final int absoluteStep =
                         sequenceStepPage * SEQUENCE_GRID_PAGE_STEPS + step;
+                selectedSequenceStep = absoluteStep;
                 final String result = nativeSequenceToggleGridStep(
                         selectedPad, absoluteStep, gridTicks);
                 setBottomStatus(result);
                 refreshSequenceStepPage();
+            });
+            button.setOnLongClickListener(v -> {
+                selectedSequenceStep =
+                        sequenceStepPage * SEQUENCE_GRID_PAGE_STEPS + step;
+                setBottomStatus(
+                        "Selected step " + (selectedSequenceStep + 1));
+                refreshSequenceStepPage();
+                return true;
             });
             sequenceStepButtons[i] = button;
             steps.addView(button, new LinearLayout.LayoutParams(
@@ -1303,6 +1344,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int[] velocities =
                 nativeSequenceGetGridVelocities(firstStep, gridTicks);
         final boolean editable = nativeSequenceIsGridEditable();
+        final int selectedPageStep = selectedSequenceStep >= firstStep
+                && selectedSequenceStep < firstStep + SEQUENCE_GRID_PAGE_STEPS
+                ? selectedSequenceStep - firstStep
+                : -1;
         final long positionTicks = nativeSequencePositionTicks();
         final long absolutePlayheadStep =
                 Math.max(0L, positionTicks / gridTicks);
@@ -1322,16 +1367,41 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     : 0;
             final boolean active = velocity > 0;
             final boolean playhead = playheadColumn == i;
+            final boolean selected = selectedPageStep == i;
             button.setText(String.format(Locale.ROOT, "%02d", i + 1));
             button.setContentDescription(
                     "Pad " + (selectedPad + 1) + " step " + (i + 1)
                             + (active ? " on" : " off"));
             button.setTextColor(active ? BG : TEXT);
             button.setBackground(strokeBackground(
-                    active ? ACCENT : (playhead ? SURFACE_2 : SURFACE_2),
-                    playhead ? DANGER : (active ? ACCENT : LINE),
+                    active ? ACCENT : SURFACE_2,
+                    selected ? ACCENT_2 : (playhead ? DANGER : (active ? ACCENT : LINE)),
                     8));
             button.setAlpha(editable ? 1.0f : 0.55f);
+        }
+
+        if (sequenceStepEventInfo != null) {
+            final int[] parameters = selectedSequenceStep >= 0
+                    ? nativeSequenceGetStepParameters(
+                            selectedPad, selectedSequenceStep, gridTicks)
+                    : null;
+            final boolean hasEvent = parameters != null
+                    && parameters.length >= 3
+                    && parameters[0] > 0;
+            sequenceStepEventInfo.setText(hasEvent
+                    ? String.format(
+                            Locale.ROOT,
+                            "STEP %02d  •  VEL %d  •  PROB %d  •  RAT %dx",
+                            selectedSequenceStep + 1,
+                            parameters[0],
+                            parameters[1],
+                            parameters[2])
+                    : selectedSequenceStep >= 0
+                            ? String.format(
+                                    Locale.ROOT,
+                                    "STEP %02d  •  EMPTY",
+                                    selectedSequenceStep + 1)
+                            : "STEP —  •  VEL —  •  PROB —  •  RAT —");
         }
 
         final View parent = sequenceStepButtons[0].getParent() instanceof View
@@ -1352,6 +1422,59 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
             }
         }
+    }
+
+    private int[] getSelectedStepParameters() {
+        if (selectedSequenceStep < 0) return null;
+        return nativeSequenceGetStepParameters(
+                selectedPad,
+                selectedSequenceStep,
+                Math.max(1, nativeSequenceGetQuantizeGrid()));
+    }
+
+    private void adjustSelectedStepVelocity(int delta) {
+        final int[] parameters = getSelectedStepParameters();
+        if (parameters == null || parameters.length < 3 || parameters[0] <= 0) {
+            setBottomStatus("Select an active step first");
+            return;
+        }
+        final int value = Math.max(1, Math.min(127, parameters[0] + delta));
+        setBottomStatus(nativeSequenceSetStepVelocity(
+                selectedPad,
+                selectedSequenceStep,
+                Math.max(1, nativeSequenceGetQuantizeGrid()),
+                value));
+        refreshSequenceStepPage();
+    }
+
+    private void adjustSelectedStepProbability(int delta) {
+        final int[] parameters = getSelectedStepParameters();
+        if (parameters == null || parameters.length < 3 || parameters[0] <= 0) {
+            setBottomStatus("Select an active step first");
+            return;
+        }
+        final int value = Math.max(0, Math.min(127, parameters[1] + delta));
+        setBottomStatus(nativeSequenceSetStepProbability(
+                selectedPad,
+                selectedSequenceStep,
+                Math.max(1, nativeSequenceGetQuantizeGrid()),
+                value));
+        refreshSequenceStepPage();
+    }
+
+    private void adjustSelectedStepRatchet(int delta) {
+        final int[] parameters = getSelectedStepParameters();
+        if (parameters == null || parameters.length < 3 || parameters[0] <= 0) {
+            setBottomStatus("Select an active step first");
+            return;
+        }
+        final int value = Math.max(1, Math.min(8, parameters[2] + delta));
+        setBottomStatus(nativeSequenceSetStepRatchet(
+                selectedPad,
+                selectedSequenceStep,
+                Math.max(1, nativeSequenceGetQuantizeGrid()),
+                value));
+        refreshSequenceStepPage();
     }
 
     private void moveSequenceStepPage(int delta) {
