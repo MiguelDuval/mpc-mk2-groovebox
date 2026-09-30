@@ -116,6 +116,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView sequenceLoopView;
     private TextView sequenceQuantizeView;
     private TextView sequenceSwingView;
+    private TextView sequenceTimingCorrectView;
     private TextView sequenceRecordModeView;
     private TextView sequenceTrackInfoView;
     private final Handler sequenceUiHandler = new Handler(Looper.getMainLooper());
@@ -1097,6 +1098,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         tools.addView(actionButton("SWING +5", v -> changeSequenceSwing(5)), touchButtonWeight());
         page.addView(tools);
 
+        LinearLayout timingTools = row();
+        sequenceTimingCorrectView = label("", 11, TEXT);
+        sequenceTimingCorrectView.setGravity(Gravity.CENTER);
+        sequenceTimingCorrectView.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        timingTools.addView(sequenceTimingCorrectView,
+                new LinearLayout.LayoutParams(0, dp(42), 1.8f));
+        timingTools.addView(actionButton("TC ON/OFF", v -> {
+            final String result = nativeSequenceSetTimingCorrectEnabled(
+                    !nativeSequenceIsTimingCorrectEnabled());
+            setBottomStatus(result);
+            refreshSequencePageTools();
+        }), touchButtonWeight());
+        timingTools.addView(actionButton("QUANTIZE", v -> {
+            setBottomStatus(nativeSequenceQuantizeSelectedTrack());
+            refreshSequencePageTools();
+        }), touchButtonWeight());
+        page.addView(timingTools);
+
         LinearLayout workspace = row();
 
         LinearLayout trackPanel = panel();
@@ -2068,6 +2087,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (sequenceSwingView != null) {
             sequenceSwingView.setText(
                     "SWING " + nativeSequenceGetSwing() + "%");
+        }
+        if (sequenceTimingCorrectView != null) {
+            sequenceTimingCorrectView.setText(
+                    "TIMING CORRECT "
+                            + (nativeSequenceIsTimingCorrectEnabled()
+                                    ? "ON" : "OFF")
+                            + "  •  RECORD GRID "
+                            + sequenceGridLabel(nativeSequenceGetQuantizeGrid()));
         }
     }
 
