@@ -45,6 +45,11 @@ public:
         cursor_.setPositionTicks(ticks);
     }
 
+    TickWindow advancePosition(
+            std::int64_t deltaTicks) noexcept {
+        return cursor_.advanceTicks(deltaTicks);
+    }
+
     ScheduleResult advance(
             std::int64_t deltaTicks,
             std::uint32_t seed,
