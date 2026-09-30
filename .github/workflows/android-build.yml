@@ -6,6 +6,7 @@ on:
       - main
       - "foundation/**"
       - "feature/**"
+      - "recovery/**"
   pull_request:
 
 concurrency:
