@@ -90,9 +90,11 @@ public:
         const auto ticksUntilApply =
                 std::max<std::int64_t>(1, boundaryDelta);
 
+        // Live Track Mute is a single pending intent per track. Repeated
+        // taps before the boundary change the target but never move the
+        // already-committed musical boundary.
         for (std::size_t i = 0; i < size_; ++i) {
-            if (commands_[i].trackIndex == trackIndex
-                    && commands_[i].ticksUntilApply == ticksUntilApply) {
+            if (commands_[i].trackIndex == trackIndex) {
                 commands_[i].targetMuted = targetMuted;
                 return true;
             }
