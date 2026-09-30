@@ -30,11 +30,13 @@ public:
             const domain::Sequence& sequence,
             const domain::Pattern& pattern,
             const domain::DrumProgram& program,
-            audio::AudioTriggerQueue& audioQueue) noexcept
+            audio::AudioTriggerQueue& audioQueue,
+            const bool* trackMuted = nullptr) noexcept
             : sequence_(sequence),
               program_(program),
               runtime_(sequence, pattern),
-              audioQueue_(audioQueue) {
+              audioQueue_(audioQueue),
+              trackMuted_(trackMuted) {
     }
 
     MpcSequencerPlayback(const MpcSequencerPlayback&) = delete;
@@ -58,6 +60,10 @@ public:
 
     [[nodiscard]] std::int64_t positionTicks() const noexcept {
         return runtime_.positionTicks();
+    }
+
+    void setPositionTicks(std::int64_t ticks) noexcept {
+        runtime_.setPositionTicks(ticks);
     }
 
     SequencerPlaybackResult advance(
@@ -126,6 +132,10 @@ public:
             expandedWritten += expanded.written;
         }
 
+        if (trackMuted_ != nullptr && *trackMuted_) {
+            return result;
+        }
+
         const auto route = routeScheduledEventsToPads(
                 program_,
                 std::span<const ScheduledMidiEvent>(
@@ -157,6 +167,7 @@ private:
     const domain::DrumProgram& program_;
     MpcSequencerRuntime runtime_;
     audio::AudioTriggerQueue& audioQueue_;
+    const bool* trackMuted_ = nullptr;
     std::array<ScheduledMidiEvent, kMaxPlaybackEvents> scheduledEvents_{};
     std::array<ScheduledMidiEvent, kMaxPlaybackEvents> expandedScheduledEvents_{};
     std::array<ScheduledPadEvent, kMaxPlaybackEvents> routedEvents_{};
