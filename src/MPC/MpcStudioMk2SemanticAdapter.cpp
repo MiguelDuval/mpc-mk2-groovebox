@@ -23,12 +23,28 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const I
     }
 }
 PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noexcept {
-    PadRoutingResult r; r.velocity=e.value;
+    PadRoutingResult r;
+    r.velocity=e.value;
+    r.targetPadIndex=e.padIndex;
     if(e.type!=InputEventType::PadNote || !e.pressed) return r;
     if(modeHeld_){ r.consumed=true; r.action=modePadAction(e.padIndex); return r; }
     if(locateHeld_){ r.consumed=true; r.action=make(Type::LocatePad,e.padIndex); return r; }
     if(padMuteMode_){ r.consumed=true; r.action=make(Type::PadMuteTarget,e.padIndex); return r; }
     if(trackMuteMode_){ r.consumed=true; r.action=make(Type::TrackMuteTarget,e.padIndex); return r; }
+
+    if(sixteenLevel_){
+        if(lastPadIndex_==0xFF){
+            r.consumed=true;
+            r.action=make(Type::SixteenLevelState,0,-1);
+            return r;
+        }
+        r.targetPadIndex=lastPadIndex_;
+        r.velocity=static_cast<std::uint8_t>(
+                1u + (static_cast<unsigned>(e.padIndex) * 126u) / 15u);
+        return r;
+    }
+
+    lastPadIndex_=e.padIndex;
     if(fullLevel_) r.velocity=127; else if(halfLevel_) r.velocity=64;
     return r;
 }
@@ -45,10 +61,22 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
     }
     if(!pressed) return std::nullopt;
     if(n=="FullLevel"){
-        if(shiftHeld_){ halfLevel_=!halfLevel_; fullLevel_=false; return make(Type::HalfLevelState,halfLevel_?1:0); }
-        fullLevel_=!fullLevel_; if(fullLevel_) halfLevel_=false; return make(Type::FullLevelState,fullLevel_?1:0);
+        if(shiftHeld_){ halfLevel_=!halfLevel_; fullLevel_=false; if(halfLevel_) sixteenLevel_=false; return make(Type::HalfLevelState,halfLevel_?1:0); }
+        fullLevel_=!fullLevel_; if(fullLevel_) { halfLevel_=false; sixteenLevel_=false; } return make(Type::FullLevelState,fullLevel_?1:0);
     }
-    if(n=="Level16") return make(Type::Reserved,16);
+    if(n=="Level16"){
+        if(sixteenLevel_){
+            sixteenLevel_=false;
+            return make(Type::SixteenLevelState,0);
+        }
+        if(lastPadIndex_==0xFF){
+            return make(Type::SixteenLevelState,0,-1);
+        }
+        sixteenLevel_=true;
+        fullLevel_=false;
+        halfLevel_=false;
+        return make(Type::SixteenLevelState,1,lastPadIndex_);
+    }
     if(n=="PadMute"){
         if(shiftHeld_){ padMuteMode_=!padMuteMode_; trackMuteMode_=false; return make(Type::PadMuteModeState,padMuteMode_?1:0); }
         trackMuteMode_=!trackMuteMode_; padMuteMode_=false; return make(Type::TrackMuteModeState,trackMuteMode_?1:0);
