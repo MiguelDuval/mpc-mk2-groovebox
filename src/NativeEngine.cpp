@@ -898,6 +898,131 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStatus(
             mpc::MpcCore::instance().projectState().sequenceStatus());
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetIndex(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().projectState().activeSequenceIndex());
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetCount(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    const auto count = mpc::MpcCore::instance().projectState().sequenceCount();
+    return static_cast<jint>(
+            std::min<std::size_t>(count, std::numeric_limits<jint>::max()));
+}
+
+namespace {
+
+jstring selectSequenceForUi(
+        JNIEnv* env,
+        std::size_t sequenceIndex) {
+    auto& core = mpc::MpcCore::instance();
+    auto& state = core.projectState();
+
+    if (sequenceIndex >= state.sequenceCount()) {
+        return toJString(env, "Sequence unavailable");
+    }
+
+    const auto position = sequenceSession().positionTicks();
+    if (core.sequenceRecorder().active()) {
+        core.sequenceRecorder().finish(
+                state,
+                core.sequenceRecordQueue(),
+                position);
+    }
+    sequenceSession().stop();
+
+    if (!state.selectSequence(sequenceIndex)) {
+        return toJString(env, "Sequence selection failed");
+    }
+
+    core.sequenceTransportClock().update(
+            state.activeSequence(),
+            sequenceSession().positionTicks(),
+            monotonicNanos(),
+            false);
+
+    return toJString(env, state.sequenceStatus());
+}
+
+} // namespace
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelect(
+        JNIEnv* env, jobject /* thiz */, jint sequenceIndex)
+{
+    if (sequenceIndex < 0) {
+        return toJString(env, "Sequence selection failed: invalid index");
+    }
+    return selectSequenceForUi(
+            env,
+            static_cast<std::size_t>(sequenceIndex));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceNext(
+        JNIEnv* env, jobject /* thiz */)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (state.sequenceCount() == 0) {
+        return toJString(env, "Sequence next failed: no sequences");
+    }
+    const auto nextIndex =
+            (state.activeSequenceIndex() + 1) % state.sequenceCount();
+    return selectSequenceForUi(env, nextIndex);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePrevious(
+        JNIEnv* env, jobject /* thiz */)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (state.sequenceCount() == 0) {
+        return toJString(env, "Sequence previous failed: no sequences");
+    }
+    const auto count = state.sequenceCount();
+    const auto previous =
+            state.activeSequenceIndex() == 0
+                    ? count - 1
+                    : state.activeSequenceIndex() - 1;
+    return selectSequenceForUi(env, previous);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAddSequence(
+        JNIEnv* env, jobject /* thiz */)
+{
+    auto& core = mpc::MpcCore::instance();
+    auto& state = core.projectState();
+    if (state.sequenceCount() >= mpc::domain::kMaxSequences) {
+        return toJString(env, "Sequence add failed: maximum reached");
+    }
+
+    const auto position = sequenceSession().positionTicks();
+    if (core.sequenceRecorder().active()) {
+        core.sequenceRecorder().finish(
+                state,
+                core.sequenceRecordQueue(),
+                position);
+    }
+    sequenceSession().stop();
+
+    if (!state.addSequence()) {
+        return toJString(env, "Sequence add failed");
+    }
+
+    core.sequenceTransportClock().update(
+            state.activeSequence(),
+            sequenceSession().positionTicks(),
+            monotonicNanos(),
+            false);
+    return toJString(env, state.sequenceStatus());
+}
+
 extern "C" JNIEXPORT jdouble JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTempo(
         JNIEnv* /* env */, jobject /* thiz */)
