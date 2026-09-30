@@ -5,7 +5,7 @@
 int main() {
     const auto policy = mpc::audio::recommendedAudioOutputPolicy();
 
-    assert(policy.preferredSharingMode == oboe::SharingMode::Exclusive);
+    assert(policy.preferredSharingMode == oboe::SharingMode::Shared);
     assert(policy.performanceMode == oboe::PerformanceMode::LowLatency);
     assert(policy.floatFormat);
     assert(policy.allowFormatConversion);

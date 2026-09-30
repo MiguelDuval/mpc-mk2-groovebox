@@ -5,7 +5,7 @@
 namespace mpc::audio {
 
 struct AudioOutputPolicy final {
-    oboe::SharingMode preferredSharingMode = oboe::SharingMode::Exclusive;
+    oboe::SharingMode preferredSharingMode = oboe::SharingMode::Shared;
     oboe::PerformanceMode performanceMode = oboe::PerformanceMode::LowLatency;
     bool floatFormat = true;
     bool allowFormatConversion = true;

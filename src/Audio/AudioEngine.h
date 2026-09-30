@@ -117,6 +117,23 @@ public:
             float cutoffHz);
     float padFilterCutoff(
             std::uint8_t padIndex) const;
+    struct OutputConfiguration final {
+        int deviceId = -1;
+        int sampleRate = 0;
+        int bufferSizeFrames = 0;
+        bool exclusive = false;
+        bool lowLatency = true;
+    };
+
+    struct InputConfiguration final {
+        int deviceId = -1;
+    };
+
+    std::string configureOutput(const OutputConfiguration& configuration);
+    std::string configureInputDevice(const InputConfiguration& configuration);
+    OutputConfiguration outputConfiguration() const;
+    InputConfiguration inputConfiguration() const;
+    std::string testOutputTone();
     std::string start();
     std::string stop();
     std::string status() const;
@@ -166,6 +183,10 @@ private:
     mpc::domain::SampleId allocateSampleId();
     std::string stopInputStream();
     std::string stopOutputStream();
+    static std::string validateOutputConfiguration(
+            const OutputConfiguration& configuration);
+    static std::string validateInputConfiguration(
+            const InputConfiguration& configuration);
 
     static constexpr std::size_t kMaxRecordingFrames = 960000;
     static constexpr std::size_t kMonitorBufferFrames = 8192;
@@ -182,6 +203,7 @@ private:
     std::atomic<std::uint64_t> outputCallbackCount_{0};
     std::atomic<std::uint64_t> outputCallbackFrames_{0};
     std::atomic<std::uint32_t> outputPeakMilli_{0};
+    std::atomic<std::uint32_t> testToneRequestFrames_{0};
     std::atomic<std::int32_t> outputLastErrorCode_{
             static_cast<std::int32_t>(oboe::Result::OK)};
     AudioTriggerQueue triggerQueue_{};
@@ -221,6 +243,9 @@ private:
     std::atomic<bool> recordingOverflowed_{false};
     std::shared_ptr<InputCallback> inputCallback_;
     std::shared_ptr<oboe::AudioStream> inputStream_;
+
+    OutputConfiguration outputConfiguration_{};
+    InputConfiguration inputConfiguration_{};
 };
 
 } // namespace mpc::audio

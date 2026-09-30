@@ -12,10 +12,21 @@ struct ButtonDefinition {
 };
 
 struct PadDefinition {
+    // Zero-based physical pad number: 0 = MPC Studio MkII Pad 1,
+    // 15 = MPC Studio MkII Pad 16.
     std::uint8_t physicalIndex;
     std::uint8_t midiNote;
 };
 
+// MPC Studio MkII physical layout:
+//
+//   13  14  15  16
+//    9  10  11  12
+//    5   6   7   8
+//    1   2   3   4
+//
+// The bottom-left pad is Pad 1. This physical numbering is independent
+// from the controller's MIDI note numbers.
 inline constexpr std::array<PadDefinition, 16> pads{{
     {0, 37}, {1, 36}, {2, 42}, {3, 82},
     {4, 40}, {5, 38}, {6, 46}, {7, 44},
