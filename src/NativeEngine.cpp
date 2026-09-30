@@ -1781,6 +1781,31 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetQuantizeGrid(
     return toJString(env, "Quantize grid failed");
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsTimingCorrectEnabled(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return mpc::MpcCore::instance().projectState()
+            .activeSequence().timingCorrectEnabled
+            ? JNI_TRUE
+            : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTimingCorrectEnabled(
+        JNIEnv* env, jobject /* thiz */, jboolean enabled)
+{
+    stopSequenceForMutation();
+    auto& state = mpc::MpcCore::instance().projectState();
+    state.activeSequence().timingCorrectEnabled = enabled == JNI_TRUE;
+    syncSequenceTransportStopped();
+    return toJString(
+            env,
+            state.activeSequence().timingCorrectEnabled
+                    ? "TIMING CORRECT: ON"
+                    : "TIMING CORRECT: OFF");
+}
+
 extern "C" JNIEXPORT jint JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetSwing(
         JNIEnv* /* env */, jobject /* thiz */)
