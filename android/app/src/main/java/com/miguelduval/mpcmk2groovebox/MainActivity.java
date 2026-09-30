@@ -3556,7 +3556,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_DELTA:
             case MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA:
-                handleHardwareDialDelta(value0);
+                handleHardwareDialDelta(value0, value1 != 0);
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_PRESS:
                 setBottomStatus("DATA DIAL ENTER");
@@ -3672,11 +3672,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus("LOCATE PAD " + (value0 + 1) + " • pending");
                 return;
             case MpcStudioMk2SemanticActions.SAMPLE_SELECT_CONTEXT:
-            case MpcStudioMk2SemanticActions.SAMPLE_START_CONTEXT:
-            case MpcStudioMk2SemanticActions.SAMPLE_END_CONTEXT:
-            case MpcStudioMk2SemanticActions.TUNE_CONTEXT:
-                hardwareFocus = 6;
+                hardwareFocus = 10;
                 showSamplePage();
+                setBottomStatus("SAMPLE SELECT • DATA DIAL / +/- changes layer");
+                return;
+            case MpcStudioMk2SemanticActions.SAMPLE_START_CONTEXT:
+                hardwareFocus = 7;
+                showSamplePage();
+                setBottomStatus(value0 != 0
+                        ? "SAMPLE START • FINE"
+                        : "SAMPLE START");
+                return;
+            case MpcStudioMk2SemanticActions.SAMPLE_END_CONTEXT:
+                hardwareFocus = 8;
+                showSamplePage();
+                setBottomStatus(value0 != 0
+                        ? "SAMPLE END • FINE"
+                        : "SAMPLE END");
+                return;
+            case MpcStudioMk2SemanticActions.TUNE_CONTEXT:
+                hardwareFocus = 9;
+                showSamplePage();
+                setBottomStatus(value0 != 0
+                        ? "TUNE • FINE"
+                        : "TUNE");
                 return;
             case MpcStudioMk2SemanticActions.QUANTIZE:
                 setBottomStatus("QUANTIZE • action pending");
@@ -3704,7 +3723,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
-    private void handleHardwareDialDelta(int delta) {
+    private void handleHardwareDialDelta(int delta, boolean fine) {
         if (delta == 0) return;
         if (hardwareFocus == 2) {
             final int count = nativeSequenceGetTrackCount();
