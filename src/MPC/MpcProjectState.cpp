@@ -28,14 +28,14 @@ domain::Sequence makeDefaultSequence(std::size_t sequenceNumber) {
     sequence.swingPercent = 0;
 
     domain::Track drumTrack;
-    drumTrack.id = "track-1";
+    drumTrack.id = sequence.id + "-track-1";
     drumTrack.name = "DRUMS";
     drumTrack.type = domain::ProgramType::Drum;
     drumTrack.kind = domain::TrackKind::Drum;
     drumTrack.programId = "drum-program-1";
 
     domain::Pattern pattern;
-    pattern.id = "pattern-1";
+    pattern.id = drumTrack.id + "-pattern-1";
     pattern.name = "Pattern 01";
     pattern.lengthTicks = sequence.lengthTicks;
     drumTrack.patterns.push_back(std::move(pattern));
