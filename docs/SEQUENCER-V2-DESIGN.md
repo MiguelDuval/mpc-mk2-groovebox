@@ -35,15 +35,17 @@ Akai Force combines a clip matrix with a linear Arrange workflow. Its project in
 
 Every app page gets one thin sequence overview strip immediately below the global top bar.
 
-The strip shows:
-- active sequence / sequence count;
-- bar-level movement across the full sequence;
+The strip is a thin visual transport overview:
+- bar-level movement across the full active sequence;
 - loop range;
 - current playhead;
-- compact bar.beat.tick position;
-- playing/stopped state.
+- distinct playing/stopped playhead state.
+
+Exact sequence number and bar.beat.tick readout belong to the dedicated transport context rather than being repeated inside the strip. This keeps the strip glanceable in a live performance without creating duplicate controls or duplicate textual state.
 
 It is deliberately non-editing in the first slice. Editing the loop range remains on the dedicated SEQ page, where the existing SequenceTimelineView continues to own IN/OUT touch editing.
+
+UX rule: the overview is global and observational. Changing page must never change what the transport means, stop sequence timing, or move the user's editing context.
 
 This is the common "context monitor" layer: changing page does not make the user lose the temporal location of the performance.
 
