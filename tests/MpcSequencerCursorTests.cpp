@@ -55,7 +55,7 @@ int main() {
     rangedCursor.setPositionTicks(960);
     rangedCursor.start();
 
-    const ranged = rangedCursor.advanceTicks(1920);
+    const auto ranged = rangedCursor.advanceTicks(1920);
     assert(ranged.begin == 960);
     assert(ranged.end == 960);
     assert(ranged.completedCycles == 1);
