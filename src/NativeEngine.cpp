@@ -1356,14 +1356,36 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdvance(
             0x53455131u,
             core.audio().outputSampleRate());
 
+    auto& state = core.projectState();
+    if (sequenceSession().didWrap()
+            && state.sequenceChainEnabled()
+            && state.sequenceCount() > 1) {
+        const bool wasRecording = core.sequenceRecorder().active();
+        if (wasRecording) {
+            core.sequenceRecorder().finish(
+                    state,
+                    core.sequenceRecordQueue(),
+                    sequenceSession().positionTicks());
+        }
+
+        sequenceSession().stop();
+        state.nextSequence();
+        sequenceSession().start();
+
+        if (wasRecording) {
+            core.sequenceRecorder().begin(state);
+        }
+    }
+
+    const auto& activeSequence = state.activeSequence();
     core.sequenceTransportClock().update(
-            sequence,
+            activeSequence,
             sequenceSession().positionTicks(),
             monotonicNanos(),
             sequenceSession().isPlaying());
 
     core.sequenceRecorder().drain(
-            core.projectState(),
+            state,
             core.sequenceRecordQueue());
 
     return static_cast<jint>(
