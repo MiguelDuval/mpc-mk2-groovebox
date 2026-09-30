@@ -98,6 +98,10 @@ public:
         return playing_;
     }
 
+    bool didWrap() const noexcept {
+        return wrapped_;
+    }
+
     SequencePlaybackAggregate advance(
             std::int64_t deltaTicks,
             std::uint32_t seed,
@@ -107,6 +111,7 @@ public:
             return result;
         }
 
+        wrapped_ = false;
         syncTrackStates();
 
         for (auto& trackPlayback : playbacks_) {
@@ -127,7 +132,9 @@ public:
         const auto& sequence = projectState_.activeSequence();
         const auto length = std::max<std::int64_t>(1, sequence.lengthTicks);
         if (sequence.loopEnabled) {
-            positionTicks_ = (positionTicks_ + deltaTicks) % length;
+            const auto advancedPosition = positionTicks_ + deltaTicks;
+            wrapped_ = advancedPosition >= length;
+            positionTicks_ = advancedPosition % length;
         } else {
             positionTicks_ = std::min(length - 1, positionTicks_ + deltaTicks);
             if (positionTicks_ >= length - 1) {
@@ -204,6 +211,7 @@ private:
     std::vector<TrackPlayback> playbacks_;
     std::int64_t positionTicks_ = 0;
     bool playing_ = false;
+    bool wrapped_ = false;
 };
 
 } // namespace mpc::sequencer
