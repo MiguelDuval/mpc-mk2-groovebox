@@ -211,6 +211,9 @@ bool MpcProjectState::addTrack(
         domain::TrackKind kind,
         std::string name) {
     auto& sequence = activeSequence();
+    if (sequence.tracks.size() >= domain::kMaxSequenceTracks) {
+        return false;
+    }
     domain::Track track;
     const auto number = sequence.tracks.size() + 1;
     track.id = "track-" + std::to_string(number);
