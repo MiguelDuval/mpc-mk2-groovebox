@@ -166,6 +166,9 @@ struct Sequence {
     std::int32_t loopEndTicks = 3840;
     std::int32_t quantizeGridTicks = 240;
     std::int32_t swingPercent = 0;
+    // Record/edit Timing Correct: when enabled, captured notes are snapped
+    // to the active sequence grid and swing policy at commit time.
+    bool timingCorrectEnabled = true;
     bool metronomeEnabled = false;
     bool countInEnabled = false;
     std::vector<Track> tracks;
