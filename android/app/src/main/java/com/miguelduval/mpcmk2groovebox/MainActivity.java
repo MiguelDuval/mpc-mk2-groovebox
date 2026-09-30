@@ -125,6 +125,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int selectedLayer = 0;
     private int hardwareFocus = 0;
     private int hardwarePadBank = 0;
+    private int lastPlayLedState = -1;
+    private int lastRecordLedState = -1;
+    private int lastOverdubLedState = -1;
+    private int lastNoteRepeatLedState = -1;
+    private int lastLevelLedState = -1;
+    private int lastSixteenLevelLedState = -1;
+    private int lastMuteLedState = -1;
     private long lastHardwareTapNanos = 0L;
     private final long[] hardwareTapIntervalsNanos = new long[4];
     private int hardwareTapIntervalCount = 0;
@@ -1926,6 +1933,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshSequencePlayhead();
         }
 
+        syncHardwareTransportLeds();
+
         if (sequenceTrackInfoView != null) {
             sequenceTrackInfoView.setText(
                     "Track " + (nativeSequenceGetSelectedTrack() + 1)
@@ -3528,11 +3537,45 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void setHardwareButtonLed(int cc, boolean on) {
+        final int state = on ? 2 : 0;
+        switch (cc) {
+            case 82:
+                if (lastPlayLedState == state) return;
+                lastPlayLedState = state;
+                break;
+            case 73:
+                if (lastRecordLedState == state) return;
+                lastRecordLedState = state;
+                break;
+            case 80:
+                if (lastOverdubLedState == state) return;
+                lastOverdubLedState = state;
+                break;
+            case 11:
+                if (lastNoteRepeatLedState == state) return;
+                lastNoteRepeatLedState = state;
+                break;
+            case 39:
+                if (lastLevelLedState == state) return;
+                lastLevelLedState = state;
+                break;
+            case 40:
+                if (lastSixteenLevelLedState == state) return;
+                lastSixteenLevelLedState = state;
+                break;
+            case 4:
+                if (lastMuteLedState == state) return;
+                lastMuteLedState = state;
+                break;
+            default:
+                break;
+        }
+
         if (midiBridge != null) {
             midiBridge.send(
                     MpcStudioMk2MidiMessages.buttonLed(
                             cc,
-                            on ? 2 : 0));
+                            state));
         }
     }
 
@@ -3638,7 +3681,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.FULL_LEVEL_STATE:
                 setHardwareButtonLed(39, value0 != 0);
-                if (value0 != 0) setHardwareButtonLed(39, true);
                 setBottomStatus(value0 != 0 ? "FULL LEVEL ON • 127" : "FULL LEVEL OFF");
                 return;
             case MpcStudioMk2SemanticActions.HALF_LEVEL_STATE:
