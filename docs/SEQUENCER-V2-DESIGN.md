@@ -49,6 +49,14 @@ UX rule: the overview is global and observational. Changing page must never chan
 
 This is the common "context monitor" layer: changing page does not make the user lose the temporal location of the performance.
 
+## Sequence selection contract
+
+The project now supports a bounded set of independent Sequences (up to the domain limit). A new Sequence starts as a clean default musical container with its own tempo, time signature, length, loop and initial DRUM track; it does not clone another Sequence's events.
+
+Sequence selection is explicit in the SEQ page. Until quantized/perform-safe launching is implemented, changing Sequence deliberately stops the active sequence and presents the newly selected Sequence at a stopped transport position. This avoids an accidental cross-sequence jump being mistaken for a seamless live transition.
+
+This separation follows the useful distinction seen across the references: Sequence/Track are musical containers, while arrangement and quantized launching are higher-level performance mechanisms. We should not overload sequence selection with future song-arrangement behavior.
+
 ## Realtime boundary
 
 The strip reads existing JNI sequence getters only. Playback advancement remains the existing native sequence session and trigger queue path. UI drawing never calls the audio engine directly.
