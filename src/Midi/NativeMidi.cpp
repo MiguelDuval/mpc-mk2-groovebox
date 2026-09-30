@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <optional>
 #include <vector>
+#include <memory>
 
 namespace {
 
@@ -136,7 +137,7 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
                         scheduler.clearPad();
                     }
                 }
-            } else {
+            } else if (!semanticAdapter.noteRepeatLatched()) {
                 scheduler.clearPad();
             }
 
