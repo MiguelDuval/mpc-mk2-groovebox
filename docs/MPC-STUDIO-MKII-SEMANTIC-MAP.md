@@ -111,7 +111,7 @@ Primary semantic contract:
 
 The exact context should be selected by the application, not by a raw MIDI note number.
 
-Status: **DECODED, NOT SEMANTICALLY ROUTED**.
+Status: **SEMANTICALLY ROUTED — Data Dial selects the active Track/Sequence context; Plus/Minus share the same adjustment command path; Sample Start/End/Tune use contextual parameter focus**.
 
 Priority: **P0**.
 
@@ -146,7 +146,7 @@ Semantic contract:
 
 Implementation rule: never implement Shift combinations by checking raw MIDI numbers inside unrelated screens. The hardware adapter emits a semantic chord/action.
 
-Status: **DECODED, BUT MODIFIER ROUTING NOT IMPLEMENTED**.
+Status: **SEMANTICALLY ROUTED as a stateful modifier layer**.
 
 Priority: **P0**.
 
@@ -360,7 +360,7 @@ The repeat scheduler must remain clock-synchronous and must not depend on UI fra
 
 The project already has Note Repeat LED protocol support; state feedback should be emitted only when the semantic state changes.
 
-Status: **DECODED, FEATURE/LED INFRASTRUCTURE PARTIAL**.
+Status: **PERFORMANCE ROUTED to the native transport-clock scheduler; momentary and Shift-latched behavior are distinct, and the Note Repeat button LED mirrors semantic state. Generated repeat hits are currently performance-only and are not yet written to the sequence record queue**.
 
 Priority: **P0**.
 
@@ -587,7 +587,7 @@ Semantic rule:
 - toggle buttons show actual state;
 - feedback is cached and only written when state changes.
 
-Status: **MESSAGE GENERATOR EXISTS; STATE ROUTER NOT IMPLEMENTED**.
+Status: **BASIC STATE ROUTER IMPLEMENTED for transport, Note Repeat, Level16 and mute-mode LEDs; writes are state-cached. Full LCD/state synchronization remains pending**.
 
 Priority: **P0 for transport and mode state; P1 for secondary controls**.
 
@@ -619,7 +619,7 @@ Output protocol helpers exist.
 
 These must become state-driven feedback owned by the hardware feedback layer.
 
-Status: **PROTOCOL SUPPORT EXISTS; PRODUCT ROUTING PARTIAL**.
+Status: **NOTE REPEAT button LED routed; Touch-strip LED division feedback remains pending**.
 
 Priority: **P1**.
 
