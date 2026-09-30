@@ -9,7 +9,7 @@ int main() {
     assert(intervalNanos(240, 120000) == 125000000);
 
     // The timing primitive also handles a one-tick boundary exactly.
-    assert(intervalNanos(1, 120000) == 3125000);
+    assert(intervalNanos(1, 120000) == 520833);
 
     assert(ticksToNextBoundary(0, 0, 3840, 240) == 240);
     assert(ticksToNextBoundary(120, 0, 3840, 240) == 120);
