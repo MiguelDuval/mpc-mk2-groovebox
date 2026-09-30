@@ -105,20 +105,30 @@ public:
              playbackIndex < playbacks_.size();
              ++playbackIndex) {
             const auto trackIndex = playbackTrackIndices_[playbackIndex];
-            if (trackIndex >= tracks.size()
-                    || !shouldScheduleTrack(tracks[trackIndex], anySolo)) {
+            if (trackIndex >= tracks.size()) {
                 continue;
             }
 
             auto& playback = playbacks_[playbackIndex];
-            const auto value = playback->advance(
-                    deltaTicks, seed, sampleRate);
-            result.scheduled += value.scheduled;
-            result.routed += value.routed;
-            result.queued += value.queued;
-            result.dropped += value.dropped;
-            result.invalid += value.invalid;
+            if (shouldScheduleTrack(tracks[trackIndex], anySolo)) {
+                const auto value = playback->advance(
+                        deltaTicks, seed, sampleRate);
+                result.scheduled += value.scheduled;
+                result.routed += value.routed;
+                result.queued += value.queued;
+                result.dropped += value.dropped;
+                result.invalid += value.invalid;
+                result.wrapped = result.wrapped || value.wrapped;
+                continue;
+            }
+
+            // Mute/Solo must not freeze this track's musical position.
+            // Advance the same runtime window without emitting audio events.
+            const auto value = playback->advanceSilently(
+                    deltaTicks,
+                    sampleRate);
             result.wrapped = result.wrapped || value.wrapped;
+            result.invalid += value.invalid;
         }
         return result;
     }
