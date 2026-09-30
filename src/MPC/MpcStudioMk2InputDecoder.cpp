@@ -72,7 +72,7 @@ std::optional<InputEvent> decodeInput(std::span<const std::uint8_t> message) {
                     };
                 }
 
-                if (number == 78) {
+                if (number == touchStripPressNote) {
                     return InputEvent{
                         InputEventType::TouchStripPress,
                         channel,
