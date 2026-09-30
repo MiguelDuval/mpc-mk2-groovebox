@@ -5,6 +5,7 @@
 #include "MPC/MpcProjectState.h"
 #include "MPC/Sequencer/MpcSequencerPlayback.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
