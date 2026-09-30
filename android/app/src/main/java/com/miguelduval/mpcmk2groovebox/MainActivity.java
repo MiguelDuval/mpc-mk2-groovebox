@@ -100,8 +100,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceTimelineView sequenceTimeline;
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
+    private final Button[] sequenceStepButtons = new Button[16];
     private TextView sequenceTransportView;
     private int sequenceGridPage = 0;
+    private int sequenceStepPage = 0;
     private static final int SEQUENCE_GRID_PAGE_STEPS = 16;
     private TextView sequenceStatusView;
     private TextView sequenceTempoView;
@@ -931,6 +933,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         pageTitle.setText("SEQUENCER");
         content.removeAllViews();
         sequenceGridView = null;
+        for (int i = 0; i < sequenceStepButtons.length; i++) {
+            sequenceStepButtons[i] = null;
+        }
 
         LinearLayout page = page();
 
@@ -1094,7 +1099,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         LinearLayout editActions = row();
         editActions.addView(actionButton("GRID", v -> showSequenceGridPage()), touchButtonWeight());
-        editActions.addView(actionButton("STEP", v -> showSequenceGridPage()), touchButtonWeight());
+        editActions.addView(actionButton("STEP", v -> showSequenceStepPage()), touchButtonWeight());
         detailPanel.addView(editActions, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
         workspace.addView(detailPanel, new LinearLayout.LayoutParams(
@@ -1115,6 +1120,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         pageTitle.setText("SEQ • GRID");
         content.removeAllViews();
         sequenceTimeline = null;
+        for (int i = 0; i < sequenceStepButtons.length; i++) {
+            sequenceStepButtons[i] = null;
+        }
 
         LinearLayout page = page();
 
@@ -1187,6 +1195,170 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         + "  •  " + nativeSequenceTrackStatus(
                                 nativeSequenceGetSelectedTrack()));
         refreshSequencePlayhead();
+    }
+
+    private void showSequenceStepPage() {
+        currentPage = "SEQ";
+        pageTitle.setText("SEQ • STEP");
+        content.removeAllViews();
+        sequenceTimeline = null;
+        sequenceGridView = null;
+        for (int i = 0; i < sequenceStepButtons.length; i++) {
+            sequenceStepButtons[i] = null;
+        }
+
+        LinearLayout page = page();
+
+        LinearLayout header = row();
+        header.addView(actionButton("BACK SEQ", v -> showSequencePage()),
+                new LinearLayout.LayoutParams(dp(86), dp(38)));
+
+        TextView title = label("STEP SEQUENCER", 12, TEXT);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setGravity(Gravity.CENTER);
+        header.addView(title, new LinearLayout.LayoutParams(0, dp(38), 1));
+
+        header.addView(actionButton("PAD −", v -> {
+            selectedPad = Math.max(0, selectedPad - 1);
+            refreshSequenceStepPage();
+        }), new LinearLayout.LayoutParams(dp(64), dp(38)));
+        TextView padInfo = label("", 11, TEXT);
+        padInfo.setTypeface(Typeface.DEFAULT_BOLD);
+        padInfo.setGravity(Gravity.CENTER);
+        padInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        header.addView(padInfo, new LinearLayout.LayoutParams(dp(78), dp(38)));
+        header.addView(actionButton("PAD +", v -> {
+            selectedPad = Math.min(15, selectedPad + 1);
+            refreshSequenceStepPage();
+        }), new LinearLayout.LayoutParams(dp(64), dp(38)));
+        header.addView(actionButton("◀", v -> moveSequenceStepPage(-1)),
+                new LinearLayout.LayoutParams(dp(52), dp(38)));
+        header.addView(actionButton("▶", v -> moveSequenceStepPage(1)),
+                new LinearLayout.LayoutParams(dp(52), dp(38)));
+        page.addView(header);
+
+        TextView context = label("", 11, MUTED);
+        context.setPadding(dp(10), 0, dp(10), 0);
+        context.setGravity(Gravity.CENTER_VERTICAL);
+        page.addView(context, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+
+        LinearLayout steps = row();
+        for (int i = 0; i < sequenceStepButtons.length; i++) {
+            final int step = i;
+            Button button = button(String.format(Locale.ROOT, "%02d", i + 1));
+            button.setTextSize(12);
+            button.setTypeface(Typeface.DEFAULT_BOLD);
+            button.setContentDescription(
+                    "Pad " + (selectedPad + 1) + " step " + (i + 1));
+            button.setOnClickListener(v -> {
+                final int gridTicks = Math.max(
+                        1, nativeSequenceGetQuantizeGrid());
+                final int absoluteStep =
+                        sequenceStepPage * SEQUENCE_GRID_PAGE_STEPS + step;
+                final String result = nativeSequenceToggleGridStep(
+                        selectedPad, absoluteStep, gridTicks);
+                setBottomStatus(result);
+                refreshSequenceStepPage();
+            });
+            sequenceStepButtons[i] = button;
+            steps.addView(button, new LinearLayout.LayoutParams(
+                    0, dp(88), 1));
+        }
+        page.addView(steps, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        TextView hint = label(
+                "16 STEPS  •  PAD SELECT  •  PAGE = 16 QUANTIZED STEPS  •  TAP = ADD / REMOVE",
+                10, MUTED);
+        hint.setGravity(Gravity.CENTER_VERTICAL);
+        hint.setPadding(dp(10), 0, dp(10), 0);
+        page.addView(hint, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        content.addView(page);
+
+        refreshSequenceStepPage();
+        padInfo.setText("PAD " + String.format(
+                Locale.ROOT, "%02d", selectedPad + 1));
+        context.setText(
+                "STEP " + sequenceGridLabel(nativeSequenceGetQuantizeGrid())
+                        + "  •  "
+                        + nativeSequenceTrackStatus(
+                                nativeSequenceGetSelectedTrack()));
+        refreshSequencePlayhead();
+    }
+
+    private void refreshSequenceStepPage() {
+        if (sequenceStepButtons[0] == null) return;
+
+        final int count = sequenceGridPageCount();
+        sequenceStepPage = Math.max(
+                0, Math.min(count - 1, sequenceStepPage));
+
+        final int gridTicks = Math.max(
+                1, nativeSequenceGetQuantizeGrid());
+        final int firstStep =
+                sequenceStepPage * SEQUENCE_GRID_PAGE_STEPS;
+        final int[] velocities =
+                nativeSequenceGetGridVelocities(firstStep, gridTicks);
+        final boolean editable = nativeSequenceIsGridEditable();
+        final long positionTicks = nativeSequencePositionTicks();
+        final long absolutePlayheadStep =
+                Math.max(0L, positionTicks / gridTicks);
+        final long playheadFirstStep = firstStep;
+        final int playheadColumn =
+                absolutePlayheadStep >= playheadFirstStep
+                        && absolutePlayheadStep
+                                < playheadFirstStep + SEQUENCE_GRID_PAGE_STEPS
+                        ? (int) (absolutePlayheadStep - playheadFirstStep)
+                        : -1;
+
+        for (int i = 0; i < sequenceStepButtons.length; i++) {
+            final Button button = sequenceStepButtons[i];
+            final int velocity = velocities != null
+                    && velocities.length > selectedPad * 16 + i
+                    ? velocities[selectedPad * 16 + i]
+                    : 0;
+            final boolean active = velocity > 0;
+            final boolean playhead = playheadColumn == i;
+            button.setText(String.format(Locale.ROOT, "%02d", i + 1));
+            button.setContentDescription(
+                    "Pad " + (selectedPad + 1) + " step " + (i + 1)
+                            + (active ? " on" : " off"));
+            button.setTextColor(active ? BG : TEXT);
+            button.setBackground(strokeBackground(
+                    active ? ACCENT : (playhead ? SURFACE_2 : SURFACE_2),
+                    playhead ? DANGER : (active ? ACCENT : LINE),
+                    8));
+            button.setAlpha(editable ? 1.0f : 0.55f);
+        }
+
+        final View parent = sequenceStepButtons[0].getParent() instanceof View
+                ? (View) sequenceStepButtons[0].getParent()
+                : null;
+        if (parent instanceof ViewGroup
+                && ((ViewGroup) parent).getParent() instanceof ViewGroup) {
+            final ViewGroup page = (ViewGroup)
+                    ((ViewGroup) parent).getParent();
+            if (page.getChildCount() > 0
+                    && page.getChildAt(0) instanceof ViewGroup) {
+                final ViewGroup header = (ViewGroup) page.getChildAt(0);
+                if (header.getChildCount() > 4
+                        && header.getChildAt(3) instanceof TextView) {
+                    ((TextView) header.getChildAt(3)).setText(
+                            "PAD " + String.format(
+                                    Locale.ROOT, "%02d", selectedPad + 1));
+                }
+            }
+        }
+    }
+
+    private void moveSequenceStepPage(int delta) {
+        final int count = sequenceGridPageCount();
+        sequenceStepPage = Math.max(
+                0, Math.min(count - 1, sequenceStepPage + delta));
+        refreshSequenceStepPage();
     }
 
     private int sequenceGridPageCount() {
