@@ -88,6 +88,29 @@ void testFinishClosesHeldNote() {
     assert(track.patterns.front().notes.front().durationTicks == 120);
 }
 
+void testTimingCorrectCanBeDisabled() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    auto& track = sequence.tracks[0];
+    track.recordArmed = true;
+    sequence.quantizeGridTicks = 120;
+    sequence.swingPercent = 50;
+    sequence.timingCorrectEnabled = false;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    assert(queue.tryEnqueue({485, 120, 4, 100, 1}));
+    assert(queue.tryEnqueue({545, 0, 4, 0, 0}));
+
+    assert(recorder.drain(state, queue) == 1);
+    const auto& note = track.patterns.front().notes.front();
+    assert(note.tick == 485);
+    assert(note.durationTicks == 60);
+}
+
 void testZeroLengthTapUsesGridDuration() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -117,5 +140,6 @@ int main() {
     testOverdubPreservesExistingNotes();
     testFinishClosesHeldNote();
     testZeroLengthTapUsesGridDuration();
+    testTimingCorrectCanBeDisabled();
     return 0;
 }
