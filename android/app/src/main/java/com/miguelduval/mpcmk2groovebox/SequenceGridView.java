@@ -2,6 +2,7 @@ package com.miguelduval.mpcmk2groovebox;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.view.MotionEvent;
@@ -17,14 +18,14 @@ public final class SequenceGridView extends View {
 
     private static final int ROWS = 16;
     private static final int COLUMNS = 16;
-    private static final int BG = 14 << 16 | 16 << 8 | 18;
-    private static final int SURFACE = 25 << 16 | 29 << 8 | 33;
-    private static final int SURFACE_2 = 32 << 16 | 37 << 8 | 42;
-    private static final int LINE = 64 << 16 | 72 << 8 | 80;
-    private static final int TEXT = 235 << 16 | 239 << 8 | 242;
-    private static final int MUTED = 156 << 16 | 166 << 8 | 174;
-    private static final int ACCENT = 69 << 16 | 211 << 8 | 255;
-    private static final int DANGER = 236 << 16 | 83 << 8 | 83;
+    private static final int BG = Color.rgb(14, 16, 18);
+    private static final int SURFACE = Color.rgb(25, 29, 33);
+    private static final int SURFACE_2 = Color.rgb(32, 37, 42);
+    private static final int LINE = Color.rgb(64, 72, 80);
+    private static final int TEXT = Color.rgb(235, 239, 242);
+    private static final int MUTED = Color.rgb(156, 166, 174);
+    private static final int ACCENT = Color.rgb(69, 211, 255);
+    private static final int DANGER = Color.rgb(236, 83, 83);
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
