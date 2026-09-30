@@ -27,6 +27,7 @@ import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
+import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.ArrayAdapter;
@@ -1055,7 +1056,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceUiUpdater = new Runnable() {
             @Override public void run() {
                 if (!"SEQ".equals(currentPage)) return;
+
+                if (nativeSequenceIsPlaying()) {
+                    nativeSequenceAdvance(80);
+                }
+
                 refreshSequencePlayhead();
+                refreshSequenceControls();
                 sequenceUiHandler.postDelayed(this, 80);
             }
         };
