@@ -6,7 +6,9 @@ int main() {
     mpc::midi::TrackPerformanceMidiGesture gesture;
 
     assert(!gesture.onPad(0u, true, 1'000));
-    assert(!gesture.onPad(0u, false, 100'000'000));
+    const auto firstMute = gesture.onPad(0u, false, 100'000'000);
+    assert(firstMute.has_value());
+    assert(*firstMute == mpc::midi::TrackPerformanceGesture::Mute);
     gesture.reset();
 
     assert(!gesture.onPad(3u, true, 1'000'000'000));
