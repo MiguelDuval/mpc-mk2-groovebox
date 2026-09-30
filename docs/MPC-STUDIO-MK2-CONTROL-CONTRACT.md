@@ -125,6 +125,48 @@ Instead:
 
 This preserves controller independence and keeps all raw numbers in one adapter.
 
+## Mode + Pad command layer
+
+Holding Mode and pressing a pad is a documented shortcut layer on the Studio II. This must be implemented as a modifier-aware chord, not as sixteen unrelated pad commands.
+
+| Pad | Command |
+|---:|---|
+| 1 | Track View |
+| 2 | Grid Editor |
+| 3 | Wave Editor |
+| 4 | List Editor |
+| 5 | Sample Edit |
+| 6 | Program Edit |
+| 7 | Pad Mixer |
+| 8 | Channel Mixer |
+| 9 | Next Sequence |
+| 10 | Song Mode |
+| 11 | MIDI Control Mode |
+| 12 | Media / Browser |
+| 13 | Sampler |
+| 14 | Looper |
+| 15 | Step Sequencer |
+| 16 | Save |
+
+The semantic adapter must therefore maintain modifier state for at least **Shift** and **Mode**, and must resolve their combinations before a pad event reaches the musical trigger path.
+
+This also applies to:
+- Shift + Pad Bank → E-H;
+- Shift + Full Level → Half Level;
+- Shift + Note Repeat → Latch;
+- Shift + Main → Track View;
+- Shift + Track Select → Sequence Select;
+- Shift + Program Select → Track Type;
+- Shift + Sample Start → Loop Start;
+- Shift + Tune → Fine Tune;
+- Shift + Quantize → selected-event quantize;
+- Shift + TC → Timing Correct configuration;
+- Shift + Zoom → vertical zoom;
+- Shift + Pad Mute → Track Mute;
+- Shift + Tap Tempo → local/master tempo choice;
+- Shift + Browse → Browser parent/up behavior;
+- Shift + Undo → Redo.
+
 ## Recommended semantic action groups
 
 ### Group A — Live-critical / first binding
