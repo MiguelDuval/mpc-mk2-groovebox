@@ -68,9 +68,29 @@ int main() {
     assert(state.addTrack(mpc::domain::TrackKind::Audio));
     assert(state.activeSequence().tracks.size() == 2);
     assert(state.activeTrackIndex() == 1);
+
+    assert(state.setTrackLengthBars(0, 1));
+    assert(state.activeSequence().tracks[0].lengthTicks == 2880);
+    assert(state.trackLengthTicks(0) == 2880);
+    assert(state.setTrackLengthBars(0, 0));
+    assert(state.activeSequence().tracks[0].lengthTicks == 0);
+    assert(state.trackLengthTicks(0) == state.activeSequence().lengthTicks);
+
     assert(state.selectTrack(0));
     assert(state.activeTrackIndex() == 0);
     assert(!state.selectTrack(99));
+
+    assert(state.sequenceCount() == 1);
+    assert(state.addSequence({}, 2));
+    assert(state.sequenceCount() == 2);
+    assert(state.activeSequenceIndex() == 1);
+    assert(state.activeSequence().lengthTicks == 7680);
+    assert(state.activeSequence().tracks.size() == 1);
+    assert(state.activeSequence().tracks[0].kind == mpc::domain::TrackKind::Drum);
+    assert(state.selectSequence(0));
+    assert(state.activeSequenceIndex() == 0);
+    assert(state.activeTrackIndex() == 0);
+    assert(!state.selectSequence(99));
 
     return 0;
 }
