@@ -79,6 +79,11 @@ public:
     bool setSequenceQuantizeGrid(std::int32_t gridTicks) noexcept;
     bool setSequenceSwing(std::int32_t swingPercent) noexcept;
 
+    bool setTrackMuted(std::size_t trackIndex, bool muted) noexcept;
+    bool setTrackSoloed(std::size_t trackIndex, bool soloed) noexcept;
+    bool setAllTracksMuted(bool muted) noexcept;
+    bool clearTrackSolo() noexcept;
+
     bool addTrack(
             domain::TrackKind kind,
             std::string name = {}) ;
