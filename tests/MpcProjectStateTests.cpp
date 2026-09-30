@@ -72,5 +72,25 @@ int main() {
     assert(state.activeTrackIndex() == 0);
     assert(!state.selectTrack(99));
 
+    assert(state.sequenceCount() == 1);
+    assert(state.addSequence());
+    assert(state.sequenceCount() == 2);
+    assert(state.activeSequenceIndex() == 1);
+    assert(state.activeTrackIndex() == 0);
+    assert(state.activeSequence().name == "Sequence 02");
+    assert(state.activeSequence().tracks.size() == 1);
+    assert(state.activeSequence().tracks[0].kind == mpc::domain::TrackKind::Drum);
+    assert(state.activeSequence().tempoBpm == 120.0);
+    assert(state.activeSequence().lengthTicks == 15360);
+
+    assert(state.selectPreviousSequence());
+    assert(state.activeSequenceIndex() == 0);
+    assert(state.activeTrackIndex() == 0);
+    assert(state.selectNextSequence());
+    assert(state.activeSequenceIndex() == 1);
+    assert(state.selectSequence(0));
+    assert(state.activeSequenceIndex() == 0);
+    assert(!state.selectSequence(99));
+
     return 0;
 }
