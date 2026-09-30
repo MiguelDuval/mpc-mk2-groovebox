@@ -181,6 +181,109 @@ inline bool setStepNote(
     return true;
 }
 
+inline domain::MidiNoteEvent* findStepNote(
+        domain::Pattern& pattern,
+        std::int32_t stepIndex,
+        std::int32_t gridTicks,
+        std::uint8_t noteNumber) noexcept {
+    if (stepIndex < 0 || gridTicks <= 0 || pattern.lengthTicks <= 0) {
+        return nullptr;
+    }
+
+    const auto length = static_cast<std::int64_t>(pattern.lengthTicks);
+    const auto tick64 =
+            static_cast<std::int64_t>(stepIndex)
+            * static_cast<std::int64_t>(gridTicks);
+    if (tick64 < 0 || tick64 >= length) {
+        return nullptr;
+    }
+
+    const auto tick = static_cast<std::int32_t>(tick64);
+    for (auto& note : pattern.notes) {
+        if (note.tick == tick && note.note == noteNumber) {
+            return &note;
+        }
+    }
+    return nullptr;
+}
+
+inline const domain::MidiNoteEvent* findStepNote(
+        const domain::Pattern& pattern,
+        std::int32_t stepIndex,
+        std::int32_t gridTicks,
+        std::uint8_t noteNumber) noexcept {
+    if (stepIndex < 0 || gridTicks <= 0 || pattern.lengthTicks <= 0) {
+        return nullptr;
+    }
+
+    const auto length = static_cast<std::int64_t>(pattern.lengthTicks);
+    const auto tick64 =
+            static_cast<std::int64_t>(stepIndex)
+            * static_cast<std::int64_t>(gridTicks);
+    if (tick64 < 0 || tick64 >= length) {
+        return nullptr;
+    }
+
+    const auto tick = static_cast<std::int32_t>(tick64);
+    for (const auto& note : pattern.notes) {
+        if (note.tick == tick && note.note == noteNumber) {
+            return &note;
+        }
+    }
+    return nullptr;
+}
+
+inline bool setStepNoteVelocity(
+        domain::Pattern& pattern,
+        std::int32_t stepIndex,
+        std::int32_t gridTicks,
+        std::uint8_t noteNumber,
+        std::uint8_t velocity) noexcept {
+    if (velocity == 0) {
+        return false;
+    }
+    auto* note = findStepNote(
+            pattern, stepIndex, gridTicks, noteNumber);
+    if (note == nullptr) {
+        return false;
+    }
+    note->velocity = velocity;
+    return true;
+}
+
+inline bool setStepNoteProbability(
+        domain::Pattern& pattern,
+        std::int32_t stepIndex,
+        std::int32_t gridTicks,
+        std::uint8_t noteNumber,
+        std::uint8_t probability) noexcept {
+    auto* note = findStepNote(
+            pattern, stepIndex, gridTicks, noteNumber);
+    if (note == nullptr || probability > 127) {
+        return false;
+    }
+    note->probability = probability;
+    return true;
+}
+
+inline bool setStepNoteRatchet(
+        domain::Pattern& pattern,
+        std::int32_t stepIndex,
+        std::int32_t gridTicks,
+        std::uint8_t noteNumber,
+        std::uint8_t ratchet) noexcept {
+    if (ratchet == 0 || ratchet > 8) {
+        return false;
+    }
+    auto* note = findStepNote(
+            pattern, stepIndex, gridTicks, noteNumber);
+    if (note == nullptr) {
+        return false;
+    }
+    note->ratchet = ratchet;
+    return true;
+}
+
 inline bool eraseStepNote(
         domain::Pattern& pattern,
         std::int32_t stepIndex,
