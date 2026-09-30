@@ -58,6 +58,10 @@ public:
         return runtime_.positionTicks();
     }
 
+    void setPositionTicks(std::int64_t ticks) noexcept {
+        runtime_.setPositionTicks(ticks);
+    }
+
     SequencerPlaybackResult advance(
             std::int64_t deltaTicks,
             std::uint32_t seed,

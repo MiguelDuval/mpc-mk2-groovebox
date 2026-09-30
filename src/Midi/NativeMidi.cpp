@@ -1,5 +1,6 @@
 #include "NativeMidi.h"
 #include "../Audio/AudioEngine.h"
+#include "../MPC/MpcCore.h"
 #include "../MPC/MpcStudioMk2InputDecoder.h"
 #include "../MPC/MpcStudioMk2LedProtocol.h"
 
@@ -37,7 +38,7 @@ namespace mpc::midi {
 
 std::optional<std::array<std::uint8_t, 12>> handleIncoming(
         std::span<const std::uint8_t> message,
-        std::int64_t /*timestamp*/) {
+        std::int64_t timestamp) {
     if (message.empty()) {
         return std::nullopt;
     }
@@ -54,10 +55,40 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
     }
 
     if (event->type == mpc::studio::InputEventType::PadNote) {
+        auto& core = mpc::MpcCore::instance();
+
         if (event->pressed) {
-            mpc::audio::AudioEngine::instance().triggerPad(
+            core.audio().triggerPad(
                 event->padIndex,
                 event->value);
+        }
+
+        const auto& state = core.projectState();
+        const auto trackIndex = state.activeTrackIndex();
+        const auto& tracks = state.activeSequence().tracks;
+
+        if (core.sequenceRecorder().active()
+                && trackIndex < tracks.size()
+                && tracks[trackIndex].recordArmed
+                && tracks[trackIndex].kind == mpc::domain::TrackKind::Drum
+                && core.sequenceTransportClock().snapshot().playing) {
+            const auto tick =
+                    core.sequenceTransportClock().positionAtTimestamp(timestamp);
+            const mpc::sequencer::SequenceRecordEvent captured{
+                    tick,
+                    static_cast<std::uint8_t>(trackIndex),
+                    event->padIndex,
+                    event->pressed
+                            ? event->value
+                            : static_cast<std::uint8_t>(0),
+                    event->pressed ? static_cast<std::uint8_t>(1) : static_cast<std::uint8_t>(0)};
+
+            if (!core.sequenceRecordQueue().tryEnqueue(captured)) {
+                __android_log_print(
+                        ANDROID_LOG_WARN,
+                        kTag,
+                        "Sequence record queue full");
+            }
         }
 
         const std::uint8_t level = event->pressed ? event->value : 0u;
@@ -66,7 +97,6 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
                 event->padIndex,
                 mpc::studio::Rgb{level, level, level});
     }
-
     if (event->type == mpc::studio::InputEventType::Button
             || event->type == mpc::studio::InputEventType::JogPress) {
         __android_log_print(

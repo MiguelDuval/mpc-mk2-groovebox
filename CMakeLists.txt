@@ -25,6 +25,7 @@ add_library(mpcgroovebox SHARED
     src/MPC/MpcCore.cpp
     src/MPC/Sequencer/MpcSequencerCursor.cpp
     src/MPC/Sequencer/MpcPatternScheduler.cpp
+    # Sequence transport and track control are header-only on the native realtime boundary.
 )
 
 target_include_directories(mpcgroovebox PRIVATE src)
