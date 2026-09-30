@@ -55,6 +55,81 @@ MpcProjectState::MpcProjectState() {
 }
 
 
+bool MpcProjectState::setTrackLengthBars(
+        std::size_t trackIndex,
+        std::int32_t bars) noexcept {
+    auto& sequence = activeSequence();
+    if (trackIndex >= sequence.tracks.size()) {
+        return false;
+    }
+
+    auto& track = sequence.tracks[trackIndex];
+    if (bars <= 0) {
+        // Zero means "Sequence", matching the MPC track-length model.
+        track.lengthTicks = 0;
+        for (auto& pattern : track.patterns) {
+            pattern.lengthTicks = sequence.lengthTicks;
+        }
+        return true;
+    }
+
+    if (bars > sequencer::sequenceBars(sequence)) {
+        return false;
+    }
+
+    const auto length = sequencer::sequenceLengthForBars(
+            bars,
+            sequence.numerator,
+            sequence.denominator);
+    if (length <= 0) {
+        return false;
+    }
+
+    track.lengthTicks = length;
+    for (auto& pattern : track.patterns) {
+        pattern.lengthTicks = length;
+    }
+    return true;
+}
+
+std::int32_t MpcProjectState::trackLengthTicks(
+        std::size_t trackIndex) const noexcept {
+    const auto& sequence = activeSequence();
+    if (trackIndex >= sequence.tracks.size()) {
+        return 0;
+    }
+    const auto& track = sequence.tracks[trackIndex];
+    return track.lengthTicks == 0
+            ? sequence.lengthTicks
+            : track.lengthTicks;
+}
+
+std::string MpcProjectState::trackLengthStatus(
+        std::size_t trackIndex) const {
+    const auto& sequence = activeSequence();
+    if (trackIndex >= sequence.tracks.size()) {
+        return "Track unavailable";
+    }
+    const auto& track = sequence.tracks[trackIndex];
+    if (track.lengthTicks == 0) {
+        return "Track length: SEQ ("
+                + std::to_string(sequencer::sequenceBars(sequence))
+                + " bars)";
+    }
+
+    const auto perBar = std::max(
+            1,
+            sequencer::barLengthTicks(
+                    sequence.numerator,
+                    sequence.denominator));
+    const auto bars =
+            std::max<std::int32_t>(
+                    1,
+                    track.lengthTicks / perBar);
+    return "Track length: " + std::to_string(bars) + " "
+            + (bars == 1 ? "bar" : "bars");
+}
+
 bool MpcProjectState::setSequenceTempo(double tempoBpm) noexcept {
     if (!std::isfinite(tempoBpm) || tempoBpm < 20.0 || tempoBpm > 300.0) {
         return false;
