@@ -489,34 +489,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             selectedLayer = Math.min(7, selectedLayer + 1);
             refreshAllInspectorState();
         });
-        layerRow.addView(layerDown, weight());
-        layerRow.addView(layerUp, weight());
-        inspector.addView(layerRow);
+        layerRow.addView(layerDown, touchButtonWeight());
+        layerRow.addView(layerUp, touchButtonWeight());
+        inspector.addView(layerRow, touchRowParams());
 
         inspector.addView(sectionLabel("QUICK TONE"));
 
         LinearLayout tone1 = row();
-        tone1.addView(actionButton("TUNE −1", v -> changePadTuning(-1)), weight());
-        tone1.addView(actionButton("TUNE +1", v -> changePadTuning(1)), weight());
-        tone1.addView(actionButton("LEVEL −10", v -> changePadLevel(-0.10f)), weight());
-        tone1.addView(actionButton("LEVEL +10", v -> changePadLevel(0.10f)), weight());
-        inspector.addView(tone1);
+        tone1.addView(actionButton("TUNE −1", v -> changePadTuning(-1)), touchButtonWeight());
+        tone1.addView(actionButton("TUNE +1", v -> changePadTuning(1)), touchButtonWeight());
+        tone1.addView(actionButton("LEVEL −10", v -> changePadLevel(-0.10f)), touchButtonWeight());
+        tone1.addView(actionButton("LEVEL +10", v -> changePadLevel(0.10f)), touchButtonWeight());
+        inspector.addView(tone1, touchRowParams());
 
         LinearLayout tone2 = row();
-        tone2.addView(actionButton("PAN L", v -> setPadPan(-1)), weight());
-        tone2.addView(actionButton("PAN C", v -> setPadPan(0)), weight());
-        tone2.addView(actionButton("PAN R", v -> setPadPan(1)), weight());
-        tone2.addView(actionButton("EDIT", v -> showSamplePage()), weight());
-        inspector.addView(tone2);
+        tone2.addView(actionButton("PAN L", v -> setPadPan(-1)), touchButtonWeight());
+        tone2.addView(actionButton("PAN C", v -> setPadPan(0)), touchButtonWeight());
+        tone2.addView(actionButton("PAN R", v -> setPadPan(1)), touchButtonWeight());
+        tone2.addView(actionButton("EDIT", v -> showSamplePage()), touchButtonWeight());
+        inspector.addView(tone2, touchRowParams());
 
         regionInfo = label("", 11, MUTED);
-        inspector.addView(regionInfo, marginParams());
+        inspector.addView(regionInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
         LinearLayout detail = row();
-        detail.addView(actionButton("SAMPLE", v -> showSamplePage()), weight());
-        detail.addView(actionButton("SEQ", v -> showSequencePage()), weight());
-        detail.addView(actionButton("MIX", v -> showMixPage()), weight());
-        inspector.addView(detail);
+        detail.addView(actionButton("SAMPLE", v -> showSamplePage()), touchButtonWeight());
+        detail.addView(actionButton("SEQ", v -> showSequencePage()), touchButtonWeight());
+        detail.addView(actionButton("MIX", v -> showMixPage()), touchButtonWeight());
+        inspector.addView(detail, touchRowParams());
 
         return inspector;
     }
@@ -1904,6 +1905,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private LinearLayout.LayoutParams weight() {
         return new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+    }
+
+    private LinearLayout.LayoutParams touchButtonWeight() {
+        return new LinearLayout.LayoutParams(0, dp(48), 1);
+    }
+
+    private LinearLayout.LayoutParams touchRowParams() {
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(50));
+        p.topMargin = dp(3);
+        p.bottomMargin = dp(3);
+        return p;
     }
 
     private LinearLayout.LayoutParams marginParams() {
