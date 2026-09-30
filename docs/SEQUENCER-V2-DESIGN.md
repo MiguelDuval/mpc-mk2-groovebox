@@ -57,9 +57,19 @@ Sequence selection is explicit in the SEQ page. While stopped, PREV/NEXT select 
 
 This is intentionally a small first live-performance layer. It follows the MPC pattern of selecting another Sequence during playback and having it take over at the end of the current Sequence, while keeping future quantized launch/arrangement rules separate. A destructive sequence edit (tempo, length, time signature, loop, quantize or swing) cancels the queue and stops the transport so the edit cannot create an ambiguous transition.
 
+## Grid / Step editing slice
+
+The first real event editor is deliberately small and musical: a 16-by-16 drum grid for the selected Track/Pattern, with sixteen time columns per page and sixteen pad lanes. A tap toggles an event at the current Sequence quantize grid. Paging is independent of Sequence bar count, so the same editor remains usable when the musical time signature changes.
+
+The grid is an editor, not a second transport. The global playhead remains authoritative and is mirrored as a column highlight. Editing is blocked while playback is active. Before a mutation, the native layer releases the current playback session so Pattern::notes cannot be mutated underneath a live playback object that still holds a reference to that Pattern.
+
+The first slice intentionally exposes only note presence plus the existing default velocity/probability/ratchet values. Velocity painting, per-step probability, ratchets, note duration editing and multi-page gestures remain separate future increments. This keeps the first editor fast enough for live use while preserving the existing Pattern/MidiNoteEvent data model.
+
+The software grid follows the project's physical MPC Studio pad convention vertically: Pad 16 is the top lane and Pad 1 the bottom lane. Four-step group separators make 16-step phrasing immediately legible without adding visual chrome.
+
 ## Realtime boundary
 
-The strip reads existing JNI sequence getters only. Playback advancement remains the existing native sequence session and trigger queue path. UI drawing never calls the audio engine directly.
+The strip and Grid View read existing JNI sequence state. Grid mutations are UI/editor operations and explicitly stop/release sequence playback before touching Pattern::notes. The editor never calls the audio engine directly.
 
 ## References
 
