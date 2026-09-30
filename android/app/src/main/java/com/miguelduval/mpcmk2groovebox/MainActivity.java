@@ -99,7 +99,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
     private SequenceOverviewView sequenceOverviewView;
+    private SequenceGridView sequenceGridView;
     private TextView sequenceTransportView;
+    private int sequenceGridPage = 0;
+    private static final int SEQUENCE_GRID_PAGE_STEPS = 16;
     private TextView sequenceStatusView;
     private TextView sequenceTempoView;
     private TextView sequenceBarsView;
@@ -206,6 +209,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceSetQuantizeGrid(int ticks);
     private static native int nativeSequenceGetSwing();
     private static native String nativeSequenceSetSwing(int percent);
+    private static native boolean nativeSequenceIsGridEditable();
+    private static native int[] nativeSequenceGetGridVelocities(
+            int firstStep, int gridTicks);
+    private static native String nativeSequenceToggleGridStep(
+            int padIndex, int stepIndex, int gridTicks);
     private static native int nativeSequenceGetRecordMode();
     private static native String nativeSequenceSetRecordMode(int mode);
     private static native int nativeSequenceDrainRecordEvents();
@@ -1084,8 +1092,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         detailPanel.addView(lane, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         LinearLayout editActions = row();
-        editActions.addView(actionButton("GRID", v -> setBottomStatus("Grid editor: selected Track/Pattern context ready")), touchButtonWeight());
-        editActions.addView(actionButton("STEP", v -> setBottomStatus("Step editor: selected Track/Pattern context ready")), touchButtonWeight());
+        editActions.addView(actionButton("GRID", v -> showSequenceGridPage()), touchButtonWeight());
+        editActions.addView(actionButton("STEP", v -> showSequenceGridPage()), touchButtonWeight());
         detailPanel.addView(editActions, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
         workspace.addView(detailPanel, new LinearLayout.LayoutParams(
@@ -1099,6 +1107,148 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         refreshSequencePageTools();
 
+    }
+
+    private void showSequenceGridPage() {
+        currentPage = "SEQ";
+        pageTitle.setText("SEQ • GRID");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+
+        LinearLayout header = row();
+        header.addView(actionButton("BACK SEQ", v -> showSequencePage()),
+                new LinearLayout.LayoutParams(dp(86), dp(38)));
+        TextView title = label("GRID / STEP EDIT", 12, TEXT);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setGravity(Gravity.CENTER);
+        header.addView(title, new LinearLayout.LayoutParams(0, dp(38), 1));
+
+        TextView pageInfo = label("", 11, TEXT);
+        pageInfo.setTypeface(Typeface.DEFAULT_BOLD);
+        pageInfo.setGravity(Gravity.CENTER);
+        pageInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        header.addView(pageInfo, new LinearLayout.LayoutParams(dp(132), dp(38)));
+
+        header.addView(actionButton("◀", v -> moveSequenceGridPage(-1)),
+                new LinearLayout.LayoutParams(dp(52), dp(38)));
+        header.addView(actionButton("▶", v -> moveSequenceGridPage(1)),
+                new LinearLayout.LayoutParams(dp(52), dp(38)));
+        page.addView(header);
+
+        TextView context = label("", 11, MUTED);
+        context.setPadding(dp(10), 0, dp(10), 0);
+        context.setGravity(Gravity.CENTER_VERTICAL);
+        page.addView(context, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+
+        sequenceGridView = new SequenceGridView(this);
+        sequenceGridView.setContentDescription("Sequence 16 by 16 step grid");
+        sequenceGridView.setListener((padIndex, pageStep) -> {
+            final int gridTicks = nativeSequenceGetQuantizeGrid();
+            final int absoluteStep =
+                    sequenceGridPage * SEQUENCE_GRID_PAGE_STEPS + pageStep;
+            final String result = nativeSequenceToggleGridStep(
+                    padIndex, absoluteStep, gridTicks);
+            setBottomStatus(result);
+            refreshSequenceGrid();
+            refreshSequenceControls();
+        });
+        page.addView(sequenceGridView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout footer = row();
+        TextView hint = label("TAP = ADD / REMOVE NOTE", 10, MUTED);
+        hint.setGravity(Gravity.CENTER_VERTICAL);
+        footer.addView(hint, new LinearLayout.LayoutParams(0, dp(38), 1));
+        TextView resolution = label("", 11, TEXT);
+        resolution.setGravity(Gravity.CENTER);
+        resolution.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        footer.addView(resolution, new LinearLayout.LayoutParams(dp(96), dp(38)));
+        TextView editState = label("", 10, TEXT);
+        editState.setGravity(Gravity.CENTER);
+        editState.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        footer.addView(editState, new LinearLayout.LayoutParams(dp(150), dp(38)));
+        page.addView(footer);
+
+        content.addView(page);
+
+        refreshSequenceGrid();
+        final int gridTicks = nativeSequenceGetQuantizeGrid();
+        resolution.setText(sequenceGridLabel(gridTicks));
+        editState.setText(
+                nativeSequenceIsGridEditable()
+                        ? "EDIT READY"
+                        : "DRUM / STOP REQUIRED");
+        context.setText(
+                "TRACK " + (nativeSequenceGetSelectedTrack() + 1)
+                        + "  •  " + nativeSequenceTrackStatus(
+                                nativeSequenceGetSelectedTrack()));
+        refreshSequencePlayhead();
+    }
+
+    private int sequenceGridPageCount() {
+        final long gridTicks = Math.max(
+                1L, nativeSequenceGetQuantizeGrid());
+        final long lengthTicks = Math.max(
+                gridTicks,
+                Math.round(getSequenceTicksPerBar())
+                        * Math.max(1, nativeSequenceGetBars()));
+        final long pageTicks =
+                gridTicks * SEQUENCE_GRID_PAGE_STEPS;
+        return (int) Math.max(
+                1L,
+                (lengthTicks + pageTicks - 1L) / pageTicks);
+    }
+
+    private void moveSequenceGridPage(int delta) {
+        final int count = sequenceGridPageCount();
+        sequenceGridPage = Math.max(
+                0, Math.min(count - 1, sequenceGridPage + delta));
+        refreshSequenceGrid();
+    }
+
+    private void refreshSequenceGrid() {
+        if (sequenceGridView == null) return;
+
+        final int count = sequenceGridPageCount();
+        sequenceGridPage = Math.max(
+                0, Math.min(count - 1, sequenceGridPage));
+
+        final int gridTicks = Math.max(
+                1, nativeSequenceGetQuantizeGrid());
+        final int firstStep = sequenceGridPage * SEQUENCE_GRID_PAGE_STEPS;
+
+        sequenceGridView.setEditable(nativeSequenceIsGridEditable());
+        sequenceGridView.setState(
+                nativeSequenceGetGridVelocities(firstStep, gridTicks),
+                -1);
+        refreshSequenceGridPageInfo();
+    }
+
+    private void refreshSequenceGridPageInfo() {
+        if (sequenceGridView == null) return;
+        // The page indicator is part of the grid screen header; redraw is kept
+        // local so tapping a cell never reconstructs the whole page.
+        final View root = sequenceGridView.getParent() instanceof View
+                ? (View) sequenceGridView.getParent()
+                : null;
+        if (!(root instanceof LinearLayout)) return;
+
+        final LinearLayout page = (LinearLayout) root;
+        if (page.getChildCount() < 1
+                || !(page.getChildAt(0) instanceof LinearLayout)) return;
+
+        final LinearLayout header = (LinearLayout) page.getChildAt(0);
+        if (header.getChildCount() < 3
+                || !(header.getChildAt(2) instanceof TextView)) return;
+
+        final TextView pageInfo = (TextView) header.getChildAt(2);
+        pageInfo.setText(String.format(
+                Locale.ROOT,
+                "PAGE %02d/%02d",
+                sequenceGridPage + 1,
+                sequenceGridPageCount()));
     }
 
     private TextView sequenceTempoViewHolder() {
@@ -1222,11 +1372,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void refreshSequencePlayhead() {
-        if (sequenceTimeline == null || !"SEQ".equals(currentPage)) return;
-        final double ticksPerBar = getSequenceTicksPerBar();
-        final double bar = 1.0
-                + nativeSequencePositionTicks() / ticksPerBar;
-        sequenceTimeline.setPlayheadBar((float) bar);
+        if (!"SEQ".equals(currentPage)) return;
+
+        if (sequenceTimeline != null) {
+            final double ticksPerBar = getSequenceTicksPerBar();
+            final double bar = 1.0
+                    + nativeSequencePositionTicks() / ticksPerBar;
+            sequenceTimeline.setPlayheadBar((float) bar);
+        }
+
+        if (sequenceGridView != null) {
+            final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+            final long absoluteStep =
+                    Math.max(0L, nativeSequencePositionTicks() / gridTicks);
+            final long firstStep =
+                    (long) sequenceGridPage * SEQUENCE_GRID_PAGE_STEPS;
+            final int localStep =
+                    absoluteStep >= firstStep
+                            && absoluteStep < firstStep + SEQUENCE_GRID_PAGE_STEPS
+                            ? (int) (absoluteStep - firstStep)
+                            : -1;
+            sequenceGridView.setState(
+                    nativeSequenceGetGridVelocities(
+                            (int) firstStep, gridTicks),
+                    localStep);
+        }
     }
 
     private void refreshSequenceTrackList(LinearLayout list) {
@@ -2541,6 +2711,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if (selectedPad != 0) {
             Log.e(TAG, "UI_INTERACTION_FAILED: selection did not stick");
+            return;
+        }
+
+        View seq = findViewWithExactText(getWindow().getDecorView(), "SEQ");
+        if (seq == null || !seq.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: SEQ mode");
+            return;
+        }
+
+        View grid = findViewWithExactText(getWindow().getDecorView(), "GRID");
+        if (grid == null || !grid.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: GRID editor");
+            return;
+        }
+
+        View gridView = findViewWithContentDescription(
+                getWindow().getDecorView(), "Sequence 16 by 16 step grid");
+        if (gridView == null || gridView.getHeight() <= dp(120)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: sequence grid editor");
             return;
         }
 
