@@ -98,6 +98,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private WaveformView recordingWaveform;
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
+    private TextView sequenceSelectorView;
     private TextView sequenceStatusView;
     private TextView sequenceTempoView;
     private TextView sequenceBarsView;
@@ -913,7 +914,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout page = page();
 
         LinearLayout sequenceChooser = row();
-        TextView sequenceSelectorView = label("", 13, TEXT);
+        sequenceSelectorView = label("", 13, TEXT);
         sequenceSelectorView.setGravity(Gravity.CENTER);
         sequenceSelectorView.setTypeface(Typeface.DEFAULT_BOLD);
         sequenceSelectorView.setBackground(strokeBackground(SURFACE_2, LINE, 8));
@@ -1226,15 +1227,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                     nativeSequenceGetSelectedTrack()));
         }
 
-        final View root = sequenceStatusView.getParent();
-        if (root instanceof LinearLayout) {
-            // Keep the chooser's label synchronized with the active sequence.
-            LinearLayout chooser = (LinearLayout) root;
-            View first = chooser.getChildAt(0);
-            if (first instanceof TextView) {
-                ((TextView) first).setText(
-                        "SEQUENCE " + sequenceSelected + " / " + sequenceCount);
-            }
+        if (sequenceSelectorView != null) {
+            sequenceSelectorView.setText(
+                    "SEQUENCE " + sequenceSelected + " / " + sequenceCount);
         }
     }
 
