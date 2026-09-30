@@ -97,7 +97,7 @@ int main() {
             {1920, 30, 38, 120, 127, 1},
             {2880, 30, 39, 90, 127, 1}};
 
-    const ranged = mpc::sequencer::schedulePatternWindowInRange(
+    const auto ranged = mpc::sequencer::schedulePatternWindowInRange(
             rangedPattern,
             mpc::sequencer::TickWindow{960, 960, 1},
             960,
