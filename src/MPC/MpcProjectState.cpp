@@ -266,42 +266,6 @@ bool MpcProjectState::setSequenceSwing(std::int32_t swingPercent) noexcept {
     return true;
 }
 
-bool MpcProjectState::setTrackMuted(
-        std::size_t trackIndex,
-        bool muted) noexcept {
-    auto& tracks = activeSequence().tracks;
-    if (trackIndex >= tracks.size()) {
-        return false;
-    }
-    tracks[trackIndex].muted = muted;
-    return true;
-}
-
-bool MpcProjectState::setTrackSoloed(
-        std::size_t trackIndex,
-        bool soloed) noexcept {
-    auto& tracks = activeSequence().tracks;
-    if (trackIndex >= tracks.size()) {
-        return false;
-    }
-    tracks[trackIndex].soloed = soloed;
-    return true;
-}
-
-bool MpcProjectState::setAllTracksMuted(bool muted) noexcept {
-    for (auto& track : activeSequence().tracks) {
-        track.muted = muted;
-    }
-    return true;
-}
-
-bool MpcProjectState::clearTrackSolo() noexcept {
-    for (auto& track : activeSequence().tracks) {
-        track.soloed = false;
-    }
-    return true;
-}
-
 bool MpcProjectState::addTrack(
         domain::TrackKind kind,
         std::string name) {
@@ -391,18 +355,9 @@ std::string MpcProjectState::trackStatus(std::size_t trackIndex) const {
             ? std::size_t{0}
             : track.patterns.front().notes.size();
 
-    std::string performance;
-    if (track.muted) {
-        performance += " | MUTE";
-    }
-    if (track.soloed) {
-        performance += " | SOLO";
-    }
-
     return kind + "  " + track.name
             + "  | events=" + std::to_string(eventCount)
-            + "  | " + (track.recordArmed ? "ARM" : "—")
-            + performance;
+            + "  | " + (track.recordArmed ? "ARM" : "—");
 }
 
 domain::SampleId MpcProjectState::registerSample(
