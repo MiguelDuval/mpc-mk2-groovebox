@@ -4,7 +4,9 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -85,6 +87,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private boolean uiOnlySmokeMode;
     private boolean uiAuditSmokeMode;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
+    private final Handler transportUiHandler = new Handler(Looper.getMainLooper());
+    private Runnable transportUiUpdater;
+    private SequencerProgressView sequenceProgressView;
+    private TextView sequenceCounterView;
+    private TextView sequencePositionView;
+    private TextView tempoView;
+    private int trackControlMode = 0; // 0=perform, 1=pad mute, 2=pad solo.
+    private GridLayout trackGrid;
 
     private static native String nativeEngineInfo();
     private static native String nativeAudioLoadSample(byte[] data);
@@ -142,6 +152,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native float nativeAudioGetRecordingPeak();
     private static native int nativeAudioGetRecordingFrameCapacity();
 
+    private static native String nativeSequenceStatus();
+    private static native double nativeSequenceGetTempo();
+    private static native String nativeSequenceSetTempo(double tempo);
+    private static native int nativeSequenceGetBars();
+    private static native String nativeSequenceSetBars(int bars);
+    private static native int nativeSequenceGetNumerator();
+    private static native int nativeSequenceGetDenominator();
+    private static native String nativeSequenceSetTimeSignature(int numerator, int denominator);
+    private static native int nativeSequenceGetRecordMode();
+    private static native String nativeSequenceSetRecordMode(int mode);
+    private static native int nativeSequenceGetTrackCount();
+    private static native int nativeSequenceGetSelectedTrack();
+    private static native String nativeSequenceSelectTrack(int trackIndex);
+    private static native String nativeSequenceAddTrack(int kind);
+    private static native String nativeSequenceTrackStatus(int trackIndex);
+    private static native boolean nativeSequenceIsTrackMuted(int trackIndex);
+    private static native boolean nativeSequenceIsTrackSoloed(int trackIndex);
+    private static native String nativeSequenceSetTrackMuted(int trackIndex, boolean muted);
+    private static native String nativeSequenceSetTrackSoloed(int trackIndex, boolean soloed);
+    private static native boolean nativeSequenceIsSelectedTrackArmed();
+    private static native String nativeSequenceSetSelectedTrackArmed(boolean armed);
+    private static native String nativeSequenceStart();
+    private static native String nativeSequenceStop();
+    private static native String nativeSequenceReset();
+    private static native int nativeSequenceAdvance(long milliseconds);
+    private static native long nativeSequencePositionTicks();
+    private static native boolean nativeSequenceIsPlaying();
+    private static native int nativeSequenceGetIndex();
+    private static native int nativeSequenceGetCount();
+    private static native boolean nativeSequenceIsChainEnabled();
+    private static native String nativeSequenceSetChainEnabled(boolean enabled);
+    private static native String nativeSequenceAddSequence();
+    private static native String nativeSequenceNext();
+    private static native String nativeSequenceRecordToggle();
+    private static native String nativeSequenceCapturePadHit(int pad, int velocity);
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -189,6 +235,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     Log.i(TAG, "MIDI_BRIDGE_END");
                     Log.i(TAG, "STARTUP_COMPLETE");
 
+                    startTransportUiUpdates();
+                    refreshTransportUi();
+
                     if (uiAuditSmokeMode) {
                         runUiAudit();
                     }
@@ -204,6 +253,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         root.addView(buildTopBar(), new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+
+        sequenceProgressView = new SequencerProgressView(this);
+        sequenceProgressView.setContentDescription("Sequence playback progress");
+        root.addView(sequenceProgressView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(4)));
 
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.HORIZONTAL);
@@ -234,54 +288,101 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(10), dp(6), dp(10), dp(6));
+        bar.setPadding(dp(8), dp(5), dp(8), dp(5));
         bar.setBackgroundColor(SURFACE);
 
-        projectState = label("UNTITLED", 12, TEXT);
+        projectState = label("UNTITLED", 11, TEXT);
         projectState.setTypeface(Typeface.DEFAULT_BOLD);
         bar.addView(projectState, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 1.2f));
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.95f));
 
-        pageTitle = label("MAIN", 12, ACCENT);
+        pageTitle = label("MAIN", 11, ACCENT);
         pageTitle.setGravity(Gravity.CENTER);
         pageTitle.setTypeface(Typeface.DEFAULT_BOLD);
         bar.addView(pageTitle, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.55f));
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.42f));
 
-        TextView tempo = label("120.0 BPM", 12, TEXT);
-        tempo.setGravity(Gravity.CENTER);
-        bar.addView(tempo, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.75f));
+        sequenceCounterView = statusChip("SEQ 01/01", TEXT);
+        sequenceCounterView.setTextSize(9);
+        sequenceCounterView.setContentDescription("Current sequence counter");
+        sequenceCounterView.setOnClickListener(v -> {
+            final String result = nativeSequenceNext();
+            setBottomStatus(result);
+            refreshTransportUi();
+            refreshTrackGrid();
+        });
+        bar.addView(sequenceCounterView, new LinearLayout.LayoutParams(dp(84), dp(36)));
+
+        sequencePositionView = statusChip("001.1.000", TEXT);
+        sequencePositionView.setTextSize(9);
+        bar.addView(sequencePositionView, new LinearLayout.LayoutParams(dp(78), dp(36)));
+
+        tempoView = statusChip("120.0", TEXT);
+        tempoView.setTextSize(9);
+        bar.addView(tempoView, new LinearLayout.LayoutParams(dp(66), dp(36)));
 
         audioState = statusChip("AUDIO OFF", MUTED);
-        bar.addView(audioState, new LinearLayout.LayoutParams(dp(96), dp(38)));
+        bar.addView(audioState, new LinearLayout.LayoutParams(dp(78), dp(36)));
 
         midiState = statusChip("MIDI —", MUTED);
-        bar.addView(midiState, new LinearLayout.LayoutParams(dp(96), dp(38)));
+        bar.addView(midiState, new LinearLayout.LayoutParams(dp(78), dp(36)));
 
         Button play = topButton("PLAY");
         play.setOnClickListener(v -> {
-            final String result = nativeAudioStart();
+            final String result = nativeSequenceStart();
             setAudioStateFromResult(result);
             setBottomStatus(result);
+            refreshTransportUi();
         });
-        bar.addView(play, new LinearLayout.LayoutParams(dp(72), dp(38)));
+        bar.addView(play, new LinearLayout.LayoutParams(dp(58), dp(36)));
 
         Button stop = topButton("STOP");
         stop.setOnClickListener(v -> {
-            final String result = nativeAudioStop();
-            setAudioStateFromResult(result);
-            setBottomStatus(result);
+            final String sequenceResult = nativeSequenceStop();
+            final String audioResult = nativeAudioStop();
+            setAudioStateFromResult(audioResult);
+            setBottomStatus(sequenceResult + " | " + audioResult);
+            refreshTransportUi();
         });
-        bar.addView(stop, new LinearLayout.LayoutParams(dp(72), dp(38)));
+        bar.addView(stop, new LinearLayout.LayoutParams(dp(58), dp(36)));
+
+        Button rec = topButton("REC");
+        rec.setContentDescription("Sequence Record");
+        rec.setOnClickListener(v -> {
+            final String result = nativeSequenceRecordToggle();
+            setBottomStatus(result);
+            refreshTransportUi();
+            refreshTrackGrid();
+        });
+        bar.addView(rec, new LinearLayout.LayoutParams(dp(58), dp(36)));
+
+        Button arm = topButton("ARM");
+        arm.setContentDescription("Arm selected track");
+        arm.setOnClickListener(v -> {
+            final boolean armed = !nativeSequenceIsSelectedTrackArmed();
+            final String result = nativeSequenceSetSelectedTrackArmed(armed);
+            setBottomStatus(result);
+            refreshTransportUi();
+            refreshTrackGrid();
+        });
+        bar.addView(arm, new LinearLayout.LayoutParams(dp(58), dp(36)));
+
+        Button dub = topButton("DUB");
+        dub.setContentDescription("Toggle overdub");
+        dub.setOnClickListener(v -> {
+            final int nextMode = nativeSequenceGetRecordMode() == 0 ? 1 : 0;
+            setBottomStatus(nativeSequenceSetRecordMode(nextMode));
+            refreshTransportUi();
+        });
+        bar.addView(dub, new LinearLayout.LayoutParams(dp(58), dp(36)));
 
         Button midi = topButton("MIDI");
         midi.setOnClickListener(v -> showMidiPage());
-        bar.addView(midi, new LinearLayout.LayoutParams(dp(72), dp(38)));
+        bar.addView(midi, new LinearLayout.LayoutParams(dp(58), dp(36)));
 
         Button menu = topButton("MENU");
         menu.setOnClickListener(v -> showMenuPage());
-        bar.addView(menu, new LinearLayout.LayoutParams(dp(72), dp(38)));
+        bar.addView(menu, new LinearLayout.LayoutParams(dp(58), dp(36)));
 
         return bar;
     }
@@ -373,6 +474,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
+        page.addView(buildTrackControlPanel(), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(112)));
+
         LinearLayout workspace = row();
 
         LinearLayout padSurface = column();
@@ -385,8 +489,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         quick.addView(actionButton("SAMPLE", v -> showSamplePage()), weight());
         quick.addView(actionButton("REC", v -> showRecordPage()), weight());
         quick.addView(actionButton("MIX", v -> showMixPage()), weight());
+        quick.addView(actionButton(
+                trackControlMode == 1 ? "PAD MUTE ON" : "PAD MUTE",
+                v -> {
+                    trackControlMode = trackControlMode == 1 ? 0 : 1;
+                    refreshPadSelectionVisuals();
+                    refreshTrackGrid();
+                }), weight());
+        quick.addView(actionButton(
+                trackControlMode == 2 ? "PAD SOLO ON" : "PAD SOLO",
+                v -> {
+                    trackControlMode = trackControlMode == 2 ? 0 : 2;
+                    refreshPadSelectionVisuals();
+                    refreshTrackGrid();
+                }), weight());
         padSurface.addView(quick, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
         workspace.addView(padSurface, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 0.60f));
@@ -409,7 +527,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Button b = button(String.format(Locale.ROOT, "%02d", pad + 1));
                 b.setTextSize(15);
                 b.setTypeface(Typeface.DEFAULT_BOLD);
-                b.setOnClickListener(v -> selectAndTriggerPad(pad, 112));
+                b.setOnClickListener(v -> {
+                    if (trackControlMode != 0) {
+                        final int trackCount = nativeSequenceGetTrackCount();
+                        if (pad >= trackCount) {
+                            setBottomStatus("Pad " + (pad + 1)
+                                    + " has no mapped track yet");
+                            return;
+                        }
+
+                        final String result;
+                        if (trackControlMode == 1) {
+                            result = nativeSequenceSetTrackMuted(
+                                    pad, !nativeSequenceIsTrackMuted(pad));
+                        } else {
+                            result = nativeSequenceSetTrackSoloed(
+                                    pad, !nativeSequenceIsTrackSoloed(pad));
+                        }
+                        setBottomStatus(result);
+                        refreshPadSelectionVisuals();
+                        refreshTrackGrid();
+                        return;
+                    }
+                    selectAndTriggerPad(pad, 112);
+                });
                 b.setOnLongClickListener(v -> {
                     selectedPad = pad;
                     refreshPadSelectionVisuals();
@@ -769,6 +910,160 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         startRecordingWaveformUpdates();
     }
 
+    private View buildTrackControlPanel() {
+        LinearLayout panel = panel();
+
+        LinearLayout header = row();
+        header.addView(sectionLabel("TRACKS  •  MUTE / SOLO / ARM"),
+                new LinearLayout.LayoutParams(0, dp(30), 1));
+        header.addView(actionButton(
+                trackControlMode == 1 ? "PAD MUTE ON" : "PAD MUTE",
+                v -> {
+                    trackControlMode = trackControlMode == 1 ? 0 : 1;
+                    refreshPadSelectionVisuals();
+                    refreshTrackGrid();
+                }),
+                new LinearLayout.LayoutParams(dp(92), dp(30)));
+        header.addView(actionButton(
+                trackControlMode == 2 ? "PAD SOLO ON" : "PAD SOLO",
+                v -> {
+                    trackControlMode = trackControlMode == 2 ? 0 : 2;
+                    refreshPadSelectionVisuals();
+                    refreshTrackGrid();
+                }),
+                new LinearLayout.LayoutParams(dp(92), dp(30)));
+        panel.addView(header);
+
+        trackGrid = new GridLayout(this);
+        trackGrid.setColumnCount(4);
+        panel.addView(trackGrid, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        refreshTrackGrid();
+        return panel;
+    }
+
+    private void refreshTrackGrid() {
+        if (trackGrid == null) return;
+
+        trackGrid.removeAllViews();
+        final int count = Math.min(16, nativeSequenceGetTrackCount());
+        final int selected = nativeSequenceGetSelectedTrack();
+
+        for (int i = 0; i < count; i++) {
+            final int track = i;
+            final boolean muted = nativeSequenceIsTrackMuted(track);
+            final boolean soloed = nativeSequenceIsTrackSoloed(track);
+            final String rawStatus = nativeSequenceTrackStatus(track);
+            final String displayName = rawStatus.split("\\|")[0].trim();
+
+            LinearLayout card = column();
+            card.setPadding(dp(4), dp(2), dp(4), dp(2));
+            final int fill = selected == track
+                    ? Color.rgb(32, 52, 60)
+                    : SURFACE_2;
+            final int stroke = selected == track ? ACCENT : LINE;
+            card.setBackground(strokeBackground(fill, stroke, 7));
+
+            TextView name = label(String.format(Locale.ROOT,
+                    "%02d  %s", i + 1, displayName), 9, TEXT);
+            name.setTypeface(Typeface.DEFAULT_BOLD);
+            name.setGravity(Gravity.CENTER_VERTICAL);
+            card.addView(name, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+
+            LinearLayout actions = row();
+            Button select = actionButton("SEL", v -> {
+                setBottomStatus(nativeSequenceSelectTrack(track));
+                refreshTrackGrid();
+                refreshTransportUi();
+            });
+            actions.addView(select, new LinearLayout.LayoutParams(0, dp(30), 1));
+
+            Button mute = actionButton(muted ? "M*" : "M", v -> {
+                setBottomStatus(nativeSequenceSetTrackMuted(
+                        track, !nativeSequenceIsTrackMuted(track)));
+                refreshTrackGrid();
+                refreshPadSelectionVisuals();
+            });
+            mute.setTextColor(muted ? DANGER : TEXT);
+            actions.addView(mute, new LinearLayout.LayoutParams(0, dp(30), 1));
+
+            Button solo = actionButton(soloed ? "S*" : "S", v -> {
+                setBottomStatus(nativeSequenceSetTrackSoloed(
+                        track, !nativeSequenceIsTrackSoloed(track)));
+                refreshTrackGrid();
+                refreshPadSelectionVisuals();
+            });
+            solo.setTextColor(soloed ? ACCENT_2 : TEXT);
+            actions.addView(solo, new LinearLayout.LayoutParams(0, dp(30), 1));
+
+            final boolean armed = track == selected && nativeSequenceIsSelectedTrackArmed();
+            Button arm = actionButton(armed ? "A*" : "A", v -> {
+                if (track != nativeSequenceGetSelectedTrack()) {
+                    setBottomStatus(nativeSequenceSelectTrack(track));
+                }
+                final boolean next = !nativeSequenceIsSelectedTrackArmed();
+                setBottomStatus(nativeSequenceSetSelectedTrackArmed(next));
+                refreshTrackGrid();
+                refreshTransportUi();
+            });
+            arm.setTextColor(armed ? DANGER : TEXT);
+            actions.addView(arm, new LinearLayout.LayoutParams(0, dp(30), 1));
+
+            card.addView(actions);
+
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = 0;
+            lp.height = dp(58);
+            lp.columnSpec = GridLayout.spec(i % 4, 1f);
+            lp.rowSpec = GridLayout.spec(i / 4, 1f);
+            lp.setMargins(dp(2), dp(2), dp(2), dp(2));
+            trackGrid.addView(card, lp);
+        }
+
+        if (count == 0) {
+            TextView empty = label("No sequence tracks", 12, MUTED);
+            trackGrid.addView(empty);
+        }
+    }
+
+    private void changeSequenceTempo(double delta) {
+        final double tempo = Math.max(20.0,
+                Math.min(300.0, nativeSequenceGetTempo() + delta));
+        setBottomStatus(nativeSequenceSetTempo(tempo));
+        refreshTransportUi();
+    }
+
+    private void changeSequenceBars(int delta) {
+        final int bars = Math.max(1,
+                Math.min(128, nativeSequenceGetBars() + delta));
+        setBottomStatus(nativeSequenceSetBars(bars));
+        refreshTransportUi();
+    }
+
+    private static final int[][] SEQUENCE_TIME_SIGNATURES = {
+            {4, 4}, {3, 4}, {5, 4}, {6, 8}, {7, 8}, {12, 8}
+    };
+
+    private void cycleTimeSignature(int direction) {
+        final int numerator = nativeSequenceGetNumerator();
+        final int denominator = nativeSequenceGetDenominator();
+        int current = 0;
+        for (int i = 0; i < SEQUENCE_TIME_SIGNATURES.length; i++) {
+            if (SEQUENCE_TIME_SIGNATURES[i][0] == numerator
+                    && SEQUENCE_TIME_SIGNATURES[i][1] == denominator) {
+                current = i;
+                break;
+            }
+        }
+        int next = (current + direction) % SEQUENCE_TIME_SIGNATURES.length;
+        if (next < 0) next += SEQUENCE_TIME_SIGNATURES.length;
+        setBottomStatus(nativeSequenceSetTimeSignature(
+                SEQUENCE_TIME_SIGNATURES[next][0],
+                SEQUENCE_TIME_SIGNATURES[next][1]));
+        refreshTransportUi();
+    }
+
     private void showBrowserPage() {
         currentPage = "BROWSE";
         pageTitle.setText("BROWSER");
@@ -812,26 +1107,110 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
-        page.addView(sectionLabel("PATTERN / GRID / STEP"));
 
-        LinearLayout transport = row();
-        transport.addView(actionButton("PLAY", v -> setBottomStatus(nativeAudioStart())), weight());
-        transport.addView(actionButton("STOP", v -> setBottomStatus(nativeAudioStop())), weight());
-        transport.addView(actionButton("GRID", v -> setBottomStatus("Grid editor shell ready")), weight());
-        transport.addView(actionButton("STEP", v -> setBottomStatus("Step editor shell ready")), weight());
-        page.addView(transport, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+        LinearLayout header = row();
+        header.addView(sectionLabelView("SEQUENCE TRANSPORT",
+                new LinearLayout.LayoutParams(0, dp(38), 1)));
+        header.addView(actionButton("RESET", v -> {
+            setBottomStatus(nativeSequenceReset());
+            refreshTransportUi();
+        }), new LinearLayout.LayoutParams(dp(74), dp(38)));
+        header.addView(actionButton("NEXT", v -> {
+            setBottomStatus(nativeSequenceNext());
+            refreshTransportUi();
+            refreshTrackGrid();
+        }), new LinearLayout.LayoutParams(dp(74), dp(38)));
+        header.addView(actionButton("NEW SEQ", v -> {
+            setBottomStatus(nativeSequenceAddSequence());
+            refreshTransportUi();
+            refreshTrackGrid();
+        }), new LinearLayout.LayoutParams(dp(82), dp(38)));
+        header.addView(actionButton("CHAIN", v -> {
+            final String result = nativeSequenceSetChainEnabled(
+                    !nativeSequenceIsChainEnabled());
+            setBottomStatus(result);
+            refreshTransportUi();
+        }), new LinearLayout.LayoutParams(dp(78), dp(38)));
+        page.addView(header);
 
-        TextView roadmap = label(
-                "16-step performance canvas will live here: pattern length, quantize, swing, "
-                        + "probability, ratchet and event editing without leaving the performance context.",
-                14, TEXT);
-        roadmap.setBackground(strokeBackground(SURFACE_2, LINE, 8));
-        roadmap.setPadding(dp(16), dp(16), dp(16), dp(16));
-        page.addView(roadmap, new LinearLayout.LayoutParams(
+        LinearLayout controls = row();
+        controls.addView(sequenceValue("TEMPO", String.format(
+                Locale.ROOT, "%.1f", nativeSequenceGetTempo()),
+                v -> changeSequenceTempo(-1), v -> changeSequenceTempo(1)),
+                new LinearLayout.LayoutParams(0, dp(66), 1));
+        controls.addView(sequenceValue("BARS",
+                String.valueOf(nativeSequenceGetBars()),
+                v -> changeSequenceBars(-1), v -> changeSequenceBars(1)),
+                new LinearLayout.LayoutParams(0, dp(66), 0.8f));
+        controls.addView(sequenceValue("TIME",
+                nativeSequenceGetNumerator() + "/" + nativeSequenceGetDenominator(),
+                v -> cycleTimeSignature(-1), v -> cycleTimeSignature(1)),
+                new LinearLayout.LayoutParams(0, dp(66), 0.9f));
+        TextView mode = label(
+                nativeSequenceGetRecordMode() == 0
+                        ? "REC REPLACE"
+                        : "REC OVERDUB",
+                11, TEXT);
+        mode.setGravity(Gravity.CENTER);
+        mode.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        controls.addView(mode, new LinearLayout.LayoutParams(
+                0, dp(66), 1.1f));
+        controls.addView(actionButton("DUB", v -> {
+            final int next = nativeSequenceGetRecordMode() == 0 ? 1 : 0;
+            setBottomStatus(nativeSequenceSetRecordMode(next));
+            refreshTransportUi();
+            showSequencePage();
+        }), new LinearLayout.LayoutParams(dp(72), dp(58)));
+        controls.addView(actionButton("ARM", v -> {
+            final boolean next = !nativeSequenceIsSelectedTrackArmed();
+            setBottomStatus(nativeSequenceSetSelectedTrackArmed(next));
+            refreshTrackGrid();
+            refreshTransportUi();
+        }), new LinearLayout.LayoutParams(dp(72), dp(58)));
+        page.addView(controls, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(72)));
+
+        page.addView(buildTrackControlPanel(), new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
+        LinearLayout footer = row();
+        footer.addView(actionButton("GRID", v -> setBottomStatus(
+                "Grid editor context: selected Track / Pattern")), weight());
+        footer.addView(actionButton("STEP", v -> setBottomStatus(
+                "Step editor context: selected Track / Pattern")), weight());
+        footer.addView(actionButton("REC", v -> {
+            setBottomStatus(nativeSequenceRecordToggle());
+            refreshTransportUi();
+            refreshTrackGrid();
+        }), weight());
+        page.addView(footer, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+
         content.addView(page);
+        refreshTrackGrid();
+        refreshTransportUi();
+    }
+
+    private View sequenceValue(
+            String title,
+            String value,
+            View.OnClickListener minus,
+            View.OnClickListener plus) {
+        LinearLayout box = column();
+        TextView caption = label(title, 9, MUTED);
+        caption.setGravity(Gravity.CENTER);
+        box.addView(caption, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
+        LinearLayout line = row();
+        line.addView(actionButton("−", minus), new LinearLayout.LayoutParams(dp(38), dp(44)));
+        TextView v = label(value, 12, TEXT);
+        v.setGravity(Gravity.CENTER);
+        v.setTypeface(Typeface.DEFAULT_BOLD);
+        v.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        line.addView(v, new LinearLayout.LayoutParams(0, dp(44), 1));
+        line.addView(actionButton("+", plus), new LinearLayout.LayoutParams(dp(38), dp(44)));
+        box.addView(line);
+        return box;
     }
 
     private void showMixPage() {
@@ -986,6 +1365,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             }
             nativeAudioTriggerPad(pad, velocity);
+            final String captureResult = nativeSequenceCapturePadHit(pad, velocity);
+            if (captureResult != null && captureResult.length() > 0
+                    && !captureResult.equals("capture=idle")) {
+                setBottomStatus(captureResult);
+            }
             setBottomStatus("AUDITION • Pad " + (pad + 1)
                     + " • velocity " + velocity
                     + " | " + nativeAudioStatus());
@@ -995,10 +1379,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void refreshPadSelectionVisuals() {
+        final int trackCount = nativeSequenceGetTrackCount();
         for (int i = 0; i < padButtons.length; i++) {
             if (padButtons[i] == null) continue;
+
             int fill = i == selectedPad ? Color.rgb(32, 52, 60) : SURFACE_2;
             int stroke = i == selectedPad ? ACCENT : LINE;
+            int textColor = TEXT;
+
+            if (trackControlMode != 0) {
+                if (i >= trackCount) {
+                    fill = SURFACE;
+                    stroke = LINE;
+                    textColor = MUTED;
+                } else if (trackControlMode == 1 && nativeSequenceIsTrackMuted(i)) {
+                    fill = Color.rgb(58, 29, 31);
+                    stroke = DANGER;
+                } else if (trackControlMode == 2 && nativeSequenceIsTrackSoloed(i)) {
+                    fill = Color.rgb(57, 49, 29);
+                    stroke = ACCENT_2;
+                }
+            }
+
+            padButtons[i].setTextColor(textColor);
             padButtons[i].setBackground(strokeBackground(fill, stroke, 8));
         }
         refreshAllInspectorState();
@@ -1048,6 +1451,65 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void refreshFilterInfo() {
         if (filterInfo == null) return;
         filterInfo.setText("Cutoff " + formatCutoff(nativeAudioGetPadFilterCutoff(selectedPad)));
+    }
+
+    private void startTransportUiUpdates() {
+        if (transportUiUpdater == null) {
+            transportUiUpdater = new Runnable() {
+                @Override public void run() {
+                    if (destroyed) return;
+
+                    if (startupComplete && nativeSequenceIsPlaying()) {
+                        nativeSequenceAdvance(80);
+                    }
+
+                    refreshTransportUi();
+                    transportUiHandler.postDelayed(this, 80);
+                }
+            };
+        }
+        transportUiHandler.removeCallbacks(transportUiUpdater);
+        transportUiHandler.post(transportUiUpdater);
+    }
+
+    private void refreshTransportUi() {
+        if (sequenceProgressView == null) return;
+
+        final int count = Math.max(1, nativeSequenceGetCount());
+        final int index = Math.max(0, Math.min(count - 1, nativeSequenceGetIndex()));
+        final int bars = Math.max(1, nativeSequenceGetBars());
+        final int numerator = Math.max(1, nativeSequenceGetNumerator());
+        final int denominator = Math.max(1, nativeSequenceGetDenominator());
+        final double ticksPerBeat = 960.0 * 4.0 / denominator;
+        final double ticksPerBar = ticksPerBeat * numerator;
+        final double lengthTicks = Math.max(1.0, bars * ticksPerBar);
+        final long position = Math.max(0L, nativeSequencePositionTicks());
+
+        final float progress = (float) Math.max(
+                0.0,
+                Math.min(1.0, position / lengthTicks));
+        sequenceProgressView.setProgress(progress);
+        sequenceProgressView.setPlaying(nativeSequenceIsPlaying());
+
+        sequenceCounterView.setText(String.format(
+                Locale.ROOT, "SEQ %02d/%02d", index + 1, count));
+
+        final int bar = (int) Math.floor(position / ticksPerBar) + 1;
+        final double inBar = position % ticksPerBar;
+        final int beat = (int) Math.floor(inBar / ticksPerBeat) + 1;
+        final int tick = (int) Math.round(inBar % ticksPerBeat);
+        sequencePositionView.setText(String.format(
+                Locale.ROOT, "%03d.%d.%03d", bar, beat, tick));
+
+        tempoView.setText(String.format(
+                Locale.ROOT, "%.1f", nativeSequenceGetTempo()));
+
+        final boolean recording = nativeSequenceGetRecordMode() == 1;
+        if (recording && nativeSequenceIsPlaying()) {
+            sequencePositionView.setTextColor(DANGER);
+        } else {
+            sequencePositionView.setTextColor(TEXT);
+        }
     }
 
     private void refreshRecordingInfo() {
@@ -1672,11 +2134,59 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private static final class SequencerProgressView extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float progress;
+        private boolean playing;
+
+        SequencerProgressView(android.content.Context context) {
+            super(context);
+            paint.setStrokeWidth(1f);
+        }
+
+        void setProgress(float value) {
+            final float next = Math.max(0f, Math.min(1f, value));
+            if (Math.abs(next - progress) > 0.0005f) {
+                progress = next;
+                invalidate();
+            }
+        }
+
+        void setPlaying(boolean value) {
+            if (playing != value) {
+                playing = value;
+                invalidate();
+            }
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            final float width = getWidth();
+            final float height = getHeight();
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(Color.rgb(44, 24, 26));
+            canvas.drawRect(0, 0, width, height, paint);
+
+            paint.setColor(playing ? DANGER : Color.rgb(98, 53, 56));
+            canvas.drawRect(0, 0, width * progress, height, paint);
+
+            if (playing) {
+                paint.setColor(Color.WHITE);
+                final float x = Math.max(0f, Math.min(width, width * progress));
+                canvas.drawRect(Math.max(0f, x - 1f), 0, Math.min(width, x + 1f), height, paint);
+            }
+        }
+    }
+
     @Override
     protected void onDestroy() {
         destroyed = true;
         if (recordingWaveformUpdater != null) {
             waveformUiHandler.removeCallbacks(recordingWaveformUpdater);
+        }
+        if (transportUiUpdater != null) {
+            transportUiHandler.removeCallbacks(transportUiUpdater);
         }
         startupExecutor.shutdownNow();
 
