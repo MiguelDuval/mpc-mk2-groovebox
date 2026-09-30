@@ -7,6 +7,7 @@
 #include "SampleCrop.h"
 #include "SampleEnvelope.h"
 #include "OnePoleLowPass.h"
+#include "SamplePlaybackCursor.h"
 
 #include <algorithm>
 #include <cmath>
@@ -358,7 +359,7 @@ public:
                 right += tone;
                 testTonePhase_ += static_cast<double>(phaseIncrement);
                 if (testTonePhase_ >= 2.0 * kPi) {
-                    testTonePhase_ -= 2.0 * M_PI;
+                    testTonePhase_ -= 2.0 * kPi;
                 }
                 --testToneFramesRemaining_;
             }
@@ -488,7 +489,11 @@ public:
                         }
 
                         ++layerVoice.ageFrames;
-                        anyActiveLayer = true;
+                        anyActiveLayer = advanceSamplePlaybackCursor(
+                                layerVoice.position,
+                                layerVoice.positionStep,
+                                region.endFrame,
+                                sample->frameCount());
                     }
 
                     voice.active = anyActiveLayer;
