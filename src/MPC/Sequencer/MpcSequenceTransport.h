@@ -17,6 +17,7 @@ struct SequenceTransportSnapshot final {
     std::int64_t tempoMilliBpm = 120000;
     bool loopEnabled = true;
     bool playing = false;
+    std::int32_t queuedSequenceIndex = -1;
 };
 
 class MpcSequenceTransportClock final {
@@ -43,6 +44,23 @@ public:
         store(sequence, positionTicks, timestampNanos, playing);
     }
 
+    void queueSequence(std::size_t sequenceIndex) noexcept {
+        queuedSequenceIndex_.store(
+                sequenceIndex > static_cast<std::size_t>(
+                        std::numeric_limits<std::int32_t>::max())
+                        ? -1
+                        : static_cast<std::int32_t>(sequenceIndex),
+                std::memory_order_release);
+    }
+
+    void clearQueuedSequence() noexcept {
+        queuedSequenceIndex_.store(-1, std::memory_order_release);
+    }
+
+    [[nodiscard]] std::int32_t queuedSequenceIndex() const noexcept {
+        return queuedSequenceIndex_.load(std::memory_order_acquire);
+    }
+
     [[nodiscard]] SequenceTransportSnapshot snapshot() const noexcept {
         SequenceTransportSnapshot result;
         result.positionTicks =
@@ -59,6 +77,8 @@ public:
                 loopEnabled_.load(std::memory_order_acquire);
         result.playing =
                 playing_.load(std::memory_order_acquire);
+        result.queuedSequenceIndex =
+                queuedSequenceIndex_.load(std::memory_order_acquire);
         return result;
     }
 
@@ -158,6 +178,7 @@ private:
     std::atomic<std::int64_t> tempoMilliBpm_{120000};
     std::atomic<bool> loopEnabled_{true};
     std::atomic<bool> playing_{false};
+    std::atomic<std::int32_t> queuedSequenceIndex_{-1};
 };
 
 } // namespace mpc::sequencer
