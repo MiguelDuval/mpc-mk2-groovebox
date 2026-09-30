@@ -31,7 +31,9 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
         if(repeatPadHeld_){
             r.repeating=true;
             r.targetPadIndex=repeatPadIndex_;
-            repeatPadHeld_=false;
+            if(!noteRepeatLatched_) {
+                repeatPadHeld_=false;
+            }
             return r;
         }
         if(sixteenLevel_ && lastPadIndex_!=0xFF){
