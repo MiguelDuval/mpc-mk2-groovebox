@@ -201,6 +201,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceSelectTrack(int trackIndex);
     private static native String nativeSequenceAddTrack(int kind);
     private static native String nativeSequenceTrackStatus(int trackIndex);
+    private static native int nativeSequenceTrackLengthBars(int trackIndex);
+    private static native String nativeSequenceSetTrackLengthBars(
+            int trackIndex, int bars);
     private static native boolean nativeSequenceIsSelectedTrackArmed();
     private static native String nativeSequenceSetSelectedTrackArmed(boolean armed);
     private static native String nativeSequenceStart();
@@ -1029,6 +1032,49 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceTrackInfoView.setGravity(Gravity.CENTER_VERTICAL);
         detailPanel.addView(sequenceTrackInfoView, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(72)));
+
+        LinearLayout trackLengthRow = row();
+        TextView trackLengthView = label("", 11, TEXT);
+        trackLengthView.setGravity(Gravity.CENTER);
+        trackLengthView.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        trackLengthRow.addView(trackLengthView,
+                new LinearLayout.LayoutParams(0, dp(42), 1.2f));
+        trackLengthRow.addView(actionButton("LENGTH", v -> {
+            final int track = nativeSequenceGetSelectedTrack();
+            final int sequenceBars = nativeSequenceGetBars();
+            final int current = nativeSequenceTrackLengthBars(track);
+            final int[] choices = {0, 1, 2, 4, 8};
+            int index = 0;
+            for (int i = 0; i < choices.length; i++) {
+                if (choices[i] == current) {
+                    index = i;
+                    break;
+                }
+            }
+            int next = choices[(index + 1) % choices.length];
+            if (next != 0 && next > sequenceBars) {
+                next = 0;
+            }
+            setBottomStatus(nativeSequenceSetTrackLengthBars(track, next));
+            refreshSequenceControls();
+            final int updated = nativeSequenceGetSelectedTrack();
+            trackLengthView.setText(
+                    nativeSequenceTrackLengthBars(updated) == 0
+                            ? "TRACK LENGTH • SEQ"
+                            : "TRACK LENGTH • "
+                                    + nativeSequenceTrackLengthBars(updated)
+                                    + " BAR(S)");
+        }), touchButtonWeight());
+        trackLengthView.setText(
+                nativeSequenceTrackLengthBars(nativeSequenceGetSelectedTrack()) == 0
+                        ? "TRACK LENGTH • SEQ"
+                        : "TRACK LENGTH • "
+                                + nativeSequenceTrackLengthBars(
+                                        nativeSequenceGetSelectedTrack())
+                                + " BAR(S)");
+        detailPanel.addView(trackLengthRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+
         TextView lane = label(
                 "EVENT LANE  •  MIDI events belong to the selected track inside this sequence. "
                         + "Sampler, looper, audio and instrument tracks share the same sequence timeline.",
