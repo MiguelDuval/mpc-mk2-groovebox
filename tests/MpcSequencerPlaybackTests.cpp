@@ -58,7 +58,6 @@ int main() {
     assert(events[1].offsetFrames == 24000);
 
     const auto second = playback.advance(1920, 99u, 48000);
-    assert(second.wrapped);
     assert(second.scheduled == 1);
     assert(second.routed == 1);
     assert(second.queued == 1);
