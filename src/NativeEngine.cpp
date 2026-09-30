@@ -1193,3 +1193,37 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsPlaying(
 {
     return sequenceSession().isPlaying() ? JNI_TRUE : JNI_FALSE;
 }
+
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsSelectedTrackArmed(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    const auto index = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    return index < tracks.size() && tracks[index].recordArmed
+            ? JNI_TRUE
+            : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetSelectedTrackArmed(
+        JNIEnv* env, jobject /* thiz */, jboolean armed)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    auto& tracks = state.activeSequence().tracks;
+    const auto index = state.activeTrackIndex();
+    if (index >= tracks.size()) {
+        return toJString(env, "Track arm failed: no selected track");
+    }
+
+    for (auto& track : tracks) {
+        track.recordArmed = false;
+    }
+    tracks[index].recordArmed = armed == JNI_TRUE;
+
+    return toJString(
+            env,
+            state.trackStatus(index));
+}
