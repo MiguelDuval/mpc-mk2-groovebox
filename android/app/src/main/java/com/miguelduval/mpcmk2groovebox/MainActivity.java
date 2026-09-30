@@ -447,7 +447,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
             LinearLayout row = row();
             for (int col = 0; col < 4; col++) {
-                final int pad = rowIndex * 4 + col;
+                // MPC Studio MkII physical numbering is bottom-left -> top-right:
+                // bottom row = Pads 1-4, then 5-8, 9-12, top row = 13-16.
+                final int pad = (3 - rowIndex) * 4 + col;
                 Button b = button(String.format(Locale.ROOT, "%02d", pad + 1));
                 b.setTextSize(15);
                 b.setTypeface(Typeface.DEFAULT_BOLD);
@@ -1683,12 +1685,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void openWavPicker() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("audio/wav");
+        // Android file providers are inconsistent about the MIME they report
+        // for WAV (audio/wav, audio/x-wav, audio/wave, or even octet-stream).
+        // Start with the broad MIME contract and let the native WAV decoder
+        // perform the final format validation.
+        intent.setType("*/*");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                "audio/wav",
+                "audio/x-wav",
+                "audio/wave",
+                "audio/vnd.wave",
+                "application/octet-stream"
+        });
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         try {
             startActivityForResult(intent, REQUEST_OPEN_WAV);
         } catch (RuntimeException e) {
-            intent.setType("*/*");
-            startActivityForResult(intent, REQUEST_OPEN_WAV);
+            // Some vendor pickers reject the extra MIME contract. Retry with
+            // the simplest Android document-provider request.
+            Intent fallback = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            fallback.addCategory(Intent.CATEGORY_OPENABLE);
+            fallback.setType("audio/*");
+            fallback.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivityForResult(fallback, REQUEST_OPEN_WAV);
         }
     }
 
@@ -1700,12 +1721,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         Uri uri = data.getData();
+        if (uri == null && data.getClipData() != null
+                && data.getClipData().getItemCount() > 0) {
+            uri = data.getClipData().getItemAt(0).getUri();
+        }
         if (uri == null) {
             setBottomStatus("Sample load failed: no file selected");
             return;
         }
 
         try {
+            if ((data.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
+                try {
+                    getContentResolver().takePersistableUriPermission(
+                            uri,
+                            data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                } catch (SecurityException ignored) {
+                    // Persistable access is optional; the immediate read still
+                    // works with the transient document-provider grant.
+                }
+            }
+
             setBottomStatus("Loading WAV…");
             byte[] bytes = readSampleBytes(uri);
 
