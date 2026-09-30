@@ -194,6 +194,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native int nativeSequenceGetIndex();
     private static native int nativeSequenceGetCount();
     private static native int nativeSequenceGetQueuedIndex();
+    private static native void nativeSequenceSetLauncherContext(
+            boolean enabled, int bank);
     private static native String nativeSequenceSelect(int sequenceIndex);
     private static native String nativeSequencePrevious();
     private static native String nativeSequenceNext();
@@ -499,6 +501,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMainPage() {
+        nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MAIN";
         pageTitle.setText("MAIN");
         content.removeAllViews();
@@ -612,6 +615,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSamplePage() {
+        nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SAMPLE";
         pageTitle.setText("SAMPLE");
         content.removeAllViews();
@@ -816,6 +820,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showRecordPage() {
+        nativeSequenceSetLauncherContext(false, 0);
         currentPage = "REC";
         pageTitle.setText("RECORDER");
         content.removeAllViews();
@@ -904,6 +909,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showBrowserPage() {
+        nativeSequenceSetLauncherContext(false, 0);
         currentPage = "BROWSE";
         pageTitle.setText("BROWSER");
         content.removeAllViews();
@@ -941,6 +947,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequencePage() {
+        nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
         pageTitle.setText("SEQUENCER");
         content.removeAllViews();
@@ -1130,6 +1137,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceGridPage() {
+        nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
         pageTitle.setText("SEQ • GRID");
         content.removeAllViews();
@@ -1212,6 +1220,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceLauncherPage() {
+        nativeSequenceSetLauncherContext(false, 0);
+        launcherBank = Math.max(0, nativeSequenceGetIndex() / 16);
         currentPage = "SEQ";
         pageTitle.setText("SEQ • LAUNCH");
         content.removeAllViews();
@@ -1285,12 +1295,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         content.addView(page);
 
-        launcherBank = Math.max(0, nativeSequenceGetIndex() / 16);
+        nativeSequenceSetLauncherContext(true, launcherBank);
         refreshSequenceLauncher();
         refreshSequenceControls();
     }
 
     private void showSequenceStepPage() {
+        nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
         pageTitle.setText("SEQ • STEP");
         content.removeAllViews();
@@ -1579,6 +1590,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Math.min(
                         sequenceLauncherBankCount() - 1,
                         launcherBank + delta));
+        nativeSequenceSetLauncherContext(true, launcherBank);
         refreshSequenceLauncher();
     }
 
@@ -2033,6 +2045,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMixPage() {
+        nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MIX";
         pageTitle.setText("MIX");
         content.removeAllViews();
@@ -2118,6 +2131,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMenuPage() {
+        nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MENU";
         pageTitle.setText("MENU");
         content.removeAllViews();
