@@ -1,3 +1,4 @@
+#include "MPC/MpcStudioMk2ControlMap.h"
 #include "MPC/MpcStudioMk2InputDecoder.h"
 #include "MPC/MpcStudioMk2LedProtocol.h"
 
@@ -19,6 +20,24 @@ InputEvent decode(std::initializer_list<std::uint8_t> bytes) {
 
     assert(event.has_value());
     return *event;
+}
+
+void testPhysicalPadIndexCoverage() {
+    std::array<bool, 16> seen{};
+    for (const auto& pad : mpc::studio::pads) {
+        assert(pad.physicalIndex < seen.size());
+        assert(!seen[pad.physicalIndex]);
+        seen[pad.physicalIndex] = true;
+    }
+    for (bool value : seen) {
+        assert(value);
+    }
+
+    // Pad 1 is the bottom-left physical pad; its current hardware MIDI
+    // message is kept separate from the physical pad number.
+    assert(mpc::studio::pads[0].physicalIndex == 0);
+    assert(mpc::studio::pads[0].midiNote == 37);
+    assert(mpc::studio::pads[15].physicalIndex == 15);
 }
 
 void testPadVelocity() {
@@ -238,6 +257,7 @@ void testUnknownMessageIsIgnored() {
 } // namespace
 
 int main() {
+    testPhysicalPadIndexCoverage();
     testPadVelocity();
     testPadRelease();
     testPadNoteOnZeroIsRelease();
