@@ -930,6 +930,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         currentPage = "SEQ";
         pageTitle.setText("SEQUENCER");
         content.removeAllViews();
+        sequenceGridView = null;
 
         LinearLayout page = page();
 
@@ -1113,6 +1114,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         currentPage = "SEQ";
         pageTitle.setText("SEQ • GRID");
         content.removeAllViews();
+        sequenceTimeline = null;
 
         LinearLayout page = page();
 
