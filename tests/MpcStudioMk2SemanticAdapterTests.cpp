@@ -2,7 +2,7 @@
 #include <cassert>
 #include <cstdint>
 using namespace mpc::studio;
-InputEvent btn(std::uint8_t n,bool p=true){return {InputEventType::Button,0,n,p?127:0,0xFF,p};}
+InputEvent btn(std::uint8_t n,bool p=true){return {InputEventType::Button,0,n,static_cast<std::uint8_t>(p?127:0),0xFF,p};}
 InputEvent pad(std::uint8_t i){return {InputEventType::PadNote,9,37,112,i,true};}
 InputEvent jog(std::uint8_t v){return {InputEventType::JogWheel,0,100,v};}
 void typeOf(const std::optional<SemanticAction>& a,SemanticActionType t){assert(a);assert(a->type==t);}
