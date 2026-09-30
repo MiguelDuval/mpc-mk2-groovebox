@@ -31,6 +31,7 @@ public:
     void begin(MpcProjectState& state) {
         held_.fill({});
         startTicks_.fill({});
+        startVelocities_.fill({});
         replaceCleared_.fill(false);
         active_ = true;
 
@@ -87,6 +88,10 @@ public:
                 if (!held_[trackIndex][padIndex]) {
                     held_[trackIndex][padIndex] = true;
                     startTicks_[trackIndex][padIndex] = event.tick;
+                    startVelocities_[trackIndex][padIndex] =
+                            event.velocity == 0
+                            ? static_cast<std::uint8_t>(1)
+                            : event.velocity;
                 }
                 continue;
             }
@@ -131,9 +136,7 @@ public:
             note.tick = static_cast<std::int32_t>(normalizedStart);
             note.durationTicks = static_cast<std::int32_t>(duration);
             note.note = state.activeDrumProgram().pad(padIndex).midiNote;
-            note.velocity = event.velocity == 0
-                    ? static_cast<std::uint8_t>(1)
-                    : event.velocity;
+            note.velocity = startVelocities_[trackIndex][padIndex];
             note.probability = 127;
             note.ratchet = 1;
 
@@ -221,7 +224,7 @@ public:
                 note.tick = static_cast<std::int32_t>(normalizedStart);
                 note.durationTicks = static_cast<std::int32_t>(duration);
                 note.note = state.activeDrumProgram().pad(padIndex).midiNote;
-                note.velocity = 100;
+                note.velocity = startVelocities_[trackIndex][padIndex];
                 note.probability = 127;
                 note.ratchet = 1;
 
@@ -245,6 +248,7 @@ public:
         active_ = false;
         held_.fill({});
         startTicks_.fill({});
+        startVelocities_.fill({});
         replaceCleared_.fill(false);
         return recorded;
     }
@@ -301,6 +305,8 @@ private:
                domain::kMaxSequenceTracks> held_{};
     std::array<std::array<std::int64_t, domain::kMaxProgramPads>,
                domain::kMaxSequenceTracks> startTicks_{};
+    std::array<std::array<std::uint8_t, domain::kMaxProgramPads>,
+               domain::kMaxSequenceTracks> startVelocities_{};
     std::array<bool, domain::kMaxSequenceTracks> replaceCleared_{};
     PatternRecordMode mode_ = PatternRecordMode::Overdub;
     bool active_ = false;
