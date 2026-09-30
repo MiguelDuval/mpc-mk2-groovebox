@@ -1890,7 +1890,11 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStart(
 
     core.sequenceRecorder().begin(core.projectState());
 
-    if (!sequenceSession().start()) {
+    const auto transportNow = monotonicNanos();
+    const auto startPosition =
+            core.sequenceTransportClock().positionAtTimestamp(transportNow);
+
+    if (!sequenceSession().start(startPosition)) {
         core.sequenceRecorder().finish(
                 core.projectState(),
                 core.sequenceRecordQueue(),
@@ -1904,7 +1908,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStart(
     core.sequenceTransportClock().start(
             sequence,
             sequenceSession().positionTicks(),
-            monotonicNanos());
+            transportNow);
 
     return toJString(
             env,
@@ -2038,6 +2042,90 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdvance(
             std::min<std::int64_t>(
                     std::numeric_limits<jint>::max(),
                     sequenceSession().positionTicks()));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMovePlayheadTicks(
+        JNIEnv* env, jobject /* thiz */, jlong deltaTicks)
+{
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(
+                env,
+                "Playhead move blocked: stop playback first");
+    }
+
+    const auto now = monotonicNanos();
+    const auto current =
+            core.sequenceTransportClock().positionAtTimestamp(now);
+
+    std::int64_t delta = static_cast<std::int64_t>(deltaTicks);
+    std::int64_t target = current;
+    if (delta > 0
+            && current > std::numeric_limits<std::int64_t>::max() - delta) {
+        target = std::numeric_limits<std::int64_t>::max();
+    } else if (delta < 0
+            && current < std::numeric_limits<std::int64_t>::min() - delta) {
+        target = std::numeric_limits<std::int64_t>::min();
+    } else {
+        target += delta;
+    }
+
+    core.sequenceTransportClock().stop(
+            core.projectState().activeSequence(),
+            target,
+            now);
+
+    return toJString(
+            env,
+            "Playhead "
+                    + std::to_string(
+                            core.sequenceTransportClock()
+                                    .snapshot()
+                                    .positionTicks)
+                    + " ticks");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceTogglePadMute(
+        JNIEnv* env, jobject /* thiz */, jint padIndex)
+{
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)) {
+        return toJString(env, "Pad mute failed: invalid pad");
+    }
+
+    auto& pad = mpc::MpcCore::instance()
+            .projectState()
+            .activeDrumProgram()
+            .pad(static_cast<std::size_t>(padIndex));
+    pad.muted = !pad.muted;
+
+    return toJString(
+            env,
+            "PAD " + std::to_string(padIndex + 1)
+                    + " MUTE " + (pad.muted ? "ON" : "OFF"));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackMute(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (trackIndex < 0
+            || trackIndex >= static_cast<jint>(
+                    state.activeSequence().tracks.size())) {
+        return toJString(env, "Track mute failed: invalid track");
+    }
+
+    auto& track =
+            state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)];
+    track.muted = !track.muted;
+
+    return toJString(
+            env,
+            "TRACK " + std::to_string(trackIndex + 1)
+                    + " MUTE " + (track.muted ? "ON" : "OFF"));
 }
 
 extern "C" JNIEXPORT jlong JNICALL
