@@ -1111,6 +1111,44 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceTrackStatus(
                     static_cast<std::size_t>(trackIndex)));
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceTrackLengthBars(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    if (trackIndex < 0) {
+        return 0;
+    }
+    const auto& state = mpc::MpcCore::instance().projectState();
+    return static_cast<jint>(
+            state.trackLengthTicks(static_cast<std::size_t>(trackIndex)) == state.activeSequence().lengthTicks
+            && state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)].lengthTicks == 0
+            ? 0
+            : state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)].lengthTicks
+                    / std::max(
+                            1,
+                            mpc::sequencer::barLengthTicks(
+                                    state.activeSequence().numerator,
+                                    state.activeSequence().denominator)));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTrackLengthBars(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jint bars)
+{
+    if (trackIndex < 0) {
+        return toJString(env, "Track length failed");
+    }
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (!state.setTrackLengthBars(
+            static_cast<std::size_t>(trackIndex),
+            bars)) {
+        return toJString(env, "Track length failed");
+    }
+    return toJString(
+            env,
+            state.trackLengthStatus(static_cast<std::size_t>(trackIndex)));
+}
+
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStart(
