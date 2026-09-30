@@ -26,7 +26,13 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
     PadRoutingResult r;
     r.velocity=e.value;
     r.targetPadIndex=e.padIndex;
-    if(e.type!=InputEventType::PadNote || !e.pressed) return r;
+    if(e.type!=InputEventType::PadNote) return r;
+    if(!e.pressed){
+        if(sixteenLevel_ && lastPadIndex_!=0xFF){
+            r.targetPadIndex=lastPadIndex_;
+        }
+        return r;
+    }
     if(modeHeld_){ r.consumed=true; r.action=modePadAction(e.padIndex); return r; }
     if(locateHeld_){ r.consumed=true; r.action=make(Type::LocatePad,e.padIndex); return r; }
     if(padMuteMode_){ r.consumed=true; r.action=make(Type::PadMuteTarget,e.padIndex); return r; }
