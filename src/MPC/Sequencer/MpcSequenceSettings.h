@@ -30,7 +30,7 @@ inline constexpr std::int32_t kSequenceTicksPerQuarterNote = 960;
     return static_cast<std::int32_t>(
             (static_cast<std::int64_t>(numerator)
              * 4
-             * kTicksPerQuarterNote)
+             * kSequenceTicksPerQuarterNote)
             / denominator);
 }
 
