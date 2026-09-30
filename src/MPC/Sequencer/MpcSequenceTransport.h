@@ -16,6 +16,7 @@ struct SequenceTransportSnapshot final {
     std::int64_t loopStartTicks = 0;
     std::int64_t loopEndTicks = 1;
     std::int64_t tempoMilliBpm = 120000;
+    std::int32_t quantizeGridTicks = 240;
     bool loopEnabled = true;
     bool playing = false;
     std::int32_t queuedSequenceIndex = -1;
@@ -74,6 +75,8 @@ public:
                 loopEndTicks_.load(std::memory_order_acquire);
         result.tempoMilliBpm =
                 tempoMilliBpm_.load(std::memory_order_acquire);
+        result.quantizeGridTicks =
+                quantizeGridTicks_.load(std::memory_order_acquire);
         result.loopEnabled =
                 loopEnabled_.load(std::memory_order_acquire);
         result.playing =
@@ -148,6 +151,9 @@ private:
                 static_cast<std::int64_t>(
                         std::llround(sequence.tempoBpm * 1000.0)),
                 std::memory_order_release);
+        quantizeGridTicks_.store(
+                std::clamp(sequence.quantizeGridTicks, 1, 3840),
+                std::memory_order_release);
         const auto storedPosition = sequence.loopEnabled
                 ? normalize(positionTicks, loopStart, loopEnd)
                 : std::clamp<std::int64_t>(
@@ -177,6 +183,7 @@ private:
     std::atomic<std::int64_t> loopStartTicks_{0};
     std::atomic<std::int64_t> loopEndTicks_{1};
     std::atomic<std::int64_t> tempoMilliBpm_{120000};
+    std::atomic<std::int32_t> quantizeGridTicks_{240};
     std::atomic<bool> loopEnabled_{true};
     std::atomic<bool> playing_{false};
     std::atomic<std::int32_t> queuedSequenceIndex_{-1};
