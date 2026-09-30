@@ -1267,11 +1267,19 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetSelectedTrackArmed(
         JNIEnv* env, jobject /* thiz */, jboolean armed)
 {
-    auto& state = mpc::MpcCore::instance().projectState();
+    auto& core = mpc::MpcCore::instance();
+    auto& state = core.projectState();
     auto& tracks = state.activeSequence().tracks;
     const auto index = state.activeTrackIndex();
     if (index >= tracks.size()) {
         return toJString(env, "Track arm failed: no selected track");
+    }
+
+    if (core.sequenceRecorder().active()) {
+        core.sequenceRecorder().finish(
+                state,
+                core.sequenceRecordQueue(),
+                sequenceSession().positionTicks());
     }
 
     for (auto& track : tracks) {
@@ -1279,7 +1287,57 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetSelectedTrack
     }
     tracks[index].recordArmed = armed == JNI_TRUE;
 
+    if (armed == JNI_TRUE && sequenceSession().isPlaying()) {
+        core.sequenceRecorder().begin(state);
+        core.sequenceTransportClock().update(
+                state.activeSequence(),
+                sequenceSession().positionTicks(),
+                monotonicNanos(),
+                true);
+    }
+
     return toJString(
             env,
             state.trackStatus(index));
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetRecordMode(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().sequenceRecorder().mode()
+                    == mpc::sequencer::PatternRecordMode::Replace
+            ? 0
+            : 1);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetRecordMode(
+        JNIEnv* env, jobject /* thiz */, jint mode)
+{
+    if (mode != 0 && mode != 1) {
+        return toJString(env, "Record mode failed");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    core.sequenceRecorder().setMode(
+            mode == 0
+                    ? mpc::sequencer::PatternRecordMode::Replace
+                    : mpc::sequencer::PatternRecordMode::Overdub);
+
+    return toJString(
+            env,
+            mode == 0 ? "REC MODE: REPLACE" : "REC MODE: OVERDUB");
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDrainRecordEvents(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    auto& core = mpc::MpcCore::instance();
+    return static_cast<jint>(
+            core.sequenceRecorder().drain(
+                    core.projectState(),
+                    core.sequenceRecordQueue()));
 }
