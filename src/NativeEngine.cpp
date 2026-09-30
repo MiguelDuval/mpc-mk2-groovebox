@@ -1,6 +1,7 @@
 #include <jni.h>
 #include "Audio/AudioEngine.h"
 
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <span>
@@ -26,6 +27,11 @@ mpc::sequencer::MpcSequencePlaybackSession& sequenceSession() {
                         core.audio());
     }
     return *sequencePlayback;
+}
+
+std::int64_t monotonicNanos() noexcept {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 jstring toJString(JNIEnv* env, const std::string& text) {
@@ -1124,15 +1130,38 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStart(
                 "Sequence start failed: " + audioResult);
     }
 
+    if (core.sequenceRecorder().active()) {
+        core.sequenceRecorder().finish(
+                core.projectState(),
+                core.sequenceRecordQueue(),
+                sequenceSession().positionTicks());
+    }
+
+    const auto recordStartState =
+            core.projectState().sequenceStatus();
+
+    core.sequenceRecorder().begin(core.projectState());
+
     if (!sequenceSession().start()) {
+        core.sequenceRecorder().finish(
+                core.projectState(),
+                core.sequenceRecordQueue(),
+                0);
         return toJString(
                 env,
                 "Sequence start failed: no playable Drum Track");
     }
 
+    const auto& sequence = core.projectState().activeSequence();
+    core.sequenceTransportClock().start(
+            sequence,
+            sequenceSession().positionTicks(),
+            monotonicNanos());
+
     return toJString(
             env,
-            core.projectState().sequenceStatus()
+            recordStartState
+                    + " | " + core.projectState().sequenceStatus()
                     + " | playing");
 }
 
@@ -1140,18 +1169,28 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStop(
         JNIEnv* env, jobject /* thiz */)
 {
-    sequenceSession().stop();
-    return toJString(
-            env,
-            "Sequence stopped | "
-                    + mpc::MpcCore::instance().projectState().sequenceStatus());
-}
-
-extern "C" JNIEXPORT jstring JNICALL
+    auto& core = mpc::MpcCore::instance();
+    const auto position = sequenceSession().positionTicks();
+    const auto recorded = core.sequenceRecorder().finish(
+            core.projectSextern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceReset(
         JNIEnv* env, jobject /* thiz */)
 {
+    auto& core = mpc::MpcCore::instance();
+    const auto position = sequenceSession().positionTicks();
+    core.sequenceRecorder().finish(
+            core.projectState(),
+            core.sequenceRecordQueue(),
+            position);
     sequenceSession().reset();
+
+    const auto& sequence = core.projectState().activeSequence();
+    core.sequenceTransportClock().update(
+            sequence,
+            sequenceSession().positionTicks(),
+            monotonicNanos(),
+            sequenceSession().isPlaying());
+
     return toJString(env, "Sequence position reset");
 }
 
@@ -1180,6 +1219,16 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdvance(
             ticks,
             0x53455131u,
             core.audio().outputSampleRate());
+
+    core.sequenceTransportClock().update(
+            sequence,
+            sequenceSession().positionTicks(),
+            monotonicNanos(),
+            sequenceSession().isPlaying());
+
+    core.sequenceRecorder().drain(
+            core.projectState(),
+            core.sequenceRecordQueue());
 
     return static_cast<jint>(
             std::min<std::int64_t>(
