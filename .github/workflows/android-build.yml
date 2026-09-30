@@ -347,6 +347,7 @@ jobs:
           set -euo pipefail
           grep -F 'preferredSharingMode = oboe::SharingMode::Shared;' src/Audio/AudioOutputPolicy.h
           grep -F 'if (actual != null && expectedDescription.contentEquals(actual)) return view;' android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java
+          grep -F 'final String audioResult = "Audio startup deferred";' android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java
 
       - name: Assemble debug APK
         run: gradle --no-daemon :app:assembleDebug
