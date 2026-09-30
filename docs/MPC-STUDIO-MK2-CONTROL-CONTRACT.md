@@ -74,7 +74,7 @@ These are reverse-engineered/practical mappings, not Akai firmware documentation
 | Main | Main mode | Track View |
 | Track Select | Cycle/select track context | Sequence selection |
 | Program Select | Select current program | Select track type |
-| Browse | Browser | Save / parent-folder behavior depends on software context |
+| Browse / Up | Browser | Shift + Browse moves to the previous folder while in Browser |
 | Sample Select | Select sample on current pad | Cycle sample layers through the active context |
 | Sample Start | Edit sample start | Loop start |
 | Sample End | Edit sample end | — |
