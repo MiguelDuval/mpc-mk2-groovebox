@@ -67,9 +67,19 @@ The first slice intentionally exposes only note presence plus the existing defau
 
 The software grid follows the project's physical MPC Studio pad convention vertically: Pad 16 is the top lane and Pad 1 the bottom lane. Four-step group separators make 16-step phrasing immediately legible without adding visual chrome.
 
+## Live Sequence Launcher
+
+The live performance surface now includes a dedicated Sequence Launcher rather than overloading the 4x4 MAIN performance pads. It mirrors the MPC Sequence Mode idea that the 16 pads can select/trigger Sequences, while preserving the global 4x4 pad surface for sound performance.
+
+The launcher shows sixteen Sequence targets at once and pages them in banks of sixteen, allowing the domain limit of 128 Sequences without making the first screen dense. Active and queued states are visually distinct. Tapping an inactive target while stopped selects it immediately; during playback the existing native selection contract queues the target for the current loop boundary. Tapping the active Sequence during playback uses the existing queue-clear behavior.
+
+The launcher is intentionally separate from editing. GRID and STEP are production/edit contexts; LAUNCH is a performance context. All three retain the global transport strip so the performer does not lose temporal context when changing mode.
+
+The explicit CANCEL QUEUE control is provided for stage ergonomics: it avoids requiring the performer to remember that tapping the active Sequence is also the queue-clear gesture.
+
 ## Realtime boundary
 
-The strip and Grid View read existing JNI sequence state. Grid mutations are UI/editor operations and explicitly stop/release sequence playback before touching Pattern::notes. The editor never calls the audio engine directly.
+The strip, Grid View, Step Editor and Sequence Launcher read existing JNI sequence state. Grid/Step mutations remain stopped-state editor operations. Sequence launching uses the existing transport-aware native Sequence selection path and does not call the audio engine directly from the UI.
 
 ## References
 
