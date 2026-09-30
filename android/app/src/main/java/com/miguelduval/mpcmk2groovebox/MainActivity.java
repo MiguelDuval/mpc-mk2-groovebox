@@ -588,7 +588,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
             LinearLayout row = row();
             for (int col = 0; col < 4; col++) {
-                 // MPC Studio MkII physical numbering: bottom row 1-4, then 5-8, 9-12, top row 13-16.\n                final int pad = (3 - rowIndex) * 4 + col;
+                 // MPC Studio MkII physical numbering: bottom row 1-4, then 5-8, 9-12, top row 13-16.
+                final int pad = (3 - rowIndex) * 4 + col;
                 Button b = button(String.format(Locale.ROOT, "%02d", pad + 1));
                 b.setTextSize(15);
                 b.setTypeface(Typeface.DEFAULT_BOLD);
