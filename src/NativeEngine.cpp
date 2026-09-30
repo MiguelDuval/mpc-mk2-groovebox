@@ -1382,6 +1382,49 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsPlaying(
 
 
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCapturePadHit(
+        JNIEnv* env, jobject /* thiz */, jint pad, jint velocity)
+{
+    auto& core = mpc::MpcCore::instance();
+    auto& state = core.projectState();
+
+    if (!core.sequenceRecorder().active()
+            || !sequenceSession().isPlaying()
+            || pad < 0 || pad >= 16
+            || velocity <= 0 || velocity > 127) {
+        return toJString(env, "capture=idle");
+    }
+
+    const auto trackIndex = state.activeTrackIndex();
+    if (trackIndex >= state.activeSequence().tracks.size()) {
+        return toJString(env, "capture=idle");
+    }
+
+    const auto& track = state.activeSequence().tracks[trackIndex];
+    if (!track.recordArmed || track.kind != mpc::domain::TrackKind::Drum) {
+        return toJString(env, "capture=idle");
+    }
+
+    const auto tick = sequenceSession().positionTicks();
+    const auto trackValue = static_cast<std::uint8_t>(trackIndex);
+    const auto padValue = static_cast<std::uint8_t>(pad);
+    const auto velocityValue = static_cast<std::uint8_t>(velocity);
+
+    const mpc::sequencer::SequenceRecordEvent press{
+            tick, trackValue, padValue, velocityValue, 1u};
+    const mpc::sequencer::SequenceRecordEvent release{
+            tick, trackValue, padValue, 0u, 0u};
+
+    const bool pressed = core.sequenceRecordQueue().tryEnqueue(press);
+    const bool released = core.sequenceRecordQueue().tryEnqueue(release);
+    return toJString(
+            env,
+            (pressed && released)
+                    ? "capture=recorded"
+                    : "capture=queue-full");
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsSelectedTrackArmed(
         JNIEnv* /* env */, jobject /* thiz */)
