@@ -67,7 +67,8 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
         const auto trackIndex = state.activeTrackIndex();
         const auto& tracks = state.activeSequence().tracks;
 
-        if (trackIndex < tracks.size()
+        if (core.sequenceRecorder().active()
+                && trackIndex < tracks.size()
                 && tracks[trackIndex].recordArmed
                 && tracks[trackIndex].kind == mpc::domain::TrackKind::Drum
                 && core.sequenceTransportClock().snapshot().playing) {
