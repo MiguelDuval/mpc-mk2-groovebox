@@ -3527,6 +3527,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         applyHardwareAction(actionType, value0, value1, value2);
     }
 
+    private void setHardwareButtonLed(int cc, boolean on) {
+        if (midiBridge != null) {
+            midiBridge.send(
+                    MpcStudioMk2MidiMessages.buttonLed(
+                            cc,
+                            on ? 2 : 0));
+        }
+    }
+
+    private void syncHardwareTransportLeds() {
+        if (midiBridge == null) return;
+
+        final boolean playing = nativeSequenceIsPlaying();
+        final boolean armed = nativeSequenceIsSelectedTrackArmed();
+        final boolean overdub = nativeSequenceGetRecordMode() == 1;
+
+        setHardwareButtonLed(82, playing);
+        setHardwareButtonLed(73, armed && !overdub);
+        setHardwareButtonLed(80, armed && overdub);
+    }
+
     private void applyHardwareAction(
             int actionType, int value0, int value1, int value2) {
         switch (actionType) {
@@ -3607,20 +3628,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
                 return;
             case MpcStudioMk2SemanticActions.NOTE_REPEAT_STATE:
+                setHardwareButtonLed(11, value0 != 0);
                 setBottomStatus(
                         value0 != 0
                                 ? "NOTE REPEAT ON • "
                                         + (value1 != 0 ? "LATCHED" : "MOMENTARY")
-                                        + " • repeat scheduler pending"
+                                        + " • grid-synchronised"
                                 : "NOTE REPEAT OFF");
                 return;
             case MpcStudioMk2SemanticActions.FULL_LEVEL_STATE:
+                setHardwareButtonLed(39, value0 != 0);
+                if (value0 != 0) setHardwareButtonLed(39, true);
                 setBottomStatus(value0 != 0 ? "FULL LEVEL ON • 127" : "FULL LEVEL OFF");
                 return;
             case MpcStudioMk2SemanticActions.HALF_LEVEL_STATE:
+                setHardwareButtonLed(39, value0 != 0);
                 setBottomStatus(value0 != 0 ? "HALF LEVEL ON • 64" : "HALF LEVEL OFF");
                 return;
             case MpcStudioMk2SemanticActions.SIXTEEN_LEVEL_STATE:
+                setHardwareButtonLed(40, value0 != 0);
                 if (value0 != 0 && value1 >= 0) {
                     setBottomStatus(
                             "16 LEVEL • VELOCITY • SOURCE PAD " + (value1 + 1));
@@ -3631,9 +3657,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
                 return;
             case MpcStudioMk2SemanticActions.PAD_MUTE_MODE_STATE:
+                setHardwareButtonLed(4, value0 != 0);
                 setBottomStatus(value0 != 0 ? "PAD MUTE MODE" : "PAD MUTE MODE OFF");
                 return;
             case MpcStudioMk2SemanticActions.TRACK_MUTE_MODE_STATE:
+                setHardwareButtonLed(4, value0 != 0);
                 setBottomStatus(value0 != 0 ? "TRACK MUTE MODE" : "TRACK MUTE MODE OFF");
                 return;
             case MpcStudioMk2SemanticActions.PAD_MUTE_TARGET:
@@ -3647,6 +3675,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus(
                         nativeSequenceSetSelectedTrackArmed(
                                 !nativeSequenceIsSelectedTrackArmed()));
+                syncHardwareTransportLeds();
                 refreshSequenceControls();
                 return;
             case MpcStudioMk2SemanticActions.TRANSPORT_OVERDUB:
@@ -3654,23 +3683,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 if (!nativeSequenceIsSelectedTrackArmed()) {
                     setBottomStatus(nativeSequenceSetSelectedTrackArmed(true));
                 }
+                syncHardwareTransportLeds();
                 refreshSequenceControls();
                 return;
             case MpcStudioMk2SemanticActions.TRANSPORT_STOP:
                 setBottomStatus(nativeSequenceStop());
+                syncHardwareTransportLeds();
                 refreshSequenceControls();
                 return;
             case MpcStudioMk2SemanticActions.TRANSPORT_PLAY:
                 setBottomStatus(nativeSequenceStart());
+                syncHardwareTransportLeds();
                 refreshSequenceControls();
                 return;
             case MpcStudioMk2SemanticActions.TRANSPORT_PLAY_START:
                 nativeSequenceReset();
                 setBottomStatus(nativeSequenceStart());
+                syncHardwareTransportLeds();
                 refreshSequenceControls();
                 return;
             case MpcStudioMk2SemanticActions.TRANSPORT_RESET:
                 setBottomStatus(nativeSequenceReset());
+                syncHardwareTransportLeds();
                 refreshSequenceControls();
                 return;
             case MpcStudioMk2SemanticActions.STEP_LEFT:
