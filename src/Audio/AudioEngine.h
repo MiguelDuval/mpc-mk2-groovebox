@@ -150,7 +150,7 @@ public:
             std::uint8_t velocity,
             std::int32_t offsetFrames);
 
-    // Read-only control-thread access for the sequencer bridge. The audio callback
+    // Control-thread access for the sequencer bridge. The audio callback
     // remains the sole consumer of queued trigger events.
     AudioTriggerQueue& triggerQueue() noexcept {
         return triggerQueue_;
