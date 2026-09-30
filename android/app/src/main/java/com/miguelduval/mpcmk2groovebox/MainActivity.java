@@ -100,11 +100,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceTimelineView sequenceTimeline;
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
+    private SequenceLauncherView sequenceLauncherView;
     private final Button[] sequenceStepButtons = new Button[16];
     private TextView sequenceStepEventInfo;
     private TextView sequenceTransportView;
     private int sequenceGridPage = 0;
     private int sequenceStepPage = 0;
+    private int launcherBank = 0;
     private static final int SEQUENCE_GRID_PAGE_STEPS = 16;
     private TextView sequenceStatusView;
     private TextView sequenceTempoView;
@@ -943,6 +945,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         pageTitle.setText("SEQUENCER");
         content.removeAllViews();
         sequenceGridView = null;
+        sequenceLauncherView = null;
         for (int i = 0; i < sequenceStepButtons.length; i++) {
             sequenceStepButtons[i] = null;
         }
@@ -1110,6 +1113,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout editActions = row();
         editActions.addView(actionButton("GRID", v -> showSequenceGridPage()), touchButtonWeight());
         editActions.addView(actionButton("STEP", v -> showSequenceStepPage()), touchButtonWeight());
+        editActions.addView(actionButton("LAUNCH", v -> showSequenceLauncherPage()), touchButtonWeight());
         detailPanel.addView(editActions, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
         workspace.addView(detailPanel, new LinearLayout.LayoutParams(
@@ -1207,12 +1211,92 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSequencePlayhead();
     }
 
+    private void showSequenceLauncherPage() {
+        currentPage = "SEQ";
+        pageTitle.setText("SEQ • LAUNCH");
+        content.removeAllViews();
+        sequenceTimeline = null;
+        sequenceGridView = null;
+        sequenceLauncherView = null;
+        for (int i = 0; i < sequenceStepButtons.length; i++) {
+            sequenceStepButtons[i] = null;
+        }
+
+        LinearLayout page = page();
+
+        LinearLayout header = row();
+        header.addView(actionButton("BACK SEQ", v -> showSequencePage()),
+                new LinearLayout.LayoutParams(dp(86), dp(38)));
+        TextView title = label("SEQUENCE LAUNCH", 12, TEXT);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setGravity(Gravity.CENTER);
+        header.addView(title, new LinearLayout.LayoutParams(0, dp(38), 1));
+        TextView bankInfo = label("", 11, TEXT);
+        bankInfo.setTypeface(Typeface.DEFAULT_BOLD);
+        bankInfo.setGravity(Gravity.CENTER);
+        bankInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        header.addView(bankInfo, new LinearLayout.LayoutParams(dp(118), dp(38)));
+        header.addView(actionButton("◀", v -> moveSequenceLauncherBank(-1)),
+                new LinearLayout.LayoutParams(dp(52), dp(38)));
+        header.addView(actionButton("▶", v -> moveSequenceLauncherBank(1)),
+                new LinearLayout.LayoutParams(dp(52), dp(38)));
+        page.addView(header);
+
+        TextView context = label(
+                "LIVE MODE  •  TAP SEQUENCE = SELECT / QUEUE  •  ACTIVE = PLAYING  •  ORANGE = QUEUED",
+                10, MUTED);
+        context.setGravity(Gravity.CENTER_VERTICAL);
+        context.setPadding(dp(10), 0, dp(10), 0);
+        page.addView(context, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+
+        sequenceLauncherView = new SequenceLauncherView(this);
+        sequenceLauncherView.setListener(sequenceIndex -> {
+            final int targetBank = sequenceIndex / 16;
+            if (sequenceLauncherView != null
+                    && targetBank != sequenceLauncherView.getBank()) {
+                sequenceLauncherView.setState(
+                        nativeSequenceGetCount(),
+                        nativeSequenceGetIndex(),
+                        nativeSequenceGetQueuedIndex(),
+                        targetBank);
+            }
+            setBottomStatus(nativeSequenceSelect(sequenceIndex));
+            refreshSequenceLauncher();
+            refreshSequenceControls();
+        });
+        page.addView(sequenceLauncherView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout footer = row();
+        footer.addView(actionButton("CANCEL QUEUE", v -> {
+            final int active = nativeSequenceGetIndex();
+            setBottomStatus(nativeSequenceSelect(active));
+            refreshSequenceLauncher();
+            refreshSequenceControls();
+        }), new LinearLayout.LayoutParams(dp(126), dp(44)));
+        TextView hint = label(
+                "A queued Sequence changes only at the current Sequence loop boundary.",
+                10, MUTED);
+        hint.setGravity(Gravity.CENTER_VERTICAL);
+        hint.setPadding(dp(10), 0, dp(10), 0);
+        footer.addView(hint, new LinearLayout.LayoutParams(0, dp(44), 1));
+        page.addView(footer);
+
+        content.addView(page);
+
+        launcherBank = Math.max(0, nativeSequenceGetIndex() / 16);
+        refreshSequenceLauncher();
+        refreshSequenceControls();
+    }
+
     private void showSequenceStepPage() {
         currentPage = "SEQ";
         pageTitle.setText("SEQ • STEP");
         content.removeAllViews();
         sequenceTimeline = null;
         sequenceGridView = null;
+        sequenceLauncherView = null;
         for (int i = 0; i < sequenceStepButtons.length; i++) {
             sequenceStepButtons[i] = null;
         }
@@ -1482,6 +1566,57 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceStepPage = Math.max(
                 0, Math.min(count - 1, sequenceStepPage + delta));
         refreshSequenceStepPage();
+    }
+
+    private int sequenceLauncherBankCount() {
+        final int count = nativeSequenceGetCount();
+        return Math.max(1, (count + 15) / 16);
+    }
+
+    private void moveSequenceLauncherBank(int delta) {
+        launcherBank = Math.max(
+                0,
+                Math.min(
+                        sequenceLauncherBankCount() - 1,
+                        launcherBank + delta));
+        refreshSequenceLauncher();
+    }
+
+    private void refreshSequenceLauncher() {
+        if (sequenceLauncherView == null) return;
+
+        final int count = nativeSequenceGetCount();
+        launcherBank = Math.max(
+                0,
+                Math.min(
+                        Math.max(0, (count - 1) / 16),
+                        launcherBank));
+        sequenceLauncherView.setState(
+                count,
+                nativeSequenceGetIndex(),
+                nativeSequenceGetQueuedIndex(),
+                launcherBank);
+
+        final View parent = sequenceLauncherView.getParent() instanceof View
+                ? (View) sequenceLauncherView.getParent()
+                : null;
+        if (parent instanceof ViewGroup) {
+            final ViewGroup page = (ViewGroup) parent;
+            if (page.getChildCount() > 0
+                    && page.getChildAt(0) instanceof ViewGroup) {
+                final ViewGroup header = (ViewGroup) page.getChildAt(0);
+                if (header.getChildCount() > 2
+                        && header.getChildAt(2) instanceof TextView) {
+                    final TextView bankInfo =
+                            (TextView) header.getChildAt(2);
+                    bankInfo.setText(String.format(
+                            Locale.ROOT,
+                            "BANK %02d/%02d",
+                            launcherBank + 1,
+                            sequenceLauncherBankCount()));
+                }
+            }
+        }
     }
 
     private int sequenceGridPageCount() {
@@ -1835,6 +1970,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     if ("SEQ".equals(currentPage)) {
                         refreshSequencePlayhead();
                         refreshSequenceControls();
+                        refreshSequenceLauncher();
                     }
                 }
 
