@@ -18,10 +18,10 @@
 - touch strip.
 
 ## Stage 2 — Feedback
-- button LEDs.
+- button LEDs. **BASIC STATE-DRIVEN ROUTER IMPLEMENTED — transport, Note Repeat, Level16 and mute-mode states are cached so repeated UI refreshes do not resend identical MIDI feedback. Full LCD/Touch-strip state synchronization remains.**
 - pad RGB SysEx.
 - touch-strip LEDs.
-- Note Repeat indicators.
+- Note Repeat indicators. **BUTTON STATE IMPLEMENTED — ON/OFF semantic state is reflected on the physical Note Repeat button. Division LEDs remain pending.**
 - 160x80 LCD SysEx.
 
 ## Stage 3 — Audio
@@ -149,7 +149,7 @@ Add:
 - Undo/Redo;
 - Locate;
 - Erase;
-- touch-strip contextual control. **INITIAL SAMPLE-CONTEXT SLICE IMPLEMENTED — Sample Start/End focus scrubs the corresponding region boundary; Tune focus spans −24..+24 st. Note Repeat timing remains a separate clock-synchronous slice.**
+- touch-strip contextual control. **INITIAL SAMPLE-CONTEXT SLICE IMPLEMENTED — Sample Start/End focus scrubs the corresponding region boundary; Tune focus spans −24..+24 st. Note Repeat division control remains a separate follow-up while the basic clock-synchronous repeat engine is now implemented.**
 - compact LCD status.
 
 ### Advanced hardware surface — P2/P3
