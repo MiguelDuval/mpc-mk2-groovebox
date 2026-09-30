@@ -127,8 +127,12 @@ private:
                 static_cast<std::int64_t>(
                         std::llround(sequence.tempoBpm * 1000.0)),
                 std::memory_order_release);
+        const auto storedPosition = sequence.loopEnabled
+                ? normalize(positionTicks, loopStart, loopEnd)
+                : std::clamp<std::int64_t>(
+                        positionTicks, 0, loopEnd - 1);
         positionTicks_.store(
-                normalize(positionTicks, loopStart, loopEnd),
+                storedPosition,
                 std::memory_order_release);
         timestampNanos_.store(timestampNanos, std::memory_order_release);
         playing_.store(playing, std::memory_order_release);
