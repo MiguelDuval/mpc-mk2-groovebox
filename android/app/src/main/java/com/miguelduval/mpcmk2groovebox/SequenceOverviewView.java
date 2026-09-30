@@ -15,9 +15,6 @@ import android.view.View;
 public final class SequenceOverviewView extends View {
     private static final int BG = 0xff0d1012;
     private static final int TRACK = 0xff242a2f;
-    private static final int GRID = 0xff465057;
-    private static final int TEXT = 0xffd8dee2;
-    private static final int MUTED = 0xff8e999f;
     private static final int RED = 0xffd84a55;
     private static final int RED_DIM = 0x7fc33f49;
     private static final int PLAYHEAD = 0xffffffff;
@@ -120,32 +117,15 @@ public final class SequenceOverviewView extends View {
         paint.setColor(RED);
         canvas.drawRect(left, top, playheadX, bottom, paint);
 
-        if (playing) {
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(dp(1.5f));
-            paint.setColor(PLAYHEAD);
-            canvas.drawLine(
-                    playheadX,
-                    Math.max(0f, top - dp(1)),
-                    playheadX,
-                    Math.min(getHeight(), bottom + dp(1)),
-                    paint);
-        }
-    }
-
-    private String formatPosition(long ticks) {
-        final long ticksPerBeat = Math.max(
-                1L,
-                Math.round(4.0 * 960.0 / denominator));
-        final long ticksPerBar = Math.max(
-                ticksPerBeat,
-                ticksPerBeat * numerator);
-        long normalized = Math.max(0L, ticks);
-        final int bar = (int) (normalized / ticksPerBar) + 1;
-        normalized %= ticksPerBar;
-        final int beat = (int) (normalized / ticksPerBeat) + 1;
-        final int tick = (int) (normalized % ticksPerBeat);
-        return String.format(Locale.ROOT, "%03d.%d.%03d", bar, beat, tick);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(playing ? dp(1.5f) : dp(1));
+        paint.setColor(playing ? PLAYHEAD : RED_DIM);
+        canvas.drawLine(
+                playheadX,
+                Math.max(0f, top - dp(1)),
+                playheadX,
+                Math.min(getHeight(), bottom + dp(1)),
+                paint);
     }
 
     private void drawText(
