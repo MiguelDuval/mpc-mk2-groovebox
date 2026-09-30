@@ -281,6 +281,9 @@ inline bool setStepNoteRatchet(
         return false;
     }
     note->ratchet = ratchet;
+    if (note->durationTicks <= 0) {
+        note->durationTicks = gridTicks;
+    }
     return true;
 }
 
