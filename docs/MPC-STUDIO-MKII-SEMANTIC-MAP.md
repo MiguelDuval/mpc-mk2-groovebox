@@ -566,7 +566,7 @@ Touch Strip / Config button = note 0:
 
 Touch-strip LED segments are CC 57–65 and should mirror the active value/mode.
 
-Status: **CC DECODED, TOUCH NOTE 78 NOT YET ROUTED, OUTPUT/LED HELPERS PARTIAL**.
+Status: **CC DECODED; contextual Sample Start/End/Tune control routed; Note Repeat division and Touch NOTE 78 handling remain separate**.
 
 Priority: **P0 basic performance value; P1 contextual modes**.
 
@@ -778,6 +778,6 @@ The first physical batch should cover P0 only. This keeps failures attributable 
 
 The MkII path now has a native semantic-adapter layer between MIDI decoding and Android. P0 controls are represented as stable semantic actions rather than raw MIDI identifiers.
 
-Routed at this checkpoint: Mode+implemented-page shortcuts, Main/Browse, Track/Sequence selection, Data Dial direction/press, Pad Bank state, Full Level/Half Level, Pad/Track Mute contexts and targets, transport, stopped Step/Bar navigation, Tap Tempo, launcher-bank selection, and the physical-pad audio/record path.
+Routed at this checkpoint: Mode+implemented-page shortcuts, Main/Browse, Track/Sequence selection, Data Dial direction/press, Plus/Minus adjustment, Pad Bank state, Full Level/Half Level, 16 Level velocity mode, Pad/Track Mute contexts and targets, transport, stopped Step/Bar navigation, Tap Tempo, launcher-bank selection, and contextual Touch Strip control for Sample Start/End/Tune.
 
 Not declared complete: clock-synchronous Note Repeat scheduling, contextual Touch Strip parameter control, controller LED state synchronization, LCD product pages, Locate marker/event navigation, and the remaining P1 editing commands. Physical MkII verification remains required before a control is marked CONFIRMED.
