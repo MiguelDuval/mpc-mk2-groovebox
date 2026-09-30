@@ -3,6 +3,7 @@
 #include "../MPC/MpcCore.h"
 #include "../MPC/MpcStudioMk2InputDecoder.h"
 #include "../MPC/MpcStudioMk2SemanticAdapter.h"
+#include "../MPC/Sequencer/MpcNoteRepeatScheduler.h"
 #include "../MPC/MpcStudioMk2LedProtocol.h"
 
 #include <android/log.h>
@@ -28,6 +29,18 @@ std::array<mpc::studio::SemanticAction, kSemanticActionQueueCapacity>
 std::atomic<std::size_t> semanticActionHead{0};
 std::atomic<std::size_t> semanticActionTail{0};
 mpc::studio::MpcStudioMk2SemanticAdapter semanticAdapter;
+std::unique_ptr<mpc::sequencer::MpcNoteRepeatScheduler> noteRepeatScheduler;
+
+mpc::sequencer::MpcNoteRepeatScheduler& repeatScheduler() {
+    if (!noteRepeatScheduler) {
+        auto& core = mpc::MpcCore::instance();
+        noteRepeatScheduler =
+                std::make_unique<mpc::sequencer::MpcNoteRepeatScheduler>(
+                        core.audio(),
+                        core.sequenceTransportClock());
+    }
+    return *noteRepeatScheduler;
+}
 
 bool enqueueSemanticAction(
         const mpc::studio::SemanticAction& action) noexcept {
@@ -108,6 +121,33 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             return std::nullopt;
         }
 
+        if (padRouting.repeating) {
+            auto& scheduler = repeatScheduler();
+            if (event->pressed) {
+                if (padRouting.targetPadIndex < mpc::domain::kMaxProgramPads) {
+                    const auto& pad = core.projectState()
+                            .activeDrumProgram()
+                            .pad(padRouting.targetPadIndex);
+                    if (!pad.muted) {
+                        scheduler.setPad(
+                                padRouting.targetPadIndex,
+                                padRouting.velocity);
+                    } else {
+                        scheduler.clearPad();
+                    }
+                }
+            } else {
+                scheduler.clearPad();
+            }
+
+            const std::uint8_t level =
+                    event->pressed ? padRouting.velocity : 0u;
+            const auto led = mpc::studio::makePadLedSysEx(
+                    event->padIndex,
+                    mpc::studio::Rgb{level, level, level});
+            return std::vector<std::uint8_t>(led.begin(), led.end());
+        }
+
         if (event->pressed && padRouting.targetPadIndex != 0xFF) {
             const auto& pad =
                     core.projectState().activeDrumProgram()
@@ -159,6 +199,10 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             || event->type == mpc::studio::InputEventType::TouchStrip) {
         const auto action = semanticAdapter.handleControl(*event);
         if (action.has_value()) {
+            if (action->type
+                    == mpc::studio::SemanticActionType::NoteRepeatState) {
+                repeatScheduler().setEnabled(action->value0 != 0);
+            }
             enqueueSemanticAction(*action);
         }
         return std::nullopt;
@@ -248,6 +292,9 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLauncherConte
         pendingSequenceLauncherPad.store(
                 -1,
                 std::memory_order_release);
+        if (noteRepeatScheduler) {
+            noteRepeatScheduler->setEnabled(false);
+        }
     }
 }
 
