@@ -58,6 +58,7 @@ public:
         }
 
         for (auto& playback : playbacks_) {
+            playback->reset();
             playback->start();
         }
         return true;
