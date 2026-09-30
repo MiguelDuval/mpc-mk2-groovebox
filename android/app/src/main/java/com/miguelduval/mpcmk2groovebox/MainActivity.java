@@ -262,7 +262,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceProgressView = new SequencerProgressView(this);
         sequenceProgressView.setContentDescription("Sequence playback progress");
         root.addView(sequenceProgressView, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(4)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(6)));
 
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.HORIZONTAL);
@@ -1287,7 +1287,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 v -> cycleTimeSignature(-1), v -> cycleTimeSignature(1)),
                 new LinearLayout.LayoutParams(0, dp(66), 0.9f));
 
-        recordModeView = recordModeView == null ? statusChip("REPL", TEXT) : recordModeView;
         TextView mode = label(
                 nativeSequenceGetRecordMode() == 0
                         ? "REPLACE"
@@ -2258,7 +2257,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             runOnUiThread(() -> {
                 if (midiState != null) {
                     midiState.setText(description.contains("MPC Studio")
-                            ? "MIDI READY" : "MIDI —");
+                            ? "M·RDY" : "MIDI");
                 }
             });
         }
@@ -2274,7 +2273,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         runOnUiThread(() -> {
             boolean connected = description != null
                     && description.startsWith("Connected:");
-            midiState.setText(connected ? "MIDI ON" : "MIDI —");
+            midiState.setText(connected ? "M·ON" : "MIDI");
             midiState.setTextColor(connected ? ACTIVE : MUTED);
             setBottomStatus(description);
         });
