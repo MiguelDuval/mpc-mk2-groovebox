@@ -126,8 +126,9 @@ public final class SequenceGridView extends View {
                 } else {
                     paint.setColor((column % 4 == 0) ? SURFACE_2 : SURFACE);
                 }
+                rect.set(x0, y0, x1, y1);
                 canvas.drawRoundRect(
-                        rect.set(x0, y0, x1, y1),
+                        rect,
                         dp(3),
                         dp(3),
                         paint);
@@ -145,8 +146,9 @@ public final class SequenceGridView extends View {
                     paint.setStyle(Paint.Style.STROKE);
                     paint.setStrokeWidth(dp(2));
                     paint.setColor(DANGER);
+                    rect.set(x0, y0, x1, y1);
                     canvas.drawRoundRect(
-                            rect.set(x0, y0, x1, y1),
+                            rect,
                             dp(3),
                             dp(3),
                             paint);
