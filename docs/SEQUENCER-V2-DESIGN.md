@@ -77,6 +77,8 @@ The launcher is intentionally separate from editing. GRID and STEP are productio
 
 The explicit CANCEL QUEUE control is provided for stage ergonomics: it avoids requiring the performer to remember that tapping the active Sequence is also the queue-clear gesture.
 
+The physical MPC Studio MkII follows the same mapping and state contract while this mode is active: Pad 1–16 addresses the visible Sequence bank. Active and queued Sequence states are mirrored to the controller LEDs. LED writes are state-cached rather than emitted on every UI timer tick, and leaving launcher mode clears the launcher LED state so the normal performance surface is not left visually contaminated.
+
 ## Realtime boundary
 
 The strip, Grid View, Step Editor and Sequence Launcher read existing JNI sequence state. Grid/Step mutations remain stopped-state editor operations. Sequence launching uses the existing transport-aware native Sequence selection path and does not call the audio engine directly from the UI.
