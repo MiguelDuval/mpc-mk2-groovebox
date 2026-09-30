@@ -698,9 +698,38 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPad(
         return;
     }
 
-    mpc::audio::AudioEngine::instance().triggerPad(
-            static_cast<std::uint8_t>(pad),
-            static_cast<std::uint8_t>(velocity));
+    auto& core = mpc::MpcCore::instance();
+    const auto padIndex = static_cast<std::uint8_t>(pad);
+    const auto velocityValue = static_cast<std::uint8_t>(velocity);
+
+    core.audio().triggerPad(padIndex, velocityValue);
+
+    const auto state = core.projectState().sequenceTransportClock().snapshot();
+    const auto& projectState = core.projectState();
+    const auto trackIndex = projectState.activeTrackIndex();
+    const auto& tracks = projectState.activeSequence().tracks;
+
+    if (state.playing
+            && trackIndex < tracks.size()
+            && tracks[trackIndex].recordArmed
+            && tracks[trackIndex].kind == mpc::domain::TrackKind::Drum) {
+        const auto tick = core.sequenceTransportClock().positionAtTimestamp(
+                monotonicNanos());
+        core.sequenceRecordQueue().tryEnqueue(
+                mpc::sequencer::SequenceRecordEvent{
+                        tick,
+                        static_cast<std::uint8_t>(trackIndex),
+                        padIndex,
+                        velocityValue,
+                        1u});
+        core.sequenceRecordQueue().tryEnqueue(
+                mpc::sequencer::SequenceRecordEvent{
+                        tick,
+                        static_cast<std::uint8_t>(trackIndex),
+                        padIndex,
+                        0u,
+                        0u});
+    }
 }
 
 
