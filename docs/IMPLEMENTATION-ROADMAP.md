@@ -63,7 +63,7 @@
 - record/overdub. **SOFTWARE FOUNDATION IMPLEMENTED — deterministic record/overdub commit operations now accept captured MIDI note events, normalize ticks to the pattern loop, reject malformed duration/ratchet values, and provide Replace vs Overdub semantics.**
 - quantize. **SOFTWARE FOUNDATION IMPLEMENTED — deterministic nearest-grid quantization with loop wrapping and stable tie ordering.**
 - swing. **SOFTWARE FOUNDATION IMPLEMENTED — deterministic grid-aligned off-beat swing with 0–100% amount, bounded half-grid delay, stable ordering, and loop-wrap.**
-- step sequencing. **SOFTWARE FOUNDATION IMPLEMENTED — grid-aligned set/replace/erase operations for MIDI notes with deterministic ordering and support for velocity, probability, ratchet and duration metadata.**
+- step sequencing. **SOFTWARE FOUNDATION IMPLEMENTED — grid-aligned set/replace/erase operations for MIDI notes with deterministic ordering and support for velocity, probability, ratchet, nudge and duration metadata.**
 - grid editing.
 - probability. **SOFTWARE FOUNDATION IMPLEMENTED — deterministic per-note probability evaluation from a stable seed, with 0/127 fast paths.**
 - ratchet. **SOFTWARE FOUNDATION IMPLEMENTED — ratchet metadata normalized to a bounded 1–8 playback count.**

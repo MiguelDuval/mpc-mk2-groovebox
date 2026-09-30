@@ -10,6 +10,7 @@
 namespace mpc::sequencer {
 
 inline constexpr std::int32_t kDefaultQuantizeGridTicks = 120;
+inline constexpr std::int32_t kMaxStepNudgeTicks = 960;
 
 enum class PatternRecordMode : std::uint8_t {
     Replace,
@@ -263,6 +264,25 @@ inline bool setStepNoteProbability(
         return false;
     }
     note->probability = probability;
+    return true;
+}
+
+inline bool setStepNoteNudge(
+        domain::Pattern& pattern,
+        std::int32_t stepIndex,
+        std::int32_t gridTicks,
+        std::uint8_t noteNumber,
+        std::int32_t nudgeTicks) noexcept {
+    if (nudgeTicks < -kMaxStepNudgeTicks
+            || nudgeTicks > kMaxStepNudgeTicks) {
+        return false;
+    }
+    auto* note = findStepNote(
+            pattern, stepIndex, gridTicks, noteNumber);
+    if (note == nullptr) {
+        return false;
+    }
+    note->nudgeTicks = nudgeTicks;
     return true;
 }
 

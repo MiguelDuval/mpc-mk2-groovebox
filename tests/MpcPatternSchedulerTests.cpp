@@ -50,6 +50,30 @@ int main() {
     assert(output[1].ratchetCount == 1);
     assert(output[1].sourceNoteIndex == 1);
 
+    mpc::domain::Pattern nudgePattern;
+    nudgePattern.lengthTicks = 1000;
+    nudgePattern.notes = {{100, 30, 40, 100, 127, 1, 40}};
+    const auto nudged = mpc::sequencer::schedulePatternWindow(
+            nudgePattern,
+            mpc::sequencer::TickWindow{0, 200, 0},
+            1234u,
+            output);
+    assert(nudged.written == 1);
+    assert(output[0].offsetTicks == 140);
+    assert(output[0].patternTick == 100);
+
+    mpc::domain::Pattern nudgeWrapPattern;
+    nudgeWrapPattern.lengthTicks = 1000;
+    nudgeWrapPattern.notes = {{0, 30, 41, 100, 127, 1, -20}};
+    const auto nudgedAcrossLoop = mpc::sequencer::schedulePatternWindow(
+            nudgeWrapPattern,
+            mpc::sequencer::TickWindow{900, 100, 1},
+            1234u,
+            output);
+    assert(nudgedAcrossLoop.written == 1);
+    assert(output[0].offsetTicks == 80);
+    assert(output[0].patternTick == 0);
+
     const auto fullCycle = mpc::sequencer::schedulePatternWindow(
             pattern,
             mpc::sequencer::TickWindow{0, 0, 1},

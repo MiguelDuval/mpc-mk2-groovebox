@@ -233,6 +233,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int padIndex, int stepIndex, int gridTicks, int probability);
     private static native String nativeSequenceSetStepRatchet(
             int padIndex, int stepIndex, int gridTicks, int ratchet);
+    private static native String nativeSequenceSetStepNudge(
+            int padIndex, int stepIndex, int gridTicks, int nudgeTicks);
     private static native int nativeSequenceGetRecordMode();
     private static native String nativeSequenceSetRecordMode(int mode);
     private static native int nativeSequenceDrainRecordEvents();
@@ -1351,7 +1353,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
         LinearLayout eventBar = row();
-        sequenceStepEventInfo = label("STEP —  •  VEL —  •  PROB —  •  RAT —", 11, TEXT);
+        sequenceStepEventInfo = label(
+                "STEP —  •  VEL —  •  PROB —  •  RAT —  •  NUDGE —",
+                11,
+                TEXT);
         sequenceStepEventInfo.setGravity(Gravity.CENTER_VERTICAL);
         sequenceStepEventInfo.setPadding(dp(10), 0, dp(10), 0);
         sequenceStepEventInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
@@ -1370,6 +1375,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         eventBar.addView(actionButton("RATCH +", v -> adjustSelectedStepRatchet(1)),
                 touchButtonWeight());
         page.addView(eventBar, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(50)));
+
+        LinearLayout nudgeBar = row();
+        TextView nudgeLabel = label("MICRO TIMING", 10, MUTED);
+        nudgeLabel.setGravity(Gravity.CENTER_VERTICAL);
+        nudgeLabel.setPadding(dp(10), 0, dp(10), 0);
+        nudgeBar.addView(nudgeLabel, new LinearLayout.LayoutParams(
+                0, dp(48), 1.0f));
+        nudgeBar.addView(actionButton(
+                "NUDGE −10",
+                v -> adjustSelectedStepNudge(-10)),
+                touchButtonWeight());
+        nudgeBar.addView(actionButton(
+                "NUDGE +10",
+                v -> adjustSelectedStepNudge(10)),
+                touchButtonWeight());
+        nudgeBar.addView(actionButton(
+                "NUDGE 0",
+                v -> setSelectedStepNudge(0)),
+                touchButtonWeight());
+        page.addView(nudgeBar, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(50)));
 
         LinearLayout steps = row();
@@ -1407,7 +1433,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         TextView hint = label(
-                "16 STEPS  •  PAD SELECT  •  PAGE = 16 QUANTIZED STEPS  •  TAP = ADD / REMOVE",
+                "16 STEPS  •  LONG-PRESS = SELECT  •  TAP = ADD / REMOVE  •  NUDGE = ±10 TICKS  •  RESET = 0",
                 10, MUTED);
         hint.setGravity(Gravity.CENTER_VERTICAL);
         hint.setPadding(dp(10), 0, dp(10), 0);
@@ -1488,17 +1514,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             sequenceStepEventInfo.setText(hasEvent
                     ? String.format(
                             Locale.ROOT,
-                            "STEP %02d  •  VEL %d  •  PROB %d  •  RAT %dx",
+                            "STEP %02d  •  VEL %d  •  PROB %d  •  RAT %dx  •  NUDGE %+d",
                             selectedSequenceStep + 1,
                             parameters[0],
                             parameters[1],
-                            parameters[2])
+                            parameters[2],
+                            parameters[3])
                     : selectedSequenceStep >= 0
                             ? String.format(
                                     Locale.ROOT,
                                     "STEP %02d  •  EMPTY",
                                     selectedSequenceStep + 1)
-                            : "STEP —  •  VEL —  •  PROB —  •  RAT —");
+                            : "STEP —  •  VEL —  •  PROB —  •  RAT —  •  NUDGE —");
         }
 
         final View parent = sequenceStepButtons[0].getParent() instanceof View
@@ -1556,6 +1583,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 selectedSequenceStep,
                 Math.max(1, nativeSequenceGetQuantizeGrid()),
                 value));
+        refreshSequenceStepPage();
+    }
+
+    private void adjustSelectedStepNudge(int delta) {
+        final int[] parameters = getSelectedStepParameters();
+        if (parameters == null || parameters.length < 4 || parameters[0] <= 0) {
+            setBottomStatus("Select an active step first");
+            return;
+        }
+        final int value = Math.max(-960, Math.min(960, parameters[3] + delta));
+        setSelectedStepNudge(value);
+    }
+
+    private void setSelectedStepNudge(int value) {
+        final int[] parameters = getSelectedStepParameters();
+        if (parameters == null || parameters.length < 4 || parameters[0] <= 0) {
+            setBottomStatus("Select an active step first");
+            return;
+        }
+        final int bounded = Math.max(-960, Math.min(960, value));
+        setBottomStatus(nativeSequenceSetStepNudge(
+                selectedPad,
+                selectedSequenceStep,
+                Math.max(1, nativeSequenceGetQuantizeGrid()),
+                bounded));
         refreshSequenceStepPage();
     }
 

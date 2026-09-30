@@ -123,6 +123,8 @@ struct MidiNoteEvent {
     std::uint8_t velocity = 0;
     std::uint8_t probability = 127;
     std::uint8_t ratchet = 1;
+    // Signed microtiming offset from the quantized step, in project ticks.
+    std::int32_t nudgeTicks = 0;
 };
 
 struct Pattern {

@@ -1079,7 +1079,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetStepParameter
         return nullptr;
     }
 
-    std::array<jint, 3> values{0, 0, 0};
+    std::array<jint, 4> values{0, 0, 0, 0};
     if (padIndex < 0
             || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)
             || stepIndex < 0
@@ -1118,6 +1118,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetStepParameter
             values[0] = static_cast<jint>(note->velocity);
             values[1] = static_cast<jint>(note->probability);
             values[2] = static_cast<jint>(note->ratchet);
+            values[3] = static_cast<jint>(note->nudgeTicks);
         }
     }
 
@@ -1276,6 +1277,66 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepRatchet(
     }
 
     return toJString(env, "Step ratchet " + std::to_string(ratchet) + "x");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepNudge(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint padIndex,
+        jint stepIndex,
+        jint gridTicks,
+        jint nudgeTicks)
+{
+    if (nudgeTicks < -mpc::sequencer::kMaxStepNudgeTicks
+            || nudgeTicks > mpc::sequencer::kMaxStepNudgeTicks) {
+        return toJString(
+                env,
+                "Step nudge failed: use "
+                        + std::to_string(-mpc::sequencer::kMaxStepNudgeTicks)
+                        + "–"
+                        + std::to_string(mpc::sequencer::kMaxStepNudgeTicks));
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Step edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+
+    auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    auto& tracks = state.activeSequence().tracks;
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)
+            || stepIndex < 0
+            || gridTicks <= 0
+            || trackIndex >= tracks.size()) {
+        return toJString(env, "Step nudge failed: invalid target");
+    }
+
+    auto& track = tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum || track.patterns.empty()) {
+        return toJString(env, "Step nudge failed: selected track is not DRUM");
+    }
+
+    const auto noteNumber = state.activeDrumProgram()
+            .pads[static_cast<std::size_t>(padIndex)].midiNote;
+    if (!mpc::sequencer::setStepNoteNudge(
+            track.patterns.front(),
+            stepIndex,
+            gridTicks,
+            noteNumber,
+            static_cast<std::int32_t>(nudgeTicks))) {
+        return toJString(env, "Step nudge failed: no event");
+    }
+
+    return toJString(
+            env,
+            "Step nudge "
+                    + (nudgeTicks > 0 ? "+" : "")
+                    + std::to_string(nudgeTicks)
+                    + " ticks");
 }
 
 extern "C" JNIEXPORT jstring JNICALL

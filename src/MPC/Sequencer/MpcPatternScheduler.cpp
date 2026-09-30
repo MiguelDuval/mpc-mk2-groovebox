@@ -6,6 +6,33 @@
 namespace mpc::sequencer {
 namespace {
 
+std::int64_t normalizedNoteTick(
+        const domain::MidiNoteEvent& note,
+        std::int64_t patternLength) noexcept {
+    auto tick = static_cast<std::int64_t>(note.tick)
+            + static_cast<std::int64_t>(note.nudgeTicks);
+    tick %= patternLength;
+    if (tick < 0) {
+        tick += patternLength;
+    }
+    return tick;
+}
+
+std::int64_t normalizedNoteTickInRange(
+        const domain::MidiNoteEvent& note,
+        std::int64_t loopStartTicks,
+        std::int64_t loopEndTicks) noexcept {
+    const auto loopLength = loopEndTicks - loopStartTicks;
+    auto relative = static_cast<std::int64_t>(note.tick)
+            - loopStartTicks
+            + static_cast<std::int64_t>(note.nudgeTicks);
+    relative %= loopLength;
+    if (relative < 0) {
+        relative += loopLength;
+    }
+    return loopStartTicks + relative;
+}
+
 std::uint32_t mixCycleSeed(
         std::uint32_t seed,
         std::uint64_t cycleIndex) noexcept {
@@ -62,7 +89,9 @@ ScheduleResult schedulePatternWindow(
              noteIndex < pattern.notes.size();
              ++noteIndex) {
             const auto& note = pattern.notes[noteIndex];
-            if (note.tick < segmentBegin || note.tick >= segmentEnd) {
+            const auto effectiveTick =
+                    normalizedNoteTick(note, length);
+            if (effectiveTick < segmentBegin || effectiveTick >= segmentEnd) {
                 continue;
             }
 
@@ -78,8 +107,7 @@ ScheduleResult schedulePatternWindow(
 
             auto& scheduled = output[result.written++];
             scheduled.offsetTicks =
-                    baseOffset + static_cast<std::int64_t>(note.tick) -
-                    segmentBegin;
+                    baseOffset + effectiveTick - segmentBegin;
             scheduled.patternTick = note.tick;
             scheduled.durationTicks = note.durationTicks;
             scheduled.note = note.note;
@@ -155,7 +183,9 @@ ScheduleResult schedulePatternWindowInRange(
              noteIndex < pattern.notes.size();
              ++noteIndex) {
             const auto& note = pattern.notes[noteIndex];
-            if (note.tick < segmentBegin || note.tick >= segmentEnd) {
+            const auto effectiveTick =
+                    normalizedNoteTick(note, length);
+            if (effectiveTick < segmentBegin || effectiveTick >= segmentEnd) {
                 continue;
             }
 
@@ -171,7 +201,7 @@ ScheduleResult schedulePatternWindowInRange(
 
             auto& scheduled = output[result.written++];
             scheduled.offsetTicks =
-                    baseOffset + note.tick - segmentBegin;
+                    baseOffset + effectiveTick - segmentBegin;
             scheduled.patternTick = note.tick;
             scheduled.durationTicks = note.durationTicks;
             scheduled.note = note.note;

@@ -96,6 +96,24 @@ int main() {
     assert(editedNote->velocity == 72);
     assert(editedNote->probability == 80);
     assert(editedNote->ratchet == 4);
+    assert(editedNote->nudgeTicks == 0);
+
+    assert(mpc::sequencer::setStepNoteNudge(
+            stepPattern, 4, 120, 38, 120));
+    assert(stepPattern.notes[1].nudgeTicks == 120);
+    assert(mpc::sequencer::setStepNoteNudge(
+            stepPattern, 4, 120, 38, -120));
+    assert(stepPattern.notes[1].nudgeTicks == -120);
+    assert(!mpc::sequencer::setStepNoteNudge(
+            stepPattern, 4, 120, 38, 961));
+    assert(!mpc::sequencer::setStepNoteNudge(
+            stepPattern, 4, 120, 38, -961));
+
+    // Re-writing the same step updates musical parameters without erasing
+    // its separate microtiming offset.
+    assert(mpc::sequencer::setStepNote(
+            stepPattern, 4, 120, 38, 90, 240, 64, 3));
+    assert(stepPattern.notes[1].nudgeTicks == -120);
 
     mpc::domain::Pattern ratchetDurationPattern;
     ratchetDurationPattern.lengthTicks = 1920;

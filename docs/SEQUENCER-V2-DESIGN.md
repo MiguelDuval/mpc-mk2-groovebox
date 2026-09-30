@@ -63,7 +63,9 @@ The first real event editor is deliberately small and musical: a 16-by-16 drum g
 
 The grid is an editor, not a second transport. The global playhead remains authoritative and is mirrored as a column highlight. Editing is blocked while playback is active. Before a mutation, the native layer releases the current playback session so Pattern::notes cannot be mutated underneath a live playback object that still holds a reference to that Pattern.
 
-The first slice intentionally exposes only note presence plus the existing default velocity/probability/ratchet values. Velocity painting, per-step probability, ratchets, note duration editing and multi-page gestures remain separate future increments. This keeps the first editor fast enough for live use while preserving the existing Pattern/MidiNoteEvent data model.
+Step Edit now exposes the event's velocity, probability, ratchet and signed Nudge Ticks while preserving the quantized step as the stable edit address. Nudge is stored separately from the base tick, so a microtimed event remains addressable from the same GRID/STEP cell. The realtime scheduler applies the nudge and normalizes it inside the active loop, including loop-wrap at the boundary.
+
+Nudge is bounded to ±960 project ticks in this first slice. This is deliberately a production-safe microtiming range rather than an unrestricted destructive move. Duration editing remains a separate increment because the current drum sampler path does not yet expose a general note-off/voice-length contract; surfacing a Length control now would imply behavior the engine cannot yet guarantee.
 
 The software grid follows the project's physical MPC Studio pad convention vertically: Pad 16 is the top lane and Pad 1 the bottom lane. Four-step group separators make 16-step phrasing immediately legible without adding visual chrome.
 
@@ -89,6 +91,8 @@ The strip, Grid View, Step Editor and Sequence Launcher read existing JNI sequen
   https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf
 - Akai MPC release notes:
   https://www.akaipro.com/mpc-release-notes
+- Akai MPC Live III FAQ (Step Edit / Nudge Ticks):
+  https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions
 - Akai MPC One FAQ:
   https://support.akaipro.com/en/support/solutions/articles/69000816149-akai-pro-mpc-one-frequently-asked-questions
 - Maschine+ manual, Arranging Your Project:
