@@ -14,6 +14,7 @@
 
 #include "MPC/MpcCore.h"
 #include "MPC/Sequencer/MpcPatternOps.h"
+#include "MPC/Sequencer/MpcSequenceLauncher.h"
 #include "MPC/Sequencer/MpcSequencePlaybackSession.h"
 #include "MPC/Sequencer/MpcSequenceSettings.h"
 
@@ -1399,6 +1400,75 @@ jstring selectSequenceForUi(
 }
 
 } // namespace
+
+namespace {
+
+jstring selectSequenceFromPadForUi(
+        JNIEnv* env,
+        jint bank,
+        jint padIndex) {
+    if (bank < 0 || padIndex < 0 || padIndex >= 16) {
+        return toJString(env, "Sequence launch failed: invalid pad");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    auto& state = core.projectState();
+    const auto sequenceIndex =
+            static_cast<std::size_t>(bank) * 16u
+            + static_cast<std::size_t>(padIndex);
+    if (sequenceIndex >= state.sequenceCount()) {
+        return toJString(env, "Sequence launch failed: empty pad");
+    }
+
+    if (sequenceSession().isPlaying()) {
+        const auto action =
+                mpc::sequencer::handleSequencePadPress(
+                        state,
+                        core.sequenceTransportClock(),
+                        static_cast<std::size_t>(bank),
+                        static_cast<std::size_t>(padIndex),
+                        monotonicNanos());
+        switch (action) {
+            case mpc::sequencer::SequenceLaunchAction::Queued:
+                return toJString(
+                        env,
+                        "Sequence queued: "
+                                + std::to_string(sequenceIndex + 1));
+            case mpc::sequencer::SequenceLaunchAction::QueueCleared:
+                return toJString(env, "Sequence queue cleared");
+            default:
+                return toJString(env, "Sequence launch failed");
+        }
+    }
+
+    stopSequenceForMutation();
+    const auto action =
+            mpc::sequencer::handleSequencePadPress(
+                    state,
+                    core.sequenceTransportClock(),
+                    static_cast<std::size_t>(bank),
+                    static_cast<std::size_t>(padIndex),
+                    monotonicNanos());
+    if (action != mpc::sequencer::SequenceLaunchAction::Selected) {
+        return toJString(env, "Sequence launch failed");
+    }
+    return toJString(
+            env,
+            "Sequence selected: " + std::to_string(sequenceIndex + 1)
+                    + " | " + state.sequenceStatus());
+}
+
+} // namespace
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceLaunchPad(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint bank,
+        jint padIndex)
+{
+    return selectSequenceFromPadForUi(env, bank, padIndex);
+}
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelect(
