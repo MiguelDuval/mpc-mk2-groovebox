@@ -107,6 +107,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int sequenceGridPage = 0;
     private int sequenceStepPage = 0;
     private int launcherBank = 0;
+    private String lastLauncherLedSignature = "";
     private static final int SEQUENCE_GRID_PAGE_STEPS = 16;
     private TextView sequenceStatusView;
     private TextView sequenceTempoView;
@@ -502,6 +503,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showMainPage() {
         nativeSequenceSetLauncherContext(false, 0);
+        clearSequenceLauncherLeds();
         currentPage = "MAIN";
         pageTitle.setText("MAIN");
         content.removeAllViews();
@@ -1579,6 +1581,66 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSequenceStepPage();
     }
 
+    private void syncSequenceLauncherLeds(
+            int count,
+            int activeIndex,
+            int queuedIndex,
+            int bank) {
+        if (midiBridge == null) return;
+
+        final String signature = count + ":" + activeIndex + ":"
+                + queuedIndex + ":" + bank;
+        if (signature.equals(lastLauncherLedSignature)) return;
+
+        for (int pad = 0; pad < 16; pad++) {
+            final int sequenceIndex = bank * 16 + pad;
+            int red = 8;
+            int green = 8;
+            int blue = 8;
+            if (sequenceIndex >= count) {
+                red = 0;
+                green = 0;
+                blue = 0;
+            } else if (sequenceIndex == activeIndex) {
+                red = 0;
+                green = 127;
+                blue = 24;
+            } else if (sequenceIndex == queuedIndex) {
+                red = 127;
+                green = 72;
+                blue = 0;
+            }
+
+            final byte[] message =
+                    MpcStudioMk2MidiMessages.padRgb(
+                            pad, red, green, blue);
+            if (message != null) {
+                midiBridge.send(message);
+            }
+        }
+
+        lastLauncherLedSignature = signature;
+    }
+
+    private void clearSequenceLauncherLeds() {
+        if (midiBridge == null) {
+            lastLauncherLedSignature = "";
+            return;
+        }
+
+        if ("CLEARED".equals(lastLauncherLedSignature)) return;
+
+        for (int pad = 0; pad < 16; pad++) {
+            final byte[] message =
+                    MpcStudioMk2MidiMessages.padRgb(
+                            pad, 0, 0, 0);
+            if (message != null) {
+                midiBridge.send(message);
+            }
+        }
+        lastLauncherLedSignature = "CLEARED";
+    }
+
     private int sequenceLauncherBankCount() {
         final int count = nativeSequenceGetCount();
         return Math.max(1, (count + 15) / 16);
@@ -1603,11 +1665,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Math.min(
                         Math.max(0, (count - 1) / 16),
                         launcherBank));
+        final int activeIndex = nativeSequenceGetIndex();
+        final int queuedIndex = nativeSequenceGetQueuedIndex();
         sequenceLauncherView.setState(
                 count,
-                nativeSequenceGetIndex(),
-                nativeSequenceGetQueuedIndex(),
+                activeIndex,
+                queuedIndex,
                 launcherBank);
+        syncSequenceLauncherLeds(
+                count, activeIndex, queuedIndex, launcherBank);
 
         final View parent = sequenceLauncherView.getParent() instanceof View
                 ? (View) sequenceLauncherView.getParent()
