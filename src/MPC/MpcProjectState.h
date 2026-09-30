@@ -45,6 +45,15 @@ public:
         return activeSequenceIndex_;
     }
 
+    std::size_t sequenceCount() const noexcept {
+        return project_.sequences.size();
+    }
+
+    bool selectSequence(std::size_t sequenceIndex) noexcept;
+    bool addSequence(
+            std::string name = {},
+            std::int32_t bars = 4);
+
     std::size_t activeTrackIndex() const noexcept {
         return activeTrackIndex_;
     }
