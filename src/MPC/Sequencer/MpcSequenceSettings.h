@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 
 namespace mpc::sequencer {
 
@@ -47,8 +48,9 @@ inline constexpr std::int32_t kTicksPerQuarterNote = 960;
     }
 
     const auto length = static_cast<std::int64_t>(bars) * perBar;
-    return length > static_cast<std::int64_t>(INT32_MAX)
-            ? INT32_MAX
+    return length > static_cast<std::int64_t>(
+            std::numeric_limits<std::int32_t>::max())
+            ? std::numeric_limits<std::int32_t>::max()
             : static_cast<std::int32_t>(length);
 }
 
