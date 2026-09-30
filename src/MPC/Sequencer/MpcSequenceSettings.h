@@ -8,7 +8,7 @@
 
 namespace mpc::sequencer {
 
-inline constexpr std::int32_t kTicksPerQuarterNote = 960;
+inline constexpr std::int32_t kSequenceTicksPerQuarterNote = 960;
 
 [[nodiscard]] inline bool isValidTimeSignature(
         std::int32_t numerator,
