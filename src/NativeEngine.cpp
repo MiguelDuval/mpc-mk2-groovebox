@@ -854,6 +854,56 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioStatus(
 }
 
 
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetCount(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().projectState().sequenceCount());
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetSelected(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().projectState().activeSequenceIndex());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelect(
+        JNIEnv* env, jobject /* thiz */, jint sequenceIndex)
+{
+    if (sequenceIndex < 0) {
+        return toJString(env, "Sequence selection failed");
+    }
+
+    sequenceSession().stop();
+    sequencePlayback.reset();
+
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (!state.selectSequence(static_cast<std::size_t>(sequenceIndex))) {
+        return toJString(env, "Sequence selection failed");
+    }
+
+    return toJString(env, state.sequenceStatus());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdd(
+        JNIEnv* env, jobject /* thiz */, jint bars)
+{
+    sequenceSession().stop();
+    sequencePlayback.reset();
+
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (!state.addSequence({}, bars)) {
+        return toJString(env, "Sequence creation failed");
+    }
+
+    return toJString(env, state.sequenceStatus());
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStatus(
         JNIEnv* env, jobject /* thiz */)
