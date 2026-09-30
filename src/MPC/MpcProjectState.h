@@ -3,6 +3,7 @@
 #include "MPC/Domain/MpcDomain.h"
 #include "MPC/Sequencer/MpcSequenceSettings.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <string>
