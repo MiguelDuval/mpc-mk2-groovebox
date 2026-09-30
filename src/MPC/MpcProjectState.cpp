@@ -40,7 +40,7 @@ MpcProjectState::MpcProjectState() {
     sequence.swingPercent = 0;
 
     constexpr const char* kDefaultTrackNames[] = {
-            "DRUM KIT", "SYNTH 01", "MIDI EXT 01", "AUDIO 01"
+            "SAMPLE 01", "SYNTH 01", "MIDI EXT 01", "AUDIO 01"
     };
     constexpr domain::TrackKind kDefaultTrackKinds[] = {
             domain::TrackKind::Drum,
