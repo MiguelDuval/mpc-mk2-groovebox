@@ -98,6 +98,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private WaveformView recordingWaveform;
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
+    private SequenceOverviewView sequenceOverviewView;
     private TextView sequenceStatusView;
     private TextView sequenceTempoView;
     private TextView sequenceBarsView;
@@ -273,6 +274,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             engineInfo + " | " + sampleResult + " | " + audioResult);
                     setAudioStateFromResult(audioResult);
                     refreshAllInspectorState();
+                    startSequenceUiUpdater();
+                    refreshSequenceOverview();
 
                     Log.i(TAG, "MIDI_BRIDGE_BEGIN");
                     midiBridge = new AndroidMidiBridge(this, this);
@@ -294,6 +297,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         root.addView(buildTopBar(), new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+
+        sequenceOverviewView = new SequenceOverviewView(this);
+        sequenceOverviewView.setContentDescription("Sequence playback overview");
+        root.addView(sequenceOverviewView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
 
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.HORIZONTAL);
@@ -901,8 +909,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequencePage() {
-        stopSequenceUiUpdater();
-
         currentPage = "SEQ";
         pageTitle.setText("SEQUENCER");
         content.removeAllViews();
@@ -1067,21 +1073,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         refreshSequencePageTools();
 
-        sequenceUiUpdater = new Runnable() {
-            @Override public void run() {
-                if (!"SEQ".equals(currentPage)) return;
-
-                if (nativeSequenceIsPlaying()) {
-                    nativeSequenceAdvance(80);
-                    nativeSequenceDrainRecordEvents();
-                }
-
-                refreshSequencePlayhead();
-                refreshSequenceControls();
-                sequenceUiHandler.postDelayed(this, 80);
-            }
-        };
-        sequenceUiHandler.post(sequenceUiUpdater);
     }
 
     private TextView sequenceTempoViewHolder() {
@@ -1296,6 +1287,58 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case 960: return "Q 1/4";
             default: return "Q " + ticks;
         }
+    }
+
+    private void startSequenceUiUpdater() {
+        if (sequenceUiUpdater != null || destroyed || uiOnlySmokeMode) {
+            return;
+        }
+
+        sequenceUiUpdater = new Runnable() {
+            @Override public void run() {
+                if (destroyed) {
+                    return;
+                }
+
+                if (startupComplete && nativeSequenceIsPlaying()) {
+                    nativeSequenceAdvance(80);
+                    nativeSequenceDrainRecordEvents();
+                }
+
+                if (startupComplete) {
+                    refreshSequenceOverview();
+                    if ("SEQ".equals(currentPage)) {
+                        refreshSequencePlayhead();
+                        refreshSequenceControls();
+                    }
+                }
+
+                sequenceUiHandler.postDelayed(this, 80);
+            }
+        };
+        sequenceUiHandler.post(sequenceUiUpdater);
+    }
+
+    private void refreshSequenceOverview() {
+        if (sequenceOverviewView == null || !startupComplete) {
+            return;
+        }
+
+        final int bars = nativeSequenceGetBars();
+        final int loopStart = nativeSequenceGetLoopStartBar();
+        final int loopEnd = nativeSequenceGetLoopEndBar();
+
+        sequenceOverviewView.setState(
+                0,
+                1,
+                bars,
+                loopStart,
+                loopEnd,
+                nativeSequenceGetNumerator(),
+                nativeSequenceGetDenominator(),
+                nativeSequenceIsLoopEnabled(),
+                nativeSequencePositionTicks(),
+                nativeSequenceIsPlaying());
     }
 
     private void stopSequenceUiUpdater() {
