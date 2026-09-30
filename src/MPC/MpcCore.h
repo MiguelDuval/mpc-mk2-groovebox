@@ -2,6 +2,9 @@
 
 #include "Audio/AudioEngine.h"
 #include "MPC/MpcProjectState.h"
+#include "MPC/Sequencer/MpcSequenceRecordQueue.h"
+#include "MPC/Sequencer/MpcSequenceRecorder.h"
+#include "MPC/Sequencer/MpcSequenceTransport.h"
 
 namespace mpc {
 
@@ -28,11 +31,26 @@ public:
         return audio_;
     }
 
+    sequencer::SequenceRecordQueue& sequenceRecordQueue() noexcept {
+        return sequenceRecordQueue_;
+    }
+
+    sequencer::MpcSequenceRecorder& sequenceRecorder() noexcept {
+        return sequenceRecorder_;
+    }
+
+    sequencer::MpcSequenceTransportClock& sequenceTransportClock() noexcept {
+        return sequenceTransportClock_;
+    }
+
 private:
     MpcCore();
 
     MpcProjectState projectState_;
     audio::AudioEngine audio_;
+    sequencer::SequenceRecordQueue sequenceRecordQueue_;
+    sequencer::MpcSequenceRecorder sequenceRecorder_;
+    sequencer::MpcSequenceTransportClock sequenceTransportClock_;
 };
 
 } // namespace mpc

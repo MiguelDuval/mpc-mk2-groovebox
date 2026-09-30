@@ -318,6 +318,30 @@ jobs:
             -o build/native-tests/mpc_project_state_tests
           build/native-tests/mpc_project_state_tests
 
+      - name: Test sequence transport clock
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcSequenceTransportTests.cpp \
+            src/MPC/MpcProjectState.cpp \
+            -o build/native-tests/mpc_sequence_transport_tests
+          build/native-tests/mpc_sequence_transport_tests
+
+      - name: Test sequence recorder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcSequenceRecorderTests.cpp \
+            src/MPC/MpcProjectState.cpp \
+            -o build/native-tests/mpc_sequence_recorder_tests
+          build/native-tests/mpc_sequence_recorder_tests
+
       - name: Test semantic drum-pad MIDI lookup
         shell: bash
         run: |

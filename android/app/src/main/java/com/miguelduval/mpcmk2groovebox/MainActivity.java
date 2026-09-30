@@ -106,6 +106,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView sequenceLoopView;
     private TextView sequenceQuantizeView;
     private TextView sequenceSwingView;
+    private TextView sequenceRecordModeView;
     private TextView sequenceTrackInfoView;
     private final Handler sequenceUiHandler = new Handler(Looper.getMainLooper());
     private Runnable sequenceUiUpdater;
@@ -201,6 +202,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceSetQuantizeGrid(int ticks);
     private static native int nativeSequenceGetSwing();
     private static native String nativeSequenceSetSwing(int percent);
+    private static native int nativeSequenceGetRecordMode();
+    private static native String nativeSequenceSetRecordMode(int mode);
+    private static native int nativeSequenceDrainRecordEvents();
     private static native int nativeSequenceGetTrackCount();
     private static native int nativeSequenceGetSelectedTrack();
     private static native String nativeSequenceSelectTrack(int trackIndex);
@@ -992,6 +996,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(nativeSequenceSetSelectedTrackArmed(arm));
             refreshSequenceControls();
         }), touchButtonWeight());
+        sequenceRecordModeView = label("", 11, TEXT);
+        sequenceRecordModeView.setGravity(Gravity.CENTER);
+        sequenceRecordModeView.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        transport.addView(sequenceRecordModeView, new LinearLayout.LayoutParams(
+                0, dp(46), 1.0f));
+        transport.addView(actionButton("REC MODE", v -> {
+            final int mode = nativeSequenceGetRecordMode();
+            setBottomStatus(nativeSequenceSetRecordMode(mode == 0 ? 1 : 0));
+            refreshSequenceControls();
+        }), touchButtonWeight());
         page.addView(transport, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
 
@@ -1138,6 +1152,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
                 if (nativeSequenceIsPlaying()) {
                     nativeSequenceAdvance(80);
+                    nativeSequenceDrainRecordEvents();
                 }
 
                 refreshSequencePlayhead();
@@ -1211,6 +1226,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceLoopView.setText(
                 "LOOP " + (nativeSequenceIsLoopEnabled() ? "ON" : "OFF")
                         + "  •  " + loopStart + " → " + loopEnd);
+
+        if (sequenceRecordModeView != null) {
+            sequenceRecordModeView.setText(
+                    nativeSequenceGetRecordMode() == 0
+                            ? "REC REPLACE"
+                            : "REC OVERDUB");
+        }
 
         if (sequenceTimeline != null) {
             sequenceTimeline.setBarCount(nativeSequenceGetBars());
