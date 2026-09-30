@@ -44,7 +44,10 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
         return make(Type::NoteRepeatState,noteRepeatActive()?1:0,noteRepeatLatched()?1:0);
     }
     if(!pressed) return std::nullopt;
-    if(n=="FullLevel"){\n        if(shiftHeld_){ halfLevel_=!halfLevel_; fullLevel_=false; return make(Type::HalfLevelState,halfLevel_?1:0); }\n        fullLevel_=!fullLevel_; if(fullLevel_) halfLevel_=false; return make(Type::FullLevelState,fullLevel_?1:0);\n    }
+    if(n=="FullLevel"){
+        if(shiftHeld_){ halfLevel_=!halfLevel_; fullLevel_=false; return make(Type::HalfLevelState,halfLevel_?1:0); }
+        fullLevel_=!fullLevel_; if(fullLevel_) halfLevel_=false; return make(Type::FullLevelState,fullLevel_?1:0);
+    }
     if(n=="Level16") return make(Type::Reserved,16);
     if(n=="PadMute"){
         if(shiftHeld_){ trackMuteMode_=!trackMuteMode_; padMuteMode_=false; return make(Type::TrackMuteModeState,trackMuteMode_?1:0); }
@@ -86,7 +89,8 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleJog(std::uint8_
     return std::nullopt;
 }
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleJogPress(bool p) noexcept {
-    if (p) return make(Type::DataDialPress);\n    return std::nullopt;
+    if (p) return make(Type::DataDialPress);
+    return std::nullopt;
 }
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::modePadAction(std::uint8_t i) const noexcept {
     if(i>=16) return std::nullopt;
