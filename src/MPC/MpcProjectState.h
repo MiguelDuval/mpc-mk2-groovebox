@@ -49,6 +49,43 @@ public:
         return activeTrackIndex_;
     }
 
+    std::size_t sequenceCount() const noexcept {
+        return project_.sequences.size();
+    }
+
+    bool selectSequence(std::size_t sequenceIndex) noexcept {
+        if (sequenceIndex >= project_.sequences.size()) {
+            return false;
+        }
+        activeSequenceIndex_ = sequenceIndex;
+        activeTrackIndex_ = activeSequence().tracks.empty()
+                ? 0
+                : std::min<std::size_t>(
+                        activeTrackIndex_,
+                        activeSequence().tracks.size() - 1);
+        return true;
+    }
+
+    bool nextSequence() noexcept {
+        if (project_.sequences.empty()) {
+            return false;
+        }
+        activeSequenceIndex_ =
+                (activeSequenceIndex_ + 1) % project_.sequences.size();
+        activeTrackIndex_ = 0;
+        return true;
+    }
+
+    bool addSequence(std::string name = {});
+
+    bool sequenceChainEnabled() const noexcept {
+        return sequenceChainEnabled_;
+    }
+
+    void setSequenceChainEnabled(bool enabled) noexcept {
+        sequenceChainEnabled_ = enabled;
+    }
+
     bool selectTrack(std::size_t trackIndex) noexcept {
         if (trackIndex >= activeSequence().tracks.size()) {
             return false;
@@ -56,6 +93,18 @@ public:
         activeTrackIndex_ = trackIndex;
         return true;
     }
+
+    bool setTrackMuted(
+            std::size_t trackIndex,
+            bool muted) noexcept;
+
+    bool setTrackSoloed(
+            std::size_t trackIndex,
+            bool soloed) noexcept;
+
+    bool setTrackArmed(
+            std::size_t trackIndex,
+            bool armed) noexcept;
 
     bool setSequenceTempo(double tempoBpm) noexcept;
     bool setSequenceBars(std::int32_t bars) noexcept;
@@ -90,6 +139,7 @@ private:
     std::size_t activeSequenceIndex_ = 0;
     std::size_t activeTrackIndex_ = 0;
     std::uint32_t nextSampleId_ = 1;
+    bool sequenceChainEnabled_ = true;
 };
 
 } // namespace mpc
