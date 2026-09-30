@@ -1395,11 +1395,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             + " " + state.toLowerCase(Locale.ROOT));
         }
 
-        final View parent = trackPerformanceButtons[0].getParent() instanceof View
-                ? trackPerformanceButtons[0].getParent()
-                : null;
+        final ViewGroup parent =
+                trackPerformanceButtons[0].getParent() instanceof ViewGroup
+                        ? (ViewGroup) trackPerformanceButtons[0].getParent()
+                        : null;
 
-        if (parent instanceof ViewGroup
+        if (parent != null
                 && parent.getParent() instanceof ViewGroup) {
             final ViewGroup pageRoot = (ViewGroup) parent.getParent();
             if (pageRoot.getChildCount() > 0
