@@ -20,6 +20,7 @@ add_library(mpcgroovebox SHARED
     src/MPC/MpcStudioMk2ControlMap.cpp
     src/MPC/MpcStudioMk2LedProtocol.cpp
     src/MPC/MpcStudioMk2InputDecoder.cpp
+    src/MPC/MpcStudioMk2SemanticAdapter.cpp
     src/MPC/Domain/MpcDomain.cpp
     src/MPC/MpcProjectState.cpp
     src/MPC/MpcCore.cpp
