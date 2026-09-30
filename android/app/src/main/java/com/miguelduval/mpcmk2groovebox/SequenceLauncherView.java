@@ -104,8 +104,9 @@ public final class SequenceLauncherView extends View {
                                 : queued
                                     ? QUEUED
                                     : SURFACE);
+            rect.set(x0, y0, x1, y1);
             canvas.drawRoundRect(
-                    rect.set(x0, y0, x1, y1),
+                    rect,
                     dp(8),
                     dp(8),
                     paint);
@@ -118,8 +119,9 @@ public final class SequenceLauncherView extends View {
                             : queued
                                 ? DANGER
                                 : LINE);
+            rect.set(x0, y0, x1, y1);
             canvas.drawRoundRect(
-                    rect.set(x0, y0, x1, y1),
+                    rect,
                     dp(8),
                     dp(8),
                     paint);
