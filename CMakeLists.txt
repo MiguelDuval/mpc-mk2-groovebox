@@ -14,11 +14,17 @@ add_subdirectory(third_party/oboe EXCLUDE_FROM_ALL)
 add_library(mpcgroovebox SHARED
     src/NativeEngine.cpp
     src/Audio/AudioEngine.cpp
+    src/Audio/WavSample.cpp
+    src/Audio/Waveform.cpp
     src/Midi/NativeMidi.cpp
     src/MPC/MpcStudioMk2ControlMap.cpp
     src/MPC/MpcStudioMk2LedProtocol.cpp
     src/MPC/MpcStudioMk2InputDecoder.cpp
     src/MPC/Domain/MpcDomain.cpp
+    src/MPC/MpcProjectState.cpp
+    src/MPC/MpcCore.cpp
+    src/MPC/Sequencer/MpcSequencerCursor.cpp
+    src/MPC/Sequencer/MpcPatternScheduler.cpp
 )
 
 target_include_directories(mpcgroovebox PRIVATE src)

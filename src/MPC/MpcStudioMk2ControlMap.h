@@ -70,6 +70,7 @@ inline constexpr std::uint8_t padChannel = 9;
 inline constexpr std::uint8_t jogWheelCc = 100;
 inline constexpr std::uint8_t jogWheelPressNote = 111;
 inline constexpr std::uint8_t touchStripCc = 33;
+inline constexpr std::uint8_t touchStripPressNote = 78;
 
 inline constexpr std::array<std::uint8_t, 9> touchStripLedCcs{
     57, 58, 59, 60, 61, 62, 63, 64, 65

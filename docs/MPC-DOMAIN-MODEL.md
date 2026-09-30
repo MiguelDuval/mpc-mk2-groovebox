@@ -13,9 +13,11 @@ Project
 → Sample Layer
 → Sample
 
-A Drum Program reserves 128 logical pad slots while MPC Studio MkII exposes
-16 physical pads at a time. Physical bank/mode selection maps the controller
-surface onto the logical program.
+A future Drum Program layer may expose 128 logical pad slots, while the
+current implementation deliberately models the 16 physical MPC Studio MkII
+pads as the first vertical slice. Physical bank/mode selection can later map
+the controller surface onto a larger logical program without changing the
+physical pad contract.
 
 A Pad is capable of up to eight sample layers. Layers carry sample regions,
 tuning, gain/pan and velocity ranges. Pad-level state carries trigger mode,
@@ -31,3 +33,10 @@ to/from the audio engine.
 
 The model is not an MPC file-format implementation and does not claim complete
 XPJ/XPM compatibility.
+
+Timing contract:
+
+- Sequencer tick resolution is 960 ticks per quarter note in the current runtime foundation.
+- A default 4/4 pattern of 3840 ticks therefore represents one bar at the domain level.
+- Tick-to-frame conversion is kept in the sequencer layer and requires explicit tempo and output sample rate.
+- The audio layer consumes frame offsets and does not own BPM or PPQN policy.

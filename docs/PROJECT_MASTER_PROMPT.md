@@ -583,6 +583,27 @@ Potential interoperability work belongs late in the roadmap, after the internal 
 
 ---
 
+### MPC Studio MkII controller contract
+
+The Akai MPC Studio MkII is the project's primary physical performance surface.
+
+All controller work must use the canonical [MPC Studio MkII Control Contract](MPC-STUDIO-MK2-CONTROL-CONTRACT.md). The contract defines hardware identity, semantic roles, implementation state and physical verification state.
+
+The controller path must remain layered:
+
+**MIDI/SysEx → MPC Studio hardware adapter → semantic controller event → application/domain/audio/UI → hardware feedback**
+
+Never route raw MPC MIDI numbers directly into Android UI callbacks or musical domain logic.
+
+The hardware-first priority is:
+1. transport and live navigation;
+2. pad banks and repeat/performance modifiers;
+3. sampler and sequencer editing controls;
+4. Q-Link and touch-strip expressive control;
+5. complete LED/LCD feedback.
+
+The physical controller is not an optional accessory. Screen interactions and hardware interactions must converge on the same semantic commands.
+
 ## 17. External I/O
 
 Eventually support:
