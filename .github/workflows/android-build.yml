@@ -340,6 +340,14 @@ jobs:
             -o build/native-tests/drum_program_domain_tests
           build/native-tests/drum_program_domain_tests
 
+
+      - name: Verify 911 startup stability guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'preferredSharingMode = oboe::SharingMode::Shared;' src/Audio/AudioOutputPolicy.h
+          grep -F 'if (actual != null && expectedDescription.contentEquals(actual)) return view;' android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java
+
       - name: Assemble debug APK
         run: gradle --no-daemon :app:assembleDebug
 
