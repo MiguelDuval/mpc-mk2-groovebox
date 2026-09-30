@@ -364,7 +364,7 @@ Status: **DECODED, FEATURE/LED INFRASTRUCTURE PARTIAL**.
 
 Priority: **P0**.
 
-### R. Full Level / Half Level
+### R. Full Level / Half Level / 16 Level
 
 MIDI note 39.
 
@@ -379,7 +379,7 @@ Pad velocity semantics:
 
 These modifiers must operate before pad trigger semantics and therefore belong in the hardware/performance input layer, not inside individual screens.
 
-Status: **DECODED, PERFORMANCE MODIFIER NOT ROUTED**.
+Status: **FULL/HALF LEVEL + 16 LEVEL VELOCITY ROUTED**.
 
 Priority: **P0**.
 
