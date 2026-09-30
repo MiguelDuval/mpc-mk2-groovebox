@@ -1,11 +1,17 @@
 #include <jni.h>
 #include "Audio/AudioEngine.h"
 
+#include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <span>
 #include <limits>
 #include <string>
 #include <vector>
+
+#include "MPC/MpcCore.h"
+#include "MPC/Sequencer/MpcSequencePlaybackSession.h"
+#include "MPC/Sequencer/MpcSequenceSettings.h"
 
 namespace {
 
