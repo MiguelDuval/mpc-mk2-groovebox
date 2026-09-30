@@ -74,18 +74,18 @@ public:
         if (runtime_.isPlaying()
                 && deltaTicks > 0
                 && sequence_.loopEnabled) {
-            const length = std::max<std::int64_t>(
+            const auto length = std::max<std::int64_t>(
                     1,
                     static_cast<std::int64_t>(sequence_.lengthTicks));
-            const loopStart = std::clamp<std::int64_t>(
+            const auto loopStart = std::clamp<std::int64_t>(
                     sequence_.loopStartTicks,
                     0,
                     length - 1);
-            const loopEnd = std::clamp<std::int64_t>(
+            const auto loopEnd = std::clamp<std::int64_t>(
                     sequence_.loopEndTicks,
                     loopStart + 1,
                     length);
-            const position = runtime_.positionTicks();
+            const auto position = runtime_.positionTicks();
             result.wrapped = deltaTicks >= std::max<std::int64_t>(
                     1,
                     loopEnd - position);
