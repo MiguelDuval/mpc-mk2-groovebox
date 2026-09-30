@@ -945,10 +945,6 @@ std::string AudioEngine::cropPadSampleRegion(
         return "Crop failed: invalid pad or layer";
     }
 
-    if (stream_ != nullptr) {
-        return "Stop audio before cropping a sample";
-    }
-
     std::shared_ptr<const SampleBuffer> sourceSample =
             padSamples_[padIndex][layerIndex];
     SampleRegion sourceRegion{};
@@ -984,6 +980,14 @@ std::string AudioEngine::cropPadSampleRegion(
         return "Crop failed: invalid source region or sample format";
     }
 
+    const bool wasRunning = stream_ != nullptr;
+    if (wasRunning) {
+        const auto stopResult = stopOutputStream();
+        if (stream_ != nullptr) {
+            return "Crop failed: " + stopResult;
+        }
+    }
+
     auto croppedSample = std::make_shared<SampleBuffer>(*cropped);
     const std::size_t croppedFrames = croppedSample->frameCount();
     padSamples_[padIndex][layerIndex] = croppedSample;
@@ -999,13 +1003,25 @@ std::string AudioEngine::cropPadSampleRegion(
             + std::to_string(croppedSample->channelCount) + " ch "
             + std::to_string(croppedFrames) + " frames";
 
-    return "Crop complete: Pad "
+    const std::string message =
+            "Crop complete: Pad "
             + std::to_string(static_cast<unsigned>(padIndex + 1))
             + " layer "
             + std::to_string(static_cast<unsigned>(layerIndex + 1))
             + " | source="
             + sourceDescription
             + " | frames=" + std::to_string(croppedFrames);
+
+    if (!wasRunning) {
+        return message;
+    }
+
+    const auto startResult = start();
+    if (stream_ == nullptr) {
+        return message + " | restart failed | " + startResult;
+    }
+
+    return message + " | " + startResult;
 }
 
 std::string AudioEngine::setPadLayerGain(
@@ -1375,10 +1391,6 @@ std::string AudioEngine::setPadSampleRegion(
         return "Sample region change failed: invalid pad or layer";
     }
 
-    if (stream_ != nullptr) {
-        return "Stop audio before editing sample region";
-    }
-
     const auto& sample = padSamples_[padIndex][layerIndex];
     if (sample == nullptr || sample->frameCount() == 0) {
         return "Sample region change failed: no sample assigned";
@@ -1388,10 +1400,22 @@ std::string AudioEngine::setPadSampleRegion(
         return "Sample region change failed: invalid frame range";
     }
 
+    // Region edits are user-facing sample edits. Apply them atomically from
+    // the perspective of the running engine by rebuilding the callback
+    // snapshot after the state change.
+    const bool wasRunning = stream_ != nullptr;
+    if (wasRunning) {
+        const auto stopResult = stopOutputStream();
+        if (stream_ != nullptr) {
+            return "Sample region change failed: " + stopResult;
+        }
+    }
+
     projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex).region =
             SampleRegion{startFrame, endFrame};
 
-    return "Pad "
+    const std::string message =
+            "Pad "
             + std::to_string(static_cast<unsigned>(padIndex + 1))
             + " layer "
             + std::to_string(static_cast<unsigned>(layerIndex + 1))
@@ -1399,6 +1423,17 @@ std::string AudioEngine::setPadSampleRegion(
             + std::to_string(startFrame)
             + "-"
             + std::to_string(endFrame);
+
+    if (!wasRunning) {
+        return message;
+    }
+
+    const auto startResult = start();
+    if (stream_ == nullptr) {
+        return message + " | restart failed | " + startResult;
+    }
+
+    return message + " | " + startResult;
 }
 
 SampleRegion AudioEngine::padSampleRegion(
