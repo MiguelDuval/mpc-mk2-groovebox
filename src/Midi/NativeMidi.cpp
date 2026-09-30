@@ -3,7 +3,6 @@
 #include "../MPC/MpcCore.h"
 #include "../MPC/MpcStudioMk2InputDecoder.h"
 #include "../MPC/MpcStudioMk2LedProtocol.h"
-#include "../MPC/Sequencer/MpcSequenceLauncher.h"
 
 #include <android/log.h>
 #include <jni.h>
@@ -20,6 +19,7 @@ constexpr const char* kTag = "MpcMk2Groovebox";
 
 std::atomic<bool> sequenceLauncherEnabled{false};
 std::atomic<std::size_t> sequenceLauncherBank{0};
+std::atomic<int> pendingSequenceLauncherPad{-1};
 
 const char* eventTypeName(mpc::studio::InputEventType type) {
     using Type = mpc::studio::InputEventType;
@@ -63,36 +63,17 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
         auto& core = mpc::MpcCore::instance();
 
         if (sequenceLauncherEnabled.load(std::memory_order_acquire)) {
-            if (!event->pressed) {
-                return std::nullopt;
+            if (event->pressed) {
+                pendingSequenceLauncherPad.store(
+                        static_cast<int>(event->padIndex),
+                        std::memory_order_release);
             }
 
-            const auto bank =
-                    sequenceLauncherBank.load(std::memory_order_acquire);
-            const auto action =
-                    mpc::sequencer::handleSequencePadPress(
-                            core.projectState(),
-                            core.sequenceTransportClock(),
-                            bank,
+            return event->pressed
+                    ? mpc::studio::makePadLedSysEx(
                             event->padIndex,
-                            timestamp);
-            if (action == mpc::sequencer::SequenceLaunchAction::Unavailable) {
-                return std::nullopt;
-            }
-
-            const auto targetIndex = bank * 16u + event->padIndex;
-            const bool isActive =
-                    core.projectState().activeSequenceIndex() == targetIndex;
-            const bool isQueued =
-                    core.sequenceTransportClock().queuedSequenceIndex()
-                    == static_cast<std::int32_t>(targetIndex);
-
-            return mpc::studio::makePadLedSysEx(
-                    event->padIndex,
-                    mpc::studio::Rgb{
-                            isActive ? 96u : 24u,
-                            isQueued ? 127u : 24u,
-                            24u});
+                            mpc::studio::Rgb{24u, 72u, 24u})
+                    : std::nullopt;
         }
 
         if (event->pressed) {
@@ -194,6 +175,22 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLauncherConte
     sequenceLauncherBank.store(
             bank < 0 ? 0u : static_cast<std::size_t>(bank),
             std::memory_order_release);
+    if (enabled != JNI_TRUE) {
+        pendingSequenceLauncherPad.store(
+                -1,
+                std::memory_order_release);
+    }
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeConsumeSequenceLauncherPad(
+        JNIEnv* /* env */,
+        jclass /* clazz */)
+{
+    return static_cast<jint>(
+            pendingSequenceLauncherPad.exchange(
+                    -1,
+                    std::memory_order_acq_rel));
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
