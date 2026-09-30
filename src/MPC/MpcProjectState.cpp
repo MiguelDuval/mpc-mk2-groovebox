@@ -55,6 +55,63 @@ MpcProjectState::MpcProjectState() {
 }
 
 
+bool MpcProjectState::selectSequence(std::size_t sequenceIndex) noexcept {
+    if (sequenceIndex >= project_.sequences.size()) {
+        return false;
+    }
+    activeSequenceIndex_ = sequenceIndex;
+    activeTrackIndex_ = 0;
+    return true;
+}
+
+bool MpcProjectState::addSequence(
+        std::string name,
+        std::int32_t bars) {
+    if (project_.sequences.size() >= 128
+            || bars < 1
+            || bars > 128) {
+        return false;
+    }
+
+    domain::Sequence sequence;
+    const auto number = project_.sequences.size() + 1;
+    sequence.id = "sequence-" + std::to_string(number);
+    sequence.name = name.empty()
+            ? ("Sequence " + (number < 10 ? "0" : "")
+                    + std::to_string(number))
+            : std::move(name);
+    sequence.tempoBpm = 120.0;
+    sequence.numerator = 4;
+    sequence.denominator = 4;
+    sequence.lengthTicks = sequencer::sequenceLengthForBars(
+            bars, sequence.numerator, sequence.denominator);
+    sequence.loopEnabled = true;
+    sequence.loopStartTicks = 0;
+    sequence.loopEndTicks = sequence.lengthTicks;
+    sequence.quantizeGridTicks = 240;
+    sequence.swingPercent = 0;
+
+    const auto programId = activeDrumProgram().id;
+    domain::Track track;
+    track.id = sequence.id + "-track-1";
+    track.name = "DRUMS";
+    track.type = domain::ProgramType::Drum;
+    track.kind = domain::TrackKind::Drum;
+    track.programId = programId;
+
+    domain::Pattern pattern;
+    pattern.id = track.id + "-pattern-1";
+    pattern.name = "Pattern 01";
+    pattern.lengthTicks = sequence.lengthTicks;
+    track.patterns.push_back(std::move(pattern));
+    sequence.tracks.push_back(std::move(track));
+
+    project_.sequences.push_back(std::move(sequence));
+    activeSequenceIndex_ = project_.sequences.size() - 1;
+    activeTrackIndex_ = 0;
+    return true;
+}
+
 bool MpcProjectState::setTrackLengthBars(
         std::size_t trackIndex,
         std::int32_t bars) noexcept {
