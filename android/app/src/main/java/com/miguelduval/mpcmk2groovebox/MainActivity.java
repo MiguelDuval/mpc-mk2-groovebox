@@ -102,6 +102,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView sequenceBarsView;
     private TextView sequenceTimeSignatureView;
     private TextView sequenceLoopView;
+    private TextView sequenceQuantizeView;
+    private TextView sequenceSwingView;
     private TextView sequenceTrackInfoView;
     private final Handler sequenceUiHandler = new Handler(Looper.getMainLooper());
     private Runnable sequenceUiUpdater;
@@ -344,7 +346,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         Button play = topButton("PLAY");
         play.setOnClickListener(v -> {
-            final String result = nativeAudioStart();
+            final String result = nativeSequenceStart();
             setAudioStateFromResult(result);
             setBottomStatus(result);
         });
@@ -352,9 +354,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         Button stop = topButton("STOP");
         stop.setOnClickListener(v -> {
-            final String result = nativeAudioStop();
-            setAudioStateFromResult(result);
-            setBottomStatus(result);
+            final String sequenceResult = nativeSequenceStop();
+            final String audioResult = nativeAudioStop();
+            setAudioStateFromResult(audioResult);
+            setBottomStatus(sequenceResult + " | " + audioResult);
         });
         bar.addView(stop, new LinearLayout.LayoutParams(dp(72), dp(38)));
 
@@ -983,16 +986,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(92)));
 
         LinearLayout tools = row();
-        TextView qView = label("", 11, TEXT);
-        qView.setGravity(Gravity.CENTER);
-        qView.setBackground(strokeBackground(SURFACE_2, LINE, 8));
-        tools.addView(qView, new LinearLayout.LayoutParams(0, dp(42), 1));
+        sequenceQuantizeView = label("", 11, TEXT);
+        sequenceQuantizeView.setGravity(Gravity.CENTER);
+        sequenceQuantizeView.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        tools.addView(sequenceQuantizeView, new LinearLayout.LayoutParams(0, dp(42), 1));
         tools.addView(actionButton("Q −", v -> adjustQuantizeGrid(-1)), touchButtonWeight());
         tools.addView(actionButton("Q +", v -> adjustQuantizeGrid(1)), touchButtonWeight());
-        TextView swingView = label("", 11, TEXT);
-        swingView.setGravity(Gravity.CENTER);
-        swingView.setBackground(strokeBackground(SURFACE_2, LINE, 8));
-        tools.addView(swingView, new LinearLayout.LayoutParams(0, dp(42), 1));
+        sequenceSwingView = label("", 11, TEXT);
+        sequenceSwingView.setGravity(Gravity.CENTER);
+        sequenceSwingView.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        tools.addView(sequenceSwingView, new LinearLayout.LayoutParams(0, dp(42), 1));
         tools.addView(actionButton("SWING −5", v -> changeSequenceSwing(-5)), touchButtonWeight());
         tools.addView(actionButton("SWING +5", v -> changeSequenceSwing(5)), touchButtonWeight());
         page.addView(tools);
@@ -1047,8 +1050,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSequenceTrackList(trackList);
         refreshSequenceControls();
 
-        qView.setText(sequenceGridLabel(nativeSequenceGetQuantizeGrid()));
-        swingView.setText("SWING " + nativeSequenceGetSwing() + "%");
+        refreshSequencePageTools();
 
         sequenceUiUpdater = new Runnable() {
             @Override public void run() {
@@ -1239,6 +1241,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void refreshSequencePageTools() {
         refreshSequenceControls();
+        if (sequenceQuantizeView != null) {
+            sequenceQuantizeView.setText(
+                    sequenceGridLabel(nativeSequenceGetQuantizeGrid()));
+        }
+        if (sequenceSwingView != null) {
+            sequenceSwingView.setText(
+                    "SWING " + nativeSequenceGetSwing() + "%");
+        }
     }
 
     private void changeSequenceSwing(int delta) {
