@@ -25,5 +25,52 @@ int main() {
     state.activeDrumProgram().pad(0).layer(0).sample = sampleId;
     assert(state.activeDrumProgram().pad(0).layer(0).isAssigned());
 
+    assert(state.project().sequences.size() == 1);
+    const auto& sequence = state.activeSequence();
+    assert(sequence.tempoBpm == 120.0);
+    assert(sequence.numerator == 4);
+    assert(sequence.denominator == 4);
+    assert(sequence.lengthTicks == 15360);
+    assert(sequence.loopEnabled);
+    assert(sequence.loopStartTicks == 0);
+    assert(sequence.loopEndTicks == sequence.lengthTicks);
+    assert(sequence.tracks.size() == 1);
+    assert(sequence.tracks[0].kind == mpc::domain::TrackKind::Drum);
+
+    assert(state.setSequenceTempo(140.0));
+    assert(state.activeSequence().tempoBpm == 140.0);
+    assert(!state.setSequenceTempo(10.0));
+    assert(!state.setSequenceBars(0));
+    assert(!state.setSequenceBars(129));
+
+    assert(state.setSequenceBars(8));
+    assert(state.activeSequence().lengthTicks == 30720);
+    assert(state.activeSequence().loopEndTicks == 30720);
+
+    assert(state.setSequenceLoop(true, 3, 6));
+    const auto loopStart = state.activeSequence().loopStartTicks;
+    const auto loopEnd = state.activeSequence().loopEndTicks;
+    assert(loopStart == 7680);
+    assert(loopEnd == 23040);
+
+    assert(state.setSequenceTimeSignature(3, 4));
+    assert(state.activeSequence().lengthTicks == 23040);
+    assert(state.activeSequence().loopStartTicks == 5760);
+    assert(state.activeSequence().loopEndTicks == 17280);
+
+    assert(state.setSequenceQuantizeGrid(240));
+    assert(state.activeSequence().quantizeGridTicks == 240);
+    assert(!state.setSequenceQuantizeGrid(241));
+    assert(state.setSequenceSwing(35));
+    assert(state.activeSequence().swingPercent == 35);
+    assert(!state.setSequenceSwing(101));
+
+    assert(state.addTrack(mpc::domain::TrackKind::Audio));
+    assert(state.activeSequence().tracks.size() == 2);
+    assert(state.activeTrackIndex() == 1);
+    assert(state.selectTrack(0));
+    assert(state.activeTrackIndex() == 0);
+    assert(!state.selectTrack(99));
+
     return 0;
 }
