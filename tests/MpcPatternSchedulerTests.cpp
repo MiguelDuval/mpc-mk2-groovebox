@@ -89,6 +89,28 @@ int main() {
                    output)
                    .written == 0);
 
+    mpc::domain::Pattern rangedPattern;
+    rangedPattern.lengthTicks = 3840;
+    rangedPattern.notes = {
+            {0, 30, 36, 100, 127, 1},
+            {960, 30, 37, 110, 127, 1},
+            {1920, 30, 38, 120, 127, 1},
+            {2880, 30, 39, 90, 127, 1}};
+
+    const ranged = mpc::sequencer::schedulePatternWindowInRange(
+            rangedPattern,
+            mpc::sequencer::TickWindow{960, 960, 1},
+            960,
+            2880,
+            1234u,
+            output);
+    assert(ranged.written == 2);
+    assert(ranged.eligible == 2);
+    assert(output[0].patternTick == 1920);
+    assert(output[0].offsetTicks == 960);
+    assert(output[1].patternTick == 960);
+    assert(output[1].offsetTicks == 1920);
+
     pattern.lengthTicks = 0;
     assert(mpc::sequencer::schedulePatternWindow(
                    pattern,
