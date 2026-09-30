@@ -326,6 +326,7 @@ jobs:
             -o build/native-tests/mpc_project_state_tests
           build/native-tests/mpc_project_state_tests
 
+      # Track performance state is part of the project-state contract.
       - name: Test sequence transport clock
         shell: bash
         run: |
