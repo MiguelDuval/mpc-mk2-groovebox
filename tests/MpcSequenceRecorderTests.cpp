@@ -7,18 +7,6 @@
 
 namespace {
 
-void testReplaceRecording() {
-    mpc::MpcProjectState state;
-    auto& track = state.activeSequence().tracks[0];
-    track.recordArmed = true;
-
-    track.patterns.front().notes.push_back({
-            0, 60, state.activeDrumProgram().pad(0).midiNote, 100, 127, 1});
-
-    auto& recorder = mpc::sequencer::MpcSequenceRecorder{};
-    // Keep the recorder lifetime explicit for the queue-driven test.
-}
-
 void testReplaceAndQuantize() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
