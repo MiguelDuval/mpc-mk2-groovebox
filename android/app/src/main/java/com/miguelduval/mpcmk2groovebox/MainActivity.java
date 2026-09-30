@@ -486,6 +486,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void clearPhysicalPadContexts() {
         nativeSequenceSetLauncherContext(false, 0);
         nativeSequenceSetTrackPerformanceContext(false, 0);
+        clearSequenceLauncherLeds();
 
         if (!lastTrackPerformanceLedSignature.isEmpty() && midiBridge != null) {
             midiBridge.allPadsOff();
@@ -3652,6 +3653,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getWindow().getDecorView(), "Sequence track performance controls");
         if (muteGrid == null || muteGrid.getHeight() <= dp(120)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: track performance grid");
+            return;
+        }
+
+        View muteQuantize = findViewWithContentDescription(
+                getWindow().getDecorView(), "Track mute Time Correct");
+        if (muteQuantize == null
+                || !"Q OFF".contentEquals(((TextView) muteQuantize).getText())) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: track mute Time Correct");
             return;
         }
 
