@@ -34,14 +34,14 @@ public:
     MpcSequencePlaybackSession(const MpcSequencePlaybackSession&) = delete;
     MpcSequencePlaybackSession& operator=(const MpcSequencePlaybackSession&) = delete;
 
-    bool start() {
+    bool start(std::int64_t startPositionTicks = 0) {
         stop();
 
         const auto& sequence = projectState_.activeSequence();
         const auto& program = projectState_.activeDrumProgram();
 
         for (const auto& track : sequence.tracks) {
-            if (track.muted || track.patterns.empty()) {
+            if (track.patterns.empty()) {
                 continue;
             }
             if (track.kind != domain::TrackKind::Drum) {
@@ -52,7 +52,8 @@ public:
                     sequence,
                     track.patterns.front(),
                     program,
-                    audio_.triggerQueue()));
+                    audio_.triggerQueue(),
+                    &track.muted));
         }
 
         if (playbacks_.empty()) {
@@ -61,6 +62,7 @@ public:
 
         for (auto& playback : playbacks_) {
             playback->reset();
+            playback->setPositionTicks(startPositionTicks);
             playback->start();
         }
         return true;
