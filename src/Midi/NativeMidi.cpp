@@ -80,7 +80,7 @@ std::optional<std::array<std::uint8_t, 12>> handleIncoming(
                     event->pressed
                             ? event->value
                             : static_cast<std::uint8_t>(0),
-                    event->pressed ? 1u : 0u};
+                    event->pressed ? static_cast<std::uint8_t>(1) : static_cast<std::uint8_t>(0)};
 
             if (!core.sequenceRecordQueue().tryEnqueue(captured)) {
                 __android_log_print(
