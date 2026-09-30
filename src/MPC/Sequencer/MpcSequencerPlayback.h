@@ -64,6 +64,21 @@ public:
             std::int64_t deltaTicks,
             std::uint32_t seed,
             std::int32_t sampleRate) noexcept {
+        return advanceInternal(deltaTicks, seed, sampleRate, true);
+    }
+
+    SequencerPlaybackResult advanceSilently(
+            std::int64_t deltaTicks,
+            std::int32_t sampleRate) noexcept {
+        return advanceInternal(deltaTicks, 0, sampleRate, false);
+    }
+
+private:
+    SequencerPlaybackResult advanceInternal(
+            std::int64_t deltaTicks,
+            std::uint32_t seed,
+            std::int32_t sampleRate,
+            bool emitEvents) noexcept {
         SequencerPlaybackResult result;
 
         if (sampleRate <= 0) {
@@ -89,6 +104,11 @@ public:
             result.wrapped = deltaTicks >= std::max<std::int64_t>(
                     1,
                     loopEnd - position);
+        }
+
+        if (!emitEvents) {
+            runtime_.advancePosition(deltaTicks);
+            return result;
         }
 
         const auto schedule = runtime_.advance(
