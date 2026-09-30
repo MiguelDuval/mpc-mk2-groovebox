@@ -108,13 +108,13 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             return std::nullopt;
         }
 
-        if (event->pressed) {
+        if (event->pressed && padRouting.targetPadIndex != 0xFF) {
             const auto& pad =
                     core.projectState().activeDrumProgram()
-                            .pad(event->padIndex);
+                            .pad(padRouting.targetPadIndex);
             if (!pad.muted) {
                 core.audio().triggerPad(
-                        event->padIndex,
+                        padRouting.targetPadIndex,
                         padRouting.velocity);
             }
         }
@@ -132,7 +132,7 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             const mpc::sequencer::SequenceRecordEvent captured{
                     tick,
                     static_cast<std::uint8_t>(trackIndex),
-                    event->padIndex,
+                    padRouting.targetPadIndex,
                     event->pressed
                             ? padRouting.velocity
                             : static_cast<std::uint8_t>(0),
