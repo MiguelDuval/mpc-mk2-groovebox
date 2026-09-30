@@ -47,7 +47,7 @@ At the hardware-mapping research checkpoint:
 - physical pads are the only controller inputs currently used as working musical controls;
 - pad velocity and physical pad numbering are already part of the working path;
 - the native decoder recognizes the documented button-note, jog, jog-press, touch-strip CC and pad-aftertouch message families;
-- non-pad controls are currently decoded/logged or have protocol helpers, but semantic application routing is not yet implemented;
+- non-pad P0 controls now pass through the semantic adapter and the shared application command surface; remaining gaps are explicitly marked by control section below;
 - button LED, touch-strip LED, Note Repeat LED and LCD message generators exist, but are not yet a complete state-driven feedback subsystem.
 
 This distinction is important: **protocol support is not the same thing as functional mapping**.
@@ -111,7 +111,7 @@ Primary semantic contract:
 
 The exact context should be selected by the application, not by a raw MIDI note number.
 
-Status: **SEMANTICALLY ROUTED — Data Dial selects the active Track/Sequence context; Plus/Minus share the same adjustment command path; Sample Start/End/Tune use contextual parameter focus**.
+Status: **SEMANTICALLY ROUTED — Data Dial and +/- share context-aware adjustment/selection behavior.**.
 
 Priority: **P0**.
 
@@ -127,7 +127,7 @@ Semantic contract:
 - move selection when the current context defines a discrete selector;
 - preserve the same context chosen by the most recent semantic navigation command.
 
-Status: **DECODED, NOT SEMANTICALLY ROUTED**.
+Status: **SEMANTICALLY ROUTED — +/- emit the same focused adjustment command family as the Data Dial.**.
 
 Priority: **P0**.
 
@@ -146,7 +146,7 @@ Semantic contract:
 
 Implementation rule: never implement Shift combinations by checking raw MIDI numbers inside unrelated screens. The hardware adapter emits a semantic chord/action.
 
-Status: **SEMANTICALLY ROUTED as a stateful modifier layer**.
+Status: **SEMANTICALLY ROUTED as a stateful Shift modifier in the native hardware adapter.**.
 
 Priority: **P0**.
 
@@ -179,7 +179,7 @@ For our product the canonical destinations are:
 
 The Mode+pad gesture must be prioritized before implementing a large menu. It is exactly the kind of hardware-first navigation that lets the screen stay visually simple.
 
-Status: **MODE INPUT DECODED; CHORD ROUTING NOT IMPLEMENTED**.
+Status: **MODE+PAD chord routing implemented for all currently supported destinations; unsupported printed destinations remain explicitly reserved.**.
 
 Priority: **P0** for implemented destinations.
 
@@ -194,7 +194,7 @@ Semantic action: `Navigate(Main)` or `Navigate(TrackView)`.
 
 The action must not stop audio, clear the playhead or reset sequence state.
 
-Status: **DECODED, NOT ROUTED**.
+Status: **MAIN/TRACK VIEW semantic actions are routed without altering transport state.**.
 
 Priority: **P0**.
 
@@ -209,7 +209,7 @@ MIDI note 13.
 
 Our existing sequencer already has a bounded multi-Sequence model and explicit sequence selection/queueing. The hardware mapping should reuse that contract rather than create a second sequence selector.
 
-Status: **DECODED, NOT ROUTED**.
+Status: **TRACK and SEQUENCE selection contexts are routed through the existing domain selection/queue contract.**.
 
 Priority: **P0**.
 
@@ -237,7 +237,7 @@ MIDI note 50.
 
 The Android document picker is an implementation detail. The product-level action remains Browser navigation.
 
-Status: **DECODED, UI FOUNDATION EXISTS**.
+Status: **BROWSE and Browser Up semantic actions are routed; Android document picker remains the current transport implementation.**.
 
 Priority: **P0**.
 
@@ -251,7 +251,7 @@ MIDI note 42.
 
 Our domain supports eight layers, while the Akai manual's Studio MkII description exposes the first four layer-selection targets directly. The application should use the same one-control context idea while extending the underlying model to eight layers; do not hard-code a four-layer product limit.
 
-Status: **DECODED, DOMAIN SUPPORT EXISTS, HARDWARE ROUTING NOT IMPLEMENTED**.
+Status: **PARTIAL — Sample Select enters a layer-selection focus using the existing eight-layer domain; full physical sample browsing remains pending.**.
 
 Priority: **P1**.
 
@@ -268,7 +268,7 @@ Semantic action:
 
 The current shared waveform editor already owns non-destructive region editing. The hardware action should address that same domain-backed state.
 
-Status: **DECODED, UI/DATA MODEL EXISTS, HARDWARE ROUTING NOT IMPLEMENTED**.
+Status: **ROUTED — Data Dial, +/- and Touch Strip address the shared sample-region domain.**.
 
 Priority: **P1**.
 
@@ -282,7 +282,7 @@ Semantic action:
 - data dial / +/- → adjust end;
 - repeated press → cycle layer.
 
-Status: **DECODED, UI/DATA MODEL EXISTS, HARDWARE ROUTING NOT IMPLEMENTED**.
+Status: **ROUTED — Data Dial, +/- and Touch Strip address the shared sample-region domain.**.
 
 Priority: **P1**.
 
@@ -296,7 +296,7 @@ MIDI note 79.
 
 Our domain already supports pad tuning plus per-layer tuning. The physical action must operate on the selected layer where that context is active.
 
-Status: **DECODED, DOMAIN/AUDIO SUPPORT EXISTS, HARDWARE ROUTING NOT IMPLEMENTED**.
+Status: **ROUTED — Data Dial, +/- and Touch Strip address per-layer tuning through the shared domain/audio command surface.**.
 
 Priority: **P1**.
 
@@ -316,7 +316,7 @@ Semantic contract:
 
 The existing sequencer already has quantize and swing foundations. Hardware actions must dispatch to those same operations.
 
-Status: **QUANTIZE ROUTED to the selected Drum pattern; Timing Correct ON/OFF routed to the sequence recorder; Shift+Quantize remains selection-aware and intentionally reserved until an explicit event-selection contract exists**.
+Status: **QUANTIZE routed to the selected Drum pattern; Timing Correct ON/OFF routed to the sequence recorder; Shift+Quantize remains reserved until an explicit event-selection contract exists.**.
 
 Priority: **P1**.
 
@@ -329,7 +329,7 @@ MIDI note 66.
 
 Primary target contexts are SAMPLE waveform, GRID and other timeline views. The action must be context-sensitive and should never resize the global shell itself.
 
-Status: **DECODED, UI waveform/grid infrastructure EXISTS, HARDWARE ROUTING NOT IMPLEMENTED**.
+Status: **SEMANTIC CONTEXT ROUTED; actual horizontal/vertical zoom gestures remain pending.**.
 
 Priority: **P1**.
 
@@ -344,7 +344,7 @@ The controller pads become the mute/assignment matrix while the mode is active.
 
 This is a live-performance feature and must be implemented without requiring navigation through a menu.
 
-Status: **DECODED, SEMANTIC ROUTING NOT IMPLEMENTED**.
+Status: **TRACK MUTE and PAD MUTE contexts and pad targets are routed; mute is live-safe because playback sessions remain intact.**.
 
 Priority: **P0**.
 
@@ -400,7 +400,7 @@ The four buttons therefore form one 8-bank selection mechanism. They should upda
 
 The pad-bank operation must not create or destroy pads; it changes which logical range the sixteen physical pads address.
 
-Status: **DECODED, BANK-SELECTION ROUTING NOT IMPLEMENTED**.
+Status: **PAD BANK state is routed; launcher bank selection is operational, while normal performance remains constrained by the current 16-pad domain.**.
 
 Priority: **P0**.
 
@@ -454,7 +454,7 @@ Canonical semantics:
 
 These commands must use the existing sequence transport clock. UI buttons and physical transport controls must dispatch the exact same semantic operations.
 
-Status: **DECODED, SOFTWARE TRANSPORT EXISTS, HARDWARE ROUTING NOT IMPLEMENTED**.
+Status: **TRANSPORT routed to the existing sequence command surface; Play resumes the stopped playhead position.**.
 
 Priority: **P0**.
 
@@ -478,7 +478,7 @@ Semantic actions:
 
 The sequencer already uses **Nudge** as a separate note-editing concept (signed microtiming offset). Therefore the physical navigation buttons must be represented by semantic names such as `StepLeft`, `StepRight`, `BarLeft`, `BarRight`, not by `NudgeLeft` etc.
 
-Status: **DECODED, PARTIAL SEQUENCER INFRASTRUCTURE EXISTS, HARDWARE ROUTING NOT IMPLEMENTED**.
+Status: **STEP/BAR semantic routing is implemented for stopped edit navigation; Locate variants remain reserved.**.
 
 Priority: **P0 for transport/edit navigation**.
 
@@ -522,7 +522,7 @@ MIDI note 53.
 
 Local tap-tempo calculation should feed the same sequence clock already used by the scheduler. Ableton Link integration is later and must not become a dependency of this local action.
 
-Status: **DECODED, TEMPO MODEL EXISTS, HARDWARE ROUTING NOT IMPLEMENTED**.
+Status: **TAP TEMPO is routed to the sequence tempo model. Master-tempo policy remains separate.**.
 
 Priority: **P0** for tap tempo; **P2** for master-tempo policy.
 
@@ -566,7 +566,7 @@ Touch Strip / Config button = note 0:
 
 Touch-strip LED segments are CC 57–65 and should mirror the active value/mode.
 
-Status: **CC DECODED; contextual Sample Start/End/Tune control routed; Note Repeat division and Touch NOTE 78 handling remain separate**.
+Status: **CC DECODED; contextual Sample Start/End/Tune control routed. Note Repeat division/Touch NOTE 78 and Touch-strip LED feedback remain separate follow-up work.**.
 
 Priority: **P0 basic performance value; P1 contextual modes**.
 
@@ -606,7 +606,7 @@ The controller accepts per-pad RGB values. The application should use the LEDs f
 
 Do not drive RGB continuously from a UI timer. Generate feedback from semantic state changes.
 
-Status: **WORKING FOR PAD TRIGGER FEEDBACK AND SEQUENCE LAUNCHER; broader state model pending**.
+Status: **WORKING for pad trigger/launcher feedback; broader semantic mode coloring and bank-state feedback remain pending.**.
 
 Priority: **P0**.
 
