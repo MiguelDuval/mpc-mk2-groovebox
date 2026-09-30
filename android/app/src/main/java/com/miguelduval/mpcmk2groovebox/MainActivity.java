@@ -184,6 +184,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceStatus();
     private static native int nativeSequenceGetIndex();
     private static native int nativeSequenceGetCount();
+    private static native int nativeSequenceGetQueuedIndex();
     private static native String nativeSequenceSelect(int sequenceIndex);
     private static native String nativeSequencePrevious();
     private static native String nativeSequenceNext();
@@ -1148,7 +1149,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void refreshSequenceControls() {
         if (sequenceStatusView == null) return;
-        sequenceStatusView.setText(nativeSequenceStatus());
+        final String sequenceStatus = nativeSequenceStatus();
+        final int queuedIndex = nativeSequenceGetQueuedIndex();
+        if (queuedIndex >= 0) {
+            sequenceStatusView.setText(
+                    sequenceStatus
+                            + "  | QUEUED → SEQ "
+                            + (queuedIndex + 1));
+        } else {
+            sequenceStatusView.setText(sequenceStatus);
+        }
 
         sequenceTempoView.setText(String.format(
                 Locale.ROOT, "%.1f", nativeSequenceGetTempo()));
@@ -1396,11 +1406,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeSequenceIsPlaying());
 
         if (sequenceTransportView != null) {
+            final int queuedIndex = nativeSequenceGetQueuedIndex();
+            final String queueLabel = queuedIndex >= 0
+                    && queuedIndex < sequenceCount
+                    ? String.format(Locale.ROOT, " →S%02d", queuedIndex + 1)
+                    : "";
             sequenceTransportView.setText(String.format(
                     Locale.ROOT,
-                    "S%02d/%02d %s %.1f",
+                    "S%02d/%02d%s %s %.1f",
                     sequenceIndex + 1,
                     sequenceCount,
+                    queueLabel,
                     formatSequencePosition(positionTicks),
                     tempo));
         }
