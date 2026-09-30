@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MPC/Domain/MpcDomain.h"
+#include "MPC/Sequencer/MpcSequenceSettings.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -32,6 +33,49 @@ public:
         return project_.drumPrograms[activeDrumProgramIndex_];
     }
 
+    domain::Sequence& activeSequence() noexcept {
+        return project_.sequences[activeSequenceIndex_];
+    }
+
+    const domain::Sequence& activeSequence() const noexcept {
+        return project_.sequences[activeSequenceIndex_];
+    }
+
+    std::size_t activeSequenceIndex() const noexcept {
+        return activeSequenceIndex_;
+    }
+
+    std::size_t activeTrackIndex() const noexcept {
+        return activeTrackIndex_;
+    }
+
+    bool selectTrack(std::size_t trackIndex) noexcept {
+        if (trackIndex >= activeSequence().tracks.size()) {
+            return false;
+        }
+        activeTrackIndex_ = trackIndex;
+        return true;
+    }
+
+    bool setSequenceTempo(double tempoBpm) noexcept;
+    bool setSequenceBars(std::int32_t bars) noexcept;
+    bool setSequenceTimeSignature(
+            std::int32_t numerator,
+            std::int32_t denominator) noexcept;
+    bool setSequenceLoop(
+            bool enabled,
+            std::int32_t startBar,
+            std::int32_t endBar) noexcept;
+    bool setSequenceQuantizeGrid(std::int32_t gridTicks) noexcept;
+    bool setSequenceSwing(std::int32_t swingPercent) noexcept;
+
+    bool addTrack(
+            domain::TrackKind kind,
+            std::string name = {}) ;
+    
+    std::string sequenceStatus() const;
+    std::string trackStatus(std::size_t trackIndex) const;
+
     domain::SampleId registerSample(
             std::string name,
             std::string path,
@@ -43,6 +87,8 @@ public:
 private:
     domain::Project project_{};
     std::size_t activeDrumProgramIndex_ = 0;
+    std::size_t activeSequenceIndex_ = 0;
+    std::size_t activeTrackIndex_ = 0;
     std::uint32_t nextSampleId_ = 1;
 };
 
