@@ -178,6 +178,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native float nativeAudioGetRecordingPeak();
     private static native int nativeAudioGetRecordingFrameCapacity();
 
+    private static native int nativeSequenceGetCount();
+    private static native int nativeSequenceGetSelected();
+    private static native String nativeSequenceSelect(int sequenceIndex);
+    private static native String nativeSequenceAdd(int bars);
     private static native String nativeSequenceStatus();
     private static native double nativeSequenceGetTempo();
     private static native String nativeSequenceSetTempo(double tempo);
@@ -907,6 +911,34 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
+
+        LinearLayout sequenceChooser = row();
+        TextView sequenceSelectorView = label("", 13, TEXT);
+        sequenceSelectorView.setGravity(Gravity.CENTER);
+        sequenceSelectorView.setTypeface(Typeface.DEFAULT_BOLD);
+        sequenceSelectorView.setBackground(strokeBackground(SURFACE_2, LINE, 8));
+        sequenceChooser.addView(sequenceSelectorView,
+                new LinearLayout.LayoutParams(0, dp(42), 1.4f));
+        sequenceChooser.addView(actionButton("SEQ −", v -> {
+            final int count = nativeSequenceGetCount();
+            final int current = nativeSequenceGetSelected();
+            final int next = current <= 0 ? count - 1 : current - 1;
+            setBottomStatus(nativeSequenceSelect(next));
+            showSequencePage();
+        }), touchButtonWeight());
+        sequenceChooser.addView(actionButton("SEQ +", v -> {
+            final int count = nativeSequenceGetCount();
+            final int current = nativeSequenceGetSelected();
+            final int next = count <= 0 ? 0 : (current + 1) % count;
+            setBottomStatus(nativeSequenceSelect(next));
+            showSequencePage();
+        }), touchButtonWeight());
+        sequenceChooser.addView(actionButton("+ SEQ", v -> {
+            setBottomStatus(nativeSequenceAdd(4));
+            showSequencePage();
+        }), touchButtonWeight());
+        page.addView(sequenceChooser);
+
         page.addView(sectionLabel("SEQUENCE / MAIN"));
 
         sequenceStatusView = label("", 13, TEXT);
@@ -1164,6 +1196,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void refreshSequenceControls() {
         if (sequenceStatusView == null) return;
         sequenceStatusView.setText(nativeSequenceStatus());
+        final int sequenceCount = nativeSequenceGetCount();
+        final int sequenceSelected = nativeSequenceGetSelected() + 1;
 
         sequenceTempoView.setText(String.format(
                 Locale.ROOT, "%.1f", nativeSequenceGetTempo()));
@@ -1190,6 +1224,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             + "  •  "
                             + nativeSequenceTrackStatus(
                                     nativeSequenceGetSelectedTrack()));
+        }
+
+        final View root = sequenceStatusView.getParent();
+        if (root instanceof LinearLayout) {
+            // Keep the chooser's label synchronized with the active sequence.
+            LinearLayout chooser = (LinearLayout) root;
+            View first = chooser.getChildAt(0);
+            if (first instanceof TextView) {
+                ((TextView) first).setText(
+                        "SEQUENCE " + sequenceSelected + " / " + sequenceCount);
+            }
         }
     }
 
