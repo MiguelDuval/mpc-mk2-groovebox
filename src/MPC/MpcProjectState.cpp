@@ -361,7 +361,7 @@ std::string MpcProjectState::sequenceStatus() const {
                     sequence.numerator, sequence.denominator));
 
     std::ostringstream out;
-    out << "SEQ 1  " << sequence.name
+    out << "SEQ " << (activeSequenceIndex_ + 1) << "  " << sequence.name
         << "  | " << std::fixed << std::setprecision(1)
         << sequence.tempoBpm << " BPM"
         << "  | " << sequence.numerator << "/" << sequence.denominator
