@@ -17,6 +17,7 @@
 #include "MPC/Sequencer/MpcSequenceLauncher.h"
 #include "MPC/Sequencer/MpcSequencePlaybackSession.h"
 #include "MPC/Sequencer/MpcSequenceSettings.h"
+#include "MPC/Sequencer/MpcLocatePolicy.h"
 
 namespace {
 
@@ -2166,6 +2167,240 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdvance(
             std::min<std::int64_t>(
                     std::numeric_limits<jint>::max(),
                     sequenceSession().positionTicks()));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLocator(
+        JNIEnv* env, jobject /* thiz */, jint slot)
+{
+    if (slot < 0
+            || slot >= static_cast<jint>(
+                    mpc::sequencer::locate::kLocatorCount)) {
+        return toJString(env, "Locator set failed: invalid slot");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    auto& sequence = core.projectState().activeSequence();
+    const auto now = monotonicNanos();
+    const auto position =
+            mpc::sequencer::locate::clampTick(
+                    core.sequenceTransportClock().positionAtTimestamp(now),
+                    sequence.lengthTicks);
+    sequence.locatorTicks[static_cast<std::size_t>(slot)] = position;
+
+    return toJString(
+            env,
+            "LOCATOR "
+                    + std::to_string(slot + 1)
+                    + " SET • "
+                    + std::to_string(position)
+                    + " ticks");
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetLocator(
+        JNIEnv* /* env */, jobject /* thiz */, jint slot)
+{
+    if (slot < 0
+            || slot >= static_cast<jint>(
+                    mpc::sequencer::locate::kLocatorCount)) {
+        return -1;
+    }
+
+    return static_cast<jlong>(
+            mpc::MpcCore::instance()
+                    .projectState()
+                    .activeSequence()
+                    .locatorTicks[static_cast<std::size_t>(slot)]);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceJumpToLocator(
+        JNIEnv* env, jobject /* thiz */, jint slot)
+{
+    if (slot < 0
+            || slot >= static_cast<jint>(
+                    mpc::sequencer::locate::kLocatorCount)) {
+        return toJString(env, "Locator jump failed: invalid slot");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    const auto& sequence = core.projectState().activeSequence();
+    const auto target =
+            sequence.locatorTicks[static_cast<std::size_t>(slot)];
+    if (target < 0) {
+        return toJString(
+                env,
+                "LOCATOR "
+                        + std::to_string(slot + 1)
+                        + " EMPTY");
+    }
+
+    const auto now = monotonicNanos();
+    const auto requested = mpc::sequencer::locate::clampTick(
+            target,
+            sequence.lengthTicks);
+
+    sequenceSession().setPositionTicks(requested);
+    core.sequenceTransportClock().update(
+            sequence,
+            requested,
+            now,
+            sequenceSession().isPlaying());
+    const auto normalized =
+            core.sequenceTransportClock().snapshot().positionTicks;
+    sequenceSession().setPositionTicks(normalized);
+
+    return toJString(
+            env,
+            "LOCATOR "
+                    + std::to_string(slot + 1)
+                    + " • JUMP "
+                    + std::to_string(normalized)
+                    + " ticks");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceLocateMoveTicks(
+        JNIEnv* env, jobject /* thiz */, jlong deltaTicks)
+{
+    auto& core = mpc::MpcCore::instance();
+    const auto& sequence = core.projectState().activeSequence();
+    const auto now = monotonicNanos();
+    const auto current =
+            core.sequenceTransportClock().positionAtTimestamp(now);
+
+    if (deltaTicks > 0
+            && current > std::numeric_limits<std::int64_t>::max() - deltaTicks) {
+        return toJString(env, "Locate move failed: tick overflow");
+    }
+    if (deltaTicks < 0
+            && current < std::numeric_limits<std::int64_t>::min() - deltaTicks) {
+        return toJString(env, "Locate move failed: tick overflow");
+    }
+
+    const auto requested = mpc::sequencer::locate::clampTick(
+            current + static_cast<std::int64_t>(deltaTicks),
+            sequence.lengthTicks);
+    sequenceSession().setPositionTicks(requested);
+    core.sequenceTransportClock().update(
+            sequence,
+            requested,
+            now,
+            sequenceSession().isPlaying());
+    const auto normalized =
+            core.sequenceTransportClock().snapshot().positionTicks;
+    sequenceSession().setPositionTicks(normalized);
+
+    return toJString(
+            env,
+            "LOCATE • PLAYHEAD "
+                    + std::to_string(normalized)
+                    + " ticks");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveToLocateBoundary(
+        JNIEnv* env, jobject /* thiz */, jint direction)
+{
+    if (direction == 0) {
+        return toJString(env, "Locate boundary failed: invalid direction");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    const auto& sequence = core.projectState().activeSequence();
+    const auto target = direction < 0
+            ? std::int64_t{0}
+            : mpc::sequencer::locate::clampTick(
+                    std::max<std::int64_t>(0, sequence.lengthTicks - 1),
+                    sequence.lengthTicks);
+    const auto now = monotonicNanos();
+
+    sequenceSession().setPositionTicks(target);
+    core.sequenceTransportClock().update(
+            sequence,
+            target,
+            now,
+            sequenceSession().isPlaying());
+    const auto normalized =
+            core.sequenceTransportClock().snapshot().positionTicks;
+    sequenceSession().setPositionTicks(normalized);
+
+    return toJString(
+            env,
+            direction < 0
+                    ? "LOCATE • SEQUENCE START"
+                    : "LOCATE • SEQUENCE END");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveToPreviousOrNextEvent(
+        JNIEnv* env, jobject /* thiz */, jint direction)
+{
+    if (direction == 0) {
+        return toJString(env, "Locate event failed: invalid direction");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    if (trackIndex >= state.activeSequence().tracks.size()) {
+        return toJString(env, "Locate event failed: no selected track");
+    }
+
+    auto& track = state.activeSequence().tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum || track.patterns.empty()) {
+        return toJString(env, "Locate event failed: selected track has no Drum pattern");
+    }
+
+    const auto& pattern = track.patterns.front();
+    const auto now = monotonicNanos();
+    const auto current =
+            core.sequenceTransportClock().positionAtTimestamp(now);
+
+    bool found = false;
+    std::int64_t target = direction < 0
+            ? std::numeric_limits<std::int64_t>::min()
+            : std::numeric_limits<std::int64_t>::max();
+    for (const auto& note : pattern.notes) {
+        const auto eventTick = std::clamp<std::int64_t>(
+                static_cast<std::int64_t>(note.tick) + note.nudgeTicks,
+                0,
+                std::max<std::int64_t>(0, pattern.lengthTicks - 1));
+        if (direction < 0) {
+            if (eventTick < current && (!found || eventTick > target)) {
+                target = eventTick;
+                found = true;
+            }
+        } else if (eventTick > current && (!found || eventTick < target)) {
+            target = eventTick;
+            found = true;
+        }
+    }
+
+    if (!found) {
+        return toJString(
+                env,
+                direction < 0
+                        ? "LOCATE • no previous event"
+                        : "LOCATE • no next event");
+    }
+
+    sequenceSession().setPositionTicks(target);
+    core.sequenceTransportClock().update(
+            state.activeSequence(),
+            target,
+            now,
+            sequenceSession().isPlaying());
+    const auto normalized =
+            core.sequenceTransportClock().snapshot().positionTicks;
+    sequenceSession().setPositionTicks(normalized);
+
+    return toJString(
+            env,
+            std::string("LOCATE • EVENT ")
+                    + std::to_string(normalized)
+                    + " ticks");
 }
 
 extern "C" JNIEXPORT jstring JNICALL
