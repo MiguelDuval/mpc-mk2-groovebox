@@ -120,6 +120,9 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcLocatePolicyTests.cpp             -o build/native-tests/mpc_locate_policy_tests
           build/native-tests/mpc_locate_policy_tests
 
+      - name: Test Android LCD renderer signature
+        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcStudioMk2LcdRendererTest
+
       - name: Test MPC Studio MkII semantic routing
         shell: bash
         run: |
