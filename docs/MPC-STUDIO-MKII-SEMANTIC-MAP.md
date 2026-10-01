@@ -797,3 +797,11 @@ Physical MkII verification is still required before this behavior is marked CONF
 ## 2026-10-01 Step Edit hardware context
 
 While `SEQ • STEP` is active, physical pad presses are routed as `StepEditPadSelected` to select the absolute step on the active 16-step page. This is an application-level MPC-style editor context, not a claim about a factory-default Studio MkII mapping. Pad selection is intentionally non-audio in this context so editing cannot accidentally retrigger the kit. Physical verification remains required.
+
+## 2026-10-01 Step Edit hardware parameter context
+
+While `SEQ • STEP` is active, the physical pads are an editor-only selection surface. The selected step becomes the target for the Data Dial and `+/-` semantic adjustment path.
+
+The Data Dial press cycles the application-level edit focus in this order: **Velocity → Probability → Ratchet → Nudge → Duration → Velocity**. Data Dial/`+/-` deltas then apply to the focused field. Shift/fine input affects Nudge and Duration resolution; discrete fields remain one-unit controls.
+
+This behavior is intentionally documented as an application ergonomics layer rather than a factory-default Studio MkII mapping. Physical hardware verification is still required before marking it CONFIRMED.
