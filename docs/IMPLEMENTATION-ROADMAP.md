@@ -123,6 +123,10 @@ After the existing transport/device foundation is protected, the first controlle
 
 All of these must dispatch semantic actions through the MPC Studio MkII adapter. Do not put controller MIDI numbers in UI code.
 
+### 2026-10-01 Step Edit hardware context
+
+- **PHYSICAL STEP SELECTION SLICE IMPLEMENTED —** while `SEQ • STEP` is active, the 16 physical pads select steps 1–16 of the current page through a semantic action; pad presses no longer trigger audio or Note Repeat in this editor context. Software step editing remains available in parallel. Physical MkII verification remains required.
+
 ### Hardware feedback — P0/P1
 
 Then make hardware state visible:
