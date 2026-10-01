@@ -386,8 +386,11 @@ public:
             }
 
             for (std::size_t pad = 0; pad < kPadCount; ++pad) {
-                const auto pressure = padAftertouch_[pad].load(
-                        std::memory_order_relaxed);
+                const float filterMultiplier =
+                        static_cast<float>(
+                                padAftertouchFilterMicro_[pad].load(
+                                        std::memory_order_relaxed))
+                        / 1000000.0f;
 
                 for (std::size_t voiceIndex = 0;
                         voiceIndex < kMaxPadVoices;
@@ -400,8 +403,7 @@ public:
                     bool anyActiveLayer = false;
 
                     const float effectiveFilterCutoff =
-                            mpc::studio::aftertouch::filterCutoffForPressure(
-                                    voice.baseFilterCutoffHz, pressure);
+                            voice.baseFilterCutoffHz * filterMultiplier;
                     if (effectiveFilterCutoff != voice.lastFilterCutoffHz) {
                         for (std::size_t layer = 0;
                                 layer < kSampleLayerCount;
