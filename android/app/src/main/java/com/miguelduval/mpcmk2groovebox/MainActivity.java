@@ -4144,7 +4144,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         final int[] parameters = getSelectedStepParameters();
-        if (parameters == null || parameters.length < 3 || parameters[0] <= 0) {
+        final int minimumParameters =
+                stepEditParameter == STEP_EDIT_PARAMETER_NUDGE ? 4
+                        : stepEditParameter == STEP_EDIT_PARAMETER_DURATION ? 5
+                        : 3;
+        if (parameters == null
+                || parameters.length < minimumParameters
+                || parameters[0] <= 0) {
             setBottomStatus("Select an active step first");
             return;
         }
