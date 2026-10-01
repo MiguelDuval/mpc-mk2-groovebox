@@ -26,5 +26,12 @@ int main() {
     assert(deltaFor(Parameter::Duration, 960, 1, true) == 60);
     assert(deltaFor(Parameter::Duration, 96, -1, false) == -24);
 
+    using mpc::sequencer::step_edit::requiredParameterCount;
+    assert(requiredParameterCount(Parameter::Velocity) == 3);
+    assert(requiredParameterCount(Parameter::Probability) == 3);
+    assert(requiredParameterCount(Parameter::Ratchet) == 3);
+    assert(requiredParameterCount(Parameter::Nudge) == 4);
+    assert(requiredParameterCount(Parameter::Duration) == 5);
+
     return 0;
 }
