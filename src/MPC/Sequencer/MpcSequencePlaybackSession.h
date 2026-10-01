@@ -116,6 +116,12 @@ public:
         return playbacks_.front()->positionTicks();
     }
 
+    void setPositionTicks(std::int64_t ticks) noexcept {
+        for (auto& playback : playbacks_) {
+            playback->setPositionTicks(ticks);
+        }
+    }
+
 private:
     MpcProjectState& projectState_;
     audio::AudioEngine& audio_;
