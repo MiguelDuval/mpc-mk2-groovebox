@@ -204,3 +204,13 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
  - **Safety:** empty steps are never created by encoder editing; playback/audio callbacks are not touched by the parameter-edit path.
  - **Feedback:** status refresh, Step Edit pad LED projection and event information remain synchronized after hardware edits.
  - Physical MkII verification remains required.
+
+## 2026-10-01 Locate hardware production slice
+
+- **LOCATE semantic mode implemented —** the MPC Studio MkII Locate button now supports a short-press toggle and a duration-based momentary hold; the application uses a 350 ms threshold as its local gesture policy.
+- **Six timeline locators implemented —** Pads 9–14 set locator slots 1–6 and Pads 1–6 jump to the corresponding slots. Locator positions belong to the active Sequence rather than the Android UI state.
+- **Live jump path implemented —** locator jumps update both the transport clock and the active playback session, so a jump can occur without tearing down the sequence playback object.
+- **Locate navigation implemented —** Locate + Step moves to the previous/next event of the selected Drum track; Locate + Bar moves to sequence start/end.
+- **Locate dial path implemented —** Data Dial and +/- move the playhead by one musical beat; Shift/fine moves by one project tick.
+- **Safety and feedback —** empty locator slots report a no-op status; leaving Locate through a display/context command clears the application Locate state; the Locate button LED mirrors active state.
+- Physical MkII verification remains required.
