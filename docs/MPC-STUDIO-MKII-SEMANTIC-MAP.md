@@ -472,13 +472,15 @@ Documented Akai meaning:
 Semantic actions:
 
 - Step < / > → move playhead one edit grid step;
+- In the STEP editor, Data Dial selects the focused step without changing musical time;
+- Shift + Data Dial adjusts the selected step Duration in quarter-grid increments;
 - Locate + Step < / > → previous/next event;
 - Bar << / >> → one bar left/right;
 - Locate + Bar << / >> → sequence grid start/end.
 
 The sequencer already uses **Nudge** as a separate note-editing concept (signed microtiming offset). Therefore the physical navigation buttons must be represented by semantic names such as `StepLeft`, `StepRight`, `BarLeft`, `BarRight`, not by `NudgeLeft` etc.
 
-Status: **STEP/BAR semantic routing is implemented for stopped edit navigation; Locate variants remain reserved.**.
+Status: **STEP/BAR semantic routing is implemented for stopped edit navigation; STEP hardware focus now uses Data Dial for step selection and Shift + Data Dial for Duration; Locate variants remain reserved.**.
 
 Priority: **P0 for transport/edit navigation**.
 
@@ -566,7 +568,7 @@ Touch Strip / Config button = note 0:
 
 Touch-strip LED segments are CC 57–65 and should mirror the active value/mode.
 
-Status: **CC DECODED; contextual Sample Start/End/Tune control routed. Note Repeat division/Touch NOTE 78 and Touch-strip LED feedback remain separate follow-up work.**.
+Status: **CC DECODED; contextual Sample Start/End/Tune control routed; Note Repeat division is routed as an independent rate context. Touch NOTE 78 mode switching and Touch-strip LED feedback remain follow-up work.**.
 
 Priority: **P0 basic performance value; P1 contextual modes**.
 
@@ -619,7 +621,7 @@ Output protocol helpers exist.
 
 These must become state-driven feedback owned by the hardware feedback layer.
 
-Status: **NOTE REPEAT button LED routed; Touch-strip LED division feedback remains pending**.
+Status: **NOTE REPEAT button LED and dedicated division LED state are routed; Touch-strip value/mode LED feedback remains pending.**
 
 Priority: **P1**.
 
