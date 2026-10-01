@@ -110,7 +110,7 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
         return std::nullopt;
     }
 
-    const auto event = mpc::studio::decodeInput(message);
+    auto event = mpc::studio::decodeInput(message);
 
     if (!event) {
         __android_log_print(
@@ -120,6 +120,8 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             message.size());
         return std::nullopt;
     }
+
+    event->timestampNanos = timestamp;
 
     if (event->type == mpc::studio::InputEventType::PadNote) {
         auto& core = mpc::MpcCore::instance();
