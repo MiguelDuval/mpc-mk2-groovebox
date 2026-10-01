@@ -12,6 +12,7 @@
 #include <android/log.h>
 #include <jni.h>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstddef>
@@ -123,8 +124,26 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
 
     event->timestampNanos = timestamp;
 
+    if (event->type == mpc::studio::InputEventType::PadAftertouch) {
+        const auto action = semanticAdapter.handleControl(*event);
+        if (action.has_value()
+                && action->type == mpc::studio::SemanticActionType::PadAftertouch
+                && action->value0 >= 0
+                && action->value0 < static_cast<std::int32_t>(
+                        mpc::domain::kMaxProgramPads)) {
+            mpc::MpcCore::instance().audio().setPadAftertouch(
+                    static_cast<std::uint8_t>(action->value0),
+                    static_cast<std::uint8_t>(
+                            std::clamp(action->value1, 0, 127)));
+        }
+        return std::nullopt;
+    }
+
     if (event->type == mpc::studio::InputEventType::PadNote) {
         auto& core = mpc::MpcCore::instance();
+        if (event->padIndex < mpc::domain::kMaxProgramPads) {
+            core.audio().setPadAftertouch(event->padIndex, 0);
+        }
 
         if (stepEditEnabled.load(std::memory_order_acquire)) {
             if (!event->pressed) {
