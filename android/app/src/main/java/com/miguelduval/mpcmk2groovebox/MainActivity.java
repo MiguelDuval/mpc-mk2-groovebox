@@ -3825,6 +3825,46 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setHardwareButtonLed(80, armed && overdub);
     }
 
+    private boolean isHardwareLocateExitAction(int actionType) {
+        if (hardwareLocateActive
+                && isHardwareLocateExitAction(actionType)) {
+            hardwareLocateActive = false;
+            setHardwareButtonLed(70, false);
+        }
+
+        switch (actionType) {
+            case MpcStudioMk2SemanticActions.NAVIGATE_MAIN:
+            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_VIEW:
+            case MpcStudioMk2SemanticActions.NAVIGATE_GRID:
+            case MpcStudioMk2SemanticActions.NAVIGATE_WAVEFORM:
+            case MpcStudioMk2SemanticActions.NAVIGATE_SAMPLE_EDIT:
+            case MpcStudioMk2SemanticActions.NAVIGATE_PAD_MIXER:
+            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_MIXER:
+            case MpcStudioMk2SemanticActions.NAVIGATE_SEQUENCE_LAUNCHER:
+            case MpcStudioMk2SemanticActions.NAVIGATE_BROWSE:
+            case MpcStudioMk2SemanticActions.NAVIGATE_SAMPLER:
+            case MpcStudioMk2SemanticActions.NAVIGATE_STEP_SEQUENCER:
+            case MpcStudioMk2SemanticActions.BROWSER_UP:
+            case MpcStudioMk2SemanticActions.TRACK_SELECTION_CONTEXT:
+            case MpcStudioMk2SemanticActions.SEQUENCE_SELECTION_CONTEXT:
+            case MpcStudioMk2SemanticActions.PROGRAM_SELECTION_CONTEXT:
+            case MpcStudioMk2SemanticActions.TRACK_TYPE_SELECTION_CONTEXT:
+            case MpcStudioMk2SemanticActions.SAMPLE_SELECT_CONTEXT:
+            case MpcStudioMk2SemanticActions.SAMPLE_START_CONTEXT:
+            case MpcStudioMk2SemanticActions.SAMPLE_END_CONTEXT:
+            case MpcStudioMk2SemanticActions.TUNE_CONTEXT:
+            case MpcStudioMk2SemanticActions.QUANTIZE:
+            case MpcStudioMk2SemanticActions.TIMING_CORRECT_STATE:
+            case MpcStudioMk2SemanticActions.ZOOM_CONTEXT:
+            case MpcStudioMk2SemanticActions.COPY_CONTEXT:
+            case MpcStudioMk2SemanticActions.UNDO:
+            case MpcStudioMk2SemanticActions.AUTOMATION_CONTEXT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private void applyHardwareAction(
             int actionType, int value0, int value1, int value2) {
         switch (actionType) {
@@ -4036,7 +4076,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         : "LOCATE ON • DATA DIAL=BEAT")
                                 : "LOCATE OFF");
                 return;
-            case MpcStudioMk2SemanticActions.LOCATE_PAD:
+            case MpcStudioMk2SemanticActions.LOCATE_PAD: {
                 if (value0 < 0) {
                     setBottomStatus("LOCATE • unused pad");
                     return;
@@ -4048,6 +4088,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 refreshSequencePlayhead();
                 refreshSequenceControls();
                 return;
+            }
             case MpcStudioMk2SemanticActions.TAP_TEMPO:
                 handleHardwareTapTempo();
                 return;
