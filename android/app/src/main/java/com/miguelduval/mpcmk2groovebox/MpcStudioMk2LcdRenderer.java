@@ -90,7 +90,7 @@ final class MpcStudioMk2LcdRenderer {
             final Position p = position(this);
             return String.format(
                     Locale.ROOT,
-                    "%s|S%d/%d|Q%d|T%d/%d|%.1f|%d/%d|%d.%d|%b|%b|%b|P%d|L%d|TS%d|NR%d:%d|LOC%b|ER%b|STEP%d:%d|%s",
+                    "%s|S%d/%d|Q%d|T%d/%d|%.1f|%d/%d|%d.%d|%b|%b|%b|P%d|L%d|TS%d|NR%b:%d|LOC%b|ER%b|STEP%d:%d|%s",
                     page, sequenceIndex, sequenceCount, queuedSequenceIndex,
                     trackIndex, trackCount, tempo, numerator, denominator,
                     p.bar, p.beat, playing, recordArmed, overdub,
