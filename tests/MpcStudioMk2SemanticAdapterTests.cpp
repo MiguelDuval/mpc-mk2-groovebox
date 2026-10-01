@@ -106,5 +106,11 @@ int main(){
   typeOf(previousEvent, SemanticActionType::StepLeft);
   assert(previousEvent->value0 == 1);
 
+  MpcStudioMk2SemanticAdapter pressure;
+  auto pressureAction = pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,96,0,true});
+  typeOf(pressureAction,SemanticActionType::PadAftertouch);
+  assert(pressureAction->value0==0 && pressureAction->value1==96);
+
   return 0;
 }
