@@ -74,6 +74,7 @@ private:
     bool repeatPadHeld_=false;
     std::uint8_t padBank_=0;
     std::uint8_t noteRepeatRateIndex_=2;
+    bool eraseHeld_=false;
     mpc::sequencer::touch_strip::Mode touchStripMode_ = mpc::sequencer::touch_strip::Mode::Level;
     bool touchStripTouched_=false;
 };

@@ -140,9 +140,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int hardwarePadBank = 0;
     private int hardwareTouchStripMode = TOUCH_STRIP_MODE_LEVEL;
     private int hardwareNoteRepeatRateIndex = 2;
+    private boolean hardwareEraseActive;
     private String lastTouchStripLedSignature = "";
     private String lastNoteRepeatDivisionLedSignature = "";
     private int lastTouchStripButtonLedState = -1;
+    private int lastEraseLedState = -1;
     private int lastPlayLedState = -1;
     private int lastRecordLedState = -1;
     private int lastOverdubLedState = -1;
@@ -293,6 +295,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceStop();
     private static native String nativeSequenceReset();
     private static native int nativeSequenceAdvance(long milliseconds);
+    private static native String nativeSequenceErasePadAtPlayhead(int padIndex);
     private static native String nativeSequenceSetLocator(int slot);
     private static native long nativeSequenceGetLocator(int slot);
     private static native String nativeSequenceJumpToLocator(int slot);
@@ -3831,6 +3834,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 if (lastMuteLedState == state) return;
                 lastMuteLedState = state;
                 break;
+            case 9:
+                if (lastEraseLedState == state) return;
+                lastEraseLedState = state;
+                break;
             default:
                 break;
         }
@@ -3996,6 +4003,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         "STEP " + String.format(
                                 Locale.ROOT, "%02d", selectedSequenceStep + 1)
                                 + " SELECTED • PAD " + (value1 + 1));
+                return;
+            case MpcStudioMk2SemanticActions.ERASE_STATE:
+                hardwareEraseActive = value0 != 0;
+                setHardwareButtonLed(9, hardwareEraseActive);
+                setBottomStatus(
+                        hardwareEraseActive
+                                ? (nativeSequenceIsPlaying()
+                                        ? "ERASE ARMED • HOLD + PAD"
+                                        : "ERASE • PLAYBACK REQUIRED • HOLD + PAD")
+                                : "ERASE OFF");
+                return;
+            case MpcStudioMk2SemanticActions.ERASE_PAD_TARGET:
+                setBottomStatus(nativeSequenceErasePadAtPlayhead(value0));
+                refreshSequenceControls();
+                if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
+                    refreshSequenceStepPage();
+                }
                 return;
             case MpcStudioMk2SemanticActions.NOTE_REPEAT_STATE:
                 setHardwareButtonLed(11, value0 != 0);

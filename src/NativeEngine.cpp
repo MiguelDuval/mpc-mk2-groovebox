@@ -18,6 +18,7 @@
 #include "MPC/Sequencer/MpcSequencePlaybackSession.h"
 #include "MPC/Sequencer/MpcSequenceSettings.h"
 #include "MPC/Sequencer/MpcLocatePolicy.h"
+#include "MPC/Sequencer/MpcErasePolicy.h"
 
 namespace {
 
@@ -2167,6 +2168,67 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdvance(
             std::min<std::int64_t>(
                     std::numeric_limits<jint>::max(),
                     sequenceSession().positionTicks()));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceErasePadAtPlayhead(
+        JNIEnv* env, jobject /* thiz */, jint padIndex)
+{
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)) {
+        return toJString(env, "ERASE failed: invalid pad");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    if (!sequenceSession().isPlaying()) {
+        return toJString(
+                env,
+                "ERASE • playback required for live Erase + Pad");
+    }
+
+    auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()) {
+        return toJString(env, "ERASE failed: invalid selected track");
+    }
+
+    auto& track = tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum
+            || track.patterns.empty()) {
+        return toJString(env, "ERASE • selected track is not DRUM");
+    }
+
+    auto& pattern = track.patterns.front();
+    const auto noteNumber =
+            state.activeDrumProgram()
+                    .pads[static_cast<std::size_t>(padIndex)]
+                    .midiNote;
+    const auto now = monotonicNanos();
+    const auto playhead =
+            core.sequenceTransportClock().positionAtTimestamp(now);
+    const auto gridTicks = std::max<std::int64_t>(
+            1,
+            state.activeSequence().quantizeGridTicks);
+    const auto maxDistanceTicks = std::max<std::int64_t>(
+            1,
+            gridTicks / 2);
+
+    if (!mpc::sequencer::erase::eraseNearestEvent(
+                pattern,
+                noteNumber,
+                playhead,
+                maxDistanceTicks)) {
+        return toJString(
+                env,
+                "ERASE • no matching event near playhead");
+    }
+
+    return toJString(
+            env,
+            "ERASE • PAD "
+                    + std::to_string(padIndex + 1)
+                    + " EVENT REMOVED");
 }
 
 extern "C" JNIEXPORT jstring JNICALL

@@ -223,3 +223,13 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
 - **Feedback implemented:** CC 57–65 show selected mode/value; CC 103–110 mirror Note Repeat's selected musical division.
 - **Safety preserved:** no UI timers or audio-callback work are introduced; CC 33 remains scheduler-owned while Note Repeat is active.
 - Physical MkII verification remains required.
+
+
+## 2026-10-01 Erase hardware production increment
+
+- **Erase routed:** real MkII Erase button enters a stateful hold context and consumes pad presses.
+- **Live erase implemented:** one nearest matching selected-pad event is removed around the current playhead within half-grid tolerance, with circular sequence-boundary handling.
+- **Playback preserved:** erase mutates the pattern without stopping/recreating the active playback session.
+- **Feedback:** Erase button LED mirrors the active context and status reports armed/no-event/playback-required states.
+- **Stopped context remains explicit:** the broader event/automation Erase window is not faked; it stays a future editing slice.
+- Physical MkII verification remains required.

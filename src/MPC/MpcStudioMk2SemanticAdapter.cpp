@@ -82,6 +82,7 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
         r.action = make(Type::LocatePad, -1, 0);
         return r;
     }
+    if(eraseHeld_){ r.consumed=true; r.action=make(Type::ErasePadTarget,e.padIndex); return r; }
     if(padMuteMode_){ r.consumed=true; r.action=make(Type::PadMuteTarget,e.padIndex); return r; }
     if(trackMuteMode_){ r.consumed=true; r.action=make(Type::TrackMuteTarget,e.padIndex); return r; }
 
@@ -129,12 +130,17 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
                 || n == "Copy"
                 || n == "Undo"
                 || n == "AutomationReadWrite"
-                || n == "TouchStripButton";
+                || n == "TouchStripButton"
+                || n == "Erase";
         if (exitsLocate && locateLatched_) {
             locateLatched_ = false;
         }
     }
     if(n=="Shift"){ shiftHeld_=pressed; return std::nullopt; }
+    if(n=="Erase"){
+        eraseHeld_=pressed;
+        return make(Type::EraseState, pressed ? 1 : 0);
+    }
     if(n=="TouchStripButton"){
         if(!pressed) return std::nullopt;
         if(shiftHeld_) return make(Type::TouchStripConfigContext, static_cast<std::int32_t>(touchStripMode_), 0);

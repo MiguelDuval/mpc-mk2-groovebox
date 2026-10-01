@@ -537,7 +537,7 @@ Canonical live behavior:
 
 This is a strong example of why hardware semantics are contextual rather than one-button/one-screen mappings.
 
-Status: **DECODED, RECORD/GRID DATA MODEL EXISTS, HARDWARE ROUTING NOT IMPLEMENTED**.
+Status: **LIVE SEMANTIC ROUTING + SINGLE-EVENT ERASE IMPLEMENTED — playback-only Erase + Pad uses the current playhead and nearest matching event within half the active grid; stopped Erase remains an explicit future context/window.**.
 
 Priority: **P1**.
 
@@ -818,3 +818,14 @@ Level, Pan and selected-layer Tune use existing application audio controls. Samp
 CC 57–65 now provide state-driven Touch Strip feedback: the selected mode is shown at rest and the current value is shown while sliding. CC 103–110 mirror the active Note Repeat division and are explicitly cleared when Note Repeat is disabled. The two-color Touch Strip button LED uses red for normal strip operation and white for Note Repeat context.
 
 Physical MkII verification remains required.
+
+
+## 2026-10-01 Erase hardware production increment
+
+Erase (MIDI note 9) is now stateful in the MkII semantic adapter. Holding Erase consumes physical pad presses and emits an ErasePadTarget semantic action instead of triggering audio.
+
+During playback, the native sequence layer removes one nearest matching note event for the selected pad when its effective tick is within half the active Sequence quantize grid of the current playback position, including loop wrap-around. The playback session is not torn down for this live mutation.
+
+When stopped, the action reports that live Erase requires playback; the broader stopped Erase context/window remains a separately planned editing surface.
+
+The Erase button LED mirrors the active state. Physical MkII verification remains required.

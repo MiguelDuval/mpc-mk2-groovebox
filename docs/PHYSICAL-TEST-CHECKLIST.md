@@ -254,3 +254,15 @@ The sampler crop implementation is software-verified; destructive audio editing 
 - [ ] Change Pad 1 envelope/filter settings and confirm Pad 2 remains unchanged.
 
 These envelope/filter checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII and the real Android audio output path.
+
+
+## P1. Erase live workflow
+
+- [ ] Start a sequence with a known pad event and hold physical Erase + the event's pad at the event position; confirm exactly one matching event is removed while playback continues.
+- [ ] Confirm holding Erase and pressing a pad with no nearby event does not remove another pad's event.
+- [ ] Place two matching events in nearby grid cells and confirm the event nearest the playhead is the one removed.
+- [ ] Test an event immediately before the loop boundary and confirm Erase finds it correctly from just after the boundary.
+- [ ] Confirm releasing Erase returns the button LED to off and physical pads resume normal performance.
+- [ ] Confirm pressing Erase while stopped reports the explicit playback-required state rather than silently modifying sequence data.
+
+These checks are intentionally UNCONFIRMED until performed on the actual MPC Studio MkII.
