@@ -2126,6 +2126,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private String noteRepeatRateLabel(int index) {
+        switch (index) {
+            case 0: return "1/4";
+            case 1: return "1/8";
+            case 2: return "1/16";
+            case 3: return "1/32";
+            case 4: return "1/64";
+            case 5: return "1/4T";
+            case 6: return "1/8T";
+            case 7: return "1/16T";
+            default: return "RATE " + index;
+        }
+    }
+
     private void startSequenceUiUpdater() {
         if (sequenceUiUpdater != null || destroyed || uiOnlySmokeMode) {
             return;
@@ -3679,6 +3693,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         + (value1 != 0 ? "LATCHED" : "MOMENTARY")
                                         + " • grid-synchronised"
                                 : "NOTE REPEAT OFF");
+                return;
+            case MpcStudioMk2SemanticActions.NOTE_REPEAT_RATE_CHANGED:
+                setBottomStatus(
+                        "NOTE REPEAT RATE • "
+                                + noteRepeatRateLabel(value0)
+                                + " • "
+                                + value1
+                                + " ticks");
                 return;
             case MpcStudioMk2SemanticActions.FULL_LEVEL_STATE:
                 setHardwareButtonLed(39, value0 != 0);
