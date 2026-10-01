@@ -187,12 +187,12 @@ public final class WaveformView extends View {
     }
 
     public void zoomVerticalIn() {
-        verticalZoom = clamp(verticalZoom * 1.25f, 1f, 4f);
+        verticalZoom = MpcZoomPolicy.zoomVerticalIn(verticalZoom);
         invalidate();
     }
 
     public void zoomVerticalOut() {
-        verticalZoom = clamp(verticalZoom / 1.25f, 1f, 4f);
+        verticalZoom = MpcZoomPolicy.zoomVerticalOut(verticalZoom);
         invalidate();
     }
 
@@ -205,8 +205,10 @@ public final class WaveformView extends View {
     }
 
     private void zoomAround(float center, float factor) {
-        final float span =
-                clamp((viewportEnd - viewportStart) * factor, 0.0625f, 1f);
+        final float span = clamp(
+                (viewportEnd - viewportStart) * factor,
+                MpcZoomPolicy.MIN_HORIZONTAL_SPAN,
+                MpcZoomPolicy.MAX_HORIZONTAL_SPAN);
         final float start = clamp(
                 center - span * 0.5f, 0f, 1f - span);
         setViewport(start, start + span);
