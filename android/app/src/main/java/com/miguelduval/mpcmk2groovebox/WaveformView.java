@@ -44,6 +44,7 @@ public final class WaveformView extends View {
     private float durationMs;
     private float viewportStart = 0f;
     private float viewportEnd = 1f;
+    private float verticalZoom = 1f;
     private boolean editable;
     private boolean recording;
     private boolean showHandles;
@@ -171,6 +172,8 @@ public final class WaveformView extends View {
 
     public void resetZoom() {
         setViewport(0f, 1f);
+        verticalZoom = 1f;
+        invalidate();
     }
 
     public void zoomIn() {
@@ -181,6 +184,24 @@ public final class WaveformView extends View {
     public void zoomOut() {
         final float center = (viewportStart + viewportEnd) * 0.5f;
         zoomAround(center, 2.0f);
+    }
+
+    public void zoomVerticalIn() {
+        verticalZoom = clamp(verticalZoom * 1.25f, 1f, 4f);
+        invalidate();
+    }
+
+    public void zoomVerticalOut() {
+        verticalZoom = clamp(verticalZoom / 1.25f, 1f, 4f);
+        invalidate();
+    }
+
+    public float viewportSpanForTest() {
+        return viewportEnd - viewportStart;
+    }
+
+    public float verticalZoomForTest() {
+        return verticalZoom;
     }
 
     private void zoomAround(float center, float factor) {
@@ -324,7 +345,9 @@ public final class WaveformView extends View {
         }
 
         final int pointCount = peaks.length / 2;
-        final float height = (bottom - top) * 0.42f;
+        final float height = Math.min(
+                (bottom - top) * 0.42f * verticalZoom,
+                (bottom - top) * 0.49f);
         final int firstPoint = Math.max(
                 0,
                 (int) Math.floor(viewportStart * (pointCount - 1)));
