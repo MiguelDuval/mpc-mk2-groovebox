@@ -829,3 +829,12 @@ During playback, the native sequence layer removes one nearest matching note eve
 When stopped, the action reports that live Erase requires playback; the broader stopped Erase context/window remains a separately planned editing surface.
 
 The Erase button LED mirrors the active state. Physical MkII verification remains required.
+
+    
+### 2026-10-01 Pad Aftertouch expression path
+
+The reverse-engineered MPC Studio MkII reports pressure-sensitive pad aftertouch on the pad MIDI channel. The semantic adapter exposes this as **PadAftertouch**.
+
+Aftertouch is a continuous high-rate signal, so it does not enter the bounded semantic-action queue. The latest pressure is carried into a native realtime-safe atomic per-pad expression state. In the current sampler mapping, pressure 0 leaves the saved pad filter cutoff unchanged and pressure 127 lowers the active voice cutoff by three octaves. Project state, sequence data and recorded automation are not changed.
+
+This is an application-level musical mapping, not a claim about an Akai factory destination. Physical MkII verification remains required.
