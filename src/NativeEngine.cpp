@@ -2332,6 +2332,26 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDeletePadAssignm
     return toJString(env, result);
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCanUndo(
+        JNIEnv* /* env */,
+        jobject /* thiz */)
+{
+    return mpc::MpcCore::instance().editHistory().canUndo()
+            ? JNI_TRUE
+            : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCanRedo(
+        JNIEnv* /* env */,
+        jobject /* thiz */)
+{
+    return mpc::MpcCore::instance().editHistory().canRedo()
+            ? JNI_TRUE
+            : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceUndo(
         JNIEnv* env,

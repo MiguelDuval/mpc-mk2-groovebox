@@ -436,6 +436,13 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcPadAftertouchPolicyTests.cpp             -o build/native-tests/mpc_pad_aftertouch_policy_tests
           build/native-tests/mpc_pad_aftertouch_policy_tests
 
+      - name: Compile and run MPC edit history tests
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror -Isrc             tests/MpcEditHistoryTests.cpp             -o build/native-tests/mpc_edit_history_tests
+          build/native-tests/mpc_edit_history_tests
+
       - name: Assemble debug APK
         run: gradle --no-daemon :app:assembleDebug
 

@@ -141,10 +141,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int hardwareTouchStripMode = TOUCH_STRIP_MODE_LEVEL;
     private int hardwareNoteRepeatRateIndex = 2;
     private boolean hardwareEraseActive;
+    private boolean hardwareCopyDeleteActive;
+    private int hardwareCopyDeleteMode = 0;
+    private int hardwareCopySourcePad = -1;
+    private int hardwareCopyPadMask = 0;
     private String lastTouchStripLedSignature = "";
     private String lastNoteRepeatDivisionLedSignature = "";
     private int lastTouchStripButtonLedState = -1;
     private int lastEraseLedState = -1;
+    private int lastCopyDeleteLedState = -1;
     private int lastPlayLedState = -1;
     private int lastRecordLedState = -1;
     private int lastOverdubLedState = -1;
@@ -243,6 +248,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceSelect(int sequenceIndex);
     private static native String nativeSequencePrevious();
     private static native String nativeSequenceNext();
+    private static native String nativeSequenceCopyPadToPads(int sourcePad, int destinationMask);
+    private static native String nativeSequenceDeletePadAssignments(int padMask);
+    private static native String nativeSequenceUndo();
+    private static native String nativeSequenceRedo();
+    private static native boolean nativeSequenceCanUndo();
+    private static native boolean nativeSequenceCanRedo();
     private static native String nativeSequenceAddSequence();
     private static native double nativeSequenceGetTempo();
     private static native String nativeSequenceSetTempo(double tempo);
@@ -3851,6 +3862,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void setHardwareButtonLed(int cc, boolean on) {
+    private void setHardwarePadRgb(int pad, int red, int green, int blue) {
+        if (midiBridge == null || pad < 0 || pad >= 16) return;
+        final byte[] message = MpcStudioMk2MidiMessages.padRgb(
+                pad, red, green, blue);
+        if (message != null) {
+            midiBridge.send(message);
+        }
+    }
+
+    private void clearHardwareCopyDeletePadLeds() {
+        for (int pad = 0; pad < 16; pad++) {
+            setHardwarePadRgb(pad, 0, 0, 0);
+        }
+    }
+
         final int state = on ? 2 : 0;
         switch (cc) {
             case 82:
@@ -3884,6 +3910,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case 9:
                 if (lastEraseLedState == state) return;
                 lastEraseLedState = state;
+                break;
+            case 122:
+                if (lastCopyDeleteLedState == state) return;
+                lastCopyDeleteLedState = state;
                 break;
             default:
                 break;
@@ -4293,14 +4323,99 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ? "ZOOM VERTICAL CONTEXT" : "ZOOM HORIZONTAL CONTEXT");
                 return;
             case MpcStudioMk2SemanticActions.COPY_CONTEXT:
-                setBottomStatus(value0 != 0
-                        ? "DELETE CONTEXT • target confirmation required"
-                        : "COPY CONTEXT");
+                hardwareCopyDeleteActive = value1 != 0;
+                hardwareCopyDeleteMode = value0;
+                hardwareCopySourcePad = -1;
+                hardwareCopyPadMask = 0;
+                setHardwareButtonLed(122, hardwareCopyDeleteActive);
+                clearHardwareCopyDeletePadLeds();
+                if (!hardwareCopyDeleteActive) {
+                    setBottomStatus("COPY/DELETE • CANCELLED");
+                    return;
+                }
+                setBottomStatus(
+                        value0 == 0
+                                ? "COPY PAD • HOLD COPY • SOURCE → DESTINATION(S) → RELEASE"
+                                : "DELETE PAD • HOLD SHIFT+COPY • SELECT PAD(S) → RELEASE");
                 return;
+            case MpcStudioMk2SemanticActions.COPY_PAD_SELECTION:
+                if (!hardwareCopyDeleteActive || value1 < 0 || value1 >= 16) {
+                    return;
+                }
+                final boolean selected = value2 != 0;
+                if (value0 == 0) {
+                    if (hardwareCopySourcePad < 0) {
+                        hardwareCopySourcePad = value1;
+                        selectedPad = value1;
+                        refreshPadSelectionVisuals();
+                        setHardwarePadRgb(value1, 127, 72, 0);
+                        setBottomStatus(
+                                "COPY PAD • SOURCE " + (value1 + 1)
+                                        + " • SELECT DESTINATION(S)");
+                    } else if (value1 != hardwareCopySourcePad) {
+                        final int bit = 1 << value1;
+                        hardwareCopyPadMask = selected
+                                ? (hardwareCopyPadMask | bit)
+                                : (hardwareCopyPadMask & ~bit);
+                        setHardwarePadRgb(
+                                value1,
+                                selected ? 24 : 8,
+                                selected ? 96 : 8,
+                                selected ? 24 : 8);
+                        setBottomStatus(
+                                "COPY PAD • FROM " + (hardwareCopySourcePad + 1)
+                                        + " • TO " + (value1 + 1)
+                                        + (selected ? " ON" : " OFF"));
+                    }
+                } else {
+                    final int bit = 1 << value1;
+                    hardwareCopyPadMask = selected
+                            ? (hardwareCopyPadMask | bit)
+                            : (hardwareCopyPadMask & ~bit);
+                    setHardwarePadRgb(
+                            value1,
+                            selected ? 127 : 8,
+                            selected ? 16 : 8,
+                            selected ? 16 : 8);
+                    setBottomStatus(
+                            "DELETE PAD • " + (value1 + 1)
+                                    + (selected ? " SELECTED" : " DESELECTED"));
+                }
+                return;
+            case MpcStudioMk2SemanticActions.COPY_PAD_COMMIT: {
+                final int mode = value0;
+                final int source = hardwareCopySourcePad;
+                final int mask = hardwareCopyPadMask;
+                hardwareCopyDeleteActive = false;
+                hardwareCopySourcePad = -1;
+                hardwareCopyPadMask = 0;
+                setHardwareButtonLed(122, false);
+                clearHardwareCopyDeletePadLeds();
+
+                final String result;
+                if (mode == 0) {
+                    result = source >= 0 && mask != 0
+                            ? nativeSequenceCopyPadToPads(source, mask)
+                            : "COPY PAD • cancelled: select source and destination";
+                } else {
+                    result = mask != 0
+                            ? nativeSequenceDeletePadAssignments(mask)
+                            : "DELETE PAD • cancelled: select at least one pad";
+                }
+                setBottomStatus(result);
+                refreshAllInspectorState();
+                return;
+            }
             case MpcStudioMk2SemanticActions.UNDO:
-                setBottomStatus(value0 != 0
-                        ? "REDO • command layer pending"
-                        : "UNDO • command layer pending");
+                final String historyResult = value0 != 0
+                        ? nativeSequenceRedo()
+                        : nativeSequenceUndo();
+                setBottomStatus(historyResult);
+                setHardwareButtonLed(
+                        67,
+                        nativeSequenceCanUndo() || nativeSequenceCanRedo());
+                refreshAllInspectorState();
+                refreshSequenceControls();
                 return;
             default:
                 setBottomStatus("MIDI CONTROL RESERVED • " + actionType);

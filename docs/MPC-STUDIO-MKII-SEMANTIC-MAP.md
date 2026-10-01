@@ -413,7 +413,7 @@ MIDI note 122.
 
 The existing sampler domain can copy/assign pad state, and destructive sample edits already exist. Future hardware routing must show the operation target before a destructive action is committed.
 
-Status: **DECODED, SEMANTIC ROUTING NOT IMPLEMENTED**.
+Status: **SEMANTICALLY ROUTED — Copy/Delete uses a stateful physical pad gesture; Copy selects a source then one or more destinations while held, and Shift+Copy selects delete targets; release commits. Backend/history integration is implemented; physical verification remains required.**.
 
 Priority: **P1**.
 
@@ -428,7 +428,7 @@ This is a global command and must be safe from every page.
 
 The application should provide a compact state indication in the persistent status line and, later, on the MkII button LED.
 
-Status: **DECODED, GLOBAL COMMAND NOT ROUTED**.
+Status: **SEMANTICALLY ROUTED — Undo/Redo are global commands; Undo is a normal press and Shift+Undo is Redo. Native history currently records implemented pad Copy/Delete edits. Physical verification remains required.**.
 
 Priority: **P1**.
 
