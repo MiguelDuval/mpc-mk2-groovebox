@@ -104,6 +104,12 @@ public:
     float padLevel(std::uint8_t padIndex) const;
     std::string setPadPan(std::uint8_t padIndex, float pan);
     float padPan(std::uint8_t padIndex) const;
+
+    // Realtime expression from the pressure-sensitive MkII pads.
+    // Ephemeral only: does not modify project state.
+    void setPadAftertouch(
+            std::uint8_t padIndex,
+            std::uint8_t pressure) noexcept;
     std::string setPadEnvelopeParameters(
             std::uint8_t padIndex,
             float attackMs,
@@ -223,6 +229,7 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount> padTuningMilliSemitones_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
+    std::array<std::atomic<std::uint8_t>, kPadCount> padAftertouch_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeAttackMilliMs_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeDecayMilliMs_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeSustainMilli_{};
