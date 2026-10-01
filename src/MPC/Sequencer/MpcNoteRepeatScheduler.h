@@ -27,6 +27,14 @@ public:
     void setPad(std::uint8_t padIndex, std::uint8_t velocity) noexcept;
     void clearPad() noexcept;
 
+    void setRepeatGridIndex(std::int32_t index) noexcept;
+    [[nodiscard]] std::int32_t repeatGridIndex() const noexcept {
+        return repeatGridIndex_.load(std::memory_order_acquire);
+    }
+    [[nodiscard]] std::int32_t repeatGridTicks() const noexcept {
+        return repeatGridTicks_.load(std::memory_order_acquire);
+    }
+
     [[nodiscard]] static std::int64_t intervalNanos(
             std::int64_t ticks,
             std::int64_t tempoMilliBpm) noexcept;
@@ -53,6 +61,8 @@ private:
     std::atomic<bool> padHeld_{false};
     std::atomic<std::uint8_t> padIndex_{0};
     std::atomic<std::uint8_t> velocity_{0};
+    std::atomic<std::int32_t> repeatGridIndex_{2};
+    std::atomic<std::int32_t> repeatGridTicks_{240};
     std::atomic<std::uint32_t> generation_{0};
     std::atomic<bool> stopping_{false};
 
