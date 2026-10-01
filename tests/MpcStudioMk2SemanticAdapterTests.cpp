@@ -1,5 +1,6 @@
 #include "MPC/MpcStudioMk2SemanticAdapter.h"
 #include <cassert>
+#include <cstdio>
 #include <cstdint>
 using namespace mpc::studio;
 InputEvent btn(std::uint8_t n,bool p=true){return {InputEventType::Button,0,n,static_cast<std::uint8_t>(p?127:0),0xFF,p};}
@@ -11,7 +12,7 @@ InputEvent btnAt(std::uint8_t n,bool p,std::int64_t timestamp){
 InputEvent pad(std::uint8_t i){return {InputEventType::PadNote,9,37,112,i,true};}
 InputEvent jog(std::uint8_t v){return {InputEventType::JogWheel,0,100,v};}
 InputEvent strip(std::uint8_t v){return {InputEventType::TouchStrip,0,33,v};}
-void typeOf(const std::optional<SemanticAction>& a,SemanticActionType t){assert(a);assert(a->type==t);}
+void typeOf(const std::optional<SemanticAction>& a,SemanticActionType t){ static int call=0; ++call; if(!a){ std::fprintf(stderr,"typeOf #%d expected=%d got=none\\n",call,static_cast<int>(t)); std::fflush(stderr); } else if(a->type!=t){ std::fprintf(stderr,"typeOf #%d expected=%d got=%d\\n",call,static_cast<int>(t),static_cast<int>(a->type)); std::fflush(stderr); } assert(a);assert(a->type==t);}
 int main(){
   MpcStudioMk2SemanticAdapter a;
   static_cast<void>(a.handleControl(btn(114))); auto r=a.handlePad(pad(1)); typeOf(r.action,SemanticActionType::NavigateGrid); assert(r.consumed);
