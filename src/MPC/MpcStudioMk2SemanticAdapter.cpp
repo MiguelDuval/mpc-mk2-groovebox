@@ -249,7 +249,6 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
         }
         return make(Type::NoteRepeatState,noteRepeatActive()?1:0,noteRepeatLatched()?1:0);
     }
-    if(!pressed) return std::nullopt;
     if(n=="FullLevel"){
         if(shiftHeld_){ halfLevel_=!halfLevel_; fullLevel_=false; if(halfLevel_) sixteenLevel_=false; return make(Type::HalfLevelState,halfLevel_?1:0); }
         fullLevel_=!fullLevel_; if(fullLevel_) { halfLevel_=false; sixteenLevel_=false; } return make(Type::FullLevelState,fullLevel_?1:0);
@@ -335,6 +334,7 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
                 source == 0xFF ? -1 : static_cast<std::int32_t>(source),
                 static_cast<std::int32_t>(mask));
     }
+    if(!pressed) return std::nullopt;
     if(n=="Undo") return make(Type::Undo,shiftHeld_?1:0);
     if(n=="AutomationReadWrite") return make(Type::AutomationContext,shiftHeld_?1:0);
     if(n=="Record") return make(Type::TransportRecord);
