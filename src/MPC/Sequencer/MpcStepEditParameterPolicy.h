@@ -23,6 +23,21 @@ enum class Parameter : std::uint8_t {
     return Parameter::Velocity;
 }
 
+[[nodiscard]] constexpr std::int32_t requiredParameterCount(
+        Parameter parameter) noexcept {
+    switch (parameter) {
+        case Parameter::Velocity:
+        case Parameter::Probability:
+        case Parameter::Ratchet:
+            return 3;
+        case Parameter::Nudge:
+            return 4;
+        case Parameter::Duration:
+            return 5;
+    }
+    return 3;
+}
+
 [[nodiscard]] constexpr std::int32_t deltaFor(
         Parameter parameter,
         std::int32_t gridTicks,
