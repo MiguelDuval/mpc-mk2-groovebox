@@ -412,6 +412,14 @@ jobs:
             -o build/native-tests/drum_program_domain_tests
           build/native-tests/drum_program_domain_tests
 
+      - name: Test MPC Studio MkII Touch Strip policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcTouchStripPolicyTests.cpp             -o build/native-tests/mpc_touch_strip_policy_tests
+          build/native-tests/mpc_touch_strip_policy_tests
+
       - name: Assemble debug APK
         run: gradle --no-daemon :app:assembleDebug
 
