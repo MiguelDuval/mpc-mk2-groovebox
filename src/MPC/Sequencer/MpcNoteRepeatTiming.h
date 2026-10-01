@@ -1,16 +1,66 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 
 namespace mpc::sequencer::note_repeat_timing {
 
-inline constexpr std::int32_t kMinGridTicks = 60;
+inline constexpr std::int32_t kMinGridTicks = 40;
 inline constexpr std::int32_t kMaxGridTicks = 960;
 inline constexpr std::int64_t kMinTempoMilliBpm = 20000;
 inline constexpr std::int64_t kMaxTempoMilliBpm = 300000;
+
+struct RepeatRate final {
+    std::int32_t ticks;
+    const char* label;
+    bool triplet;
+};
+
+inline constexpr std::array<RepeatRate, 8> kRepeatRates{{
+    {960, "1/4", false},
+    {480, "1/8", false},
+    {240, "1/16", false},
+    {120, "1/32", false},
+    {60, "1/64", false},
+    {640, "1/4T", true},
+    {320, "1/8T", true},
+    {160, "1/16T", true},
+}};
+
+[[nodiscard]] inline std::int32_t repeatRateTicksForIndex(
+        std::int32_t index) noexcept {
+    const auto clamped = std::clamp<std::int32_t>(
+            index, 0, static_cast<std::int32_t>(kRepeatRates.size()) - 1);
+    return kRepeatRates[static_cast<std::size_t>(clamped)].ticks;
+}
+
+[[nodiscard]] inline std::int32_t repeatRateIndexForTicks(
+        std::int32_t ticks) noexcept {
+    std::int32_t bestIndex = 0;
+    auto bestDistance = std::numeric_limits<std::int32_t>::max();
+    for (std::size_t i = 0; i < kRepeatRates.size(); ++i) {
+        const auto distance = std::abs(
+                kRepeatRates[i].ticks - ticks);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            bestIndex = static_cast<std::int32_t>(i);
+        }
+    }
+    return bestIndex;
+}
+
+[[nodiscard]] inline std::int32_t repeatRateIndexForTouch(
+        std::uint8_t value) noexcept {
+    const auto count =
+            static_cast<std::int32_t>(kRepeatRates.size());
+    return std::min<std::int32_t>(
+            count - 1,
+            (static_cast<std::int32_t>(value) * count) / 128);
+}
+
 
 [[nodiscard]] inline std::int32_t clampGrid(
         std::int32_t ticks) noexcept {

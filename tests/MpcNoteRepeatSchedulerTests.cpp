@@ -20,8 +20,21 @@ int main() {
     assert(ticksToNextBoundary(600, 480, 2400, 240) == 120);
     assert(ticksToNextBoundary(480, 480, 2400, 240) == 240);
 
-    // Keep the safe musical bounds explicit.
-    assert(clampGrid(1) == 60);
+    // Repeat timing also supports MPC-style triplet divisions.
+    assert(repeatRateTicksForIndex(0) == 960);
+    assert(repeatRateTicksForIndex(2) == 240);
+    assert(repeatRateTicksForIndex(5) == 640);
+    assert(repeatRateTicksForIndex(7) == 160);
+    assert(repeatRateIndexForTicks(240) == 2);
+    assert(repeatRateIndexForTicks(640) == 5);
+    assert(repeatRateIndexForTouch(0) == 0);
+    assert(repeatRateIndexForTouch(31) == 1);
+    assert(repeatRateIndexForTouch(32) == 2);
+    assert(repeatRateIndexForTouch(127) == 7);
+
+    // Keep the scheduler bounds wide enough for the fastest supported triplet.
+    assert(clampGrid(1) == 40);
+    assert(clampGrid(40) == 40);
     assert(clampGrid(960) == 960);
     assert(clampGrid(5000) == 960);
 

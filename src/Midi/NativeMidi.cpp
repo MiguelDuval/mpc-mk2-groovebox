@@ -4,6 +4,7 @@
 #include "../MPC/MpcStudioMk2InputDecoder.h"
 #include "../MPC/MpcStudioMk2SemanticAdapter.h"
 #include "../MPC/Sequencer/MpcNoteRepeatScheduler.h"
+#include "../MPC/Sequencer/MpcNoteRepeatTiming.h"
 #include "../MPC/MpcStudioMk2LedProtocol.h"
 
 #include <android/log.h>
@@ -31,6 +32,26 @@ std::atomic<std::size_t> semanticActionHead{0};
 std::atomic<std::size_t> semanticActionTail{0};
 mpc::studio::MpcStudioMk2SemanticAdapter semanticAdapter;
 std::unique_ptr<mpc::sequencer::MpcNoteRepeatScheduler> noteRepeatScheduler;
+
+std::vector<std::uint8_t> makeNoteRepeatRateFeedback(
+        bool enabled,
+        std::size_t selectedIndex) {
+    std::vector<std::uint8_t> feedback;
+    feedback.reserve(
+            mpc::sequencer::note_repeat_timing::kRepeatRates.size() * 3u);
+    for (std::size_t i = 0;
+         i < mpc::sequencer::note_repeat_timing::kRepeatRates.size();
+         ++i) {
+        const auto brightness =
+                enabled && i == selectedIndex ? std::uint8_t{127} : std::uint8_t{0};
+        const auto message =
+                mpc::studio::makeNoteRepeatLed(i, brightness);
+        if (message.has_value()) {
+            feedback.insert(feedback.end(), message->begin(), message->end());
+        }
+    }
+    return feedback;
+}
 
 mpc::sequencer::MpcNoteRepeatScheduler& repeatScheduler() {
     if (!noteRepeatScheduler) {
@@ -202,7 +223,27 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
         if (action.has_value()) {
             if (action->type
                     == mpc::studio::SemanticActionType::NoteRepeatState) {
-                repeatScheduler().setEnabled(action->value0 != 0);
+                auto& scheduler = repeatScheduler();
+                scheduler.setEnabled(action->value0 != 0);
+                const auto feedback = makeNoteRepeatRateFeedback(
+                        action->value0 != 0,
+                        scheduler.repeatGridIndex());
+                enqueueSemanticAction(*action);
+                return feedback.empty()
+                        ? std::nullopt
+                        : std::optional<std::vector<std::uint8_t>>(feedback);
+            }
+            if (action->type
+                    == mpc::studio::SemanticActionType::NoteRepeatRateChanged) {
+                auto& scheduler = repeatScheduler();
+                scheduler.setRepeatGridIndex(action->value0);
+                const auto feedback = makeNoteRepeatRateFeedback(
+                        true,
+                        scheduler.repeatGridIndex());
+                enqueueSemanticAction(*action);
+                return feedback.empty()
+                        ? std::nullopt
+                        : std::optional<std::vector<std::uint8_t>>(feedback);
             }
             enqueueSemanticAction(*action);
         }

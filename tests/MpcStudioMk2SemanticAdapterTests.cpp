@@ -5,6 +5,7 @@ using namespace mpc::studio;
 InputEvent btn(std::uint8_t n,bool p=true){return {InputEventType::Button,0,n,static_cast<std::uint8_t>(p?127:0),0xFF,p};}
 InputEvent pad(std::uint8_t i){return {InputEventType::PadNote,9,37,112,i,true};}
 InputEvent jog(std::uint8_t v){return {InputEventType::JogWheel,0,100,v};}
+InputEvent strip(std::uint8_t v){return {InputEventType::TouchStrip,0,33,v};}
 void typeOf(const std::optional<SemanticAction>& a,SemanticActionType t){assert(a);assert(a->type==t);}
 int main(){
   MpcStudioMk2SemanticAdapter a;
@@ -16,7 +17,19 @@ int main(){
 
   MpcStudioMk2SemanticAdapter c; typeOf(c.handleControl(btn(13)),SemanticActionType::TrackSelectionContext); auto d=c.handleControl(jog(1)); typeOf(d,SemanticActionType::DataDialDelta); assert(d->value0==1); auto plus=c.handleControl(btn(54)); typeOf(plus,SemanticActionType::AdjustValueDelta); assert(plus->value0==1);
   MpcStudioMk2SemanticAdapter e; typeOf(e.handleControl(btn(82)),SemanticActionType::TransportPlay); static_cast<void>(e.handleControl(btn(49))); typeOf(e.handleControl(btn(81)),SemanticActionType::TransportReset);
-  MpcStudioMk2SemanticAdapter f; auto nr=f.handleControl(btn(11)); typeOf(nr,SemanticActionType::NoteRepeatState); assert(nr->value0==1); auto repeated=f.handlePad(pad(2)); assert(repeated.repeating); assert(repeated.targetPadIndex==2); assert(repeated.velocity==112); auto repeatRelease=f.handlePad(InputEvent{InputEventType::PadNote,9,37,0,2,false}); assert(repeatRelease.repeating); assert(repeatRelease.targetPadIndex==2); static_cast<void>(f.handleControl(btn(11,false)));
+  MpcStudioMk2SemanticAdapter rate;
+  typeOf(rate.handleControl(btn(11)),SemanticActionType::NoteRepeatState);
+  auto rateLow=rate.handleControl(strip(0));
+  typeOf(rateLow,SemanticActionType::NoteRepeatRateChanged);
+  assert(rateLow->value0==0 && rateLow->value1==960);
+  assert(!rate.handleControl(strip(0)).has_value());
+  auto rateSixteenth=rate.handleControl(strip(40));
+  typeOf(rateSixteenth,SemanticActionType::NoteRepeatRateChanged);
+  assert(rateSixteenth->value0==2 && rateSixteenth->value1==240);
+  auto rateTriplet=rate.handleControl(strip(96));
+  typeOf(rateTriplet,SemanticActionType::NoteRepeatRateChanged);
+  assert(rateTriplet->value0==6 && rateTriplet->value1==320);
+    MpcStudioMk2SemanticAdapter f; auto nr=f.handleControl(btn(11)); typeOf(nr,SemanticActionType::NoteRepeatState); assert(nr->value0==1); auto repeated=f.handlePad(pad(2)); assert(repeated.repeating); assert(repeated.targetPadIndex==2); assert(repeated.velocity==112); auto repeatRelease=f.handlePad(InputEvent{InputEventType::PadNote,9,37,0,2,false}); assert(repeatRelease.repeating); assert(repeatRelease.targetPadIndex==2); static_cast<void>(f.handleControl(btn(11,false)));
 
   MpcStudioMk2SemanticAdapter latched; static_cast<void>(latched.handleControl(btn(49))); auto latch=latched.handleControl(btn(11)); typeOf(latch,SemanticActionType::NoteRepeatState); assert(latch->value0==1 && latch->value1==1); auto latchedPress=latched.handlePad(pad(3)); assert(latchedPress.repeating); auto latchedRelease=latched.handlePad(InputEvent{InputEventType::PadNote,9,37,0,3,false}); assert(latchedRelease.repeating); assert(latchedRelease.targetPadIndex==3); static_cast<void>(latched.handleControl(btn(11))); static_cast<void>(f.handleControl(btn(4))); auto tm=f.handlePad(pad(2)); typeOf(tm.action,SemanticActionType::TrackMuteTarget); static_cast<void>(f.handleControl(btn(4))); static_cast<void>(f.handleControl(btn(49))); static_cast<void>(f.handleControl(btn(4))); auto pm=f.handlePad(pad(2)); typeOf(pm.action,SemanticActionType::PadMuteTarget);
   return 0;

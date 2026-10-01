@@ -21,7 +21,7 @@
 - button LEDs. **BASIC STATE-DRIVEN ROUTER IMPLEMENTED — transport, Note Repeat, Level16 and mute-mode states are cached so repeated UI refreshes do not resend identical MIDI feedback. Full LCD/Touch-strip state synchronization remains.**
 - pad RGB SysEx.
 - touch-strip LEDs.
-- Note Repeat indicators. **BUTTON STATE IMPLEMENTED — ON/OFF semantic state is reflected on the physical Note Repeat button. Division LEDs remain pending.**
+- Note Repeat indicators. **STATE-DRIVEN SLICE IMPLEMENTED — ON/OFF is reflected on the physical Note Repeat button, and the dedicated division LED bank now mirrors the independently selected repeat rate.**
 - 160x80 LCD SysEx.
 
 ## Stage 3 — Audio
@@ -149,7 +149,7 @@ Add:
 - Undo/Redo;
 - Locate;
 - Erase;
-- touch-strip contextual control. **INITIAL SAMPLE-CONTEXT SLICE IMPLEMENTED — Sample Start/End focus scrubs the corresponding region boundary; Tune focus spans −24..+24 st. Note Repeat division control remains a separate follow-up while the basic clock-synchronous repeat engine is now implemented.**
+- touch-strip contextual control. **INITIAL CONTEXTUAL SLICE IMPLEMENTED — Sample Start/End focus scrubs the corresponding region boundary; Tune focus spans −24..+24 st; while Note Repeat is active, the strip selects its independent musical repeat division.**
 - compact LCD status.
 
 ### Advanced hardware surface — P2/P3
@@ -177,3 +177,12 @@ P0 code coverage now includes transport, Main/Browse, Track/Sequence selection, 
 Note Repeat scheduling, Touch Strip contextual control, complete button/pad/LCD feedback, and the remaining P1 production controls stay separate and explicitly incomplete.
 
 This controller work supplements Stages 1, 2 and 7; it does not replace the overall roadmap.
+
+
+## 2026-10-01 Note Repeat production increment
+
+- **Independent repeat-rate control implemented:** Note Repeat no longer derives its playback interval from the Sequence recording grid. It owns a separate eight-position rate map with straight and triplet divisions.
+- **Touch Strip context implemented:** when Note Repeat is active, CC 33 is interpreted as a discrete rate selector; outside that mode the existing sample/tuning contextual strip behavior is unchanged.
+- **Hardware feedback implemented:** the eight Note Repeat division indicators are updated from semantic rate state, including a full clear when Note Repeat is disabled.
+- **Timing architecture preserved:** rate changes wake the native scheduler and re-align the next repeat against the same transport clock; Android UI refresh is not part of repeat timing.
+- **Recording scope unchanged:** generated Note Repeat hits remain performance-only until a safe recording contract is added.

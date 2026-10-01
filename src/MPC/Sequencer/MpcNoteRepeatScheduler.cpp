@@ -63,6 +63,28 @@ void MpcNoteRepeatScheduler::clearPad() noexcept {
     wake();
 }
 
+void MpcNoteRepeatScheduler::setRepeatGridIndex(
+        std::int32_t index) noexcept {
+    const auto clamped = std::clamp<std::int32_t>(
+            index,
+            0,
+            static_cast<std::int32_t>(
+                    note_repeat_timing::kRepeatRates.size()) - 1);
+    const auto ticks =
+            note_repeat_timing::repeatRateTicksForIndex(clamped);
+
+    const auto oldIndex =
+            repeatGridIndex_.exchange(
+                    clamped,
+                    std::memory_order_acq_rel);
+    repeatGridTicks_.store(ticks, std::memory_order_release);
+
+    if (oldIndex != clamped) {
+        generation_.fetch_add(1, std::memory_order_acq_rel);
+        wake();
+    }
+}
+
 std::int64_t MpcNoteRepeatScheduler::intervalNanos(
         std::int64_t ticks,
         std::int64_t tempoMilliBpm) noexcept {
@@ -103,8 +125,7 @@ MpcNoteRepeatScheduler::Clock::time_point
 MpcNoteRepeatScheduler::nextDueFromTransport(
         Clock::time_point now,
         const SequenceTransportSnapshot& snapshot) const noexcept {
-    const auto grid =
-            note_repeat_timing::clampGrid(snapshot.quantizeGridTicks);
+    const auto grid = repeatGridTicks();
 
     if (!snapshot.playing
             || snapshot.loopEndTicks <= snapshot.loopStartTicks) {
