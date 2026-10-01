@@ -36,6 +36,6 @@ public final class MpcStudioMk2LcdRendererTest {
         final String signature = state.signature();
 
         assertTrue(signature.contains("|true|false|true|"));
-        assertTrue(signature.contains("|NR2:2|LOC1|ER0|"));
+        assertTrue(signature.contains("|NRtrue:2|LOCtrue|ERfalse|"));
     }
 }
