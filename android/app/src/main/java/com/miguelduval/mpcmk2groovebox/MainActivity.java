@@ -144,6 +144,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final long[] hardwareTapIntervalsNanos = new long[4];
     private int hardwareTapIntervalCount = 0;
     private int selectedSequenceStep = -1;
+    private boolean hardwareLocateActive;
     private String currentPage = "MAIN";
     private volatile boolean destroyed;
     private volatile boolean startupComplete;
@@ -282,6 +283,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceStop();
     private static native String nativeSequenceReset();
     private static native int nativeSequenceAdvance(long milliseconds);
+    private static native String nativeSequenceSetLocator(int slot);
+    private static native long nativeSequenceGetLocator(int slot);
+    private static native String nativeSequenceJumpToLocator(int slot);
+    private static native String nativeSequenceLocateMoveTicks(long deltaTicks);
+    private static native String nativeSequenceMoveToLocateBoundary(int direction);
+    private static native String nativeSequenceMoveToPreviousOrNextEvent(int direction);
     private static native String nativeSequenceMovePlayheadTicks(long deltaTicks);
     private static native long nativeSequencePositionTicks();
     private static native boolean nativeSequenceIsPlaying();
@@ -3879,7 +3886,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 handleHardwareDialDelta(value0, value1 != 0);
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_PRESS:
-                if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
+                if (hardwareLocateActive) {
+                    setBottomStatus(
+                            "LOCATE • DATA DIAL = ±1 BEAT • SHIFT = ±1 TICK");
+                } else if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
                     stepEditParameter = nativeStepEditParameterNext(
                             stepEditParameter);
                     setBottomStatus(
@@ -4016,6 +4026,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MpcStudioMk2SemanticActions.BAR_RIGHT:
                 handleHardwarePlayheadMove(value0, 1, true);
                 return;
+            case MpcStudioMk2SemanticActions.LOCATE_STATE:
+                hardwareLocateActive = value0 != 0;
+                setHardwareButtonLed(70, hardwareLocateActive);
+                setBottomStatus(
+                        hardwareLocateActive
+                                ? (value1 != 0
+                                        ? "LOCATE ON • DATA DIAL=BEAT • SHIFT=FINE"
+                                        : "LOCATE ON • DATA DIAL=BEAT")
+                                : "LOCATE OFF");
+                return;
+            case MpcStudioMk2SemanticActions.LOCATE_PAD:
+                if (value0 < 0) {
+                    setBottomStatus("LOCATE • unused pad");
+                    return;
+                }
+                final String locateResult = value1 != 0
+                        ? nativeSequenceSetLocator(value0)
+                        : nativeSequenceJumpToLocator(value0);
+                setBottomStatus(locateResult);
+                refreshSequencePlayhead();
+                refreshSequenceControls();
+                return;
             case MpcStudioMk2SemanticActions.TAP_TEMPO:
                 handleHardwareTapTempo();
                 return;
@@ -4098,6 +4130,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void handleHardwareDialDelta(int delta, boolean fine) {
         if (delta == 0) return;
+        if (hardwareLocateActive) {
+            final int denominator = Math.max(1, nativeSequenceGetDenominator());
+            final long beatTicks = Math.max(
+                    1L, Math.round(960.0 * 4.0 / denominator));
+            final long deltaTicks = fine
+                    ? delta
+                    : delta * beatTicks;
+            setBottomStatus(nativeSequenceLocateMoveTicks(deltaTicks));
+            refreshSequencePlayhead();
+            return;
+        }
         if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
             adjustSelectedStepParameter(delta, fine);
             return;
@@ -4275,8 +4318,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (locateMode != 0) {
             setBottomStatus(
                     bar
-                            ? "LOCATE + BAR • pending"
-                            : "LOCATE + STEP • pending");
+                            ? nativeSequenceMoveToLocateBoundary(direction)
+                            : nativeSequenceMoveToPreviousOrNextEvent(direction));
+            refreshSequencePlayhead();
             return;
         }
         if (nativeSequenceIsPlaying()) {
