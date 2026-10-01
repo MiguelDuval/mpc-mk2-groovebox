@@ -224,7 +224,7 @@ public:
             std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones,
             std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli,
             std::array<std::atomic<std::int32_t>, kPadCount>& panMilli,
-            std::array<std::atomic<std::uint8_t>, kPadCount>& padAftertouch,
+            std::array<std::atomic<std::uint32_t>, kPadCount>& padAftertouchFilterMicro,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerTuningMilliSemitones,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerPanMilli,
@@ -248,7 +248,7 @@ public:
               tuningMilliSemitones_(tuningMilliSemitones),
               levelMilli_(levelMilli),
               panMilli_(panMilli),
-              padAftertouch_(padAftertouch),
+              padAftertouchFilterMicro_(padAftertouchFilterMicro),
               layerGainMilli_(layerGainMilli),
               layerTuningMilliSemitones_(layerTuningMilliSemitones),
               layerPanMilli_(layerPanMilli),
@@ -386,9 +386,6 @@ public:
             }
 
             for (std::size_t pad = 0; pad < kPadCount; ++pad) {
-                const auto pressure = padAftertouch_[pad].load(
-                        std::memory_order_relaxed);
-
                 for (std::size_t voiceIndex = 0;
                         voiceIndex < kMaxPadVoices;
                         ++voiceIndex) {
@@ -726,7 +723,7 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones_;
     std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli_;
     std::array<std::atomic<std::int32_t>, kPadCount>& panMilli_;
-    std::array<std::atomic<std::uint8_t>, kPadCount>& padAftertouch_;
+    std::array<std::atomic<std::uint32_t>, kPadCount>& padAftertouchFilterMicro_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerTuningMilliSemitones_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerPanMilli_;
@@ -765,6 +762,7 @@ AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
 
     for (std::size_t pad = 0; pad < kPadCount; ++pad) {
         padAftertouch_[pad].store(0, std::memory_order_relaxed);
+        padAftertouchFilterMicro_[pad].store(1000000u, std::memory_order_relaxed);
         padTuningMilliSemitones_[pad].store(
                 static_cast<std::int32_t>(
                     std::lround(projectState_.activeDrumProgram().pad(pad).tuningSemitones * 1000.0f)),
@@ -1301,6 +1299,11 @@ void AudioEngine::setPadAftertouch(
         return;
     }
     padAftertouch_[padIndex].store(pressure, std::memory_order_relaxed);
+    const float multiplier =
+            mpc::studio::aftertouch::filterMultiplierForPressure(pressure);
+    padAftertouchFilterMicro_[padIndex].store(
+            static_cast<std::uint32_t>(std::lround(multiplier * 1000000.0f)),
+            std::memory_order_relaxed);
 }
 
 std::string AudioEngine::setPadEnvelopeParameters(
@@ -2178,7 +2181,7 @@ std::string AudioEngine::start() {
             padTuningMilliSemitones_,
             padLevelMilli_,
             padPanMilli_,
-            padAftertouch_,
+            padAftertouchFilterMicro_,
             padLayerGainMilli_,
             padLayerTuningMilliSemitones_,
             padLayerPanMilli_,

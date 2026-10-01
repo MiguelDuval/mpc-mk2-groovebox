@@ -230,6 +230,8 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
     std::array<std::atomic<std::uint8_t>, kPadCount> padAftertouch_{};
+    // Fixed-point (micro) filter-expression multiplier prepared off the audio thread.
+    std::array<std::atomic<std::uint32_t>, kPadCount> padAftertouchFilterMicro_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeAttackMilliMs_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeDecayMilliMs_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeSustainMilli_{};
