@@ -805,3 +805,16 @@ While `SEQ • STEP` is active, the physical pads are an editor-only selection s
 The Data Dial press cycles the application-level edit focus in this order: **Velocity → Probability → Ratchet → Nudge → Duration → Velocity**. Data Dial/`+/-` deltas then apply to the focused field. Shift/fine input affects Nudge and Duration resolution; discrete fields remain one-unit controls.
 
 This behavior is intentionally documented as an application ergonomics layer rather than a factory-default Studio MkII mapping. Physical hardware verification is still required before marking it CONFIRMED.
+
+
+## 2026-10-01 Touch Strip controller production increment
+
+The Touch Strip now has explicit application-level modes driven by the real MkII Touch Strip / Config button (note 0). Normal presses cycle **Level → Pan → Tune → Sample Start → Sample End → Level**; Shift+press opens a compact non-destructive configuration/status context without changing the current mode.
+
+The separately observed Touch Strip touch note (78) is decoded as its own touch state. CC 33 remains the continuous value path.
+
+Level, Pan and selected-layer Tune use existing application audio controls. Sample Start/End reuse the existing sample-region editor. While Note Repeat is active, CC 33 remains owned by the dedicated repeat-rate selector.
+
+CC 57–65 now provide state-driven Touch Strip feedback: the selected mode is shown at rest and the current value is shown while sliding. CC 103–110 mirror the active Note Repeat division and are explicitly cleared when Note Repeat is disabled. The two-color Touch Strip button LED uses red for normal strip operation and white for Note Repeat context.
+
+Physical MkII verification remains required.

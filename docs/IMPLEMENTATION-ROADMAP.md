@@ -214,3 +214,12 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
 - **Locate dial path implemented —** Data Dial and +/- move the playhead by one musical beat; Shift/fine moves by one project tick.
 - **Safety and feedback —** empty locator slots report a no-op status; leaving Locate through a display/context command clears the application Locate state; the Locate button LED mirrors active state.
 - Physical MkII verification remains required.
+
+## 2026-10-01 Touch Strip controller production increment
+
+- **Touch Strip button routed:** real MkII note 0 cycles five coherent application modes; Shift+press opens a compact non-destructive configuration/status context.
+- **Touch event routed:** reverse-engineered note 78 is decoded separately and exposed as semantic touch state.
+- **Live parameter modes implemented:** Level, Pan and Tune use existing audio controls; Sample Start/End use the existing region editor.
+- **Feedback implemented:** CC 57–65 show selected mode/value; CC 103–110 mirror Note Repeat's selected musical division.
+- **Safety preserved:** no UI timers or audio-callback work are introduced; CC 33 remains scheduler-owned while Note Repeat is active.
+- Physical MkII verification remains required.
