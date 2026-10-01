@@ -3857,7 +3857,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MpcStudioMk2SemanticActions.NAVIGATE_SEQUENCE_LAUNCHER:
             case MpcStudioMk2SemanticActions.NAVIGATE_BROWSE:
             case MpcStudioMk2SemanticActions.NAVIGATE_SAMPLER:
-            case MpcStudioMk2SemanticActions.NAVIGATE_STEP_SEQUENCER:
+            case MpcStudioMk2SemanticActions.NAVIGATE_STEP:
             case MpcStudioMk2SemanticActions.BROWSER_UP:
             case MpcStudioMk2SemanticActions.TRACK_SELECTION_CONTEXT:
             case MpcStudioMk2SemanticActions.SEQUENCE_SELECTION_CONTEXT:
