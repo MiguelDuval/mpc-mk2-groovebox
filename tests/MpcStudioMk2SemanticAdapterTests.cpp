@@ -3,6 +3,11 @@
 #include <cstdint>
 using namespace mpc::studio;
 InputEvent btn(std::uint8_t n,bool p=true){return {InputEventType::Button,0,n,static_cast<std::uint8_t>(p?127:0),0xFF,p};}
+InputEvent btnAt(std::uint8_t n,bool p,std::int64_t timestamp){
+  auto event=btn(n,p);
+  event.timestampNanos=timestamp;
+  return event;
+}
 InputEvent pad(std::uint8_t i){return {InputEventType::PadNote,9,37,112,i,true};}
 InputEvent jog(std::uint8_t v){return {InputEventType::JogWheel,0,100,v};}
 InputEvent strip(std::uint8_t v){return {InputEventType::TouchStrip,0,33,v};}
@@ -32,5 +37,45 @@ int main(){
     MpcStudioMk2SemanticAdapter f; auto nr=f.handleControl(btn(11)); typeOf(nr,SemanticActionType::NoteRepeatState); assert(nr->value0==1); auto repeated=f.handlePad(pad(2)); assert(repeated.repeating); assert(repeated.targetPadIndex==2); assert(repeated.velocity==112); auto repeatRelease=f.handlePad(InputEvent{InputEventType::PadNote,9,37,0,2,false}); assert(repeatRelease.repeating); assert(repeatRelease.targetPadIndex==2); static_cast<void>(f.handleControl(btn(11,false)));
 
   MpcStudioMk2SemanticAdapter latched; static_cast<void>(latched.handleControl(btn(49))); auto latch=latched.handleControl(btn(11)); typeOf(latch,SemanticActionType::NoteRepeatState); assert(latch->value0==1 && latch->value1==1); auto latchedPress=latched.handlePad(pad(3)); assert(latchedPress.repeating); auto latchedRelease=latched.handlePad(InputEvent{InputEventType::PadNote,9,37,0,3,false}); assert(latchedRelease.repeating); assert(latchedRelease.targetPadIndex==3); static_cast<void>(latched.handleControl(btn(11))); static_cast<void>(f.handleControl(btn(4))); auto tm=f.handlePad(pad(2)); typeOf(tm.action,SemanticActionType::TrackMuteTarget); static_cast<void>(f.handleControl(btn(4))); static_cast<void>(f.handleControl(btn(49))); static_cast<void>(f.handleControl(btn(4))); auto pm=f.handlePad(pad(2)); typeOf(pm.action,SemanticActionType::PadMuteTarget);
+
+  MpcStudioMk2SemanticAdapter locate;
+  auto locatePress = locate.handleControl(btnAt(70, true, 1'000'000'000));
+  typeOf(locatePress, SemanticActionType::LocateState);
+  assert(locatePress->value0 == 1 && locatePress->value1 == 0);
+  auto store = locate.handlePad(pad(8));
+  typeOf(store.action, SemanticActionType::LocatePad);
+  assert(store.consumed && store.action->value0 == 0 && store.action->value1 == 1);
+  auto locateRelease = locate.handleControl(btnAt(70, false, 1'200'000'000));
+  typeOf(locateRelease, SemanticActionType::LocateState);
+  assert(locateRelease->value0 == 1 && locateRelease->value1 == 1);
+  auto jump = locate.handlePad(pad(0));
+  typeOf(jump.action, SemanticActionType::LocatePad);
+  assert(jump.consumed && jump.action->value0 == 0 && jump.action->value1 == 0);
+  assert(locate.locateActive() && locate.locateLatched());
+
+  auto modeExit = locate.handleControl(btn(52));
+  typeOf(modeExit, SemanticActionType::NavigateMain);
+  assert(!locate.locateActive());
+
+  MpcStudioMk2SemanticAdapter momentaryLocate;
+  static_cast<void>(momentaryLocate.handleControl(btnAt(70, true, 3'000'000'000)));
+  auto temporaryStore = momentaryLocate.handlePad(pad(13));
+  typeOf(temporaryStore.action, SemanticActionType::LocatePad);
+  assert(temporaryStore.action->value0 == 5 && temporaryStore.action->value1 == 1);
+  auto temporaryRelease = momentaryLocate.handleControl(btnAt(
+      70, false, 3'400'000'000));
+  typeOf(temporaryRelease, SemanticActionType::LocateState);
+  assert(temporaryRelease->value0 == 0 && temporaryRelease->value1 == 0);
+  assert(!momentaryLocate.locateActive());
+
+  MpcStudioMk2SemanticAdapter locateNavigation;
+  static_cast<void>(locateNavigation.handleControl(btnAt(
+      70, true, 4'000'000'000)));
+  static_cast<void>(locateNavigation.handleControl(btnAt(
+      70, false, 4'200'000'000)));
+  auto previousEvent = locateNavigation.handleControl(btn(68));
+  typeOf(previousEvent, SemanticActionType::StepLeft);
+  assert(previousEvent->value0 == 1);
+
   return 0;
 }
