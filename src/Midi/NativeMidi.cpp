@@ -36,8 +36,11 @@ std::vector<std::uint8_t> makeNoteRepeatRateFeedback(
         bool enabled,
         std::size_t selectedIndex) {
     std::vector<std::uint8_t> feedback;
-    feedback.reserve(mpc::studio::noteRepeatLedCcs.size() * 3u);
-    for (std::size_t i = 0; i < mpc::studio::noteRepeatLedCcs.size(); ++i) {
+    feedback.reserve(
+            mpc::sequencer::note_repeat_timing::kRepeatRates.size() * 3u);
+    for (std::size_t i = 0;
+         i < mpc::sequencer::note_repeat_timing::kRepeatRates.size();
+         ++i) {
         const auto brightness =
                 enabled && i == selectedIndex ? std::uint8_t{127} : std::uint8_t{0};
         const auto message =
