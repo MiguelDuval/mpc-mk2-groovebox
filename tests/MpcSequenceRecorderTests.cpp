@@ -102,7 +102,7 @@ void testTimingCorrectCanBeDisabled() {
     recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
     recorder.begin(state);
 
-    assert(queue.tryEnqueue({485, 120, 4, 100, 1}));
+    assert(queue.tryEnqueue({485, 0, 4, 100, 1}));
     assert(queue.tryEnqueue({545, 0, 4, 0, 0}));
 
     assert(recorder.drain(state, queue) == 1);
