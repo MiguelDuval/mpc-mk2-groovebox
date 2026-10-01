@@ -231,6 +231,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceSetLoopBars(int startBar, int endBar);
     private static native int nativeSequenceGetQuantizeGrid();
     private static native String nativeSequenceSetQuantizeGrid(int ticks);
+    private static native String nativeSequenceQuantizeSelectedTrack();
     private static native int nativeSequenceGetSwing();
     private static native String nativeSequenceSetSwing(int percent);
     private static native boolean nativeSequenceIsTimingCorrectEnabled();
