@@ -11,7 +11,11 @@ public:
     void configure(float cutoffHz, int sampleRate) noexcept {
         initialized_ = false;
         state_ = 0.0f;
+        setCutoff(cutoffHz, sampleRate);
+    }
 
+    // Update the coefficient without clearing the running filter state.
+    void setCutoff(float cutoffHz, int sampleRate) noexcept {
         if (!std::isfinite(cutoffHz) || cutoffHz <= 0.0f || sampleRate <= 0) {
             bypass_ = true;
             alpha_ = 1.0f;
