@@ -3862,21 +3862,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void setHardwareButtonLed(int cc, boolean on) {
-    private void setHardwarePadRgb(int pad, int red, int green, int blue) {
-        if (midiBridge == null || pad < 0 || pad >= 16) return;
-        final byte[] message = MpcStudioMk2MidiMessages.padRgb(
-                pad, red, green, blue);
-        if (message != null) {
-            midiBridge.send(message);
-        }
-    }
-
-    private void clearHardwareCopyDeletePadLeds() {
-        for (int pad = 0; pad < 16; pad++) {
-            setHardwarePadRgb(pad, 0, 0, 0);
-        }
-    }
-
         final int state = on ? 2 : 0;
         switch (cc) {
             case 82:
@@ -3924,6 +3909,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     MpcStudioMk2MidiMessages.buttonLed(
                             cc,
                             state));
+        }
+    }
+
+    private void setHardwarePadRgb(int pad, int red, int green, int blue) {
+        if (midiBridge == null || pad < 0 || pad >= 16) return;
+        final byte[] message = MpcStudioMk2MidiMessages.padRgb(
+                pad, red, green, blue);
+        if (message != null) {
+            midiBridge.send(message);
+        }
+    }
+
+    private void clearHardwareCopyDeletePadLeds() {
+        for (int pad = 0; pad < 16; pad++) {
+            setHardwarePadRgb(pad, 0, 0, 0);
         }
     }
 
