@@ -1,5 +1,6 @@
 #include "MpcStudioMk2SemanticAdapter.h"
 #include "MpcStudioMk2ControlMap.h"
+#include "MPC/Sequencer/MpcNoteRepeatTiming.h"
 #include <array>
 #include <string_view>
 
@@ -18,7 +19,24 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const I
         case InputEventType::Button: return handleButton(e.number,e.pressed);
         case InputEventType::JogWheel: return handleJog(e.value);
         case InputEventType::JogPress: return handleJogPress(e.pressed);
-        case InputEventType::TouchStrip: return make(Type::TouchStripValue,e.value);
+        case InputEventType::TouchStrip:
+            if (!noteRepeatActive()) {
+                return make(Type::TouchStripValue,e.value);
+            }
+            {
+                const auto index =
+                        mpc::sequencer::note_repeat_timing::repeatRateIndexForTouch(
+                                e.value);
+                if (index == static_cast<std::int32_t>(noteRepeatRateIndex_)) {
+                    return std::nullopt;
+                }
+                noteRepeatRateIndex_ = static_cast<std::uint8_t>(index);
+                return make(
+                        Type::NoteRepeatRateChanged,
+                        index,
+                        mpc::sequencer::note_repeat_timing::repeatRateTicksForIndex(
+                                index));
+            }
         default: return std::nullopt;
     }
 }
