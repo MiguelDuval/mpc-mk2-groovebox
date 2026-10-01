@@ -4115,12 +4115,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MpcStudioMk2SemanticActions.TOUCH_STRIP_VALUE:
                 handleHardwareTouchStrip(value0);
                 return;
-            case MpcStudioMk2SemanticActions.LOCATE_STATE:
-                setBottomStatus(value0 != 0 ? "LOCATE HELD" : "LOCATE OFF");
-                return;
-            case MpcStudioMk2SemanticActions.LOCATE_PAD:
-                setBottomStatus("LOCATE PAD " + (value0 + 1) + " • pending");
-                return;
             case MpcStudioMk2SemanticActions.SAMPLE_SELECT_CONTEXT:
                 hardwareFocus = 10;
                 showSamplePage();
