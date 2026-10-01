@@ -127,12 +127,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int STEP_EDIT_PARAMETER_RATCHET = 2;
     private static final int STEP_EDIT_PARAMETER_NUDGE = 3;
     private static final int STEP_EDIT_PARAMETER_DURATION = 4;
+    private static final int TOUCH_STRIP_MODE_LEVEL = 0;
+    private static final int TOUCH_STRIP_MODE_PAN = 1;
+    private static final int TOUCH_STRIP_MODE_TUNE = 2;
+    private static final int TOUCH_STRIP_MODE_SAMPLE_START = 3;
+    private static final int TOUCH_STRIP_MODE_SAMPLE_END = 4;
 
     private int selectedPad = 0;
     private int selectedLayer = 0;
     private int hardwareFocus = 0;
     private int stepEditParameter = STEP_EDIT_PARAMETER_VELOCITY;
     private int hardwarePadBank = 0;
+    private int hardwareTouchStripMode = TOUCH_STRIP_MODE_LEVEL;
+    private int hardwareNoteRepeatRateIndex = 2;
+    private String lastTouchStripLedSignature = "";
+    private String lastNoteRepeatDivisionLedSignature = "";
+    private int lastTouchStripButtonLedState = -1;
     private int lastPlayLedState = -1;
     private int lastRecordLedState = -1;
     private int lastOverdubLedState = -1;
@@ -3989,6 +3999,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.NOTE_REPEAT_STATE:
                 setHardwareButtonLed(11, value0 != 0);
+                setTouchStripButtonLed(value0 != 0);
+                syncHardwareNoteRepeatRateLeds(
+                        hardwareNoteRepeatRateIndex, value0 != 0);
+                syncHardwareTouchStripModeLeds();
                 setBottomStatus(
                         value0 != 0
                                 ? "NOTE REPEAT ON • "
@@ -3997,12 +4011,44 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 : "NOTE REPEAT OFF");
                 return;
             case MpcStudioMk2SemanticActions.NOTE_REPEAT_RATE_CHANGED:
+                hardwareNoteRepeatRateIndex = Math.max(0, Math.min(7, value0));
+                syncHardwareNoteRepeatRateLeds(
+                        hardwareNoteRepeatRateIndex, true);
                 setBottomStatus(
                         "NOTE REPEAT RATE • "
                                 + noteRepeatRateLabel(value0)
                                 + " • "
                                 + value1
                                 + " ticks");
+                return;
+            case MpcStudioMk2SemanticActions.TOUCH_STRIP_MODE_CHANGED:
+                hardwareTouchStripMode = Math.max(
+                        TOUCH_STRIP_MODE_LEVEL,
+                        Math.min(TOUCH_STRIP_MODE_SAMPLE_END, value0));
+                hardwareFocus = 0;
+                syncHardwareTouchStripModeLeds();
+                setBottomStatus(
+                        "TOUCH STRIP • "
+                                + touchStripModeLabel(hardwareTouchStripMode)
+                                + " • SLIDE TO CONTROL");
+                return;
+            case MpcStudioMk2SemanticActions.TOUCH_STRIP_TOUCH_STATE:
+                if (value0 == 0) {
+                    syncHardwareTouchStripModeLeds();
+                }
+                setBottomStatus(
+                        value0 != 0
+                                ? "TOUCH STRIP • "
+                                        + touchStripModeLabel(value1)
+                                        + " • TOUCH"
+                                : "TOUCH STRIP • "
+                                        + touchStripModeLabel(value1));
+                return;
+            case MpcStudioMk2SemanticActions.TOUCH_STRIP_CONFIG_CONTEXT:
+                setBottomStatus(
+                        "TOUCH STRIP CONFIG • LEVEL / PAN / TUNE / SAMPLE START / SAMPLE END"
+                                + " • CURRENT "
+                                + touchStripModeLabel(value0));
                 return;
             case MpcStudioMk2SemanticActions.FULL_LEVEL_STATE:
                 setHardwareButtonLed(39, value0 != 0);
@@ -4121,6 +4167,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus("SAMPLE SELECT • DATA DIAL / +/- changes layer");
                 return;
             case MpcStudioMk2SemanticActions.SAMPLE_START_CONTEXT:
+                hardwareTouchStripMode = TOUCH_STRIP_MODE_SAMPLE_START;
+                syncHardwareTouchStripModeLeds();
                 hardwareFocus = 7;
                 showSamplePage();
                 setBottomStatus(value0 != 0
@@ -4128,6 +4176,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         : "SAMPLE START");
                 return;
             case MpcStudioMk2SemanticActions.SAMPLE_END_CONTEXT:
+                hardwareTouchStripMode = TOUCH_STRIP_MODE_SAMPLE_END;
+                syncHardwareTouchStripModeLeds();
                 hardwareFocus = 8;
                 showSamplePage();
                 setBottomStatus(value0 != 0
@@ -4135,6 +4185,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         : "SAMPLE END");
                 return;
             case MpcStudioMk2SemanticActions.TUNE_CONTEXT:
+                hardwareTouchStripMode = TOUCH_STRIP_MODE_TUNE;
+                syncHardwareTouchStripModeLeds();
                 hardwareFocus = 9;
                 showSamplePage();
                 setBottomStatus(value0 != 0
@@ -4313,59 +4365,140 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void handleHardwareTouchStrip(int value) {
         value = Math.max(0, Math.min(127, value));
 
-        if (hardwareFocus == 7 || hardwareFocus == 8) {
-            final long total =
-                    nativeAudioGetPadSampleFrameCount(
-                            selectedPad, selectedLayer);
-            if (total <= 1) {
-                setBottomStatus("TOUCH STRIP • no sample assigned");
+        switch (hardwareTouchStripMode) {
+            case TOUCH_STRIP_MODE_LEVEL:
+                setBottomStatus(nativeAudioSetPadLevel(
+                        selectedPad, value / 127.0f));
+                refreshAllInspectorState();
+                syncHardwareTouchStripValueLeds(value);
+                return;
+            case TOUCH_STRIP_MODE_PAN: {
+                final float pan = (value / 127.0f) * 2.0f - 1.0f;
+                setBottomStatus(nativeAudioSetPadPan(selectedPad, pan));
+                refreshAllInspectorState();
+                syncHardwareTouchStripValueLeds(value);
                 return;
             }
-
-            final long start =
-                    nativeAudioGetPadSampleRegionStart(
-                            selectedPad, selectedLayer);
-            final long end =
-                    nativeAudioGetPadSampleRegionEnd(
-                            selectedPad, selectedLayer);
-
-            if (hardwareFocus == 7) {
-                final long nextStart = Math.min(
-                        end - 1L,
-                        Math.round(
-                                (value / 127.0)
-                                        * Math.max(0L, end - 1L)));
-                setBottomStatus(nativeAudioSetPadSampleRegion(
-                        selectedPad, selectedLayer, nextStart, end));
-            } else {
-                final long nextEnd = Math.max(
-                        start + 1L,
-                        Math.round(
-                                start + (value / 127.0)
-                                        * Math.max(
-                                                1L,
-                                                total - start)));
-                setBottomStatus(nativeAudioSetPadSampleRegion(
-                        selectedPad, selectedLayer, start, nextEnd));
+            case TOUCH_STRIP_MODE_TUNE: {
+                final float semitones = -24.0f + (48.0f * value / 127.0f);
+                setBottomStatus(nativeAudioSetPadLayerTuning(
+                        selectedPad, selectedLayer, semitones));
+                refreshAllInspectorState();
+                refreshSampleInfo();
+                syncHardwareTouchStripValueLeds(value);
+                return;
             }
+            case TOUCH_STRIP_MODE_SAMPLE_START:
+                handleHardwareTouchStripSampleRegion(value, true);
+                return;
+            case TOUCH_STRIP_MODE_SAMPLE_END:
+                handleHardwareTouchStripSampleRegion(value, false);
+                return;
+            default:
+                syncHardwareTouchStripModeLeds();
+                return;
+        }
+    }
 
-            refreshRegionInfo();
-            if (sampleWaveform != null) {
-                refreshSampleWaveform();
-            }
+    private void handleHardwareTouchStripSampleRegion(
+            int value, boolean start) {
+        final long total = nativeAudioGetPadSampleFrameCount(
+                selectedPad, selectedLayer);
+        if (total <= 1) {
+            setBottomStatus("TOUCH STRIP • no sample assigned");
             return;
         }
 
-        if (hardwareFocus == 9) {
-            final float semitones = -24.0f + (48.0f * value / 127.0f);
-            setBottomStatus(nativeAudioSetPadLayerTuning(
-                    selectedPad, selectedLayer, semitones));
-            refreshAllInspectorState();
-            refreshSampleInfo();
-            return;
+        final long currentStart = nativeAudioGetPadSampleRegionStart(
+                selectedPad, selectedLayer);
+        final long currentEnd = nativeAudioGetPadSampleRegionEnd(
+                selectedPad, selectedLayer);
+
+        if (start) {
+            final long nextStart = Math.min(
+                    currentEnd - 1L,
+                    Math.round((value / 127.0)
+                            * Math.max(0L, currentEnd - 1L)));
+            setBottomStatus(nativeAudioSetPadSampleRegion(
+                    selectedPad, selectedLayer, nextStart, currentEnd));
+        } else {
+            final long nextEnd = Math.max(
+                    currentStart + 1L,
+                    Math.round((value / 127.0)
+                            * Math.max(1L, total - currentStart)
+                            + currentStart));
+            setBottomStatus(nativeAudioSetPadSampleRegion(
+                    selectedPad, selectedLayer, currentStart, nextEnd));
         }
 
-        setBottomStatus("TOUCH STRIP " + value + "/127");
+        refreshRegionInfo();
+        if (sampleWaveform != null) {
+            refreshSampleWaveform();
+        }
+        syncHardwareTouchStripValueLeds(value);
+    }
+
+    private String touchStripModeLabel(int mode) {
+        switch (mode) {
+            case TOUCH_STRIP_MODE_LEVEL: return "LEVEL";
+            case TOUCH_STRIP_MODE_PAN: return "PAN";
+            case TOUCH_STRIP_MODE_TUNE: return "TUNE";
+            case TOUCH_STRIP_MODE_SAMPLE_START: return "SAMPLE START";
+            case TOUCH_STRIP_MODE_SAMPLE_END: return "SAMPLE END";
+            default: return "LEVEL";
+        }
+    }
+
+    private void syncHardwareTouchStripValueLeds(int value) {
+        if (midiBridge == null) return;
+        final int clamped = Math.max(0, Math.min(127, value));
+        final int segment = (clamped * 9) / 128;
+        final String signature = "V:" + segment;
+        if (signature.equals(lastTouchStripLedSignature)) return;
+        for (int i = 0; i < 9; i++) {
+            final byte[] message =
+                    MpcStudioMk2MidiMessages.touchStripLedSegment(
+                            i, i == segment ? 127 : 0);
+            if (message != null) midiBridge.send(message);
+        }
+        lastTouchStripLedSignature = signature;
+    }
+
+    private void syncHardwareTouchStripModeLeds() {
+        if (midiBridge == null) return;
+        final int segment = Math.max(
+                0, Math.min(8, hardwareTouchStripMode * 2));
+        final String signature = "M:" + hardwareTouchStripMode;
+        if (signature.equals(lastTouchStripLedSignature)) return;
+        for (int i = 0; i < 9; i++) {
+            final byte[] message =
+                    MpcStudioMk2MidiMessages.touchStripLedSegment(
+                            i, i == segment ? 127 : 0);
+            if (message != null) midiBridge.send(message);
+        }
+        lastTouchStripLedSignature = signature;
+    }
+
+    private void syncHardwareNoteRepeatRateLeds(
+            int rateIndex, boolean active) {
+        if (midiBridge == null) return;
+        final int clamped = Math.max(0, Math.min(7, rateIndex));
+        final String signature = "R:" + (active ? 1 : 0) + ":" + clamped;
+        if (signature.equals(lastNoteRepeatDivisionLedSignature)) return;
+        for (int i = 0; i < 8; i++) {
+            final byte[] message = MpcStudioMk2MidiMessages.noteRepeatLed(
+                    i, active && i == clamped ? 127 : 0);
+            if (message != null) midiBridge.send(message);
+        }
+        lastNoteRepeatDivisionLedSignature = signature;
+    }
+
+    private void setTouchStripButtonLed(boolean noteRepeatActive) {
+        if (midiBridge == null) return;
+        final int state = noteRepeatActive ? 4 : 3;
+        if (state == lastTouchStripButtonLedState) return;
+        midiBridge.send(MpcStudioMk2MidiMessages.buttonLed(0, state));
+        lastTouchStripButtonLedState = state;
     }
 
     private void handleHardwarePlayheadMove(
@@ -4437,6 +4570,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     && description.startsWith("Connected:");
             midiState.setText(connected ? "MIDI ON" : "MIDI —");
             midiState.setTextColor(connected ? ACTIVE : MUTED);
+            if (connected) {
+                lastTouchStripLedSignature = "";
+                lastNoteRepeatDivisionLedSignature = "";
+                lastTouchStripButtonLedState = -1;
+                syncHardwareTouchStripModeLeds();
+                syncHardwareNoteRepeatRateLeds(
+                        hardwareNoteRepeatRateIndex, false);
+                setTouchStripButtonLed(false);
+            }
             setBottomStatus(description);
         });
     }
