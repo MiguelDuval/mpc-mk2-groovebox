@@ -127,6 +127,10 @@ All of these must dispatch semantic actions through the MPC Studio MkII adapter.
 
 - **PHYSICAL STEP SELECTION SLICE IMPLEMENTED —** while `SEQ • STEP` is active, the 16 physical pads select steps 1–16 of the current page through a semantic action; pad presses no longer trigger audio or Note Repeat in this editor context. Software step editing remains available in parallel. Physical MkII verification remains required.
 
+### Step Edit pad feedback
+
+- **STATE-DRIVEN FEEDBACK SLICE IMPLEMENTED —** in `SEQ • STEP`, the 16 physical pads mirror step state: dim = empty, green = active, amber = selected, red/cyan-ish = playhead, white = selected + playhead; LEDs are updated only when the projected state changes. Leaving Step Edit clears the pad bank. Physical MkII verification remains required.
+
 ### Hardware feedback — P0/P1
 
 Then make hardware state visible:

@@ -108,6 +108,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int sequenceStepPage = 0;
     private int launcherBank = 0;
     private String lastLauncherLedSignature = "";
+    private String lastStepEditLedSignature = "";
     private static final int SEQUENCE_GRID_PAGE_STEPS = 16;
     private TextView sequenceStatusView;
     private TextView sequenceTempoView;
@@ -529,6 +530,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMainPage() {
+        clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         clearSequenceLauncherLeds();
@@ -645,6 +647,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSamplePage() {
+        clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SAMPLE";
@@ -851,6 +854,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showRecordPage() {
+        clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "REC";
@@ -941,6 +945,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showBrowserPage() {
+        clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "BROWSE";
@@ -980,6 +985,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequencePage() {
+        clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
@@ -1189,6 +1195,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceGridPage() {
+        clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
@@ -1273,6 +1280,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceLauncherPage() {
+        clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         launcherBank = Math.max(0, nativeSequenceGetIndex() / 16);
@@ -1353,6 +1361,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceStepPage() {
+        clearSequenceLauncherLeds();
         nativeSequenceSetStepEditContext(true, sequenceStepPage);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
@@ -1712,6 +1721,119 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSequenceStepPage();
     }
 
+
+    private void syncStepEditPadLeds() {
+        if (midiBridge == null || sequenceStepButtons[0] == null) {
+            return;
+        }
+
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int page = Math.max(0, sequenceStepPage);
+        final int firstStep = page * SEQUENCE_GRID_PAGE_STEPS;
+        final int[] velocities = nativeSequenceGetGridVelocities(
+                firstStep, gridTicks);
+        final long totalSequenceTicks = Math.max(
+                gridTicks,
+                Math.round(
+                        getSequenceTicksPerBar()
+                                * Math.max(1, nativeSequenceGetBars())));
+        final int totalSteps = (int) Math.max(
+                1L,
+                (totalSequenceTicks + gridTicks - 1L) / gridTicks);
+        final int selectedStep = selectedSequenceStep;
+        final int playheadStep = (int) Math.max(
+                0L,
+                nativeSequencePositionTicks() / gridTicks);
+
+        StringBuilder signature = new StringBuilder();
+        signature.append(gridTicks)
+                .append(':').append(page)
+                .append(':').append(selectedStep)
+                .append(':').append(playheadStep)
+                .append(':').append(totalSteps);
+
+        final int[] red = new int[16];
+        final int[] green = new int[16];
+        final int[] blue = new int[16];
+
+        for (int pad = 0; pad < 16; pad++) {
+            final int absoluteStep = firstStep + pad;
+            final boolean inRange = absoluteStep < totalSteps;
+            final boolean active = inRange
+                    && velocities != null
+                    && velocities.length > selectedPad * 16 + pad
+                    && velocities[selectedPad * 16 + pad] > 0;
+            final boolean selected = absoluteStep == selectedStep;
+            final boolean playhead = absoluteStep == playheadStep;
+
+            if (!inRange) {
+                red[pad] = 0;
+                green[pad] = 0;
+                blue[pad] = 0;
+            } else if (selected && playhead) {
+                red[pad] = 127;
+                green[pad] = 127;
+                blue[pad] = 127;
+            } else if (playhead) {
+                red[pad] = 127;
+                green[pad] = active ? 80 : 20;
+                blue[pad] = active ? 40 : 20;
+            } else if (selected) {
+                red[pad] = 127;
+                green[pad] = 72;
+                blue[pad] = 0;
+            } else if (active) {
+                red[pad] = 0;
+                green[pad] = 72;
+                blue[pad] = 18;
+            } else {
+                red[pad] = 8;
+                green[pad] = 8;
+                blue[pad] = 8;
+            }
+
+            signature.append('|')
+                    .append(pad).append('=')
+                    .append(red[pad]).append(',')
+                    .append(green[pad]).append(',')
+                    .append(blue[pad]);
+        }
+
+        final String value = signature.toString();
+        if (value.equals(lastStepEditLedSignature)) {
+            return;
+        }
+
+        for (int pad = 0; pad < 16; pad++) {
+            final byte[] message = MpcStudioMk2MidiMessages.padRgb(
+                    pad, red[pad], green[pad], blue[pad]);
+            if (message != null) {
+                midiBridge.send(message);
+            }
+        }
+
+        lastStepEditLedSignature = value;
+    }
+
+    private void clearStepEditPadLeds() {
+        if (midiBridge == null) {
+            lastStepEditLedSignature = "";
+            return;
+        }
+        if ("CLEARED".equals(lastStepEditLedSignature)) {
+            return;
+        }
+
+        for (int pad = 0; pad < 16; pad++) {
+            final byte[] message = MpcStudioMk2MidiMessages.padRgb(
+                    pad, 0, 0, 0);
+            if (message != null) {
+                midiBridge.send(message);
+            }
+        }
+        lastStepEditLedSignature = "CLEARED";
+    }
+
     private void syncSequenceLauncherLeds(
             int count,
             int activeIndex,
@@ -2040,6 +2162,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             (int) firstStep, gridTicks),
                     localStep);
         }
+
+        if (sequenceStepButtons[0] != null) {
+            syncStepEditPadLeds();
+        }
     }
 
     private void refreshSequenceTrackList(LinearLayout list) {
@@ -2266,6 +2392,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMixPage() {
+        clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MIX";
@@ -2312,6 +2439,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMidiPage() {
+        clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         currentPage = "MIDI";
         pageTitle.setText("MIDI");
@@ -2354,6 +2482,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMenuPage() {
+        clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MENU";
@@ -2401,6 +2530,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
 
     private void showAudioSettingsPage() {
+        clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         currentPage = "AUDIO";
         pageTitle.setText("AUDIO");
