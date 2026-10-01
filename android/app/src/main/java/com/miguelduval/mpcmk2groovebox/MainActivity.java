@@ -3622,6 +3622,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.LOCATE_STATE, 1, 0, 0);
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA, -1, 1, 0);
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.LOCATE_PAD, 0, 1, 0);
+        final long locator = nativeSequenceGetLocator(0);
+        if (locator < 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: locator set");
+            return;
+        }
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.LOCATE_PAD, 0, 0, 0);
+        if (nativeSequencePositionTicks() != locator) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: locator jump");
+            return;
+        }
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.LOCATE_STATE, 0, 0, 0);
+
         View backSeq = findViewWithExactText(
                 getWindow().getDecorView(), "BACK SEQ");
         if (backSeq == null || !backSeq.performClick()) {
