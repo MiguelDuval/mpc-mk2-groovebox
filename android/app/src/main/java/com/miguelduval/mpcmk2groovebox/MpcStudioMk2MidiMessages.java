@@ -56,8 +56,14 @@ public final class MpcStudioMk2MidiMessages {
         paint.setTextSize(8.0f);
         canvas.drawText("MIDI TRANSPORT OK", 5.0f, 73.0f, paint);
 
-        List<byte[]> messages = new ArrayList<>(6);
-        int[][] chunks = {
+        final List<byte[]> messages = encodeLcdFrame(frame);
+        frame.recycle();
+        return messages;
+    }
+
+    static List<byte[]> encodeLcdFrame(Bitmap frame) {
+        final List<byte[]> messages = new ArrayList<>(6);
+        final int[][] chunks = {
                 {0, 0, 60, 60},
                 {0, 60, 60, 20},
                 {60, 0, 60, 60},
@@ -80,8 +86,6 @@ public final class MpcStudioMk2MidiMessages {
 
             tile.recycle();
         }
-
-        frame.recycle();
         return messages;
     }
 

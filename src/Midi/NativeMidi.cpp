@@ -242,7 +242,8 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
     if (event->type == mpc::studio::InputEventType::Button
             || event->type == mpc::studio::InputEventType::JogPress
             || event->type == mpc::studio::InputEventType::JogWheel
-            || event->type == mpc::studio::InputEventType::TouchStrip) {
+            || event->type == mpc::studio::InputEventType::TouchStrip
+            || event->type == mpc::studio::InputEventType::TouchStripTouch) {
         const auto action = semanticAdapter.handleControl(*event);
         if (action.has_value()) {
             if (action->type

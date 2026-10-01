@@ -233,3 +233,12 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
 - **Feedback:** Erase button LED mirrors the active context and status reports armed/no-event/playback-required states.
 - **Stopped context remains explicit:** the broader event/automation Erase window is not faked; it stays a future editing slice.
 - Physical MkII verification remains required.
+
+
+## 2026-10-01 LCD product feedback and Touch Strip event-path hardening
+
+- **Touch Strip touch event is now end-to-end:** reverse-engineered Touch Strip touch Note 78 is dispatched through the native semantic adapter instead of being dropped at the MIDI boundary.
+- **LCD product layer implemented:** Android renders a compact 160×80 context mirror from application state and reuses the existing six-chunk PNG/SysEx transport.
+- **Live-display discipline:** the projected LCD signature uses coarse bar/beat position while playing, so the hardware display is not regenerated for every 80 ms UI tick.
+- **State separation preserved:** LCD rendering consumes semantic/application state and does not introduce raw controller MIDI identifiers into UI code.
+- Physical MkII verification remains required.

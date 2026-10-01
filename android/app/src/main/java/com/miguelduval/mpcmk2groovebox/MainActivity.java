@@ -152,6 +152,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int lastLevelLedState = -1;
     private int lastSixteenLevelLedState = -1;
     private int lastMuteLedState = -1;
+    private boolean hardwareNoteRepeatActive;
+    private String lastLcdSignature = "";
     private long lastHardwareTapNanos = 0L;
     private final long[] hardwareTapIntervalsNanos = new long[4];
     private int hardwareTapIntervalCount = 0;
@@ -2400,6 +2402,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 positionTicks,
                 nativeSequenceIsPlaying());
 
+        syncHardwareLcd();
+
         if (sequenceTransportView != null) {
             final int queuedIndex = nativeSequenceGetQueuedIndex();
             final String queueLabel = queuedIndex >= 0
@@ -3377,6 +3381,49 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (bottomStatus != null && text != null) bottomStatus.setText(text);
     }
 
+    private void syncHardwareLcd() {
+        if (midiBridge == null) return;
+
+        final String status = bottomStatus == null
+                ? ""
+                : String.valueOf(bottomStatus.getText());
+
+        final MpcStudioMk2LcdRenderer.State state =
+                new MpcStudioMk2LcdRenderer.State(
+                        currentPage,
+                        Math.max(0, nativeSequenceGetIndex()),
+                        Math.max(1, nativeSequenceGetCount()),
+                        nativeSequenceGetQueuedIndex(),
+                        Math.max(0, nativeSequenceGetSelectedTrack()),
+                        Math.max(1, nativeSequenceGetTrackCount()),
+                        nativeSequenceGetTempo(),
+                        nativeSequenceGetNumerator(),
+                        nativeSequenceGetDenominator(),
+                        nativeSequencePositionTicks(),
+                        nativeSequenceIsPlaying(),
+                        nativeSequenceIsSelectedTrackArmed(),
+                        nativeSequenceGetRecordMode() == 1,
+                        selectedPad,
+                        selectedLayer,
+                        hardwareTouchStripMode,
+                        hardwareNoteRepeatRateIndex,
+                        hardwareNoteRepeatActive,
+                        hardwareLocateActive,
+                        hardwareEraseActive,
+                        stepEditParameter,
+                        selectedSequenceStep,
+                        status);
+
+        final String signature = state.signature();
+        if (signature.equals(lastLcdSignature)) return;
+
+        final List<byte[]> messages = MpcStudioMk2LcdRenderer.render(state);
+        for (byte[] message : messages) {
+            if (message != null) midiBridge.send(message);
+        }
+        lastLcdSignature = signature;
+    }
+
     private TextView sectionLabelView(String text, ViewGroup.LayoutParams params) {
         TextView view = sectionLabel(text);
         view.setGravity(Gravity.CENTER_VERTICAL);
@@ -4022,6 +4069,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
                 return;
             case MpcStudioMk2SemanticActions.NOTE_REPEAT_STATE:
+                hardwareNoteRepeatActive = value0 != 0;
                 setHardwareButtonLed(11, value0 != 0);
                 setTouchStripButtonLed(value0 != 0);
                 syncHardwareNoteRepeatRateLeds(
@@ -4597,6 +4645,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (connected) {
                 lastTouchStripLedSignature = "";
                 lastNoteRepeatDivisionLedSignature = "";
+                lastLcdSignature = "";
+                hardwareNoteRepeatActive = false;
                 lastTouchStripButtonLedState = -1;
                 syncHardwareTouchStripModeLeds();
                 syncHardwareNoteRepeatRateLeds(
