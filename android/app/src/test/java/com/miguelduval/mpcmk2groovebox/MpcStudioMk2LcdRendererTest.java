@@ -39,35 +39,34 @@ public final class MpcStudioMk2LcdRendererTest {
         assertTrue(signature.contains("|NRtrue:2|LOCtrue|ERfalse|"));
     }
     @Test
-    public void waveformZoomChangesHorizontalAndVerticalAxesIndependently() {
-        final WaveformView view = new WaveformView(
-                new android.test.mock.MockContext());
+    public void waveformZoomPolicyChangesAxesIndependentlyAndClamps() {
+        float horizontal = MpcZoomPolicy.MAX_HORIZONTAL_SPAN;
+        float vertical = MpcZoomPolicy.MIN_VERTICAL_ZOOM;
 
-        assertTrue(view.viewportSpanForTest() > 0.99f);
-        assertTrue(view.verticalZoomForTest() > 0.99f);
+        horizontal = MpcZoomPolicy.zoomHorizontalIn(horizontal);
+        assertTrue(horizontal < MpcZoomPolicy.MAX_HORIZONTAL_SPAN);
+        assertTrue(MpcZoomPolicy.zoomHorizontalOut(horizontal)
+                > horizontal);
 
-        view.zoomIn();
-        final float zoomedSpan = view.viewportSpanForTest();
-        assertTrue(zoomedSpan < 0.99f);
-        assertTrue(view.verticalZoomForTest() > 0.99f);
-
-        view.zoomVerticalIn();
-        final float vertical = view.verticalZoomForTest();
-        assertTrue(vertical > 1.0f);
-        assertTrue(view.viewportSpanForTest() == zoomedSpan);
+        vertical = MpcZoomPolicy.zoomVerticalIn(vertical);
+        assertTrue(vertical > MpcZoomPolicy.MIN_VERTICAL_ZOOM);
+        assertTrue(MpcZoomPolicy.zoomVerticalOut(vertical)
+                < vertical);
 
         for (int i = 0; i < 32; i++) {
-            view.zoomVerticalIn();
-            view.zoomIn();
+            horizontal = MpcZoomPolicy.zoomHorizontalIn(horizontal);
+            vertical = MpcZoomPolicy.zoomVerticalIn(vertical);
         }
-        assertTrue(view.verticalZoomForTest() <= 4.0f);
-        assertTrue(view.viewportSpanForTest() >= 0.0625f);
 
-        view.zoomVerticalOut();
-        view.zoomOut();
-        view.resetZoom();
-        assertTrue(view.viewportSpanForTest() > 0.99f);
-        assertTrue(view.verticalZoomForTest() > 0.99f);
+        assertTrue(horizontal >= MpcZoomPolicy.MIN_HORIZONTAL_SPAN);
+        assertTrue(vertical <= MpcZoomPolicy.MAX_VERTICAL_ZOOM);
+
+        for (int i = 0; i < 32; i++) {
+            horizontal = MpcZoomPolicy.zoomHorizontalOut(horizontal);
+            vertical = MpcZoomPolicy.zoomVerticalOut(vertical);
+        }
+
+        assertTrue(horizontal <= MpcZoomPolicy.MAX_HORIZONTAL_SPAN);
+        assertTrue(vertical >= MpcZoomPolicy.MIN_VERTICAL_ZOOM);
     }
-
 }
