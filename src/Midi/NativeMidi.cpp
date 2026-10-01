@@ -123,13 +123,6 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
 
     if (event->type == mpc::studio::InputEventType::PadNote) {
         auto& core = mpc::MpcCore::instance();
-        const auto padRouting = semanticAdapter.handlePad(*event);
-        if (padRouting.action.has_value()) {
-            enqueueSemanticAction(*padRouting.action);
-        }
-        if (padRouting.consumed) {
-            return std::nullopt;
-        }
 
         if (stepEditEnabled.load(std::memory_order_acquire)) {
             if (!event->pressed) {
@@ -145,6 +138,14 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
                     static_cast<std::int32_t>(stepIndex),
                     static_cast<std::int32_t>(event->padIndex),
                     static_cast<std::int32_t>(page)});
+            return std::nullopt;
+        }
+
+        const auto padRouting = semanticAdapter.handlePad(*event);
+        if (padRouting.action.has_value()) {
+            enqueueSemanticAction(*padRouting.action);
+        }
+        if (padRouting.consumed) {
             return std::nullopt;
         }
 
