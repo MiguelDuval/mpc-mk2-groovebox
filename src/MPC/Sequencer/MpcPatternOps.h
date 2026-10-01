@@ -307,6 +307,28 @@ inline bool setStepNoteRatchet(
     return true;
 }
 
+inline bool setStepNoteDuration(
+        domain::Pattern& pattern,
+        std::int32_t stepIndex,
+        std::int32_t gridTicks,
+        std::uint8_t noteNumber,
+        std::int32_t durationTicks) noexcept {
+    if (gridTicks <= 0
+            || durationTicks < std::max(1, gridTicks / 4)
+            || durationTicks > gridTicks * 4) {
+        return false;
+    }
+    const auto* existing = findStepNote(
+            pattern, stepIndex, gridTicks, noteNumber);
+    if (existing == nullptr) {
+        return false;
+    }
+    auto* note = findStepNote(
+            pattern, stepIndex, gridTicks, noteNumber);
+    note->durationTicks = durationTicks;
+    return true;
+}
+
 inline bool eraseStepNote(
         domain::Pattern& pattern,
         std::int32_t stepIndex,

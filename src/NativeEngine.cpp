@@ -1079,7 +1079,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetStepParameter
         return nullptr;
     }
 
-    std::array<jint, 4> values{0, 0, 0, 0};
+    std::array<jint, 5> values{0, 0, 0, 0, 0};
     if (padIndex < 0
             || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)
             || stepIndex < 0
@@ -1119,6 +1119,10 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetStepParameter
             values[1] = static_cast<jint>(note->probability);
             values[2] = static_cast<jint>(note->ratchet);
             values[3] = static_cast<jint>(note->nudgeTicks);
+            values[4] = static_cast<jint>(
+                    note->durationTicks > 0
+                            ? note->durationTicks
+                            : gridTicks);
         }
     }
 
@@ -1280,6 +1284,65 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepRatchet(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepDuration(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint padIndex,
+        jint stepIndex,
+        jint gridTicks,
+        jint durationTicks)
+{
+    if (gridTicks <= 0
+            || durationTicks < std::max(1, gridTicks / 4)
+            || durationTicks > gridTicks * 4) {
+        return toJString(
+                env,
+                "Step duration failed: use "
+                        + std::to_string(std::max(1, gridTicks / 4))
+                        + "–"
+                        + std::to_string(std::max(1, gridTicks) * 4)
+                        + " ticks");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Step edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+
+    auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    auto& tracks = state.activeSequence().tracks;
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)
+            || stepIndex < 0
+            || gridTicks <= 0
+            || trackIndex >= tracks.size()) {
+        return toJString(env, "Step duration failed: invalid target");
+    }
+
+    auto& track = tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum || track.patterns.empty()) {
+        return toJString(env, "Step duration failed: selected track is not DRUM");
+    }
+
+    const auto noteNumber = state.activeDrumProgram()
+            .pads[static_cast<std::size_t>(padIndex)].midiNote;
+    if (!mpc::sequencer::setStepNoteDuration(
+            track.patterns.front(),
+            stepIndex,
+            gridTicks,
+            noteNumber,
+            static_cast<std::int32_t>(durationTicks))) {
+        return toJString(env, "Step duration failed: no event");
+    }
+
+    return toJString(
+            env,
+            "Step duration " + std::to_string(durationTicks) + " ticks");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepNudge(
         JNIEnv* env,
         jobject /* thiz */,
@@ -1402,7 +1465,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleGridStep(
                     gridTicks,
                     noteNumber,
                     100,
-                    0,
+                    gridTicks,
                     127,
                     1);
 

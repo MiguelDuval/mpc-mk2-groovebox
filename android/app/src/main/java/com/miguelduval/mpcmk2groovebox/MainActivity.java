@@ -251,6 +251,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int padIndex, int stepIndex, int gridTicks, int ratchet);
     private static native String nativeSequenceSetStepNudge(
             int padIndex, int stepIndex, int gridTicks, int nudgeTicks);
+    private static native String nativeSequenceSetStepDuration(
+            int padIndex, int stepIndex, int gridTicks, int durationTicks);
     private static native int nativeSequenceGetRecordMode();
     private static native String nativeSequenceSetRecordMode(int mode);
     private static native int nativeSequenceDrainRecordEvents();
@@ -1411,6 +1413,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 touchButtonWeight());
         eventBar.addView(actionButton("RATCH +", v -> adjustSelectedStepRatchet(1)),
                 touchButtonWeight());
+        eventBar.addView(actionButton("DUR −¼", v -> adjustSelectedStepDuration(-1)),
+                touchButtonWeight());
+        eventBar.addView(actionButton("DUR +¼", v -> adjustSelectedStepDuration(1)),
+                touchButtonWeight());
         page.addView(eventBar, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(50)));
 
@@ -1470,7 +1476,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         TextView hint = label(
-                "16 STEPS  •  LONG-PRESS = SELECT  •  TAP = ADD / REMOVE  •  NUDGE = ±10 TICKS  •  RESET = 0",
+                "16 STEPS  •  LONG-PRESS = SELECT  •  TAP = ADD / REMOVE  •  NUDGE = ±10 TICKS  •  DUR = ¼…4× GRID",
                 10, MUTED);
         hint.setGravity(Gravity.CENTER_VERTICAL);
         hint.setPadding(dp(10), 0, dp(10), 0);
@@ -1551,12 +1557,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             sequenceStepEventInfo.setText(hasEvent
                     ? String.format(
                             Locale.ROOT,
-                            "STEP %02d  •  VEL %d  •  PROB %d  •  RAT %dx  •  NUDGE %+d",
+                            "STEP %02d  •  VEL %d  •  PROB %d  •  RAT %dx  •  NUDGE %+d  •  DUR %d",
                             selectedSequenceStep + 1,
                             parameters[0],
                             parameters[1],
                             parameters[2],
-                            parameters[3])
+                            parameters[3],
+                            parameters.length >= 5 && parameters[4] > 0
+                                    ? parameters[4]
+                                    : gridTicks)
                     : selectedSequenceStep >= 0
                             ? String.format(
                                     Locale.ROOT,
@@ -1631,6 +1640,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         final int value = Math.max(-960, Math.min(960, parameters[3] + delta));
         setSelectedStepNudge(value);
+    }
+
+    private void adjustSelectedStepDuration(int quarterSteps) {
+        final int[] parameters = getSelectedStepParameters();
+        if (parameters == null || parameters.length < 5 || parameters[0] <= 0) {
+            setBottomStatus("Select an active step first");
+            return;
+        }
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int increment = Math.max(1, gridTicks / 4);
+        final int current = Math.max(increment, parameters[4] > 0
+                ? parameters[4]
+                : gridTicks);
+        final int value = Math.max(
+                increment,
+                Math.min(gridTicks * 4, current + quarterSteps * increment));
+        setBottomStatus(nativeSequenceSetStepDuration(
+                selectedPad,
+                selectedSequenceStep,
+                gridTicks,
+                value));
+        refreshSequenceStepPage();
     }
 
     private void setSelectedStepNudge(int value) {
