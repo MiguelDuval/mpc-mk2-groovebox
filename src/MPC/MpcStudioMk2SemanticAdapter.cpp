@@ -17,7 +17,7 @@ Action make(Type t,std::int32_t a=0,std::int32_t b=0,std::int32_t c=0) noexcept 
 namespace mpc::studio {
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const InputEvent& e) noexcept {
     switch(e.type){
-        case InputEventType::Button: return handleButton(e.number,e.pressed);
+        case InputEventType::Button: return handleButton(e.number,e.pressed,e.timestampNanos);
         case InputEventType::JogWheel: return handleJog(e.value);
         case InputEventType::JogPress: return handleJogPress(e.pressed);
         case InputEventType::TouchStrip:
@@ -106,7 +106,7 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
     if(fullLevel_) r.velocity=127; else if(halfLevel_) r.velocity=64;
     return r;
 }
-std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uint8_t note,bool pressed) noexcept {
+std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uint8_t note,bool pressed,std::int64_t timestampNanos) noexcept {
     const auto* b=findButton(note); if(!b) return std::nullopt;
     const std::string_view n(b->name);
     if (pressed && n != "Locate") {
@@ -134,7 +134,7 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
     if(n=="Locate"){
         if (pressed) {
             locateHeld_ = true;
-            locatePressTimestampNanos_ = e.timestampNanos;
+            locatePressTimestampNanos_ = timestampNanos;
             return make(Type::LocateState, 1, locateLatched_ ? 1 : 0);
         }
 
@@ -142,7 +142,7 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
         locateHeld_ = false;
         locatePressTimestampNanos_ = 0;
         if (!mpc::sequencer::locate::isMomentaryHold(
-                    held, e.timestampNanos)) {
+                    held, timestampNanos)) {
             locateLatched_ = !locateLatched_;
         }
         return make(
