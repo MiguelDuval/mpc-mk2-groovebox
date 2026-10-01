@@ -2,6 +2,7 @@
 
 #include "Audio/AudioEngine.h"
 #include "MPC/MpcProjectState.h"
+#include "MPC/MpcEditHistory.h"
 #include "MPC/Sequencer/MpcSequenceRecordQueue.h"
 #include "MPC/Sequencer/MpcSequenceRecorder.h"
 #include "MPC/Sequencer/MpcSequenceTransport.h"
@@ -43,6 +44,14 @@ public:
         return sequenceTransportClock_;
     }
 
+    MpcEditHistory& editHistory() noexcept {
+        return editHistory_;
+    }
+
+    const MpcEditHistory& editHistory() const noexcept {
+        return editHistory_;
+    }
+
 private:
     MpcCore();
 
@@ -51,6 +60,7 @@ private:
     sequencer::SequenceRecordQueue sequenceRecordQueue_;
     sequencer::MpcSequenceRecorder sequenceRecorder_;
     sequencer::MpcSequenceTransportClock sequenceTransportClock_;
+    MpcEditHistory editHistory_;
 };
 
 } // namespace mpc
