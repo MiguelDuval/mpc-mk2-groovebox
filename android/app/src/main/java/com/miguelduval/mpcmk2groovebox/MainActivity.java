@@ -124,6 +124,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int selectedPad = 0;
     private int selectedLayer = 0;
     private int hardwareFocus = 0;
+    private int stepEditParameter = 0;
     private int hardwarePadBank = 0;
     private int lastPlayLedState = -1;
     private int lastRecordLedState = -1;
@@ -1345,6 +1346,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showSequenceStepPage() {
         nativeSequenceSetLauncherContext(false, 0);
+        hardwareFocus = 11;
         currentPage = "SEQ";
         pageTitle.setText("SEQ • STEP");
         content.removeAllViews();
@@ -1476,7 +1478,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         TextView hint = label(
-                "16 STEPS  •  LONG-PRESS = SELECT  •  TAP = ADD / REMOVE  •  NUDGE = ±10 TICKS  •  DUR = ¼…4× GRID",
+                "16 STEPS  •  LONG-PRESS = SELECT  •  TAP = ADD / REMOVE  •  DATA DIAL PRESS = PARAM  •  SHIFT = FINE",
                 10, MUTED);
         hint.setGravity(Gravity.CENTER_VERTICAL);
         hint.setPadding(dp(10), 0, dp(10), 0);
@@ -1490,6 +1492,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Locale.ROOT, "%02d", selectedPad + 1));
         context.setText(
                 "STEP " + sequenceGridLabel(nativeSequenceGetQuantizeGrid())
+                        + "  •  EDIT " + stepEditParameterLabel()
                         + "  •  "
                         + nativeSequenceTrackStatus(
                                 nativeSequenceGetSelectedTrack()));
@@ -1630,6 +1633,80 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Math.max(1, nativeSequenceGetQuantizeGrid()),
                 value));
         refreshSequenceStepPage();
+    }
+
+    private String stepEditParameterLabel() {
+        switch (stepEditParameter) {
+            case 0: return "VELOCITY";
+            case 1: return "PROBABILITY";
+            case 2: return "RATCHET";
+            case 3: return "NUDGE";
+            case 4: return "DURATION";
+            default: return "STEP";
+        }
+    }
+
+    private void cycleStepEditParameter() {
+        if (selectedSequenceStep < 0) {
+            setBottomStatus("STEP EDIT • select a step first");
+            return;
+        }
+        stepEditParameter = (stepEditParameter + 1) % 5;
+        setBottomStatus("STEP EDIT • " + stepEditParameterLabel()
+                + " • DATA DIAL / +/-");
+        refreshSequenceStepPage();
+    }
+
+    private void adjustFocusedStepParameter(int delta, boolean fine) {
+        if (selectedSequenceStep < 0) {
+            setBottomStatus("STEP EDIT • select a step first");
+            return;
+        }
+
+        switch (stepEditParameter) {
+            case 0:
+                adjustSelectedStepVelocity(delta * (fine ? 1 : 10));
+                return;
+            case 1:
+                adjustSelectedStepProbability(delta * (fine ? 1 : 10));
+                return;
+            case 2:
+                adjustSelectedStepRatchet(delta);
+                return;
+            case 3:
+                adjustSelectedStepNudge(delta * (fine ? 1 : 10));
+                return;
+            case 4: {
+                final int[] parameters = getSelectedStepParameters();
+                if (parameters == null || parameters.length < 5
+                        || parameters[0] <= 0) {
+                    setBottomStatus("Select an active step first");
+                    return;
+                }
+                final int gridTicks =
+                        Math.max(1, nativeSequenceGetQuantizeGrid());
+                final int increment = fine
+                        ? 1
+                        : Math.max(1, gridTicks / 4);
+                final int current = Math.max(
+                        increment,
+                        parameters[4] > 0 ? parameters[4] : gridTicks);
+                final int value = Math.max(
+                        increment,
+                        Math.min(
+                                gridTicks * 4,
+                                current + delta * increment));
+                setBottomStatus(nativeSequenceSetStepDuration(
+                        selectedPad,
+                        selectedSequenceStep,
+                        gridTicks,
+                        value));
+                refreshSequenceStepPage();
+                return;
+            }
+            default:
+                return;
+        }
     }
 
     private void adjustSelectedStepNudge(int delta) {
@@ -3669,6 +3746,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showRecordPage();
                 return;
             case MpcStudioMk2SemanticActions.NAVIGATE_STEP:
+                hardwareFocus = 11;
                 showSequenceStepPage();
                 return;
             case MpcStudioMk2SemanticActions.BROWSER_UP:
@@ -3698,6 +3776,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 handleHardwareDialDelta(value0, value1 != 0);
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_PRESS:
+                if (hardwareFocus == 11) {
+                    cycleStepEditParameter();
+                    return;
+                }
                 setBottomStatus("DATA DIAL ENTER");
                 return;
             case MpcStudioMk2SemanticActions.PAD_BANK_CHANGED:
@@ -3911,6 +3993,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(
                     delta > 0 ? nativeSequenceNext() : nativeSequencePrevious());
             showSequencePage();
+            return;
+        }
+        if (hardwareFocus == 11) {
+            adjustFocusedStepParameter(delta, fine);
             return;
         }
         setBottomStatus("DATA DIAL " + (delta > 0 ? "+" : "−") + " • no focused selector");
