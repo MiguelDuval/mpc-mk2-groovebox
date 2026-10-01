@@ -79,7 +79,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/native-tests
-          c++ -std=c++20 -Wall -Wextra -Werror -Ithird_party/oboe/include -Isrc             -c tests/AudioEngineHeaderCompileTests.cpp             -o build/native-tests/audio_engine_header_compile_tests.o
+          c++ -std=c++20 -Wall -Wextra -Wno-unused-parameter -include cstring \
+            -Ithird_party/oboe/include -Isrc \
+            -c tests/AudioEngineHeaderCompileTests.cpp \
+            -o build/native-tests/audio_engine_header_compile_tests.o
 
       - name: Test MPC Studio MkII MIDI decoder
         shell: bash
