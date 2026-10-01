@@ -36,6 +36,10 @@ public:
     [[nodiscard]] bool shiftHeld() const noexcept { return shiftHeld_; }
     [[nodiscard]] bool modeHeld() const noexcept { return modeHeld_; }
     [[nodiscard]] bool locateHeld() const noexcept { return locateHeld_; }
+    [[nodiscard]] bool locateActive() const noexcept {
+        return locateHeld_ || locateLatched_;
+    }
+    [[nodiscard]] bool locateLatched() const noexcept { return locateLatched_; }
     [[nodiscard]] bool noteRepeatActive() const noexcept { return noteRepeatHeld_ || noteRepeatLatched_; }
     [[nodiscard]] bool noteRepeatLatched() const noexcept { return noteRepeatLatched_; }
     [[nodiscard]] bool fullLevel() const noexcept { return fullLevel_; }
@@ -53,7 +57,8 @@ private:
     std::optional<SemanticAction> handleJog(std::uint8_t) noexcept;
     std::optional<SemanticAction> handleJogPress(bool) noexcept;
     std::optional<SemanticAction> modePadAction(std::uint8_t) const noexcept;
-    bool shiftHeld_=false, modeHeld_=false, locateHeld_=false;
+    bool shiftHeld_=false, modeHeld_=false, locateHeld_=false, locateLatched_=false;
+    std::int64_t locatePressTimestampNanos_=0;
     bool noteRepeatHeld_=false, noteRepeatLatched_=false;
     bool fullLevel_=false, halfLevel_=false;
     bool padMuteMode_=false, trackMuteMode_=false, sixteenLevel_=false;
