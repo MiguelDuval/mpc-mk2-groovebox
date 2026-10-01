@@ -90,6 +90,9 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
     if(eraseHeld_){ r.consumed=true; r.action=make(Type::ErasePadTarget,e.padIndex); return r; }
     if(copyMode_ != CopyMode::None){
         r.consumed=true;
+        if(!e.pressed){
+            return r;
+        }
         if(copyMode_ == CopyMode::Copy){
             if(copySourcePad_ == 0xFF){
                 copySourcePad_ = e.padIndex;

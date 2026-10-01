@@ -120,6 +120,10 @@ int main(){
   auto destinationDeselect = copy.handlePad(pad(7));
   typeOf(destinationDeselect.action, SemanticActionType::CopyPadSelection);
   assert(destinationDeselect.action->value2 == 0);
+  auto destinationRelease = copy.handlePad(InputEvent{InputEventType::PadNote,9,37,0,7,false});
+  assert(destinationRelease.consumed && !destinationRelease.action.has_value());
+  auto sourceRelease = copy.handlePad(InputEvent{InputEventType::PadNote,9,37,0,2,false});
+  assert(sourceRelease.consumed && !sourceRelease.action.has_value());
   auto destinationSecond = copy.handlePad(pad(8));
   typeOf(destinationSecond.action, SemanticActionType::CopyPadSelection);
   auto copyCommit = copy.handleControl(btn(122, false));
