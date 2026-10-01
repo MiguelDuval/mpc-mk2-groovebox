@@ -224,7 +224,7 @@ public:
             std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones,
             std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli,
             std::array<std::atomic<std::int32_t>, kPadCount>& panMilli,
-            std::array<std::atomic<std::uint32_t>, kPadCount>& padAftertouchFilterMicro,
+            std::array<std::atomic<std::uint8_t>, kPadCount>& padAftertouch,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerTuningMilliSemitones,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerPanMilli,
@@ -248,7 +248,7 @@ public:
               tuningMilliSemitones_(tuningMilliSemitones),
               levelMilli_(levelMilli),
               panMilli_(panMilli),
-              padAftertouchFilterMicro_(padAftertouchFilterMicro),
+              padAftertouch_(padAftertouch),
               layerGainMilli_(layerGainMilli),
               layerTuningMilliSemitones_(layerTuningMilliSemitones),
               layerPanMilli_(layerPanMilli),
@@ -386,6 +386,9 @@ public:
             }
 
             for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+                const auto pressure = padAftertouch_[pad].load(
+                        std::memory_order_relaxed);
+
                 for (std::size_t voiceIndex = 0;
                         voiceIndex < kMaxPadVoices;
                         ++voiceIndex) {
@@ -723,7 +726,7 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones_;
     std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli_;
     std::array<std::atomic<std::int32_t>, kPadCount>& panMilli_;
-    std::array<std::atomic<std::uint32_t>, kPadCount>& padAftertouchFilterMicro_;
+    std::array<std::atomic<std::uint8_t>, kPadCount>& padAftertouch_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerTuningMilliSemitones_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerPanMilli_;
@@ -762,7 +765,6 @@ AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
 
     for (std::size_t pad = 0; pad < kPadCount; ++pad) {
         padAftertouch_[pad].store(0, std::memory_order_relaxed);
-        padAftertouchFilterMicro_[pad].store(1000000u, std::memory_order_relaxed);
         padTuningMilliSemitones_[pad].store(
                 static_cast<std::int32_t>(
                     std::lround(projectState_.activeDrumProgram().pad(pad).tuningSemitones * 1000.0f)),
@@ -825,6 +827,76 @@ AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
     }
 }
 
+void AudioEngine::syncPadRuntimeProjection(
+        std::uint8_t padIndex) noexcept {
+    if (padIndex >= kPadCount) {
+        return;
+    }
+
+    const auto& padState =
+            projectState_.activeDrumProgram().pad(padIndex);
+    padTuningMilliSemitones_[padIndex].store(
+            static_cast<std::int32_t>(
+                    std::lround(padState.tuningSemitones * 1000.0f)),
+            std::memory_order_relaxed);
+    padLevelMilli_[padIndex].store(
+            static_cast<std::int32_t>(
+                    std::lround(padState.level * 1000.0f)),
+            std::memory_order_relaxed);
+    padPanMilli_[padIndex].store(
+            static_cast<std::int32_t>(
+                    std::lround(padState.pan * 1000.0f)),
+            std::memory_order_relaxed);
+
+    const auto envelopeParameters =
+            normalizeSampleEnvelopeParameters(
+                    padState.envelopeAttackMs,
+                    padState.envelopeDecayMs,
+                    padState.envelopeSustain,
+                    padState.envelopeReleaseMs);
+    padEnvelopeAttackMilliMs_[padIndex].store(
+            static_cast<std::int32_t>(
+                    std::lround(envelopeParameters.attackMs * 1000.0f)),
+            std::memory_order_relaxed);
+    padEnvelopeDecayMilliMs_[padIndex].store(
+            static_cast<std::int32_t>(
+                    std::lround(envelopeParameters.decayMs * 1000.0f)),
+            std::memory_order_relaxed);
+    padEnvelopeSustainMilli_[padIndex].store(
+            static_cast<std::int32_t>(
+                    std::lround(envelopeParameters.sustain * 1000.0f)),
+            std::memory_order_relaxed);
+    padEnvelopeReleaseMilliMs_[padIndex].store(
+            static_cast<std::int32_t>(
+                    std::lround(envelopeParameters.releaseMs * 1000.0f)),
+            std::memory_order_relaxed);
+    padFilterCutoffMilliHz_[padIndex].store(
+            normalizeSampleFilterCutoffMilliHz(padState.filterCutoffHz),
+            std::memory_order_relaxed);
+
+    for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+        const auto& layerState = padState.layer(layer);
+        padLayerGainMilli_[padIndex][layer].store(
+                static_cast<std::int32_t>(
+                        std::lround(layerState.gain * 1000.0f)),
+                std::memory_order_relaxed);
+        padLayerTuningMilliSemitones_[padIndex][layer].store(
+                static_cast<std::int32_t>(
+                        std::lround(layerState.tuningSemitones * 1000.0f)),
+                std::memory_order_relaxed);
+        padLayerPanMilli_[padIndex][layer].store(
+                static_cast<std::int32_t>(
+                        std::lround(layerState.pan * 1000.0f)),
+                std::memory_order_relaxed);
+        padLayerVelocityMin_[padIndex][layer].store(
+                static_cast<std::int32_t>(layerState.velocityMinimum),
+                std::memory_order_relaxed);
+        padLayerVelocityMax_[padIndex][layer].store(
+                static_cast<std::int32_t>(layerState.velocityMaximum),
+                std::memory_order_relaxed);
+    }
+}
+
 AudioEngine::~AudioEngine() {
     stop();
 }
@@ -851,6 +923,131 @@ std::string AudioEngine::loadSample(
             + std::to_string(sample_->frameCount()) + " frames";
 
     return "Fallback sample loaded | " + sampleDescription_;
+}
+
+AudioEngine::PadEditSnapshot AudioEngine::capturePadEditSnapshot(
+        std::uint8_t padIndex) const {
+    PadEditSnapshot snapshot;
+    if (padIndex >= kPadCount) {
+        return snapshot;
+    }
+
+    snapshot.state = projectState_.activeDrumProgram().pad(padIndex);
+    for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+        snapshot.samples[layer] = padSamples_[padIndex][layer];
+        snapshot.descriptions[layer] = padSampleDescriptions_[padIndex][layer];
+    }
+    return snapshot;
+}
+
+bool AudioEngine::applyPadEditSnapshot(
+        std::uint8_t padIndex,
+        const PadEditSnapshot& snapshot) {
+    if (padIndex >= kPadCount || stream_ != nullptr) {
+        return false;
+    }
+
+    projectState_.activeDrumProgram().pad(padIndex) = snapshot.state;
+    for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+        padSamples_[padIndex][layer] = snapshot.samples[layer];
+        padSampleDescriptions_[padIndex][layer] = snapshot.descriptions[layer];
+    }
+
+    // Aftertouch is performance-only and is deliberately excluded from edit
+    // history; restoring a pad never resurrects stale pressure expression.
+    padAftertouch_[padIndex].store(0, std::memory_order_relaxed);
+    padAftertouchFilterMicro_[padIndex].store(
+            1000000u, std::memory_order_relaxed);
+    syncPadRuntimeProjection(padIndex);
+    return true;
+}
+
+std::string AudioEngine::copyPadToPads(
+        std::uint8_t sourcePadIndex,
+        std::uint16_t destinationMask) {
+    if (sourcePadIndex >= kPadCount) {
+        return "Copy Pad failed: invalid source pad";
+    }
+    if (stream_ != nullptr) {
+        return "Copy Pad requires stopped playback";
+    }
+
+    destinationMask &= static_cast<std::uint16_t>((1u << kPadCount) - 1u);
+    destinationMask &= static_cast<std::uint16_t>(
+            ~(std::uint16_t{1u} << sourcePadIndex));
+    if (destinationMask == 0u) {
+        return "Copy Pad failed: select a destination";
+    }
+
+    const auto& source = projectState_.activeDrumProgram().pad(sourcePadIndex);
+    const auto& sourceSamples = padSamples_[sourcePadIndex];
+    const auto& sourceDescriptions = padSampleDescriptions_[sourcePadIndex];
+
+    std::size_t copied = 0;
+    for (std::size_t destination = 0; destination < kPadCount; ++destination) {
+        if ((destinationMask & (std::uint16_t{1u} << destination)) == 0u) {
+            continue;
+        }
+
+        auto& target = projectState_.activeDrumProgram().pad(destination);
+        const auto targetIndex = target.index;
+        const auto targetMidiNote = target.midiNote;
+        const auto targetMuted = target.muted;
+        const auto targetSoloed = target.soloed;
+
+        target = source;
+        target.index = targetIndex;
+        target.midiNote = targetMidiNote;
+        target.muted = targetMuted;
+        target.soloed = targetSoloed;
+
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            padSamples_[destination][layer] = sourceSamples[layer];
+            padSampleDescriptions_[destination][layer] = sourceDescriptions[layer];
+        }
+        syncPadRuntimeProjection(static_cast<std::uint8_t>(destination));
+        ++copied;
+    }
+
+    return "COPY PAD • "
+            + std::to_string(copied)
+            + (copied == 1 ? " destination" : " destinations")
+            + " from PAD "
+            + std::to_string(static_cast<unsigned>(sourcePadIndex + 1));
+}
+
+std::string AudioEngine::deletePadAssignments(
+        std::uint16_t padMask) {
+    if (stream_ != nullptr) {
+        return "Delete Pad requires stopped playback";
+    }
+
+    padMask &= static_cast<std::uint16_t>((1u << kPadCount) - 1u);
+    if (padMask == 0u) {
+        return "Delete Pad failed: select at least one pad";
+    }
+
+    std::size_t deleted = 0;
+    for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+        if ((padMask & (std::uint16_t{1u} << pad)) == 0u) {
+            continue;
+        }
+
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            auto& layerState =
+                    projectState_.activeDrumProgram().pad(pad).layer(layer);
+            layerState.sample = {};
+            layerState.region = {};
+            padSamples_[pad][layer].reset();
+            padSampleDescriptions_[pad][layer].clear();
+        }
+        ++deleted;
+    }
+
+    return "DELETE PAD • "
+            + std::to_string(deleted)
+            + (deleted == 1 ? " pad sample assignment" : " pad sample assignments")
+            + " cleared";
 }
 
 std::string AudioEngine::chopPadSampleToPads(
@@ -1299,11 +1496,6 @@ void AudioEngine::setPadAftertouch(
         return;
     }
     padAftertouch_[padIndex].store(pressure, std::memory_order_relaxed);
-    const float multiplier =
-            mpc::studio::aftertouch::filterMultiplierForPressure(pressure);
-    padAftertouchFilterMicro_[padIndex].store(
-            static_cast<std::uint32_t>(std::lround(multiplier * 1000000.0f)),
-            std::memory_order_relaxed);
 }
 
 std::string AudioEngine::setPadEnvelopeParameters(
@@ -2181,7 +2373,7 @@ std::string AudioEngine::start() {
             padTuningMilliSemitones_,
             padLevelMilli_,
             padPanMilli_,
-            padAftertouchFilterMicro_,
+            padAftertouch_,
             padLayerGainMilli_,
             padLayerTuningMilliSemitones_,
             padLayerPanMilli_,

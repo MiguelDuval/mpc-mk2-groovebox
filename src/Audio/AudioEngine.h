@@ -135,6 +135,23 @@ public:
         int deviceId = -1;
     };
 
+    struct PadEditSnapshot final {
+        domain::Pad state{};
+        std::array<std::shared_ptr<const SampleBuffer>, kMaxSampleLayers> samples{};
+        std::array<std::string, kMaxSampleLayers> descriptions{};
+    };
+
+    PadEditSnapshot capturePadEditSnapshot(
+            std::uint8_t padIndex) const;
+    bool applyPadEditSnapshot(
+            std::uint8_t padIndex,
+            const PadEditSnapshot& snapshot);
+    std::string copyPadToPads(
+            std::uint8_t sourcePadIndex,
+            std::uint16_t destinationMask);
+    std::string deletePadAssignments(
+            std::uint16_t padMask);
+
     std::string configureOutput(const OutputConfiguration& configuration);
     std::string configureInputDevice(const InputConfiguration& configuration);
     OutputConfiguration outputConfiguration() const;
@@ -202,6 +219,8 @@ private:
     mpc::domain::SampleId allocateSampleId();
     std::string stopInputStream();
     std::string stopOutputStream();
+    void syncPadRuntimeProjection(
+            std::uint8_t padIndex) noexcept;
     static std::string validateOutputConfiguration(
             const OutputConfiguration& configuration);
     static std::string validateInputConfiguration(
@@ -230,8 +249,6 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
     std::array<std::atomic<std::uint8_t>, kPadCount> padAftertouch_{};
-    // Fixed-point (micro) filter-expression multiplier prepared off the audio thread.
-    std::array<std::atomic<std::uint32_t>, kPadCount> padAftertouchFilterMicro_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeAttackMilliMs_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeDecayMilliMs_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeSustainMilli_{};
