@@ -137,8 +137,8 @@ public:
 
     struct PadEditSnapshot final {
         domain::Pad state{};
-        std::array<std::shared_ptr<const SampleBuffer>, kMaxSampleLayers> samples{};
-        std::array<std::string, kMaxSampleLayers> descriptions{};
+        std::array<std::shared_ptr<const SampleBuffer>, mpc::domain::kMaxSampleLayers> samples{};
+        std::array<std::string, mpc::domain::kMaxSampleLayers> descriptions{};
     };
 
     PadEditSnapshot capturePadEditSnapshot(
@@ -249,6 +249,7 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount> padLevelMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padPanMilli_{};
     std::array<std::atomic<std::uint8_t>, kPadCount> padAftertouch_{};
+    std::array<std::atomic<std::uint32_t>, kPadCount> padAftertouchFilterMicro_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeAttackMilliMs_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeDecayMilliMs_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeSustainMilli_{};
