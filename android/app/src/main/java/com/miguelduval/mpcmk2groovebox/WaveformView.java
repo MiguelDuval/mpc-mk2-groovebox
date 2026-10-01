@@ -147,6 +147,7 @@ public final class WaveformView extends View {
         if (active) {
             viewportStart = 0f;
             viewportEnd = 1f;
+            verticalZoom = 1f;
         }
         invalidate();
     }
@@ -351,9 +352,7 @@ public final class WaveformView extends View {
         }
 
         final int pointCount = peaks.length / 2;
-        final float height = Math.min(
-                (bottom - top) * 0.42f * verticalZoom,
-                (bottom - top) * 0.49f);
+        final float height = (bottom - top) * 0.42f * verticalZoom;
         final int firstPoint = Math.max(
                 0,
                 (int) Math.floor(viewportStart * (pointCount - 1)));
