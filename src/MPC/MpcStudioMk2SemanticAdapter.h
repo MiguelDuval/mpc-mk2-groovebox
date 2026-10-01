@@ -16,7 +16,7 @@ enum class SemanticActionType : std::int32_t {
     StepLeft=32, StepRight=33, BarLeft=34, BarRight=35, TapTempo=36, TouchStripValue=37,
     LocateState=38, LocatePad=39, SampleSelectContext=40, SampleStartContext=41,
     SampleEndContext=42, TuneContext=43, Quantize=44, TimingCorrectState=45, ZoomContext=46,
-    CopyContext=47, Undo=48, AutomationContext=49, PadMuteTarget=50, TrackMuteTarget=51, SixteenLevelState=53, Reserved=52
+    CopyContext=47, Undo=48, AutomationContext=49, PadMuteTarget=50, TrackMuteTarget=51, SixteenLevelState=53, NoteRepeatRateChanged=54, Reserved=52
 };
 struct SemanticAction final {
     SemanticActionType type=SemanticActionType::None;
@@ -45,6 +45,9 @@ public:
     [[nodiscard]] bool sixteenLevel() const noexcept { return sixteenLevel_; }
     [[nodiscard]] std::uint8_t lastPadIndex() const noexcept { return lastPadIndex_; }
     [[nodiscard]] std::uint8_t padBank() const noexcept { return padBank_; }
+    [[nodiscard]] std::uint8_t noteRepeatRateIndex() const noexcept {
+        return noteRepeatRateIndex_;
+    }
 private:
     std::optional<SemanticAction> handleButton(std::uint8_t,bool) noexcept;
     std::optional<SemanticAction> handleJog(std::uint8_t) noexcept;
@@ -58,5 +61,6 @@ private:
     std::uint8_t repeatPadIndex_=0xFF;
     bool repeatPadHeld_=false;
     std::uint8_t padBank_=0;
+    std::uint8_t noteRepeatRateIndex_=2;
 };
 } // namespace mpc::studio
