@@ -3974,6 +3974,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setBottomStatus("TOUCH STRIP " + value + "/127");
     }
 
+    private void moveSelectedStepWithHardware(int direction, boolean bar) {
+        if (selectedSequenceStep < 0) {
+            selectedSequenceStep = direction > 0 ? 0 : 0;
+        } else {
+            final int totalSteps = Math.max(1, sequenceGridPageCount() * SEQUENCE_GRID_PAGE_STEPS);
+            final int delta = bar ? SEQUENCE_GRID_PAGE_STEPS : 1;
+            selectedSequenceStep = Math.max(
+                    0,
+                    Math.min(totalSteps - 1, selectedSequenceStep + direction * delta));
+        }
+        sequenceStepPage = selectedSequenceStep / SEQUENCE_GRID_PAGE_STEPS;
+        setBottomStatus(
+                "STEP SELECTED " + String.format(Locale.ROOT, "%02d", selectedSequenceStep + 1)
+                        + " • EDIT " + stepEditParameterLabel());
+        refreshSequenceStepPage();
+    }
+
     private void handleHardwarePlayheadMove(
             int locateMode, int direction, boolean bar) {
         if (locateMode != 0) {
@@ -3985,6 +4002,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if (nativeSequenceIsPlaying()) {
             setBottomStatus("NAVIGATION: stop playback first");
+            return;
+        }
+        if (hardwareFocus == 11
+                && "SEQ".equals(currentPage)
+                && pageTitle != null
+                && "SEQ • STEP".equals(pageTitle.getText().toString())) {
+            moveSelectedStepWithHardware(direction, bar);
             return;
         }
         final int numerator = nativeSequenceGetNumerator();
