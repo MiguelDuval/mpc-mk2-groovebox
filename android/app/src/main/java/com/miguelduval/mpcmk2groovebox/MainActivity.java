@@ -3573,6 +3573,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.STEP_EDIT_PAD_SELECTED,
+                0, 0, 0);
+        if (selectedSequenceStep != 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: hardware step selection");
+            return;
+        }
+
+        final String eventBeforeHardwareEdit =
+                sequenceStepEventInfo.getText().toString();
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.DATA_DIAL_PRESS,
+                0, 0, 0);
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
+                1, 0, 0);
+        final String eventAfterHardwareEdit =
+                sequenceStepEventInfo.getText().toString();
+        if (eventBeforeHardwareEdit.equals(eventAfterHardwareEdit)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: hardware Step Edit adjustment");
+            return;
+        }
+
         View velocityUp = findViewWithExactText(
                 getWindow().getDecorView(), "VEL +10");
         View probabilityDown = findViewWithExactText(
