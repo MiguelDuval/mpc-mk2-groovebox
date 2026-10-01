@@ -2171,6 +2171,208 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdvance(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCopyPadToPads(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint sourcePad,
+        jint destinationMask)
+{
+    if (sourcePad < 0
+            || sourcePad >= static_cast<jint>(mpc::domain::kMaxProgramPads)) {
+        return toJString(env, "COPY PAD failed: invalid source pad");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    auto& audio = core.audio();
+    auto& history = core.editHistory();
+
+    const auto mask =
+            static_cast<std::uint16_t>(destinationMask & 0xFFFF);
+    std::array<mpc::audio::AudioEngine::PadEditSnapshot,
+               mpc::domain::kMaxProgramPads> before{};
+    std::array<mpc::audio::AudioEngine::PadEditSnapshot,
+               mpc::domain::kMaxProgramPads> after{};
+    std::vector<std::uint8_t> destinations;
+
+    for (std::size_t pad = 0;
+            pad < mpc::domain::kMaxProgramPads;
+            ++pad) {
+        if ((mask & (std::uint16_t{1u} << pad)) != 0u
+                && pad != static_cast<std::size_t>(sourcePad)) {
+            destinations.push_back(static_cast<std::uint8_t>(pad));
+            before[pad] = audio.capturePadEditSnapshot(
+                    static_cast<std::uint8_t>(pad));
+        }
+    }
+
+    if (destinations.empty()) {
+        return toJString(env, "COPY PAD failed: select a destination");
+    }
+
+    const auto result = audio.copyPadToPads(
+            static_cast<std::uint8_t>(sourcePad), mask);
+    if (result.rfind("Copy Pad failed:", 0) == 0
+            || result == "Copy Pad requires stopped playback") {
+        return toJString(env, result);
+    }
+
+    for (const auto pad : destinations) {
+        after[pad] = audio.capturePadEditSnapshot(pad);
+    }
+
+    const auto label =
+            "Copy Pad • PAD "
+            + std::to_string(sourcePad + 1)
+            + " → "
+            + std::to_string(destinations.size())
+            + (destinations.size() == 1 ? " pad" : " pads");
+
+    const bool recorded = history.record({
+            label,
+            [&audio, destinations, before]() mutable {
+                for (const auto pad : destinations) {
+                    if (!audio.applyPadEditSnapshot(pad, before[pad])) {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            [&audio, destinations, after]() mutable {
+                for (const auto pad : destinations) {
+                    if (!audio.applyPadEditSnapshot(pad, after[pad])) {
+                        return false;
+                    }
+                }
+                return true;
+            }});
+
+    if (!recorded) {
+        for (const auto pad : destinations) {
+            static_cast<void>(audio.applyPadEditSnapshot(pad, before[pad]));
+        }
+        return toJString(env, "COPY PAD failed: history unavailable");
+    }
+
+    return toJString(env, result);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDeletePadAssignments(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jint padMask)
+{
+    auto& core = mpc::MpcCore::instance();
+    auto& audio = core.audio();
+    auto& history = core.editHistory();
+    const auto mask =
+            static_cast<std::uint16_t>(padMask & 0xFFFF);
+
+    if (mask == 0u) {
+        return toJString(env, "DELETE PAD failed: select at least one pad");
+    }
+
+    std::array<mpc::audio::AudioEngine::PadEditSnapshot,
+               mpc::domain::kMaxProgramPads> before{};
+    std::array<mpc::audio::AudioEngine::PadEditSnapshot,
+               mpc::domain::kMaxProgramPads> after{};
+    std::vector<std::uint8_t> pads;
+
+    for (std::size_t pad = 0;
+            pad < mpc::domain::kMaxProgramPads;
+            ++pad) {
+        if ((mask & (std::uint16_t{1u} << pad)) != 0u) {
+            pads.push_back(static_cast<std::uint8_t>(pad));
+            before[pad] = audio.capturePadEditSnapshot(
+                    static_cast<std::uint8_t>(pad));
+        }
+    }
+
+    const auto result = audio.deletePadAssignments(mask);
+    if (result.rfind("Delete Pad failed:", 0) == 0
+            || result == "Delete Pad requires stopped playback") {
+        return toJString(env, result);
+    }
+
+    for (const auto pad : pads) {
+        after[pad] = audio.capturePadEditSnapshot(pad);
+    }
+
+    const auto label =
+            "Delete Pad • "
+            + std::to_string(pads.size())
+            + (pads.size() == 1 ? " pad" : " pads");
+
+    const bool recorded = history.record({
+            label,
+            [&audio, pads, before]() mutable {
+                for (const auto pad : pads) {
+                    if (!audio.applyPadEditSnapshot(pad, before[pad])) {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            [&audio, pads, after]() mutable {
+                for (const auto pad : pads) {
+                    if (!audio.applyPadEditSnapshot(pad, after[pad])) {
+                        return false;
+                    }
+                }
+                return true;
+            }});
+
+    if (!recorded) {
+        for (const auto pad : pads) {
+            static_cast<void>(audio.applyPadEditSnapshot(pad, before[pad]));
+        }
+        return toJString(env, "DELETE PAD failed: history unavailable");
+    }
+
+    return toJString(env, result);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceUndo(
+        JNIEnv* env,
+        jobject /* thiz */)
+{
+    auto& history = mpc::MpcCore::instance().editHistory();
+    if (!history.canUndo()) {
+        return toJString(env, "UNDO • nothing to undo");
+    }
+
+    const auto label = history.nextUndoLabel();
+    if (!history.undo()) {
+        return toJString(
+                env,
+                "UNDO • unavailable while playback is running");
+    }
+
+    return toJString(env, "UNDO • " + label);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceRedo(
+        JNIEnv* env,
+        jobject /* thiz */)
+{
+    auto& history = mpc::MpcCore::instance().editHistory();
+    if (!history.canRedo()) {
+        return toJString(env, "REDO • nothing to redo");
+    }
+
+    const auto label = history.nextRedoLabel();
+    if (!history.redo()) {
+        return toJString(
+                env,
+                "REDO • unavailable while playback is running");
+    }
+
+    return toJString(env, "REDO • " + label);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceErasePadAtPlayhead(
         JNIEnv* env, jobject /* thiz */, jint padIndex)
 {
