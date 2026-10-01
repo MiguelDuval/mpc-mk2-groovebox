@@ -56,6 +56,10 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
     r.targetPadIndex=e.padIndex;
     if(e.type!=InputEventType::PadNote) return r;
     if(!e.pressed){
+        if(copyMode_ != CopyMode::None){
+            r.consumed=true;
+            return r;
+        }
         if(repeatPadHeld_){
             r.repeating=true;
             r.targetPadIndex=repeatPadIndex_;
