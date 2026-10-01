@@ -21,6 +21,11 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const I
         case InputEventType::Button: return handleButton(e.number,e.pressed,e.timestampNanos);
         case InputEventType::JogWheel: return handleJog(e.value);
         case InputEventType::JogPress: return handleJogPress(e.pressed);
+        case InputEventType::PadAftertouch:
+            return make(
+                    Type::PadAftertouch,
+                    static_cast<std::int32_t>(e.padIndex),
+                    static_cast<std::int32_t>(e.value));
         case InputEventType::TouchStripTouch:
             touchStripTouched_ = e.pressed;
             return make(Type::TouchStripTouchState, e.pressed ? 1 : 0, static_cast<std::int32_t>(touchStripMode_));
