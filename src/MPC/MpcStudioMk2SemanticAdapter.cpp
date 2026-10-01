@@ -161,6 +161,19 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uint8_t note,bool pressed,std::int64_t timestampNanos) noexcept {
     const auto* b=findButton(note); if(!b) return std::nullopt;
     const std::string_view n(b->name);
+
+    // An unfinished Copy/Delete gesture must never survive an unrelated
+    // control press. Shift itself is allowed to remain held for Shift+Copy.
+    if (pressed
+            && copyMode_ != CopyMode::None
+            && n != "Copy"
+            && n != "Shift") {
+        copyMode_ = CopyMode::None;
+        copySourcePad_ = 0xFF;
+        copyDestinationMask_ = 0;
+        deletePadMask_ = 0;
+    }
+
     if (pressed && n != "Locate") {
         const bool exitsLocate =
                 n == "Main"

@@ -143,6 +143,13 @@ int main(){
   typeOf(deleteCommit, SemanticActionType::CopyPadCommit);
   assert(deleteCommit->value0 == 1 && deleteCommit->value2 == (1 << 5));
 
+  MpcStudioMk2SemanticAdapter cancelled;
+  typeOf(cancelled.handleControl(btn(122)), SemanticActionType::CopyContext);
+  auto cancelNav = cancelled.handleControl(btn(52));
+  typeOf(cancelNav, SemanticActionType::NavigateMain);
+  auto afterCancel = cancelled.handleControl(btn(122, false));
+  assert(!afterCancel.has_value());
+
   MpcStudioMk2SemanticAdapter pressure;
   auto pressureAction = pressure.handleControl(
       InputEvent{InputEventType::PadAftertouch,9,37,96,0,true});
