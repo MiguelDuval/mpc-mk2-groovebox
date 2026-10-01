@@ -17,7 +17,7 @@ enum class SemanticActionType : std::int32_t {
     StepLeft=32, StepRight=33, BarLeft=34, BarRight=35, TapTempo=36, TouchStripValue=37,
     LocateState=38, LocatePad=39, SampleSelectContext=40, SampleStartContext=41,
     SampleEndContext=42, TuneContext=43, Quantize=44, TimingCorrectState=45, ZoomContext=46,
-    CopyContext=47, Undo=48, AutomationContext=49, PadMuteTarget=50, TrackMuteTarget=51, Reserved=52, SixteenLevelState=53, NoteRepeatRateChanged=54, StepEditPadSelected=55, TouchStripModeChanged=56, TouchStripTouchState=57, TouchStripConfigContext=58, EraseState=59, ErasePadTarget=60
+    CopyContext=47, Undo=48, AutomationContext=49, PadMuteTarget=50, TrackMuteTarget=51, Reserved=52, SixteenLevelState=53, NoteRepeatRateChanged=54, StepEditPadSelected=55, TouchStripModeChanged=56, TouchStripTouchState=57, TouchStripConfigContext=58, EraseState=59, ErasePadTarget=60, PadAftertouch=61
 };
 struct SemanticAction final {
     SemanticActionType type=SemanticActionType::None;
