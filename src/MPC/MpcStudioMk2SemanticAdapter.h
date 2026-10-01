@@ -53,7 +53,7 @@ public:
         return noteRepeatRateIndex_;
     }
 private:
-    std::optional<SemanticAction> handleButton(std::uint8_t,bool) noexcept;
+    std::optional<SemanticAction> handleButton(std::uint8_t,bool,std::int64_t) noexcept;
     std::optional<SemanticAction> handleJog(std::uint8_t) noexcept;
     std::optional<SemanticAction> handleJogPress(bool) noexcept;
     std::optional<SemanticAction> modePadAction(std::uint8_t) const noexcept;
