@@ -90,7 +90,7 @@ std::int64_t MpcNoteRepeatScheduler::intervalNanos(
         std::int64_t tempoMilliBpm) noexcept {
     const auto safeTicks = std::max<std::int64_t>(1, ticks);
     const auto bpm =
-            static_cast<double>(clampTempoMilliBpm(tempoMilliBpm))
+            static_cast<double>(note_repeat_timing::clampTempoMilliBpm(tempoMilliBpm))
             / 1000.0;
     const auto seconds =
             (static_cast<double>(safeTicks) / 960.0)
