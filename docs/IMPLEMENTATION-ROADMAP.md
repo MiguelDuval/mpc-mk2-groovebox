@@ -195,3 +195,12 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
 - **Hardware feedback implemented:** the eight Note Repeat division indicators are updated from semantic rate state, including a full clear when Note Repeat is disabled.
 - **Timing architecture preserved:** rate changes wake the native scheduler and re-align the next repeat against the same transport clock; Android UI refresh is not part of repeat timing.
 - **Recording scope unchanged:** generated Note Repeat hits remain performance-only until a safe recording contract is added.
+
+## 2026-10-01 Physical Step Edit parameter control
+
+ - **Step Edit hardware selection is now actionable:** once a physical pad selects a step in `SEQ • STEP`, the MkII Data Dial and `+/-` edit the selected event without leaving the editor.
+ - **Context cycling:** Data Dial press cycles the physical edit target through Velocity, Probability, Ratchet, Nudge and Duration. This is an application-level ergonomic layer, not a claim about the factory Studio MkII mapping.
+ - **Precision:** Shift/fine input is meaningful for the continuous Nudge and Duration fields; discrete event fields remain one-unit controls because their domains are integer/discrete.
+ - **Safety:** empty steps are never created by encoder editing; playback/audio callbacks are not touched by the parameter-edit path.
+ - **Feedback:** status refresh, Step Edit pad LED projection and event information remain synchronized after hardware edits.
+ - Physical MkII verification remains required.
