@@ -17,7 +17,7 @@ enum class SemanticActionType : std::int32_t {
     StepLeft=32, StepRight=33, BarLeft=34, BarRight=35, TapTempo=36, TouchStripValue=37,
     LocateState=38, LocatePad=39, SampleSelectContext=40, SampleStartContext=41,
     SampleEndContext=42, TuneContext=43, Quantize=44, TimingCorrectState=45, ZoomContext=46,
-    CopyContext=47, Undo=48, AutomationContext=49, PadMuteTarget=50, TrackMuteTarget=51, Reserved=52, SixteenLevelState=53, NoteRepeatRateChanged=54, StepEditPadSelected=55, TouchStripModeChanged=56, TouchStripTouchState=57, TouchStripConfigContext=58, EraseState=59, ErasePadTarget=60, PadAftertouch=61
+    CopyContext=47, Undo=48, AutomationContext=49, PadMuteTarget=50, TrackMuteTarget=51, Reserved=52, SixteenLevelState=53, NoteRepeatRateChanged=54, StepEditPadSelected=55, TouchStripModeChanged=56, TouchStripTouchState=57, TouchStripConfigContext=58, EraseState=59, ErasePadTarget=60, PadAftertouch=61, CopyPadSelection=62, CopyPadCommit=63
 };
 struct SemanticAction final {
     SemanticActionType type=SemanticActionType::None;
@@ -75,6 +75,13 @@ private:
     std::uint8_t padBank_=0;
     std::uint8_t noteRepeatRateIndex_=2;
     bool eraseHeld_=false;
+    // Copy/Delete is a stateful physical gesture: Copy selects a source and
+    // one or more destinations while held; Shift+Copy selects delete targets.
+    enum class CopyMode : std::uint8_t { None, Copy, Delete };
+    CopyMode copyMode_=CopyMode::None;
+    std::uint8_t copySourcePad_=0xFF;
+    std::uint16_t copyDestinationMask_=0;
+    std::uint16_t deletePadMask_=0;
     mpc::sequencer::touch_strip::Mode touchStripMode_ = mpc::sequencer::touch_strip::Mode::Level;
     bool touchStripTouched_=false;
 };

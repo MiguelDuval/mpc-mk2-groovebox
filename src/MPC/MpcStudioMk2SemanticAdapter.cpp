@@ -88,6 +88,45 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
         return r;
     }
     if(eraseHeld_){ r.consumed=true; r.action=make(Type::ErasePadTarget,e.padIndex); return r; }
+    if(copyMode_ != CopyMode::None){
+        r.consumed=true;
+        if(copyMode_ == CopyMode::Copy){
+            if(copySourcePad_ == 0xFF){
+                copySourcePad_ = e.padIndex;
+                r.action = make(
+                        Type::CopyPadSelection,
+                        0,
+                        static_cast<std::int32_t>(e.padIndex),
+                        1);
+                return r;
+            }
+            if(e.padIndex == copySourcePad_){
+                r.action = make(
+                        Type::CopyPadSelection,
+                        0,
+                        static_cast<std::int32_t>(e.padIndex),
+                        0);
+                return r;
+            }
+            const auto bit = static_cast<std::uint16_t>(1u << e.padIndex);
+            copyDestinationMask_ ^= bit;
+            r.action = make(
+                    Type::CopyPadSelection,
+                    0,
+                    static_cast<std::int32_t>(e.padIndex),
+                    (copyDestinationMask_ & bit) != 0u ? 1 : 0);
+            return r;
+        }
+
+        const auto bit = static_cast<std::uint16_t>(1u << e.padIndex);
+        deletePadMask_ ^= bit;
+        r.action = make(
+                Type::CopyPadSelection,
+                1,
+                static_cast<std::int32_t>(e.padIndex),
+                (deletePadMask_ & bit) != 0u ? 1 : 0);
+        return r;
+    }
     if(padMuteMode_){ r.consumed=true; r.action=make(Type::PadMuteTarget,e.padIndex); return r; }
     if(trackMuteMode_){ r.consumed=true; r.action=make(Type::TrackMuteTarget,e.padIndex); return r; }
 
@@ -229,7 +268,53 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
     if(n=="Quantize") return make(Type::Quantize,shiftHeld_?1:0);
     if(n=="TCOnOff") return make(Type::TimingCorrectState,shiftHeld_?2:1);
     if(n=="Zoom") return make(Type::ZoomContext,shiftHeld_?1:0);
-    if(n=="Copy") return make(Type::CopyContext,shiftHeld_?1:0);
+    if(n=="Copy"){
+        if (pressed) {
+            copyMode_ = shiftHeld_
+                    ? CopyMode::Delete
+                    : CopyMode::Copy;
+            copySourcePad_ = 0xFF;
+            copyDestinationMask_ = 0;
+            deletePadMask_ = 0;
+            return make(
+                    Type::CopyContext,
+                    copyMode_ == CopyMode::Delete ? 1 : 0,
+                    1,
+                    -1);
+        }
+
+        if (copyMode_ == CopyMode::None) {
+            return std::nullopt;
+        }
+
+        const auto mode = copyMode_;
+        const auto source = copySourcePad_;
+        const auto mask = mode == CopyMode::Copy
+                ? copyDestinationMask_
+                : deletePadMask_;
+
+        copyMode_ = CopyMode::None;
+        copySourcePad_ = 0xFF;
+        copyDestinationMask_ = 0;
+        deletePadMask_ = 0;
+
+        if (mode == CopyMode::Copy && source == 0xFF) {
+            return make(Type::CopyContext, 0, 0, -1);
+        }
+        if (mask == 0u) {
+            return make(
+                    Type::CopyContext,
+                    mode == CopyMode::Delete ? 1 : 0,
+                    0,
+                    source == 0xFF ? -1 : static_cast<std::int32_t>(source));
+        }
+
+        return make(
+                Type::CopyPadCommit,
+                mode == CopyMode::Delete ? 1 : 0,
+                source == 0xFF ? -1 : static_cast<std::int32_t>(source),
+                static_cast<std::int32_t>(mask));
+    }
     if(n=="Undo") return make(Type::Undo,shiftHeld_?1:0);
     if(n=="AutomationReadWrite") return make(Type::AutomationContext,shiftHeld_?1:0);
     if(n=="Record") return make(Type::TransportRecord);

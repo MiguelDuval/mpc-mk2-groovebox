@@ -106,6 +106,39 @@ int main(){
   typeOf(previousEvent, SemanticActionType::StepLeft);
   assert(previousEvent->value0 == 1);
 
+
+  MpcStudioMk2SemanticAdapter copy;
+  auto copyContext = copy.handleControl(btn(122));
+  typeOf(copyContext, SemanticActionType::CopyContext);
+  assert(copyContext->value0 == 0 && copyContext->value1 == 1);
+  auto sourceSelection = copy.handlePad(pad(2));
+  typeOf(sourceSelection.action, SemanticActionType::CopyPadSelection);
+  assert(sourceSelection.consumed && sourceSelection.action->value1 == 2 && sourceSelection.action->value2 == 1);
+  auto destinationSelection = copy.handlePad(pad(7));
+  typeOf(destinationSelection.action, SemanticActionType::CopyPadSelection);
+  assert(destinationSelection.action->value1 == 7 && destinationSelection.action->value2 == 1);
+  auto destinationDeselect = copy.handlePad(pad(7));
+  typeOf(destinationDeselect.action, SemanticActionType::CopyPadSelection);
+  assert(destinationDeselect.action->value2 == 0);
+  auto destinationSecond = copy.handlePad(pad(8));
+  typeOf(destinationSecond.action, SemanticActionType::CopyPadSelection);
+  auto copyCommit = copy.handleControl(btn(122, false));
+  typeOf(copyCommit, SemanticActionType::CopyPadCommit);
+  assert(copyCommit->value0 == 0 && copyCommit->value1 == 2
+          && copyCommit->value2 == (1 << 8));
+
+  MpcStudioMk2SemanticAdapter eraseDelete;
+  static_cast<void>(eraseDelete.handleControl(btn(49)));
+  auto deleteContext = eraseDelete.handleControl(btn(122));
+  typeOf(deleteContext, SemanticActionType::CopyContext);
+  assert(deleteContext->value0 == 1 && deleteContext->value1 == 1);
+  auto deletePad = eraseDelete.handlePad(pad(5));
+  typeOf(deletePad.action, SemanticActionType::CopyPadSelection);
+  assert(deletePad.action->value0 == 1 && deletePad.action->value1 == 5 && deletePad.action->value2 == 1);
+  auto deleteCommit = eraseDelete.handleControl(btn(122, false));
+  typeOf(deleteCommit, SemanticActionType::CopyPadCommit);
+  assert(deleteCommit->value0 == 1 && deleteCommit->value2 == (1 << 5));
+
   MpcStudioMk2SemanticAdapter pressure;
   auto pressureAction = pressure.handleControl(
       InputEvent{InputEventType::PadAftertouch,9,37,96,0,true});
