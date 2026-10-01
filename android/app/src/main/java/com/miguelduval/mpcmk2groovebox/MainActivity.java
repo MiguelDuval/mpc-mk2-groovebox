@@ -3846,12 +3846,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private boolean isHardwareLocateExitAction(int actionType) {
-        if (hardwareLocateActive
-                && isHardwareLocateExitAction(actionType)) {
-            hardwareLocateActive = false;
-            setHardwareButtonLed(70, false);
-        }
-
         switch (actionType) {
             case MpcStudioMk2SemanticActions.NAVIGATE_MAIN:
             case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_VIEW:
@@ -3887,6 +3881,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void applyHardwareAction(
             int actionType, int value0, int value1, int value2) {
+        if (hardwareLocateActive
+                && isHardwareLocateExitAction(actionType)) {
+            hardwareLocateActive = false;
+            setHardwareButtonLed(70, false);
+        }
+
         switch (actionType) {
             case MpcStudioMk2SemanticActions.NAVIGATE_MAIN:
             case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_VIEW:
