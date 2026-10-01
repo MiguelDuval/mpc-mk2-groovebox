@@ -171,6 +171,10 @@ struct Sequence {
     bool timingCorrectEnabled = true;
     bool metronomeEnabled = false;
     bool countInEnabled = false;
+    // Six timeline locators exposed by the MPC Studio MkII Locate workflow.
+    // A value < 0 means the locator slot is currently unassigned.
+    std::array<std::int64_t, 6> locatorTicks{
+            {-1, -1, -1, -1, -1, -1}};
     std::vector<Track> tracks;
 };
 
