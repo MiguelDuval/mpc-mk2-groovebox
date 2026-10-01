@@ -150,6 +150,16 @@ int main(){
   auto afterCancel = cancelled.handleControl(btn(122, false));
   assert(!afterCancel.has_value());
 
+  MpcStudioMk2SemanticAdapter zoom;
+  auto zoomHorizontal = zoom.handleControl(btn(66));
+  typeOf(zoomHorizontal, SemanticActionType::ZoomContext);
+  assert(zoomHorizontal->value0 == 0);
+  static_cast<void>(zoom.handleControl(btn(49)));
+  auto zoomVertical = zoom.handleControl(btn(66));
+  typeOf(zoomVertical, SemanticActionType::ZoomContext);
+  assert(zoomVertical->value0 == 1);
+  static_cast<void>(zoom.handleControl(btn(49, false)));
+
   MpcStudioMk2SemanticAdapter pressure;
   auto pressureAction = pressure.handleControl(
       InputEvent{InputEventType::PadAftertouch,9,37,96,0,true});
