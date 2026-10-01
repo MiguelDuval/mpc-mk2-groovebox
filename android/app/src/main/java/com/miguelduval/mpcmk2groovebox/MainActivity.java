@@ -122,9 +122,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView sequenceTrackInfoView;
     private final Handler sequenceUiHandler = new Handler(Looper.getMainLooper());
     private Runnable sequenceUiUpdater;
+    private static final int STEP_EDIT_PARAMETER_VELOCITY = 0;
+    private static final int STEP_EDIT_PARAMETER_PROBABILITY = 1;
+    private static final int STEP_EDIT_PARAMETER_RATCHET = 2;
+    private static final int STEP_EDIT_PARAMETER_NUDGE = 3;
+    private static final int STEP_EDIT_PARAMETER_DURATION = 4;
+
     private int selectedPad = 0;
     private int selectedLayer = 0;
     private int hardwareFocus = 0;
+    private int stepEditParameter = STEP_EDIT_PARAMETER_VELOCITY;
     private int hardwarePadBank = 0;
     private int lastPlayLedState = -1;
     private int lastRecordLedState = -1;
@@ -1822,9 +1829,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if ("CLEARED".equals(lastStepEditLedSignature)) {
+            stepEditParameter = STEP_EDIT_PARAMETER_VELOCITY;
             return;
         }
 
+        stepEditParameter = STEP_EDIT_PARAMETER_VELOCITY;
         for (int pad = 0; pad < 16; pad++) {
             final byte[] message = MpcStudioMk2MidiMessages.padRgb(
                     pad, 0, 0, 0);
@@ -3844,7 +3853,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 handleHardwareDialDelta(value0, value1 != 0);
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_PRESS:
-                setBottomStatus("DATA DIAL ENTER");
+                if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
+                    stepEditParameter = (stepEditParameter + 1) % 5;
+                    setBottomStatus(
+                            "STEP EDIT • " + stepEditParameterLabel()
+                                    + " • DATA DIAL / +/-");
+                } else {
+                    setBottomStatus("DATA DIAL ENTER");
+                }
                 return;
             case MpcStudioMk2SemanticActions.PAD_BANK_CHANGED:
                 hardwarePadBank = Math.max(0, Math.min(7, value0));
@@ -4055,6 +4071,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void handleHardwareDialDelta(int delta, boolean fine) {
         if (delta == 0) return;
+        if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
+            adjustSelectedStepParameter(delta, fine);
+            return;
+        }
         if (hardwareFocus == 2) {
             final int count = nativeSequenceGetTrackCount();
             if (count <= 0) return;
@@ -4072,6 +4092,93 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         setBottomStatus("DATA DIAL " + (delta > 0 ? "+" : "−") + " • no focused selector");
+    }
+
+    private String stepEditParameterLabel() {
+        switch (stepEditParameter) {
+            case STEP_EDIT_PARAMETER_PROBABILITY:
+                return "PROB";
+            case STEP_EDIT_PARAMETER_RATCHET:
+                return "RAT";
+            case STEP_EDIT_PARAMETER_NUDGE:
+                return "NUDGE";
+            case STEP_EDIT_PARAMETER_DURATION:
+                return "DUR";
+            case STEP_EDIT_PARAMETER_VELOCITY:
+            default:
+                return "VEL";
+        }
+    }
+
+    private void adjustSelectedStepParameter(int direction, boolean fine) {
+        if (selectedSequenceStep < 0) {
+            setBottomStatus("Select a step first • DATA DIAL ENTER selects parameter");
+            return;
+        }
+
+        final int[] parameters = getSelectedStepParameters();
+        if (parameters == null || parameters.length < 5 || parameters[0] <= 0) {
+            setBottomStatus("Select an active step first");
+            return;
+        }
+
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int delta = fine ? 1 : 1;
+
+        switch (stepEditParameter) {
+            case STEP_EDIT_PARAMETER_VELOCITY: {
+                final int value = Math.max(
+                        1, Math.min(127, parameters[0] + delta * direction));
+                setBottomStatus(nativeSequenceSetStepVelocity(
+                        selectedPad, selectedSequenceStep, gridTicks, value));
+                break;
+            }
+            case STEP_EDIT_PARAMETER_PROBABILITY: {
+                final int value = Math.max(
+                        0, Math.min(127, parameters[1] + delta * direction));
+                setBottomStatus(nativeSequenceSetStepProbability(
+                        selectedPad, selectedSequenceStep, gridTicks, value));
+                break;
+            }
+            case STEP_EDIT_PARAMETER_RATCHET: {
+                final int value = Math.max(
+                        1, Math.min(8, parameters[2] + delta * direction));
+                setBottomStatus(nativeSequenceSetStepRatchet(
+                        selectedPad, selectedSequenceStep, gridTicks, value));
+                break;
+            }
+            case STEP_EDIT_PARAMETER_NUDGE: {
+                final int increment = fine ? 10 : 60;
+                setBottomStatus(nativeSequenceSetStepNudge(
+                        selectedPad,
+                        selectedSequenceStep,
+                        gridTicks,
+                        Math.max(-960, Math.min(960, parameters[3] + increment * direction))));
+                break;
+            }
+            case STEP_EDIT_PARAMETER_DURATION: {
+                final int increment = fine
+                        ? Math.max(1, gridTicks / 16)
+                        : Math.max(1, gridTicks / 4);
+                final int current = Math.max(
+                        increment, parameters[4] > 0 ? parameters[4] : gridTicks);
+                final int value = Math.max(
+                        increment,
+                        Math.min(gridTicks * 4, current + increment * direction));
+                setBottomStatus(nativeSequenceSetStepDuration(
+                        selectedPad, selectedSequenceStep, gridTicks, value));
+                break;
+            }
+            default:
+                return;
+        }
+
+        refreshSequenceStepPage();
+        syncStepEditPadLeds();
+        setBottomStatus(
+                "STEP EDIT • " + stepEditParameterLabel()
+                        + " • " + (direction > 0 ? "+" : "−")
+                        + (fine ? " FINE" : ""));
     }
 
     private void handleHardwareTouchStrip(int value) {
