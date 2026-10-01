@@ -354,13 +354,13 @@ MIDI note 11.
 
 - hold → momentary Note Repeat;
 - Shift + press → latch/unlatch Note Repeat;
-- touch strip may set the repeat division.
+- Touch Strip selects the independent repeat division while Note Repeat is active.
 
 The repeat scheduler must remain clock-synchronous and must not depend on UI frame rate.
 
 The project already has Note Repeat LED protocol support; state feedback should be emitted only when the semantic state changes.
 
-Status: **PERFORMANCE ROUTED to the native transport-clock scheduler; momentary and Shift-latched behavior are distinct, and the Note Repeat button LED mirrors semantic state. Generated repeat hits are currently performance-only and are not yet written to the sequence record queue**.
+Status: **PERFORMANCE ROUTED to the native transport-clock scheduler; momentary and Shift-latched behavior are distinct; Touch Strip selects an independent repeat division; the Note Repeat button and division LEDs mirror semantic state. Generated repeat hits are currently performance-only and are not yet written to the sequence record queue**.
 
 Priority: **P0**.
 
@@ -780,4 +780,15 @@ The MkII path now has a native semantic-adapter layer between MIDI decoding and 
 
 Routed at this checkpoint: Mode+implemented-page shortcuts, Main/Browse, Track/Sequence selection, Data Dial direction/press, Plus/Minus adjustment, Pad Bank state, Full Level/Half Level, 16 Level Velocity, Pad/Track Mute contexts and targets, transport, stopped Step/Bar navigation, Tap Tempo, launcher-bank selection, Sample Start/End/Tune contextual Touch Strip control, Quantize/Timing Correct and native clock-synchronous Note Repeat performance.
 
-Not declared complete: Note Repeat division selection from the Touch Strip, generated Note Repeat hit recording into the sequence record queue, Touch-strip LED division feedback, full LCD product pages, Locate marker/event navigation, program/track-type browsing, Undo/Redo and the remaining P1 editing commands. Physical MkII verification remains required before a control is marked CONFIRMED.
+Not declared complete: generated Note Repeat hit recording into the sequence record queue, full LCD product pages, Locate marker/event navigation, program/track-type browsing, Undo/Redo and the remaining P1 editing commands. Physical MkII verification remains required before a control is marked CONFIRMED.
+
+
+## 2026-10-01 Note Repeat rate checkpoint
+
+The Touch Strip now has an explicit Note Repeat context. While Note Repeat is active, the strip selects one of eight bounded musical rates (five straight divisions plus three triplet divisions); the selected rate is stored in the native repeat scheduler independently from the Sequence recording/Timing Correct grid.
+
+The hardware feedback path mirrors that state through the dedicated Note Repeat division LED bank. Leaving Note Repeat active returns the strip to its normal context-sensitive parameter path.
+
+The rate selector is intentionally discrete rather than frame-rate-driven: moving within the same rate zone produces no repeated semantic action, while crossing a zone changes the scheduler rate and LED state.
+
+Physical MkII verification is still required before this behavior is marked CONFIRMED.
