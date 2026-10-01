@@ -1,6 +1,7 @@
 #include "MpcStudioMk2SemanticAdapter.h"
 #include "MpcStudioMk2ControlMap.h"
 #include "MPC/Sequencer/MpcNoteRepeatTiming.h"
+#include "MPC/Sequencer/MpcLocatePolicy.h"
 #include <array>
 #include <string_view>
 
@@ -60,7 +61,23 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
         return r;
     }
     if(modeHeld_){ r.consumed=true; r.action=modePadAction(e.padIndex); return r; }
-    if(locateHeld_){ r.consumed=true; r.action=make(Type::LocatePad,e.padIndex); return r; }
+    if(locateActive()){
+        r.consumed=true;
+        if (const auto jumpSlot =
+                    mpc::sequencer::locate::locatorSlotForJumpPad(e.padIndex);
+                jumpSlot >= 0) {
+            r.action = make(Type::LocatePad, jumpSlot, 0);
+            return r;
+        }
+        if (const auto storeSlot =
+                    mpc::sequencer::locate::locatorSlotForStorePad(e.padIndex);
+                storeSlot >= 0) {
+            r.action = make(Type::LocatePad, storeSlot, 1);
+            return r;
+        }
+        r.action = make(Type::LocatePad, -1, 0);
+        return r;
+    }
     if(padMuteMode_){ r.consumed=true; r.action=make(Type::PadMuteTarget,e.padIndex); return r; }
     if(trackMuteMode_){ r.consumed=true; r.action=make(Type::TrackMuteTarget,e.padIndex); return r; }
 
@@ -92,9 +109,47 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uint8_t note,bool pressed) noexcept {
     const auto* b=findButton(note); if(!b) return std::nullopt;
     const std::string_view n(b->name);
+    if (pressed && n != "Locate") {
+        const bool exitsLocate =
+                n == "Main"
+                || n == "Browse"
+                || n == "TrackSelect"
+                || n == "ProgramSelect"
+                || n == "SampleSelect"
+                || n == "SampleStart"
+                || n == "SampleEnd"
+                || n == "Tune"
+                || n == "Quantize"
+                || n == "TCOnOff"
+                || n == "Zoom"
+                || n == "Copy"
+                || n == "Undo"
+                || n == "AutomationReadWrite";
+        if (exitsLocate && locateLatched_) {
+            locateLatched_ = false;
+        }
+    }
     if(n=="Shift"){ shiftHeld_=pressed; return std::nullopt; }
     if(n=="Mode"){ modeHeld_=pressed; return std::nullopt; }
-    if(n=="Locate"){ locateHeld_=pressed; return make(Type::LocateState,locateHeld_?1:0); }
+    if(n=="Locate"){
+        if (pressed) {
+            locateHeld_ = true;
+            locatePressTimestampNanos_ = e.timestampNanos;
+            return make(Type::LocateState, 1, locateLatched_ ? 1 : 0);
+        }
+
+        const auto held = locatePressTimestampNanos_;
+        locateHeld_ = false;
+        locatePressTimestampNanos_ = 0;
+        if (!mpc::sequencer::locate::isMomentaryHold(
+                    held, e.timestampNanos)) {
+            locateLatched_ = !locateLatched_;
+        }
+        return make(
+                Type::LocateState,
+                locateActive() ? 1 : 0,
+                locateLatched_ ? 1 : 0);
+    }
     if(n=="NoteRepeat"){
         if(!pressed){
             if(!noteRepeatLatched_) noteRepeatHeld_=false;
@@ -161,10 +216,10 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
     if(n=="Play") return make(Type::TransportPlay);
     if(n=="PlayStart") return make(Type::TransportPlayStart);
     if(n=="TapTempo") return make(Type::TapTempo);
-    if(n=="StepLeft") return make(Type::StepLeft,locateHeld_?1:0);
-    if(n=="StepRight") return make(Type::StepRight,locateHeld_?1:0);
-    if(n=="BarLeft") return make(Type::BarLeft,locateHeld_?1:0);
-    if(n=="BarRight") return make(Type::BarRight,locateHeld_?1:0);
+    if(n=="StepLeft") return make(Type::StepLeft,locateActive()?1:0);
+    if(n=="StepRight") return make(Type::StepRight,locateActive()?1:0);
+    if(n=="BarLeft") return make(Type::BarLeft,locateActive()?1:0);
+    if(n=="BarRight") return make(Type::BarRight,locateActive()?1:0);
     return std::nullopt;
 }
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleJog(std::uint8_t v) noexcept {
