@@ -56,6 +56,17 @@ int main(){
   typeOf(touchOff, SemanticActionType::TouchStripTouchState);
   assert(touchOff->value0 == 0 && !stripModes.touchStripTouched());
 
+  MpcStudioMk2SemanticAdapter erase;
+  auto eraseOn = erase.handleControl(btn(9));
+  typeOf(eraseOn, SemanticActionType::EraseState);
+  assert(eraseOn->value0 == 1);
+  auto erasePad = erase.handlePad(pad(5));
+  typeOf(erasePad.action, SemanticActionType::ErasePadTarget);
+  assert(erasePad.consumed && erasePad.action->value0 == 5);
+  auto eraseOff = erase.handleControl(btn(9, false));
+  typeOf(eraseOff, SemanticActionType::EraseState);
+  assert(eraseOff->value0 == 0);
+
   MpcStudioMk2SemanticAdapter locate;
   auto locatePress = locate.handleControl(btnAt(70, true, 1'000'000'000));
   typeOf(locatePress, SemanticActionType::LocateState);
