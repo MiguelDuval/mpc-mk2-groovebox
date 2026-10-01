@@ -496,7 +496,7 @@ Locate is a context modifier/toggle.
 
 First implementation should reuse the existing pad-selection event pipeline but temporarily change the semantic meaning of the pads.
 
-Status: **DECODED, LOCATOR SYSTEM NOT IMPLEMENTED**.
+Status: **LOCATE BUTTON, SIX LOCATOR SLOTS, PAD JUMP/SET, DATA DIAL BEAT/TICK MOVE AND LOCATE+STEP/BAR NAVIGATION ROUTED.** The semantic layer distinguishes a short-press toggle from a duration-based momentary hold using a local 350 ms gesture threshold. Pads 1–6 produce locator-jump semantic actions; Pads 9–14 produce locator-set actions. Physical verification remains required before CONFIRMED.
 
 Priority: **P1**.
 
