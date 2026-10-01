@@ -100,6 +100,16 @@ int main() {
 
     assert(mpc::sequencer::setStepNoteNudge(
             stepPattern, 4, 120, 38, 120));
+    assert(mpc::sequencer::setStepNoteDuration(
+            stepPattern, 4, 120, 38, 30));
+    assert(stepPattern.notes[1].durationTicks == 30);
+    assert(mpc::sequencer::setStepNoteDuration(
+            stepPattern, 4, 120, 38, 480));
+    assert(stepPattern.notes[1].durationTicks == 480);
+    assert(!mpc::sequencer::setStepNoteDuration(
+            stepPattern, 4, 120, 38, 29));
+    assert(!mpc::sequencer::setStepNoteDuration(
+            stepPattern, 4, 120, 38, 481));
     assert(stepPattern.notes[1].nudgeTicks == 120);
     assert(mpc::sequencer::setStepNoteNudge(
             stepPattern, 4, 120, 38, -120));
