@@ -4186,7 +4186,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         selectedPad,
                         selectedSequenceStep,
                         gridTicks,
-                        Math.max(-960, Math.min(960, parameters[3] + delta)));
+                        Math.max(-960, Math.min(960, parameters[3] + delta))));
                 break;
             }
             case STEP_EDIT_PARAMETER_DURATION: {
