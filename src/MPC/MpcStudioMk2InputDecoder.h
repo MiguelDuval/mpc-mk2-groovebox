@@ -23,6 +23,8 @@ struct InputEvent {
     std::uint8_t value = 0;
     std::uint8_t padIndex = 0xFF;
     bool pressed = false;
+    // Filled at the MIDI boundary for duration-sensitive hardware gestures.
+    std::int64_t timestampNanos = 0;
 };
 
 std::optional<InputEvent> decodeInput(std::span<const std::uint8_t> message);
