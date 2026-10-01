@@ -5,6 +5,7 @@
 #include "../MPC/MpcStudioMk2SemanticAdapter.h"
 #include "../MPC/Sequencer/MpcNoteRepeatScheduler.h"
 #include "../MPC/Sequencer/MpcNoteRepeatTiming.h"
+#include "../MPC/Sequencer/MpcStepEditRouting.h"
 #include "../MPC/MpcStudioMk2LedProtocol.h"
 
 #include <android/log.h>
@@ -24,6 +25,8 @@ constexpr const char* kTag = "MpcMk2Groovebox";
 std::atomic<bool> sequenceLauncherEnabled{false};
 std::atomic<std::size_t> sequenceLauncherBank{0};
 std::atomic<int> pendingSequenceLauncherPad{-1};
+std::atomic<bool> stepEditEnabled{false};
+std::atomic<std::size_t> stepEditPage{0};
 
 constexpr std::size_t kSemanticActionQueueCapacity = 128;
 std::array<mpc::studio::SemanticAction, kSemanticActionQueueCapacity>
@@ -124,6 +127,23 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             enqueueSemanticAction(*padRouting.action);
         }
         if (padRouting.consumed) {
+            return std::nullopt;
+        }
+
+        if (stepEditEnabled.load(std::memory_order_acquire)) {
+            if (!event->pressed) {
+                return std::nullopt;
+            }
+            const auto page =
+                    stepEditPage.load(std::memory_order_acquire);
+            const auto stepIndex =
+                    mpc::sequencer::step_edit::stepIndexForPad(
+                            page, event->padIndex);
+            enqueueSemanticAction({
+                    mpc::studio::SemanticActionType::StepEditPadSelected,
+                    static_cast<std::int32_t>(stepIndex),
+                    static_cast<std::int32_t>(event->padIndex),
+                    static_cast<std::int32_t>(page)});
             return std::nullopt;
         }
 
@@ -315,6 +335,19 @@ Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeConsumeHardwareActi
             static_cast<jsize>(values.size()),
             values.data());
     return result;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepEditContext(
+        JNIEnv* /* env */,
+        jobject /* thiz */,
+        jboolean enabled,
+        jint page)
+{
+    stepEditEnabled.store(enabled == JNI_TRUE, std::memory_order_release);
+    stepEditPage.store(
+            page < 0 ? 0u : static_cast<std::size_t>(page),
+            std::memory_order_release);
 }
 
 extern "C" JNIEXPORT void JNICALL

@@ -792,3 +792,8 @@ The hardware feedback path mirrors that state through the dedicated Note Repeat 
 The rate selector is intentionally discrete rather than frame-rate-driven: moving within the same rate zone produces no repeated semantic action, while crossing a zone changes the scheduler rate and LED state.
 
 Physical MkII verification is still required before this behavior is marked CONFIRMED.
+
+
+## 2026-10-01 Step Edit hardware context
+
+While `SEQ • STEP` is active, physical pad presses are routed as `StepEditPadSelected` to select the absolute step on the active 16-step page. This is an application-level MPC-style editor context, not a claim about a factory-default Studio MkII mapping. Pad selection is intentionally non-audio in this context so editing cannot accidentally retrigger the kit. Physical verification remains required.

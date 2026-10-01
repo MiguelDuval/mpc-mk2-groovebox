@@ -210,6 +210,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native int nativeSequenceGetQueuedIndex();
     private static native void nativeSequenceSetLauncherContext(
             boolean enabled, int bank);
+    private static native void nativeSequenceSetStepEditContext(
+            boolean enabled, int page);
     private static native String nativeSequenceLaunchPad(
             int bank, int padIndex);
     private static native String nativeSequenceSelect(int sequenceIndex);
@@ -527,6 +529,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMainPage() {
+        nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         clearSequenceLauncherLeds();
         currentPage = "MAIN";
@@ -642,6 +645,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSamplePage() {
+        nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SAMPLE";
         pageTitle.setText("SAMPLE");
@@ -847,6 +851,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showRecordPage() {
+        nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "REC";
         pageTitle.setText("RECORDER");
@@ -936,6 +941,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showBrowserPage() {
+        nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "BROWSE";
         pageTitle.setText("BROWSER");
@@ -974,6 +980,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequencePage() {
+        nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
         pageTitle.setText("SEQUENCER");
@@ -1182,6 +1189,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceGridPage() {
+        nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
         pageTitle.setText("SEQ • GRID");
@@ -1265,6 +1273,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceLauncherPage() {
+        nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         launcherBank = Math.max(0, nativeSequenceGetIndex() / 16);
         currentPage = "SEQ";
@@ -1344,6 +1353,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceStepPage() {
+        nativeSequenceSetStepEditContext(true, sequenceStepPage);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
         pageTitle.setText("SEQ • STEP");
@@ -1698,6 +1708,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int count = sequenceGridPageCount();
         sequenceStepPage = Math.max(
                 0, Math.min(count - 1, sequenceStepPage + delta));
+        nativeSequenceSetStepEditContext(true, sequenceStepPage);
         refreshSequenceStepPage();
     }
 
@@ -2255,6 +2266,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMixPage() {
+        nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MIX";
         pageTitle.setText("MIX");
@@ -2300,6 +2312,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMidiPage() {
+        nativeSequenceSetStepEditContext(false, 0);
         currentPage = "MIDI";
         pageTitle.setText("MIDI");
         content.removeAllViews();
@@ -2341,6 +2354,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMenuPage() {
+        nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MENU";
         pageTitle.setText("MENU");
@@ -2387,6 +2401,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
 
     private void showAudioSettingsPage() {
+        nativeSequenceSetStepEditContext(false, 0);
         currentPage = "AUDIO";
         pageTitle.setText("AUDIO");
         content.removeAllViews();
@@ -3716,6 +3731,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                     + " • normal performance uses current 16-pad domain");
                 }
                 return;
+            case MpcStudioMk2SemanticActions.STEP_EDIT_PAD_SELECTED:
+                if (!"SEQ".equals(currentPage)
+                        || sequenceStepButtons[0] == null) {
+                    return;
+                }
+                selectedSequenceStep = Math.max(0, value0);
+                refreshSequenceStepPage();
+                setBottomStatus(
+                        "STEP " + String.format(
+                                Locale.ROOT, "%02d", selectedSequenceStep + 1)
+                                + " SELECTED • PAD " + (value1 + 1));
+                return;
             case MpcStudioMk2SemanticActions.NOTE_REPEAT_STATE:
                 setHardwareButtonLed(11, value0 != 0);
                 setBottomStatus(
@@ -4063,6 +4090,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         startupExecutor.shutdownNow();
         stopSequenceUiUpdater();
+        nativeSequenceSetStepEditContext(false, 0);
 
         if (!uiOnlySmokeMode) {
             nativeAudioStop();
