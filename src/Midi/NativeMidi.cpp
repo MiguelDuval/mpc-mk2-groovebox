@@ -6,6 +6,7 @@
 #include "../MPC/Sequencer/MpcNoteRepeatScheduler.h"
 #include "../MPC/Sequencer/MpcNoteRepeatTiming.h"
 #include "../MPC/Sequencer/MpcStepEditRouting.h"
+#include "../MPC/Sequencer/MpcStepEditParameterPolicy.h"
 #include "../MPC/MpcStudioMk2LedProtocol.h"
 
 #include <android/log.h>
@@ -348,6 +349,52 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepEditConte
     stepEditPage.store(
             page < 0 ? 0u : static_cast<std::size_t>(page),
             std::memory_order_release);
+}
+
+namespace {
+
+mpc::sequencer::step_edit::Parameter stepEditParameterFromInt(
+        jint parameter) noexcept {
+    using Parameter = mpc::sequencer::step_edit::Parameter;
+    switch (parameter) {
+        case 1: return Parameter::Probability;
+        case 2: return Parameter::Ratchet;
+        case 3: return Parameter::Nudge;
+        case 4: return Parameter::Duration;
+        case 0:
+        default:
+            return Parameter::Velocity;
+    }
+}
+
+} // namespace
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeStepEditParameterNext(
+        JNIEnv* /* env */,
+        jobject /* thiz */,
+        jint parameter)
+{
+    const auto next = mpc::sequencer::step_edit::nextParameter(
+            stepEditParameterFromInt(parameter));
+    return static_cast<jint>(next);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeStepEditParameterDelta(
+        JNIEnv* /* env */,
+        jobject /* thiz */,
+        jint parameter,
+        jint gridTicks,
+        jint direction,
+        jboolean fine)
+{
+    return static_cast<jint>(
+            mpc::sequencer::step_edit::deltaFor(
+                    stepEditParameterFromInt(parameter),
+                    gridTicks,
+                    direction,
+                    fine == JNI_TRUE));
 }
 
 extern "C" JNIEXPORT void JNICALL
