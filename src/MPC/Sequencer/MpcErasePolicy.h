@@ -26,13 +26,20 @@ namespace mpc::sequencer::erase {
   if(note.note!=noteNumber||note.velocity==0) continue;
   const auto effectiveTick=normalizeTick(static_cast<std::int64_t>(note.tick)+static_cast<std::int64_t>(note.nudgeTicks),lengthTicks);
   const auto distance=circularDistance(effectiveTick,playheadTicks,lengthTicks);
-  if(distance>maxDistanceTicks||(bestIndex.has_value()&&distance>=bestDistance)) continue;
+        if (distance > maxDistanceTicks
+                || (bestIndex.has_value() && distance >= bestDistance)) {
+            continue;
+        }
   bestDistance=distance; bestIndex=index;
  }
  return bestIndex;
 }
 inline bool eraseNearestEvent(domain::Pattern& pattern,std::uint8_t noteNumber,std::int64_t playheadTicks,std::int64_t maxDistanceTicks){
  const auto index=nearestEventIndex(std::span<const domain::MidiNoteEvent>(pattern.notes.data(),pattern.notes.size()),noteNumber,playheadTicks,pattern.lengthTicks,maxDistanceTicks);
- if(!index.has_value()) return false; pattern.notes.erase(pattern.notes.begin()+*index); return true;
+    if (!index.has_value()) {
+        return false;
+    }
+    pattern.notes.erase(pattern.notes.begin() + *index);
+    return true;
 }
 } // namespace mpc::sequencer::erase
