@@ -93,8 +93,8 @@ public final class WaveformView extends View {
                                 viewportEnd - viewportStart;
                         final float newSpan = clamp(
                                 currentSpan / detector.getScaleFactor(),
-                                0.0625f,
-                                1.0f);
+                                MpcZoomPolicy.MIN_HORIZONTAL_SPAN,
+                                MpcZoomPolicy.MAX_HORIZONTAL_SPAN);
                         final float focusAbsolute =
                                 viewportStart
                                 + focusFraction * currentSpan;
@@ -178,12 +178,16 @@ public final class WaveformView extends View {
 
     public void zoomIn() {
         final float center = (startNormalized + endNormalized) * 0.5f;
-        zoomAround(center, 0.5f);
+        zoomAround(center,
+                MpcZoomPolicy.zoomHorizontalIn(viewportEnd - viewportStart)
+                        / Math.max(0.0001f, viewportEnd - viewportStart));
     }
 
     public void zoomOut() {
         final float center = (viewportStart + viewportEnd) * 0.5f;
-        zoomAround(center, 2.0f);
+        zoomAround(center,
+                MpcZoomPolicy.zoomHorizontalOut(viewportEnd - viewportStart)
+                        / Math.max(0.0001f, viewportEnd - viewportStart));
     }
 
     public void zoomVerticalIn() {
