@@ -4319,8 +4319,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
                 return;
             case MpcStudioMk2SemanticActions.ZOOM_CONTEXT:
-                setBottomStatus(value0 != 0
-                        ? "ZOOM VERTICAL CONTEXT" : "ZOOM HORIZONTAL CONTEXT");
+                hardwareFocus = value0 != 0 ? 12 : 11;
+                if ("SAMPLE".equals(currentPage) && sampleWaveform != null) {
+                    setBottomStatus(value0 != 0
+                            ? "ZOOM VERTICAL • DATA DIAL / +/-"
+                            : "ZOOM HORIZONTAL • DATA DIAL / +/-");
+                } else {
+                    setBottomStatus(
+                            value0 != 0
+                                    ? "ZOOM VERTICAL • SAMPLE EDIT ONLY"
+                                    : "ZOOM HORIZONTAL • SAMPLE EDIT ONLY");
+                }
                 return;
             case MpcStudioMk2SemanticActions.COPY_CONTEXT:
                 hardwareCopyDeleteActive = value1 != 0;
@@ -4453,6 +4462,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(
                     delta > 0 ? nativeSequenceNext() : nativeSequencePrevious());
             showSequencePage();
+            return;
+        }
+        if (hardwareFocus == 11 || hardwareFocus == 12) {
+            if (sampleWaveform == null || !"SAMPLE".equals(currentPage)) {
+                setBottomStatus("ZOOM • SAMPLE EDIT REQUIRED");
+                return;
+            }
+            if (hardwareFocus == 11) {
+                if (delta > 0) {
+                    sampleWaveform.zoomIn();
+                } else {
+                    sampleWaveform.zoomOut();
+                }
+                setBottomStatus(
+                        "ZOOM HORIZONTAL • "
+                                + (delta > 0 ? "IN" : "OUT"));
+            } else {
+                if (delta > 0) {
+                    sampleWaveform.zoomVerticalIn();
+                } else {
+                    sampleWaveform.zoomVerticalOut();
+                }
+                setBottomStatus(
+                        "ZOOM VERTICAL • "
+                                + (delta > 0 ? "IN" : "OUT"));
+            }
             return;
         }
         setBottomStatus("DATA DIAL " + (delta > 0 ? "+" : "−") + " • no focused selector");
