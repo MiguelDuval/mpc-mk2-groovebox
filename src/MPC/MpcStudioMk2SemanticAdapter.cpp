@@ -2,6 +2,7 @@
 #include "MpcStudioMk2ControlMap.h"
 #include "MPC/Sequencer/MpcNoteRepeatTiming.h"
 #include "MPC/Sequencer/MpcLocatePolicy.h"
+#include "MPC/Sequencer/MpcTouchStripPolicy.h"
 #include <array>
 #include <string_view>
 
@@ -20,6 +21,9 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const I
         case InputEventType::Button: return handleButton(e.number,e.pressed,e.timestampNanos);
         case InputEventType::JogWheel: return handleJog(e.value);
         case InputEventType::JogPress: return handleJogPress(e.pressed);
+        case InputEventType::TouchStripTouch:
+            touchStripTouched_ = e.pressed;
+            return make(Type::TouchStripTouchState, e.pressed ? 1 : 0, static_cast<std::int32_t>(touchStripMode_));
         case InputEventType::TouchStrip:
             if (!noteRepeatActive()) {
                 return make(Type::TouchStripValue,e.value);
@@ -124,12 +128,19 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
                 || n == "Zoom"
                 || n == "Copy"
                 || n == "Undo"
-                || n == "AutomationReadWrite";
+                || n == "AutomationReadWrite"
+                || n == "TouchStripButton";
         if (exitsLocate && locateLatched_) {
             locateLatched_ = false;
         }
     }
     if(n=="Shift"){ shiftHeld_=pressed; return std::nullopt; }
+    if(n=="TouchStripButton"){
+        if(!pressed) return std::nullopt;
+        if(shiftHeld_) return make(Type::TouchStripConfigContext, static_cast<std::int32_t>(touchStripMode_), 0);
+        touchStripMode_ = mpc::sequencer::touch_strip::nextMode(touchStripMode_);
+        return make(Type::TouchStripModeChanged, static_cast<std::int32_t>(touchStripMode_));
+    }
     if(n=="Mode"){ modeHeld_=pressed; return std::nullopt; }
     if(n=="Locate"){
         if (pressed) {

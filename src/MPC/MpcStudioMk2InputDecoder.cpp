@@ -61,6 +61,10 @@ std::optional<InputEvent> decodeInput(std::span<const std::uint8_t> message) {
             }
 
             if (channel == buttonChannel) {
+                if (number == touchStripTouchNote) {
+                    return InputEvent{InputEventType::TouchStripTouch, channel, number, velocity, 0xFF, pressed};
+                }
+
                 if (number == jogWheelPressNote) {
                     return InputEvent{
                         InputEventType::JogPress,

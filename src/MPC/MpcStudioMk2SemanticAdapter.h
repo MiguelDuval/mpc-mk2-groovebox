@@ -1,5 +1,6 @@
 #pragma once
 #include "MPC/MpcStudioMk2InputDecoder.h"
+#include "MPC/Sequencer/MpcTouchStripPolicy.h"
 #include <cstdint>
 #include <optional>
 
@@ -52,6 +53,12 @@ public:
     [[nodiscard]] std::uint8_t noteRepeatRateIndex() const noexcept {
         return noteRepeatRateIndex_;
     }
+    [[nodiscard]] std::uint8_t touchStripMode() const noexcept {
+        return static_cast<std::uint8_t>(touchStripMode_);
+    }
+    [[nodiscard]] bool touchStripTouched() const noexcept {
+        return touchStripTouched_;
+    }
 private:
     std::optional<SemanticAction> handleButton(std::uint8_t,bool,std::int64_t) noexcept;
     std::optional<SemanticAction> handleJog(std::uint8_t) noexcept;
@@ -67,5 +74,7 @@ private:
     bool repeatPadHeld_=false;
     std::uint8_t padBank_=0;
     std::uint8_t noteRepeatRateIndex_=2;
+    mpc::sequencer::touch_strip::Mode touchStripMode_ = mpc::sequencer::touch_strip::Mode::Level;
+    bool touchStripTouched_=false;
 };
 } // namespace mpc::studio

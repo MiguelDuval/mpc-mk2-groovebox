@@ -105,6 +105,20 @@ void testJogPress() {
     assert(event.pressed);
 }
 
+void testTouchStripButtonAndTouch() {
+    const auto button = decode({0x90, 0, 127});
+    assert(button.type == InputEventType::Button);
+    assert(button.number == 0);
+    assert(button.pressed);
+    const auto touchOn = decode({0x90, 78, 127});
+    assert(touchOn.type == InputEventType::TouchStripTouch);
+    assert(touchOn.number == 78);
+    assert(touchOn.pressed);
+    const auto touchOff = decode({0x90, 78, 0});
+    assert(touchOff.type == InputEventType::TouchStripTouch);
+    assert(!touchOff.pressed);
+}
+
 void testTouchStrip() {
     const auto event = decode({0xB0, 33, 64});
 
@@ -265,6 +279,7 @@ int main() {
     testButton();
     testJogWheel();
     testJogPress();
+    testTouchStripButtonAndTouch();
     testTouchStrip();
     testChannelAftertouch();
     testPadLedBuilder();

@@ -38,6 +38,24 @@ int main(){
 
   MpcStudioMk2SemanticAdapter latched; static_cast<void>(latched.handleControl(btn(49))); auto latch=latched.handleControl(btn(11)); typeOf(latch,SemanticActionType::NoteRepeatState); assert(latch->value0==1 && latch->value1==1); auto latchedPress=latched.handlePad(pad(3)); assert(latchedPress.repeating); auto latchedRelease=latched.handlePad(InputEvent{InputEventType::PadNote,9,37,0,3,false}); assert(latchedRelease.repeating); assert(latchedRelease.targetPadIndex==3); static_cast<void>(latched.handleControl(btn(11))); static_cast<void>(f.handleControl(btn(4))); auto tm=f.handlePad(pad(2)); typeOf(tm.action,SemanticActionType::TrackMuteTarget); static_cast<void>(f.handleControl(btn(4))); static_cast<void>(f.handleControl(btn(49))); static_cast<void>(f.handleControl(btn(4))); auto pm=f.handlePad(pad(2)); typeOf(pm.action,SemanticActionType::PadMuteTarget);
 
+  MpcStudioMk2SemanticAdapter stripModes;
+  auto stripMode = stripModes.handleControl(btn(0));
+  typeOf(stripMode, SemanticActionType::TouchStripModeChanged);
+  assert(stripMode->value0 == 1);
+  static_cast<void>(stripModes.handleControl(btn(49)));
+  auto configAction = stripModes.handleControl(btn(0));
+  typeOf(configAction, SemanticActionType::TouchStripConfigContext);
+  assert(configAction->value0 == 1);
+  static_cast<void>(stripModes.handleControl(btn(49, false)));
+  auto touchOn = stripModes.handleControl(
+      InputEvent{InputEventType::TouchStripTouch, 0, 78, 127, 0xFF, true});
+  typeOf(touchOn, SemanticActionType::TouchStripTouchState);
+  assert(touchOn->value0 == 1 && stripModes.touchStripTouched());
+  auto touchOff = stripModes.handleControl(
+      InputEvent{InputEventType::TouchStripTouch, 0, 78, 0, 0xFF, false});
+  typeOf(touchOff, SemanticActionType::TouchStripTouchState);
+  assert(touchOff->value0 == 0 && !stripModes.touchStripTouched());
+
   MpcStudioMk2SemanticAdapter locate;
   auto locatePress = locate.handleControl(btnAt(70, true, 1'000'000'000));
   typeOf(locatePress, SemanticActionType::LocateState);

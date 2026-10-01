@@ -13,6 +13,7 @@ enum class InputEventType : std::uint8_t {
     JogWheel,
     JogPress,
     TouchStrip,
+    TouchStripTouch,
     ChannelAftertouch,
 };
 
