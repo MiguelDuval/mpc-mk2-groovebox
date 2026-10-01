@@ -154,8 +154,8 @@ Add:
 - Quantize;
 - Timing Correct;
 - Zoom;
-- Copy/Delete;
-- Undo/Redo;
+- Copy/Delete. **MPC Studio MkII PHYSICAL GESTURE + DOMAIN SLICE IMPLEMENTED — Copy is a stateful hold gesture (source pad → destination pad(s) → release), Shift+Copy selects pad sample-assignment deletion targets; native edit history supports undo/redo for these mutations. Physical verification remains required.**
+- Undo/Redo. **GLOBAL COMMAND SLICE IMPLEMENTED — Undo is a normal MkII Undo press and Shift+Undo is Redo; current native history covers pad Copy/Delete edits. Physical verification remains required.**
 - Locate;
 - Erase;
 - touch-strip contextual control. **INITIAL CONTEXTUAL SLICE IMPLEMENTED — Sample Start/End focus scrubs the corresponding region boundary; Tune focus spans −24..+24 st; while Note Repeat is active, the strip selects its independent musical repeat division.**
