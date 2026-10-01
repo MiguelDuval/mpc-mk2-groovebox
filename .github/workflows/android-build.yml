@@ -112,6 +112,14 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcStepEditParameterPolicyTests.cpp             -o build/native-tests/mpc_step_edit_parameter_policy_tests
           build/native-tests/mpc_step_edit_parameter_policy_tests
 
+      - name: Test MPC Studio MkII Locate policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcLocatePolicyTests.cpp             -o build/native-tests/mpc_locate_policy_tests
+          build/native-tests/mpc_locate_policy_tests
+
       - name: Test MPC Studio MkII semantic routing
         shell: bash
         run: |
