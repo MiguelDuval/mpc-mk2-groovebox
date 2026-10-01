@@ -220,6 +220,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             boolean enabled, int bank);
     private static native void nativeSequenceSetStepEditContext(
             boolean enabled, int page);
+    private static native int nativeStepEditParameterNext(int parameter);
+    private static native int nativeStepEditParameterDelta(
+            int parameter, int gridTicks, int direction, boolean fine);
     private static native String nativeSequenceLaunchPad(
             int bank, int padIndex);
     private static native String nativeSequenceSelect(int sequenceIndex);
@@ -3854,7 +3857,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_PRESS:
                 if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
-                    stepEditParameter = (stepEditParameter + 1) % 5;
+                    stepEditParameter = nativeStepEditParameterNext(
+                            stepEditParameter);
                     setBottomStatus(
                             "STEP EDIT • " + stepEditParameterLabel()
                                     + " • DATA DIAL / +/-");
@@ -4123,48 +4127,46 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
-        final int delta = fine ? 1 : 1;
+        final int delta = nativeStepEditParameterDelta(
+                stepEditParameter, gridTicks, direction, fine);
 
         switch (stepEditParameter) {
             case STEP_EDIT_PARAMETER_VELOCITY: {
                 final int value = Math.max(
-                        1, Math.min(127, parameters[0] + delta * direction));
+                        1, Math.min(127, parameters[0] + delta));
                 setBottomStatus(nativeSequenceSetStepVelocity(
                         selectedPad, selectedSequenceStep, gridTicks, value));
                 break;
             }
             case STEP_EDIT_PARAMETER_PROBABILITY: {
                 final int value = Math.max(
-                        0, Math.min(127, parameters[1] + delta * direction));
+                        0, Math.min(127, parameters[1] + delta));
                 setBottomStatus(nativeSequenceSetStepProbability(
                         selectedPad, selectedSequenceStep, gridTicks, value));
                 break;
             }
             case STEP_EDIT_PARAMETER_RATCHET: {
                 final int value = Math.max(
-                        1, Math.min(8, parameters[2] + delta * direction));
+                        1, Math.min(8, parameters[2] + delta));
                 setBottomStatus(nativeSequenceSetStepRatchet(
                         selectedPad, selectedSequenceStep, gridTicks, value));
                 break;
             }
             case STEP_EDIT_PARAMETER_NUDGE: {
-                final int increment = fine ? 10 : 60;
                 setBottomStatus(nativeSequenceSetStepNudge(
                         selectedPad,
                         selectedSequenceStep,
                         gridTicks,
-                        Math.max(-960, Math.min(960, parameters[3] + increment * direction))));
+                        Math.max(-960, Math.min(960, parameters[3] + delta)));
                 break;
             }
             case STEP_EDIT_PARAMETER_DURATION: {
-                final int increment = fine
-                        ? Math.max(1, gridTicks / 16)
-                        : Math.max(1, gridTicks / 4);
+                final int increment = Math.max(1, Math.abs(delta));
                 final int current = Math.max(
                         increment, parameters[4] > 0 ? parameters[4] : gridTicks);
                 final int value = Math.max(
                         increment,
-                        Math.min(gridTicks * 4, current + increment * direction));
+                        Math.min(gridTicks * 4, current + delta));
                 setBottomStatus(nativeSequenceSetStepDuration(
                         selectedPad, selectedSequenceStep, gridTicks, value));
                 break;
