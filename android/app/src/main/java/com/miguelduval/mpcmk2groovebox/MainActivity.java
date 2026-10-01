@@ -1521,6 +1521,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int count = sequenceGridPageCount();
         sequenceStepPage = Math.max(
                 0, Math.min(count - 1, sequenceStepPage));
+        nativeSequenceSetStepEditContext(true, sequenceStepPage);
 
         final int gridTicks = Math.max(
                 1, nativeSequenceGetQuantizeGrid());
