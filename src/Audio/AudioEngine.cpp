@@ -224,6 +224,7 @@ public:
             std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones,
             std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli,
             std::array<std::atomic<std::int32_t>, kPadCount>& panMilli,
+            std::array<std::atomic<std::uint8_t>, kPadCount>& padAftertouch,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerTuningMilliSemitones,
             std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerPanMilli,
@@ -247,6 +248,7 @@ public:
               tuningMilliSemitones_(tuningMilliSemitones),
               levelMilli_(levelMilli),
               panMilli_(panMilli),
+              padAftertouch_(padAftertouch),
               layerGainMilli_(layerGainMilli),
               layerTuningMilliSemitones_(layerTuningMilliSemitones),
               layerPanMilli_(layerPanMilli),
@@ -724,6 +726,7 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount>& tuningMilliSemitones_;
     std::array<std::atomic<std::int32_t>, kPadCount>& levelMilli_;
     std::array<std::atomic<std::int32_t>, kPadCount>& panMilli_;
+    std::array<std::atomic<std::uint8_t>, kPadCount>& padAftertouch_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerGainMilli_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerTuningMilliSemitones_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>& layerPanMilli_;
@@ -2175,6 +2178,7 @@ std::string AudioEngine::start() {
             padTuningMilliSemitones_,
             padLevelMilli_,
             padPanMilli_,
+            padAftertouch_,
             padLayerGainMilli_,
             padLayerTuningMilliSemitones_,
             padLayerPanMilli_,
