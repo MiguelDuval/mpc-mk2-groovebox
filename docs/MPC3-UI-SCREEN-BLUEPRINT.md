@@ -226,12 +226,8 @@ open Grid/appropriate editor.
 
 Initial target:
 
-- New Track;
-- Rec Arm;
-- Track −;
-- Track +;
-- Mute;
-- Solo.
+- five visual slots: New Track; SEQ + Rec Arm; − Track +; Mute; Solo;
+- semantic Track − and Track + remain separate actions inside the grouped Track slot.
 
 The Main workspace itself keeps only context-specific transitions such as Grid and Browser; high-frequency Track operations belong in this function bar.
 
