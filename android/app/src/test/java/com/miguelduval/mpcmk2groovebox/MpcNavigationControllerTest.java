@@ -46,6 +46,15 @@ public class MpcNavigationControllerTest {
     }
 
     @Test
+    public void individualShortcutCanBeAssignedToAnImplementedMode() {
+        MpcNavigationController navigation = new MpcNavigationController();
+        navigation.setShortcut(0, MpcUiState.Mode.ARRANGE);
+
+        assertEquals(MpcUiState.Mode.ARRANGE, navigation.shortcut(0));
+        assertEquals(5, navigation.shortcuts().length);
+    }
+
+    @Test
     public void shortcutsCanBeReorderedWithoutChangingSlotCount() {
         MpcNavigationController navigation = new MpcNavigationController();
         navigation.moveShortcut(4, 1);
