@@ -1175,6 +1175,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMainTrackTypeVisuals();
     }
 
+    private String trackEventSummary(String status) {
+        if (status == null) return "EVENTS • 0";
+        final int marker = status.indexOf("events=");
+        if (marker < 0) return "EVENTS • —";
+        final int start = marker + "events=".length();
+        int end = start;
+        while (end < status.length()
+                && Character.isDigit(status.charAt(end))) {
+            end++;
+        }
+        return "EVENTS • " + status.substring(start, end);
+    }
+
     private LinearLayout buildMainTrackTypeSelector() {
         LinearLayout row = row();
         row.setContentDescription("Main Mode track type selector");
@@ -1866,10 +1879,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 strip.addView(name, new LinearLayout.LayoutParams(
                         0, dp(46), 1.7f));
 
-                TextView type = label("TYPE • status", 9, MUTED);
+                TextView type = label(
+                        nativeSequenceGetTrackType(trackIndex),
+                        9, MUTED);
                 type.setGravity(Gravity.CENTER_VERTICAL);
+                type.setTypeface(Typeface.DEFAULT_BOLD);
                 strip.addView(type, new LinearLayout.LayoutParams(
-                        0, dp(46), 0.9f));
+                        0, dp(46), 0.75f));
+
+                TextView program = label(
+                        nativeSequenceGetTrackProgram(trackIndex)
+                                .replace("PROGRAM • ", ""),
+                        9, MUTED);
+                program.setGravity(Gravity.CENTER_VERTICAL);
+                strip.addView(program, new LinearLayout.LayoutParams(
+                        0, dp(46), 1.15f));
+
+                TextView events = label(
+                        trackEventSummary(nativeSequenceTrackStatus(trackIndex)),
+                        9, MUTED);
+                events.setGravity(Gravity.CENTER_VERTICAL);
+                strip.addView(events, new LinearLayout.LayoutParams(
+                        0, dp(46), 0.8f));
 
                 Button select = actionButton("SELECT", v -> {
                     setBottomStatus(nativeSequenceSelectTrack(trackIndex));
@@ -1878,23 +1909,36 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 });
                 strip.addView(select, new LinearLayout.LayoutParams(dp(78), dp(42)));
 
-                Button mute = actionButton("M", v -> {
+                final boolean muted = nativeSequenceIsTrackMuted(trackIndex);
+                Button mute = actionButton(muted ? "M ON" : "M", v -> {
                     setBottomStatus(nativeSequenceToggleTrackMute(trackIndex));
                     showTrackViewPage();
                 });
                 mute.setBackground(strokeBackground(
-                        Color.TRANSPARENT,
-                        LINE,
+                        muted ? Color.rgb(74, 124, 88) : Color.TRANSPARENT,
+                        muted ? ACTIVE : LINE,
                         6));
-                strip.addView(mute, new LinearLayout.LayoutParams(dp(50), dp(42)));
+                strip.addView(mute, new LinearLayout.LayoutParams(dp(58), dp(42)));
 
-                Button arm = actionButton("R", v -> {
-                    setBottomStatus(nativeSequenceSelectTrack(trackIndex));
-                    setBottomStatus(nativeSequenceSetSelectedTrackArmed(
-                            !nativeSequenceIsSelectedTrackArmed()));
-                    showTrackViewPage();
-                });
-                strip.addView(arm, new LinearLayout.LayoutParams(dp(50), dp(42)));
+                Button arm = actionButton(
+                        trackIndex == selected
+                                && nativeSequenceIsSelectedTrackArmed()
+                                ? "R ON" : "R",
+                        v -> {
+                            setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+                            setBottomStatus(nativeSequenceSetSelectedTrackArmed(
+                                    !nativeSequenceIsSelectedTrackArmed()));
+                            showTrackViewPage();
+                        });
+                arm.setBackground(strokeBackground(
+                        trackIndex == selected
+                                && nativeSequenceIsSelectedTrackArmed()
+                                ? Color.rgb(104, 64, 64) : Color.TRANSPARENT,
+                        trackIndex == selected
+                                && nativeSequenceIsSelectedTrackArmed()
+                                ? DANGER : LINE,
+                        6));
+                strip.addView(arm, new LinearLayout.LayoutParams(dp(58), dp(42)));
 
                 Button solo = actionButton("S", null);
                 solo.setEnabled(false);
