@@ -1374,6 +1374,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showTimingCorrectDialog() {
         final LinearLayout root = column();
+        root.setContentDescription("Timing Correct dialog");
         root.setPadding(dp(14), dp(6), dp(14), 0);
 
         final boolean[] enabledState = {
@@ -1505,6 +1506,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showTimeSignatureDialog() {
         final LinearLayout root = column();
+        root.setContentDescription("Time Signature dialog");
         root.setPadding(dp(14), dp(6), dp(14), 0);
 
         final int[] numeratorState = {nativeSequenceGetNumerator()};
