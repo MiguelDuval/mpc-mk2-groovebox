@@ -1034,3 +1034,8 @@ The Main Sequence region now follows the documented MPC visual hierarchy more cl
 ## 2026-10-03 Main diagnostic footer parity
 
 The normal MPC shell ends at the Function Bar. Development-only hardware/status diagnostics remain available to `ui-audit` runs but are not rendered as permanent footer bands in normal musical use. This keeps diagnostic instrumentation from changing the Main Mode information hierarchy or stealing vertical workspace from the Track/Arrangement surface.
+
+
+## 2026-10-03 Main Track identity header fidelity
+
+The Track header is rendered as one continuous identity band rather than a standalone `TRACK` caption plus independent form-like fields. Track identity remains the primary selection surface, Program remains an adjacent selectable name, and Track Type is a compact indicator. This mirrors the MPC3 one-to-one Track workflow while preserving the existing semantic Track Select and Program Select entry points.
