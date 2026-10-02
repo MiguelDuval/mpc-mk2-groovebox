@@ -705,8 +705,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case SAMPLER:
                 addFunction("AUDITION", true,
                         v -> selectAndTriggerPad(selectedPad, 112));
-                addFunction("EDIT", mode == MpcUiState.Mode.SAMPLE_EDIT,
+                addFunction("EDIT", true,
                         v -> showSamplePage());
+                addFunction("SAMPLER", true,
+                        v -> showRecordPage());
+                addFunction("BROWSER", true,
+                        v -> showBrowserPage());
                 addFunction("BACK", true, v -> navigateBackFromShell());
                 break;
             default:
@@ -1528,7 +1532,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SAMPLE";
         navigationController.navigate(MpcUiState.Mode.SAMPLE_EDIT);
-        pageTitle.setText("SAMPLE");
+        navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_SELECT);
+        navigationController.setDataDialFocus(
+                MpcUiState.DataDialFocus.SAMPLE_LAYER);
+        pageTitle.setText("SAMPLE EDIT");
         content.removeAllViews();
 
         LinearLayout page = page();
@@ -1536,10 +1543,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         header.addView(sectionLabelView("PAD " + (selectedPad + 1)
                 + "  •  LAYER " + (selectedLayer + 1) + "/8",
                 new LinearLayout.LayoutParams(0, dp(34), 1)));
-        header.addView(actionButton("AUDITION", v -> selectAndTriggerPad(selectedPad, 112)),
-                new LinearLayout.LayoutParams(dp(96), dp(38)));
-        header.addView(actionButton("LOAD WAV", v -> openWavPicker()),
-                new LinearLayout.LayoutParams(dp(110), dp(34)));
+        header.addView(actionButton("EDIT", v -> {
+            navigationController.setSubcontext(
+                    MpcUiState.Subcontext.SAMPLE_SELECT);
+            showSamplePage();
+        }), new LinearLayout.LayoutParams(dp(62), dp(34)));
+        header.addView(actionButton("SAMPLER", v -> {
+            navigationController.navigate(MpcUiState.Mode.SAMPLER);
+            showRecordPage();
+        }), new LinearLayout.LayoutParams(dp(82), dp(34)));
+        header.addView(actionButton("BROWSER", v -> showBrowserPage()),
+                new LinearLayout.LayoutParams(dp(82), dp(34)));
         page.addView(header);
 
         sampleWaveform = new WaveformView(this);
@@ -1736,10 +1750,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "REC";
         navigationController.navigate(MpcUiState.Mode.SAMPLER);
-        pageTitle.setText("RECORDER");
+        navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
+        pageTitle.setText("SAMPLER");
         content.removeAllViews();
 
         LinearLayout page = page();
+
+        LinearLayout sampleHeader = row();
+        sampleHeader.addView(sectionLabelView(
+                "SAMPLE WORKSPACE  •  RECORD / MONITOR",
+                new LinearLayout.LayoutParams(0, dp(34), 1)));
+        sampleHeader.addView(actionButton("EDIT", v -> showSamplePage()),
+                new LinearLayout.LayoutParams(dp(62), dp(34)));
+        sampleHeader.addView(actionButton("BROWSER", v -> showBrowserPage()),
+                new LinearLayout.LayoutParams(dp(82), dp(34)));
+        page.addView(sampleHeader);
 
         recordingInfo = label("", 13, TEXT);
         recordingInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
