@@ -5141,6 +5141,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View arrangeFromTrackView = findViewWithExactText(
+                getWindow().getDecorView(), "ARRANGE");
+        if (arrangeFromTrackView == null
+                || !arrangeFromTrackView.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: ARRANGE from Track View");
+            return;
+        }
+
+        View arrangementSurface = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC linear arrangement editor");
+        if (arrangementSurface == null
+                || arrangementSurface.getHeight() <= dp(160)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement surface");
+            return;
+        }
+
+        View menuAfterArrange = findViewWithExactText(
+                getWindow().getDecorView(), "MENU");
+        if (menuAfterArrange == null || !menuAfterArrange.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after ARRANGE");
+            return;
+        }
+
         View grid = findViewWithExactText(getWindow().getDecorView(), "GRID");
         if (grid == null || !grid.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: GRID editor");
