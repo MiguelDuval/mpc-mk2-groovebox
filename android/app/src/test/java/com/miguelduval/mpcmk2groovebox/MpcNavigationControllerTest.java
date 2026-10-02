@@ -85,6 +85,22 @@ public class MpcNavigationControllerTest {
     }
 
     @Test
+    public void compactContextStateSurvivesNavigationAndSelectionChanges() {
+        MpcNavigationController navigation = new MpcNavigationController();
+
+        assertTrue(navigation.state().compactMixerVisible());
+        assertFalse(navigation.state().compactMixerPadMode());
+
+        navigation.setCompactMixerState(false, true);
+        navigation.navigate(MpcUiState.Mode.GRID);
+        navigation.setSubcontext(MpcUiState.Subcontext.STEP_EDIT);
+        navigation.setSelectedTrack(3);
+
+        assertFalse(navigation.state().compactMixerVisible());
+        assertTrue(navigation.state().compactMixerPadMode());
+    }
+
+    @Test
     public void legacyPageMappingMatchesMigrationSurface() {
         assertEquals(MpcUiState.Mode.MAIN, MpcUiState.legacyPage("MAIN").mode());
         assertEquals(MpcUiState.Mode.BROWSER, MpcUiState.legacyPage("BROWSE").mode());

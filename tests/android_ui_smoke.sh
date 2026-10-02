@@ -93,6 +93,11 @@ for required in \
   fi
 done
 
+if grep -Fq -- "private boolean compactMixerVisible" "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- "private boolean compactMixerPadMode" "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: compact Mixer presentation state leaked back into MainActivity-local booleans"
+  exit 1
+fi
+
 echo "Running MPC UI state/navigation source preflight..."
 for required in   "compactMixerVisible"   "compactMixerPadMode"   "withCompactMixerState"   "setCompactMixerState"   "Exactly five shortcuts are required"; do
   if ! grep -Fq -- "$required" "$UI_STATE_SOURCE" &&      ! grep -Fq -- "$required" "$NAVIGATION_SOURCE"; then

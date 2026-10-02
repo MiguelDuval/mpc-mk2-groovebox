@@ -267,8 +267,7 @@ final class MpcUiState {
                 selectedPad, selectedLayer, padBank, dataDialFocus, zoomFocus, playing,
                 loopEnabled, timingCorrect, metronome, recordArmed, muted, soloed,
                 browserLocation, browserFilter, browserSearch, editorTool, shiftActive,
-                alternateActive, compactMixerVisible, compactMixerPadMode,
-                actionAvailable);
+                alternateActive, actionAvailable);
     }
 
     MpcUiState withSubcontext(Subcontext value) {
@@ -435,7 +434,8 @@ final class MpcUiState {
                 selectedPad, selectedLayer, padBank, dataDialFocus, zoomFocus, playing,
                 loopEnabled, timingCorrect, metronome, recordArmed, muted, soloed,
                 browserLocation, browserFilter, browserSearch, editorTool, shiftActive,
-                alternateActive, actionAvailable);
+                alternateActive, compactMixerVisible, compactMixerPadMode,
+                actionAvailable);
     }
 
     private static String safe(String value) {
