@@ -106,8 +106,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView sequenceTransportView;
     private int sequenceGridPage = 0;
     private int sequenceGridStartStep = 0;
-    private int sequenceGridVisibleSteps = MpcZoomPolicy.MAX_HORIZONTAL_SPAN >= 0
-            ? MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_STEPS : 16;
+    private int sequenceGridVisibleSteps =
+            MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_STEPS;
     private int sequenceGridStartPad = 0;
     private int sequenceGridVisiblePads = MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_PADS;
     private int sequenceStepPage = 0;
