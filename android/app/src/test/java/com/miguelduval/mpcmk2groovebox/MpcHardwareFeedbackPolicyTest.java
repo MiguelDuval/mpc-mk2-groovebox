@@ -28,6 +28,30 @@ public final class MpcHardwareFeedbackPolicyTest {
     }
 
     @Test
+    public void semanticModesProduceDistinctControllerContexts() {
+        assertEquals(
+                "GRID • event editor",
+                MpcHardwareFeedbackPolicy.contextLabel(
+                        "GRID", 0, false, false, false, 0,
+                        false, 2, 0));
+        assertEquals(
+                "STEP • 16-pad step edit",
+                MpcHardwareFeedbackPolicy.contextLabel(
+                        "STEP", 0, false, false, false, 0,
+                        false, 2, 0));
+        assertEquals(
+                "TRACK VIEW • sequence tracks",
+                MpcHardwareFeedbackPolicy.contextLabel(
+                        "TRACK_VIEW", 0, false, false, false, 0,
+                        false, 2, 0));
+        assertEquals(
+                "BROWSER • library / sample",
+                MpcHardwareFeedbackPolicy.contextLabel(
+                        "BROWSER", 0, false, false, false, 0,
+                        false, 2, 0));
+    }
+
+    @Test
     public void zoomFocusMapsToAxisAndContextLabel() {
         assertEquals("H", MpcHardwareFeedbackPolicy.focusAxis(11));
         assertEquals("V", MpcHardwareFeedbackPolicy.focusAxis(14));
