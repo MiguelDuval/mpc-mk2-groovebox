@@ -62,7 +62,7 @@ public:
     bool selectTrack(std::size_t trackIndex) noexcept;
     bool setTrackProgram(
             std::size_t trackIndex,
-            std::string programId) noexcept;
+            std::string programId);
 
     domain::DrumProgram* findDrumProgram(
             const std::string& programId) noexcept;
