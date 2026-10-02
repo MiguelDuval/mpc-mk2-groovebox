@@ -131,8 +131,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private LinearLayout compactMixerPanel;
     private Button compactMixerToggle;
     private Button compactMixerStripModeToggle;
-    private boolean compactMixerVisible = true;
-    private boolean compactMixerPadMode;
     private TextView compactTrackCaption;
     private View compactTrackTabs;
     private TextView compactPadCaption;
@@ -611,8 +609,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 0, dp(24), 1));
 
         compactMixerToggle = actionButton("◉", v -> {
-            compactMixerVisible = !compactMixerVisible;
-            applyCompactMixerVisibility();
+            final MpcUiState state = navigationController.state();
+            navigationController.setCompactMixerState(
+                    !state.compactMixerVisible(),
+                    state.compactMixerPadMode());
         });
         compactMixerToggle.setTextSize(12);
         compactMixerToggle.setContentDescription(
@@ -802,12 +802,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         applyCompactMixerStripMode();
     }
 
+    private boolean compactMixerStripModeAvailable() {
+        if (!startupComplete) {
+            return false;
+        }
+        final int trackIndex = Math.max(
+                0, nativeSequenceGetSelectedTrack());
+        return "DRUM".equalsIgnoreCase(
+                nativeSequenceGetTrackType(trackIndex));
+    }
+
+    private boolean compactMixerPadModeForDisplay() {
+        return navigationController != null
+                && navigationController.state().compactMixerPadMode()
+                && compactMixerStripModeAvailable();
+    }
+
     private void applyCompactMixerStripMode() {
         if (compactMixerStripModeToggle == null) {
             return;
         }
 
-        final boolean padMode = compactMixerPadMode;
+        final boolean padMode = compactMixerPadModeForDisplay();
         compactMixerStripModeToggle.setText(padMode ? "•" : "▦");
         compactMixerStripModeToggle.setContentDescription(
                 padMode
@@ -968,16 +984,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        final boolean visible = navigationController != null
+                && navigationController.state().compactMixerVisible();
         compactMixerPanel.setVisibility(
-                compactMixerVisible ? View.VISIBLE : View.GONE);
+                visible ? View.VISIBLE : View.GONE);
         compactMixerToggle.setText(
-                compactMixerVisible ? "◉" : "○");
+                visible ? "◉" : "○");
         compactMixerToggle.setTextSize(12);
         compactMixerToggle.setTextColor(
-                compactMixerVisible ? BG : TEXT);
+                visible ? BG : TEXT);
         compactMixerToggle.setBackground(strokeBackground(
-                compactMixerVisible ? ACCENT : SURFACE_2,
-                compactMixerVisible ? ACCENT : LINE,
+                visible ? ACCENT : SURFACE_2,
+                visible ? ACCENT : LINE,
                 5));
     }
 
@@ -1008,9 +1026,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (nativeStateReady) {
             final String trackType = nativeSequenceGetTrackType(trackIndex);
             final boolean drumTrack = "DRUM".equalsIgnoreCase(trackType);
-            if (!drumTrack) {
-                compactMixerPadMode = false;
-            }
             if (compactMixerStripModeToggle != null) {
                 compactMixerStripModeToggle.setEnabled(drumTrack);
                 compactMixerStripModeToggle.setAlpha(drumTrack ? 1.0f : 0.45f);
@@ -1046,7 +1061,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 compactMixerStripModeToggle.setEnabled(false);
                 compactMixerStripModeToggle.setAlpha(0.45f);
             }
-            compactMixerPadMode = false;
             compactTrackContext.setText("TRACK 01 • DRUM");
             compactProgramContext.setText("PROGRAM • —");
             compactProgramContext.setEnabled(false);
@@ -2050,8 +2064,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(0, dp(42), 1));
 
         compactMixerStripModeToggle = actionButton("▦", v -> {
-            compactMixerPadMode = !compactMixerPadMode;
-            applyCompactMixerStripMode();
+            final MpcUiState state = navigationController.state();
+            if (!compactMixerStripModeAvailable()) {
+                setBottomStatus("TRACK/PAD CONTEXT • DRUM TRACK REQUIRED");
+                return;
+            }
+            navigationController.setCompactMixerState(
+                    state.compactMixerVisible(),
+                    !state.compactMixerPadMode());
         });
         compactMixerStripModeToggle.setTextSize(12);
         compactMixerStripModeToggle.setContentDescription(

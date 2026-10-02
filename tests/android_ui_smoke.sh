@@ -6,6 +6,8 @@ PACKAGE="com.miguelduval.mpcmk2groovebox.debug"
 ACTIVITY="$PACKAGE/com.miguelduval.mpcmk2groovebox.MainActivity"
 DUMP="/tmp/mpc-groovebox-ui.xml"
 MAIN_ACTIVITY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java"
+UI_STATE_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"
+NAVIGATION_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcNavigationController.java"
 NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
 TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackEditView.java"
 
@@ -21,6 +23,11 @@ for required in \
   "compactProgramContext = compactContextField" \
   "v -> showProgramSelectPage()" \
   "compactProgramContext.setEnabled(drumTrack)" \
+  "navigationController.setCompactMixerState(" \
+  "state.compactMixerVisible()" \
+  "state.compactMixerPadMode()" \
+  "compactMixerPadModeForDisplay()" \
+  "compactMixerStripModeAvailable()" \
   "MPC shell Track record mute and solo state" \
   "nativeAudioGetPadSampleName" \
   "nativeAudioSetPadSampleName" \
@@ -82,6 +89,14 @@ for required in \
   "syncPersistentHardwareModeLeds"; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MainActivity source contract missing: $required"
+    exit 1
+  fi
+done
+
+echo "Running MPC UI state/navigation source preflight..."
+for required in   "compactMixerVisible"   "compactMixerPadMode"   "withCompactMixerState"   "setCompactMixerState"   "Exactly five shortcuts are required"; do
+  if ! grep -Fq -- "$required" "$UI_STATE_SOURCE" &&      ! grep -Fq -- "$required" "$NAVIGATION_SOURCE"; then
+    echo "ERROR: UI state/navigation contract missing: $required"
     exit 1
   fi
 done

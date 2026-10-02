@@ -123,6 +123,8 @@ final class MpcUiState {
     private final EditorTool editorTool;
     private final boolean shiftActive;
     private final boolean alternateActive;
+    private final boolean compactMixerVisible;
+    private final boolean compactMixerPadMode;
     private final boolean actionAvailable;
 
     MpcUiState() {
@@ -149,6 +151,8 @@ final class MpcUiState {
                 "",
                 EditorTool.DRAW,
                 false,
+                false,
+                true,
                 false,
                 true);
     }
@@ -177,6 +181,8 @@ final class MpcUiState {
             EditorTool editorTool,
             boolean shiftActive,
             boolean alternateActive,
+            boolean compactMixerVisible,
+            boolean compactMixerPadMode,
             boolean actionAvailable) {
         this.mode = mode;
         this.subcontext = subcontext;
@@ -201,6 +207,8 @@ final class MpcUiState {
         this.editorTool = editorTool;
         this.shiftActive = shiftActive;
         this.alternateActive = alternateActive;
+        this.compactMixerVisible = compactMixerVisible;
+        this.compactMixerPadMode = compactMixerPadMode;
         this.actionAvailable = actionAvailable;
     }
 
@@ -250,6 +258,8 @@ final class MpcUiState {
     EditorTool editorTool() { return editorTool; }
     boolean shiftActive() { return shiftActive; }
     boolean alternateActive() { return alternateActive; }
+    boolean compactMixerVisible() { return compactMixerVisible; }
+    boolean compactMixerPadMode() { return compactMixerPadMode; }
     boolean actionAvailable() { return actionAvailable; }
 
     MpcUiState withMode(Mode value) {
@@ -257,7 +267,8 @@ final class MpcUiState {
                 selectedPad, selectedLayer, padBank, dataDialFocus, zoomFocus, playing,
                 loopEnabled, timingCorrect, metronome, recordArmed, muted, soloed,
                 browserLocation, browserFilter, browserSearch, editorTool, shiftActive,
-                alternateActive, actionAvailable);
+                alternateActive, compactMixerVisible, compactMixerPadMode,
+                actionAvailable);
     }
 
     MpcUiState withSubcontext(Subcontext value) {
@@ -383,6 +394,15 @@ final class MpcUiState {
                 loopEnabled, timingCorrect, metronome, recordArmed, muted, soloed,
                 browserLocation, browserFilter, browserSearch, editorTool, shiftActive,
                 alternateActive, value);
+    }
+
+    MpcUiState withCompactMixerState(boolean visible, boolean padMode) {
+        return new MpcUiState(
+                mode, subcontext, selectedSequence, selectedTrack, selectedProgram,
+                selectedPad, selectedLayer, padBank, dataDialFocus, zoomFocus, playing,
+                loopEnabled, timingCorrect, metronome, recordArmed, muted, soloed,
+                browserLocation, browserFilter, browserSearch, editorTool, shiftActive,
+                alternateActive, visible, padMode, actionAvailable);
     }
 
     private MpcUiState copy(

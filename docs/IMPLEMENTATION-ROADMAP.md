@@ -160,6 +160,13 @@ No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry 
 - No new backend or realtime semantics were introduced; the change reuses existing selection commands and navigation state.
 - Android UI smoke now audits the field-to-subcontext entry wiring and Program availability gate.
 
+### 2026-10-03 MPC compact-context state ownership increment
+
+- Compact Mixer visibility and Track/Pad presentation focus are now part of immutable MpcUiState and are mutated through MpcNavigationController.
+- Non-Drum Tracks disable the Track/Pad affordance and render the effective context as Track without destroying the stored presentation preference.
+- MainActivity now derives the visible compact strip from navigation state instead of owning duplicate presentation booleans.
+- Smoke preflight covers the state ownership and effective Drum-only presentation gate.
+
 ## Stage 8 — Ableton Link
 - tempo.
 - beat phase.

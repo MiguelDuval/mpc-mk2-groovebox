@@ -270,6 +270,17 @@ The persistent Main shell context is now an actionable entry surface for the sel
 
 The change remains presentation/navigation-only and reuses the existing semantic selection commands; no realtime audio, scheduler, MIDI transport or domain playback path is changed.
 
+## 2026-10-03 MPC compact-context state ownership increment
+
+The compact channel-context presentation is now represented by the UI/navigation state machine rather than duplicated Activity-local booleans:
+
+- compact Mixer visibility is MpcUiState.compactMixerVisible;
+- Track/Pad presentation focus is MpcUiState.compactMixerPadMode;
+- MpcNavigationController owns mutations through one semantic presentation-state update;
+- Main derives an effective Pad presentation only when the selected Track is a Drum Track.
+
+This preserves the separation between presentation state and musical selection while ensuring the shell renderer has one durable source for these display states.
+
 ## 5. Main Mode — P0
 
 Main Mode becomes the center of the application.
