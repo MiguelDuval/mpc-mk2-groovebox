@@ -141,10 +141,17 @@ No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry 
 - Grid. **SEQUENCE CONTEXT IMPLEMENTED — dedicated track/sequence context is now available from the Sequencer page; detailed note editing remains next.**
 - Step. **SEQUENCE CONTEXT IMPLEMENTED — selected-track Step entry point is available; detailed step note editing remains next.**
 - Track Edit. **BOUNDED SEMANTIC WORKSPACE IMPLEMENTED — GLOBAL / SAMPLES / AMP ENV are backed by existing Drum semantics; LFO / MODS / EFFECTS and Edit All Layers remain reserved. MPC-style top TRACK/PAD context and persistent bottom tabs now match the documented Track Edit geometry.**
-- mixers. **FOUNDATION IMPLEMENTED — compact Pad Mix view with direct level control; full Track/Pad mixer remains later.**
+- mixers. **FOUNDATION IMPLEMENTED — compact contextual channel-strip view now supports persistent show/hide plus Drum Track Track/Pad focus switching; direct pad level/pan/tuning readouts remain read-only, while full Track/Pad mixer mutation remains later.**
 - 16 Levels. **SEMANTIC VELOCITY SLICE IMPLEMENTED — Level16 captures the last played pad as the source sample, uses the 16 physical positions as fixed velocity steps from 1 to 127, and keeps note-on/note-off bound to the same source pad for recording. Tune/Filter/Layer/Attack/Decay parameter variants remain future slices.**
 - Pad Perform.
 - Q-Link.
+
+
+### 2026-10-03 MPC channel-strip presentation increment
+
+- The compact shell mixer now follows the MPC 3.x channel-context model more closely: the condensed strip can be shown/hidden independently and, for Drum Tracks, can cycle between the selected Track strip and selected Pad strip.
+- The Track/Pad focus is presentation-only and never mutates musical selection or transport state.
+- Non-Drum Track Types disable the Pad strip focus so the UI cannot imply a Drum-pad context that the backend does not own.
 
 ## Stage 8 — Ableton Link
 - tempo.
