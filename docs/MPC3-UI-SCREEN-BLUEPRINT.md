@@ -1025,3 +1025,7 @@ the selected tab is visibly distinct, and reserved functions remain truthful rat
 ### 1.1.3 MkII-first shortcut presentation
 
 Shortcut slots remain five configurable MPC-style mode shortcuts. The visual tile uses an original mode glyph and short label so the phone surface mirrors the controller-centric mode concept without copying proprietary Akai artwork or using numbered page ordinals.
+
+## 2026-10-03 Main Sequence header fidelity increment
+
+The Main Sequence region now follows the documented MPC visual hierarchy more closely: one continuous information band keeps Sequence identity at left, BPM/SEQ tempo-source context adjacent to it, and Time Signature at the far right; BARS / START / END / TRANSPOSE / LOOP remain the compact high-frequency row below. This removes the previously invented separate Time Signature/Loop band and keeps Time Signature adjacent to BPM, matching Akai's documented MPC 3.x placement.
