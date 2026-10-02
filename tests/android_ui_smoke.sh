@@ -6,6 +6,22 @@ PACKAGE="com.miguelduval.mpcmk2groovebox.debug"
 ACTIVITY="$PACKAGE/com.miguelduval.mpcmk2groovebox.MainActivity"
 DUMP="/tmp/mpc-groovebox-ui.xml"
 
+MAIN_ACTIVITY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java"
+NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
+
+echo "Running MPC Main UI source preflight..."
+for required in   "MIXER STRIP"   "nativeAudioGetPadSampleName"   "BAR %03d  BEAT %d  TICK %03d"   "Main Track View quick sample waveform"; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MainActivity source contract missing: $required"
+    exit 1
+  fi
+done
+
+if ! grep -Fq -- "MainActivity_nativeAudioGetPadSampleName" "$NATIVE_ENGINE_SOURCE"; then
+  echo "ERROR: Native sample-name JNI contract missing."
+  exit 1
+fi
+
 test -f "$APK"
 
 dump_debug_state() {
@@ -124,4 +140,3 @@ wait_for_ui_audit
 assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
 
 echo "Android emulator startup smoke test passed."
-
