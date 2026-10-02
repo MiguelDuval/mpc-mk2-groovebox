@@ -379,3 +379,10 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **Program label normalization hardened:** the persistent compact Program context and Main Program field strip the backend's existing `PROGRAM •` prefix before composing their own field label.
 - **Step mutation controls are backend-gated:** unsupported Track Types now leave Step navigation visible while disabling parameter mutation actions, matching the same truthfulness rule already used by Grid.
 
+
+## 2026-10-02 Main Track/Arrangement view increment
+
+- **Main lower workspace now follows the MPC Track/Arrangement hierarchy:** Track is the default local view; Arrangement is a sibling presentation of the same Sequence/Track state.
+- **No duplicate top-level mode introduced:** the view switch is local to Main and preserves transport, selected Track, selected Sequence and Data Dial state.
+- **Track workspace keeps truthful affordances:** performance pads and Grid remain available; Track Edit is visible as reserved until its semantic/backend contract is implemented.
+
