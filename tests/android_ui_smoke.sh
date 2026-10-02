@@ -75,7 +75,7 @@ wait_for_log_marker "UI_ONLY_COMPLETE" 30 2
 assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
 echo "UI-only startup diagnostic passed."
 
-echo "Checking MPC Main selection subcontexts..."
+echo "Checking MPC Main selection subcontexts and persistent shell context..."
 
 
 echo "Launching full application with one-shot UI audit..."

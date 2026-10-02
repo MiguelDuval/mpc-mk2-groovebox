@@ -44,17 +44,25 @@ final class MpcShell {
         shortcutRail.setBackgroundColor(Color.rgb(18, 21, 24));
         shortcutRail.setPadding(dp(context, 6), dp(context, 6), dp(context, 6), dp(context, 6));
         body.addView(shortcutRail, new LinearLayout.LayoutParams(
-                dp(context, 104), ViewGroup.LayoutParams.MATCH_PARENT));
+                dp(context, 92), ViewGroup.LayoutParams.MATCH_PARENT));
+
+        /*
+         * Shortcuts and persistent context are separate columns. The context
+         * column remains visible while the active workspace changes, keeping
+         * sequence/track/program/pad state glanceable without stealing height
+         * from the workspace.
+         */
+        contextArea = new LinearLayout(context);
+        contextArea.setOrientation(LinearLayout.VERTICAL);
+        contextArea.setBackgroundColor(Color.rgb(16, 19, 22));
+        contextArea.setPadding(
+                dp(context, 5), dp(context, 6),
+                dp(context, 5), dp(context, 6));
+        body.addView(contextArea, new LinearLayout.LayoutParams(
+                dp(context, 182), ViewGroup.LayoutParams.MATCH_PARENT));
 
         LinearLayout mainColumn = new LinearLayout(context);
         mainColumn.setOrientation(LinearLayout.VERTICAL);
-
-        contextArea = new LinearLayout(context);
-        contextArea.setOrientation(LinearLayout.HORIZONTAL);
-        contextArea.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        contextArea.setBackgroundColor(SURFACE);
-        mainColumn.addView(contextArea, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 54)));
 
         workspace = new FrameLayout(context);
         workspace.setBackgroundColor(BG);

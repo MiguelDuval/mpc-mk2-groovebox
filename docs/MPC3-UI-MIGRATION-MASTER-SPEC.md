@@ -219,6 +219,23 @@ Do not hard-wire bottom buttons independently inside every page.
 
 ---
 
+## 2026-10-02 Main shell context/channel refinement
+
+The canonical shell now treats the left edge as two distinct persistent layers:
+
+five configurable shortcuts → compact contextual channel/track strip → workspace
+
+The compact strip is vertical and remains visible while the active workspace changes. It carries:
+
+- Sequence + BPM;
+- selected Track + Track Type and record/mute state;
+- selected Track's Program;
+- selected Pad + Bank;
+- Data Dial focus + active Main subcontext;
+- a thin sequence movement overview.
+
+Sequence, Track and Program fields are direct entry points to the existing Main selection contexts. The strip is presentation-only and reads the existing semantic/domain state; it does not own transport or audio behavior.
+
 ## 5. Main Mode — P0
 
 Main Mode becomes the center of the application.

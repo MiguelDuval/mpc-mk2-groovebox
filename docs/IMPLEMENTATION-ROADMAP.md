@@ -249,6 +249,13 @@ Note Repeat scheduling, Touch Strip contextual control, complete button/pad/LCD 
 This controller work supplements Stages 1, 2 and 7; it does not replace the overall roadmap.
 
 
+## 2026-10-02 MPC 3.9 shell context/channel increment
+
+- Shell composition advanced — the persistent left edge is now: five shortcuts → compact contextual track/program channel strip → workspace.
+- Context moved out of the workspace header — Sequence, Track, Program, Pad and Data Dial focus remain glanceable without consuming Main workspace height.
+- Direct Main selection entry preserved — Sequence/Track/Program context fields target the existing Main subcontexts.
+- UI audit hardened — the smoke audit now requires the persistent compact context strip and validates its minimum usable geometry.
+
 ## 2026-10-02 Main Mode UI composition refinement
 
 - **MPC One-style Main region refinement —** Sequence remains the upper context while Track + Program are composed as one continuous Track region; the Program field is directly owned by the selected Track.

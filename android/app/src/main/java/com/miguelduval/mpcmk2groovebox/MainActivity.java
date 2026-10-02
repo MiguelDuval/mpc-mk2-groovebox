@@ -85,6 +85,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private LinearLayout functionBar;
     private TextView compactSequenceContext;
     private TextView compactTrackContext;
+    private TextView compactProgramContext;
     private TextView compactPadContext;
     private TextView compactFocusContext;
     private Button timingCorrectTopButton;
@@ -497,44 +498,90 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void buildCompactContext(LinearLayout area) {
         area.removeAllViews();
+        area.setContentDescription("MPC shell compact track program context");
 
-        LinearLayout column = new LinearLayout(this);
-        column.setOrientation(LinearLayout.VERTICAL);
+        TextView header = label("CONTEXT", 9, MUTED);
+        header.setTypeface(Typeface.DEFAULT_BOLD);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(7), 0, dp(7), 0);
+        area.addView(header, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
+        compactSequenceContext = compactContextField(
+                "SEQ 01 • 120.0 BPM",
+                "MPC shell sequence context",
+                v -> showSequenceSelectPage());
+        area.addView(compactSequenceContext, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
 
-        compactSequenceContext = label("SEQ 01 • 120.0 BPM", 10, TEXT);
-        compactSequenceContext.setGravity(Gravity.CENTER_VERTICAL);
-        compactSequenceContext.setPadding(dp(8), 0, dp(8), 0);
+        compactTrackContext = compactContextField(
+                "TRACK 01",
+                "MPC shell track context",
+                v -> showTrackSelectPage());
+        area.addView(compactTrackContext, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
 
-        compactTrackContext = label("TRACK 01", 10, TEXT);
-        compactTrackContext.setGravity(Gravity.CENTER_VERTICAL);
-        compactTrackContext.setPadding(dp(8), 0, dp(8), 0);
+        compactProgramContext = compactContextField(
+                "PROGRAM • —",
+                "MPC shell program context",
+                v -> showProgramSelectPage());
+        area.addView(compactProgramContext, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
-        compactPadContext = label("PAD 01 • BANK A", 10, TEXT);
-        compactPadContext.setGravity(Gravity.CENTER_VERTICAL);
-        compactPadContext.setPadding(dp(8), 0, dp(8), 0);
+        TextView channelRule = label("CHANNEL", 8, MUTED);
+        channelRule.setTypeface(Typeface.DEFAULT_BOLD);
+        channelRule.setPadding(dp(7), dp(3), dp(7), 0);
+        area.addView(channelRule, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
-        compactFocusContext = label("DIAL • NONE", 10, ACCENT);
-        compactFocusContext.setGravity(Gravity.CENTER_VERTICAL);
-        compactFocusContext.setPadding(dp(8), 0, dp(8), 0);
+        compactPadContext = compactContextField(
+                "PAD 01 • BANK A",
+                "MPC shell pad context",
+                null);
+        area.addView(compactPadContext, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
 
-        row.addView(compactSequenceContext, new LinearLayout.LayoutParams(0, dp(46), 1.35f));
-        row.addView(compactTrackContext, new LinearLayout.LayoutParams(0, dp(46), 1.0f));
-        row.addView(compactPadContext, new LinearLayout.LayoutParams(0, dp(46), 1.25f));
-        row.addView(compactFocusContext, new LinearLayout.LayoutParams(0, dp(46), 1.2f));
-        column.addView(row);
+        compactFocusContext = compactContextField(
+                "DIAL • NONE",
+                "MPC shell dial focus",
+                null);
+        area.addView(compactFocusContext, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
 
         sequenceOverviewView = new SequenceOverviewView(this);
         sequenceOverviewView.setContentDescription("Sequence playback overview");
-        column.addView(sequenceOverviewView, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(8)));
+        area.addView(sequenceOverviewView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
 
-        area.addView(column, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
+        TextView stateHint = label(
+                "SELECTED TRACK",
+                8,
+                MUTED);
+        stateHint.setGravity(Gravity.CENTER_VERTICAL);
+        stateHint.setPadding(dp(7), 0, dp(7), 0);
+        area.addView(stateHint, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+    }
+
+    private TextView compactContextField(
+            String initialText,
+            String contentDescription,
+            View.OnClickListener listener) {
+        TextView field = label(initialText, 10, TEXT);
+        field.setGravity(Gravity.CENTER_VERTICAL);
+        field.setPadding(dp(7), 0, dp(7), 0);
+        field.setTypeface(Typeface.DEFAULT_BOLD);
+        field.setContentDescription(contentDescription);
+        field.setBackground(strokeBackground(
+                SURFACE_2,
+                LINE,
+                6));
+        if (listener != null) {
+            field.setOnClickListener(listener);
+            field.setFocusable(true);
+            field.setClickable(true);
+        }
+        return field;
     }
 
     private void navigateToMode(MpcUiState.Mode mode) {
@@ -623,6 +670,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (navigationController == null
                 || compactSequenceContext == null
                 || compactTrackContext == null
+                || compactProgramContext == null
                 || compactPadContext == null
                 || compactFocusContext == null) {
             return;
@@ -631,22 +679,44 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final boolean nativeStateReady = startupComplete;
         final int sequence = nativeStateReady
                 ? Math.max(0, nativeSequenceGetIndex()) + 1 : 1;
-        final int track = nativeStateReady
-                ? Math.max(0, nativeSequenceGetSelectedTrack()) + 1 : 1;
+        final int trackIndex = nativeStateReady
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        final int track = trackIndex + 1;
         final double tempo = nativeStateReady
                 ? nativeSequenceGetTempo() : 120.0;
 
         compactSequenceContext.setText(String.format(
                 Locale.ROOT, "SEQ %02d • %.1f BPM", sequence, tempo));
-        compactTrackContext.setText(String.format(
-                Locale.ROOT, "TRACK %02d", track));
+
+        if (nativeStateReady) {
+            final boolean armed = nativeSequenceIsSelectedTrackArmed();
+            final boolean muted = nativeSequenceIsTrackMuted(trackIndex);
+            compactTrackContext.setText(String.format(
+                    Locale.ROOT,
+                    "TRACK %02d • %s  %s%s",
+                    track,
+                    nativeSequenceGetTrackType(trackIndex),
+                    armed ? "REC" : "—",
+                    muted ? " • MUTE" : ""));
+            compactProgramContext.setText(
+                    "PROGRAM • " + nativeSequenceGetTrackProgram(trackIndex));
+        } else {
+            compactTrackContext.setText("TRACK 01 • DRUM");
+            compactProgramContext.setText("PROGRAM • —");
+        }
+
         compactPadContext.setText(String.format(
                 Locale.ROOT, "PAD %02d • BANK %s",
-                selectedPad + 1, (char) ('A' + Math.max(0, Math.min(7, navigationController.state().padBank())))));
-        compactFocusContext.setText(
-                "DIAL • " + navigationController.state().dataDialFocus().name().replace('_', ' '));
+                selectedPad + 1,
+                (char) ('A' + Math.max(
+                        0,
+                        Math.min(7, navigationController.state().padBank())))));
 
         final MpcUiState state = navigationController.state();
+        compactFocusContext.setText(
+                "DIAL • " + state.dataDialFocus().name().replace('_', ' ')
+                        + (state.subcontext() == MpcUiState.Subcontext.NONE
+                                ? "" : " • " + state.subcontext().name().replace('_', ' ')));
         compactFocusContext.setTextColor(
                 state.actionAvailable() ? ACCENT : DANGER);
     }
@@ -5592,6 +5662,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getWindow().getDecorView(), "Main Mode Track Program section");
         if (mainTrackProgram == null || mainTrackProgram.getHeight() <= dp(160)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Program composition");
+            return;
+        }
+
+        View compactContext = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC shell compact track program context");
+        View compactTrack = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC shell track context");
+        View compactProgram = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC shell program context");
+        if (compactContext == null
+                || compactContext.getWidth() < dp(160)
+                || compactContext.getHeight() <= dp(300)
+                || compactTrack == null
+                || compactProgram == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: persistent compact track/program context");
             return;
         }
 
