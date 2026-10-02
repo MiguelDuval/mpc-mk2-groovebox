@@ -456,3 +456,9 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **IMPLEMENTED —** replaced the oversized page-title/context stack with the documented TRACK/PAD header and Edit All Layers affordance.
 - **IMPLEMENTED —** aligned visible tab labels to MPC terminology: GLOBAL, SAMPLES, AMP ENV, LFO, MODS, EFFECTS.
 - **PRESERVED —** existing semantic/backend coverage and explicit RESERVED states.
+
+## 2026-10-02 MkII LCD focus projection checkpoint
+- The 160×80 MkII LCD companion mirror now receives the shared Android Data Dial focus state.
+- Focus is signature-gated with the rest of LCD state and rendered as a compact `FOCUS …` line, so the hardware display identifies what the Data Dial is controlling without attempting to duplicate the Android canvas.
+- The focus vocabulary follows the existing controller semantic map: Track, Sequence, Program, Track Type, Sample Start/End, Tune, Layer, zoom axes, loop boundaries, BPM and Bars.
+- This remains a host-feedback increment; physical MkII verification is still required before the LCD indication is considered CONFIRMED.
