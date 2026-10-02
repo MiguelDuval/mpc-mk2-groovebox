@@ -1503,19 +1503,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout trackWorkspaceHeader = row();
         trackWorkspaceHeader.addView(sectionLabelView(
-                "TRACK VIEW",
+                "TRACK",
                 new LinearLayout.LayoutParams(0, dp(30), 1)));
 
-        Button sampleEdit = actionButton("SAMPLE EDIT", v -> showSamplePage());
-        trackWorkspaceHeader.addView(sampleEdit,
-                new LinearLayout.LayoutParams(dp(104), dp(30)));
-
-        Button trackEdit = actionButton("TRACK EDIT", v -> setBottomStatus(
-                "TRACK EDIT • RESERVED / UNAVAILABLE"));
-        trackEdit.setEnabled(false);
-        trackEdit.setAlpha(0.45f);
+        Button trackEdit = actionButton("✎", v -> openMainTrackEditContext());
+        trackEdit.setTextSize(16);
+        trackEdit.setContentDescription("Main Track Edit");
         trackWorkspaceHeader.addView(trackEdit,
-                new LinearLayout.LayoutParams(dp(90), dp(30)));
+                new LinearLayout.LayoutParams(dp(42), dp(30)));
 
         trackWorkspace.addView(trackWorkspaceHeader,
                 new LinearLayout.LayoutParams(
