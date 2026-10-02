@@ -23,6 +23,8 @@ for required in \
   "Main Track View selected layer" \
   "Main Track View record sample" \
   "Main Track View browse samples" \
+  "DRUM • TYPE" \
+  "Main Track Edit" \
   "MPC Function Bar SEQ REC ARM" \
   "MPC Function Bar TRACK previous next" \
   "HARDWARE_FOCUS_SEQUENCE_START" \
