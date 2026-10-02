@@ -813,6 +813,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 addFunction("BACK", true, v -> navigateBackFromShell());
                 break;
 
+            case STEP:
+                addFunction("PARAM", true, v -> {
+                    onHardwareAction(
+                            MpcStudioMk2SemanticActions.DATA_DIAL_PRESS,
+                            0, 0, 0);
+                });
+                addFunction("−", true, v -> {
+                    onHardwareAction(
+                            MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
+                            -1, 0, 0);
+                });
+                addFunction("+", true, v -> {
+                    onHardwareAction(
+                            MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
+                            1, 0, 0);
+                });
+                addFunction("NUDGE −", true, v -> adjustSelectedStepNudge(-10));
+                addFunction("NUDGE +", true, v -> adjustSelectedStepNudge(10));
+                addFunction("GRID", true, v -> showSequenceGridPage());
+                break;
+
             case SAMPLE_EDIT:
             case SAMPLER:
                 addFunction("AUDITION", true,
@@ -3231,7 +3252,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
         navigationController.navigate(MpcUiState.Mode.STEP);
-        pageTitle.setText("SEQ • STEP");
+        navigationController.setSubcontext(MpcUiState.Subcontext.STEP_EDIT);
+        navigationController.setDataDialFocus(
+                MpcUiState.DataDialFocus.STEP);
+        navigationController.setActionAvailable(nativeSequenceIsGridEditable());
+        pageTitle.setText("STEP");
         content.removeAllViews();
         sequenceTimeline = null;
         sequenceGridView = null;
@@ -3241,90 +3266,60 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         LinearLayout page = page();
+        page.setContentDescription("MPC Step Sequencer workspace");
 
         LinearLayout header = row();
-        header.addView(actionButton("BACK SEQ", v -> showSequencePage()),
-                new LinearLayout.LayoutParams(dp(86), dp(38)));
-
-        TextView title = label("STEP SEQUENCER", 12, TEXT);
+        TextView title = label("STEP", 13, TEXT);
         title.setTypeface(Typeface.DEFAULT_BOLD);
-        title.setGravity(Gravity.CENTER);
-        header.addView(title, new LinearLayout.LayoutParams(0, dp(38), 1));
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        header.addView(title, new LinearLayout.LayoutParams(dp(58), dp(38)));
+
+        TextView trackContext = label("", 10, MUTED);
+        trackContext.setGravity(Gravity.CENTER_VERTICAL);
+        trackContext.setPadding(dp(8), 0, dp(8), 0);
+        header.addView(trackContext, new LinearLayout.LayoutParams(0, dp(38), 1.6f));
+
+        TextView padInfo = label("", 10, TEXT);
+        padInfo.setTypeface(Typeface.DEFAULT_BOLD);
+        padInfo.setGravity(Gravity.CENTER);
+        padInfo.setBackground(strokeBackground(SURFACE_2, LINE, 6));
+        header.addView(padInfo, new LinearLayout.LayoutParams(dp(88), dp(34)));
 
         header.addView(actionButton("PAD −", v -> {
             selectedPad = Math.max(0, selectedPad - 1);
+            navigationController.setSelectedPad(selectedPad);
             refreshSequenceStepPage();
-        }), new LinearLayout.LayoutParams(dp(64), dp(38)));
-        TextView padInfo = label("", 11, TEXT);
-        padInfo.setTypeface(Typeface.DEFAULT_BOLD);
-        padInfo.setGravity(Gravity.CENTER);
-        padInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
-        header.addView(padInfo, new LinearLayout.LayoutParams(dp(78), dp(38)));
+            refreshMpcCompactContext();
+        }), new LinearLayout.LayoutParams(dp(62), dp(38)));
         header.addView(actionButton("PAD +", v -> {
             selectedPad = Math.min(15, selectedPad + 1);
+            navigationController.setSelectedPad(selectedPad);
             refreshSequenceStepPage();
-        }), new LinearLayout.LayoutParams(dp(64), dp(38)));
+            refreshMpcCompactContext();
+        }), new LinearLayout.LayoutParams(dp(62), dp(38)));
         header.addView(actionButton("◀", v -> moveSequenceStepPage(-1)),
-                new LinearLayout.LayoutParams(dp(52), dp(38)));
+                new LinearLayout.LayoutParams(dp(50), dp(38)));
         header.addView(actionButton("▶", v -> moveSequenceStepPage(1)),
-                new LinearLayout.LayoutParams(dp(52), dp(38)));
+                new LinearLayout.LayoutParams(dp(50), dp(38)));
         page.addView(header);
 
-        TextView context = label("", 11, MUTED);
-        context.setPadding(dp(10), 0, dp(10), 0);
-        context.setGravity(Gravity.CENTER_VERTICAL);
-        page.addView(context, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
-
-        LinearLayout eventBar = row();
         sequenceStepEventInfo = label(
                 "STEP —  •  VEL —  •  PROB —  •  RAT —  •  NUDGE —",
-                11,
+                10,
                 TEXT);
         sequenceStepEventInfo.setGravity(Gravity.CENTER_VERTICAL);
         sequenceStepEventInfo.setPadding(dp(10), 0, dp(10), 0);
-        sequenceStepEventInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
-        eventBar.addView(sequenceStepEventInfo, new LinearLayout.LayoutParams(
-                0, dp(44), 1.25f));
-        eventBar.addView(actionButton("VEL −10", v -> adjustSelectedStepVelocity(-10)),
-                touchButtonWeight());
-        eventBar.addView(actionButton("VEL +10", v -> adjustSelectedStepVelocity(10)),
-                touchButtonWeight());
-        eventBar.addView(actionButton("PROB −10", v -> adjustSelectedStepProbability(-10)),
-                touchButtonWeight());
-        eventBar.addView(actionButton("PROB +10", v -> adjustSelectedStepProbability(10)),
-                touchButtonWeight());
-        eventBar.addView(actionButton("RATCH −", v -> adjustSelectedStepRatchet(-1)),
-                touchButtonWeight());
-        eventBar.addView(actionButton("RATCH +", v -> adjustSelectedStepRatchet(1)),
-                touchButtonWeight());
-        eventBar.addView(actionButton("DUR −¼", v -> adjustSelectedStepDuration(-1)),
-                touchButtonWeight());
-        eventBar.addView(actionButton("DUR +¼", v -> adjustSelectedStepDuration(1)),
-                touchButtonWeight());
-        page.addView(eventBar, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(50)));
+        sequenceStepEventInfo.setBackground(strokeBackground(SURFACE_2, LINE, 6));
+        page.addView(sequenceStepEventInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
-        LinearLayout nudgeBar = row();
-        TextView nudgeLabel = label("MICRO TIMING", 10, MUTED);
-        nudgeLabel.setGravity(Gravity.CENTER_VERTICAL);
-        nudgeLabel.setPadding(dp(10), 0, dp(10), 0);
-        nudgeBar.addView(nudgeLabel, new LinearLayout.LayoutParams(
-                0, dp(48), 1.0f));
-        nudgeBar.addView(actionButton(
-                "NUDGE −10",
-                v -> adjustSelectedStepNudge(-10)),
-                touchButtonWeight());
-        nudgeBar.addView(actionButton(
-                "NUDGE +10",
-                v -> adjustSelectedStepNudge(10)),
-                touchButtonWeight());
-        nudgeBar.addView(actionButton(
-                "NUDGE 0",
-                v -> setSelectedStepNudge(0)),
-                touchButtonWeight());
-        page.addView(nudgeBar, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(50)));
+        TextView toolInfo = label(
+                "STEP PARAMETER • Data Dial / +/− edit the focused event field",
+                9, MUTED);
+        toolInfo.setGravity(Gravity.CENTER_VERTICAL);
+        toolInfo.setPadding(dp(10), 0, dp(10), 0);
+        page.addView(toolInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
         LinearLayout steps = row();
         for (int i = 0; i < sequenceStepButtons.length; i++) {
@@ -3343,42 +3338,51 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final String result = nativeSequenceToggleGridStep(
                         selectedPad, absoluteStep, gridTicks);
                 setBottomStatus(result);
+                navigationController.setDataDialFocus(
+                        MpcUiState.DataDialFocus.STEP);
                 refreshSequenceStepPage();
+                refreshMpcCompactContext();
             });
             button.setOnLongClickListener(v -> {
                 selectedSequenceStep =
                         sequenceStepPage * SEQUENCE_GRID_PAGE_STEPS + step;
+                navigationController.setDataDialFocus(
+                        MpcUiState.DataDialFocus.STEP);
                 setBottomStatus(
-                        "Selected step " + (selectedSequenceStep + 1));
+                        "STEP " + (selectedSequenceStep + 1) + " SELECTED");
                 refreshSequenceStepPage();
                 return true;
             });
             sequenceStepButtons[i] = button;
             steps.addView(button, new LinearLayout.LayoutParams(
-                    0, dp(88), 1));
+                    0, dp(96), 1));
         }
         page.addView(steps, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         TextView hint = label(
-                "16 STEPS  •  LONG-PRESS = SELECT  •  TAP = ADD / REMOVE  •  NUDGE = ±10 TICKS  •  DUR = ¼…4× GRID",
-                10, MUTED);
+                "16 STEPS • TAP = ADD/REMOVE • LONG-PRESS = SELECT • PARAM = CYCLE VEL/PROB/RAT/NUDGE/DUR",
+                9, MUTED);
         hint.setGravity(Gravity.CENTER_VERTICAL);
         hint.setPadding(dp(10), 0, dp(10), 0);
         page.addView(hint, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
         content.addView(page);
 
-        refreshSequenceStepPage();
+        trackContext.setText(String.format(
+                Locale.ROOT,
+                "TRACK %02d • %s",
+                nativeSequenceGetSelectedTrack() + 1,
+                nativeSequenceTrackStatus(
+                        nativeSequenceGetSelectedTrack())));
         padInfo.setText("PAD " + String.format(
                 Locale.ROOT, "%02d", selectedPad + 1));
-        context.setText(
-                "STEP " + sequenceGridLabel(nativeSequenceGetQuantizeGrid())
-                        + "  •  "
-                        + nativeSequenceTrackStatus(
-                                nativeSequenceGetSelectedTrack()));
-        refreshSequencePlayhead();
+
+        refreshSequenceStepPage();
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
     }
 
     private void refreshSequenceStepPage() {
@@ -6113,17 +6117,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View velocityUp = findViewWithExactText(
-                getWindow().getDecorView(), "VEL +10");
-        View probabilityDown = findViewWithExactText(
-                getWindow().getDecorView(), "PROB −10");
-        View ratchetUp = findViewWithExactText(
-                getWindow().getDecorView(), "RATCH +");
-        if (velocityUp == null || probabilityDown == null || ratchetUp == null
-                || !velocityUp.performClick()
-                || !probabilityDown.performClick()
-                || !ratchetUp.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: step event controls");
+        View paramButton = findViewWithExactText(
+                getWindow().getDecorView(), "PARAM");
+        View plusButton = findViewWithExactText(
+                getWindow().getDecorView(), "+");
+        if (paramButton == null || plusButton == null
+                || !paramButton.performClick()
+                || !plusButton.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step shell controls");
             return;
         }
         if (findViewWithExactText(

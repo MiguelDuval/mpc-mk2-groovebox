@@ -438,6 +438,10 @@ Bottom:
 - step parameters;
 - edit functions.
 
+### Step shell/function policy
+
+Step Sequencer keeps the 16-step performance surface in the workspace. Event parameters are summarized in one compact event strip; parameter cycling and +/- mutation are promoted to the persistent shell Function Bar, preserving one mutation surface while keeping Data Dial semantics visible.
+
 ## 6.2 Hardware
 
 Pad 1..16:
