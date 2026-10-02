@@ -168,7 +168,7 @@ final class MpcBrowserView extends LinearLayout {
 
         Button audition = button(context, "PLAY CURRENT");
         audition.setOnClickListener(v -> {
-            if (listener != null) listener.onAudition();
+            if (listener != null) listener.onPlayCurrent();
         });
         targetPanel.addView(audition, paramsMatch(context, 46));
 
