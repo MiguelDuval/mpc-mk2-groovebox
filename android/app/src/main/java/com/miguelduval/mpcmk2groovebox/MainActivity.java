@@ -5593,6 +5593,61 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View mainTrackProgram = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode Track Program section");
+        if (mainTrackProgram == null || mainTrackProgram.getHeight() <= dp(160)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Program composition");
+            return;
+        }
+
+        View seqSelect = findViewWithExactText(
+                getWindow().getDecorView(), "SEQ SELECT");
+        if (seqSelect == null || !seqSelect.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main SEQ SELECT");
+            return;
+        }
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Sequence Select list") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Sequence Select list");
+            return;
+        }
+        View backMain = findViewWithExactText(
+                getWindow().getDecorView(), "BACK MAIN");
+        if (backMain == null || !backMain.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Sequence Select back");
+            return;
+        }
+
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.TRACK_SELECTION_CONTEXT,
+                0, 0, 0);
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track Select list") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Select list");
+            return;
+        }
+        backMain = findViewWithExactText(
+                getWindow().getDecorView(), "BACK MAIN");
+        if (backMain == null || !backMain.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Select back");
+            return;
+        }
+
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.PROGRAM_SELECTION_CONTEXT,
+                0, 0, 0);
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Program Select list") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Program Select list");
+            return;
+        }
+        backMain = findViewWithExactText(
+                getWindow().getDecorView(), "BACK MAIN");
+        if (backMain == null || !backMain.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Program Select back");
+            return;
+        }
+
         View trackView = findViewWithExactText(
                 getWindow().getDecorView(), "TRACK VIEW");
         if (trackView == null || !trackView.performClick()) {
