@@ -1441,6 +1441,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
+        /*
+         * MPC Main exposes a compact track-state row directly above the
+         * Track/Arrangement canvas. Keep the vocabulary recognizable while
+         * only exposing values that our backend can state truthfully:
+         * Monitor is unavailable, Length is sequence-scoped, Velocity is not
+         * currently a track property, and Layer is the real selected sample
+         * layer for Drum tracks.
+         */
+        LinearLayout trackDetailRow = row();
+        TextView monitorDetail = mainMetric("MONITOR");
+        monitorDetail.setContentDescription("Main Track View monitor state");
+        monitorDetail.setText("MONITOR\\n—");
+        trackDetailRow.addView(monitorDetail, weight());
+
+        TextView lengthDetail = mainMetric("LENGTH");
+        lengthDetail.setContentDescription("Main Track View length mode");
+        lengthDetail.setText("LENGTH\\nSEQ");
+        trackDetailRow.addView(lengthDetail, weight());
+
+        TextView velocityDetail = mainMetric("VELOCITY");
+        velocityDetail.setContentDescription("Main Track View velocity state");
+        velocityDetail.setText("VELOCITY\\n—");
+        trackDetailRow.addView(velocityDetail, weight());
+
+        TextView layerDetail = mainMetric("LAYER");
+        layerDetail.setContentDescription("Main Track View selected layer");
+        layerDetail.setText(String.format(
+                Locale.ROOT,
+                "LAYER\\n%d/8",
+                selectedLayer + 1));
+        trackDetailRow.addView(layerDetail, weight());
+
+        trackWorkspace.addView(trackDetailRow,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+
         LinearLayout quickTrack = row();
 
         LinearLayout padColumn = column();
