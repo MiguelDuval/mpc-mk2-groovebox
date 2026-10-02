@@ -1311,14 +1311,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sampleHeader.addView(sampleTitle,
                 new LinearLayout.LayoutParams(0, dp(28), 1));
 
-        Button layerButton = actionButton("LAYER +", v -> {
+        Button layerDownButton = actionButton("L−", v -> {
+            selectedLayer = Math.max(0, selectedLayer - 1);
+            navigationController.setSelectedLayer(selectedLayer);
+            refreshMainTrackQuickSample();
+        });
+        layerDownButton.setContentDescription("Main Track View previous sample layer");
+        sampleHeader.addView(layerDownButton,
+                new LinearLayout.LayoutParams(dp(48), dp(28)));
+
+        Button layerUpButton = actionButton("L+", v -> {
             selectedLayer = Math.min(7, selectedLayer + 1);
             navigationController.setSelectedLayer(selectedLayer);
             refreshMainTrackQuickSample();
         });
-        layerButton.setContentDescription("Main Track View next sample layer");
-        sampleHeader.addView(layerButton,
-                new LinearLayout.LayoutParams(dp(72), dp(28)));
+        layerUpButton.setContentDescription("Main Track View next sample layer");
+        sampleHeader.addView(layerUpButton,
+                new LinearLayout.LayoutParams(dp(48), dp(28)));
         sampleColumn.addView(sampleHeader,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
@@ -6347,6 +6356,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if (selectedPad != 0) {
             Log.e(TAG, "UI_INTERACTION_FAILED: selection did not stick");
+            return;
+        }
+
+        View quickSampleWaveform = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View quick sample waveform");
+        View quickSampleInfo = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View quick sample info");
+        if (quickSampleWaveform == null
+                || quickSampleWaveform.getHeight() <= dp(70)
+                || quickSampleInfo == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main quick sample context");
+            return;
+        }
+
+        View layerUp = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View next sample layer");
+        View layerDown = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View previous sample layer");
+        if (layerUp == null || layerDown == null
+                || !layerUp.performClick()
+                || !layerDown.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main sample layer controls");
             return;
         }
 
