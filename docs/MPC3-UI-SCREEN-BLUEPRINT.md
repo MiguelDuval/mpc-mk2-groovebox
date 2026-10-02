@@ -136,7 +136,9 @@ Below/center:
 Track section.
 
 Lower center:
-Track/Arrangement switch and selected-track timeline/preview.
+Direct sibling TRACK / ARRANGEMENT header tabs immediately above one shared selected-track workspace host; the active tab switches only the presentation of that workspace.
+
+There is no generic nested MAIN VIEW selector and no duplicate TRACK / ARRANGEMENT header inside the child workspace. Contextual actions (Track Edit pencil / Arrangement GRID) stay at the top edge of the active workspace.
 
 Bottom:
 Function bar.
