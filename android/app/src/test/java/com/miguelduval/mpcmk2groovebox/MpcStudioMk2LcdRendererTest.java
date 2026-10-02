@@ -31,12 +31,14 @@ public final class MpcStudioMk2LcdRendererTest {
                         false,
                         0,
                         -1,
+                        19,
                         "ready");
 
         final String signature = state.signature();
 
         assertTrue(signature.contains("|true|false|true|"));
-        assertTrue(signature.contains("|NRtrue:2|LOCtrue|ERfalse|"));
+        assertTrue(signature.contains("|NRtrue:2|LOCtrue|ERfalse|STEP0:-1|FOCUS19|"));
+
     }
     @Test
     public void waveformZoomPolicyChangesAxesIndependentlyAndClamps() {
