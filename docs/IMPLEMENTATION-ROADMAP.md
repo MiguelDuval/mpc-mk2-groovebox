@@ -153,12 +153,11 @@ No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry 
 - The Track/Pad focus is presentation-only and never mutates musical selection or transport state.
 - Non-Drum Track Types disable the Pad strip focus so the UI cannot imply a Drum-pad context that the backend does not own.
 
-### 2026-10-03 Main compact-context direct-entry increment
+### 2026-10-03 Main compact-context direct-entry increment — superseded
 
-- Persistent Sequence and Track context fields now open the existing Main Sequence Select and Main Track Select subcontexts directly from the shell.
-- Persistent Program context now opens Main Program Select only while the selected Track is a Drum Track; non-Drum Tracks keep the field explicitly disabled/unavailable.
-- No new backend or realtime semantics were introduced; the change reuses existing selection commands and navigation state.
-- Android UI smoke now audits the field-to-subcontext entry wiring and Program availability gate.
+- This intermediate slice temporarily exposed Sequence/Track/Program navigation through the persistent left rail.
+- It was superseded after comparison with the official MPC 3.x XL Channel Strip model.
+- The canonical implementation keeps Sequence/Program selection in the central Main workspace and reserves the left rail for mixer/channel presentation.
 
 ### 2026-10-03 MPC compact-context state ownership increment
 
@@ -272,6 +271,8 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
 
 ## 2026-10-02 Main Program context truthfulness increment
 
+The Program truthfulness rules remain valid; the older note that described a **persistent compact Program context** refers to the superseded intermediate shell and is no longer a current UI requirement.
+
 - Program Select now resolves availability from the selected Track Type.
 - Drum Tracks expose the Drum Program list; non-Drum Tracks show an explicit unavailable state.
 - Persistent compact Program context mirrors the same availability instead of offering a misleading Drum assignment action.
@@ -286,10 +287,9 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
 
 ## 2026-10-02 MPC 3.9 shell context/channel increment
 
-- Shell composition advanced — the persistent left edge is now: five shortcuts → compact contextual track/program channel strip → workspace.
-- Context moved out of the workspace header — Sequence, Track, Program, Pad and Data Dial focus remain glanceable without consuming Main workspace height.
-- Direct Main selection entry preserved — Sequence/Track/Program context fields target the existing Main subcontexts.
-- UI audit hardened — the smoke audit now requires the persistent compact context strip and validates its minimum usable geometry.
+Historical intermediate shell architecture; superseded by the 2026-10-03 XL Channel Strip alignment. The current left edge is five shortcuts followed by contextual mixer/channel presentation, while Sequence/Program selection and Data Dial focus remain single-owner controls in the central Main workspace.
+
+- UI audit hardened — the smoke audit requires the persistent XL Channel Strip presentation and its Drum-only Track/Pad affordance.
 
 ## 2026-10-02 Main Mode UI composition refinement
 

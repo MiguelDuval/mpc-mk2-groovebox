@@ -100,28 +100,24 @@ The bar must:
 
 ## 1.1 Persistent left context strip
 
-The shell's left edge is deliberately split into two persistent functional columns:
+The shell's left edge follows the documented MPC 3.x Main hierarchy:
 
 - **Shortcut rail:** exactly five configurable high-frequency destinations.
-- **Compact context/channel rail:** persistent Sequence, Track, Program, Pad and Data Dial context.
+- **XL Channel Strip rail:** contextual Track/Pad/Main-output mixer information next to the shortcuts.
 
-The compact context rail remains visible while the workspace changes. It is a glanceable status surface and a direct-entry surface for Sequence Select, Track Select and Program Select; it is not a second workspace.
+Sequence, Track and Program selection stay in the central Main workspace. Data Dial focus is represented on the selected Main parameter using the MPC red-focus treatment rather than a synthetic permanent DIAL row.
 
 ## 1.2 Compact context semantics
 
-The persistent context strip exposes state, not duplicate editing controls:
+The persistent left rail exposes mixer state, not duplicate Main selection controls:
 
-- **Sequence:** current sequence and tempo; opens Main Sequence Select.
-- **Track:** current track, type, REC-arm and mute state; opens Main Track Select.
-- **Program:** current Program for a Drum Track; opens Main Program Select. For non-Drum Tracks it becomes visibly unavailable rather than presenting a false Drum-program list.
-- **Pad:** selected software/hardware pad and bank.
-- **Dial:** current Data Dial focus and Main subcontext.
-- **Sequence overview:** thin movement/loop indicator.
-- **Main Mixer Strip:** the persistent channel/context column exposes compact read-only level, pan and tuning values for the selected Drum pad. Values are read directly from the existing pad state; editing remains in Pad Mixer / sampler controls until the full MPC channel-strip command surface is implemented.
-- **Selected sample identity:** the Main Track quick-sample context displays the selected layer's real project sample name when available. Document-provider display names are propagated through the existing control-thread import path; the realtime audio path does not depend on filenames.
-- **Mixer visibility:** the condensed Mixer Strip can be shown or hidden without changing selected Track, Pad, Sequence or transport state.
-- **Track/Pad focus:** the Main Track/Arrangement section places a single-pad / multi-pad selector at its lower-right edge; for Drum Tracks it switches the persistent compact strip between Track and Pad presentation, while non-Drum Tracks keep Pad unavailable.
-- **Mixer strip focus:** on Drum Tracks, the condensed strip can switch between Track and Pad presentation using the single-pad / multi-pad channel-context affordance. Non-Drum Tracks keep the pad presentation unavailable.
+- **Track:** selected Track/type plus currently supported record/mute state; the strip header is contextual/read-only.
+- **Pad:** selected software/hardware pad and bank when the Drum Track is in Pad-strip presentation.
+- **Main output:** read-only reserved output context until the output mixer backend exists.
+- **Mixer tabs:** LVL / FX / SEND / I/O presentation; unsupported mutation controls remain unavailable rather than fabricated.
+- **Mixer visibility:** the condensed channel-strip area can be shown or hidden without changing selected Track, Pad, Sequence or transport state.
+- **Track/Pad focus:** the Main Track/Arrangement section places the documented single-pad / four-squares selector at its lower-right edge; for Drum Tracks it switches the left channel strip between Track and Pad presentation, while unsupported Track Types keep Pad unavailable.
+- **Sequence / Program / Data Dial focus:** remain single-owner controls in the central Main workspace.
 
 # 2. Main Mode blueprint
 

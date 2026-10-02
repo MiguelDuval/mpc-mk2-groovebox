@@ -259,7 +259,11 @@ The persistent Program field and Main Program Select context are enabled only fo
 
 Track View uses the persistent shell Function Bar as the single mutation surface for the selected Track. Track rows expose status and selection, while REC ARM, Track −, Track +, Mute and Solo remain contextual shell actions. Changing Track from Main must not navigate away from Main merely to reveal the new selection.
 
-## 2026-10-03 Main compact-context direct-entry increment
+## 2026-10-03 Main compact-context direct-entry increment — superseded
+
+The first compact-context increment exposed Sequence, Track and Program entry points from the persistent left rail. Subsequent comparison against the official MPC 3.x Main Mode channel-strip documentation showed that this mixed navigation state with the XL Channel Strip role. The implementation was therefore superseded by the canonical left-rail alignment recorded below. It remains in Git history for auditability.
+
+## 2026-10-03 MPC compact-context state ownership increment
 
 The persistent Main shell context is now an actionable entry surface for the selection contexts already defined by this specification:
 
@@ -280,6 +284,8 @@ The compact channel-context presentation is now represented by the UI/navigation
 - Main derives an effective Pad presentation only when the selected Track is a Drum Track.
 
 This preserves the separation between presentation state and musical selection while ensuring the shell renderer has one durable source for these display states.
+
+Canonical left-rail rule: Sequence/Program selection and Data Dial focus are not duplicated inside the XL Channel Strip; the central Main workspace remains their single-owner surface.
 
 ## 5. Main Mode — P0
 
