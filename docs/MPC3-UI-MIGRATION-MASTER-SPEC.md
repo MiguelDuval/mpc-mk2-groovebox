@@ -618,6 +618,8 @@ Priority flows:
 - Mute / Sample Edit;
 - Track Select / Sequence Select;
 - Program Select / Track Type;
+- Main Sequence Select / Track Select subcontexts;
+- Main Track + Program unified region;
 - Zoom;
 - Undo / Redo;
 - Copy / Delete;
