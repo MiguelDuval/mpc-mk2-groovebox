@@ -133,6 +133,9 @@ int main() {
     assert(state.activeTrackIndex() == 0);
     assert(state.selectNextSequence());
     assert(state.activeSequenceIndex() == 1);
+    assert(state.activeTrackIndex() == 0);
+    assert(state.activeDrumProgram().id == "drum-program-1");
+    assert(state.activeProgramIndexForTrack(0) == 0);
     assert(state.selectSequence(0));
     assert(state.activeSequenceIndex() == 0);
     assert(!state.selectSequence(99));
