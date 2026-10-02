@@ -408,3 +408,9 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **Truthful availability enforced:** Monitor and track-level Velocity remain explicitly unavailable because the current semantic backend has no corresponding state; Length is shown as sequence-scoped; Layer reflects the selected Drum sample layer.
 - **State synchronization:** changing the selected layer updates the Main Layer field without changing Track, Sequence or transport context.
 - **QA contract extended:** the Android UI smoke preflight now requires all four Main Track-state content descriptions.
+
+## 2026-10-02 Main Sequence field parity increment
+
+- **MPC Sequence vocabulary aligned:** Main now presents SEQ / BARS / START / END / TRANSPOSE as compact state fields around the existing sequence name and BPM.
+- **Existing semantics preserved:** time signature, loop state, loop markers and the working BPM/BARS/LOOP controls remain available; the parity work changes hierarchy and presentation rather than removing functional controls.
+- **Truthful unavailable state:** TRANSPOSE is displayed as unavailable because the current domain has no transpose semantic.
