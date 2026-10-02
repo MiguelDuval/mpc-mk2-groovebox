@@ -1732,6 +1732,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     selectedPad + 1,
                     selectedLayer + 1));
         }
+
+        final TextView layerDetail = findTextByContentDescription(
+                content,
+                "Main Track View selected layer");
+        if (layerDetail != null) {
+            final String trackType = startupComplete
+                    ? nativeSequenceGetTrackType(
+                            Math.max(0, nativeSequenceGetSelectedTrack()))
+                    : "DRUM";
+            final boolean drum = "DRUM".equalsIgnoreCase(trackType);
+            layerDetail.setText(
+                    drum
+                            ? String.format(
+                                    Locale.ROOT,
+                                    "LAYER\\n%d/8",
+                                    selectedLayer + 1)
+                            : "LAYER\\n—");
+        }
     }
 
     private void setMainTrackArrangementView(boolean arrangementSelected) {
