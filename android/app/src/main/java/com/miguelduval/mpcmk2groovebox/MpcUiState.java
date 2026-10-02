@@ -54,7 +54,8 @@ final class MpcUiState {
         TUNE,
         STEP_EDIT,
         BROWSER,
-        PERFORMANCE
+        PERFORMANCE,
+        SHORTCUT_CONFIG
     }
 
     enum DataDialFocus {
@@ -75,6 +76,7 @@ final class MpcUiState {
         STEP_NUDGE,
         STEP_DURATION,
         BROWSER_ITEM,
+        SHORTCUT,
         ZOOM_HORIZONTAL,
         ZOOM_VERTICAL,
         TIMELINE
