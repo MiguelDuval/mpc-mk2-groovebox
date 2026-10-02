@@ -6997,6 +6997,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: persistent Main Mixer Strip");
             return;
         }
+
+        View recArmAudit = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main sequence REC ARM");
+        if (recArmAudit == null || !(recArmAudit instanceof Button)
+                || !recArmAudit.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main REC ARM enable");
+            return;
+        }
+        View recArmActiveAudit = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main sequence REC ARM active");
+        if (recArmActiveAudit == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main REC ARM active state");
+            return;
+        }
+        if (!recArmActiveAudit.performClick()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Main sequence REC ARM") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main REC ARM disable");
+            return;
+        }
         if (!compactMixerToggleAudit.performClick()
                 || compactMixerPanelAudit.getVisibility() != View.GONE) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Mixer Strip hide");
