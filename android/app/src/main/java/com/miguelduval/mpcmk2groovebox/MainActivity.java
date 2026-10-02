@@ -2032,18 +2032,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 (lengthTicks + pageTicks - 1L) / pageTicks);
     }
 
-    private int sequenceGridPageCount() {
-        final int totalSteps = sequenceGridTotalSteps();
-        final int visibleSteps = Math.max(
-                1,
-                Math.min(
-                        MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_STEPS,
-                        sequenceGridVisibleSteps));
-        return Math.max(
-                1,
-                (totalSteps + visibleSteps - 1) / visibleSteps);
-    }
-
     private int sequenceGridMaxStartStep() {
         return Math.max(
                 0,
