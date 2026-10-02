@@ -122,6 +122,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private WaveformView sampleWaveform;
     private WaveformView mainTrackWaveform;
     private Button mainTrackSampleActionButton;
+    private MpcTrackEditView mainTrackEditView;
     private WaveformView recordingWaveform;
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
@@ -715,6 +716,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case STEP:
                 showSequenceStepPage();
                 break;
+            case TRACK_EDIT:
+                openMainTrackEditContext();
+                break;
             case SAMPLER:
                 showRecordPage();
                 break;
@@ -953,6 +957,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             addFunction("MUTE", trackCount > 0,
                     v -> toggleSelectedTrackMute());
             addFunction("SOLO", false, null);
+            return;
+        }
+
+        if (mode == MpcUiState.Mode.TRACK_EDIT) {
+            final boolean drumTrack = startupComplete
+                    && "DRUM".equalsIgnoreCase(
+                            nativeSequenceGetTrackType(
+                                    Math.max(0, nativeSequenceGetSelectedTrack())));
+            addFunction("BACK", true, v -> navigateBackFromShell());
+            addFunction("AUDITION", drumTrack,
+                    v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
+            addFunction("LAYER −", drumTrack, v -> adjustTrackEditLayer(-1));
+            addFunction("LAYER +", drumTrack, v -> adjustTrackEditLayer(1));
+            addFunction("MAIN", true, v -> showMainPage());
             return;
         }
 
@@ -1949,96 +1967,223 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void openMainTrackEditContext() {
-        /*
-         * MPC Main uses double-tap on the Track sample area as the direct
-         * Track Edit entry point. Our Track Edit backend is not implemented
-         * yet, so preserve the semantic destination without fabricating an
-         * editor: navigate to a truthful reserved context with the current
-         * Track/Pad/Layer visible.
-         */
+        final int trackIndex = startupComplete
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        final boolean drumTrack = startupComplete
+                && "DRUM".equalsIgnoreCase(nativeSequenceGetTrackType(trackIndex));
+
         navigationController.navigate(MpcUiState.Mode.TRACK_EDIT);
-        navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_SELECT);
-        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_LAYER);
-        navigationController.setActionAvailable(false);
+        navigationController.setSubcontext(
+                drumTrack
+                        ? MpcUiState.Subcontext.SAMPLE_SELECT
+                        : MpcUiState.Subcontext.NONE);
+        navigationController.setDataDialFocus(
+                drumTrack
+                        ? MpcUiState.DataDialFocus.SAMPLE_LAYER
+                        : MpcUiState.DataDialFocus.NONE);
+        navigationController.setActionAvailable(drumTrack);
         currentPage = "TRACK_EDIT";
+        hardwareFocus = drumTrack ? 10 : 0;
         pageTitle.setText("TRACK EDIT");
         content.removeAllViews();
 
-        LinearLayout page = page();
-        page.setContentDescription("MPC Track Edit workspace");
-        page.setPadding(dp(10), dp(8), dp(10), dp(4));
+        mainTrackEditView = new MpcTrackEditView(
+                this,
+                new MpcTrackEditView.Listener() {
+                    @Override public void onBack() { navigateBackFromShell(); }
+                    @Override public void onAudition() {
+                        selectAndTriggerPad(selectedPadIndexForUi(), 112);
+                    }
+                    @Override public void onLayerDelta(int delta) {
+                        adjustTrackEditLayer(delta);
+                    }
+                    @Override public void onLayerGainDelta(float delta) {
+                        changeLayerGain(delta);
+                        refreshTrackEditView();
+                    }
+                    @Override public void onLayerTuningDelta(float delta) {
+                        changeLayerTuning(delta);
+                        refreshTrackEditView();
+                    }
+                    @Override public void onLayerPan(float pan) {
+                        setLayerPan(pan);
+                        refreshTrackEditView();
+                    }
+                    @Override public void onLayerVelocityMinDelta(int delta) {
+                        adjustTrackEditVelocityMin(delta);
+                    }
+                    @Override public void onLayerVelocityMaxDelta(int delta) {
+                        adjustTrackEditVelocityMax(delta);
+                    }
+                    @Override public void onRegionStartDelta(long delta) {
+                        nudgeRegionStart(delta);
+                        refreshTrackEditView();
+                    }
+                    @Override public void onRegionEndDelta(long delta) {
+                        nudgeRegionEnd(delta);
+                        refreshTrackEditView();
+                    }
+                    @Override public void onRegionSelection(
+                            float startNormalized, float endNormalized) {
+                        commitMainTrackWaveformRegion(startNormalized, endNormalized);
+                        refreshTrackEditView();
+                    }
+                    @Override public void onPadTuningDelta(float delta) {
+                        changePadTuning(delta);
+                        refreshTrackEditView();
+                    }
+                    @Override public void onPadLevelDelta(float delta) {
+                        changePadLevel(delta);
+                        refreshTrackEditView();
+                    }
+                    @Override public void onPadPan(float pan) {
+                        setPadPan(pan);
+                        refreshTrackEditView();
+                    }
+                    @Override public void onEnvelopeDelta(
+                            float attack, float decay,
+                            float sustain, float release) {
+                        changeEnvelope(attack, decay, sustain, release);
+                        refreshTrackEditView();
+                    }
+                    @Override public void onEnvelopeReset() {
+                        setEnvelope(0, 0, 1, 0);
+                        refreshTrackEditView();
+                    }
+                    @Override public void onFilterDelta(float deltaHz) {
+                        final float current = nativeAudioGetPadFilterCutoff(selectedPad);
+                        final float next = Math.max(
+                                20f, Math.min(20000f, current + deltaHz));
+                        setBottomStatus(nativeAudioSetPadFilterCutoff(
+                                selectedPad, next));
+                        refreshTrackEditView();
+                    }
+                    @Override public void onFilterSet(float cutoffHz) {
+                        final float next = Math.max(
+                                20f, Math.min(20000f, cutoffHz));
+                        setBottomStatus(nativeAudioSetPadFilterCutoff(
+                                selectedPad, next));
+                        refreshTrackEditView();
+                    }
+                });
 
-        LinearLayout header = row();
-        header.addView(sectionLabelView(
-                "TRACK EDIT",
-                new LinearLayout.LayoutParams(0, dp(38), 1)));
-        header.addView(actionButton(
-                "BACK",
-                v -> navigateBackFromShell()),
-                new LinearLayout.LayoutParams(dp(78), dp(38)));
-        page.addView(header);
-
-        final int trackIndex = startupComplete
-                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
-        final String trackStatus = startupComplete
-                ? nativeSequenceTrackStatus(trackIndex) : "Track 01";
-        final String trackType = startupComplete
-                ? nativeSequenceGetTrackType(trackIndex) : "DRUM";
-
-        TextView context = label(
-                String.format(
-                        Locale.ROOT,
-                        "TRACK %02d • %s • %s",
-                        trackIndex + 1,
-                        trackType,
-                        trackStatus),
-                12, TEXT);
-        context.setTypeface(Typeface.DEFAULT_BOLD);
-        context.setGravity(Gravity.CENTER_VERTICAL);
-        context.setContentDescription("Track Edit current track context");
-        context.setBackground(strokeBackground(SURFACE_2, LINE, 7));
-        page.addView(context, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
-
-        TextView availability = label(
-                "TRACK EDIT BACKEND RESERVED • Main double-tap entry is wired, "
-                        + "but the editor parameter contract is not yet implemented.",
-                11, MUTED);
-        availability.setContentDescription("Track Edit unavailable explanation");
-        availability.setGravity(Gravity.CENTER_VERTICAL);
-        availability.setPadding(dp(10), 0, dp(10), 0);
-        page.addView(availability, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(62)));
-
-        LinearLayout tabs = row();
-        for (String tab : new String[] {
-                "GLOBAL", "SAMPLES", "ENV", "LFO", "MOD", "FX"
-        }) {
-            Button tabButton = actionButton(tab, null);
-            tabButton.setEnabled(false);
-            tabButton.setAlpha(0.42f);
-            tabs.addView(tabButton, new LinearLayout.LayoutParams(
-                    0, dp(38), 1));
-        }
-        page.addView(tabs);
-
-        TextView padContext = label(
-                String.format(
-                        Locale.ROOT,
-                        "TRACK %02d • PAD %02d • LAYER %d/8",
-                        Math.max(0, nativeSequenceGetSelectedTrack()) + 1,
-                        selectedPadIndexForUi() + 1,
-                        selectedLayer + 1),
-                11, MUTED);
-        padContext.setGravity(Gravity.CENTER);
-        padContext.setBackground(strokeBackground(SURFACE_2, LINE, 7));
-        page.addView(padContext, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
-
-        content.addView(page);
+        content.addView(mainTrackEditView,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+        refreshTrackEditView();
         refreshMpcCompactContext();
         refreshMpcFunctionBar();
         updateModeRailSelection();
+    }
+
+    private MpcTrackEditView.Snapshot buildTrackEditSnapshot() {
+        final boolean ready = startupComplete;
+        final int trackIndex = ready
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        final String trackType = ready
+                ? nativeSequenceGetTrackType(trackIndex) : "DRUM";
+        final boolean drumTrack = "DRUM".equalsIgnoreCase(trackType);
+        final String trackStatus = ready
+                ? nativeSequenceTrackStatus(trackIndex) : "Track 01";
+        final String programName = ready && drumTrack
+                ? normalizeProgramLabel(nativeSequenceGetTrackProgram(trackIndex))
+                : "—";
+
+        if (!ready || !drumTrack) {
+            return new MpcTrackEditView.Snapshot(
+                    ready, drumTrack, trackIndex, trackType, trackStatus,
+                    programName, selectedPadIndexForUi(), selectedLayer,
+                    "NO SAMPLE", 0L, 0, 0L, 0L,
+                    1.0f, 0.0f, 0.0f, 0, 127,
+                    0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+                    20000.0f, null);
+        }
+
+        final long frames = nativeAudioGetPadSampleFrameCount(
+                selectedPad, selectedLayer);
+        final int sampleRate = nativeAudioGetPadSampleRate(
+                selectedPad, selectedLayer);
+        final String sampleName = nativeAudioGetPadSampleName(
+                selectedPad, selectedLayer);
+        final long startFrame = frames > 0
+                ? nativeAudioGetPadSampleRegionStart(
+                        selectedPad, selectedLayer) : 0L;
+        final long endFrame = frames > 0
+                ? nativeAudioGetPadSampleRegionEnd(
+                        selectedPad, selectedLayer) : 0L;
+        final float[] peaks = frames > 0
+                ? nativeAudioGetPadWaveformPeaks(
+                        selectedPad, selectedLayer, 768) : null;
+
+        return new MpcTrackEditView.Snapshot(
+                true, true, trackIndex, trackType, trackStatus, programName,
+                selectedPadIndexForUi(), selectedLayer, sampleName,
+                frames, sampleRate, startFrame, endFrame,
+                nativeAudioGetPadLayerGain(selectedPad, selectedLayer),
+                nativeAudioGetPadLayerTuning(selectedPad, selectedLayer),
+                nativeAudioGetPadLayerPan(selectedPad, selectedLayer),
+                nativeAudioGetPadLayerVelocityMin(selectedPad, selectedLayer),
+                nativeAudioGetPadLayerVelocityMax(selectedPad, selectedLayer),
+                nativeAudioGetPadTuning(selectedPad),
+                nativeAudioGetPadLevel(selectedPad),
+                nativeAudioGetPadPan(selectedPad),
+                nativeAudioGetPadEnvelopeAttack(selectedPad),
+                nativeAudioGetPadEnvelopeDecay(selectedPad),
+                nativeAudioGetPadEnvelopeSustain(selectedPad),
+                nativeAudioGetPadEnvelopeRelease(selectedPad),
+                nativeAudioGetPadFilterCutoff(selectedPad),
+                peaks);
+    }
+
+    private void refreshTrackEditView() {
+        if (mainTrackEditView == null || !"TRACK_EDIT".equals(currentPage)) {
+            return;
+        }
+        mainTrackEditView.bind(buildTrackEditSnapshot());
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+    }
+
+    private void adjustTrackEditLayer(int delta) {
+        final int trackIndex = startupComplete
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        if (!startupComplete
+                || !"DRUM".equalsIgnoreCase(
+                        nativeSequenceGetTrackType(trackIndex))) {
+            setBottomStatus("TRACK EDIT • selected Track is not DRUM");
+            return;
+        }
+        final int next = Math.max(0, Math.min(7, selectedLayer + delta));
+        if (next == selectedLayer) return;
+        selectedLayer = next;
+        navigationController.setSelectedLayer(next);
+        setBottomStatus("TRACK EDIT • LAYER " + (next + 1) + "/8");
+        refreshTrackEditView();
+    }
+
+    private void adjustTrackEditVelocityMin(int delta) {
+        final int currentMin =
+                nativeAudioGetPadLayerVelocityMin(selectedPad, selectedLayer);
+        final int currentMax =
+                nativeAudioGetPadLayerVelocityMax(selectedPad, selectedLayer);
+        final int next = Math.max(0, Math.min(
+                currentMax, currentMin + delta));
+        setBottomStatus(nativeAudioSetPadLayerVelocityRange(
+                selectedPad, selectedLayer, next, currentMax));
+        refreshTrackEditView();
+    }
+
+    private void adjustTrackEditVelocityMax(int delta) {
+        final int currentMin =
+                nativeAudioGetPadLayerVelocityMin(selectedPad, selectedLayer);
+        final int currentMax =
+                nativeAudioGetPadLayerVelocityMax(selectedPad, selectedLayer);
+        final int next = Math.max(
+                currentMin, Math.min(127, currentMax + delta));
+        setBottomStatus(nativeAudioSetPadLayerVelocityRange(
+                selectedPad, selectedLayer, currentMin, next));
+        refreshTrackEditView();
     }
 
     private void openMainArrangementGridContext() {
@@ -8126,6 +8271,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             } else {
                 showMainPage();
             }
+            return;
+        }
+        if (hardwareFocus == 10) {
+            final int trackIndex = startupComplete
+                    ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+            if (!startupComplete
+                    || !"DRUM".equalsIgnoreCase(
+                            nativeSequenceGetTrackType(trackIndex))) {
+                setBottomStatus("TRACK EDIT • DRUM TRACK REQUIRED");
+                return;
+            }
+            adjustTrackEditLayer(delta);
             return;
         }
         if (hardwareFocus == 11 || hardwareFocus == 12) {
