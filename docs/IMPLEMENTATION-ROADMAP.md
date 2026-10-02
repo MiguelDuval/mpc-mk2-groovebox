@@ -236,7 +236,7 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
 
 
 - **2026-10-02 MkII Zoom hardware increment**
-- **SEMANTIC + WAVEFORM SLICE IMPLEMENTED —** Zoom note 66 now selects a horizontal or Shift+Zoom vertical context; Data Dial and +/- apply the selected axis to the Sample Editor waveform. Horizontal zoom changes the visible time viewport; vertical zoom changes waveform amplitude scale. Grid/timeline zoom remain explicit follow-up contexts. Physical MkII verification remains required.
+- **SEQUENCE CONTEXT SLICE IMPLEMENTED —** Zoom note 66 now selects a horizontal or Shift+Zoom vertical context; Sample Editor uses both axes, SEQ Grid uses horizontal time-window zoom plus vertical pad-row zoom, and the SEQ timeline uses horizontal bar-window zoom. Grid vertical zoom keeps all underlying pads available through a swipeable focused row window; timeline zoom follows the playhead so live navigation stays coherent. Physical MkII verification remains required.
 
 ## 2026-10-01 LCD product feedback and Touch Strip event-path hardening
 
