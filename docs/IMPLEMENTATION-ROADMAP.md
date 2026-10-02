@@ -420,3 +420,11 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **MPC Sequence vocabulary aligned:** Main now presents SEQ / BARS / START / END / TRANSPOSE as compact state fields around the existing sequence name and BPM.
 - **Existing semantics preserved:** time signature, loop state, loop markers and the working BPM/BARS/LOOP controls remain available; the parity work changes hierarchy and presentation rather than removing functional controls.
 - **Truthful unavailable state:** TRANSPOSE is displayed as unavailable because the current domain has no transpose semantic.
+
+## 2026-10-02 Main controller-first field focus increment
+
+- **Direct field focus implemented:** Main SEQ/BPM/BARS/START/END fields now establish the shared Data Dial focus instead of being presentation-only.
+- **Sequence loop editing implemented:** START and END fields use the existing loop-bar semantic command; BARS and BPM use the existing Sequence setters, keeping all mutations outside realtime audio.
+- **MPC Function Bar parity refined:** Main and Track View now use five visual slots with grouped SEQ + REC ARM and − TRACK + controls while retaining all six semantic operations.
+- **Track header parity refined:** the six-button Track Type row was reduced to a single MPC-style type field; unsupported Track Types remain visibly reserved.
+- **Sample workflow parity refined:** an empty Drum pad exposes RECORD as the secondary Main action; a populated pad exposes BROWSE. Track Edit is represented by the compact pencil affordance and the documented double-tap gesture.
