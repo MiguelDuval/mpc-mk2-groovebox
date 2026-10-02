@@ -975,3 +975,13 @@ Arrangement is now a dedicated linear context with:
 Current arrangement domain limitation is intentional: the existing domain stores patterns and events but does not yet store explicit linear clip placements. The Arrangement view therefore renders the first pattern of each track from bar 1 as the truthful current projection. It must not be represented as a fully editable multi-clip arranger until a placement model is added.
 
 Five shortcuts are configurable by both assignment and order. Only implemented contexts can be promoted; RESERVED contexts remain in Menu.
+
+## 2026-10-02 Program Select / Track ownership checkpoint
+
+The selected Drum Track now owns its Program through the domain `programId` relationship. Program Select is a Main subcontext, with Data Dial focus set to Program and a touch-selectable list of available Drum Programs.
+
+The playback session resolves each Drum Track independently, so multiple Drum Tracks may reference different Drum Programs without changing the realtime scheduling architecture.
+
+A newly created Drum Track inherits the currently active Drum Program rather than assuming `drum-program-1`. This keeps Track creation consistent with the selected program context.
+
+Main and Track View explicitly establish their hardware/Data Dial focus on entry, preventing stale selection contexts from leaking across views.
