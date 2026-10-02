@@ -579,9 +579,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        final int sequence = Math.max(0, nativeSequenceGetIndex()) + 1;
-        final int track = Math.max(0, nativeSequenceGetSelectedTrack()) + 1;
-        final double tempo = nativeSequenceGetTempo();
+        final boolean nativeStateReady = startupComplete;
+        final int sequence = nativeStateReady
+                ? Math.max(0, nativeSequenceGetIndex()) + 1 : 1;
+        final int track = nativeStateReady
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) + 1 : 1;
+        final double tempo = nativeStateReady
+                ? nativeSequenceGetTempo() : 120.0;
 
         compactSequenceContext.setText(String.format(
                 Locale.ROOT, "SEQ %02d • %.1f BPM", sequence, tempo));
@@ -605,6 +609,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         functionBar.removeAllViews();
         final MpcUiState.Mode mode = navigationController.state().mode();
+        final int trackCount = startupComplete
+                ? nativeSequenceGetTrackCount() : 0;
 
         if (mode == MpcUiState.Mode.MAIN || mode == MpcUiState.Mode.TRACK_VIEW) {
             addFunction("NEW TRACK", true, v -> addSequenceTrack(0));
@@ -614,11 +620,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 syncHardwareTransportLeds();
                 refreshSequenceControls();
             });
-            addFunction("TRACK −", nativeSequenceGetTrackCount() > 0,
+            addFunction("TRACK −", trackCount > 0,
                     v -> selectAdjacentTrack(-1));
-            addFunction("TRACK +", nativeSequenceGetTrackCount() > 0,
+            addFunction("TRACK +", trackCount > 0,
                     v -> selectAdjacentTrack(1));
-            addFunction("MUTE", nativeSequenceGetTrackCount() > 0,
+            addFunction("MUTE", trackCount > 0,
                     v -> toggleSelectedTrackMute());
             addFunction("SOLO", false, null);
             return;
