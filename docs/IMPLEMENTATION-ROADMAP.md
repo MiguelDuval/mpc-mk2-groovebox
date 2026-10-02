@@ -330,3 +330,8 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **Pad Mixer semantics corrected.** The existing four-pad level workspace is exposed as Pad Mixer; Channel Mixer remains reserved until truthful track-strip level/routing backend support exists.
 - **Toolbar timing context implemented.** Timing Correct is now a persistent functional control; Metronome and Automation are visibly reserved rather than dead/fake controls.
 - **Navigation smoke audit migrated.** UI interaction paths now use canonical Main / Track View / Grid / Step / Menu / Next Sequence / Sample Edit / Sampler contexts.
+
+## 2026-10-02 Browser / Arrangement / Shortcut UX checkpoint
+- Browser: **workspace foundation implemented** with MPC information architecture; Android Document Provider remains storage backend.
+- Arrangement: **read/write loop-brace + read-only linear event projection implemented**; full clip-placement editing remains blocked by the current pattern-only domain.
+- Five shortcuts: **assignment + ordering implemented**; reserved modes cannot be promoted.
