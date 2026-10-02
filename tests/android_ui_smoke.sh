@@ -37,6 +37,9 @@ for required in \
   "Main Mode sequence tempo source • SEQ • Global unavailable" \
   "Main Track / Arrangement view switcher" \
   "MPC Toolbar Menu" \
+  "Main Mode sequence header" \
+  "Main Mode BPM" \
+  "Main Time Signature field • tap for editor" \
   "Timing Correct" \
   "Time Signature value" \
   "Time Signature numerator" \
@@ -95,6 +98,12 @@ done
 
 if grep -Fq -- "private boolean compactMixerVisible" "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- "private boolean compactMixerPadMode" "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: compact Mixer presentation state leaked back into MainActivity-local booleans"
+  exit 1
+fi
+
+if grep -Fq -- "sequenceAuxFields" "$MAIN_ACTIVITY_SOURCE" || \
+   grep -Fq -- "sequenceFields.addView(bpm, weight())" "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: obsolete stacked Main Sequence field layout is still present"
   exit 1
 fi
 
