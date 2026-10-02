@@ -449,10 +449,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         if (!NATIVE_LIBRARY_LOADED) {
             final String failure = "Native engine unavailable: " + NATIVE_LIBRARY_ERROR;
+            final String[] supportedAbis = Build.SUPPORTED_ABIS;
+            final String abiText = supportedAbis == null
+                    ? "unknown"
+                    : Arrays.toString(supportedAbis);
+            final String diagnostic = failure + " | ABIs=" + abiText;
             if (bottomStatus != null) {
-                bottomStatus.setText(failure);
+                bottomStatus.setText(diagnostic);
             }
-            Log.e(TAG, "UI_NATIVE_UNAVAILABLE: " + failure);
+            Log.e(TAG, "UI_NATIVE_UNAVAILABLE: " + diagnostic);
             if (uiOnlySmokeMode) {
                 Log.i(TAG, "UI_ONLY_COMPLETE");
                 return;
