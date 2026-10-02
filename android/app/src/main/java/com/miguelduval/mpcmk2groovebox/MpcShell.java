@@ -20,6 +20,7 @@ final class MpcShell {
 
     private final LinearLayout root;
     private final LinearLayout toolbar;
+    private final MpcPlayheadStrip playheadStrip;
     private final LinearLayout shortcutRail;
     private final LinearLayout contextArea;
     private final FrameLayout workspace;
@@ -35,6 +36,10 @@ final class MpcShell {
         toolbar.setBackgroundColor(SURFACE);
         root.addView(toolbar, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 52)));
+
+        playheadStrip = new MpcPlayheadStrip(context);
+        root.addView(playheadStrip, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 3)));
 
         LinearLayout body = new LinearLayout(context);
         body.setOrientation(LinearLayout.HORIZONTAL);
@@ -89,6 +94,10 @@ final class MpcShell {
 
     LinearLayout toolbar() {
         return toolbar;
+    }
+
+    MpcPlayheadStrip playheadStrip() {
+        return playheadStrip;
     }
 
     LinearLayout shortcuts() {
