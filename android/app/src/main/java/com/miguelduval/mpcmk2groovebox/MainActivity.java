@@ -870,7 +870,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 && nativeSequenceIsTimingCorrectEnabled();
         timingCorrectTopButton.setText(
                 enabled
-                        ? "TC " + sequenceGridLabel(nativeSequenceGetQuantizeGrid())
+                        ? "TC " + sequenceGridLabel(
+                                nativeSequenceGetQuantizeGrid()).replace("Q ", "")
                         : "TC OFF");
         timingCorrectTopButton.setBackground(strokeBackground(
                 enabled ? Color.rgb(74, 124, 88) : SURFACE_2,
@@ -1535,21 +1536,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
 
-        LinearLayout numeratorButtons = row();
-        for (int value : new int[]{3, 4, 5, 6, 7, 12}) {
+        GridLayout numeratorButtons = new GridLayout(this);
+        numeratorButtons.setColumnCount(4);
+        numeratorButtons.setRowCount(4);
+        for (int value = 1; value <= 16; value++) {
+            final int numeratorValue = value;
             Button b = actionButton(String.valueOf(value), v -> {
-                numeratorState[0] = value;
+                numeratorState[0] = numeratorValue;
                 current.setText(
                         "TIME SIGNATURE\n"
                                 + numeratorState[0] + "/" + denominatorState[0]);
                 numerator.setText(
                         "BEATS / BAR\n" + numeratorState[0]);
             });
-            numeratorButtons.addView(b, weight());
+            b.setTextSize(9);
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = 0;
+            lp.height = dp(34);
+            lp.columnSpec = GridLayout.spec((value - 1) % 4, 1f);
+            lp.rowSpec = GridLayout.spec((value - 1) / 4);
+            lp.setMargins(dp(2), dp(2), dp(2), dp(2));
+            numeratorButtons.addView(b, lp);
         }
         root.addView(numeratorButtons,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(148)));
 
         TextView denominator = label(
                 "NOTE VALUE\n" + denominatorState[0],
@@ -1564,15 +1575,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
 
         LinearLayout denominatorButtons = row();
-        for (int value : new int[]{4, 8}) {
+        for (int value : new int[]{4, 8, 16, 32}) {
+            final int denominatorValue = value;
             Button b = actionButton(String.valueOf(value), v -> {
-                denominatorState[0] = value;
+                denominatorState[0] = denominatorValue;
                 current.setText(
                         "TIME SIGNATURE\n"
                                 + numeratorState[0] + "/" + denominatorState[0]);
                 denominator.setText(
                         "NOTE VALUE\n" + denominatorState[0]);
             });
+            b.setTextSize(9);
             denominatorButtons.addView(b, weight());
         }
         root.addView(denominatorButtons,
