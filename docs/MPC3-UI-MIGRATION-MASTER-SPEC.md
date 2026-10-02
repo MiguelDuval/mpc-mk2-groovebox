@@ -1163,3 +1163,7 @@ The change remains transactional: selections are staged and committed only by `D
 
 ## 2026-10-02 Main sequence-field semantic refinement
 Main's Sequence region now has one authoritative Sequence selector. The adjacent `SEQ` field is treated as the MPC tempo-source indicator rather than a duplicate Sequence selector; Global Tempo remains explicitly unavailable until the domain supports it. Numeric BPM/BARS/LOOP START/LOOP END fields support MPC-style double-tap numeric entry while retaining Data Dial/+/- as the hardware path.
+
+### 2026-10-03 Main Sequence information-band refinement
+
+Main Sequence presentation is now treated as one continuous MPC information band rather than stacked Android-style cards. Sequence identity is left-owned; BPM and the fixed SEQ tempo-source indicator sit beside it; Time Signature is placed immediately next to the tempo area. The lower compact row is reserved for BARS / START / END / TRANSPOSE / LOOP. This is a presentation-only fidelity change and preserves the existing semantic focus and numeric-entry paths.
