@@ -1172,3 +1172,8 @@ Main Sequence presentation is now treated as one continuous MPC information band
 ### 2026-10-03 Main diagnostic footer parity
 
 Normal Main presentation no longer reserves permanent height for hardware-feedback and bottom-status diagnostics. Those views remain audit-visible only. The Function Bar is therefore the actual bottom edge of the MPC-style shell during normal operation.
+
+
+### 2026-10-03 Main Track identity header refinement
+
+Main Track presentation now treats Track identity as a single visual container: Track is primary, Program is a compact adjacent context, and Track Type is an indicator rather than a large form control. No semantic navigation or backend ownership changed.
