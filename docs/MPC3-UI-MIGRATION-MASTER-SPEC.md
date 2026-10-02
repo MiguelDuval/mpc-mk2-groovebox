@@ -282,7 +282,9 @@ Show:
 - length/bars;
 - loop state;
 - loop start/end;
-- current sequence context.
+- current sequence context;
+- MPC-style compact fields: SEQ, BARS, START, END, TRANSPOSE;
+- explicit unavailable indication for unsupported sequence semantics.
 
 ### Track section
 
