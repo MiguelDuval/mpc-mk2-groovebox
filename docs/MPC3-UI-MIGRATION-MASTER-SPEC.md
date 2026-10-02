@@ -249,7 +249,7 @@ The compact strip is vertical and remains visible while the active workspace cha
 Sequence, Track and Program fields are direct entry points to the existing Main selection contexts. The strip is presentation-only and reads the existing semantic/domain state; it does not own transport or audio behavior.
 
 
-The compact mixer header also exposes two presentation controls: a channel-strip visibility control and a Drum Track Track/Pad focus control. The focus control is unavailable for non-Drum Track Types, so the UI never presents a pad strip for a track that cannot own Drum pads.
+The compact mixer header exposes the channel-strip visibility control. In Main Track/Arrangement, the bottom-right Track-section affordance cycles the compact strip between Track and Pad presentation for Drum Tracks. The focus control is unavailable for non-Drum Track Types, so the UI never presents a pad strip for a track that cannot own Drum pads.
 
 ### Main Program Select truthfulness rule
 
