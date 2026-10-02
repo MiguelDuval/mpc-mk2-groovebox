@@ -144,6 +144,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView sequenceTimingCorrectView;
     private TextView sequenceRecordModeView;
     private TextView sequenceTrackInfoView;
+    private TextView gridToolStateView;
+    private TextView gridSelectionStateView;
     private final Handler sequenceUiHandler = new Handler(Looper.getMainLooper());
     private Runnable sequenceUiUpdater;
     private static final int STEP_EDIT_PARAMETER_VELOCITY = 0;
@@ -800,6 +802,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 addFunction("DUP", false, null);
                 addFunction("GRID", true, v -> showSequenceGridPage());
                 addFunction("TRACK VIEW", true, v -> showTrackViewPage());
+                break;
+
+            case GRID:
+                addFunction("DRAW", true, v -> {
+                    navigationController.setEditorTool(MpcUiState.EditorTool.DRAW);
+                    refreshGridToolState();
+                });
+                addFunction("ERASE", true, v -> {
+                    navigationController.setEditorTool(MpcUiState.EditorTool.ERASE);
+                    refreshGridToolState();
+                });
+                addFunction("SELECT", true, v -> {
+                    navigationController.setEditorTool(MpcUiState.EditorTool.SELECT);
+                    refreshGridToolState();
+                });
+                addFunction("ZOOM H", true, v -> zoomSequenceGridHorizontal(1));
+                addFunction("ZOOM V", true, v -> zoomSequenceGridVertical(1));
+                addFunction("STEP", true, v -> showSequenceStepPage());
                 break;
 
             case SAMPLE_EDIT:
@@ -2887,7 +2907,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
         navigationController.navigate(MpcUiState.Mode.GRID);
-        pageTitle.setText("SEQ • GRID");
+        navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
+        navigationController.setActionAvailable(nativeSequenceIsGridEditable());
+        pageTitle.setText("GRID");
         content.removeAllViews();
         sequenceTimeline = null;
         for (int i = 0; i < sequenceStepButtons.length; i++) {
@@ -2895,43 +2918,149 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         LinearLayout page = page();
+        page.setContentDescription("MPC Grid View workspace");
+        page.setPadding(dp(8), dp(6), dp(8), dp(2));
 
+        // Grid header: context first, navigation second, no local "page" chrome.
         LinearLayout header = row();
-        header.addView(actionButton("BACK SEQ", v -> showSequencePage()),
-                new LinearLayout.LayoutParams(dp(86), dp(38)));
-        TextView title = label("GRID / STEP EDIT", 12, TEXT);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        title.setGravity(Gravity.CENTER);
-        header.addView(title, new LinearLayout.LayoutParams(0, dp(38), 1));
+        TextView contextTitle = label("GRID", 13, TEXT);
+        contextTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        contextTitle.setGravity(Gravity.CENTER_VERTICAL);
+        header.addView(contextTitle, new LinearLayout.LayoutParams(dp(58), dp(38)));
 
-        TextView pageInfo = label("", 11, TEXT);
-        pageInfo.setTypeface(Typeface.DEFAULT_BOLD);
-        pageInfo.setGravity(Gravity.CENTER);
-        pageInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
-        header.addView(pageInfo, new LinearLayout.LayoutParams(dp(132), dp(38)));
+        TextView trackContext = label("", 10, MUTED);
+        trackContext.setGravity(Gravity.CENTER_VERTICAL);
+        trackContext.setPadding(dp(8), 0, dp(8), 0);
+        header.addView(trackContext, new LinearLayout.LayoutParams(0, dp(38), 1.7f));
+
+        TextView sequenceContext = label("", 10, MUTED);
+        sequenceContext.setGravity(Gravity.CENTER);
+        sequenceContext.setBackground(strokeBackground(SURFACE_2, LINE, 6));
+        header.addView(sequenceContext, new LinearLayout.LayoutParams(dp(126), dp(34)));
+
+        gridSelectionStateView = label("", 10, TEXT);
+        gridSelectionStateView.setGravity(Gravity.CENTER);
+        gridSelectionStateView.setBackground(strokeBackground(SURFACE_2, LINE, 6));
+        header.addView(gridSelectionStateView, new LinearLayout.LayoutParams(dp(116), dp(34)));
 
         header.addView(actionButton("◀", v -> moveSequenceGridPage(-1)),
-                new LinearLayout.LayoutParams(dp(52), dp(38)));
+                new LinearLayout.LayoutParams(dp(50), dp(38)));
         header.addView(actionButton("▶", v -> moveSequenceGridPage(1)),
-                new LinearLayout.LayoutParams(dp(52), dp(38)));
+                new LinearLayout.LayoutParams(dp(50), dp(38)));
         page.addView(header);
 
-        TextView context = label("", 11, MUTED);
-        context.setPadding(dp(10), 0, dp(10), 0);
-        context.setGravity(Gravity.CENTER_VERTICAL);
-        page.addView(context, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+        // Tool row mirrors the contextual editing concept while only exposing
+        // operations that this backend can perform truthfully.
+        LinearLayout toolRow = row();
+        Button drawTool = actionButton("DRAW", v -> {
+            navigationController.setEditorTool(MpcUiState.EditorTool.DRAW);
+            refreshGridToolState();
+        });
+        drawTool.setContentDescription("Grid Draw tool");
+        toolRow.addView(drawTool, weight());
+
+        Button eraseTool = actionButton("ERASE", v -> {
+            navigationController.setEditorTool(MpcUiState.EditorTool.ERASE);
+            refreshGridToolState();
+        });
+        eraseTool.setContentDescription("Grid Erase tool");
+        toolRow.addView(eraseTool, weight());
+
+        Button selectTool = actionButton("SELECT", v -> {
+            navigationController.setEditorTool(MpcUiState.EditorTool.SELECT);
+            refreshGridToolState();
+        });
+        selectTool.setContentDescription("Grid Select tool");
+        toolRow.addView(selectTool, weight());
+
+        Button magnifyTool = actionButton("MAGNIFY", v -> {
+            navigationController.setEditorTool(MpcUiState.EditorTool.MAGNIFY);
+            refreshGridToolState();
+        });
+        magnifyTool.setContentDescription("Grid Navigation tool");
+        toolRow.addView(magnifyTool, weight());
+
+        gridToolStateView = label("", 9, ACCENT);
+        gridToolStateView.setGravity(Gravity.CENTER);
+        toolRow.addView(gridToolStateView, new LinearLayout.LayoutParams(0, dp(42), 1.8f));
+        page.addView(toolRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        TextView info = label("", 10, MUTED);
+        info.setGravity(Gravity.CENTER_VERTICAL);
+        info.setPadding(dp(8), 0, dp(8), 0);
+        page.addView(info, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
         sequenceGridView = new SequenceGridView(this);
-        sequenceGridView.setContentDescription("Zoomable sequence step grid");
+        sequenceGridView.setContentDescription("MPC Grid View drum event grid");
         sequenceGridView.setListener((padIndex, absoluteStep) -> {
-            final int gridTicks = nativeSequenceGetQuantizeGrid();
-            final String result = nativeSequenceToggleGridStep(
-                    padIndex, absoluteStep, gridTicks);
-            setBottomStatus(result);
+            final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+            final MpcUiState.EditorTool tool =
+                    navigationController.state().editorTool();
+
+            if (tool == MpcUiState.EditorTool.MAGNIFY) {
+                setBottomStatus("GRID • use two-finger pinch or hardware ZOOM");
+                return;
+            }
+
+            if (tool == MpcUiState.EditorTool.SELECT) {
+                selectedPad = padIndex;
+                navigationController.setSelectedPad(padIndex);
+                gridSelectionStateView.setText(
+                        String.format(
+                                Locale.ROOT,
+                                "PAD %02d • STEP %02d",
+                                padIndex + 1,
+                                absoluteStep + 1));
+                refreshMpcCompactContext();
+                sequenceGridView.invalidate();
+                setBottomStatus(
+                        "GRID SELECT • PAD "
+                                + (padIndex + 1)
+                                + " • STEP "
+                                + (absoluteStep + 1));
+                return;
+            }
+
+            final int[] velocities =
+                    nativeSequenceGetGridVelocities(
+                            sequenceGridStartStep,
+                            gridTicks);
+            final int localColumn = absoluteStep - sequenceGridStartStep;
+            final int localIndex = padIndex * 16 + localColumn;
+            final boolean occupied = localColumn >= 0
+                    && localColumn < 16
+                    && localIndex >= 0
+                    && localIndex < velocities.length
+                    && velocities[localIndex] > 0;
+
+            if (tool == MpcUiState.EditorTool.DRAW && occupied) {
+                setBottomStatus("GRID DRAW • NOTE ALREADY EXISTS");
+            } else if (tool == MpcUiState.EditorTool.ERASE && !occupied) {
+                setBottomStatus("GRID ERASE • NO NOTE");
+            } else {
+                final String result = nativeSequenceToggleGridStep(
+                        padIndex, absoluteStep, gridTicks);
+                setBottomStatus(result);
+            }
+
+            selectedPad = padIndex;
+            navigationController.setSelectedPad(padIndex);
+            navigationController.setDataDialFocus(
+                    tool == MpcUiState.EditorTool.ERASE
+                            ? MpcUiState.DataDialFocus.PAD
+                            : MpcUiState.DataDialFocus.PAD);
+            gridSelectionStateView.setText(
+                    String.format(
+                            Locale.ROOT,
+                            "PAD %02d • STEP %02d",
+                            padIndex + 1,
+                            absoluteStep + 1));
             refreshSequenceGrid();
-            refreshSequenceControls();
+            refreshMpcCompactContext();
         });
+
         sequenceGridView.setViewportListener(
                 (firstStep, visibleSteps, firstPad, visiblePads) -> {
                     sequenceGridStartStep = firstStep;
@@ -2940,37 +3069,87 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     sequenceGridVisiblePads = visiblePads;
                     refreshSequenceGrid();
                 });
+
         page.addView(sequenceGridView, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         LinearLayout footer = row();
-        TextView hint = label("TAP = ADD / REMOVE NOTE", 10, MUTED);
-        hint.setGravity(Gravity.CENTER_VERTICAL);
-        footer.addView(hint, new LinearLayout.LayoutParams(0, dp(38), 1));
-        TextView resolution = label("", 11, TEXT);
+        TextView resolution = label("", 10, TEXT);
         resolution.setGravity(Gravity.CENTER);
-        resolution.setBackground(strokeBackground(SURFACE_2, LINE, 8));
-        footer.addView(resolution, new LinearLayout.LayoutParams(dp(96), dp(38)));
+        resolution.setBackground(strokeBackground(SURFACE_2, LINE, 6));
+        footer.addView(resolution, new LinearLayout.LayoutParams(dp(100), dp(38)));
+
         TextView editState = label("", 10, TEXT);
         editState.setGravity(Gravity.CENTER);
-        editState.setBackground(strokeBackground(SURFACE_2, LINE, 8));
-        footer.addView(editState, new LinearLayout.LayoutParams(dp(150), dp(38)));
+        editState.setBackground(strokeBackground(SURFACE_2, LINE, 6));
+        footer.addView(editState, new LinearLayout.LayoutParams(dp(130), dp(38)));
+
+        TextView range = label("", 10, MUTED);
+        range.setGravity(Gravity.CENTER_VERTICAL);
+        range.setPadding(dp(8), 0, dp(8), 0);
+        footer.addView(range, new LinearLayout.LayoutParams(0, dp(38), 1));
+
+        TextView hint = label(
+                "TAP = DRAW/ERASE   •   SELECT = FOCUS   •   MAGNIFY = NAVIGATION",
+                9, MUTED);
+        hint.setGravity(Gravity.CENTER_VERTICAL);
+        footer.addView(hint, new LinearLayout.LayoutParams(dp(310), dp(38)));
         page.addView(footer);
 
         content.addView(page);
 
-        refreshSequenceGrid();
-        final int gridTicks = nativeSequenceGetQuantizeGrid();
-        resolution.setText(sequenceGridLabel(gridTicks));
+        final int totalSteps = sequenceGridTotalSteps();
+        final int first = sequenceGridStartStep + 1;
+        final int last = Math.min(
+                totalSteps,
+                sequenceGridStartStep + sequenceGridVisibleSteps);
+        sequenceContext.setText(String.format(
+                Locale.ROOT,
+                "SEQ %02d  •  %d/%d",
+                nativeSequenceGetIndex() + 1,
+                nativeSequenceGetBars(),
+                nativeSequenceGetCount()));
+        trackContext.setText(String.format(
+                Locale.ROOT,
+                "TRACK %02d • %s",
+                nativeSequenceGetSelectedTrack() + 1,
+                nativeSequenceTrackStatus(
+                        nativeSequenceGetSelectedTrack())));
+        range.setText(String.format(
+                Locale.ROOT,
+                "STEPS %02d–%02d / %02d",
+                first, last, totalSteps));
+        resolution.setText(sequenceGridLabel(
+                nativeSequenceGetQuantizeGrid()));
         editState.setText(
                 nativeSequenceIsGridEditable()
                         ? "EDIT READY"
-                        : "DRUM / STOP REQUIRED");
-        context.setText(
-                "TRACK " + (nativeSequenceGetSelectedTrack() + 1)
-                        + "  •  " + nativeSequenceTrackStatus(
-                                nativeSequenceGetSelectedTrack()));
+                        : "STOP TO EDIT");
+        gridSelectionStateView.setText(
+                String.format(
+                        Locale.ROOT,
+                        "PAD %02d",
+                        selectedPad + 1));
+        refreshGridToolState();
+        refreshSequenceGrid();
         refreshSequencePlayhead();
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+    }
+
+    private void refreshGridToolState() {
+        if (gridToolStateView == null || navigationController == null) {
+            return;
+        }
+        final MpcUiState state = navigationController.state();
+        final String tool = state.editorTool().name();
+        gridToolStateView.setText(
+                "TOOL • " + tool
+                        + "  •  DIAL "
+                        + state.dataDialFocus().name().replace('_', ' '));
+        gridToolStateView.setTextColor(
+                state.actionAvailable() ? ACCENT : DANGER);
     }
 
     private void showSequenceLauncherPage() {
@@ -3700,6 +3879,56 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSequenceGrid();
     }
 
+    private void refreshGridHeaderState() {
+        if (sequenceGridView == null || navigationController == null) {
+            return;
+        }
+
+        final int totalSteps = sequenceGridTotalSteps();
+        final int first = sequenceGridStartStep + 1;
+        final int last = Math.min(
+                totalSteps,
+                sequenceGridStartStep + sequenceGridVisibleSteps);
+        final int track = Math.max(0, nativeSequenceGetSelectedTrack());
+
+        if (gridSelectionStateView != null) {
+            gridSelectionStateView.setText(String.format(
+                    Locale.ROOT,
+                    "PAD %02d",
+                    selectedPad + 1));
+        }
+
+        if (gridToolStateView != null) {
+            refreshGridToolState();
+        }
+
+        View parent = sequenceGridView.getParent();
+        if (parent instanceof LinearLayout) {
+            LinearLayout page = (LinearLayout) parent;
+            if (page.getChildCount() >= 5
+                    && page.getChildAt(0) instanceof LinearLayout
+                    && page.getChildAt(1) instanceof LinearLayout
+                    && page.getChildAt(2) instanceof TextView
+                    && page.getChildAt(4) instanceof LinearLayout) {
+                LinearLayout header = (LinearLayout) page.getChildAt(0);
+                if (header.getChildCount() >= 2
+                        && header.getChildAt(1) instanceof TextView) {
+                    ((TextView) header.getChildAt(1)).setText(String.format(
+                            Locale.ROOT,
+                            "TRACK %02d • %s",
+                            track + 1,
+                            nativeSequenceTrackStatus(track)));
+                }
+                TextView info = (TextView) page.getChildAt(2);
+                info.setText(String.format(
+                        Locale.ROOT,
+                        "GRID • %02d–%02d / %02d • Q %s",
+                        first, last, totalSteps,
+                        sequenceGridLabel(nativeSequenceGetQuantizeGrid())));
+            }
+        }
+    }
+
     private void refreshSequenceGrid() {
         if (sequenceGridView == null) return;
 
@@ -3746,7 +3975,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 sequenceGridVisiblePads);
         sequenceGridView.setState(
                 nativeSequenceGetGridVelocities(firstStep, gridTicks),
-                localPlayhead);
+                localPlayhead,
+                selectedPad);
         refreshSequenceGridPageInfo();
     }
 
@@ -3978,7 +4208,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             sequenceGridView.setState(
                     nativeSequenceGetGridVelocities(
                             (int) firstStep, gridTicks),
-                    localStep);
+                    localStep,
+                    selectedPad);
         }
 
         if (sequenceStepButtons[0] != null) {
@@ -4148,6 +4379,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         refreshSequencePlayhead();
                         refreshSequenceControls();
                         refreshSequenceLauncher();
+                        if (sequenceGridView != null
+                                && navigationController.state().mode()
+                                        == MpcUiState.Mode.GRID) {
+                            refreshGridHeaderState();
+                        }
                     }
                     if ("ARRANGE".equals(currentPage)) {
                         refreshArrangeView();

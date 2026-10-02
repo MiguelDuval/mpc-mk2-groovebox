@@ -367,6 +367,10 @@ Not all destinations have to be fully functional in phase one. The navigation vo
 
 ---
 
+### Grid implementation fidelity rule
+
+Grid must remain a full event-editor context rather than a generic step-button page. For Drum Tracks, pad identity stays visible beside the event grid, while the shell provides contextual edit functions. Unsupported destructive or selection operations must not be represented as working controls until their backend semantics exist.
+
 ## 8. Grid View
 
 Grid is a full event editor.

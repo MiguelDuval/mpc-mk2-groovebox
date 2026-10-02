@@ -507,6 +507,17 @@ Selected pad:
 - envelope;
 - filter.
 
+## 7.3 Grid interaction slice
+
+For the current Drum Track backend the Grid workspace exposes four semantic tools:
+
+- **DRAW** — add a note only when the target cell is empty.
+- **ERASE** — remove a note only when the target cell is occupied.
+- **SELECT** — focus a pad/step without mutating musical data.
+- **MAGNIFY** — navigation/zoom intent; actual viewport movement remains through pinch/drag or hardware Zoom.
+
+The shell Function Bar repeats the high-frequency Grid actions; the workspace header carries Track, Sequence, step range, resolution and current pad. The grid itself remains the main editing surface.
+
 ## 7.4 Safety
 
 Playback-critical edits that current engine disallows while running remain clearly disabled or deferred.
