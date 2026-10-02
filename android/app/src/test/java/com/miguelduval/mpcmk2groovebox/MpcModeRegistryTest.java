@@ -17,7 +17,7 @@ public final class MpcModeRegistryTest {
 
     @Test
     public void unavailableModesAreExplicitlyReserved() {
-        assertFalse(MpcModeRegistry.menuEntry(5).available);
+        assertTrue(MpcModeRegistry.menuEntry(5).available);
         assertEquals(MpcUiState.Mode.TRACK_EDIT, MpcModeRegistry.menuEntry(5).mode);
         assertFalse(MpcModeRegistry.menuEntry(8).available);
         assertEquals(MpcUiState.Mode.CHANNEL_MIXER, MpcModeRegistry.menuEntry(8).mode);

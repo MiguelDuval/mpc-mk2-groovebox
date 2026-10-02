@@ -37,7 +37,7 @@ for required in \
   "MPC condensed Mixer Strip" \
   "openMainTrackEditContext" \
   "openMainArrangementGridContext" \
-  "setOnDoubleTapListener"
+  "setOnDoubleTapListener" \
   "MpcTrackEditView"
   "hardwareFocus = drumTrack ? 10 : 0;"
   "hardwareFocus == 10"; do
@@ -51,7 +51,10 @@ echo "Running Track Edit workspace source preflight..."
 for required in \
   "Track Edit Global tab" \
   "Track Edit Samples tab" \
-  "Track Edit Envelopes tab" \
+  "Track Edit AMP ENV tab" \
+  "Track Edit bottom tab bar" \
+  "Track Edit Track context" \
+  "Track Edit Pad context" \
   "Track Edit LFO tab" \
   "Track Edit Modulations tab" \
   "Track Edit Effects tab" \

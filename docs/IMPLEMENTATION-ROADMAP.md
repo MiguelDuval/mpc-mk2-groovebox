@@ -140,7 +140,7 @@ No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry 
 - Sample Edit. **UI FOUNDATION + WAVEFORM IMPLEMENTED — direct S/E drag editing, zoom/pan, audition, crop and chop actions are isolated to the sample context.**
 - Grid. **SEQUENCE CONTEXT IMPLEMENTED — dedicated track/sequence context is now available from the Sequencer page; detailed note editing remains next.**
 - Step. **SEQUENCE CONTEXT IMPLEMENTED — selected-track Step entry point is available; detailed step note editing remains next.**
-- Track Edit. **MODE SLOT RESERVED.**
+- Track Edit. **BOUNDED SEMANTIC WORKSPACE IMPLEMENTED — GLOBAL / SAMPLES / AMP ENV are backed by existing Drum semantics; LFO / MODS / EFFECTS and Edit All Layers remain reserved. MPC-style top TRACK/PAD context and persistent bottom tabs now match the documented Track Edit geometry.**
 - mixers. **FOUNDATION IMPLEMENTED — compact Pad Mix view with direct level control; full Track/Pad mixer remains later.**
 - 16 Levels. **SEMANTIC VELOCITY SLICE IMPLEMENTED — Level16 captures the last played pad as the source sample, uses the 16 physical positions as fixed velocity steps from 1 to 127, and keeps note-on/note-off bound to the same source pad for recording. Tune/Filter/Layer/Attack/Decay parameter variants remain future slices.**
 - Pad Perform.
@@ -448,3 +448,11 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 
 
 - **Shell fidelity:** converted the persistent context column into a condensed Mixer Strip area and reduced the toolbar to the MPC Main information hierarchy.
+
+
+### 2026-10-02 Track Edit geometry increment
+
+- **IMPLEMENTED —** moved Track Edit tabs from the editor header into a persistent bottom bar.
+- **IMPLEMENTED —** replaced the oversized page-title/context stack with the documented TRACK/PAD header and Edit All Layers affordance.
+- **IMPLEMENTED —** aligned visible tab labels to MPC terminology: GLOBAL, SAMPLES, AMP ENV, LFO, MODS, EFFECTS.
+- **PRESERVED —** existing semantic/backend coverage and explicit RESERVED states.

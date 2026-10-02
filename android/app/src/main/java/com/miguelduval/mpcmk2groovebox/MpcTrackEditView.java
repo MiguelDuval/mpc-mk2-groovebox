@@ -144,48 +144,71 @@ final class MpcTrackEditView extends LinearLayout {
     private static final int LINE = Color.rgb(64, 72, 80);
     private static final int TEXT = Color.rgb(235, 239, 242);
     private static final int MUTED = Color.rgb(156, 166, 174);
-    private static final int ACCENT = Color.rgb(69, 211, 255);
+    // MPC-style selected/latched state uses a red accent.\n    private static final int ACCENT = Color.rgb(221, 52, 52);
 
     private final Listener listener;
     private final Button[] tabButtons = new Button[Tab.values().length];
     private final TextView titleView;
     private final TextView contextView;
     private final LinearLayout body;
-    private Tab tab = Tab.GLOBAL;
-    private Snapshot snapshot;
-
-    MpcTrackEditView(Context context, Listener listener) {
+    pri    MpcTrackEditView(Context context, Listener listener) {
         super(context);
         this.listener = listener;
         setOrientation(VERTICAL);
         setBackgroundColor(BG);
-        setPadding(dp(8), dp(6), dp(8), dp(2));
+        setPadding(dp(6), dp(4), dp(6), dp(2));
 
+        // MPC Track Edit uses a compact context header, not a second page title.
         LinearLayout header = row();
-        titleView = label("TRACK EDIT", 13, TEXT);
-        titleView.setTypeface(Typeface.DEFAULT_BOLD);
-        header.addView(titleView, new LinearLayout.LayoutParams(0, dp(38), 1f));
+
+        contextView = field("TRACK --");
+        contextView.setContentDescription("Track Edit Track context");
+        contextView.setTypeface(Typeface.DEFAULT_BOLD);
+        header.addView(contextView, new LinearLayout.LayoutParams(0, dp(42), 1.0f));
+
+        padContextView = field("PAD --");
+        padContextView.setContentDescription("Track Edit Pad context");
+        padContextView.setTypeface(Typeface.DEFAULT_BOLD);
+        LinearLayout.LayoutParams padLp = new LinearLayout.LayoutParams(dp(82), dp(42));
+        padLp.leftMargin = dp(4);
+        header.addView(padContextView, padLp);
+
+        editAllLayersButton = actionButton("EDIT ALL LAYERS", null);
+        editAllLayersButton.setEnabled(false);
+        editAllLayersButton.setAlpha(0.42f);
+        editAllLayersButton.setContentDescription("Track Edit Edit All Layers RESERVED");
+        LinearLayout.LayoutParams allLayersLp = new LinearLayout.LayoutParams(dp(124), dp(42));
+        allLayersLp.leftMargin = dp(4);
+        header.addView(editAllLayersButton, allLayersLp);
+
         Button back = actionButton("BACK", v -> this.listener.onBack());
         back.setContentDescription("Track Edit back");
-        header.addView(back, new LinearLayout.LayoutParams(dp(78), dp(38)));
+        LinearLayout.LayoutParams backLp = new LinearLayout.LayoutParams(dp(60), dp(42));
+        backLp.leftMargin = dp(4);
+        header.addView(back, backLp);
+
         addView(header, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
-        contextView = label("TRACK --  •  --", 10, MUTED);
-        contextView.setTypeface(Typeface.DEFAULT_BOLD);
-        contextView.setGravity(Gravity.CENTER_VERTICAL);
-        contextView.setPadding(dp(8), 0, dp(8), 0);
-        contextView.setContentDescription("Track Edit current track context");
-        contextView.setBackground(strokeBackground(SURFACE_2, LINE, 5));
-        addView(contextView, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+        ScrollView scroll = new ScrollView(context);
+        scroll.setFillViewport(true);
+        body = column();
+        body.setPadding(0, dp(4), 0, dp(4));
+        scroll.addView(body, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
+        // Keep the parameter context switch persistent at the bottom, outside
+        // the scrollable editor body, matching the MPC workflow.
         LinearLayout tabs = row();
-        String[] labels = {"GLOBAL", "SAMPLES", "ENV", "LFO", "MOD", "FX"};
+        tabs.setPadding(0, dp(2), 0, 0);
+        String[] labels = {"GLOBAL", "SAMPLES", "AMP ENV", "LFO", "MODS", "EFFECTS"};
         String[] descriptions = {
                 "Track Edit Global tab",
                 "Track Edit Samples tab",
-                "Track Edit Envelopes tab",
+                "Track Edit AMP ENV tab",
                 "Track Edit LFO tab",
                 "Track Edit Modulations tab",
                 "Track Edit Effects tab"
@@ -199,20 +222,14 @@ final class MpcTrackEditView extends LinearLayout {
             button.setContentDescription(descriptions[i]);
             tabButtons[i] = button;
             tabs.addView(button, new LinearLayout.LayoutParams(
-                    0, dp(40), 1f));
+                    0, dp(42), 1f));
         }
+        tabs.setContentDescription("Track Edit bottom tab bar");
         addView(tabs, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+    }
 
-        ScrollView scroll = new ScrollView(context);
-        scroll.setFillViewport(true);
-        body = column();
-        body.setPadding(0, dp(4), 0, dp(4));
-        scroll.addView(body, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-        addView(scroll, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+      ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
     }
 
     void bind(Snapshot snapshot) {
@@ -223,21 +240,22 @@ final class MpcTrackEditView extends LinearLayout {
     private void render() {
         if (snapshot == null) return;
 
-        titleView.setText("TRACK EDIT • "
-                + String.format(Locale.ROOT, "TRACK %02d", snapshot.trackIndex + 1));
         contextView.setText(String.format(
                 Locale.ROOT,
-                "TRACK %02d • %s • %s • PAD %02d • LAYER %d/8",
+                "TRACK %02d • %s",
                 snapshot.trackIndex + 1,
-                snapshot.trackType,
-                snapshot.programName,
-                snapshot.selectedPad + 1,
-                snapshot.selectedLayer + 1));
+                snapshot.trackType));
+        padContextView.setText(String.format(
+                Locale.ROOT,
+                "PAD %02d",
+                snapshot.selectedPad + 1));
+        editAllLayersButton.setContentDescription(
+                "Track Edit Edit All Layers RESERVED");
 
         for (int i = 0; i < tabButtons.length; i++) {
             final boolean active = Tab.values()[i] == tab;
             tabButtons[i].setText(new String[]{
-                    "GLOBAL", "SAMPLES", "ENV", "LFO", "MOD", "FX"
+                    "GLOBAL", "SAMPLES", "AMP ENV", "LFO", "MODS", "EFFECTS"
             }[i]);
             tabButtons[i].setTextColor(active ? BG : TEXT);
             tabButtons[i].setBackground(strokeBackground(

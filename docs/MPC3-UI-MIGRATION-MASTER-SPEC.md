@@ -493,12 +493,17 @@ Track Edit is attached to the selected track.
 
 Target tabs, adapted to supported program types:
 
-- Global;
-- Samples;
-- Envelopes;
+- GLOBAL;
+- SAMPLES;
+- AMP ENV;
 - LFO;
-- Modulations;
-- Effects.
+- MODS;
+- EFFECTS.
+
+Track Edit geometry follows the MPC touch workflow: compact TRACK/PAD context at the top,
+the scrollable parameter workspace in the center, and a persistent tab bar at the bottom.
+Edit All Layers remains a visible but explicitly unavailable action until the domain exposes
+an atomic multi-layer command.
 
 For Drum tracks:
 
@@ -1061,3 +1066,17 @@ Main and Track View explicitly establish their hardware/Data Dial focus on entry
 - The shell left edge now follows the MPC3 Main composition more closely: five shortcuts sit beside a dedicated condensed Mixer Strip area; central Sequence/Track/Program information is no longer duplicated as a dashboard column.
 - The condensed mixer area exposes only backend-truthful channel information: selected Track status, selected Drum Pad level/pan/tune, and explicit RESERVED Track/Main Output level states where our backend does not yet expose those values.
 - Toolbar was simplified toward the MPC Main information hierarchy: Project, playhead position, Timing Correct, Metronome, Automation and Menu; diagnostic AUDIO/MIDI chips remain internal rather than being part of the MPC-facing toolbar.
+
+
+## 2026-10-02 Track Edit geometry fidelity checkpoint
+
+The Track Edit workspace now follows the documented MPC composition rather than a generic Android editor layout:
+
+- compact **TRACK** and **PAD** context fields occupy the top of the workspace;
+- **EDIT ALL LAYERS** remains a visible, disabled/reserved action because no atomic multi-layer semantic command exists;
+- the parameter workspace is vertically scrollable;
+- **GLOBAL / SAMPLES / AMP ENV / LFO / MODS / EFFECTS** is a persistent bottom tab bar;
+- selected-tab state uses the same red interaction accent used for MPC-style focused state;
+- touch and hardware still converge on the existing semantic layer selection path.
+
+This is a presentation-only refinement; realtime audio, MIDI transport, sequencer timing and sample decoding remain untouched.

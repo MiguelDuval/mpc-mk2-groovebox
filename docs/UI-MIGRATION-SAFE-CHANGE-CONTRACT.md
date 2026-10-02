@@ -204,3 +204,18 @@ No realtime audio, sampler, sequencer scheduler/clock, raw MIDI decoder or hardw
 Verification:
 - GitHub Actions: no completed status was available at this checkpoint; do not treat the branch as CI-green.
 - Physical MkII verification: pending.
+
+
+## 2026-10-02 Track Edit geometry checkpoint
+
+Branch: `work/mpc3-ui-migration-master-spec`
+
+The bounded Track Edit workspace was brought into structural alignment with the documented MPC layout:
+top TRACK/PAD context → scrollable parameter workspace → persistent bottom tab bar.
+
+The change is presentation-only. Existing Drum semantic setters, sample-region editing and MkII layer focus remain the backend; unsupported LFO/Modulation/Effects and atomic Edit All Layers behavior stay reserved.
+
+Verification target:
+- Android source preflight includes the Track Edit geometry/content-description contract;
+- GitHub Actions must re-run for the new commit;
+- physical MkII verification remains pending.

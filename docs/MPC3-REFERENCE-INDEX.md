@@ -452,3 +452,13 @@ The current MPC3 reference describes Main as Toolbar + Shortcuts + Mixer Strips 
 
 Repository decision:
 Our shell now reserves that left edge for five shortcuts plus condensed mixer strips; Sequence/Track/Program remain in the central Main workspace. Values without a current backend semantic remain explicitly reserved.
+
+
+## 16.4 Track Edit geometry reference lock
+
+Source checked: official MPC Standalone OS user guides, including current MPC 3.x documentation and the v3.7 Track Edit description. The documented Drum Track Edit screen uses a top TRACK/PAD context, a visible Edit All Layers control, and a bottom parameter-tab surface. citeturn152242search1turn152242search2
+
+Repository decision:
+the Android Track Edit workspace must keep TRACK/PAD context at the top, parameter content in the middle, and GLOBAL/SAMPLES/AMP ENV/LFO/MODS/EFFECTS navigation at the bottom. Display labels are canonical; internal enum names may remain implementation-oriented.
+
+Confidence: HIGH for the overall geometry and bottom-tab behavior; individual unsupported parameters remain governed by our truthfulness rule.

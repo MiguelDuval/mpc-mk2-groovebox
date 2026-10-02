@@ -526,16 +526,26 @@ From Main Track section:
 - double tap relevant track/program area;
 - hardware Mode shortcut where supported.
 
+Track Edit geometry:
+
+- compact **TRACK** field at the top-left;
+- compact **PAD** field beside it;
+- visible **Edit All Layers** action affordance at the top-right, disabled/reserved until its atomic backend command exists;
+- scrollable parameter workspace;
+- persistent bottom tab bar.
+
 ## 7.2 Tab bar
 
-Target:
+Target display labels:
 
-- Global;
-- Samples;
-- Envelopes;
+- GLOBAL;
+- SAMPLES;
+- AMP ENV;
 - LFO;
-- Modulations;
-- Effects.
+- MODS;
+- EFFECTS.
+
+The bottom tab bar stays outside the scrollable editor body so the primary context switch remains reachable during deep parameter editing.
 
 ## 7.3 Drum context
 
@@ -1002,3 +1012,9 @@ Program Edit remains reserved until the backend can truthfully edit Program cont
 - Main central content remains the authoritative Sequence and Track/Arrangement workspace.
 - The shell Mixer Strip shows selected Track state plus the selected Drum Pad's real level/pan/tune; unavailable Track/Main Output levels remain RESERVED.
 - The top toolbar is reduced to the MPC information hierarchy and no longer exposes diagnostic MIDI/audio chips as primary product controls.
+
+
+### 7.5 Geometry acceptance
+
+A Track Edit build is accepted only when the top TRACK/PAD context and bottom parameter-tab bar are structurally persistent,
+the selected tab is visibly distinct, and reserved functions remain truthful rather than simulated.
