@@ -561,10 +561,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         root.setBackgroundColor(BG);
         root.addView(mpcShell.root(), new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        /*
+         * These two views are diagnostics, not part of the MPC Main surface.
+         * Keep them available to UI-audit runs but remove them from the
+         * normal musical workspace so the Function Bar is the true bottom
+         * edge of the instrument UI.
+         */
+        hardwareFeedbackView.setVisibility(
+                uiAuditSmokeMode ? View.VISIBLE : View.GONE);
+        bottomStatus.setVisibility(
+                uiAuditSmokeMode ? View.VISIBLE : View.GONE);
         root.addView(hardwareFeedbackView, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                uiAuditSmokeMode ? dp(24) : 0));
         root.addView(bottomStatus, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                uiAuditSmokeMode ? dp(28) : 0));
 
         refreshMpcFunctionBar();
         showMainPage();
