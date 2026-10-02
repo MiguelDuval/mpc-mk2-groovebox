@@ -345,7 +345,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         applyFullscreenWindowPolicy();
 
         navigationController = new MpcNavigationController(
-                state -> runOnUiThread(this::updateMpcShellState));
+                uiState -> runOnUiThread(this::updateMpcShellState));
 
         audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         if (audioManager != null) {
