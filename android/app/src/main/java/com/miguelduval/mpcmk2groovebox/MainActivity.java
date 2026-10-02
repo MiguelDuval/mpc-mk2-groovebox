@@ -610,11 +610,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         area.setContentDescription("MPC shell mixer strips");
 
         LinearLayout header = row();
-        TextView headerLabel = label("MIXER", 8, MUTED);
-        headerLabel.setTypeface(Typeface.DEFAULT_BOLD);
-        headerLabel.setGravity(Gravity.CENTER_VERTICAL);
-        headerLabel.setPadding(dp(5), 0, dp(5), 0);
-        header.addView(headerLabel, new LinearLayout.LayoutParams(
+        android.widget.Space headerSpacer = new android.widget.Space(this);
+        header.addView(headerSpacer, new LinearLayout.LayoutParams(
                 0, dp(24), 1));
 
         compactMixerToggle = actionButton("◉", v -> {
@@ -653,6 +650,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
+        LinearLayout trackTabs = row();
+        compactTrackTabs = trackTabs;
+        for (String tab : new String[]{"LVL", "FX", "SEND", "I/O"}) {
+            TextView tabView = label(tab, 7, tab.equals("LVL") ? TEXT : MUTED);
+            tabView.setGravity(Gravity.CENTER);
+            tabView.setTypeface(Typeface.DEFAULT_BOLD);
+            tabView.setBackground(strokeBackground(
+                    tab.equals("LVL") ? SURFACE_2 : BG,
+                    tab.equals("LVL") ? LINE : Color.TRANSPARENT,
+                    2));
+            trackTabs.addView(tabView,
+                    new LinearLayout.LayoutParams(0, dp(22), 1));
+        }
+        compactMixerPanel.addView(trackTabs,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+
         compactTrackStateLabel = label(
                 "REC OFF • MUTE OFF • SOLO —",
                 8,
@@ -675,23 +689,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactMixerPanel.addView(compactTrackLevelLabel,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
-
-        LinearLayout trackTabs = row();
-        compactTrackTabs = trackTabs;
-        for (String tab : new String[]{"LVL", "FX", "SEND", "I/O"}) {
-            TextView tabView = label(tab, 7, tab.equals("LVL") ? TEXT : MUTED);
-            tabView.setGravity(Gravity.CENTER);
-            tabView.setTypeface(Typeface.DEFAULT_BOLD);
-            tabView.setBackground(strokeBackground(
-                    tab.equals("LVL") ? SURFACE_2 : BG,
-                    tab.equals("LVL") ? LINE : Color.TRANSPARENT,
-                    2));
-            trackTabs.addView(tabView,
-                    new LinearLayout.LayoutParams(0, dp(22), 1));
-        }
-        compactMixerPanel.addView(trackTabs,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
 
         // Pad strip: actual level/pan/tune semantics from the selected Drum pad.
         compactPadCaption = label("PAD", 8, MUTED);
