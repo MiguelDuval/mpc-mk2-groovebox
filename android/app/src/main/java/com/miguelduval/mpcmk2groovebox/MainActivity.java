@@ -1738,6 +1738,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     selected ? ACCENT : LINE,
                     6));
         }
+
+        if (mainTrackArrangementHost != null) {
+            final TextView selectedPadView = findTextByContentDescription(
+                    mainTrackArrangementHost,
+                    "Main Track View selected pad");
+            if (selectedPadView != null) {
+                selectedPadView.setText(String.format(
+                        Locale.ROOT,
+                        "PAD %02d • BANK %s • Track %02d",
+                        selectedPadIndexForUi() + 1,
+                        (char) ('A' + Math.max(
+                                0,
+                                Math.min(7, navigationController.state().padBank()))),
+                        Math.max(0, nativeSequenceGetSelectedTrack()) + 1));
+            }
+        }
     }
 
     private View buildPadGrid() {
