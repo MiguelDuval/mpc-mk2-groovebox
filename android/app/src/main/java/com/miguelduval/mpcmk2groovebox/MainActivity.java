@@ -7004,6 +7004,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         hardwareEraseActive,
                         stepEditParameter,
                         selectedSequenceStep,
+                        hardwareFocus,
                         status);
 
         final String signature = state.signature();
