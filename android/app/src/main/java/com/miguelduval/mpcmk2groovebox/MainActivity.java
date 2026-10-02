@@ -1450,22 +1450,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackProgramHeader.addView(program, new LinearLayout.LayoutParams(
                 0, dp(42), 1.75f));
 
-        trackProgramHeader.addView(actionButton(
-                "BROWSER",
-                v -> showBrowserPage()),
-                new LinearLayout.LayoutParams(dp(84), dp(32)));
-        trackProgramSection.addView(trackProgramHeader, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
-
-        /*
-         * MPC Main uses a compact track-type icon next to the Track field.
-         * Only Drum is currently implemented by our semantic backend, so the
-         * selector is intentionally compact rather than presenting a row of
-         * pretend track types.
-         */
-        trackProgramSection.addView(buildMainTrackTypeSelector(),
+        trackProgramHeader.addView(
+                buildMainTrackTypeSelector(),
+                new LinearLayout.LayoutParams(dp(88), dp(42)));
+        trackProgramSection.addView(trackProgramHeader,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
         /*
          * MPC Main keeps Track and Arrangement as sibling views of the same
@@ -2223,14 +2213,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return "EVENTS • " + status.substring(start, end);
     }
 
-    private LinearLayout buildMainTrackTypeSelector() {
-        LinearLayout row = row();
-        row.setContentDescription("Main Mode track type selector");
-
+    private Button buildMainTrackTypeSelector() {
         final Button typeField = mainInfoButton(
                 "DRUM • TYPE",
                 "TRACKTYPE_DRUM");
-        typeField.setContentDescription("Main Mode selected track type");
+        typeField.setContentDescription("Main Mode track type selector");
         typeField.setOnClickListener(v -> {
             hardwareFocus = 5;
             setBottomStatus(
@@ -2240,9 +2227,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             navigationController.setDataDialFocus(
                     MpcUiState.DataDialFocus.TRACK_TYPE);
         });
-        row.addView(typeField, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
-        return row;
+        return typeField;
     }
 
     private Button mainInfoButton(String text, String tag) {
@@ -2274,7 +2259,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (content == null) return;
         final View selector = findViewWithContentDescription(
                 content, "Main Mode track type selector");
-        if (!(selector instanceof ViewGroup)) return;
+        if (!(selector instanceof Button)) return;
 
         String active = "DRUM";
         if (startupComplete) {
@@ -2285,26 +2270,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
         }
 
-        final ViewGroup group = (ViewGroup) selector;
-        for (int i = 0; i < group.getChildCount(); i++) {
-            View child = group.getChildAt(i);
-            if (!(child instanceof Button)) continue;
-            Button button = (Button) child;
-            final Object tag = button.getTag();
-            final String type = tag instanceof String
-                    ? ((String) tag).replace("TRACKTYPE_", "") : "";
-            final boolean selected = type.equals(active);
-            final boolean editable = "DRUM".equalsIgnoreCase(active);
-            button.setText(active + " • TYPE"
-                    + (editable ? "" : " • RESERVED"));
-            button.setEnabled(editable);
-            button.setAlpha(editable ? 1.0f : 0.45f);
-            button.setTextColor(selected && editable ? BG : TEXT);
-            button.setBackground(strokeBackground(
-                    selected && editable ? ACCENT : SURFACE_2,
-                    selected && editable ? ACCENT : LINE,
-                    5));
-        }
+        final Button button = (Button) selector;
+        final Object tag = button.getTag();
+        final String type = tag instanceof String
+                ? ((String) tag).replace("TRACKTYPE_", "") : "";
+        final boolean selected = type.equals(active);
+        final boolean editable = "DRUM".equalsIgnoreCase(active);
+        button.setText(active + " • TYPE"
+                + (editable ? "" : " • RESERVED"));
+        button.setEnabled(editable);
+        button.setAlpha(editable ? 1.0f : 0.45f);
+        button.setTextColor(selected && editable ? BG : TEXT);
+        button.setBackground(strokeBackground(
+                selected && editable ? ACCENT : SURFACE_2,
+                selected && editable ? ACCENT : LINE,
+                5));
     }
 
     private String normalizeProgramLabel(String status) {
