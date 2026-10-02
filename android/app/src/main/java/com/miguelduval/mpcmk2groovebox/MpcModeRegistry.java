@@ -28,7 +28,7 @@ final class MpcModeRegistry {
             new Entry(MpcUiState.Mode.GRID, "GRID", true),
 
             new Entry(MpcUiState.Mode.STEP, "STEP", true),
-            new Entry(MpcUiState.Mode.TRACK_EDIT, "TRACK EDIT", false),
+            new Entry(MpcUiState.Mode.TRACK_EDIT, "TRACK EDIT", true),
             new Entry(MpcUiState.Mode.SAMPLE_EDIT, "SAMPLE EDIT", true),
             new Entry(MpcUiState.Mode.SAMPLER, "SAMPLER", true),
 
