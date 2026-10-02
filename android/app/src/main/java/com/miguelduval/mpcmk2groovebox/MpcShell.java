@@ -52,10 +52,10 @@ final class MpcShell {
                 dp(context, 54), ViewGroup.LayoutParams.MATCH_PARENT));
 
         /*
-         * Shortcuts and persistent context are separate columns. The context
-         * column remains visible while the active workspace changes, keeping
-         * sequence/track/program/pad state glanceable without stealing height
-         * from the workspace.
+         * Shortcuts and the persistent mixer context are separate columns. The
+         * context column remains visible while the active workspace changes,
+         * keeping Track/Pad/Main channel information glanceable without
+         * stealing vertical space from the workspace.
          */
         contextArea = new LinearLayout(context);
         contextArea.setOrientation(LinearLayout.VERTICAL);
