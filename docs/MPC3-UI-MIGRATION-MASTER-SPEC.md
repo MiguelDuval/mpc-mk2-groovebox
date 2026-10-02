@@ -270,7 +270,7 @@ Required conceptual regions:
 
 ### Main Track quick-sample surface
 
-For a Drum Track, Main Track may provide a compact performance/sample surface: pads plus a selected Pad/Layer waveform with Start/End editing, audition, and entry into the dedicated Sample Edit context. Directly above that canvas, the UI uses the MPC Main track-state vocabulary **Monitor / Length / Velocity / Layer**; unsupported values are rendered as unavailable rather than fabricated. Double-tapping the waveform is the semantic Track Edit entry gesture; while Track Edit backend support is pending, the app opens a truthful reserved Track Edit context with the current Track/Pad/Layer instead of silently doing nothing. This surface reuses existing audio/sample-region semantics and must not introduce a second audio editing model.
+For a Drum Track, Main Track may provide a compact performance/sample surface: pads plus a selected Pad/Layer waveform with Start/End editing, audition, and entry into the dedicated sample workflow. Directly below the Track waveform/canvas, the UI uses the MPC Main track-state vocabulary **Monitor / Length / Velocity / Layer**; unsupported values are rendered as unavailable rather than fabricated. Double-tapping the waveform is the semantic Track Edit entry gesture; while Track Edit backend support is pending, the app opens a truthful reserved Track Edit context with the current Track/Pad/Layer instead of silently doing nothing. This surface reuses existing audio/sample-region semantics and must not introduce a second audio editing model.
 
 In the sibling Arrangement view, double-tapping the overview is the semantic Grid entry gesture. The app opens Grid for supported Drum tracks and reports the unsupported Track Type explicitly otherwise.
 
