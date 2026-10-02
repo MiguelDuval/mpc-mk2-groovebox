@@ -1944,6 +1944,45 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetSelectedTrack
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackType(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    if (trackIndex < 0
+            || static_cast<std::size_t>(trackIndex)
+                    >= state.activeSequence().tracks.size()) {
+        return toJString(env, "NONE");
+    }
+
+    const auto& track =
+            state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)];
+    switch (track.kind) {
+        case mpc::domain::TrackKind::Drum: return toJString(env, "DRUM");
+        case mpc::domain::TrackKind::Keygroup: return toJString(env, "KEYGROUP");
+        case mpc::domain::TrackKind::Plugin: return toJString(env, "PLUGIN");
+        case mpc::domain::TrackKind::Midi: return toJString(env, "MIDI");
+        case mpc::domain::TrackKind::Audio: return toJString(env, "AUDIO");
+    }
+    return toJString(env, "NONE");
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsTrackMuted(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    if (trackIndex < 0
+            || static_cast<std::size_t>(trackIndex)
+                    >= state.activeSequence().tracks.size()) {
+        return JNI_FALSE;
+    }
+
+    return state.activeSequence().tracks[
+            static_cast<std::size_t>(trackIndex)].muted
+            ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackProgram(
         JNIEnv* env, jobject /* thiz */, jint trackIndex)
 {
