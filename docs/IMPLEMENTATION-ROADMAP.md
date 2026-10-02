@@ -71,7 +71,68 @@
 - automation.
 - event duration editing. **SOFTWARE + UI SLICE IMPLEMENTED — selected Drum step events expose deterministic duration editing from ¼ to 4× the active step grid, with playback-time mutation blocked and an effective grid duration shown for legacy zero-duration events. Hardware binding remains a follow-up physical ergonomics slice.**
 
-## Stage 7 — MPC-like UI
+## Permanent MPC 3.9 UI migration program — 2026-10-02
+
+The former generic "MPC-like UI" Stage 7 is now superseded by a permanent MPC 3.9 standalone UI migration.
+
+Canonical documents:
+
+- docs/MPC3-UI-MIGRATION-MASTER-SPEC.md
+- docs/MPC3-REFERENCE-INDEX.md
+- docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md
+
+Primary software reference:
+https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf
+
+Primary current MPC3 architecture reference:
+https://support.akaipro.com/en/support/solutions/articles/69000857771-mpc3-faq
+
+### Permanent UI target
+
+The product UI is to be rebuilt around the documented MPC 3.9 information architecture:
+
+Toolbar → Shortcuts → Mixer/Channel context → Sequence → Track/Arrangement → Function Buttons
+
+with Menu as the operating-system launcher and Grid, Step, Track Edit, Sample Edit, Sampler, Browser, Channel Mixer, Pad Mixer and performance modes as coherent contexts.
+
+This is an architectural migration, not a palette/shape reskin.
+
+### Protected lower layer
+
+Do not rewrite or destabilize:
+
+- realtime audio callback;
+- sampler engine;
+- sequencer scheduler/clock;
+- MIDI transport;
+- raw MkII decoder;
+- hardware SysEx protocol;
+- existing domain operations.
+
+Lower-layer edits are allowed only for truthful semantic prerequisites such as Track → Program resolution or read-only state queries.
+
+### Migration order
+
+1. Documentation lock.
+2. UI state/navigation extraction.
+3. MPC shell extraction.
+4. Menu + five shortcuts.
+5. Main Mode.
+6. Track View + Arrangement.
+7. Track → Program semantic correction.
+8. Grid + existing zoom/Step.
+9. Sample Edit + Sampler composition.
+10. Browser provider + MPC Browser UI.
+11. Channel Mixer + Pad Mixer.
+12. 16 Levels / Pad Perform / Next Sequence.
+13. Track Edit / Arrange / List Edit / Project / Preferences.
+14. Feedback parity and final physical workflow verification.
+
+### Rule
+
+No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry path, semantic state, backend command and controller feedback are documented first.
+
+## Stage 7 — MPC 3.9 standalone UI migration
 - UI shell. **IMPLEMENTED FOUNDATION — landscape-only standalone-style shell with persistent transport/status bar, persistent mode rail, fixed main workspace, and no root diagnostic ScrollView.**
 - Main. **UI FOUNDATION IMPLEMENTED — 4x4 software performance pads, selected-pad inspector, quick tone controls, layer selection and direct audition trigger.**
 - Browser. **UI FOUNDATION IMPLEMENTED — dedicated Browser mode with explicit WAV load target; full indexed/searchable browser is a later slice.**
