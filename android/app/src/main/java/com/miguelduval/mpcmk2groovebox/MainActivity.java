@@ -52,6 +52,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int REQUEST_MONITOR_AUDIO = 1003;
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
     private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
+    private static final boolean NATIVE_LIBRARY_LOADED;
+    private static final String NATIVE_LIBRARY_ERROR;
 
     private static final int BG = Color.rgb(14, 16, 18);
     private static final int SURFACE = Color.rgb(25, 29, 33);
@@ -65,7 +67,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int ACTIVE = Color.rgb(63, 207, 117);
 
     static {
-        System.loadLibrary("mpcgroovebox");
+        boolean loaded = false;
+        String errorMessage = "";
+        try {
+            System.loadLibrary("mpcgroovebox");
+            loaded = true;
+        } catch (Throwable error) {
+            errorMessage = error.getClass().getSimpleName() + ": "
+                    + String.valueOf(error.getMessage());
+            Log.e(TAG, "NATIVE_LIBRARY_LOAD_FAILED: " + errorMessage, error);
+        }
+        NATIVE_LIBRARY_LOADED = loaded;
+        NATIVE_LIBRARY_ERROR = errorMessage;
     }
 
     private AndroidMidiBridge midiBridge;
@@ -433,6 +446,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setContentView(buildApplicationShell());
         applyFullscreenWindowPolicy();
         Log.i(TAG, "UI_READY");
+
+        if (!NATIVE_LIBRARY_LOADED) {
+            final String failure = "Native engine unavailable: " + NATIVE_LIBRARY_ERROR;
+            if (bottomStatus != null) {
+                bottomStatus.setText(failure);
+            }
+            Log.e(TAG, "UI_NATIVE_UNAVAILABLE: " + failure);
+            if (uiOnlySmokeMode) {
+                Log.i(TAG, "UI_ONLY_COMPLETE");
+                return;
+            }
+            return;
+        }
 
         if (uiOnlySmokeMode) {
             bottomStatus.setText("UI-only startup diagnostic");
@@ -1447,8 +1473,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showMainPage() {
         clearStepEditPadLeds();
-        nativeSequenceSetStepEditContext(false, 0);
-        nativeSequenceSetLauncherContext(false, 0);
+        if (NATIVE_LIBRARY_LOADED) {
+            nativeSequenceSetStepEditContext(false, 0);
+            nativeSequenceSetLauncherContext(false, 0);
+        }
         clearSequenceLauncherLeds();
         currentPage = "MAIN";
         hardwareFocus = 0;
