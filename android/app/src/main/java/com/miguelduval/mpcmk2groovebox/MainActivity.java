@@ -2232,6 +2232,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "TRACKTYPE_DRUM");
         typeField.setContentDescription("Main Mode selected track type");
         typeField.setOnClickListener(v -> {
+            hardwareFocus = 5;
             setBottomStatus(
                     "TRACK TYPE • DRUM is the only implemented Main Track type");
             navigationController.setSubcontext(
