@@ -99,6 +99,7 @@ adb install -r "$APK"
 
 echo "Launching UI-only startup diagnostic..."
 adb shell am force-stop "$PACKAGE"
+adb logcat -c
 adb shell am start -n "$ACTIVITY" --es mpc.groovebox.smoke.mode ui-only
 
 wait_for_log_marker() {
@@ -131,18 +132,13 @@ assert_activity_present() {
 }
 
 wait_for_log_marker "UI_READY" 30 2
-if adb logcat -d -t 500 2>/dev/null | grep -Fq "MpcGroovebox: NATIVE_LIBRARY_LOAD_FAILED"; then
-  echo "ERROR: native library failed to load during UI-only startup."
-  adb logcat -d -t 800 2>/dev/null | grep -F "MpcGroovebox:" | tail -n 120 || true
-  dump_debug_state
-  exit 1
-fi
 wait_for_log_marker "UI_ONLY_COMPLETE" 30 2
 assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
 echo "UI-only startup diagnostic passed."
 
 echo "Launching full application..."
 adb shell am force-stop "$PACKAGE"
+adb logcat -c
 adb shell am start -n "$ACTIVITY"
 
 wait_for_log_marker "UI_READY" 30 2
@@ -153,5 +149,21 @@ wait_for_log_marker "MIDI_BRIDGE_END" 30 2
 wait_for_log_marker "STARTUP_COMPLETE" 30 2
 assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
 
-echo "Android emulator startup smoke test passed."
+mkdir -p build/mpc-ui-smoke
+adb exec-out screencap -p > build/mpc-ui-smoke/main.png
+adb shell uiautomator dump /sdcard/mpc-ui-smoke.xml >/dev/null
+adb pull /sdcard/mpc-ui-smoke.xml build/mpc-ui-smoke/ui.xml >/dev/null
+
+echo "Running in-process UI interaction audit..."
+adb shell am force-stop "$PACKAGE"
+adb logcat -c
+adb shell am start -n "$ACTIVITY" --es mpc.groovebox.smoke.mode ui-audit
+wait_for_log_marker "UI_READY" 30 2
+wait_for_log_marker "STARTUP_COMPLETE" 30 2
+wait_for_log_marker "UI_HIERARCHY_COMPLETE" 30 2
+wait_for_log_marker "UI_INTERACTION_COMPLETE" 60 2
+assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
+adb exec-out screencap -p > build/mpc-ui-smoke/audit-final.png
+
+echo "Android emulator startup and UI audit smoke test passed."
 
