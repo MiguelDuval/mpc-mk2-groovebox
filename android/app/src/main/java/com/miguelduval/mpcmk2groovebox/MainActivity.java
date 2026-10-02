@@ -1611,29 +1611,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
         /*
-         * MPC Main keeps Track and Arrangement as sibling views of the same
-         * Main-mode lower region. Track View is the default entry; switching
-         * views changes presentation only and never changes Navigation mode or
-         * the selected Track/Sequence.
+         * MPC Main presents Track and Arrangement as sibling headers of the
+         * same lower workspace. Keep the switch directly in that workspace
+         * rather than introducing a generic nested "MAIN VIEW" selector.
+         * The selected header remains the only view-state affordance; the
+         * workspace below changes presentation without changing Navigation
+         * mode or the selected Track/Sequence.
          */
         LinearLayout viewSelector = row();
-        TextView selectorLabel = sectionLabelView(
-                "MAIN VIEW",
-                new LinearLayout.LayoutParams(dp(82), dp(34)));
-        viewSelector.addView(selectorLabel);
+        viewSelector.setContentDescription("Main Track / Arrangement view switcher");
+        viewSelector.setPadding(dp(6), dp(2), dp(6), dp(2));
 
         mainTrackViewButton = actionButton("TRACK", v -> setMainTrackArrangementView(false));
-        mainTrackViewButton.setContentDescription("Main Track View selector");
+        mainTrackViewButton.setContentDescription("Main Track View header");
         viewSelector.addView(mainTrackViewButton,
-                new LinearLayout.LayoutParams(0, dp(34), 1));
+                new LinearLayout.LayoutParams(0, dp(36), 1));
 
         mainArrangementViewButton = actionButton(
                 "ARRANGEMENT",
                 v -> setMainTrackArrangementView(true));
-        mainArrangementViewButton.setContentDescription("Main Arrangement View selector");
+        mainArrangementViewButton.setContentDescription("Main Arrangement View header");
         viewSelector.addView(mainArrangementViewButton,
-                new LinearLayout.LayoutParams(0, dp(34), 1));
-        trackProgramSection.addView(viewSelector);
+                new LinearLayout.LayoutParams(0, dp(36), 1));
+
+        trackProgramSection.addView(viewSelector,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
 
         mainTrackArrangementHost = new FrameLayout(this);
         mainTrackArrangementHost.setContentDescription(
@@ -1645,9 +1648,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackWorkspace.setBackgroundColor(BG);
 
         LinearLayout trackWorkspaceHeader = row();
-        trackWorkspaceHeader.addView(sectionLabelView(
-                "TRACK",
-                new LinearLayout.LayoutParams(0, dp(30), 1)));
+        trackWorkspaceHeader.setContentDescription("Main Track View workspace actions");
+
+        android.widget.Space trackHeaderSpacer = new android.widget.Space(this);
+        trackWorkspaceHeader.addView(trackHeaderSpacer,
+                new LinearLayout.LayoutParams(0, dp(30), 1));
 
         Button trackEdit = actionButton("✎", v -> openMainTrackEditContext());
         trackEdit.setTextSize(16);
@@ -1795,9 +1800,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangement.setContentDescription("Main Mode arrangement preview");
 
         LinearLayout arrangementHeader = row();
-        arrangementHeader.addView(sectionLabelView(
-                "ARRANGEMENT",
-                new LinearLayout.LayoutParams(0, dp(30), 1)));
+        android.widget.Space arrangementHeaderSpacer = new android.widget.Space(this);
+        arrangementHeader.addView(arrangementHeaderSpacer,
+                new LinearLayout.LayoutParams(0, dp(30), 1));
         arrangementHeader.addView(actionButton(
                 "GRID",
                 v -> showSequenceGridPage()),
