@@ -113,6 +113,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private WaveformView recordingWaveform;
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
+    private SequenceTimelineView mainArrangementPreview;
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
     private SequenceLauncherView sequenceLauncherView;
@@ -1084,10 +1085,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangement.addView(arrangementInfo, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
-        SequenceOverviewView overview = new SequenceOverviewView(this);
-        overview.setContentDescription("Main Mode arrangement overview");
-        arrangement.addView(overview, new LinearLayout.LayoutParams(
+        mainArrangementPreview = new SequenceTimelineView(this);
+        mainArrangementPreview.setContentDescription("Main Mode arrangement overview");
+        arrangement.addView(mainArrangementPreview, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
+
+        TextView eventSummary = label("TRACK EVENTS • —", 9, MUTED);
+        eventSummary.setContentDescription("Main Mode arrangement event summary");
+        arrangement.addView(eventSummary, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
 
         lower.addView(arrangement, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.MATCH_PARENT, 0.52f));
@@ -1173,6 +1179,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         trackNameRefresh(trackIndex, trackCount);
         refreshMainTrackTypeVisuals();
+
+        if (mainArrangementPreview != null) {
+            mainArrangementPreview.setBarCount(sequenceBars);
+            mainArrangementPreview.setLoop(loopStartBar, loopEndBar);
+            final long ticksPerBar = Math.max(
+                    1L, Math.round(
+                            960.0 * Math.max(1, numerator) / 1.0));
+            final long positionTicks = nativeStateReady
+                    ? nativeSequencePositionTicks() : 0L;
+            final float playheadBar = 1.0f
+                    + (ticksPerBar > 0
+                            ? (float) positionTicks / (float) ticksPerBar
+                            : 0.0f);
+            mainArrangementPreview.setPlayheadBar(playheadBar);
+        }
+
+        final TextView eventSummary = findTextByContentDescription(
+                content, "Main Mode arrangement event summary");
+        if (eventSummary != null) {
+            final String status = nativeStateReady
+                    ? nativeSequenceTrackStatus(trackIndex)
+                    : "events=0";
+            eventSummary.setText(
+                    "TRACK EVENTS • " + trackEventSummary(status));
+        }
     }
 
     private String trackEventSummary(String status) {
