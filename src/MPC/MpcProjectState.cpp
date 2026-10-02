@@ -378,7 +378,12 @@ bool MpcProjectState::addTrack(
     switch (kind) {
         case domain::TrackKind::Drum:
             track.type = domain::ProgramType::Drum;
-            track.programId = "drum-program-1";
+            if (!project_.drumPrograms.empty()) {
+                const auto index = std::min(
+                        activeDrumProgramIndex_,
+                        project_.drumPrograms.size() - 1);
+                track.programId = project_.drumPrograms[index].id;
+            }
             break;
         case domain::TrackKind::Keygroup:
             track.type = domain::ProgramType::Keygroup;
@@ -402,6 +407,7 @@ bool MpcProjectState::addTrack(
 
     sequence.tracks.push_back(std::move(track));
     activeTrackIndex_ = sequence.tracks.size() - 1;
+    selectTrack(activeTrackIndex_);
     return true;
 }
 
