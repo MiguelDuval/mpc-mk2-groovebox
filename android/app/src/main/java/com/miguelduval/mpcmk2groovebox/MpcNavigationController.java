@@ -28,11 +28,8 @@ final class MpcNavigationController {
 
     MpcNavigationController(Listener listener) {
         this.listener = listener;
-        shortcuts[0] = MpcUiState.Mode.MAIN;
-        shortcuts[1] = MpcUiState.Mode.BROWSER;
-        shortcuts[2] = MpcUiState.Mode.GRID;
-        shortcuts[3] = MpcUiState.Mode.SAMPLER;
-        shortcuts[4] = MpcUiState.Mode.PAD_MIXER;
+        MpcUiState.Mode[] defaults = MpcModeRegistry.defaultShortcuts();
+        System.arraycopy(defaults, 0, shortcuts, 0, SHORTCUT_COUNT);
     }
 
     MpcUiState state() {
