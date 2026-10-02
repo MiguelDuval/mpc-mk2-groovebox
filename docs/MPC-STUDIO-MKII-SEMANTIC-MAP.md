@@ -838,3 +838,32 @@ The reverse-engineered MPC Studio MkII reports pressure-sensitive pad aftertouch
 Aftertouch is a continuous high-rate signal, so it does not enter the bounded semantic-action queue. The latest pressure is carried into a native realtime-safe atomic per-pad expression state. In the current sampler mapping, pressure 0 leaves the saved pad filter cutoff unchanged and pressure 127 lowers the active voice cutoff by three octaves. Project state, sequence data and recorded automation are not changed.
 
 This is an application-level musical mapping, not a claim about an Akai factory destination. Physical MkII verification remains required.
+
+
+## Controller feedback contract
+
+The MkII is not a self-contained application device: controller LED/display state is host-driven. Our application therefore treats feedback as part of the semantic action contract.
+
+### Feedback states
+
+- Single-color button: OFF, DIM, FULL.
+- Two-color button: OFF, COLOR 1 DIM, COLOR 2 DIM, COLOR 1 FULL, COLOR 2 FULL.
+- Pad RGB: semantic state is projected through the existing MkII SysEx RGB transport.
+- Touch Strip: nine segment brightness values plus the eight Note Repeat indicators.
+- LCD: compact context mirror, signature-gated to avoid unnecessary six-chunk refreshes.
+
+### Phone-side controller indication
+
+A persistent MKII status strip shows the currently active controller context, focused axis/selector where relevant, and pad-bank state. This is deliberately independent of transient action-result text: the user must always be able to see what the controller is controlling now.
+
+### Required parity
+
+Every newly implemented hardware control must define:
+
+1. semantic input state;
+2. phone indication;
+3. controller LED/pad/LCD indication where supported by the MkII protocol;
+4. explicit inactive/clear state;
+5. behavior when the context is unavailable on the current page.
+
+Reference sources: Akai Professional MPC Studio MkII support/manual material and the public reverse-engineering repository bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts.
