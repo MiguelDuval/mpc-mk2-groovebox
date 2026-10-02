@@ -209,10 +209,19 @@ final class MpcStudioMk2LcdRenderer {
         if (state.noteRepeat) {
             return "NOTE REPEAT " + noteRepeatRateLabel(state.noteRepeatRateIndex);
         }
-        if ("SEQ".equals(state.page) && state.selectedStep >= 0) {
+        if ("STEP".equals(state.page)
+                || ("SEQ".equals(state.page) && state.selectedStep >= 0)) {
             return "STEP " + parameterLabel(state.stepEditParameter)
                     + " #" + (state.selectedStep + 1);
         }
+        if ("GRID".equals(state.page)) return "GRID EDITOR";
+        if ("TRACK_VIEW".equals(state.page)) return "TRACK VIEW";
+        if ("BROWSER".equals(state.page)) return "BROWSER";
+        if ("SAMPLER".equals(state.page)) return "SAMPLER";
+        if ("CHANNEL_MIXER".equals(state.page)) return "CHANNEL MIX";
+        if ("PAD_MIXER".equals(state.page)) return "PAD MIX";
+        if ("NEXT_SEQUENCE".equals(state.page)) return "NEXT SEQ";
+        if ("ARRANGE".equals(state.page)) return "ARRANGE";
         return "TOUCH " + touchStripModeLabel(state.touchStripMode);
     }
 
