@@ -2689,8 +2689,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         sequenceName.setText(String.format(
                 Locale.ROOT, "Sequence %02d", sequenceIndex + 1));
-        sequenceType.setText("SEQ\n" + String.format(
-                Locale.ROOT, "%02d", sequenceIndex + 1));
+        sequenceType.setText("SEQ");
         transpose.setText("TRANSPOSE\n—");
         final double tempo = nativeStateReady
                 ? nativeSequenceGetTempo() : 120.0;
