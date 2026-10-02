@@ -401,3 +401,10 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **Quick sample editing reuses existing backend semantics:** waveform Start/End edits call the existing sample-region command; no new realtime/audio engine boundary was added.
 - **Layer context is explicit:** Layer −/+ remains inside Main and does not leave the selected Track/Sequence context.
 - **Full Sample Edit remains separate:** Main offers AUDITION and SAMPLE EDIT rather than duplicating the full editor's controls.
+
+## 2026-10-02 Main Track state-row parity increment
+
+- **MPC Main vocabulary added:** the Track workspace now exposes a compact Monitor / Length / Velocity / Layer row in the same visual neighborhood as the Track/Arrangement canvas.
+- **Truthful availability enforced:** Monitor and track-level Velocity remain explicitly unavailable because the current semantic backend has no corresponding state; Length is shown as sequence-scoped; Layer reflects the selected Drum sample layer.
+- **State synchronization:** changing the selected layer updates the Main Layer field without changing Track, Sequence or transport context.
+- **QA contract extended:** the Android UI smoke preflight now requires all four Main Track-state content descriptions.
