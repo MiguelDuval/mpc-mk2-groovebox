@@ -956,3 +956,22 @@ The five promoted shortcuts are now user-reorderable from Menu. The 4×4 Menu re
 A read-only native track-context bridge exposes Track Type, Program and Mute state to presentation code. This does not implement Program Select yet; full Track→Program ownership remains a protected architectural milestone before Program Edit/Track Edit is opened as a functional editor.
 
 No realtime audio callback, sampler rendering, sequencer scheduler/clock, raw MkII decoder or SysEx transport was changed in this checkpoint.
+
+## 2026-10-02 Browser / Arrangement UX checkpoint
+
+The Browser is now a dedicated product workspace rather than a direct Android picker wrapper. Its information architecture is explicitly separated into:
+`Places → Content → Expansions → Sample Assign`, with file-type filters, search, audition and a destination panel for Pad/Layer loading. The Android Document Provider remains only the storage transport.
+
+Arrangement is now a dedicated linear context with:
+- track lanes;
+- timeline/ruler;
+- loop brace with commit back to the existing sequence loop state;
+- playhead;
+- horizontal zoom;
+- track selection;
+- double-tap event handoff to Grid;
+- explicit Cut/Copy/Paste/Duplicate RESERVED states until truthful arrangement editing semantics exist.
+
+Current arrangement domain limitation is intentional: the existing domain stores patterns and events but does not yet store explicit linear clip placements. The Arrangement view therefore renders the first pattern of each track from bar 1 as the truthful current projection. It must not be represented as a fully editable multi-clip arranger until a placement model is added.
+
+Five shortcuts are configurable by both assignment and order. Only implemented contexts can be promoted; RESERVED contexts remain in Menu.
