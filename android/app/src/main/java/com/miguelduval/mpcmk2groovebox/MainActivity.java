@@ -3215,9 +3215,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
-        currentPage = "MIX";
-        navigationController.navigate(MpcUiState.Mode.CHANNEL_MIXER);
-        pageTitle.setText("MIX");
+        currentPage = "PAD_MIXER";
+        navigationController.navigate(MpcUiState.Mode.PAD_MIXER);
+        pageTitle.setText("PAD MIXER");
         content.removeAllViews();
 
         LinearLayout page = page();
@@ -3246,6 +3246,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             strip.addView(actionButton("SELECT", v -> {
                 selectedPad = p;
+                navigationController.setSelectedPad(p);
                 refreshPadSelectionVisuals();
                 showMainPage();
             }), new LinearLayout.LayoutParams(
