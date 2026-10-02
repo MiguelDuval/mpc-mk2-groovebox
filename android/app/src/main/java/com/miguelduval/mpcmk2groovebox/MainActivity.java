@@ -620,15 +620,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         header.addView(compactMixerToggle,
                 new LinearLayout.LayoutParams(dp(34), dp(24)));
 
-        compactMixerStripModeToggle = actionButton("▦", v -> {
-            compactMixerPadMode = !compactMixerPadMode;
-            applyCompactMixerStripMode();
-        });
-        compactMixerStripModeToggle.setTextSize(12);
-        compactMixerStripModeToggle.setContentDescription(
-                "MPC condensed Mixer Strip Track or Pad selector");
-        header.addView(compactMixerStripModeToggle,
-                new LinearLayout.LayoutParams(dp(34), dp(24)));
         area.addView(header, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
@@ -2049,7 +2040,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Locale.ROOT,
                 "LAYER\n%d/8",
                 selectedLayer + 1));
-        trackDetailRow.addView(layerDetail, weight());
+        trackDetailRow.addView(layerDetail,
+                new LinearLayout.LayoutParams(0, dp(42), 1));
+
+        compactMixerStripModeToggle = actionButton("▦", v -> {
+            compactMixerPadMode = !compactMixerPadMode;
+            applyCompactMixerStripMode();
+        });
+        compactMixerStripModeToggle.setTextSize(12);
+        compactMixerStripModeToggle.setContentDescription(
+                "MPC condensed Mixer Strip Track or Pad selector");
+        compactMixerStripModeToggle.setGravity(Gravity.CENTER);
+        trackDetailRow.addView(compactMixerStripModeToggle,
+                new LinearLayout.LayoutParams(dp(46), dp(40)));
 
         LinearLayout quickTrack = row();
 
