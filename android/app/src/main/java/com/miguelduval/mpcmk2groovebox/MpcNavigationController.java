@@ -55,6 +55,24 @@ final class MpcNavigationController {
         notifyListener();
     }
 
+    void moveShortcut(int from, int to) {
+        if (from < 0 || from >= SHORTCUT_COUNT
+                || to < 0 || to >= SHORTCUT_COUNT) {
+            throw new IllegalArgumentException("Shortcut slot out of range");
+        }
+        if (from == to) return;
+        final MpcUiState.Mode moved = shortcuts[from];
+        if (from < to) {
+            System.arraycopy(
+                    shortcuts, from + 1, shortcuts, from, to - from);
+        } else {
+            System.arraycopy(
+                    shortcuts, to, shortcuts, to + 1, from - to);
+        }
+        shortcuts[to] = moved;
+        notifyListener();
+    }
+
     void setShortcuts(MpcUiState.Mode... modes) {
         if (modes == null || modes.length != SHORTCUT_COUNT) {
             throw new IllegalArgumentException("Exactly five shortcuts are required");
