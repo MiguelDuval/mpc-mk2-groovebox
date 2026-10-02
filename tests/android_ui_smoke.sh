@@ -33,6 +33,8 @@ for required in \
   "HARDWARE_FOCUS_SEQUENCE_END" \
   "HARDWARE_FOCUS_SEQUENCE_BPM" \
   "HARDWARE_FOCUS_SEQUENCE_BARS" \
+  "double-tap for numeric entry" \
+  "showMpcNumericEntry" \
   "MPC condensed Mixer Strip show or hide" \
   "MPC condensed Mixer Strip" \
   "openMainTrackEditContext" \
