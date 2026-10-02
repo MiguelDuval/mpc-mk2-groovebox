@@ -104,7 +104,8 @@ if ! grep -Fq -- "uiAuditSmokeMode ? View.VISIBLE : View.GONE" "$MAIN_ACTIVITY_S
   exit 1
 fi
 
-if grep -Fq -- "private boolean compactMixerVisible" "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- "private boolean compactMixerPadMode" "$MAIN_ACTIVITY_SOURCE"; then
+if grep -Fq -- "private boolean compactMixerVisible" "$MAIN_ACTIVITY_SOURCE" || \
+   grep -Fq -- "private boolean compactMixerPadMode" "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: compact Mixer presentation state leaked back into MainActivity-local booleans"
   exit 1
 fi
@@ -116,8 +117,14 @@ if grep -Fq -- "sequenceAuxFields" "$MAIN_ACTIVITY_SOURCE" || \
 fi
 
 echo "Running MPC UI state/navigation source preflight..."
-for required in   "compactMixerVisible"   "compactMixerPadMode"   "withCompactMixerState"   "setCompactMixerState"   "Exactly five shortcuts are required"; do
-  if ! grep -Fq -- "$required" "$UI_STATE_SOURCE" &&      ! grep -Fq -- "$required" "$NAVIGATION_SOURCE"; then
+for required in \
+  "compactMixerVisible" \
+  "compactMixerPadMode" \
+  "withCompactMixerState" \
+  "setCompactMixerState" \
+  "Exactly five shortcuts are required"; do
+  if ! grep -Fq -- "$required" "$UI_STATE_SOURCE" && \
+     ! grep -Fq -- "$required" "$NAVIGATION_SOURCE"; then
     echo "ERROR: UI state/navigation contract missing: $required"
     exit 1
   fi
