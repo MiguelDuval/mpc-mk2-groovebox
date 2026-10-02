@@ -249,6 +249,13 @@ Note Repeat scheduling, Touch Strip contextual control, complete button/pad/LCD 
 This controller work supplements Stages 1, 2 and 7; it does not replace the overall roadmap.
 
 
+## 2026-10-02 Main Program context truthfulness increment
+
+- Program Select now resolves availability from the selected Track Type.
+- Drum Tracks expose the Drum Program list; non-Drum Tracks show an explicit unavailable state.
+- Persistent compact Program context mirrors the same availability instead of offering a misleading Drum assignment action.
+- Screen Blueprint now documents the compact context semantics and non-Drum behavior.
+
 ## 2026-10-02 MPC 3.9 shell context/channel increment
 
 - Shell composition advanced — the persistent left edge is now: five shortcuts → compact contextual track/program channel strip → workspace.

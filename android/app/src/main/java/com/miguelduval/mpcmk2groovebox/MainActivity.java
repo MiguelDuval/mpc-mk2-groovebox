@@ -689,20 +689,34 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Locale.ROOT, "SEQ %02d • %.1f BPM", sequence, tempo));
 
         if (nativeStateReady) {
+            final String trackType = nativeSequenceGetTrackType(trackIndex);
             final boolean armed = nativeSequenceIsSelectedTrackArmed();
             final boolean muted = nativeSequenceIsTrackMuted(trackIndex);
             compactTrackContext.setText(String.format(
                     Locale.ROOT,
                     "TRACK %02d • %s  %s%s",
                     track,
-                    nativeSequenceGetTrackType(trackIndex),
+                    trackType,
                     armed ? "REC" : "—",
                     muted ? " • MUTE" : ""));
+
+            final boolean drumProgramContext =
+                    "DRUM".equalsIgnoreCase(trackType);
             compactProgramContext.setText(
-                    "PROGRAM • " + nativeSequenceGetTrackProgram(trackIndex));
+                    drumProgramContext
+                            ? "PROGRAM • " + nativeSequenceGetTrackProgram(trackIndex)
+                            : "PROGRAM • N/A (" + trackType + ")");
+            compactProgramContext.setEnabled(drumProgramContext);
+            compactProgramContext.setAlpha(drumProgramContext ? 1.0f : 0.48f);
+            compactProgramContext.setOnClickListener(
+                    drumProgramContext ? v -> showProgramSelectPage() : null);
         } else {
             compactTrackContext.setText("TRACK 01 • DRUM");
             compactProgramContext.setText("PROGRAM • —");
+            compactProgramContext.setEnabled(true);
+            compactProgramContext.setAlpha(1.0f);
+            compactProgramContext.setOnClickListener(
+                    v -> showProgramSelectPage());
         }
 
         compactPadContext.setText(String.format(
@@ -2126,18 +2140,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 String.format(
                         Locale.ROOT,
                         "PROGRAM SELECT  •  TRACK %02d",
-                        nativeSequenceGetSelectedTrack() + 1),
+                        Math.max(0, nativeSequenceGetSelectedTrack()) + 1),
                 13, TEXT);
         heading.setTypeface(Typeface.DEFAULT_BOLD);
         page.addView(heading, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
-        final int programCount = Math.max(
-                0, nativeSequenceGetDrumProgramCount());
-        final int selectedProgram = nativeSequenceGetTrackProgramIndex(
-                nativeSequenceGetSelectedTrack());
+        final int selectedTrack = Math.max(
+                0, nativeSequenceGetSelectedTrack());
+        final String selectedTrackType = nativeSequenceGetTrackType(selectedTrack);
+        final boolean drumTrack =
+                "DRUM".equalsIgnoreCase(selectedTrackType);
+        navigationController.setActionAvailable(drumTrack);
 
-        if (programCount == 0) {
+        final int programCount = drumTrack
+                ? Math.max(0, nativeSequenceGetDrumProgramCount())
+                : 0;
+        final int selectedProgram = drumTrack
+                ? nativeSequenceGetTrackProgramIndex(selectedTrack)
+                : -1;
+
+        if (!drumTrack) {
+            page.addView(label(
+                    "PROGRAM SELECT UNAVAILABLE • "
+                            + selectedTrackType + " TRACK",
+                    12, MUTED));
+            page.addView(label(
+                    "Select a Drum Track to choose a Drum Program.",
+                    11, MUTED));
+        } else if (programCount == 0) {
             page.addView(label(
                     "NO DRUM PROGRAMS",
                     12, MUTED));
@@ -2156,7 +2187,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 i == selectedProgram ? "  • CURRENT" : ""),
                         v -> {
                             setBottomStatus(nativeSequenceSetTrackProgram(
-                                    nativeSequenceGetSelectedTrack(),
+                                    selectedTrack,
                                     programIndex));
                             navigationController.setSelectedProgram(
                                     nativeSequenceGetDrumProgramName(programIndex));

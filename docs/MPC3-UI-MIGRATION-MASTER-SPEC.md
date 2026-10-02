@@ -236,6 +236,10 @@ The compact strip is vertical and remains visible while the active workspace cha
 
 Sequence, Track and Program fields are direct entry points to the existing Main selection contexts. The strip is presentation-only and reads the existing semantic/domain state; it does not own transport or audio behavior.
 
+### Main Program Select truthfulness rule
+
+The persistent Program field and Main Program Select context are enabled only for a Drum Track. When another Track Type is selected, the UI must show an explicit unavailable state rather than exposing the Drum Program list as though it were owned by that Track.
+
 ## 5. Main Mode — P0
 
 Main Mode becomes the center of the application.
