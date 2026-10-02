@@ -1704,6 +1704,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ? "NO NAME"
                         : sampleName.trim();
 
+        if (mainTrackSampleActionButton != null) {
+            if (frames <= 0) {
+                mainTrackSampleActionButton.setText("RECORD");
+                mainTrackSampleActionButton.setOnClickListener(
+                        v -> showRecordPage());
+                mainTrackSampleActionButton.setContentDescription(
+                        "Main Track View record sample");
+            } else {
+                mainTrackSampleActionButton.setText("BROWSE");
+                mainTrackSampleActionButton.setOnClickListener(
+                        v -> showBrowserPage());
+                mainTrackSampleActionButton.setContentDescription(
+                        "Main Track View browse samples");
+            }
+        }
+
         final TextView info = findTextByContentDescription(
                 content,
                 "Main Track View quick sample info");
@@ -2117,10 +2133,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final String type = tag instanceof String
                     ? ((String) tag).replace("TRACKTYPE_", "") : "";
             final boolean selected = type.equals(active);
-            button.setTextColor(selected ? BG : TEXT);
+            final boolean editable = "DRUM".equalsIgnoreCase(active);
+            button.setText(active + " • TYPE"
+                    + (editable ? "" : " • RESERVED"));
+            button.setEnabled(editable);
+            button.setAlpha(editable ? 1.0f : 0.45f);
+            button.setTextColor(selected && editable ? BG : TEXT);
             button.setBackground(strokeBackground(
-                    selected ? ACCENT : SURFACE_2,
-                    selected ? ACCENT : LINE,
+                    selected && editable ? ACCENT : SURFACE_2,
+                    selected && editable ? ACCENT : LINE,
                     5));
         }
     }
