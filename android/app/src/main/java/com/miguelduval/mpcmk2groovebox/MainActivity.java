@@ -90,6 +90,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView compactFocusContext;
     private android.widget.ProgressBar compactPadLevelMeter;
     private TextView compactPadLevelLabel;
+    private TextView compactPadPanLabel;
+    private TextView compactPadTuneLabel;
     private Button timingCorrectTopButton;
     private Button metronomeTopButton;
     private Button automationTopButton;
@@ -578,6 +580,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         area.addView(compactPadLevelLabel, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
 
+        LinearLayout padMixValues = row();
+
+        compactPadPanLabel = label(
+                "PAN C",
+                9,
+                MUTED);
+        compactPadPanLabel.setGravity(Gravity.CENTER);
+        compactPadPanLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        compactPadPanLabel.setContentDescription(
+                "MPC Main Mixer Strip pad pan");
+        compactPadPanLabel.setBackground(strokeBackground(
+                SURFACE_2, LINE, 5));
+        padMixValues.addView(compactPadPanLabel, new LinearLayout.LayoutParams(
+                0, dp(28), 1));
+
+        compactPadTuneLabel = label(
+                "TUNE +0.0",
+                9,
+                MUTED);
+        compactPadTuneLabel.setGravity(Gravity.CENTER);
+        compactPadTuneLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        compactPadTuneLabel.setContentDescription(
+                "MPC Main Mixer Strip pad tuning");
+        compactPadTuneLabel.setBackground(strokeBackground(
+                SURFACE_2, LINE, 5));
+        padMixValues.addView(compactPadTuneLabel, new LinearLayout.LayoutParams(
+                0, dp(28), 1));
+
+        area.addView(padMixValues, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+
         compactFocusContext = compactContextField(
                 "DIAL • NONE",
                 "MPC shell dial focus",
@@ -781,6 +814,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "LEVEL %d%%  •  PAD %02d",
                     levelPercent,
                     selectedPad + 1));
+
+            if (compactPadPanLabel != null) {
+                final float pan = nativeStateReady
+                        ? Math.max(-1.0f, Math.min(1.0f,
+                                nativeAudioGetPadPan(selectedPad)))
+                        : 0.0f;
+                compactPadPanLabel.setText(
+                        "PAN " + (Math.abs(pan) < 0.01f
+                                ? "C"
+                                : String.format(
+                                        Locale.ROOT,
+                                        "%s%d",
+                                        pan < 0.0f ? "L" : "R",
+                                        Math.round(Math.abs(pan) * 100.0f))));
+            }
+
+            if (compactPadTuneLabel != null) {
+                final float tune = nativeStateReady
+                        ? Math.max(-24.0f, Math.min(24.0f,
+                                nativeAudioGetPadTuning(selectedPad)))
+                        : 0.0f;
+                compactPadTuneLabel.setText(String.format(
+                        Locale.ROOT,
+                        "TUNE %+0.1f",
+                        tune));
+            }
         }
 
         final MpcUiState state = navigationController.state();
