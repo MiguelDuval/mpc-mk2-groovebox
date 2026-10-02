@@ -1343,7 +1343,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 actionButton("LOOP", v -> {
                     setBottomStatus(nativeSequenceSetLoopEnabled(
                             !nativeSequenceIsLoopEnabled()));
-                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop, start, end);
+                    refreshMainModeState(
+                            sequenceName, sequenceType, bpm, bars, timeSig, loop,
+                            start, end, transpose);
                 }),
                 weight());
         sequenceCard.addView(sequenceActions, new LinearLayout.LayoutParams(
