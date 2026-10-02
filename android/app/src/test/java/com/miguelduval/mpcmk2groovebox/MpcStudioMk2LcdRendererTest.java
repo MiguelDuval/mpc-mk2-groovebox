@@ -31,13 +31,26 @@ public final class MpcStudioMk2LcdRendererTest {
                         false,
                         0,
                         -1,
+                        19,
                         "ready");
 
         final String signature = state.signature();
 
         assertTrue(signature.contains("|true|false|true|"));
-        assertTrue(signature.contains("|NRtrue:2|LOCtrue|ERfalse|"));
+        assertTrue(signature.contains("|NRtrue:2|LOCtrue|ERfalse|STEP0:-1|FOCUS19|"));
+
     }
+    @Test
+    public void focusLabelIsProjectedIntoSignature() {
+        final MpcStudioMk2LcdRenderer.State state =
+                new MpcStudioMk2LcdRenderer.State(
+                        "MAIN",
+                        0, 1, -1, 0, 1, 120.0, 4, 4, 0L,
+                        false, false, false, 0, 0, 0, 0,
+                        false, false, false, 0, -1, 10, "");
+        assertTrue(state.signature().contains("|FOCUS10|"));
+    }
+
     @Test
     public void waveformZoomPolicyChangesAxesIndependentlyAndClamps() {
         float horizontal = MpcZoomPolicy.MAX_HORIZONTAL_SPAN;
