@@ -131,6 +131,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private LinearLayout compactMixerPanel;
     private Button compactMixerToggle;
     private boolean compactMixerVisible = true;
+    private AlertDialog activeMpcParameterDialog;
     private Button timingCorrectTopButton;
     private Button metronomeTopButton;
     private Button automationTopButton;
@@ -1502,6 +1503,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 })
                 .create();
         dialog.show();
+        activeMpcParameterDialog = dialog;
     }
 
     private void showTimeSignatureDialog() {
@@ -1611,6 +1613,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 })
                 .create();
         dialog.show();
+        activeMpcParameterDialog = dialog;
     }
 
     private View buildModeRail() {
@@ -2142,6 +2145,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         installMainNumericEntry(bars, MainNumericField.BARS);
         installMainNumericEntry(start, MainNumericField.LOOP_START);
         installMainNumericEntry(end, MainNumericField.LOOP_END);
+        timeSig.setContentDescription("Main Time Signature field • tap for editor");
         timeSig.setOnClickListener(v -> {
             if (!startupComplete) {
                 setBottomStatus("TIME SIGNATURE • waiting for sequencer");
