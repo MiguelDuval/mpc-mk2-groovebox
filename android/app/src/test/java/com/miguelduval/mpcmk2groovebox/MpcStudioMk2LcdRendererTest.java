@@ -41,6 +41,17 @@ public final class MpcStudioMk2LcdRendererTest {
 
     }
     @Test
+    public void focusLabelIsProjectedIntoSignature() {
+        final MpcStudioMk2LcdRenderer.State state =
+                new MpcStudioMk2LcdRenderer.State(
+                        "MAIN",
+                        0, 1, -1, 0, 1, 120.0, 4, 4, 0L,
+                        false, false, false, 0, 0, 0, 0,
+                        false, false, false, 0, -1, 10, "");
+        assertTrue(state.signature().contains("|FOCUS10|"));
+    }
+
+    @Test
     public void waveformZoomPolicyChangesAxesIndependentlyAndClamps() {
         float horizontal = MpcZoomPolicy.MAX_HORIZONTAL_SPAN;
         float vertical = MpcZoomPolicy.MIN_VERTICAL_ZOOM;
