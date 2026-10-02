@@ -329,7 +329,7 @@ MIDI note 66.
 
 Primary target contexts are SAMPLE waveform, GRID and other timeline views. The action must be context-sensitive and should never resize the global shell itself.
 
-Status: **PARTIAL — horizontal and vertical Zoom contexts now drive the Sample Editor waveform through Data Dial / +/-; Grid/timeline zoom remains pending. Physical verification remains required.**.
+Status: **PARTIAL — horizontal and vertical Zoom contexts drive the Sample Editor waveform; horizontal Zoom drives the SEQ Grid and SEQ timeline time windows; Shift+Zoom drives SEQ Grid pad-row density. Physical verification remains required.**.
 
 Priority: **P1**.
 
