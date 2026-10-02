@@ -305,6 +305,62 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadSampleName(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadSampleName(
+        JNIEnv* env, jobject /* thiz */, jint pad, jint layer, jstring name)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) {
+        return toJString(
+                env,
+                "Sample name update failed: invalid pad or layer");
+    }
+
+    if (name == nullptr) {
+        return toJString(
+                env,
+                "Sample name update failed: empty name");
+    }
+
+    const char* utfName = env->GetStringUTFChars(name, nullptr);
+    if (utfName == nullptr) {
+        return toJString(
+                env,
+                "Sample name update failed: JNI access error");
+    }
+
+    std::string sampleName(utfName);
+    env->ReleaseStringUTFChars(name, utfName);
+
+    auto& state = mpc::MpcCore::instance().projectState();
+    const auto& layerState =
+            state.activeDrumProgram()
+                    .pad(static_cast<std::size_t>(pad))
+                    .layer(static_cast<std::size_t>(layer));
+    if (!layerState.sample.isAssigned()) {
+        return toJString(
+                env,
+                "Sample name update failed: no sample assigned");
+    }
+
+    auto* sample = state.findSample(layerState.sample);
+    if (sample == nullptr) {
+        return toJString(
+                env,
+                "Sample name update failed: sample metadata missing");
+    }
+
+    if (sampleName.empty()) {
+        sampleName = "Imported sample";
+    }
+
+    sample->name = std::move(sampleName);
+    return toJString(env, "Sample name updated");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioChopPadSampleToPads(
         JNIEnv* env, jobject /* thiz */, jint sourcePad, jint sourceLayer, jint chopCount)
 {
