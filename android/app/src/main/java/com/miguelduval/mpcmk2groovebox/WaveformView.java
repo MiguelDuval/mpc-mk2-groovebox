@@ -6,6 +6,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -16,6 +17,10 @@ public final class WaveformView extends View {
     public interface OnSelectionCommitListener {
         void onSelectionCommitted(float startNormalized, float endNormalized);
     }
+    public interface OnDoubleTapListener {
+        void onDoubleTapped();
+    }
+
 
     private static final int BG = 0xff111518;
     private static final int GRID = 0xff344047;
@@ -35,6 +40,7 @@ public final class WaveformView extends View {
     private final Path fillPath = new Path();
     private final RectF handleRect = new RectF();
     private final ScaleGestureDetector scaleDetector;
+    private GestureDetector gestureDetector;
 
     private float[] peaks;
     private float startNormalized = 0f;
@@ -53,6 +59,7 @@ public final class WaveformView extends View {
     private float lastPanX;
     private boolean panning;
     private OnSelectionCommitListener selectionCommitListener;
+    private OnDoubleTapListener doubleTapListener;
 
     public WaveformView(Context context) {
         super(context);
@@ -111,6 +118,17 @@ public final class WaveformView extends View {
     }
 
     private void init() {
+        gestureDetector = new GestureDetector(
+                getContext(),
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onDoubleTap(MotionEvent event) {
+                        if (doubleTapListener != null) {
+                            doubleTapListener.onDoubleTapped();
+                        }
+                        return true;
+                    }
+                });
         setFocusable(true);
         setClickable(true);
         fillPaint.setStyle(Paint.Style.FILL);
@@ -169,6 +187,10 @@ public final class WaveformView extends View {
 
     public void setOnSelectionCommitListener(OnSelectionCommitListener listener) {
         selectionCommitListener = listener;
+    }
+
+    public void setOnDoubleTapListener(OnDoubleTapListener listener) {
+        doubleTapListener = listener;
     }
 
     public void resetZoom() {
@@ -487,6 +509,7 @@ public final class WaveformView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        gestureDetector.onTouchEvent(event);
         scaleDetector.onTouchEvent(event);
 
         if (!editable || !showHandles || recording) {
