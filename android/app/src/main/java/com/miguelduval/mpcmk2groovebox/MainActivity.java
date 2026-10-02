@@ -114,6 +114,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
     private SequenceTimelineView mainArrangementPreview;
+    private MpcArrangeView arrangementView;
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
     private SequenceLauncherView sequenceLauncherView;
@@ -318,6 +319,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native int nativeSequenceGetTrackCount();
     private static native int nativeSequenceGetSelectedTrack();
     private static native String nativeSequenceGetTrackType(int trackIndex);
+    private static native String nativeSequenceGetTrackArrangementData(int trackIndex);
     private static native boolean nativeSequenceIsTrackMuted(int trackIndex);
     private static native String nativeSequenceGetTrackProgram(int trackIndex);
     private static native String nativeSequenceSelectTrack(int trackIndex);
@@ -559,6 +561,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case PAD_MIXER:
                 showMixPage();
                 break;
+            case ARRANGE:
+                showArrangePage();
+                break;
             case NEXT_SEQUENCE:
                 showSequenceLauncherPage();
                 break;
@@ -685,6 +690,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 addFunction("SEARCH", false, null);
                 addFunction("BACK", true, v -> navigateBackFromShell());
                 break;
+            case ARRANGE:
+                addFunction("CUT", false, null);
+                addFunction("COPY", false, null);
+                addFunction("PASTE", false, null);
+                addFunction("DUP", false, null);
+                addFunction("GRID", true, v -> showSequenceGridPage());
+                addFunction("TRACK VIEW", true, v -> showTrackViewPage());
+                break;
+
             case SAMPLE_EDIT:
             case SAMPLER:
                 addFunction("AUDITION", true,
@@ -1827,6 +1841,140 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSampleInfo();
 
         content.addView(page);
+    }
+
+    private void showArrangePage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "ARRANGE";
+        navigationController.navigate(MpcUiState.Mode.ARRANGE);
+        navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TIMELINE);
+        navigationController.setZoomFocus(MpcUiState.ZoomFocus.HORIZONTAL);
+        pageTitle.setText("ARRANGE");
+        content.removeAllViews();
+        arrangementView = new MpcArrangeView(this);
+        arrangementView.setListener(new MpcArrangeView.Listener() {
+            @Override
+            public void onTrackSelected(int trackIndex) {
+                setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+                navigationController.setSelectedTrack(trackIndex);
+                refreshArrangeView();
+            }
+
+            @Override
+            public void onEventDoubleTapped(int trackIndex, long tick) {
+                setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+                navigationController.setSelectedTrack(trackIndex);
+                showSequenceGridPage();
+            }
+
+            @Override
+            public void onLoopCommitted(int startBar, int endBar) {
+                setBottomStatus(nativeSequenceSetLoopBars(startBar, endBar));
+                refreshArrangeView();
+            }
+        });
+
+        LinearLayout page = page();
+        page.setPadding(dp(6), dp(5), dp(6), dp(2));
+
+        LinearLayout header = row();
+        header.addView(sectionLabelView(
+                "ARRANGEMENT",
+                new LinearLayout.LayoutParams(0, dp(34), 1)));
+        header.addView(actionButton(
+                "ZOOM −",
+                v -> {
+                    arrangementView.zoomOut();
+                    refreshArrangeView();
+                }),
+                new LinearLayout.LayoutParams(dp(72), dp(34)));
+        header.addView(actionButton(
+                "ZOOM +",
+                v -> {
+                    arrangementView.zoomIn();
+                    refreshArrangeView();
+                }),
+                new LinearLayout.LayoutParams(dp(72), dp(34)));
+        header.addView(actionButton(
+                "RESET",
+                v -> {
+                    arrangementView.resetZoom();
+                    refreshArrangeView();
+                }),
+                new LinearLayout.LayoutParams(dp(66), dp(34)));
+        page.addView(header);
+
+        TextView info = label(
+                "LOOP BRACE edits Sequence loop • double-tap an event to continue in Grid",
+                9, MUTED);
+        info.setContentDescription("Arrangement editing guidance");
+        page.addView(info, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+
+        page.addView(arrangementView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        content.addView(page);
+        refreshArrangeView();
+        updateModeRailSelection();
+    }
+
+    private void refreshArrangeView() {
+        if (arrangementView == null || !startupComplete) {
+            return;
+        }
+
+        final int trackCount = Math.max(0, nativeSequenceGetTrackCount());
+        final int selected = Math.max(0, nativeSequenceGetSelectedTrack());
+        final ArrayList<MpcArrangeView.Lane> lanes = new ArrayList<>();
+
+        for (int trackIndex = 0; trackIndex < trackCount; trackIndex++) {
+            final String status = nativeSequenceTrackStatus(trackIndex);
+            final String type = nativeSequenceGetTrackType(trackIndex);
+            final String program = nativeSequenceGetTrackProgram(trackIndex)
+                    .replace("PROGRAM • ", "");
+            final boolean muted = nativeSequenceIsTrackMuted(trackIndex);
+            final boolean armed = trackIndex == selected
+                    && nativeSequenceIsSelectedTrackArmed();
+
+            String data = nativeSequenceGetTrackArrangementData(trackIndex);
+            int separator = data == null ? -1 : data.indexOf('|');
+            int lengthTicks = 1;
+            String eventData = "";
+            if (separator >= 0) {
+                try {
+                    lengthTicks = Math.max(
+                            1, Integer.parseInt(data.substring(0, separator)));
+                } catch (NumberFormatException ignored) {
+                    lengthTicks = 1;
+                }
+                eventData = data.substring(separator + 1);
+            }
+
+            lanes.add(new MpcArrangeView.Lane(
+                    trackIndex,
+                    status == null ? "Track " + (trackIndex + 1) : status,
+                    type,
+                    program,
+                    muted,
+                    armed,
+                    lengthTicks,
+                    MpcArrangeView.decodeEventData(eventData)));
+        }
+
+        final int bars = Math.max(1, nativeSequenceGetBars());
+        arrangementView.setLanes(lanes, selected);
+        arrangementView.setTimeline(
+                bars,
+                nativeSequenceGetLoopStartBar(),
+                nativeSequenceGetLoopEndBar(),
+                nativeSequenceGetNumerator(),
+                nativeSequenceGetDenominator(),
+                nativeSequencePositionTicks(),
+                nativeSequenceIsPlaying());
     }
 
     private void showTrackViewPage() {
@@ -3495,6 +3643,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         refreshSequencePlayhead();
                         refreshSequenceControls();
                         refreshSequenceLauncher();
+                    }
+                    if ("ARRANGE".equals(currentPage)) {
+                        refreshArrangeView();
                     }
                 }
 
