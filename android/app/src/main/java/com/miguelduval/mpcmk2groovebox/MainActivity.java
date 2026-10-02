@@ -1183,9 +1183,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (mainArrangementPreview != null) {
             mainArrangementPreview.setBarCount(sequenceBars);
             mainArrangementPreview.setLoop(loopStartBar, loopEndBar);
-            final long ticksPerBar = Math.max(
+            final long ticksPerBeat = Math.max(
                     1L, Math.round(
-                            960.0 * Math.max(1, numerator) / 1.0));
+                            960.0 * 4.0 / Math.max(1, denominator)));
+            final long ticksPerBar = Math.max(
+                    ticksPerBeat,
+                    ticksPerBeat * Math.max(1, numerator));
             final long positionTicks = nativeStateReady
                     ? nativeSequencePositionTicks() : 0L;
             final float playheadBar = 1.0f
