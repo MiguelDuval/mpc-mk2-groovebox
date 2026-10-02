@@ -117,6 +117,7 @@ The persistent context strip exposes state, not duplicate editing controls:
 - **Sequence overview:** thin movement/loop indicator.
 - **Main Mixer Strip:** the persistent channel/context column exposes compact read-only level, pan and tuning values for the selected Drum pad. Values are read directly from the existing pad state; editing remains in Pad Mixer / sampler controls until the full MPC channel-strip command surface is implemented.
 - **Selected sample identity:** the Main Track quick-sample context displays the selected layer's real project sample name when available. Document-provider display names are propagated through the existing control-thread import path; the realtime audio path does not depend on filenames.
+- **Mixer visibility:** the condensed Mixer Strip can be shown or hidden without changing selected Track, Pad, Sequence or transport state.
 
 # 2. Main Mode blueprint
 
