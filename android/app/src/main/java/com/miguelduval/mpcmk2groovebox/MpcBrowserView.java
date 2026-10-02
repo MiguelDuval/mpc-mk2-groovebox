@@ -40,7 +40,7 @@ final class MpcBrowserView extends LinearLayout {
     private final LinearLayout places;
     private final LinearLayout filters;
     private final LinearLayout results;
-    private final TextView location;
+    private TextView location;
     private final TextView destination;
     private final TextView currentSample;
     private final TextView providerState;
