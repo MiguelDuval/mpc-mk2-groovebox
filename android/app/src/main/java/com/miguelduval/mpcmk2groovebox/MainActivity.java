@@ -316,6 +316,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native int nativeSequenceDrainRecordEvents();
     private static native int nativeSequenceGetTrackCount();
     private static native int nativeSequenceGetSelectedTrack();
+    private static native String nativeSequenceGetTrackType(int trackIndex);
+    private static native boolean nativeSequenceIsTrackMuted(int trackIndex);
     private static native String nativeSequenceGetTrackProgram(int trackIndex);
     private static native String nativeSequenceSelectTrack(int trackIndex);
     private static native String nativeSequenceAddTrack(int kind);
