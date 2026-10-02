@@ -32,7 +32,7 @@ final class MpcNavigationController {
         shortcuts[1] = MpcUiState.Mode.BROWSER;
         shortcuts[2] = MpcUiState.Mode.GRID;
         shortcuts[3] = MpcUiState.Mode.SAMPLER;
-        shortcuts[4] = MpcUiState.Mode.CHANNEL_MIXER;
+        shortcuts[4] = MpcUiState.Mode.PAD_MIXER;
     }
 
     MpcUiState state() {
