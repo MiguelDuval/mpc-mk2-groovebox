@@ -1985,11 +1985,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
 
             @Override
-            public void onAudition() {
+            public void onPlayCurrent() {
                 selectAndTriggerPad(selectedPad, 112);
                 setBottomStatus(String.format(
                         Locale.ROOT,
-                        "AUDITION • PAD %02d / LAYER %02d",
+                        "PLAY CURRENT • PAD %02d / LAYER %02d",
                         selectedPad + 1, selectedLayer + 1));
             }
 
