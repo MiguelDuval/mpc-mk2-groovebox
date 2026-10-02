@@ -202,6 +202,8 @@ The current seven-page permanent rail must therefore stop being the canonical na
 
 The compact shell must reserve a region for contextual channel/pad information.
 
+Main Mode now renders a compact, read-only Mixer Strip level indicator for the selected Drum pad. The indicator is presentation-only and reads the existing pad-level state. Level mutation remains in the dedicated Pad Mixer until a full MPC channel-strip backend contract is available.
+
 Full Channel Mixer and Pad Mixer remain separate modes.
 
 ### Workspace
