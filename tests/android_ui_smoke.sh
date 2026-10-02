@@ -20,6 +20,7 @@ for required in \
   "compactMixerPadModeForDisplay()" \
   "compactMixerStripModeAvailable()" \
   "MPC shell Track record mute and solo state" \
+  "MPC shell track mixer strip" \
   "Main Mode selected sequence" \
   "Main Mode selected track" \
   "Main Mode selected program" \

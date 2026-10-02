@@ -636,7 +636,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactTrackContext = compactContextField(
                 "TRACK 01 • DRUM",
                 "MPC shell track mixer strip",
-                v -> showTrackSelectPage());
+                null);
         compactMixerPanel.addView(compactTrackContext,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
