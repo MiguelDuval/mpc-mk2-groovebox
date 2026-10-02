@@ -273,6 +273,58 @@ Protocol confidence should be tracked as:
 
 ---
 
+## 7B. Permanent MPC 3.9 UI migration contract
+
+The project has now adopted a permanent UI direction: the Android application is an original implementation of the documented **MPC Standalone OS 3.9 interaction and information architecture**, using MPC One / One+ class standalone behavior as the primary software reference.
+
+This is not a color-only reskin.
+
+The canonical migration specification is:
+
+**[docs/MPC3-UI-MIGRATION-MASTER-SPEC.md](MPC3-UI-MIGRATION-MASTER-SPEC.md)**
+
+The searchable research index is:
+
+**[docs/MPC3-REFERENCE-INDEX.md](MPC3-REFERENCE-INDEX.md)**
+
+The protected-layer safety contract is:
+
+**[docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md](UI-MIGRATION-SAFE-CHANGE-CONTRACT.md)**
+
+The migration target includes the documented relationships among:
+
+- Main Mode;
+- Toolbar;
+- five customizable shortcuts;
+- compact mixer/channel strips;
+- Sequence section;
+- Track / Arrangement section;
+- contextual Function Buttons;
+- Menu;
+- Track View;
+- Grid;
+- Step Sequencer;
+- Track Edit;
+- Sample Edit;
+- Sampler;
+- Browser;
+- Channel Mixer;
+- Pad Mixer;
+- performance contexts;
+- project/system contexts.
+
+Implementation rule:
+
+**Presentation/navigation must move toward the MPC 3.9 information architecture without rewriting the audio engine or realtime path.**
+
+Lower-layer semantic changes are allowed only when required for truthful MPC3 behavior, for example resolving Track -> Program ownership or exposing a read-only state query. Such changes must remain domain/semantic and must preserve realtime safety.
+
+A major architectural finding is now considered canonical: MPC3 unifies tracks and programs into a single track container. Our UI must not claim correct per-track instrument ownership while playback still relies on a global active program.
+
+No new top-level UI page may be created merely for implementation convenience. Every context must declare its MPC reference, shell placement, hardware entry path, semantic state, backend command and feedback behavior.
+
+See the migration master specification before changing UI architecture.
+
 ## 7A. Canonical MPC Studio MkII semantic map
 
 The complete hardware interaction contract is maintained in:
