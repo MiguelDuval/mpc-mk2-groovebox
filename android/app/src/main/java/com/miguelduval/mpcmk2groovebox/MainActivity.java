@@ -80,6 +80,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final List<AudioDeviceInfo> inputDevices = new ArrayList<>();
     private boolean audioSettingsBinding;
     private FrameLayout content;
+    private MpcNavigationController navigationController;
+    private MpcShell mpcShell;
+    private LinearLayout functionBar;
+    private TextView compactSequenceContext;
+    private TextView compactTrackContext;
+    private TextView compactPadContext;
+    private TextView compactFocusContext;
+    private final Button[] shortcutButtons =
+            new Button[MpcNavigationController.SHORTCUT_COUNT];
     private TextView pageTitle;
     private TextView audioState;
     private TextView midiState;
@@ -335,6 +344,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         applyFullscreenWindowPolicy();
 
+        navigationController = new MpcNavigationController(
+                state -> runOnUiThread(this::updateMpcShellState));
+
         audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         if (audioManager != null) {
             audioDeviceCallback = new AudioDeviceCallback() {
@@ -403,31 +415,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private View buildApplicationShell() {
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(BG);
+        mpcShell = new MpcShell(this);
+        mpcShell.toolbar().addView(buildTopBar(),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
 
-        root.addView(buildTopBar(), new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+        buildShortcutRail(mpcShell.shortcuts());
+        buildCompactContext(mpcShell.contextArea());
 
-        sequenceOverviewView = new SequenceOverviewView(this);
-        sequenceOverviewView.setContentDescription("Sequence playback overview");
-        root.addView(sequenceOverviewView, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(8)));
-
-        LinearLayout body = new LinearLayout(this);
-        body.setOrientation(LinearLayout.HORIZONTAL);
-
-        body.addView(buildModeRail(), new LinearLayout.LayoutParams(dp(112),
-                ViewGroup.LayoutParams.MATCH_PARENT));
-
-        content = new FrameLayout(this);
-        content.setBackgroundColor(BG);
-        body.addView(content, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
-
-        root.addView(body, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        content = mpcShell.workspace();
+        functionBar = mpcShell.functionBar();
 
         hardwareFeedbackView = label("MKII • MAIN • PAD BANK A", 10, ACCENT);
         hardwareFeedbackView.setPadding(dp(12), 0, dp(12), 0);
@@ -436,19 +434,254 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         hardwareFeedbackView.setBackgroundColor(SURFACE);
         hardwareFeedbackView.setContentDescription(
                 "MPC Studio MkII controller feedback status");
-        root.addView(hardwareFeedbackView, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
 
         bottomStatus = label("Initializing…", 11, MUTED);
         bottomStatus.setPadding(dp(12), 0, dp(12), 0);
         bottomStatus.setGravity(Gravity.CENTER_VERTICAL);
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(BG);
+        root.addView(mpcShell.root(), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        root.addView(hardwareFeedbackView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
         root.addView(bottomStatus, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
 
+        refreshMpcFunctionBar();
         showMainPage();
         syncHardwareControllerFeedback();
         updateModeRailSelection();
         return root;
+    }
+
+    private void buildShortcutRail(LinearLayout rail) {
+        rail.removeAllViews();
+        MpcUiState.Mode[] modes = navigationController.shortcuts();
+        for (int i = 0; i < modes.length; i++) {
+            final MpcUiState.Mode mode = modes[i];
+            Button shortcut = modeButton(mode.label(), mode.name());
+            shortcut.setContentDescription("MPC shortcut " + (i + 1) + " " + mode.label());
+            shortcut.setTag(mode);
+            shortcut.setOnClickListener(v -> navigateToMode(mode));
+            shortcutButtons[i] = shortcut;
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+            if (i > 0) {
+                params.topMargin = dp(3);
+            }
+            rail.addView(shortcut, params);
+        }
+    }
+
+    private void buildCompactContext(LinearLayout area) {
+        area.removeAllViews();
+
+        LinearLayout column = new LinearLayout(this);
+        column.setOrientation(LinearLayout.VERTICAL);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+
+        compactSequenceContext = label("SEQ 01 • 120.0 BPM", 10, TEXT);
+        compactSequenceContext.setGravity(Gravity.CENTER_VERTICAL);
+        compactSequenceContext.setPadding(dp(8), 0, dp(8), 0);
+
+        compactTrackContext = label("TRACK 01", 10, TEXT);
+        compactTrackContext.setGravity(Gravity.CENTER_VERTICAL);
+        compactTrackContext.setPadding(dp(8), 0, dp(8), 0);
+
+        compactPadContext = label("PAD 01 • BANK A", 10, TEXT);
+        compactPadContext.setGravity(Gravity.CENTER_VERTICAL);
+        compactPadContext.setPadding(dp(8), 0, dp(8), 0);
+
+        compactFocusContext = label("DIAL • NONE", 10, ACCENT);
+        compactFocusContext.setGravity(Gravity.CENTER_VERTICAL);
+        compactFocusContext.setPadding(dp(8), 0, dp(8), 0);
+
+        row.addView(compactSequenceContext, new LinearLayout.LayoutParams(0, dp(46), 1.35f));
+        row.addView(compactTrackContext, new LinearLayout.LayoutParams(0, dp(46), 1.0f));
+        row.addView(compactPadContext, new LinearLayout.LayoutParams(0, dp(46), 1.25f));
+        row.addView(compactFocusContext, new LinearLayout.LayoutParams(0, dp(46), 1.2f));
+        column.addView(row);
+
+        sequenceOverviewView = new SequenceOverviewView(this);
+        sequenceOverviewView.setContentDescription("Sequence playback overview");
+        column.addView(sequenceOverviewView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(8)));
+
+        area.addView(column, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private void navigateToMode(MpcUiState.Mode mode) {
+        switch (mode) {
+            case MAIN:
+                showMainPage();
+                break;
+            case TRACK_VIEW:
+                showSequencePage();
+                break;
+            case BROWSER:
+                showBrowserPage();
+                break;
+            case GRID:
+                showSequenceGridPage();
+                break;
+            case STEP:
+                showSequenceStepPage();
+                break;
+            case SAMPLER:
+                showRecordPage();
+                break;
+            case SAMPLE_EDIT:
+                showSamplePage();
+                break;
+            case CHANNEL_MIXER:
+                showMixPage();
+                break;
+            case NEXT_SEQUENCE:
+                showSequenceLauncherPage();
+                break;
+            case MENU:
+                showMenuPage();
+                break;
+            case MIDI_CONTROL:
+                showMidiPage();
+                break;
+            case PREFERENCES:
+                showAudioSettingsPage();
+                break;
+            default:
+                navigationController.navigate(mode);
+                setBottomStatus(
+                        mode.label() + " is reserved/unavailable");
+                updateModeRailSelection();
+                break;
+        }
+    }
+
+    private void updateMpcShellState() {
+        updateModeRailSelection();
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+    }
+
+    private void refreshMpcCompactContext() {
+        if (navigationController == null
+                || compactSequenceContext == null
+                || compactTrackContext == null
+                || compactPadContext == null
+                || compactFocusContext == null) {
+            return;
+        }
+
+        final int sequence = Math.max(0, nativeSequenceGetIndex()) + 1;
+        final int track = Math.max(0, nativeSequenceGetSelectedTrack()) + 1;
+        final double tempo = nativeSequenceGetTempo();
+
+        compactSequenceContext.setText(String.format(
+                Locale.ROOT, "SEQ %02d • %.1f BPM", sequence, tempo));
+        compactTrackContext.setText(String.format(
+                Locale.ROOT, "TRACK %02d", track));
+        compactPadContext.setText(String.format(
+                Locale.ROOT, "PAD %02d • BANK %s",
+                selectedPad + 1, (char) ('A' + Math.max(0, Math.min(7, navigationController.state().padBank())))));
+        compactFocusContext.setText(
+                "DIAL • " + navigationController.state().dataDialFocus().name().replace('_', ' '));
+
+        final MpcUiState state = navigationController.state();
+        compactFocusContext.setTextColor(
+                state.actionAvailable() ? ACCENT : DANGER);
+    }
+
+    private void refreshMpcFunctionBar() {
+        if (functionBar == null || navigationController == null) {
+            return;
+        }
+
+        functionBar.removeAllViews();
+        final MpcUiState.Mode mode = navigationController.state().mode();
+
+        if (mode == MpcUiState.Mode.MAIN || mode == MpcUiState.Mode.TRACK_VIEW) {
+            addFunction("NEW TRACK", true, v -> addSequenceTrack(0));
+            addFunction("REC ARM", true, v -> {
+                setBottomStatus(nativeSequenceSetSelectedTrackArmed(
+                        !nativeSequenceIsSelectedTrackArmed()));
+                syncHardwareTransportLeds();
+                refreshSequenceControls();
+            });
+            addFunction("TRACK −", nativeSequenceGetTrackCount() > 0,
+                    v -> selectAdjacentTrack(-1));
+            addFunction("TRACK +", nativeSequenceGetTrackCount() > 0,
+                    v -> selectAdjacentTrack(1));
+            addFunction("MUTE", nativeSequenceGetTrackCount() > 0,
+                    v -> toggleSelectedTrackMute());
+            addFunction("SOLO", false, null);
+            return;
+        }
+
+        switch (mode) {
+            case BROWSER:
+                addFunction("LOAD", true, v -> openWavPicker());
+                addFunction("UP", true, v -> showBrowserPage());
+                addFunction("FAV", false, null);
+                addFunction("SEARCH", false, null);
+                addFunction("BACK", true, v -> navigateBackFromShell());
+                break;
+            case SAMPLE_EDIT:
+            case SAMPLER:
+                addFunction("AUDITION", true,
+                        v -> selectAndTriggerPad(selectedPad, 112));
+                addFunction("EDIT", mode == MpcUiState.Mode.SAMPLE_EDIT,
+                        v -> showSamplePage());
+                addFunction("BACK", true, v -> navigateBackFromShell());
+                break;
+            default:
+                addFunction("BACK", true, v -> navigateBackFromShell());
+                break;
+        }
+    }
+
+    private void addFunction(String text, boolean enabled, View.OnClickListener listener) {
+        Button b = actionButton(text, listener);
+        b.setEnabled(enabled);
+        b.setAlpha(enabled ? 1.0f : 0.45f);
+        functionBar.addView(b, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+    }
+
+    private void navigateBackFromShell() {
+        if (navigationController != null && navigationController.back()) {
+            navigateToMode(navigationController.state().mode());
+            return;
+        }
+        showMainPage();
+    }
+
+    private void selectAdjacentTrack(int delta) {
+        final int count = nativeSequenceGetTrackCount();
+        if (count <= 0) {
+            setBottomStatus("No tracks");
+            return;
+        }
+        int next = nativeSequenceGetSelectedTrack() + delta;
+        next %= count;
+        if (next < 0) {
+            next += count;
+        }
+        setBottomStatus(nativeSequenceSelectTrack(next));
+        navigationController.setSelectedTrack(next);
+        showSequencePage();
+    }
+
+    private void toggleSelectedTrackMute() {
+        final int track = nativeSequenceGetSelectedTrack();
+        setBottomStatus(nativeSequenceToggleTrackMute(track));
+        refreshSequenceControls();
     }
 
     private View buildTopBar() {
@@ -554,9 +787,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void updateModeRailSelection() {
-        for (Button button : modeButtons) {
-            if (button == null) continue;
-            boolean selected = String.valueOf(button.getTag()).equals(currentPage);
+        if (navigationController == null) {
+            return;
+        }
+        final MpcUiState.Mode active = navigationController.state().mode();
+        for (Button button : shortcutButtons) {
+            if (button == null) {
+                continue;
+            }
+            final Object tag = button.getTag();
+            final boolean selected = tag == active;
             button.setTextColor(selected ? BG : TEXT);
             button.setBackground(strokeBackground(
                     selected ? ACCENT : SURFACE_2,
@@ -597,6 +837,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetLauncherContext(false, 0);
         clearSequenceLauncherLeds();
         currentPage = "MAIN";
+        navigationController.navigate(MpcUiState.Mode.MAIN);
         pageTitle.setText("MAIN");
         content.removeAllViews();
 
@@ -713,6 +954,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SAMPLE";
+        navigationController.navigate(MpcUiState.Mode.SAMPLE_EDIT);
         pageTitle.setText("SAMPLE");
         content.removeAllViews();
 
@@ -920,6 +1162,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "REC";
+        navigationController.navigate(MpcUiState.Mode.SAMPLER);
         pageTitle.setText("RECORDER");
         content.removeAllViews();
 
@@ -1011,6 +1254,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "BROWSE";
+        navigationController.navigate(MpcUiState.Mode.BROWSER);
         pageTitle.setText("BROWSER");
         content.removeAllViews();
 
@@ -1051,6 +1295,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
+        navigationController.navigate(MpcUiState.Mode.TRACK_VIEW);
         pageTitle.setText("SEQUENCER");
         content.removeAllViews();
         sequenceGridView = null;
@@ -1261,6 +1506,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
+        navigationController.navigate(MpcUiState.Mode.GRID);
         pageTitle.setText("SEQ • GRID");
         content.removeAllViews();
         sequenceTimeline = null;
@@ -1353,6 +1599,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetLauncherContext(false, 0);
         launcherBank = Math.max(0, nativeSequenceGetIndex() / 16);
         currentPage = "SEQ";
+        navigationController.navigate(MpcUiState.Mode.NEXT_SEQUENCE);
         pageTitle.setText("SEQ • LAUNCH");
         content.removeAllViews();
         sequenceTimeline = null;
@@ -1433,6 +1680,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(true, sequenceStepPage);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
+        navigationController.navigate(MpcUiState.Mode.STEP);
         pageTitle.setText("SEQ • STEP");
         content.removeAllViews();
         sequenceTimeline = null;
@@ -2588,6 +2836,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MIX";
+        navigationController.navigate(MpcUiState.Mode.CHANNEL_MIXER);
         pageTitle.setText("MIX");
         content.removeAllViews();
 
@@ -2634,6 +2883,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         currentPage = "MIDI";
+        navigationController.navigate(MpcUiState.Mode.MIDI_CONTROL);
         pageTitle.setText("MIDI");
         content.removeAllViews();
 
@@ -2678,6 +2928,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MENU";
+        navigationController.navigate(MpcUiState.Mode.MENU);
         pageTitle.setText("MENU");
         content.removeAllViews();
 
@@ -2725,6 +2976,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         currentPage = "AUDIO";
+        navigationController.navigate(MpcUiState.Mode.PREFERENCES);
         pageTitle.setText("AUDIO");
         content.removeAllViews();
 
@@ -4204,12 +4456,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         switch (actionType) {
             case MpcStudioMk2SemanticActions.NAVIGATE_MAIN:
-            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_VIEW:
                 hardwareFocus = 0;
                 showMainPage();
-                setBottomStatus(
-                        actionType == MpcStudioMk2SemanticActions.NAVIGATE_MAIN
-                                ? "MAIN" : "TRACK VIEW");
+                setBottomStatus("MAIN");
+                return;
+            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_VIEW:
+                hardwareFocus = 0;
+                showSequencePage();
+                setBottomStatus("TRACK VIEW");
                 return;
             case MpcStudioMk2SemanticActions.NAVIGATE_GRID:
                 showSequenceGridPage();
@@ -4240,11 +4494,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.TRACK_SELECTION_CONTEXT:
                 hardwareFocus = 2;
+                navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
                 showSequencePage();
                 setBottomStatus("TRACK SELECT • DATA DIAL / +/-");
                 return;
             case MpcStudioMk2SemanticActions.SEQUENCE_SELECTION_CONTEXT:
                 hardwareFocus = 3;
+                navigationController.setSubcontext(MpcUiState.Subcontext.SEQUENCE_SELECT);
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SEQUENCE);
                 showSequencePage();
                 setBottomStatus("SEQUENCE SELECT • DATA DIAL / +/-");
                 return;
@@ -4276,6 +4534,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.PAD_BANK_CHANGED:
                 hardwarePadBank = Math.max(0, Math.min(7, value0));
+                navigationController.setPadBank(hardwarePadBank);
                 if ("SEQ".equals(currentPage)
                         && pageTitle != null
                         && "SEQ • LAUNCH".equals(pageTitle.getText().toString())) {
@@ -4486,11 +4745,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.SAMPLE_SELECT_CONTEXT:
                 hardwareFocus = 10;
+                navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_SELECT);
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_LAYER);
                 showSamplePage();
                 setBottomStatus("SAMPLE SELECT • DATA DIAL / +/- changes layer");
                 return;
             case MpcStudioMk2SemanticActions.SAMPLE_START_CONTEXT:
                 hardwareTouchStripMode = TOUCH_STRIP_MODE_SAMPLE_START;
+                navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_START);
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_START);
                 syncHardwareTouchStripModeLeds();
                 hardwareFocus = 7;
                 showSamplePage();
@@ -4500,6 +4763,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.SAMPLE_END_CONTEXT:
                 hardwareTouchStripMode = TOUCH_STRIP_MODE_SAMPLE_END;
+                navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_END);
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_END);
                 syncHardwareTouchStripModeLeds();
                 hardwareFocus = 8;
                 showSamplePage();
@@ -4688,18 +4953,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (hardwareFocus == 2) {
+            navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
+            navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
             final int count = nativeSequenceGetTrackCount();
             if (count <= 0) return;
             int next = nativeSequenceGetSelectedTrack() + delta;
             next %= count;
             if (next < 0) next += count;
             setBottomStatus(nativeSequenceSelectTrack(next));
+            navigationController.setSelectedTrack(next);
             showSequencePage();
             return;
         }
         if (hardwareFocus == 3) {
+            navigationController.setSubcontext(MpcUiState.Subcontext.SEQUENCE_SELECT);
+            navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SEQUENCE);
             setBottomStatus(
                     delta > 0 ? nativeSequenceNext() : nativeSequencePrevious());
+            navigationController.setSelectedSequence(nativeSequenceGetIndex());
             showSequencePage();
             return;
         }
