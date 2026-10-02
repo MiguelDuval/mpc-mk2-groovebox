@@ -1515,7 +1515,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
         /*
-         * MPC Main exposes a compact track-state row directly above the
+         * MPC Main exposes a compact track-state row below the
          * Track/Arrangement canvas. Keep the vocabulary recognizable while
          * only exposing values that our backend can state truthfully:
          * Monitor is unavailable, Length is sequence-scoped, Velocity is not
