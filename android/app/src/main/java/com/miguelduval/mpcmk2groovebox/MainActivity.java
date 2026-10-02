@@ -320,6 +320,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native int nativeSequenceDrainRecordEvents();
     private static native int nativeSequenceGetTrackCount();
     private static native int nativeSequenceGetSelectedTrack();
+    private static native int nativeSequenceGetDrumProgramCount();
+    private static native String nativeSequenceGetDrumProgramName(int programIndex);
+    private static native int nativeSequenceGetTrackProgramIndex(int trackIndex);
+    private static native String nativeSequenceSetTrackProgram(
+            int trackIndex, int programIndex);
     private static native String nativeSequenceGetTrackType(int trackIndex);
     private static native String nativeSequenceGetTrackArrangementData(int trackIndex);
     private static native boolean nativeSequenceIsTrackMuted(int trackIndex);
@@ -1084,9 +1089,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "PROGRAM",
                 new LinearLayout.LayoutParams(0, dp(32), 1)));
         programHeader.addView(actionButton(
+                "SELECT",
+                v -> showProgramSelectPage()),
+                new LinearLayout.LayoutParams(dp(72), dp(32)));
+        programHeader.addView(actionButton(
                 "BROWSER",
                 v -> showBrowserPage()),
-                new LinearLayout.LayoutParams(dp(96), dp(32)));
+                new LinearLayout.LayoutParams(dp(82), dp(32)));
         programCard.addView(programHeader);
 
         TextView programName = label("", 15, TEXT);
@@ -1848,6 +1857,94 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page);
         refreshRecordingInfo();
         startRecordingWaveformUpdates();
+    }
+
+    private void showProgramSelectPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+
+        currentPage = "MAIN";
+        navigationController.navigate(MpcUiState.Mode.MAIN);
+        navigationController.setSubcontext(MpcUiState.Subcontext.PROGRAM_SELECT);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PROGRAM);
+        hardwareFocus = 4;
+        pageTitle.setText("MAIN • PROGRAM");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.setPadding(dp(8), dp(6), dp(8), dp(2));
+
+        TextView heading = label(
+                String.format(
+                        Locale.ROOT,
+                        "PROGRAM SELECT  •  TRACK %02d",
+                        nativeSequenceGetSelectedTrack() + 1),
+                13, TEXT);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        page.addView(heading, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        final int programCount = Math.max(
+                0, nativeSequenceGetDrumProgramCount());
+        final int selectedProgram = nativeSequenceGetTrackProgramIndex(
+                nativeSequenceGetSelectedTrack());
+
+        if (programCount == 0) {
+            page.addView(label(
+                    "NO DRUM PROGRAMS",
+                    12, MUTED));
+        } else {
+            ScrollView scroll = new ScrollView(this);
+            LinearLayout list = column();
+            for (int i = 0; i < programCount; i++) {
+                final int programIndex = i;
+                Button b = actionButton(
+                        String.format(
+                                Locale.ROOT,
+                                "%02d  %s%s",
+                                i + 1,
+                                nativeSequenceGetDrumProgramName(i),
+                                i == selectedProgram ? "  • CURRENT" : ""),
+                        v -> {
+                            setBottomStatus(nativeSequenceSetTrackProgram(
+                                    nativeSequenceGetSelectedTrack(),
+                                    programIndex));
+                            navigationController.setSelectedProgram(
+                                    nativeSequenceGetDrumProgramName(programIndex));
+                            showProgramSelectPage();
+                        });
+                b.setGravity(Gravity.CENTER_VERTICAL);
+                b.setPadding(dp(10), 0, dp(10), 0);
+                b.setBackground(strokeBackground(
+                        i == selectedProgram ? Color.rgb(42, 66, 76) : SURFACE_2,
+                        i == selectedProgram ? ACCENT : LINE,
+                        7));
+                list.addView(b, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+            }
+            scroll.addView(list);
+            page.addView(scroll, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        }
+
+        LinearLayout footer = row();
+        footer.addView(actionButton(
+                "BACK MAIN",
+                v -> showMainPage()), weight());
+        footer.addView(actionButton(
+                "PROGRAM EDIT",
+                v -> {
+                    setBottomStatus(
+                            "PROGRAM EDIT • RESERVED until per-program editor");
+                }), weight());
+        page.addView(footer, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+        content.addView(page);
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
     }
 
     private void showBrowserPage() {
@@ -5701,7 +5798,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_VIEW:
                 hardwareFocus = 0;
-                showSequencePage();
+                showTrackViewPage();
                 setBottomStatus("TRACK VIEW");
                 return;
             case MpcStudioMk2SemanticActions.NAVIGATE_GRID:
@@ -5747,7 +5844,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.PROGRAM_SELECTION_CONTEXT:
                 hardwareFocus = 4;
-                setBottomStatus("PROGRAM SELECT • reserved");
+                if (nativeSequenceGetTrackType(
+                        nativeSequenceGetSelectedTrack()).equals("DRUM")) {
+                    showProgramSelectPage();
+                    setBottomStatus(
+                            "PROGRAM SELECT • DATA DIAL / +/-");
+                } else {
+                    setBottomStatus(
+                            "PROGRAM SELECT • TRACK TYPE IS NOT DRUM");
+                }
                 return;
             case MpcStudioMk2SemanticActions.TRACK_TYPE_SELECTION_CONTEXT:
                 hardwareFocus = 5;
@@ -5761,6 +5866,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 if (hardwareLocateActive) {
                     setBottomStatus(
                             "LOCATE • DATA DIAL = ±1 BEAT • SHIFT = ±1 TICK");
+                } else if (hardwareFocus == 4) {
+                    showProgramSelectPage();
+                    setBottomStatus("PROGRAM SELECT • DATA DIAL / +/-");
                 } else if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
                     stepEditParameter = nativeStepEditParameterNext(
                             stepEditParameter);
@@ -6206,6 +6314,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             } else {
                 showSequencePage();
             }
+            return;
+        }
+        if (hardwareFocus == 4) {
+            final int track = nativeSequenceGetSelectedTrack();
+            if (!"DRUM".equals(nativeSequenceGetTrackType(track))) {
+                setBottomStatus("PROGRAM SELECT • DRUM TRACK REQUIRED");
+                return;
+            }
+            final int count = nativeSequenceGetDrumProgramCount();
+            if (count <= 0) {
+                setBottomStatus("PROGRAM SELECT • NO PROGRAMS");
+                return;
+            }
+            int current = nativeSequenceGetTrackProgramIndex(track);
+            if (current < 0) current = 0;
+            int next = current + delta;
+            next %= count;
+            if (next < 0) next += count;
+            setBottomStatus(nativeSequenceSetTrackProgram(track, next));
+            navigationController.setSelectedProgram(
+                    nativeSequenceGetDrumProgramName(next));
+            showProgramSelectPage();
             return;
         }
         if (hardwareFocus == 3) {
