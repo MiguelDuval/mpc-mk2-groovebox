@@ -3,6 +3,7 @@ package com.miguelduval.mpcmk2groovebox;
 final class MpcHardwareFeedbackPolicy {
     static final int LED_OFF = 0;
     static final int LED_COLOR_1_DIM = 1;
+    static final int LED_SINGLE_FULL = 2;
     static final int LED_COLOR_2_DIM = 2;
     static final int LED_COLOR_1_FULL = 3;
     static final int LED_COLOR_2_FULL = 4;
