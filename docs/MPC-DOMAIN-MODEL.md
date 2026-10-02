@@ -40,3 +40,21 @@ Timing contract:
 - A default 4/4 pattern of 3840 ticks therefore represents one bar at the domain level.
 - Tick-to-frame conversion is kept in the sequencer layer and requires explicit tempo and output sample rate.
 - The audio layer consumes frame offsets and does not own BPM or PPQN policy.
+## 2026-10-02 MPC3 track/program semantic prerequisite
+
+The target UI follows MPC3's documented unified Track/Program workflow.
+
+The current domain still exposes Program references and a Track.programId. This is acceptable as an internal representation, but the UI must treat the selected Track/container as the authoritative instrument context.
+
+Before exposing full Program Select, Track Type and Track Edit behavior:
+
+- resolve the selected Track to its actual program/container;
+- make playback use that resolved association rather than a global UI selection;
+- make Track View, Main and Track Edit read the same selected-track state;
+- represent shared/legacy program cases explicitly.
+
+This is a semantic prerequisite for UI fidelity. It does not justify moving Tracktion or realtime audio objects into the domain model.
+
+The permanent UI migration documents the required transition in:
+docs/MPC3-UI-MIGRATION-MASTER-SPEC.md
+
