@@ -1944,6 +1944,37 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetSelectedTrack
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackProgram(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    if (trackIndex < 0
+            || static_cast<std::size_t>(trackIndex)
+                    >= state.activeSequence().tracks.size()) {
+        return toJString(env, "PROGRAM • NONE");
+    }
+
+    const auto& track =
+            state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)];
+    if (track.programId.empty()) {
+        return toJString(env, "PROGRAM • NONE");
+    }
+
+    for (const auto& program : state.project().drumPrograms) {
+        if (program.id == track.programId) {
+            return toJString(
+                    env,
+                    "PROGRAM • " + (program.name.empty()
+                            ? program.id : program.name));
+        }
+    }
+
+    return toJString(
+            env,
+            "PROGRAM • " + track.programId);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelectTrack(
         JNIEnv* env, jobject /* thiz */, jint trackIndex)
 {
