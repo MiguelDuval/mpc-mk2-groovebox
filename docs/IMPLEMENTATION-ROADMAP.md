@@ -321,3 +321,12 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Feedback is state-driven: repeated identical LED frames are suppressed; LCD rendering remains signature-gated.
 - Unknown/unimplemented contexts must be visibly reported instead of appearing active.
 - Physical MkII verification remains required for LED colors, brightness semantics and all controller-specific feedback paths.
+
+
+### 2026-10-02 MPC 3.9 UI vocabulary + Main/Menu checkpoint
+- **Mode registry implemented.** Menu and five promoted shortcuts now consume one canonical MPC mode vocabulary; unsupported contexts are explicitly marked RESERVED/UNAVAILABLE.
+- **Menu implemented.** Replaced the legacy list-style launcher with a 4×4 MPC mode grid plus explicit system actions.
+- **Main Mode re-composed.** Main now presents Sequence → Track → Program/Performance/Arrangement information instead of the former pad-grid + inspector composition.
+- **Pad Mixer semantics corrected.** The existing four-pad level workspace is exposed as Pad Mixer; Channel Mixer remains reserved until truthful track-strip level/routing backend support exists.
+- **Toolbar timing context implemented.** Timing Correct is now a persistent functional control; Metronome and Automation are visibly reserved rather than dead/fake controls.
+- **Navigation smoke audit migrated.** UI interaction paths now use canonical Main / Track View / Grid / Step / Menu / Next Sequence / Sample Edit / Sampler contexts.
