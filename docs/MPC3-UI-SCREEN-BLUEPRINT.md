@@ -193,6 +193,12 @@ Touch:
 - Layer −/+ changes only the selected sample layer and keeps the current Track/Pad context.
 - AUDITION triggers the currently selected Pad; SAMPLE EDIT opens the dedicated sample editor without changing the selected Track/Sequence.
 
+### Main Sequence field hierarchy
+
+- Main keeps the MPC-style compact Sequence vocabulary visible around the selected sequence and BPM: **SEQ / BARS / START / END / TRANSPOSE**.
+- Existing time-signature and loop state remain visible because they are backed by the current Sequence model.
+- TRANSPOSE is explicitly shown as unavailable until a real domain semantic exists.
+
 ## 2.4 Arrangement preview
 
 Show:
