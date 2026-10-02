@@ -472,7 +472,6 @@ jobs:
           if-no-files-found: error
 
       - name: Run Android emulator smoke test
-        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
