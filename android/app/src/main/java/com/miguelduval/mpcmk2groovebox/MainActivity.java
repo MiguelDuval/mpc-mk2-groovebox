@@ -638,6 +638,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "SEQ 01 • 120.0 BPM",
                 "MPC shell sequence context",
                 null);
+        area.addView(compactSequenceContext,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
         compactMixerPanel = column();
         compactMixerPanel.setContentDescription(
@@ -661,15 +664,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
         compactProgramContext = label(
-                "REC OFF • MUTE OFF • SOLO —",
+                "PROGRAM • —",
                 8,
-                MUTED);
+                TEXT);
         compactProgramContext.setTypeface(Typeface.DEFAULT_BOLD);
         compactProgramContext.setGravity(Gravity.CENTER_VERTICAL);
         compactProgramContext.setPadding(dp(4), 0, dp(4), 0);
         compactProgramContext.setContentDescription(
-                "MPC shell track state");
+                "MPC shell selected Program");
         compactMixerPanel.addView(compactProgramContext,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(25)));
+
+        compactTrackStateLabel = label(
+                "REC OFF • MUTE OFF • SOLO —",
+                8,
+                MUTED);
+        compactTrackStateLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        compactTrackStateLabel.setGravity(Gravity.CENTER_VERTICAL);
+        compactTrackStateLabel.setPadding(dp(4), 0, dp(4), 0);
+        compactTrackStateLabel.setContentDescription(
+                "MPC shell Track record mute and solo state");
+        compactMixerPanel.addView(compactTrackStateLabel,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(25)));
 
@@ -814,6 +830,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if (compactProgramContext != null) {
             compactProgramContext.setVisibility(padMode ? View.GONE : View.VISIBLE);
+        }
+        if (compactTrackStateLabel != null) {
+            compactTrackStateLabel.setVisibility(padMode ? View.GONE : View.VISIBLE);
         }
         if (compactTrackLevelLabel != null) {
             compactTrackLevelLabel.setVisibility(padMode ? View.GONE : View.VISIBLE);
@@ -1010,10 +1029,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "TRACK %02d • %s",
                     track, trackType));
 
-            compactProgramContext.setText(
-                    "REC " + (armed ? "ON" : "OFF")
-                            + " • MUTE " + (muted ? "ON" : "OFF")
-                            + " • SOLO —");
+            final String programName = drumTrack
+                    ? normalizeProgramLabel(
+                            nativeSequenceGetTrackProgram(trackIndex))
+                    : "—";
+            compactProgramContext.setText("PROGRAM • " + programName);
+
+            if (compactTrackStateLabel != null) {
+                compactTrackStateLabel.setText(
+                        "REC " + (armed ? "ON" : "OFF")
+                                + " • MUTE " + (muted ? "ON" : "OFF")
+                                + " • SOLO —");
+            }
 
             if (compactTrackLevelLabel != null) {
                 compactTrackLevelLabel.setText(
@@ -1026,7 +1053,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             compactMixerPadMode = false;
             compactTrackContext.setText("TRACK 01 • DRUM");
-            compactProgramContext.setText("REC OFF • MUTE OFF • SOLO —");
+            compactProgramContext.setText("PROGRAM • —");
+            if (compactTrackStateLabel != null) {
+                compactTrackStateLabel.setText("REC OFF • MUTE OFF • SOLO —");
+            }
             if (compactTrackLevelLabel != null) {
                 compactTrackLevelLabel.setText(
                         "LEVEL —  •  TRACK MIXER RESERVED");
