@@ -115,6 +115,7 @@ The persistent context strip exposes state, not duplicate editing controls:
 - **Pad:** selected software/hardware pad and bank.
 - **Dial:** current Data Dial focus and Main subcontext.
 - **Sequence overview:** thin movement/loop indicator.
+- **Main Mixer Strip:** the persistent channel/context column also exposes a compact read-only level meter for the selected Drum pad. Its value is read directly from the pad-level domain state; editing remains in Pad Mixer until a fuller MPC channel-strip command surface is implemented.
 
 # 2. Main Mode blueprint
 
