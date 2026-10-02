@@ -442,3 +442,13 @@ The MPC 3.x manual documents that selected parameters are highlighted and adjust
 
 Repository decision:
 Main fields should behave as selection targets rather than decorative cards or duplicated micro-controls. The current UI therefore renders the focused Data Dial target with a red outline and removes local BPM/BARS steppers from Main.
+
+
+---
+
+## 16.3 Shell composition fidelity
+
+The current MPC3 reference describes Main as Toolbar + Shortcuts + Mixer Strips + Sequence + Track/Arrangement + Function Buttons. The Mixer Strips sit on the left edge beside the five mode shortcuts and can be shown/hidden. citeturn329559search12turn329559search17
+
+Repository decision:
+Our shell now reserves that left edge for five shortcuts plus condensed mixer strips; Sequence/Track/Program remain in the central Main workspace. Values without a current backend semantic remain explicitly reserved.

@@ -49,7 +49,7 @@ final class MpcShell {
         shortcutRail.setBackgroundColor(Color.rgb(18, 21, 24));
         shortcutRail.setPadding(dp(context, 6), dp(context, 6), dp(context, 6), dp(context, 6));
         body.addView(shortcutRail, new LinearLayout.LayoutParams(
-                dp(context, 92), ViewGroup.LayoutParams.MATCH_PARENT));
+                dp(context, 70), ViewGroup.LayoutParams.MATCH_PARENT));
 
         /*
          * Shortcuts and persistent context are separate columns. The context
@@ -64,7 +64,7 @@ final class MpcShell {
                 dp(context, 5), dp(context, 6),
                 dp(context, 5), dp(context, 6));
         body.addView(contextArea, new LinearLayout.LayoutParams(
-                dp(context, 182), ViewGroup.LayoutParams.MATCH_PARENT));
+                dp(context, 164), ViewGroup.LayoutParams.MATCH_PARENT));
 
         LinearLayout mainColumn = new LinearLayout(context);
         mainColumn.setOrientation(LinearLayout.VERTICAL);

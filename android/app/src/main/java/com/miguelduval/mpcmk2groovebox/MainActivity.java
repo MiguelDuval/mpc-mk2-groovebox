@@ -90,6 +90,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView compactProgramContext;
     private TextView compactPadContext;
     private TextView compactFocusContext;
+    private TextView compactTrackLevelLabel;
+    private TextView compactTrackStateLabel;
+    private TextView compactOutputContext;
+    private TextView compactOutputLevelLabel;
     private android.widget.ProgressBar compactPadLevelMeter;
     private TextView compactPadLevelLabel;
     private TextView compactPadPanLabel;
@@ -539,70 +543,110 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void buildCompactContext(LinearLayout area) {
         area.removeAllViews();
-        area.setContentDescription("MPC shell compact track program context");
+        area.setContentDescription("MPC shell mixer strips");
 
         LinearLayout header = row();
-        TextView headerLabel = label("CONTEXT", 9, MUTED);
+        TextView headerLabel = label("MIXER", 8, MUTED);
         headerLabel.setTypeface(Typeface.DEFAULT_BOLD);
         headerLabel.setGravity(Gravity.CENTER_VERTICAL);
-        headerLabel.setPadding(dp(7), 0, dp(7), 0);
+        headerLabel.setPadding(dp(5), 0, dp(5), 0);
         header.addView(headerLabel, new LinearLayout.LayoutParams(
-                0, dp(26), 1));
+                0, dp(24), 1));
 
         compactMixerToggle = actionButton("MIX", v -> {
             compactMixerVisible = !compactMixerVisible;
             applyCompactMixerVisibility();
         });
-        compactMixerToggle.setTextSize(9);
+        compactMixerToggle.setTextSize(8);
         compactMixerToggle.setContentDescription(
                 "MPC condensed Mixer Strip show or hide");
         header.addView(compactMixerToggle,
-                new LinearLayout.LayoutParams(dp(54), dp(26)));
+                new LinearLayout.LayoutParams(dp(44), dp(24)));
         area.addView(header, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
+        // Compatibility state object: Sequence is already represented centrally
+        // in Main, so this object is intentionally not attached to the shell.
         compactSequenceContext = compactContextField(
                 "SEQ 01 • 120.0 BPM",
                 "MPC shell sequence context",
-                v -> showSequenceSelectPage());
-        area.addView(compactSequenceContext, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
-
-        compactTrackContext = compactContextField(
-                "TRACK 01",
-                "MPC shell track context",
-                v -> showTrackSelectPage());
-        area.addView(compactTrackContext, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
-
-        compactProgramContext = compactContextField(
-                "PROGRAM • —",
-                "MPC shell program context",
-                v -> showProgramSelectPage());
-        area.addView(compactProgramContext, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
-
-        TextView channelRule = label("CHANNEL", 8, MUTED);
-        channelRule.setTypeface(Typeface.DEFAULT_BOLD);
-        channelRule.setPadding(dp(7), dp(3), dp(7), 0);
-        area.addView(channelRule, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
-
-        compactPadContext = compactContextField(
-                "PAD 01 • BANK A",
-                "MPC shell pad context",
                 null);
-        area.addView(compactPadContext, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
 
         compactMixerPanel = column();
         compactMixerPanel.setContentDescription(
                 "MPC condensed Mixer Strip");
-        TextView mixerHeader = label("MIXER STRIP", 8, MUTED);
-        mixerHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        mixerHeader.setPadding(dp(7), dp(3), dp(7), 0);
-        compactMixerPanel.addView(mixerHeader, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
+        compactMixerPanel.setPadding(dp(2), dp(2), dp(2), dp(2));
+
+        // Track strip: status is backed by the actual selected-track state.
+        TextView trackCaption = label("TRACK", 8, MUTED);
+        trackCaption.setTypeface(Typeface.DEFAULT_BOLD);
+        trackCaption.setPadding(dp(3), dp(1), dp(3), 0);
+        compactMixerPanel.addView(trackCaption,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
+
+        compactTrackContext = compactContextField(
+                "TRACK 01 • DRUM",
+                "MPC shell track mixer strip",
+                null);
+        compactMixerPanel.addView(compactTrackContext,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        compactProgramContext = label(
+                "REC OFF • MUTE OFF • SOLO —",
+                8,
+                MUTED);
+        compactProgramContext.setTypeface(Typeface.DEFAULT_BOLD);
+        compactProgramContext.setGravity(Gravity.CENTER_VERTICAL);
+        compactProgramContext.setPadding(dp(4), 0, dp(4), 0);
+        compactProgramContext.setContentDescription(
+                "MPC shell track state");
+        compactMixerPanel.addView(compactProgramContext,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(25)));
+
+        compactTrackLevelLabel = label("LEVEL —", 8, MUTED);
+        compactTrackLevelLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        compactTrackLevelLabel.setGravity(Gravity.CENTER_VERTICAL);
+        compactTrackLevelLabel.setPadding(dp(4), 0, dp(4), 0);
+        compactTrackLevelLabel.setContentDescription(
+                "MPC shell track level");
+        compactMixerPanel.addView(compactTrackLevelLabel,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
+
+        LinearLayout trackTabs = row();
+        for (String tab : new String[]{"LVL", "FX", "SEND", "I/O"}) {
+            TextView tabView = label(tab, 7, tab.equals("LVL") ? TEXT : MUTED);
+            tabView.setGravity(Gravity.CENTER);
+            tabView.setTypeface(Typeface.DEFAULT_BOLD);
+            tabView.setBackground(strokeBackground(
+                    tab.equals("LVL") ? SURFACE_2 : BG,
+                    tab.equals("LVL") ? LINE : Color.TRANSPARENT,
+                    2));
+            trackTabs.addView(tabView,
+                    new LinearLayout.LayoutParams(0, dp(22), 1));
+        }
+        compactMixerPanel.addView(trackTabs,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+
+        // Pad strip: actual level/pan/tune semantics from the selected Drum pad.
+        TextView padCaption = label("PAD", 8, MUTED);
+        padCaption.setTypeface(Typeface.DEFAULT_BOLD);
+        padCaption.setPadding(dp(3), dp(3), dp(3), 0);
+        compactMixerPanel.addView(padCaption,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(20)));
+
+        compactPadContext = compactContextField(
+                "PAD 01 • BANK A",
+                "MPC shell pad mixer strip",
+                null);
+        compactMixerPanel.addView(compactPadContext,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
         compactPadLevelMeter = new android.widget.ProgressBar(
                 this, null, android.R.attr.progressBarStyleHorizontal);
@@ -610,74 +654,73 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactPadLevelMeter.setProgress(100);
         compactPadLevelMeter.setContentDescription(
                 "MPC Main Mixer Strip level meter");
-        compactMixerPanel.addView(compactPadLevelMeter, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
+        compactMixerPanel.addView(compactPadLevelMeter,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(16)));
 
-        compactPadLevelLabel = label(
-                "LEVEL 100%",
-                9,
-                TEXT);
+        compactPadLevelLabel = label("LEVEL 100%", 8, TEXT);
         compactPadLevelLabel.setGravity(Gravity.CENTER_VERTICAL);
         compactPadLevelLabel.setTypeface(Typeface.DEFAULT_BOLD);
         compactPadLevelLabel.setContentDescription(
                 "MPC Main Mixer Strip level");
-        compactMixerPanel.addView(compactPadLevelLabel, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+        compactMixerPanel.addView(compactPadLevelLabel,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
         LinearLayout padMixValues = row();
-
-        compactPadPanLabel = label(
-                "PAN C",
-                9,
-                MUTED);
+        compactPadPanLabel = label("PAN C", 8, MUTED);
         compactPadPanLabel.setGravity(Gravity.CENTER);
         compactPadPanLabel.setTypeface(Typeface.DEFAULT_BOLD);
         compactPadPanLabel.setContentDescription(
                 "MPC Main Mixer Strip pad pan");
         compactPadPanLabel.setBackground(strokeBackground(
-                SURFACE_2, LINE, 5));
-        padMixValues.addView(compactPadPanLabel, new LinearLayout.LayoutParams(
-                0, dp(28), 1));
+                SURFACE_2, LINE, 2));
+        padMixValues.addView(compactPadPanLabel,
+                new LinearLayout.LayoutParams(0, dp(24), 1));
 
-        compactPadTuneLabel = label(
-                "TUNE +0.0",
-                9,
-                MUTED);
+        compactPadTuneLabel = label("TUNE +0.0", 8, MUTED);
         compactPadTuneLabel.setGravity(Gravity.CENTER);
         compactPadTuneLabel.setTypeface(Typeface.DEFAULT_BOLD);
         compactPadTuneLabel.setContentDescription(
                 "MPC Main Mixer Strip pad tuning");
         compactPadTuneLabel.setBackground(strokeBackground(
-                SURFACE_2, LINE, 5));
-        padMixValues.addView(compactPadTuneLabel, new LinearLayout.LayoutParams(
-                0, dp(28), 1));
+                SURFACE_2, LINE, 2));
+        padMixValues.addView(compactPadTuneLabel,
+                new LinearLayout.LayoutParams(0, dp(24), 1));
 
-        compactMixerPanel.addView(padMixValues, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+        compactMixerPanel.addView(padMixValues,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
-        area.addView(compactMixerPanel, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(98)));
+        compactOutputContext = label("MAIN OUT", 8, MUTED);
+        compactOutputContext.setTypeface(Typeface.DEFAULT_BOLD);
+        compactOutputContext.setGravity(Gravity.CENTER_VERTICAL);
+        compactOutputContext.setPadding(dp(3), dp(3), dp(3), 0);
+        compactMixerPanel.addView(compactOutputContext,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(20)));
+
+        compactOutputLevelLabel = label("LEVEL —  •  RESERVED", 8, MUTED);
+        compactOutputLevelLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        compactOutputLevelLabel.setGravity(Gravity.CENTER_VERTICAL);
+        compactOutputLevelLabel.setPadding(dp(4), 0, dp(4), 0);
+        compactOutputLevelLabel.setContentDescription(
+                "MPC shell main output level reserved");
+        compactMixerPanel.addView(compactOutputLevelLabel,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(23)));
+
+        area.addView(compactMixerPanel,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         compactFocusContext = compactContextField(
                 "DIAL • NONE",
                 "MPC shell dial focus",
                 null);
-        area.addView(compactFocusContext, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
-
-        sequenceOverviewView = new SequenceOverviewView(this);
-        sequenceOverviewView.setContentDescription("Sequence playback overview");
-        area.addView(sequenceOverviewView, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
-
-        TextView stateHint = label(
-                "SELECTED TRACK",
-                8,
-                MUTED);
-        stateHint.setGravity(Gravity.CENTER_VERTICAL);
-        stateHint.setPadding(dp(7), 0, dp(7), 0);
-        area.addView(stateHint, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+        area.addView(compactFocusContext,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
         applyCompactMixerVisibility();
     }
@@ -807,7 +850,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void refreshMpcCompactContext() {
         if (navigationController == null
-                || compactSequenceContext == null
                 || compactTrackContext == null
                 || compactProgramContext == null
                 || compactPadContext == null
@@ -824,8 +866,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final double tempo = nativeStateReady
                 ? nativeSequenceGetTempo() : 120.0;
 
-        compactSequenceContext.setText(String.format(
-                Locale.ROOT, "SEQ %02d • %.1f BPM", sequence, tempo));
+        // Kept as an internal compatibility state; Sequence is rendered in Main.
+        if (compactSequenceContext != null) {
+            compactSequenceContext.setText(String.format(
+                    Locale.ROOT, "SEQ %02d • %.1f BPM", sequence, tempo));
+        }
 
         if (nativeStateReady) {
             final String trackType = nativeSequenceGetTrackType(trackIndex);
@@ -833,44 +878,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final boolean muted = nativeSequenceIsTrackMuted(trackIndex);
             compactTrackContext.setText(String.format(
                     Locale.ROOT,
-                    "TRACK %02d • %s  %s%s",
-                    track,
-                    trackType,
-                    armed ? "REC" : "—",
-                    muted ? " • MUTE" : ""));
+                    "TRACK %02d • %s",
+                    track, trackType));
 
-            final boolean drumProgramContext =
-                    "DRUM".equalsIgnoreCase(trackType);
-            final String programStatus =
-                    nativeSequenceGetTrackProgram(trackIndex);
             compactProgramContext.setText(
-                    drumProgramContext
-                            ? "PROGRAM • " + normalizeProgramLabel(programStatus)
-                            : "PROGRAM • N/A (" + trackType + ")");
-            compactProgramContext.setEnabled(drumProgramContext);
-            compactProgramContext.setAlpha(drumProgramContext ? 1.0f : 0.48f);
-            if (drumProgramContext) {
-                compactProgramContext.setOnClickListener(
-                        v -> showProgramSelectPage());
-            } else {
-                compactProgramContext.setOnClickListener(null);
+                    "REC " + (armed ? "ON" : "OFF")
+                            + " • MUTE " + (muted ? "ON" : "OFF")
+                            + " • SOLO —");
+
+            if (compactTrackLevelLabel != null) {
+                compactTrackLevelLabel.setText(
+                        "LEVEL —  •  TRACK MIXER RESERVED");
             }
         } else {
             compactTrackContext.setText("TRACK 01 • DRUM");
-            compactProgramContext.setText("PROGRAM • —");
-            compactProgramContext.setEnabled(true);
-            compactProgramContext.setAlpha(1.0f);
-            compactProgramContext.setOnClickListener(
-                    v -> showProgramSelectPage());
+            compactProgramContext.setText("REC OFF • MUTE OFF • SOLO —");
+            if (compactTrackLevelLabel != null) {
+                compactTrackLevelLabel.setText(
+                        "LEVEL —  •  TRACK MIXER RESERVED");
+            }
         }
 
         final char padBank = (char) ('A' + Math.max(
-                0,
-                Math.min(7, navigationController.state().padBank())));
+                0, Math.min(7, navigationController.state().padBank())));
         compactPadContext.setText(String.format(
                 Locale.ROOT, "PAD %02d • BANK %s",
-                selectedPad + 1,
-                padBank));
+                selectedPad + 1, padBank));
 
         if (compactPadLevelMeter != null && compactPadLevelLabel != null) {
             final int levelPercent = nativeStateReady
@@ -880,9 +913,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             compactPadLevelMeter.setProgress(levelPercent);
             compactPadLevelLabel.setText(String.format(
                     Locale.ROOT,
-                    "LEVEL %d%%  •  PAD %02d",
-                    levelPercent,
-                    selectedPad + 1));
+                    "LEVEL %d%%",
+                    levelPercent));
 
             if (compactPadPanLabel != null) {
                 final float pan = nativeStateReady
@@ -918,6 +950,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 ? "" : " • " + state.subcontext().name().replace('_', ' ')));
         compactFocusContext.setTextColor(
                 state.actionAvailable() ? ACCENT : DANGER);
+
+        if (compactOutputLevelLabel != null) {
+            compactOutputLevelLabel.setText("LEVEL —  •  RESERVED");
+        }
     }
 
     private void refreshMpcFunctionBar() {
@@ -1198,19 +1234,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(10), dp(6), dp(10), dp(6));
+        bar.setPadding(dp(8), dp(4), dp(8), dp(4));
         bar.setBackgroundColor(SURFACE);
 
-        projectState = label("UNTITLED", 12, TEXT);
+        projectState = label("PROJECT\nUNTITLED", 10, TEXT);
         projectState.setTypeface(Typeface.DEFAULT_BOLD);
+        projectState.setGravity(Gravity.CENTER_VERTICAL);
+        projectState.setContentDescription("MPC Project");
         bar.addView(projectState, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 1.2f));
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1.15f));
 
-        pageTitle = label("MAIN", 12, Color.WHITE);
-        pageTitle.setGravity(Gravity.CENTER);
-        pageTitle.setTypeface(Typeface.DEFAULT_BOLD);
-        bar.addView(pageTitle, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.55f));
+        pageTitle = label("MAIN", 1, TEXT);
+        pageTitle.setVisibility(View.GONE);
 
         sequenceTransportView = label(
                 "BAR 001  BEAT 1  TICK 000",
@@ -1220,30 +1255,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceTransportView.setTypeface(Typeface.DEFAULT_BOLD);
         sequenceTransportView.setContentDescription("Sequence position and tempo");
         bar.addView(sequenceTransportView, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.75f));
-
-        audioState = statusChip("AUDIO OFF", MUTED);
-        bar.addView(audioState, new LinearLayout.LayoutParams(dp(96), dp(38)));
-
-        midiState = statusChip("MIDI —", MUTED);
-        bar.addView(midiState, new LinearLayout.LayoutParams(dp(96), dp(38)));
-
-        Button play = topButton("PLAY");
-        play.setOnClickListener(v -> {
-            final String result = nativeSequenceStart();
-            setAudioStateFromResult(result);
-            setBottomStatus(result);
-        });
-        bar.addView(play, new LinearLayout.LayoutParams(dp(72), dp(38)));
-
-        Button stop = topButton("STOP");
-        stop.setOnClickListener(v -> {
-            final String sequenceResult = nativeSequenceStop();
-            final String audioResult = nativeAudioStop();
-            setAudioStateFromResult(audioResult);
-            setBottomStatus(sequenceResult + " | " + audioResult);
-        });
-        bar.addView(stop, new LinearLayout.LayoutParams(dp(72), dp(38)));
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1.65f));
 
         timingCorrectTopButton = topButton("TC");
         timingCorrectTopButton.setContentDescription("Timing Correct");
@@ -1258,29 +1270,52 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             syncHardwareTransportLeds();
         });
         bar.addView(timingCorrectTopButton,
-                new LinearLayout.LayoutParams(dp(58), dp(38)));
+                new LinearLayout.LayoutParams(dp(56), dp(36)));
 
         metronomeTopButton = topButton("METRO");
         metronomeTopButton.setContentDescription("Metronome reserved");
         metronomeTopButton.setEnabled(false);
         metronomeTopButton.setAlpha(0.55f);
         bar.addView(metronomeTopButton,
-                new LinearLayout.LayoutParams(dp(68), dp(38)));
+                new LinearLayout.LayoutParams(dp(64), dp(36)));
 
         automationTopButton = topButton("AUTO");
         automationTopButton.setContentDescription("Automation reserved");
         automationTopButton.setEnabled(false);
         automationTopButton.setAlpha(0.55f);
         bar.addView(automationTopButton,
-                new LinearLayout.LayoutParams(dp(58), dp(38)));
+                new LinearLayout.LayoutParams(dp(52), dp(36)));
 
-        Button midi = topButton("MIDI");
-        midi.setOnClickListener(v -> showMidiPage());
-        bar.addView(midi, new LinearLayout.LayoutParams(dp(72), dp(38)));
+        Button play = topButton("▶");
+        play.setContentDescription("Play");
+        play.setTextSize(12);
+        play.setOnClickListener(v -> {
+            final String result = nativeSequenceStart();
+            setAudioStateFromResult(result);
+            setBottomStatus(result);
+        });
+        bar.addView(play, new LinearLayout.LayoutParams(dp(42), dp(36)));
+
+        Button stop = topButton("■");
+        stop.setContentDescription("Stop");
+        stop.setTextSize(12);
+        stop.setOnClickListener(v -> {
+            final String sequenceResult = nativeSequenceStop();
+            final String audioResult = nativeAudioStop();
+            setAudioStateFromResult(audioResult);
+            setBottomStatus(sequenceResult + " | " + audioResult);
+        });
+        bar.addView(stop, new LinearLayout.LayoutParams(dp(42), dp(36)));
 
         Button menu = topButton("MENU");
+        menu.setContentDescription("Menu");
         menu.setOnClickListener(v -> showMenuPage());
-        bar.addView(menu, new LinearLayout.LayoutParams(dp(72), dp(38)));
+        bar.addView(menu, new LinearLayout.LayoutParams(dp(70), dp(36)));
+
+        // Keep diagnostic state objects alive for existing refresh logic, but do
+        // not duplicate them in the MPC-facing toolbar.
+        audioState = statusChip("AUDIO OFF", MUTED);
+        midiState = statusChip("MIDI —", MUTED);
 
         return bar;
     }

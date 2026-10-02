@@ -994,3 +994,11 @@ Program Edit remains reserved until the backend can truthfully edit Program cont
 - Sequence Edit remains visually represented by the compact pencil affordance but is explicitly RESERVED until a real Sequence Edit contract exists.
 - Main Data Dial focus is rendered as a thin red outline on the selected field, including Sequence, Track, Program and Layer contexts.
 - Main Track/Arrangement is flattened into one central MPC-style work surface; the old nested Android-card appearance is no longer the target.
+
+
+## 2026-10-02 Main shell fidelity refinement
+
+- The shell's left column now follows the MPC Mixer Strip composition rather than duplicating Sequence/Track/Program/Pad context.
+- Main central content remains the authoritative Sequence and Track/Arrangement workspace.
+- The shell Mixer Strip shows selected Track state plus the selected Drum Pad's real level/pan/tune; unavailable Track/Main Output levels remain RESERVED.
+- The top toolbar is reduced to the MPC information hierarchy and no longer exposes diagnostic MIDI/audio chips as primary product controls.

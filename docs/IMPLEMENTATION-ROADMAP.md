@@ -445,3 +445,6 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 
 
 - **Main canvas fidelity refinement:** removed duplicate local sequence steppers, flattened Main workstation sections, added visible Data Dial selection outline, and kept unavailable Sequence Edit as a truthful reserved affordance.
+
+
+- **Shell fidelity:** converted the persistent context column into a condensed Mixer Strip area and reduced the toolbar to the MPC Main information hierarchy.

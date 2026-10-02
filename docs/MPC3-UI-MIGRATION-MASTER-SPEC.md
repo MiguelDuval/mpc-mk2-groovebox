@@ -1054,3 +1054,10 @@ Main and Track View explicitly establish their hardware/Data Dial focus on entry
 - Sequence fields are presented in one compact MPC-style row with a smaller auxiliary Time Signature/Loop row.
 - Main's selected Data Dial target now receives a visible red selection outline, matching the documented MPC parameter-selection convention.
 - Outer Main Track/Sequence containers were flattened so the workspace reads as one workstation canvas rather than a dashboard of independent Android cards.
+
+
+## 2026-10-02 MPC shell / mixer-strip fidelity refinement
+
+- The shell left edge now follows the MPC3 Main composition more closely: five shortcuts sit beside a dedicated condensed Mixer Strip area; central Sequence/Track/Program information is no longer duplicated as a dashboard column.
+- The condensed mixer area exposes only backend-truthful channel information: selected Track status, selected Drum Pad level/pan/tune, and explicit RESERVED Track/Main Output level states where our backend does not yet expose those values.
+- Toolbar was simplified toward the MPC Main information hierarchy: Project, playhead position, Timing Correct, Metronome, Automation and Menu; diagnostic AUDIO/MIDI chips remain internal rather than being part of the MPC-facing toolbar.
