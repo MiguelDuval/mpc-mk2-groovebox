@@ -111,6 +111,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final Handler waveformUiHandler = new Handler(Looper.getMainLooper());
     private Runnable recordingWaveformUpdater;
     private WaveformView sampleWaveform;
+    private WaveformView mainTrackWaveform;
     private WaveformView recordingWaveform;
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
@@ -1280,14 +1281,86 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
         TextView trackWorkspaceInfo = label(
-                "PERFORMANCE • selected pad follows MPC Studio MkII bank/selection",
+                "PERFORMANCE • PAD + QUICK SAMPLE",
                 9, MUTED);
         trackWorkspaceInfo.setContentDescription("Main Track View guidance");
         trackWorkspace.addView(trackWorkspaceInfo,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
-        trackWorkspace.addView(buildMiniMainPadGrid(),
+        LinearLayout quickTrack = row();
+
+        LinearLayout padColumn = column();
+        padColumn.setContentDescription("Main Track View performance pad surface");
+        padColumn.addView(buildMiniMainPadGrid(),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        quickTrack.addView(padColumn,
+                new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.52f));
+
+        LinearLayout sampleColumn = column();
+        sampleColumn.setPadding(dp(6), 0, 0, 0);
+        sampleColumn.setContentDescription("Main Track View quick sample editor");
+
+        LinearLayout sampleHeader = row();
+        TextView sampleTitle = label("", 10, TEXT);
+        sampleTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        sampleTitle.setGravity(Gravity.CENTER_VERTICAL);
+        sampleTitle.setContentDescription("Main Track View sample context");
+        sampleHeader.addView(sampleTitle,
+                new LinearLayout.LayoutParams(0, dp(28), 1));
+
+        Button layerButton = actionButton("LAYER +", v -> {
+            selectedLayer = Math.min(7, selectedLayer + 1);
+            navigationController.setSelectedLayer(selectedLayer);
+            refreshMainTrackQuickSample();
+        });
+        layerButton.setContentDescription("Main Track View next sample layer");
+        sampleHeader.addView(layerButton,
+                new LinearLayout.LayoutParams(dp(72), dp(28)));
+        sampleColumn.addView(sampleHeader,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+
+        mainTrackWaveform = new WaveformView(this);
+        mainTrackWaveform.setContentDescription(
+                "Main Track View quick sample waveform");
+        mainTrackWaveform.setEditable(true);
+        mainTrackWaveform.setMinimumHeight(dp(110));
+        mainTrackWaveform.setOnSelectionCommitListener(
+                (startNormalized, endNormalized) -> commitMainTrackWaveformRegion(
+                        startNormalized, endNormalized));
+        sampleColumn.addView(mainTrackWaveform,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        TextView quickSampleInfo = label("", 9, MUTED);
+        quickSampleInfo.setContentDescription(
+                "Main Track View quick sample info");
+        quickSampleInfo.setGravity(Gravity.CENTER_VERTICAL);
+        sampleColumn.addView(quickSampleInfo,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+
+        LinearLayout sampleActions = row();
+        sampleActions.addView(actionButton(
+                "AUDITION",
+                v -> selectAndTriggerPad(selectedPadIndexForUi(), 112)),
+                new LinearLayout.LayoutParams(0, dp(34), 1));
+        sampleActions.addView(actionButton(
+                "SAMPLE EDIT",
+                v -> showSamplePage()),
+                new LinearLayout.LayoutParams(0, dp(34), 1));
+        sampleColumn.addView(sampleActions,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        quickTrack.addView(sampleColumn,
+                new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.48f));
+
+        trackWorkspace.addView(quickTrack,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
@@ -1361,7 +1434,98 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMainModeState(sequenceName, bpm, bars, timeSig, loop, start, end);
         refreshMpcToolbarState();
         refreshMainModePadVisuals();
+        refreshMainTrackQuickSample();
         updateModeRailSelection();
+    }
+
+    private void commitMainTrackWaveformRegion(
+            float startNormalized,
+            float endNormalized) {
+        final long total = nativeAudioGetPadSampleFrameCount(
+                selectedPad, selectedLayer);
+        if (total <= 0) {
+            setBottomStatus("Quick Sample • no sample assigned");
+            refreshMainTrackQuickSample();
+            return;
+        }
+
+        final long start = Math.max(
+                0,
+                Math.min(total - 1,
+                        Math.round(startNormalized * total)));
+        final long end = Math.max(
+                start + 1,
+                Math.min(total,
+                        Math.round(endNormalized * total)));
+        setBottomStatus(nativeAudioSetPadSampleRegion(
+                selectedPad, selectedLayer, start, end));
+        refreshMainTrackQuickSample();
+    }
+
+    private void refreshMainTrackQuickSample() {
+        if (mainTrackWaveform == null) return;
+
+        final long frames = nativeAudioGetPadSampleFrameCount(
+                selectedPad, selectedLayer);
+        final int sampleRate = nativeAudioGetPadSampleRate(
+                selectedPad, selectedLayer);
+
+        if (frames <= 0) {
+            mainTrackWaveform.setPeaks(null);
+            mainTrackWaveform.setSelection(0f, 1f);
+            mainTrackWaveform.setDurationMs(0f);
+        } else {
+            mainTrackWaveform.setPeaks(
+                    nativeAudioGetPadWaveformPeaks(
+                            selectedPad, selectedLayer, 384));
+            final long start = nativeAudioGetPadSampleRegionStart(
+                    selectedPad, selectedLayer);
+            final long end = nativeAudioGetPadSampleRegionEnd(
+                    selectedPad, selectedLayer);
+            mainTrackWaveform.setSelection(
+                    start / (float) frames,
+                    end / (float) frames);
+            mainTrackWaveform.setDurationMs(
+                    sampleRate > 0
+                            ? frames * 1000.0f / sampleRate
+                            : 0.0f);
+        }
+        mainTrackWaveform.setRecording(false);
+
+        final TextView info = findTextByContentDescription(
+                content,
+                "Main Track View quick sample info");
+        if (info != null) {
+            if (frames <= 0) {
+                info.setText(String.format(
+                        Locale.ROOT,
+                        "PAD %02d • LAYER %d/8 • NO SAMPLE",
+                        selectedPad + 1,
+                        selectedLayer + 1));
+            } else {
+                info.setText(String.format(
+                        Locale.ROOT,
+                        "PAD %02d • LAYER %d/8 • %d frames • S %d • E %d",
+                        selectedPad + 1,
+                        selectedLayer + 1,
+                        frames,
+                        nativeAudioGetPadSampleRegionStart(
+                                selectedPad, selectedLayer),
+                        nativeAudioGetPadSampleRegionEnd(
+                                selectedPad, selectedLayer)));
+            }
+        }
+
+        final TextView context = findTextByContentDescription(
+                content,
+                "Main Track View sample context");
+        if (context != null) {
+            context.setText(String.format(
+                    Locale.ROOT,
+                    "SAMPLE • PAD %02d • LAYER %d/8",
+                    selectedPad + 1,
+                    selectedLayer + 1));
+        }
     }
 
     private void setMainTrackArrangementView(boolean arrangementSelected) {
@@ -1404,6 +1568,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         Math.max(0, nativeSequenceGetSelectedTrack()) + 1));
             }
             refreshMainModePadVisuals();
+            refreshMainTrackQuickSample();
         } else {
             refreshMainArrangementPreview();
         }
