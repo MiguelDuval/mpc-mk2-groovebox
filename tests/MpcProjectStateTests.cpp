@@ -107,6 +107,12 @@ int main() {
 
     assert(state.selectTrack(0));
     assert(state.activeDrumProgram().id == "drum-program-2");
+
+    assert(state.addTrack(mpc::domain::TrackKind::Drum));
+    assert(state.activeTrackIndex() == 2);
+    assert(state.activeSequence().tracks[2].programId == "drum-program-2");
+    assert(state.activeProgramIndexForTrack(2) == 1);
+
     assert(!state.setTrackProgram(0, "missing-program"));
 
     assert(!state.selectTrack(99));
