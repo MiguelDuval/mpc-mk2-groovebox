@@ -130,7 +130,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView compactPadTuneLabel;
     private LinearLayout compactMixerPanel;
     private Button compactMixerToggle;
+    private Button compactMixerStripModeToggle;
     private boolean compactMixerVisible = true;
+    private boolean compactMixerPadMode;
+    private TextView compactTrackCaption;
+    private View compactTrackTabs;
+    private TextView compactPadCaption;
     private AlertDialog activeMpcParameterDialog;
     private Button timingCorrectTopButton;
     private Button metronomeTopButton;
@@ -605,15 +610,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         header.addView(headerLabel, new LinearLayout.LayoutParams(
                 0, dp(24), 1));
 
-        compactMixerToggle = actionButton("MIX", v -> {
+        compactMixerToggle = actionButton("◉", v -> {
             compactMixerVisible = !compactMixerVisible;
             applyCompactMixerVisibility();
         });
-        compactMixerToggle.setTextSize(8);
+        compactMixerToggle.setTextSize(12);
         compactMixerToggle.setContentDescription(
                 "MPC condensed Mixer Strip show or hide");
         header.addView(compactMixerToggle,
-                new LinearLayout.LayoutParams(dp(44), dp(24)));
+                new LinearLayout.LayoutParams(dp(34), dp(24)));
+
+        compactMixerStripModeToggle = actionButton("▦", v -> {
+            compactMixerPadMode = !compactMixerPadMode;
+            applyCompactMixerStripMode();
+        });
+        compactMixerStripModeToggle.setTextSize(12);
+        compactMixerStripModeToggle.setContentDescription(
+                "MPC condensed Mixer Strip Track or Pad selector");
+        header.addView(compactMixerStripModeToggle,
+                new LinearLayout.LayoutParams(dp(34), dp(24)));
         area.addView(header, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
@@ -630,10 +645,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactMixerPanel.setPadding(dp(2), dp(2), dp(2), dp(2));
 
         // Track strip: status is backed by the actual selected-track state.
-        TextView trackCaption = label("TRACK", 8, MUTED);
-        trackCaption.setTypeface(Typeface.DEFAULT_BOLD);
-        trackCaption.setPadding(dp(3), dp(1), dp(3), 0);
-        compactMixerPanel.addView(trackCaption,
+        compactTrackCaption = label("TRACK", 8, MUTED);
+        compactTrackCaption.setTypeface(Typeface.DEFAULT_BOLD);
+        compactTrackCaption.setPadding(dp(3), dp(1), dp(3), 0);
+        compactMixerPanel.addView(compactTrackCaption,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
 
@@ -669,6 +684,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
         LinearLayout trackTabs = row();
+        compactTrackTabs = trackTabs;
         for (String tab : new String[]{"LVL", "FX", "SEND", "I/O"}) {
             TextView tabView = label(tab, 7, tab.equals("LVL") ? TEXT : MUTED);
             tabView.setGravity(Gravity.CENTER);
@@ -685,10 +701,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
 
         // Pad strip: actual level/pan/tune semantics from the selected Drum pad.
-        TextView padCaption = label("PAD", 8, MUTED);
-        padCaption.setTypeface(Typeface.DEFAULT_BOLD);
-        padCaption.setPadding(dp(3), dp(3), dp(3), 0);
-        compactMixerPanel.addView(padCaption,
+        compactPadCaption = label("PAD", 8, MUTED);
+        compactPadCaption.setTypeface(Typeface.DEFAULT_BOLD);
+        compactPadCaption.setPadding(dp(3), dp(3), dp(3), 0);
+        compactMixerPanel.addView(compactPadCaption,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(20)));
 
@@ -775,6 +791,55 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
         applyCompactMixerVisibility();
+        applyCompactMixerStripMode();
+    }
+
+    private void applyCompactMixerStripMode() {
+        if (compactMixerStripModeToggle == null) {
+            return;
+        }
+
+        final boolean padMode = compactMixerPadMode;
+        compactMixerStripModeToggle.setText(padMode ? "•" : "▦");
+        compactMixerStripModeToggle.setContentDescription(
+                padMode
+                        ? "MPC condensed Mixer Strip showing Pad"
+                        : "MPC condensed Mixer Strip showing Track");
+
+        if (compactTrackCaption != null) {
+            compactTrackCaption.setVisibility(padMode ? View.GONE : View.VISIBLE);
+        }
+        if (compactTrackContext != null) {
+            compactTrackContext.setVisibility(padMode ? View.GONE : View.VISIBLE);
+        }
+        if (compactProgramContext != null) {
+            compactProgramContext.setVisibility(padMode ? View.GONE : View.VISIBLE);
+        }
+        if (compactTrackLevelLabel != null) {
+            compactTrackLevelLabel.setVisibility(padMode ? View.GONE : View.VISIBLE);
+        }
+        if (compactTrackTabs != null) {
+            compactTrackTabs.setVisibility(padMode ? View.GONE : View.VISIBLE);
+        }
+
+        if (compactPadCaption != null) {
+            compactPadCaption.setVisibility(padMode ? View.VISIBLE : View.GONE);
+        }
+        if (compactPadContext != null) {
+            compactPadContext.setVisibility(padMode ? View.VISIBLE : View.GONE);
+        }
+        if (compactPadLevelMeter != null) {
+            compactPadLevelMeter.setVisibility(padMode ? View.VISIBLE : View.GONE);
+        }
+        if (compactPadLevelLabel != null) {
+            compactPadLevelLabel.setVisibility(padMode ? View.VISIBLE : View.GONE);
+        }
+        if (compactPadPanLabel != null) {
+            compactPadPanLabel.setVisibility(padMode ? View.VISIBLE : View.GONE);
+        }
+        if (compactPadTuneLabel != null) {
+            compactPadTuneLabel.setVisibility(padMode ? View.VISIBLE : View.GONE);
+        }
     }
 
     private TextView compactContextField(
@@ -930,6 +995,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         if (nativeStateReady) {
             final String trackType = nativeSequenceGetTrackType(trackIndex);
+            final boolean drumTrack = "DRUM".equalsIgnoreCase(trackType);
+            if (!drumTrack) {
+                compactMixerPadMode = false;
+            }
+            if (compactMixerStripModeToggle != null) {
+                compactMixerStripModeToggle.setEnabled(drumTrack);
+                compactMixerStripModeToggle.setAlpha(drumTrack ? 1.0f : 0.45f);
+            }
             final boolean armed = nativeSequenceIsSelectedTrackArmed();
             final boolean muted = nativeSequenceIsTrackMuted(trackIndex);
             compactTrackContext.setText(String.format(
@@ -947,6 +1020,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         "LEVEL —  •  TRACK MIXER RESERVED");
             }
         } else {
+            if (compactMixerStripModeToggle != null) {
+                compactMixerStripModeToggle.setEnabled(false);
+                compactMixerStripModeToggle.setAlpha(0.45f);
+            }
+            compactMixerPadMode = false;
             compactTrackContext.setText("TRACK 01 • DRUM");
             compactProgramContext.setText("REC OFF • MUTE OFF • SOLO —");
             if (compactTrackLevelLabel != null) {
@@ -1010,6 +1088,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (compactOutputLevelLabel != null) {
             compactOutputLevelLabel.setText("LEVEL —  •  RESERVED");
         }
+        applyCompactMixerStripMode();
     }
 
     private void refreshMpcFunctionBar() {
