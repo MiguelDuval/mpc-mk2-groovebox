@@ -66,7 +66,7 @@ public class MpcNavigationControllerTest {
         assertEquals(MpcUiState.Mode.SAMPLE_EDIT, MpcUiState.legacyPage("SAMPLE").mode());
         assertEquals(MpcUiState.Mode.SAMPLER, MpcUiState.legacyPage("REC").mode());
         assertEquals(MpcUiState.Mode.TRACK_VIEW, MpcUiState.legacyPage("SEQ").mode());
-        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, MpcUiState.legacyPage("MIX").mode());
+        assertEquals(MpcUiState.Mode.PAD_MIXER, MpcUiState.legacyPage("MIX").mode());
     }
 
     @Test
