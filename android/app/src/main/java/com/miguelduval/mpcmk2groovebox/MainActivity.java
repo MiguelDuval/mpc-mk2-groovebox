@@ -526,7 +526,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showMainPage();
                 break;
             case TRACK_VIEW:
-                showSequencePage();
+                showTrackViewPage();
                 break;
             case BROWSER:
                 showBrowserPage();
@@ -976,7 +976,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(0, dp(32), 1)));
         trackHeader.addView(actionButton(
                 "TRACK VIEW",
-                v -> showSequencePage()),
+                v -> showTrackViewPage()),
                 new LinearLayout.LayoutParams(dp(104), dp(32)));
         trackCard.addView(trackHeader);
 
@@ -1666,6 +1666,163 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSampleInfo();
 
         content.addView(page);
+    }
+
+    private void showTrackViewPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "TRACK_VIEW";
+        navigationController.navigate(MpcUiState.Mode.TRACK_VIEW);
+        navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
+        pageTitle.setText("TRACK VIEW");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.setPadding(dp(8), dp(6), dp(8), dp(2));
+
+        LinearLayout header = row();
+        header.addView(sectionLabelView(
+                "SEQUENCE • TRACK VIEW",
+                new LinearLayout.LayoutParams(0, dp(34), 1)));
+        header.addView(actionButton("PREV", v -> {
+            setBottomStatus(nativeSequencePrevious());
+            showTrackViewPage();
+        }), new LinearLayout.LayoutParams(dp(66), dp(34)));
+        header.addView(actionButton("NEXT", v -> {
+            setBottomStatus(nativeSequenceNext());
+            showTrackViewPage();
+        }), new LinearLayout.LayoutParams(dp(66), dp(34)));
+        header.addView(actionButton("ARRANGE", v -> {
+            navigationController.navigate(MpcUiState.Mode.ARRANGE);
+            navigationController.setActionAvailable(false);
+            setBottomStatus("ARRANGE • RESERVED until linear arranger workspace");
+            updateMpcShellState();
+        }), new LinearLayout.LayoutParams(dp(90), dp(34)));
+        page.addView(header);
+
+        LinearLayout sequenceSummary = panel();
+        sequenceSummary.setContentDescription("Track View sequence overview");
+
+        TextView sequenceName = label("", 15, TEXT);
+        sequenceName.setTypeface(Typeface.DEFAULT_BOLD);
+        sequenceSummary.addView(sequenceName, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+
+        TextView sequenceStats = label("", 10, MUTED);
+        sequenceSummary.addView(sequenceStats, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+
+        page.addView(sequenceSummary, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(70)));
+
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout strips = column();
+        strips.setPadding(0, dp(2), 0, dp(2));
+        scroll.addView(strips);
+
+        final int count = startupComplete
+                ? nativeSequenceGetTrackCount() : 0;
+        final int selected = startupComplete
+                ? nativeSequenceGetSelectedTrack() : 0;
+
+        if (count == 0) {
+            strips.addView(label(
+                    "NO TRACKS • add a track from the Sequence editor",
+                    12, MUTED));
+        } else {
+            for (int i = 0; i < count; i++) {
+                final int trackIndex = i;
+                LinearLayout strip = row();
+                strip.setPadding(dp(6), dp(3), dp(6), dp(3));
+                strip.setBackground(strokeBackground(
+                        i == selected
+                                ? Color.rgb(42, 66, 76) : SURFACE_2,
+                        i == selected ? ACCENT : LINE,
+                        7));
+
+                TextView name = label(
+                        String.format(Locale.ROOT, "%02d  %s",
+                                i + 1, nativeSequenceTrackStatus(i)),
+                        12, TEXT);
+                name.setTypeface(Typeface.DEFAULT_BOLD);
+                name.setContentDescription(
+                        "Track View track " + (i + 1));
+                strip.addView(name, new LinearLayout.LayoutParams(
+                        0, dp(46), 1.7f));
+
+                TextView type = label("TYPE • status", 9, MUTED);
+                type.setGravity(Gravity.CENTER_VERTICAL);
+                strip.addView(type, new LinearLayout.LayoutParams(
+                        0, dp(46), 0.9f));
+
+                Button select = actionButton("SELECT", v -> {
+                    setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+                    navigationController.setSelectedTrack(trackIndex);
+                    showTrackViewPage();
+                });
+                strip.addView(select, new LinearLayout.LayoutParams(dp(78), dp(42)));
+
+                Button mute = actionButton("M", v -> {
+                    setBottomStatus(nativeSequenceToggleTrackMute(trackIndex));
+                    showTrackViewPage();
+                });
+                mute.setBackground(strokeBackground(
+                        Color.TRANSPARENT,
+                        LINE,
+                        6));
+                strip.addView(mute, new LinearLayout.LayoutParams(dp(50), dp(42)));
+
+                Button arm = actionButton("R", v -> {
+                    setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+                    setBottomStatus(nativeSequenceSetSelectedTrackArmed(
+                            !nativeSequenceIsSelectedTrackArmed()));
+                    showTrackViewPage();
+                });
+                strip.addView(arm, new LinearLayout.LayoutParams(dp(50), dp(42)));
+
+                Button solo = actionButton("S", null);
+                solo.setEnabled(false);
+                solo.setAlpha(0.45f);
+                solo.setContentDescription("Solo reserved");
+                strip.addView(solo, new LinearLayout.LayoutParams(dp(50), dp(42)));
+
+                strips.addView(strip, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
+            }
+        }
+
+        page.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout functions = row();
+        functions.addView(actionButton("GRID", v -> showSequenceGridPage()), weight());
+        functions.addView(actionButton("STEP", v -> showSequenceStepPage()), weight());
+        functions.addView(actionButton("NEW TRACK", v -> addSequenceTrack(0)), weight());
+        functions.addView(actionButton("SEQUENCE EDIT", v -> showSequencePage()), weight());
+        page.addView(functions, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+        content.addView(page);
+
+        if (startupComplete) {
+            sequenceName.setText(String.format(
+                    Locale.ROOT, "Sequence %02d",
+                    Math.max(0, nativeSequenceGetIndex()) + 1));
+            sequenceStats.setText(String.format(
+                    Locale.ROOT, "%.1f BPM • %d bars • %d/%d • %s",
+                    nativeSequenceGetTempo(),
+                    nativeSequenceGetBars(),
+                    nativeSequenceGetNumerator(),
+                    nativeSequenceGetDenominator(),
+                    nativeSequenceIsLoopEnabled() ? "LOOP ON" : "LOOP OFF"));
+        } else {
+            sequenceName.setText("Sequence 01");
+            sequenceStats.setText("120.0 BPM • 1 bar • 4/4 • LOOP OFF");
+        }
+
+        updateModeRailSelection();
     }
 
     private void showSequencePage() {
@@ -5407,7 +5564,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (next < 0) next += count;
             setBottomStatus(nativeSequenceSelectTrack(next));
             navigationController.setSelectedTrack(next);
-            showSequencePage();
+            if (navigationController.state().mode() == MpcUiState.Mode.TRACK_VIEW) {
+                showTrackViewPage();
+            } else {
+                showSequencePage();
+            }
             return;
         }
         if (hardwareFocus == 3) {
@@ -5416,7 +5577,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(
                     delta > 0 ? nativeSequenceNext() : nativeSequencePrevious());
             navigationController.setSelectedSequence(nativeSequenceGetIndex());
-            showSequencePage();
+            if (navigationController.state().mode() == MpcUiState.Mode.TRACK_VIEW) {
+                showTrackViewPage();
+            } else {
+                showSequencePage();
+            }
             return;
         }
         if (hardwareFocus == 11 || hardwareFocus == 12) {
