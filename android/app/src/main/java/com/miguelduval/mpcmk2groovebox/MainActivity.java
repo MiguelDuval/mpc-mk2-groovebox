@@ -421,6 +421,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             engineInfo + " | " + sampleResult + " | " + audioResult);
                     setAudioStateFromResult(audioResult);
                     refreshAllInspectorState();
+                    if ("MAIN".equals(currentPage)) {
+                        refreshMainTrackQuickSample();
+                    }
                     startSequenceUiUpdater();
                     refreshSequenceOverview();
 
@@ -1472,7 +1475,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void refreshMainTrackQuickSample() {
-        if (mainTrackWaveform == null) return;
+        if (mainTrackWaveform == null || !startupComplete) return;
 
         final long frames = nativeAudioGetPadSampleFrameCount(
                 selectedPad, selectedLayer);
