@@ -155,6 +155,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Runnable recordingWaveformUpdater;
     private WaveformView sampleWaveform;
     private WaveformView mainTrackWaveform;
+    private Button mainTrackSamplePrimaryButton;
     private Button mainTrackSampleActionButton;
     private MpcTrackEditView mainTrackEditView;
     private WaveformView recordingWaveform;
@@ -1763,10 +1764,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
 
         LinearLayout sampleActions = row();
-        sampleActions.addView(actionButton(
+        mainTrackSamplePrimaryButton = actionButton(
                 "AUDITION",
-                v -> selectAndTriggerPad(selectedPadIndexForUi(), 112)),
+                v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
+        mainTrackSamplePrimaryButton.setContentDescription(
+                "Main Track View sample primary action");
+        sampleActions.addView(
+                mainTrackSamplePrimaryButton,
                 new LinearLayout.LayoutParams(0, dp(34), 1));
+
         mainTrackSampleActionButton = actionButton(
                 "BROWSE",
                 v -> showBrowserPage());
@@ -2215,14 +2221,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ? "NO NAME"
                         : sampleName.trim();
 
-        if (mainTrackSampleActionButton != null) {
+        if (mainTrackSamplePrimaryButton != null
+                && mainTrackSampleActionButton != null) {
             if (frames <= 0) {
+                // MPC Main's empty-pad state exposes the two loading paths:
+                // Browse an existing sample or Record a new one.
+                mainTrackSamplePrimaryButton.setText("BROWSE");
+                mainTrackSamplePrimaryButton.setOnClickListener(
+                        v -> showBrowserPage());
+                mainTrackSamplePrimaryButton.setContentDescription(
+                        "Main Track View browse samples");
+
                 mainTrackSampleActionButton.setText("RECORD");
                 mainTrackSampleActionButton.setOnClickListener(
                         v -> showRecordPage());
                 mainTrackSampleActionButton.setContentDescription(
                         "Main Track View record sample");
             } else {
+                // Once loaded, the waveform becomes the primary surface;
+                // keep Audition first and Browser available as a secondary path.
+                mainTrackSamplePrimaryButton.setText("AUDITION");
+                mainTrackSamplePrimaryButton.setOnClickListener(
+                        v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
+                mainTrackSamplePrimaryButton.setContentDescription(
+                        "Main Track View sample primary action");
+
                 mainTrackSampleActionButton.setText("BROWSE");
                 mainTrackSampleActionButton.setOnClickListener(
                         v -> showBrowserPage());
