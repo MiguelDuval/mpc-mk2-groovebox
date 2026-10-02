@@ -1096,3 +1096,5 @@ The Studio MkII LCD companion mirror now projects the same Data Dial focus state
 
 ## 2026-10-02 MPC One visual-chrome fidelity checkpoint
 The shared shell now keeps the MPC 3.x dark upper toolbar/workspace relationship, with red used as the focused/selected accent rather than a generic cyan navigation fill. The five shortcut slots use a dark inactive treatment with a red selected/focused state. This is a presentation-only increment; navigation state, semantic actions and realtime/audio boundaries are unchanged.
+## 2026-10-02 Main sequence-field semantic refinement
+Main's Sequence region now has one authoritative Sequence selector. The adjacent `SEQ` field is treated as the MPC tempo-source indicator rather than a duplicate Sequence selector; Global Tempo remains explicitly unavailable until the domain supports it. Numeric BPM/BARS/LOOP START/LOOP END fields support MPC-style double-tap numeric entry while retaining Data Dial/+/- as the hardware path.
