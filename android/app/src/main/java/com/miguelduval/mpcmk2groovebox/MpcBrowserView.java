@@ -25,7 +25,7 @@ final class MpcBrowserView extends LinearLayout {
         void onSectionSelected(String section);
         void onFilterSelected(String filter);
         void onOpenStorage();
-        void onAudition();
+        void onPlayCurrent();
         void onSearchChanged(String query);
     }
 
@@ -166,7 +166,7 @@ final class MpcBrowserView extends LinearLayout {
         });
         targetPanel.addView(load, paramsMatch(context, 46));
 
-        Button audition = button(context, "AUDITION");
+        Button audition = button(context, "PLAY CURRENT");
         audition.setOnClickListener(v -> {
             if (listener != null) listener.onAudition();
         });
@@ -250,7 +250,7 @@ final class MpcBrowserView extends LinearLayout {
         } else {
             Button audition = button(context, "PLAY");
             audition.setOnClickListener(v -> {
-                if (listener != null) listener.onAudition();
+                if (listener != null) listener.onPlayCurrent();
             });
             row.addView(audition, paramsWidth(context, 64));
         }
