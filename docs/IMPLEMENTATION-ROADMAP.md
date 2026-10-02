@@ -432,3 +432,11 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Removed the development-only hardware/status footer from normal Main presentation.
 - Kept both diagnostics available during `ui-audit` runs.
 - Function Bar is now the true bottom boundary of the normal MPC shell.
+
+
+### 2026-10-03 Main Track identity hierarchy
+
+- Flattened the Main Track header into one continuous identity band.
+- Removed the redundant static `TRACK` caption and the visible `PROGRAM` prefix from the program value.
+- Kept Track Select and Program Select as the same semantic entry points.
+- Track Type is now visually compact while retaining truthful availability gating.
