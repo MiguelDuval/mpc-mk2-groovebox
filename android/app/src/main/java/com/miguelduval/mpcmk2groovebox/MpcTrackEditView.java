@@ -229,9 +229,6 @@ final class MpcTrackEditView extends LinearLayout {
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
     }
 
-      ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-    }
-
     void bind(Snapshot snapshot) {
         this.snapshot = snapshot;
         render();
