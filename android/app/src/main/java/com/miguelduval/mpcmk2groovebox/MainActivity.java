@@ -948,7 +948,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetLauncherContext(false, 0);
         clearSequenceLauncherLeds();
         currentPage = "MAIN";
+        hardwareFocus = 0;
         navigationController.navigate(MpcUiState.Mode.MAIN);
+        navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
+        navigationController.setActionAvailable(true);
         pageTitle.setText("MAIN");
         content.removeAllViews();
 
@@ -2201,6 +2205,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "TRACK_VIEW";
+        hardwareFocus = 2;
         navigationController.navigate(MpcUiState.Mode.TRACK_VIEW);
         navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
