@@ -7,6 +7,14 @@ import static org.junit.Assert.assertTrue;
 
 public final class MpcHardwareFeedbackPolicyTest {
     @Test
+    public void ledColorFamiliesMatchMkIiProtocol() {
+        assertTrue(MpcHardwareFeedbackPolicy.isTwoColorButton(66));
+        assertTrue(MpcHardwareFeedbackPolicy.isTwoColorButton(11));
+        assertTrue(!MpcHardwareFeedbackPolicy.isTwoColorButton(15));
+        assertEquals(2, MpcHardwareFeedbackPolicy.LED_SINGLE_FULL);
+    }
+
+    @Test
     public void dualColorContextUsesPrimaryAndAlternateLedStates() {
         assertEquals(
                 MpcHardwareFeedbackPolicy.LED_OFF,
