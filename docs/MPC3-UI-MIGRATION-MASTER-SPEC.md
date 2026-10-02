@@ -1182,3 +1182,8 @@ Main Track presentation now treats Track identity as a single visual container: 
 ### 2026-10-03 XL Channel Strip geometry refinement
 
 The canonical shell geometry was tuned for landscape musical use: shallow Toolbar/Function Bar, five-icon shortcut rail, and a dedicated wider XL Channel Strip column. Mixer tabs are positioned immediately below the Track identity field. No mixer mutation semantics were added.
+
+
+### 2026-10-03 Pad XL Channel Strip tab parity
+
+Track and Pad XL Strip presentations share one tab hierarchy: LVL / FX / SEND / I/O. Only LVL is active while the current backend lacks truthful compact FX/Send/I/O mutations or values.
