@@ -1114,6 +1114,12 @@ The Studio MkII LCD companion mirror now projects the same Data Dial focus state
 
 ## 2026-10-02 MPC One visual-chrome fidelity checkpoint
 The shared shell now keeps the MPC 3.x dark upper toolbar/workspace relationship, with red used as the focused/selected accent rather than a generic cyan navigation fill. The five shortcut slots use a dark inactive treatment with a red selected/focused state. This is a presentation-only increment; navigation state, semantic actions and realtime/audio boundaries are unchanged.
+## 2026-10-02 Main Time Signature backend-range refinement
+
+Native Sequence time-signature validation already supports the documented MPC3 range of 1–16 beats per bar with denominator 4, 8, 16 or 32.
+Main therefore exposes the full supported range inside the modal Time Signature editor instead of the older six-value cycle.
+The change remains transactional: selections are staged and committed only by `DO IT`; `CANCEL` leaves the active Sequence unchanged.
+
 ## 2026-10-02 Main toolbar / parameter-dialog fidelity refinement
 
 - Toolbar Menu now occupies the leftmost control position before PROJECT, matching the documented MPC Main toolbar hierarchy.
