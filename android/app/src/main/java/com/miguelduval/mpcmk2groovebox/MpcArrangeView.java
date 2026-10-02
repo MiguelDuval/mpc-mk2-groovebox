@@ -483,6 +483,29 @@ final class MpcArrangeView extends View {
                 x, rulerHeight, x, getHeight(), paint);
     }
 
+    static List<Event> decodeEventData(String data) {
+        if (data == null || data.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        final ArrayList<Event> result = new ArrayList<>();
+        final String[] events = data.split(";");
+        for (String eventData : events) {
+            final String[] fields = eventData.split(",");
+            if (fields.length < 2) {
+                continue;
+            }
+            try {
+                final long tick = Long.parseLong(fields[0]);
+                final int duration = Integer.parseInt(fields[1]);
+                result.add(new Event(tick, duration));
+            } catch (NumberFormatException ignored) {
+                // Malformed UI projection entries are ignored rather than
+                // becoming a UI crash or feeding invalid data back to native.
+            }
+        }
+        return result;
+    }
+
     private Hit hit(float x, float y) {
         final float headerWidth = dp(LEFT_HEADER_DP);
         final float rulerHeight = dp(TOP_RULER_DP);
