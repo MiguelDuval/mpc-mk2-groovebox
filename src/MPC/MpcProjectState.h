@@ -59,13 +59,18 @@ public:
         return activeTrackIndex_;
     }
 
-    bool selectTrack(std::size_t trackIndex) noexcept {
-        if (trackIndex >= activeSequence().tracks.size()) {
-            return false;
-        }
-        activeTrackIndex_ = trackIndex;
-        return true;
-    }
+    bool selectTrack(std::size_t trackIndex) noexcept;
+    bool setTrackProgram(
+            std::size_t trackIndex,
+            std::string programId) noexcept;
+
+    domain::DrumProgram* findDrumProgram(
+            const std::string& programId) noexcept;
+    const domain::DrumProgram* findDrumProgram(
+            const std::string& programId) const noexcept;
+
+    std::size_t activeProgramIndexForTrack(
+            std::size_t trackIndex) const noexcept;
 
     bool setSequenceTempo(double tempoBpm) noexcept;
     bool setSequenceBars(std::int32_t bars) noexcept;
