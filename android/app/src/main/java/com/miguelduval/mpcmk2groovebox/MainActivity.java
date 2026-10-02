@@ -949,10 +949,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         TextView bars = mainMetric("BARS");
         TextView timeSig = mainMetric("TIME SIG");
         TextView loop = mainMetric("LOOP");
+        TextView start = mainMetric("START");
+        TextView end = mainMetric("END");
         sequenceMetrics.addView(bpm, weight());
         sequenceMetrics.addView(bars, weight());
         sequenceMetrics.addView(timeSig, weight());
         sequenceMetrics.addView(loop, weight());
+        sequenceMetrics.addView(start, weight());
+        sequenceMetrics.addView(end, weight());
         sequenceCard.addView(sequenceMetrics);
 
         LinearLayout sequenceActions = row();
@@ -972,7 +976,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 actionButton("LOOP", v -> {
                     setBottomStatus(nativeSequenceSetLoopEnabled(
                             !nativeSequenceIsLoopEnabled()));
-                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop);
+                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop, start, end);
                 }),
                 weight());
         sequenceCard.addView(sequenceActions, new LinearLayout.LayoutParams(
@@ -997,6 +1001,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackCard.addView(trackName, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
+        trackCard.addView(buildMainTrackTypeSelector(),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
         LinearLayout trackBody = row();
         TextView trackType = mainInfo("TYPE");
         TextView program = mainInfo("PROGRAM");
@@ -1014,13 +1022,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 v -> {
                     setBottomStatus(nativeSequenceSetSelectedTrackArmed(
                             !nativeSequenceIsSelectedTrackArmed()));
-                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop);
+                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop, start, end);
                 }), weight());
         trackActions.addView(actionButton(
                 "MUTE",
                 v -> {
                     toggleSelectedTrackMute();
-                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop);
+                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop, start, end);
                 }), weight());
         trackActions.addView(actionButton(
                 "GRID",
@@ -1063,7 +1071,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout arrangement = panel();
         arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
         arrangement.setContentDescription("Main Mode arrangement preview");
-        arrangement.addView(sectionLabel("ARRANGEMENT"));
+        arrangement.addView(sectionLabel("ARRANGEMENT PREVIEW"));
         TextView arrangementInfo = label(
                 "LINEAR • current Sequence • playhead-aware",
                 10, MUTED);
@@ -1088,7 +1096,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.54f));
 
         content.addView(page);
-        refreshMainModeState(sequenceName, bpm, bars, timeSig, loop);
+        refreshMainModeState(sequenceName, bpm, bars, timeSig, loop, start, end);
         refreshMpcToolbarState();
         refreshMainModePadVisuals();
         updateModeRailSelection();
@@ -1118,7 +1126,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             TextView bpm,
             TextView bars,
             TextView timeSig,
-            TextView loop) {
+            TextView loop,
+            TextView start,
+            TextView end) {
         final boolean nativeStateReady = startupComplete;
         final int sequenceIndex = nativeStateReady
                 ? Math.max(0, nativeSequenceGetIndex()) : 0;
@@ -1148,8 +1158,88 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 numerator, denominator));
         loop.setText(
                 "LOOP\\n" + (loopEnabled ? "ON" : "OFF"));
+        final int loopStartBar = nativeStateReady
+                ? nativeSequenceGetLoopStartBar() : 1;
+        final int loopEndBar = nativeStateReady
+                ? nativeSequenceGetLoopEndBar() : sequenceBars;
+        start.setText(String.format(Locale.ROOT, "START\\nBAR %d", loopStartBar));
+        end.setText(String.format(Locale.ROOT, "END\\nBAR %d", loopEndBar));
 
         trackNameRefresh(trackIndex, trackCount);
+        refreshMainTrackTypeVisuals();
+    }
+
+    private LinearLayout buildMainTrackTypeSelector() {
+        LinearLayout row = row();
+        row.setContentDescription("Main Mode track type selector");
+
+        final String[] labels = {
+                "DRUM", "KEYGROUP", "PLUGIN", "MIDI", "CLIP", "CV"
+        };
+        final boolean[] available = {
+                true, false, false, false, false, false
+        };
+
+        for (int i = 0; i < labels.length; i++) {
+            final String type = labels[i];
+            final Button b = mainInfoButton(type, "TRACKTYPE_" + type);
+            b.setEnabled(available[i]);
+            b.setAlpha(available[i] ? 1.0f : 0.45f);
+            b.setOnClickListener(v -> setBottomStatus(
+                    type + " • TRACK TYPE SELECTION RESERVED"));
+            row.addView(b, new LinearLayout.LayoutParams(
+                    0, dp(34), 1f));
+        }
+        return row;
+    }
+
+    private Button mainInfoButton(String text, String tag) {
+        Button b = actionButton(text, null);
+        b.setTag(tag);
+        b.setTextSize(9);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setPadding(dp(4), 0, dp(4), 0);
+        b.setGravity(Gravity.CENTER);
+        b.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+        return b;
+    }
+
+    private void refreshMainTrackTypeVisuals() {
+        if (content == null) return;
+        final View selector = findViewWithContentDescription(
+                content, "Main Mode track type selector");
+        if (!(selector instanceof ViewGroup)) return;
+
+        String active = "DRUM";
+        if (startupComplete) {
+            final int index = Math.max(0, nativeSequenceGetSelectedTrack());
+            final String status = nativeSequenceTrackStatus(index);
+            final String firstToken = status == null
+                    ? "" : status.trim().split("\\s+", 2)[0];
+            if ("KEYGROUP".equals(firstToken)
+                    || "PLUGIN".equals(firstToken)
+                    || "MIDI".equals(firstToken)
+                    || "AUDIO".equals(firstToken)
+                    || "DRUM".equals(firstToken)) {
+                active = firstToken;
+            }
+        }
+
+        final ViewGroup group = (ViewGroup) selector;
+        for (int i = 0; i < group.getChildCount(); i++) {
+            View child = group.getChildAt(i);
+            if (!(child instanceof Button)) continue;
+            Button button = (Button) child;
+            final Object tag = button.getTag();
+            final String type = tag instanceof String
+                    ? ((String) tag).replace("TRACKTYPE_", "") : "";
+            final boolean selected = type.equals(active);
+            button.setTextColor(selected ? BG : TEXT);
+            button.setBackground(strokeBackground(
+                    selected ? ACCENT : SURFACE_2,
+                    selected ? ACCENT : LINE,
+                    5));
+        }
     }
 
     private void trackNameRefresh(
