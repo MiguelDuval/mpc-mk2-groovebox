@@ -1944,6 +1944,43 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetSelectedTrack
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackArrangementData(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    if (trackIndex < 0
+            || static_cast<std::size_t>(trackIndex)
+                    >= state.activeSequence().tracks.size()) {
+        return toJString(env, "1|");
+    }
+
+    const auto& track =
+            state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)];
+    if (track.patterns.empty()) {
+        return toJString(env, "1|");
+    }
+
+    const auto& pattern = track.patterns.front();
+    std::string result = std::to_string(std::max<std::int32_t>(
+            1, pattern.lengthTicks));
+    result.push_back('|');
+
+    constexpr std::size_t kMaxArrangementEvents = 128;
+    const auto limit = std::min(
+            kMaxArrangementEvents,
+            pattern.notes.size());
+    for (std::size_t index = 0; index < limit; ++index) {
+        const auto& note = pattern.notes[index];
+        if (index > 0) result.push_back(';');
+        result += std::to_string(std::max<std::int32_t>(0, note.tick));
+        result.push_back(',');
+        result += std::to_string(std::max<std::int32_t>(
+                1, note.durationTicks));
+    }
+    return toJString(env, result);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackType(
         JNIEnv* env, jobject /* thiz */, jint trackIndex)
 {
