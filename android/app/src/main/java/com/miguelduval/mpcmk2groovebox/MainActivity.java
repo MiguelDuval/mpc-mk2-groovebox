@@ -3796,8 +3796,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void syncHardwareControllerFeedback() {
+        final String hardwareContext = navigationController == null
+                ? currentPage
+                : navigationController.state().mode().name();
         final String context = MpcHardwareFeedbackPolicy.contextLabel(
-                currentPage,
+                hardwareContext,
                 hardwareFocus,
                 hardwareLocateActive,
                 hardwareEraseActive,
@@ -3906,7 +3909,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final MpcStudioMk2LcdRenderer.State state =
                 new MpcStudioMk2LcdRenderer.State(
-                        currentPage,
+                        navigationController == null
+                                ? currentPage
+                                : navigationController.state().mode().name(),
                         Math.max(0, nativeSequenceGetIndex()),
                         Math.max(1, nativeSequenceGetCount()),
                         nativeSequenceGetQueuedIndex(),
