@@ -128,6 +128,8 @@ Interaction:
 
 ## 2.3 Track section
 
+The Track region is one continuous MPC-style context. Program is a field inside the selected Track context, not a separate top-level workspace.
+
 Fields:
 
 - track number;
@@ -139,6 +141,12 @@ Fields:
 - Track Edit entry;
 - track length;
 - inserts/I/O entry.
+
+Touch:
+
+- tap Track field -> Main Track Select subcontext;
+- tap Program field -> Main Program Select subcontext;
+- tap Browser -> Browser for the current loading workflow.
 
 ## 2.4 Arrangement preview
 
@@ -159,10 +167,12 @@ Initial target:
 
 - New Track;
 - Rec Arm;
-- Track -;
+- Track −;
 - Track +;
 - Mute;
 - Solo.
+
+The Main workspace itself keeps only context-specific transitions such as Grid and Browser; high-frequency Track operations belong in this function bar.
 
 ## 2.6 Hardware
 
@@ -173,6 +183,16 @@ Shift + Main -> Track View.
 Track/Sequence Select sets the current focus.
 
 Data Dial edits the focused Main field.
+
+## 2.6 Main selection subcontexts
+
+Main remains the top-level mode while selection changes context/focus:
+
+- Sequence Select: select the active Sequence without leaving Main;
+- Track Select: select the active Track without leaving Main;
+- Program Select: select the Program owned by the selected Drum Track.
+
+Data Dial / +/- operate on the current selection focus. BACK MAIN returns to the overview; deeper edit functions open only where the backend has a truthful implementation.
 
 ## 2.7 Acceptance
 
