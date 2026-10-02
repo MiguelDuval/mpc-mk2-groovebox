@@ -886,3 +886,6 @@ Full Level / Half Level / 16 Levels and Pad Mute / Track Mute mode state are ret
 Note Repeat rate labels follow the native repeat-rate index order.
 
 Physical MkII verification remains pending.
+
+## 2026-10-02 LCD focus-state projection checkpoint
+The host-side 160×80 LCD companion now includes the active Data Dial focus in its projected state and signature. The phone UI and controller LCD therefore share the same focused semantic target, including sequence fields and Track Edit layer focus where those states are implemented. The LCD remains intentionally glanceable and does not attempt to mirror the entire Android UI. Physical MkII verification is still required before this feedback is marked CONFIRMED.
