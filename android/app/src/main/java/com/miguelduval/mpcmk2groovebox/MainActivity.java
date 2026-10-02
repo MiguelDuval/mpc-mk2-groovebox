@@ -131,6 +131,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView compactTrackCaption;
     private View compactTrackTabs;
     private TextView compactPadCaption;
+    private View compactPadTabs;
     private AlertDialog activeMpcParameterDialog;
     private Button timingCorrectTopButton;
     private Button metronomeTopButton;
@@ -650,19 +651,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
-        LinearLayout trackTabs = row();
+        LinearLayout trackTabs = buildCompactMixerTabs();
         compactTrackTabs = trackTabs;
-        for (String tab : new String[]{"LVL", "FX", "SEND", "I/O"}) {
-            TextView tabView = label(tab, 7, tab.equals("LVL") ? TEXT : MUTED);
-            tabView.setGravity(Gravity.CENTER);
-            tabView.setTypeface(Typeface.DEFAULT_BOLD);
-            tabView.setBackground(strokeBackground(
-                    tab.equals("LVL") ? SURFACE_2 : BG,
-                    tab.equals("LVL") ? LINE : Color.TRANSPARENT,
-                    2));
-            trackTabs.addView(tabView,
-                    new LinearLayout.LayoutParams(0, dp(22), 1));
-        }
         compactMixerPanel.addView(trackTabs,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
@@ -705,6 +695,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactMixerPanel.addView(compactPadContext,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        compactPadTabs = buildCompactMixerTabs();
+        compactMixerPanel.addView(compactPadTabs,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
 
         compactPadLevelMeter = new android.widget.ProgressBar(
                 this, null, android.R.attr.progressBarStyleHorizontal);
@@ -825,6 +820,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if (compactPadContext != null) {
             compactPadContext.setVisibility(padMode ? View.VISIBLE : View.GONE);
+        }
+        if (compactPadTabs != null) {
+            compactPadTabs.setVisibility(padMode ? View.VISIBLE : View.GONE);
         }
         if (compactPadLevelMeter != null) {
             compactPadLevelMeter.setVisibility(padMode ? View.VISIBLE : View.GONE);
@@ -1706,6 +1704,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         b.setTag(mode);
         b.setOnClickListener(v -> navigateToMode(mode));
         return b;
+    }
+
+    private LinearLayout buildCompactMixerTabs() {
+        LinearLayout tabs = row();
+        for (String tab : new String[]{"LVL", "FX", "SEND", "I/O"}) {
+            final boolean active = "LVL".equals(tab);
+            TextView tabView = label(tab, 7, active ? BG : MUTED);
+            tabView.setGravity(Gravity.CENTER);
+            tabView.setTypeface(Typeface.DEFAULT_BOLD);
+            tabView.setBackground(strokeBackground(
+                    active ? DANGER : BG,
+                    active ? DANGER : Color.TRANSPARENT,
+                    2));
+            tabView.setContentDescription(
+                    "MPC Mixer Strip " + tab
+                            + (active ? " active" : " unavailable"));
+            tabs.addView(tabView,
+                    new LinearLayout.LayoutParams(0, dp(22), 1));
+        }
+        return tabs;
     }
 
     private String mpcShortcutLabel(MpcUiState.Mode mode) {
