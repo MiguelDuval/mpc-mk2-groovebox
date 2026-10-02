@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -15,6 +16,7 @@ import android.os.Bundle;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -208,6 +210,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeEngineInfo();
     private static native String nativeAudioLoadSample(byte[] data);
     private static native String nativeAudioLoadSampleForPadLayer(byte[] data, int pad, int layer);
+    private static native String nativeAudioSetPadSampleName(
+            int pad, int layer, String name);
     private static native void nativeAudioTriggerPad(int pad, int velocity);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
@@ -6086,6 +6090,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             nativeAudioStop();
             final String loaded = nativeAudioLoadSampleForPadLayer(
                     bytes, selectedPad, selectedLayer);
+            final String sampleName = sampleDisplayName(uri);
+            if (loaded != null
+                    && loaded.startsWith("Pad ")
+                    && loaded.contains(" sample loaded")) {
+                nativeAudioSetPadSampleName(
+                        selectedPad, selectedLayer, sampleName);
+            }
             final String restarted = nativeAudioStart();
 
             setAudioStateFromResult(restarted);
@@ -6099,6 +6110,46 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     + e.getClass().getSimpleName() + ": " + e.getMessage()
                     + " | " + restarted);
         }
+    }
+
+    private String sampleDisplayName(Uri uri) {
+        if (uri == null) return "Imported sample";
+
+        Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(
+                    uri,
+                    new String[]{OpenableColumns.DISPLAY_NAME},
+                    null,
+                    null,
+                    null);
+            if (cursor != null && cursor.moveToFirst()) {
+                final int nameIndex =
+                        cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (nameIndex >= 0) {
+                    final String displayName = cursor.getString(nameIndex);
+                    if (displayName != null && !displayName.trim().isEmpty()) {
+                        return displayName.trim();
+                    }
+                }
+            }
+        } catch (RuntimeException ignored) {
+            // Some document providers do not expose DISPLAY_NAME.
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+
+        final String fallback = uri.getLastPathSegment();
+        if (fallback != null && !fallback.trim().isEmpty()) {
+            final int colon = fallback.lastIndexOf(':');
+            final String value = colon >= 0
+                    ? fallback.substring(colon + 1)
+                    : fallback;
+            if (!value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return "Imported sample";
     }
 
     private byte[] readSampleBytes(Uri uri) throws IOException {
