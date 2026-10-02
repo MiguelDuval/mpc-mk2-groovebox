@@ -6196,6 +6196,38 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View mainTrackSelector = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track View selector");
+        View mainArrangementSelector = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Arrangement View selector");
+        View mainTrackWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode Track View workspace");
+        View mainArrangementWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode arrangement preview");
+        if (mainTrackSelector == null
+                || mainArrangementSelector == null
+                || mainTrackWorkspace == null
+                || mainArrangementWorkspace == null
+                || mainTrackWorkspace.getVisibility() != View.VISIBLE
+                || mainArrangementWorkspace.getVisibility() != View.GONE) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track/Arrangement default view");
+            return;
+        }
+
+        if (!mainArrangementSelector.performClick()
+                || mainArrangementWorkspace.getVisibility() != View.VISIBLE
+                || mainTrackWorkspace.getVisibility() != View.GONE) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Arrangement switch");
+            return;
+        }
+
+        if (!mainTrackSelector.performClick()
+                || mainTrackWorkspace.getVisibility() != View.VISIBLE
+                || mainArrangementWorkspace.getVisibility() != View.GONE) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track switch");
+            return;
+        }
+
         View seqSelect = findViewWithExactText(
                 getWindow().getDecorView(), "SEQ SELECT");
         if (seqSelect == null || !seqSelect.performClick()) {
