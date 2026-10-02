@@ -115,11 +115,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private MpcNavigationController navigationController;
     private MpcShell mpcShell;
     private LinearLayout functionBar;
-    private TextView compactSequenceContext;
     private TextView compactTrackContext;
-    private TextView compactProgramContext;
     private TextView compactPadContext;
-    private TextView compactFocusContext;
     private TextView compactTrackLevelLabel;
     private TextView compactTrackStateLabel;
     private TextView compactOutputContext;
@@ -623,16 +620,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         area.addView(header, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
-        // Sequence stays a glanceable shell context and is also a direct
-        // entry point into the existing Main Sequence Select subcontext.
-        compactSequenceContext = compactContextField(
-                "SEQ 01 • 120.0 BPM",
-                "MPC shell sequence context",
-                v -> showSequenceSelectPage());
-        area.addView(compactSequenceContext,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
-
         compactMixerPanel = column();
         compactMixerPanel.setContentDescription(
                 "MPC condensed Mixer Strip");
@@ -653,20 +640,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactMixerPanel.addView(compactTrackContext,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
-
-        compactProgramContext = compactContextField(
-                "PROGRAM • —",
-                "MPC shell selected Program",
-                v -> showProgramSelectPage());
-        compactProgramContext.setTypeface(Typeface.DEFAULT_BOLD);
-        compactProgramContext.setGravity(Gravity.CENTER_VERTICAL);
-        compactProgramContext.setPadding(dp(4), 0, dp(4), 0);
-        compactProgramContext.setContentDescription(
-                "MPC shell selected Program");
-        compactProgramContext.setClickable(true);
-        compactMixerPanel.addView(compactProgramContext,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(25)));
 
         compactTrackStateLabel = label(
                 "REC OFF • MUTE OFF • SOLO —",
@@ -790,14 +763,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        compactFocusContext = compactContextField(
-                "DIAL • NONE",
-                "MPC shell dial focus",
-                null);
-        area.addView(compactFocusContext,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
-
         applyCompactMixerVisibility();
         applyCompactMixerStripMode();
     }
@@ -835,9 +800,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if (compactTrackContext != null) {
             compactTrackContext.setVisibility(padMode ? View.GONE : View.VISIBLE);
-        }
-        if (compactProgramContext != null) {
-            compactProgramContext.setVisibility(padMode ? View.GONE : View.VISIBLE);
         }
         if (compactTrackStateLabel != null) {
             compactTrackStateLabel.setVisibility(padMode ? View.GONE : View.VISIBLE);
@@ -1002,26 +964,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void refreshMpcCompactContext() {
         if (navigationController == null
                 || compactTrackContext == null
-                || compactProgramContext == null
-                || compactPadContext == null
-                || compactFocusContext == null) {
+                || compactPadContext == null) {
             return;
         }
 
         final boolean nativeStateReady = startupComplete;
-        final int sequence = nativeStateReady
-                ? Math.max(0, nativeSequenceGetIndex()) + 1 : 1;
         final int trackIndex = nativeStateReady
                 ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
         final int track = trackIndex + 1;
-        final double tempo = nativeStateReady
-                ? nativeSequenceGetTempo() : 120.0;
-
-        // Kept as an internal compatibility state; Sequence is rendered in Main.
-        if (compactSequenceContext != null) {
-            compactSequenceContext.setText(String.format(
-                    Locale.ROOT, "SEQ %02d • %.1f BPM", sequence, tempo));
-        }
 
         if (nativeStateReady) {
             final String trackType = nativeSequenceGetTrackType(trackIndex);
@@ -1036,14 +986,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     Locale.ROOT,
                     "TRACK %02d • %s",
                     track, trackType));
-
-            final String programName = drumTrack
-                    ? normalizeProgramLabel(
-                            nativeSequenceGetTrackProgram(trackIndex))
-                    : "—";
-            compactProgramContext.setText("PROGRAM • " + programName);
-            compactProgramContext.setEnabled(drumTrack);
-            compactProgramContext.setAlpha(drumTrack ? 1.0f : 0.45f);
 
             if (compactTrackStateLabel != null) {
                 compactTrackStateLabel.setText(
@@ -1062,9 +1004,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 compactMixerStripModeToggle.setAlpha(0.45f);
             }
             compactTrackContext.setText("TRACK 01 • DRUM");
-            compactProgramContext.setText("PROGRAM • —");
-            compactProgramContext.setEnabled(false);
-            compactProgramContext.setAlpha(0.45f);
             if (compactTrackStateLabel != null) {
                 compactTrackStateLabel.setText("REC OFF • MUTE OFF • SOLO —");
             }
@@ -1118,14 +1057,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
         }
 
-        final MpcUiState state = navigationController.state();
-        compactFocusContext.setText(
-                "DIAL • " + state.dataDialFocus().name().replace('_', ' ')
-                        + (state.subcontext() == MpcUiState.Subcontext.NONE
-                                ? "" : " • " + state.subcontext().name().replace('_', ' ')));
-        compactFocusContext.setTextColor(
-                state.actionAvailable() ? ACCENT : DANGER);
-
         if (compactOutputLevelLabel != null) {
             compactOutputLevelLabel.setText("LEVEL —  •  RESERVED");
         }
@@ -1143,7 +1074,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? nativeSequenceGetTrackCount() : 0;
 
         if (mode == MpcUiState.Mode.MAIN) {
-            addFunction("NEW TRACK", true, v -> addSequenceTrack(0));
+            addFunction("+ NEW TRACK", true, v -> addSequenceTrack(0));
             addSequenceRecArmFunction(
                     trackCount > 0,
                     () -> {
