@@ -1046,3 +1046,11 @@ Main and Track View explicitly establish their hardware/Data Dial focus on entry
 
 
 - **Pad-selection synchronization:** the shared pad-selection refresh path now also refreshes Track Edit, so physical pad selection, touch selection and the editor's Track/Pad context remain synchronized.
+
+
+## 2026-10-02 Main canvas fidelity refinement
+
+- Main's Sequence region now follows the MPC interaction model more closely: the sequence field is the direct selection target; the sequence edit pencil is present but explicitly reserved; BPM/BARS/START/END are fields controlled by Data Dial/+/- rather than duplicated local stepper buttons.
+- Sequence fields are presented in one compact MPC-style row with a smaller auxiliary Time Signature/Loop row.
+- Main's selected Data Dial target now receives a visible red selection outline, matching the documented MPC parameter-selection convention.
+- Outer Main Track/Sequence containers were flattened so the workspace reads as one workstation canvas rather than a dashboard of independent Android cards.

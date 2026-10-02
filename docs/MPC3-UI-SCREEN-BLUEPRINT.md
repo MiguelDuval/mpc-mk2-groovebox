@@ -987,3 +987,10 @@ Semantic rule:
 - no global Program swap is used as a substitute for Track ownership.
 
 Program Edit remains reserved until the backend can truthfully edit Program contents.
+
+## 2026-10-02 Main canvas fidelity refinement
+
+- Main Sequence now presents the high-frequency SEQ/BPM/BARS/START/END/TRANSPOSE fields as the primary interaction row; local BPM/BARS stepper buttons are removed so touch and hardware use the same Data Dial/+/- semantic path.
+- Sequence Edit remains visually represented by the compact pencil affordance but is explicitly RESERVED until a real Sequence Edit contract exists.
+- Main Data Dial focus is rendered as a thin red outline on the selected field, including Sequence, Track, Program and Layer contexts.
+- Main Track/Arrangement is flattened into one central MPC-style work surface; the old nested Android-card appearance is no longer the target.

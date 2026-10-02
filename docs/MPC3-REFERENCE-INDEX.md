@@ -431,3 +431,14 @@ Checked:
 
 Repository decision:
 Implement Track Edit Global/Samples/Envelopes against existing control-thread state; keep LFO/Modulations/Effects reserved until their semantic/backend contracts exist.
+
+
+---
+
+## 16.2 Main parameter-selection fidelity
+
+Reference evidence:
+The MPC 3.x manual documents that selected parameters are highlighted and adjusted using the data dial or +/- buttons; Main Mode presents Sequence, Track/Arrangement and Function Button regions as one operational workspace. citeturn429791search5turn268950search3
+
+Repository decision:
+Main fields should behave as selection targets rather than decorative cards or duplicated micro-controls. The current UI therefore renders the focused Data Dial target with a red outline and removes local BPM/BARS steppers from Main.

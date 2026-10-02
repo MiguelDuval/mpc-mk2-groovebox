@@ -442,3 +442,6 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 
 
 - **Track Edit controller synchronization refinement:** shared pad selection now refreshes the active Track Edit workspace, keeping MkII pad selection and the Track Edit context synchronized.
+
+
+- **Main canvas fidelity refinement:** removed duplicate local sequence steppers, flattened Main workstation sections, added visible Data Dial selection outline, and kept unavailable Sequence Edit as a truthful reserved affordance.

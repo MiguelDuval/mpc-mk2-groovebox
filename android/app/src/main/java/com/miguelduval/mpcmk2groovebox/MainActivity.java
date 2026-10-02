@@ -144,6 +144,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView mainSequenceTimeSigField;
     private TextView mainSequenceLoopField;
     private TextView mainSequenceTransposeField;
+    private TextView mainTrackField;
+    private TextView mainProgramField;
+    private View mainTrackTypeField;
+    private TextView mainTrackLayerField;
     private SequenceLauncherView sequenceLauncherView;
     private final Button[] sequenceStepButtons = new Button[16];
     private TextView sequenceStepEventInfo;
@@ -1386,79 +1390,72 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout page = page();
         page.setPadding(dp(8), dp(6), dp(8), dp(2));
 
-        LinearLayout sequenceCard = panel();
-        sequenceCard.setContentDescription("Main Mode Sequence card");
+        LinearLayout sequenceCard = column();
+        sequenceCard.setContentDescription("Main Mode Sequence section");
+        sequenceCard.setPadding(0, 0, 0, dp(4));
 
         LinearLayout sequenceHeader = row();
         sequenceHeader.addView(sectionLabelView(
                 "SEQUENCE",
-                new LinearLayout.LayoutParams(0, dp(32), 1)));
-        sequenceHeader.addView(actionButton(
-                "SEQ SELECT",
-                v -> showSequenceSelectPage()),
-                new LinearLayout.LayoutParams(dp(104), dp(32)));
-        sequenceCard.addView(sequenceHeader);
+                new LinearLayout.LayoutParams(dp(82), dp(32))));
 
         TextView sequenceName = label("", 16, TEXT);
         sequenceName.setTypeface(Typeface.DEFAULT_BOLD);
+        sequenceName.setGravity(Gravity.CENTER_VERTICAL);
         sequenceName.setContentDescription("Main Mode selected sequence");
-        sequenceCard.addView(sequenceName, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+        sequenceName.setPadding(dp(8), 0, dp(8), 0);
+        sequenceName.setBackground(strokeBackground(SURFACE_2, LINE, 2));
+        sequenceName.setOnClickListener(v -> focusMainSequenceField(
+                MpcUiState.Subcontext.SEQUENCE_SELECT,
+                MpcUiState.DataDialFocus.SEQUENCE,
+                3,
+                "SEQUENCE • DATA DIAL / +/-"));
+        sequenceHeader.addView(sequenceName,
+                new LinearLayout.LayoutParams(0, dp(38), 1));
 
-        /*
-         * Keep the Sequence block visually close to MPC Main: the compact
-         * fields expose the familiar SEQ/BARS/START/END/TRANSPOSE vocabulary
-         * while retaining our truthful time-signature and loop state.
-         */
-        LinearLayout sequenceMetrics = row();
+        Button sequenceEdit = actionButton("✎", null);
+        sequenceEdit.setEnabled(false);
+        sequenceEdit.setAlpha(0.42f);
+        sequenceEdit.setContentDescription("Main Sequence Edit RESERVED");
+        sequenceHeader.addView(sequenceEdit,
+                new LinearLayout.LayoutParams(dp(40), dp(32)));
+        sequenceCard.addView(sequenceHeader);
+
+        LinearLayout sequenceFields = row();
         TextView bpm = mainMetric("BPM");
         TextView sequenceType = mainMetric("SEQ");
         TextView bars = mainMetric("BARS");
         TextView start = mainMetric("START");
-        sequenceMetrics.addView(bpm, weight());
-        sequenceMetrics.addView(sequenceType, weight());
-        sequenceMetrics.addView(bars, weight());
-        sequenceMetrics.addView(start, weight());
-        sequenceCard.addView(sequenceMetrics);
-
-        LinearLayout sequenceStateMetrics = row();
         TextView end = mainMetric("END");
+        TextView transpose = mainMetric("TRANSPOSE");
+        sequenceFields.addView(bpm, weight());
+        sequenceFields.addView(sequenceType, weight());
+        sequenceFields.addView(bars, weight());
+        sequenceFields.addView(start, weight());
+        sequenceFields.addView(end, weight());
+        sequenceFields.addView(transpose, weight());
+        sequenceCard.addView(sequenceFields,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+
+        LinearLayout sequenceAuxFields = row();
         TextView timeSig = mainMetric("TIME SIG");
         TextView loop = mainMetric("LOOP");
-        TextView transpose = mainMetric("TRANSPOSE");
-        sequenceStateMetrics.addView(end, weight());
-        sequenceStateMetrics.addView(timeSig, weight());
-        sequenceStateMetrics.addView(loop, weight());
-        sequenceStateMetrics.addView(transpose, weight());
-        sequenceCard.addView(sequenceStateMetrics);
-
-        LinearLayout sequenceActions = row();
-        sequenceActions.addView(
-                actionButton("BPM −", v -> changeSequenceTempo(-1.0)),
-                weight());
-        sequenceActions.addView(
-                actionButton("BPM +", v -> changeSequenceTempo(1.0)),
-                weight());
-        sequenceActions.addView(
-                actionButton("BARS −", v -> changeSequenceBars(-1)),
-                weight());
-        sequenceActions.addView(
-                actionButton("BARS +", v -> changeSequenceBars(1)),
-                weight());
-        sequenceActions.addView(
-                actionButton("LOOP", v -> {
-                    setBottomStatus(nativeSequenceSetLoopEnabled(
-                            !nativeSequenceIsLoopEnabled()));
-                    refreshMainModeState(
-                            sequenceName, sequenceType, bpm, bars, timeSig, loop,
-                            start, end, transpose);
-                }),
-                weight());
-        sequenceCard.addView(sequenceActions, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+        sequenceAuxFields.addView(timeSig,
+                new LinearLayout.LayoutParams(0, dp(36), 1));
+        sequenceAuxFields.addView(loop,
+                new LinearLayout.LayoutParams(0, dp(36), 1));
+        sequenceAuxFields.addView(new android.widget.Space(this),
+                new LinearLayout.LayoutParams(0, dp(36), 4));
+        sequenceCard.addView(sequenceAuxFields);
+        sequenceCard.addView(new android.widget.Space(this),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(4)));
 
         LinearLayout trackProgramSection = mainSection();
         trackProgramSection.setContentDescription("Main Mode Track Program section");
+        trackProgramSection.setBackgroundColor(BG);
+        trackProgramSection.setPadding(0, dp(4), 0, 0);
 
         LinearLayout trackProgramHeader = row();
         trackProgramHeader.addView(sectionLabelView(
@@ -1476,11 +1473,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         TextView program = mainField("PROGRAM");
         program.setContentDescription("Main Mode selected program");
         program.setOnClickListener(v -> showProgramSelectPage());
+        mainTrackField = trackName;
+        mainProgramField = program;
+        mainTrackTypeField = buildMainTrackTypeSelector();
         trackProgramHeader.addView(program, new LinearLayout.LayoutParams(
                 0, dp(42), 1.75f));
 
         trackProgramHeader.addView(
-                buildMainTrackTypeSelector(),
+                mainTrackTypeField,
                 new LinearLayout.LayoutParams(dp(88), dp(42)));
         trackProgramSection.addView(trackProgramHeader,
                 new LinearLayout.LayoutParams(
@@ -1518,7 +1518,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout trackWorkspace = column();
         trackWorkspace.setContentDescription("Main Mode Track View workspace");
         trackWorkspace.setPadding(dp(6), dp(4), dp(6), dp(4));
-        trackWorkspace.setBackground(strokeBackground(SURFACE_2, LINE, 4));
+        trackWorkspace.setBackgroundColor(BG);
 
         LinearLayout trackWorkspaceHeader = row();
         trackWorkspaceHeader.addView(sectionLabelView(
@@ -1534,14 +1534,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackWorkspace.addView(trackWorkspaceHeader,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
-
-        TextView trackWorkspaceInfo = label(
-                "PERFORMANCE • PAD + QUICK SAMPLE",
-                9, MUTED);
-        trackWorkspaceInfo.setContentDescription("Main Track View guidance");
-        trackWorkspace.addView(trackWorkspaceInfo,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
         /*
          * MPC Main exposes a compact track-state row below the
@@ -1675,7 +1667,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout arrangement = column();
         arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
-        arrangement.setBackground(strokeBackground(SURFACE_2, LINE, 4));
+        arrangement.setBackgroundColor(BG);
         arrangement.setContentDescription("Main Mode arrangement preview");
 
         LinearLayout arrangementHeader = row();
@@ -1727,6 +1719,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         mainSequenceNameField = sequenceName;
         mainSequenceTypeField = sequenceType;
+        mainTrackLayerField = findTextByContentDescription(
+                trackWorkspace, "Main Track View selected layer");
         mainSequenceBpmField = bpm;
         mainSequenceBarsField = bars;
         mainSequenceStartField = start;
@@ -1778,9 +1772,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMainModeState(
                 sequenceName, sequenceType, bpm, bars, timeSig, loop,
                 start, end, transpose);
+        refreshMainDataDialFocusVisuals();
         refreshMpcToolbarState();
         refreshMainModePadVisuals();
         refreshMainTrackQuickSample();
+        refreshMainDataDialFocusVisuals();
         updateModeRailSelection();
     }
 
@@ -2210,21 +2206,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private TextView mainMetric(String title) {
-        TextView view = label("", 12, TEXT);
+        TextView view = label("", 11, TEXT);
         view.setTypeface(Typeface.DEFAULT_BOLD);
         view.setGravity(Gravity.CENTER_VERTICAL);
         view.setPadding(dp(6), 0, dp(6), 0);
-        view.setBackground(strokeBackground(SURFACE_2, LINE, 4));
+        view.setBackground(strokeBackground(SURFACE_2, LINE, 2));
         view.setTag(title);
         return view;
     }
 
     private TextView mainField(String title) {
-        TextView view = label("", 14, TEXT);
+        TextView view = label("", 13, TEXT);
         view.setTypeface(Typeface.DEFAULT_BOLD);
         view.setGravity(Gravity.CENTER_VERTICAL);
         view.setPadding(dp(8), 0, dp(8), 0);
-        view.setBackground(strokeBackground(SURFACE_2, LINE, 4));
+        view.setBackground(strokeBackground(SURFACE_2, LINE, 2));
         view.setTag(title);
         return view;
     }
@@ -2238,6 +2234,34 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return view;
     }
 
+    private void refreshMainDataDialFocusVisuals() {
+        if (!"MAIN".equals(currentPage)) return;
+
+        final int focus = hardwareFocus;
+        setMainFieldFocus(mainSequenceNameField, focus == 3);
+        setMainFieldFocus(mainSequenceTypeField, focus == 3);
+        setMainFieldFocus(mainSequenceBpmField, focus == HARDWARE_FOCUS_SEQUENCE_BPM);
+        setMainFieldFocus(mainSequenceBarsField, focus == HARDWARE_FOCUS_SEQUENCE_BARS);
+        setMainFieldFocus(mainSequenceStartField, focus == HARDWARE_FOCUS_SEQUENCE_START);
+        setMainFieldFocus(mainSequenceEndField, focus == HARDWARE_FOCUS_SEQUENCE_END);
+        setMainFieldFocus(mainSequenceTransposeField, false);
+        setMainFieldFocus(mainSequenceTimeSigField, false);
+        setMainFieldFocus(mainSequenceLoopField, false);
+        setMainFieldFocus(mainTrackField, focus == 2);
+        setMainFieldFocus(mainProgramField, focus == 4);
+        setMainFieldFocus(mainTrackLayerField, focus == 10);
+        if (mainTrackTypeField != null) {
+            mainTrackTypeField.setBackground(strokeBackground(
+                    SURFACE_2, focus == 5 ? DANGER : LINE, 2));
+        }
+    }
+
+    private void setMainFieldFocus(View view, boolean active) {
+        if (view == null) return;
+        view.setBackground(strokeBackground(
+                SURFACE_2, active ? DANGER : LINE, 2));
+    }
+
     private void focusMainSequenceField(
             MpcUiState.Subcontext subcontext,
             MpcUiState.DataDialFocus focus,
@@ -2249,6 +2273,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.setActionAvailable(true);
         setBottomStatus(message);
         refreshMpcCompactContext();
+        refreshMainDataDialFocusVisuals();
     }
 
     private void refreshMainModeFields() {
@@ -2273,6 +2298,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 mainSequenceStartField,
                 mainSequenceEndField,
                 mainSequenceTransposeField);
+        refreshMainDataDialFocusVisuals();
     }
 
     private void refreshMainModeState(
