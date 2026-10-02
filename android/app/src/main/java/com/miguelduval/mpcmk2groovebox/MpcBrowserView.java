@@ -211,6 +211,17 @@ final class MpcBrowserView extends LinearLayout {
         search.setText(value == null ? "" : value);
     }
 
+    String searchQuery() {
+        return search.getText() == null
+                ? ""
+                : search.getText().toString();
+    }
+
+    void focusSearch() {
+        search.requestFocus();
+        search.setSelection(search.length());
+    }
+
     private String currentSampleName() {
         CharSequence value = currentSample.getText();
         return value == null ? "NONE"
