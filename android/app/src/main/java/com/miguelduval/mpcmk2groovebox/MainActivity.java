@@ -541,6 +541,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showSamplePage();
                 break;
             case CHANNEL_MIXER:
+                navigationController.navigate(MpcUiState.Mode.CHANNEL_MIXER);
+                setBottomStatus("CHANNEL MIXER • RESERVED until track-strip mixer backend");
+                updateMpcShellState();
+                break;
+            case PAD_MIXER:
                 showMixPage();
                 break;
             case NEXT_SEQUENCE:
@@ -3235,42 +3240,108 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
-        page.addView(sectionLabel("WORK MODES"));
+        page.setPadding(dp(8), dp(6), dp(8), dp(2));
+
+        TextView hint = label(
+                "MODE MENU  •  four-by-four launcher  •  shortcuts are promoted from this vocabulary",
+                10, MUTED);
+        hint.setPadding(dp(6), 0, dp(6), 0);
+        page.addView(hint, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
+
+        final MpcMenuEntry[] entries = {
+                new MpcMenuEntry("MAIN", MpcUiState.Mode.MAIN, true),
+                new MpcMenuEntry("TRACK VIEW", MpcUiState.Mode.TRACK_VIEW, true),
+                new MpcMenuEntry("BROWSER", MpcUiState.Mode.BROWSER, true),
+                new MpcMenuEntry("GRID", MpcUiState.Mode.GRID, true),
+
+                new MpcMenuEntry("STEP", MpcUiState.Mode.STEP, true),
+                new MpcMenuEntry("TRACK EDIT", MpcUiState.Mode.TRACK_EDIT, false),
+                new MpcMenuEntry("SAMPLE EDIT", MpcUiState.Mode.SAMPLE_EDIT, true),
+                new MpcMenuEntry("SAMPLER", MpcUiState.Mode.SAMPLER, true),
+
+                new MpcMenuEntry("CHANNEL MIXER", MpcUiState.Mode.CHANNEL_MIXER, false),
+                new MpcMenuEntry("PAD MIXER", MpcUiState.Mode.PAD_MIXER, true),
+                new MpcMenuEntry("16 LEVELS", MpcUiState.Mode.LEVELS_16, false),
+                new MpcMenuEntry("PAD PERFORM", MpcUiState.Mode.PAD_PERFORM, false),
+
+                new MpcMenuEntry("NEXT SEQUENCE", MpcUiState.Mode.NEXT_SEQUENCE, true),
+                new MpcMenuEntry("ARRANGE", MpcUiState.Mode.ARRANGE, false),
+                new MpcMenuEntry("LIST EDIT", MpcUiState.Mode.LIST_EDIT, false),
+                new MpcMenuEntry("PROJECT", MpcUiState.Mode.PROJECT, false)
+        };
 
         GridLayout grid = new GridLayout(this);
         grid.setColumnCount(4);
-        String[][] items = {
-                {"MAIN", "MAIN"}, {"BROWSER", "BROWSE"}, {"SAMPLE", "SAMPLE"}, {"RECORDER", "REC"},
-                {"SEQUENCER", "SEQ"}, {"MIXER", "MIX"}, {"AUDIO SETTINGS", "AUDIO"}, {"GRID", "GRID"},
-                {"STEP", "STEP"}, {"TRACK EDIT", "TRACK"}, {"PAD MIX", "PAD"}, {"Q-LINK", "QLINK"},
-                {"PROJECT", "PROJECT"}
-        };
+        grid.setRowCount(4);
 
-        for (String[] item : items) {
-            final String menuLabel = item[0];
-            final String menuTarget = item[1];
-            Button b = actionButton(menuLabel, v -> {
-                switch (menuTarget) {
-                    case "MAIN": showMainPage(); break;
-                    case "BROWSE": showBrowserPage(); break;
-                    case "SAMPLE": showSamplePage(); break;
-                    case "REC": showRecordPage(); break;
-                    case "SEQ": showSequencePage(); break;
-                    case "MIX": showMixPage(); break;
-                    case "AUDIO": showAudioSettingsPage(); break;
-                    default: setBottomStatus(menuLabel + " shell reserved for the next UI slice");
-                }
-            });
+        for (int i = 0; i < entries.length; i++) {
+            final MpcMenuEntry entry = entries[i];
+            final Button b = actionButton(
+                    entry.available ? entry.label : entry.label + "\nRESERVED",
+                    v -> {
+                        if (!entry.available) {
+                            navigationController.navigate(MpcUiState.Mode.RESERVED);
+                            navigationController.setActionAvailable(false);
+                            setBottomStatus(
+                                    entry.label + " • RESERVED / UNAVAILABLE");
+                            updateMpcShellState();
+                            return;
+                        }
+                        navigateToMode(entry.mode);
+                    });
+            b.setEnabled(entry.available);
+            b.setAlpha(entry.available ? 1.0f : 0.55f);
+            b.setGravity(Gravity.CENTER);
+            b.setTextSize(11);
+            b.setTypeface(Typeface.DEFAULT_BOLD);
+            b.setContentDescription(
+                    entry.available
+                            ? "MPC Menu " + entry.label
+                            : "MPC Menu " + entry.label + " reserved");
+
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
             lp.width = 0;
-            lp.height = dp(62);
-            lp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+            lp.height = 0;
+            lp.columnSpec = GridLayout.spec(i % 4, 1f);
+            lp.rowSpec = GridLayout.spec(i / 4, 1f);
+            final int margin = dp(3);
+            lp.setMargins(margin, margin, margin, margin);
             grid.addView(b, lp);
         }
 
         page.addView(grid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout system = row();
+        system.addView(actionButton("PREFERENCES", v -> showAudioSettingsPage()),
+                weight());
+        system.addView(actionButton("MIDI / CONTROL", v -> showMidiPage()),
+                weight());
+        system.addView(actionButton("SAVE / PROJECT", v -> {
+            navigationController.navigate(MpcUiState.Mode.PROJECT);
+            navigationController.setActionAvailable(false);
+            setBottomStatus("PROJECT • reserved until project UI slice");
+            updateMpcShellState();
+        }), weight());
+        system.addView(actionButton("BACK", v -> navigateBackFromShell()), weight());
+        page.addView(system, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
         content.addView(page);
+        updateModeRailSelection();
+    }
+
+    private static final class MpcMenuEntry {
+        final String label;
+        final MpcUiState.Mode mode;
+        final boolean available;
+
+        MpcMenuEntry(String label, MpcUiState.Mode mode, boolean available) {
+            this.label = label;
+            this.mode = mode;
+            this.available = available;
+        }
     }
 
 
