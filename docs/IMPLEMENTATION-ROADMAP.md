@@ -440,3 +440,10 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Removed the redundant static `TRACK` caption and the visible `PROGRAM` prefix from the program value.
 - Kept Track Select and Program Select as the same semantic entry points.
 - Track Type is now visually compact while retaining truthful availability gating.
+
+
+### 2026-10-03 XL Channel Strip geometry refinement
+
+- Tuned shell proportions toward the documented MPC landscape composition.
+- Widened the XL Channel Strip and reduced vertical chrome.
+- Moved Track-strip LVL / FX / SEND / I/O tabs directly under Track identity.
