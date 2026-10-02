@@ -35,6 +35,7 @@ final class MpcStudioMk2LcdRenderer {
         final boolean erase;
         final int stepEditParameter;
         final int selectedStep;
+        final int dataDialFocus;
         final String status;
 
         State(
@@ -60,6 +61,7 @@ final class MpcStudioMk2LcdRenderer {
                 boolean erase,
                 int stepEditParameter,
                 int selectedStep,
+                int dataDialFocus,
                 String status) {
             this.page = page == null ? "MAIN" : page;
             this.sequenceIndex = Math.max(0, sequenceIndex);
@@ -83,6 +85,7 @@ final class MpcStudioMk2LcdRenderer {
             this.erase = erase;
             this.stepEditParameter = Math.max(0, Math.min(4, stepEditParameter));
             this.selectedStep = selectedStep;
+            this.dataDialFocus = Math.max(0, Math.min(20, dataDialFocus));
             this.status = status == null ? "" : status;
         }
 
@@ -90,13 +93,14 @@ final class MpcStudioMk2LcdRenderer {
             final Position p = position(this);
             return String.format(
                     Locale.ROOT,
-                    "%s|S%d/%d|Q%d|T%d/%d|%.1f|%d/%d|%d.%d|%b|%b|%b|P%d|L%d|TS%d|NR%b:%d|LOC%b|ER%b|STEP%d:%d|%s",
+                    "%s|S%d/%d|Q%d|T%d/%d|%.1f|%d/%d|%d.%d|%b|%b|%b|P%d|L%d|TS%d|NR%b:%d|LOC%b|ER%b|STEP%d:%d|FOCUS%d|%s",
                     page, sequenceIndex, sequenceCount, queuedSequenceIndex,
                     trackIndex, trackCount, tempo, numerator, denominator,
                     p.bar, p.beat, playing, recordArmed, overdub,
                     selectedPad, selectedLayer, touchStripMode,
                     noteRepeat, noteRepeatRateIndex, locate, erase,
-                    stepEditParameter, selectedStep, clip(status, 24));
+                    stepEditParameter, selectedStep, dataDialFocus,
+                    clip(status, 24));
         }
     }
 
@@ -182,11 +186,14 @@ final class MpcStudioMk2LcdRenderer {
 
         paint.setColor(0xFFFFB448);
         paint.setTextSize(8.5f);
-        canvas.drawText(contextLabel(state), 5.0f, 62.0f, paint);
+        canvas.drawText(contextLabel(state), 5.0f, 60.0f, paint);
 
         paint.setColor(0xFFEBEFF2);
-        paint.setTypeface(Typeface.DEFAULT);
         paint.setTextSize(8.0f);
+        paint.setTypeface(Typeface.DEFAULT_BOLD);
+        canvas.drawText("FOCUS " + focusLabel(state.dataDialFocus), 5.0f, 69.0f, paint);
+
+        paint.setTypeface(Typeface.DEFAULT);
         canvas.drawText(clip(state.status, 27), 5.0f, 77.0f, paint);
 
         final List<byte[]> messages =
@@ -223,6 +230,30 @@ final class MpcStudioMk2LcdRenderer {
         if ("NEXT_SEQUENCE".equals(state.page)) return "NEXT SEQ";
         if ("ARRANGE".equals(state.page)) return "ARRANGE";
         return "TOUCH " + touchStripModeLabel(state.touchStripMode);
+    }
+
+    private static String focusLabel(int value) {
+        switch (value) {
+            case 2: return "TRACK";
+            case 3: return "SEQUENCE";
+            case 4: return "PROGRAM";
+            case 5: return "TRACK TYPE";
+            case 7: return "SAMPLE START";
+            case 8: return "SAMPLE END";
+            case 9: return "TUNE";
+            case 10: return "LAYER";
+            case 11: return "ZOOM H";
+            case 12: return "ZOOM V";
+            case 13: return "GRID ZOOM H";
+            case 14: return "GRID ZOOM V";
+            case 15: return "TIMELINE ZOOM H";
+            case 16: return "TIMELINE ZOOM V";
+            case 17: return "LOOP START";
+            case 18: return "LOOP END";
+            case 19: return "BPM";
+            case 20: return "BARS";
+            default: return "NONE";
+        }
     }
 
     private static String parameterLabel(int value) {
