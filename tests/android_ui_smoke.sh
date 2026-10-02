@@ -75,6 +75,9 @@ wait_for_log_marker "UI_ONLY_COMPLETE" 30 2
 assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
 echo "UI-only startup diagnostic passed."
 
+echo "Checking MPC Main selection subcontexts..."
+
+
 echo "Launching full application with one-shot UI audit..."
 adb shell am force-stop "$PACKAGE"
 adb shell am start -n "$ACTIVITY" --es mpc.groovebox.smoke.mode ui-audit
