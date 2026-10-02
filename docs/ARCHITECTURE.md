@@ -36,3 +36,38 @@ MPC Studio pad
 ## Dependency posture
 
 JUCE, Tracktion Engine, Oboe and Ableton Link are pinned as upstream submodules. Tracktion/JUCE integration is intentionally gated while the Android CMake boundary is being proven.
+## 2026-10-02 MPC 3.9 UI migration boundary
+
+The Android presentation layer is now a permanent MPC 3.9 interaction-architecture migration.
+
+Target dependency direction:
+
+UI state/navigation
+→ semantic application commands
+→ existing MPC domain
+→ Tracktion/audio adapters
+→ realtime audio
+
+The UI may request domain state and semantic commands, but it must not reach directly into realtime engine objects.
+
+The migration is intentionally allowed to reorganize Android presentation classes extensively while preserving the lower layers.
+
+Protected by default:
+
+- realtime audio callback;
+- sample playback/rendering;
+- sequencer scheduler/clock;
+- MIDI transport;
+- raw MkII decoder;
+- hardware feedback protocol;
+- Tracktion/JUCE/Oboe realtime boundaries.
+
+A lower-layer change is justified only when the existing semantic model cannot represent truthful MPC 3.9 state, such as per-track program/container ownership.
+
+Canonical UI documents:
+
+- docs/MPC3-UI-MIGRATION-MASTER-SPEC.md
+- docs/MPC3-UI-SCREEN-BLUEPRINT.md
+- docs/MPC3-REFERENCE-INDEX.md
+- docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md
+
