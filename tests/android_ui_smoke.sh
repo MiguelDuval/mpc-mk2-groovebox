@@ -14,21 +14,15 @@ TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/Mpc
 echo "Running MPC Main UI source preflight..."
 for required in \
   "MPC shell mixer strips" \
-  "MPC shell sequence context" \
-  "MPC shell selected Program" \
-  "compactSequenceContext = compactContextField" \
-  "v -> showSequenceSelectPage()" \
-  "compactTrackContext = compactContextField" \
-  "v -> showTrackSelectPage()" \
-  "compactProgramContext = compactContextField" \
-  "v -> showProgramSelectPage()" \
-  "compactProgramContext.setEnabled(drumTrack)" \
   "navigationController.setCompactMixerState(" \
   "state.compactMixerVisible()" \
   "state.compactMixerPadMode()" \
   "compactMixerPadModeForDisplay()" \
   "compactMixerStripModeAvailable()" \
   "MPC shell Track record mute and solo state" \
+  "Main Mode selected sequence" \
+  "Main Mode selected track" \
+  "Main Mode selected program" \
   "nativeAudioGetPadSampleName" \
   "nativeAudioSetPadSampleName" \
   "BAR %03d  BEAT %d  TICK %03d" \
@@ -75,6 +69,11 @@ for required in \
   "MPC condensed Mixer Strip showing Track" \
   "MPC condensed Mixer Strip showing Pad" \
   "MPC condensed Mixer Strip" \
+  "LVL" \
+  "FX" \
+  "SEND" \
+  "I/O" \
+  "+ NEW TRACK" \
   "openMainTrackEditContext" \
   "openMainArrangementGridContext" \
   "setOnDoubleTapListener" \
