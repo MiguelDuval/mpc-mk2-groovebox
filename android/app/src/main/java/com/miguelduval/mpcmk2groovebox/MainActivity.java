@@ -1613,7 +1613,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         /*
          * MPC Main presents Track and Arrangement as sibling headers of the
          * same lower workspace. Keep the switch directly in that workspace
-         * rather than introducing a generic nested "MAIN VIEW" selector.
+         * rather than introducing a generic nested view selector.
          * The selected header remains the only view-state affordance; the
          * workspace below changes presentation without changing Navigation
          * mode or the selected Track/Sequence.
@@ -7618,15 +7618,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View mainViewSwitcher = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track / Arrangement view switcher");
         View mainTrackSelector = findViewWithContentDescription(
-                getWindow().getDecorView(), "Main Track View selector");
+                getWindow().getDecorView(), "Main Track View header");
         View mainArrangementSelector = findViewWithContentDescription(
-                getWindow().getDecorView(), "Main Arrangement View selector");
+                getWindow().getDecorView(), "Main Arrangement View header");
         View mainTrackWorkspace = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Mode Track View workspace");
         View mainArrangementWorkspace = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Mode arrangement preview");
-        if (mainTrackSelector == null
+        if (mainViewSwitcher == null
+                || mainViewSwitcher.getHeight() < dp(36)
+                || mainTrackSelector == null
                 || mainArrangementSelector == null
                 || mainTrackWorkspace == null
                 || mainArrangementWorkspace == null
