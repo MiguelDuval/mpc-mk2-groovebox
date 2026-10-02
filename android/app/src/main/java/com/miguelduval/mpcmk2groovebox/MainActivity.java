@@ -3317,40 +3317,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.setPadding(dp(8), dp(6), dp(8), dp(2));
 
         TextView hint = label(
-                "MODE MENU  •  four-by-four launcher  •  shortcuts are promoted from this vocabulary",
+                "MODE MENU  •  4×4 launcher  •  promoted contexts live in the five shortcuts",
                 10, MUTED);
         hint.setPadding(dp(6), 0, dp(6), 0);
         page.addView(hint, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
-        final MpcMenuEntry[] entries = {
-                new MpcMenuEntry("MAIN", MpcUiState.Mode.MAIN, true),
-                new MpcMenuEntry("TRACK VIEW", MpcUiState.Mode.TRACK_VIEW, true),
-                new MpcMenuEntry("BROWSER", MpcUiState.Mode.BROWSER, true),
-                new MpcMenuEntry("GRID", MpcUiState.Mode.GRID, true),
-
-                new MpcMenuEntry("STEP", MpcUiState.Mode.STEP, true),
-                new MpcMenuEntry("TRACK EDIT", MpcUiState.Mode.TRACK_EDIT, false),
-                new MpcMenuEntry("SAMPLE EDIT", MpcUiState.Mode.SAMPLE_EDIT, true),
-                new MpcMenuEntry("SAMPLER", MpcUiState.Mode.SAMPLER, true),
-
-                new MpcMenuEntry("CHANNEL MIXER", MpcUiState.Mode.CHANNEL_MIXER, false),
-                new MpcMenuEntry("PAD MIXER", MpcUiState.Mode.PAD_MIXER, true),
-                new MpcMenuEntry("16 LEVELS", MpcUiState.Mode.LEVELS_16, false),
-                new MpcMenuEntry("PAD PERFORM", MpcUiState.Mode.PAD_PERFORM, false),
-
-                new MpcMenuEntry("NEXT SEQUENCE", MpcUiState.Mode.NEXT_SEQUENCE, true),
-                new MpcMenuEntry("ARRANGE", MpcUiState.Mode.ARRANGE, false),
-                new MpcMenuEntry("LIST EDIT", MpcUiState.Mode.LIST_EDIT, false),
-                new MpcMenuEntry("PROJECT", MpcUiState.Mode.PROJECT, false)
-        };
-
         GridLayout grid = new GridLayout(this);
         grid.setColumnCount(4);
         grid.setRowCount(4);
 
+        final MpcModeRegistry.Entry[] entries = MpcModeRegistry.menuEntries();
         for (int i = 0; i < entries.length; i++) {
-            final MpcMenuEntry entry = entries[i];
+            final MpcModeRegistry.Entry entry = entries[i];
             final Button b = actionButton(
                     entry.available ? entry.label : entry.label + "\nRESERVED",
                     v -> {
@@ -3395,7 +3374,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         system.addView(actionButton("SAVE / PROJECT", v -> {
             navigationController.navigate(MpcUiState.Mode.PROJECT);
             navigationController.setActionAvailable(false);
-            setBottomStatus("PROJECT • reserved until project UI slice");
+            setBottomStatus("PROJECT • RESERVED until project UI slice");
             updateMpcShellState();
         }), weight());
         system.addView(actionButton("BACK", v -> navigateBackFromShell()), weight());
@@ -3405,19 +3384,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page);
         updateModeRailSelection();
     }
-
-    private static final class MpcMenuEntry {
-        final String label;
-        final MpcUiState.Mode mode;
-        final boolean available;
-
-        MpcMenuEntry(String label, MpcUiState.Mode mode, boolean available) {
-            this.label = label;
-            this.mode = mode;
-            this.available = available;
-        }
-    }
-
 
     private void showAudioSettingsPage() {
         clearStepEditPadLeds();
