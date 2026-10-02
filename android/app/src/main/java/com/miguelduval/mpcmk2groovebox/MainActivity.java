@@ -184,6 +184,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private int selectedPad = 0;
     private int selectedLayer = 0;
+    private static final int HARDWARE_FOCUS_SEQUENCE_START = 17;
+    private static final int HARDWARE_FOCUS_SEQUENCE_END = 18;
+    private static final int HARDWARE_FOCUS_SEQUENCE_BPM = 19;
+    private static final int HARDWARE_FOCUS_SEQUENCE_BARS = 20;
+
     private int hardwareFocus = 0;
     private int stepEditParameter = STEP_EDIT_PARAMETER_VELOCITY;
     private int hardwarePadBank = 0;
@@ -8021,6 +8026,40 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
             adjustSelectedStepParameter(delta, fine);
+            return;
+        }
+        if (hardwareFocus == HARDWARE_FOCUS_SEQUENCE_BPM) {
+            changeSequenceTempo(fine ? delta * 0.1 : delta);
+            return;
+        }
+        if (hardwareFocus == HARDWARE_FOCUS_SEQUENCE_BARS) {
+            changeSequenceBars(delta);
+            return;
+        }
+        if (hardwareFocus == HARDWARE_FOCUS_SEQUENCE_START) {
+            final int loopEnd = Math.max(
+                    1, Math.min(128, nativeSequenceGetLoopEndBar()));
+            final int nextStart = Math.max(
+                    1, Math.min(loopEnd,
+                            nativeSequenceGetLoopStartBar() + delta));
+            setBottomStatus(nativeSequenceSetLoopBars(
+                    nextStart, loopEnd));
+            refreshMainModeFields();
+            refreshMpcCompactContext();
+            return;
+        }
+        if (hardwareFocus == HARDWARE_FOCUS_SEQUENCE_END) {
+            final int bars = Math.max(
+                    1, Math.min(128, nativeSequenceGetBars()));
+            final int loopStart = Math.max(
+                    1, Math.min(bars, nativeSequenceGetLoopStartBar()));
+            final int nextEnd = Math.max(
+                    loopStart, Math.min(bars,
+                            nativeSequenceGetLoopEndBar() + delta));
+            setBottomStatus(nativeSequenceSetLoopBars(
+                    loopStart, nextEnd));
+            refreshMainModeFields();
+            refreshMpcCompactContext();
             return;
         }
         if (hardwareFocus == 2) {
