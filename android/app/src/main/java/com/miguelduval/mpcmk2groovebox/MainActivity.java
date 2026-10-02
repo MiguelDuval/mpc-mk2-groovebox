@@ -2051,23 +2051,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout row = row();
         row.setContentDescription("Main Mode track type selector");
 
-        final String[] labels = {
-                "DRUM", "KEYGROUP", "PLUGIN", "MIDI", "AUDIO", "CV"
-        };
-        final boolean[] available = {
-                true, false, false, false, false, false
-        };
-
-        for (int i = 0; i < labels.length; i++) {
-            final String type = labels[i];
-            final Button b = mainInfoButton(type, "TRACKTYPE_" + type);
-            b.setEnabled(available[i]);
-            b.setAlpha(available[i] ? 1.0f : 0.45f);
-            b.setOnClickListener(v -> setBottomStatus(
-                    type + " • TRACK TYPE SELECTION RESERVED"));
-            row.addView(b, new LinearLayout.LayoutParams(
-                    0, dp(34), 1f));
-        }
+        final Button typeField = mainInfoButton(
+                "DRUM • TYPE",
+                "TRACKTYPE_DRUM");
+        typeField.setContentDescription("Main Mode selected track type");
+        typeField.setOnClickListener(v -> {
+            setBottomStatus(
+                    "TRACK TYPE • DRUM is the only implemented Main Track type");
+            navigationController.setSubcontext(
+                    MpcUiState.Subcontext.TRACK_TYPE_SELECT);
+            navigationController.setDataDialFocus(
+                    MpcUiState.DataDialFocus.TRACK_TYPE);
+        });
+        row.addView(typeField, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
         return row;
     }
 
