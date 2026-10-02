@@ -115,6 +115,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceTimelineView sequenceTimeline;
     private SequenceTimelineView mainArrangementPreview;
     private MpcArrangeView arrangementView;
+    private MpcBrowserView browserView;
     private final ArrayList<MpcArrangeView.Lane> arrangementLanes = new ArrayList<>();
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
@@ -1827,39 +1828,86 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "BROWSE";
         navigationController.navigate(MpcUiState.Mode.BROWSER);
+        navigationController.setSubcontext(MpcUiState.Subcontext.BROWSER);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.BROWSER_ITEM);
         pageTitle.setText("BROWSER");
         content.removeAllViews();
 
+        browserView = new MpcBrowserView(this);
+        browserView.setListener(new MpcBrowserView.Listener() {
+            @Override
+            public void onSectionSelected(String section) {
+                navigationController.setBrowser(
+                        section, navigationController.state().browserFilter(),
+                        navigationController.state().browserSearch());
+                navigationController.setDataDialFocus(
+                        MpcUiState.DataDialFocus.BROWSER_ITEM);
+                setBottomStatus("BROWSER • " + section);
+            }
+
+            @Override
+            public void onFilterSelected(String filter) {
+                navigationController.setBrowser(
+                        navigationController.state().browserLocation(),
+                        filter,
+                        browserView.searchQuery());
+                setBottomStatus("FILTER • " + filter);
+            }
+
+            @Override
+            public void onOpenStorage() {
+                openWavPicker();
+            }
+
+            @Override
+            public void onAudition() {
+                selectAndTriggerPad(selectedPad, 112);
+                setBottomStatus(String.format(
+                        Locale.ROOT,
+                        "AUDITION • PAD %02d / LAYER %02d",
+                        selectedPad + 1, selectedLayer + 1));
+            }
+
+            @Override
+            public void onSearchChanged(String query) {
+                navigationController.setBrowser(
+                        navigationController.state().browserLocation(),
+                        navigationController.state().browserFilter(),
+                        query);
+                navigationController.setDataDialFocus(
+                        MpcUiState.DataDialFocus.BROWSER_ITEM);
+            }
+        });
+
         LinearLayout page = page();
-        LinearLayout top = row();
-        top.addView(sectionLabelView("PROJECT / USER AUDIO",
-                new LinearLayout.LayoutParams(0, dp(38), 1)));
-        top.addView(actionButton("LOAD WAV", v -> openWavPicker()),
-                new LinearLayout.LayoutParams(dp(120), dp(40)));
-        page.addView(top);
+        page.setPadding(dp(5), dp(4), dp(5), dp(2));
+        page.addView(browserView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        TextView target = label("Target: Pad " + (selectedPad + 1)
-                + " / Layer " + (selectedLayer + 1), 13, TEXT);
-        target.setBackground(strokeBackground(SURFACE_2, LINE, 8));
-        target.setGravity(Gravity.CENTER_VERTICAL);
-        target.setPadding(dp(12), 0, 0, 0);
-        page.addView(target, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+        final String location = navigationController.state().browserLocation();
+        final String filter = navigationController.state().browserFilter();
+        final String search = navigationController.state().browserSearch();
+        browserView.setLocation(location.isEmpty() ? "INTERNAL" : location);
+        browserView.setFilter(filter.isEmpty() ? "ALL" : filter);
+        browserView.setSearch(search);
 
-        TextView browserNote = label(
-                "Browser architecture: Places → Content → Search → Results → Preview → Load. "
-                        + "The current slice uses Android's document picker as the transport.",
-                13, MUTED);
-        browserNote.setBackground(strokeBackground(SURFACE, LINE, 8));
-        browserNote.setPadding(dp(12), dp(10), dp(12), dp(10));
-        page.addView(browserNote, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(92)));
-
-        sampleInfo = label("", 12, TEXT);
-        page.addView(sampleInfo, marginParams());
-        refreshSampleInfo();
+        if (sampleInfo == null) {
+            sampleInfo = label("", 12, TEXT);
+        }
+        if (startupComplete) {
+            final long frames = nativeAudioGetPadSampleFrameCount(
+                    selectedPad, selectedLayer);
+            browserView.setCurrentSampleName(
+                    frames > 0
+                            ? "ASSIGNED • " + frames + " frames"
+                            : "NONE");
+        } else {
+            browserView.setCurrentSampleName("NONE");
+        }
+        browserView.setTarget(selectedPad, selectedLayer);
 
         content.addView(page);
+        updateModeRailSelection();
     }
 
     private void showArrangePage() {
