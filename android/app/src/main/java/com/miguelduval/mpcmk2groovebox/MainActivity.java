@@ -465,7 +465,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         MpcUiState.Mode[] modes = navigationController.shortcuts();
         for (int i = 0; i < modes.length; i++) {
             final MpcUiState.Mode mode = modes[i];
-            Button shortcut = modeButton(mode.label(), mode.name());
+            Button shortcut = modeButton(
+                    String.format(
+                            Locale.ROOT, "%d\n%s",
+                            i + 1, mode.label()),
+                    mode.name());
             shortcut.setContentDescription("MPC shortcut " + (i + 1) + " " + mode.label());
             shortcut.setTag(mode);
             shortcut.setOnClickListener(v -> navigateToMode(mode));
@@ -3642,6 +3646,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus("PROJECT • RESERVED until project UI slice");
             updateMpcShellState();
         }), weight());
+        system.addView(actionButton(
+                "EDIT SHORTCUTS",
+                v -> showShortcutConfigPage()),
+                weight());
         system.addView(actionButton("BACK", v -> navigateBackFromShell()), weight());
         page.addView(system, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
@@ -3649,6 +3657,95 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page);
         updateModeRailSelection();
     }
+    private void showShortcutConfigPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        navigationController.setSubcontext(MpcUiState.Subcontext.SHORTCUT_CONFIG);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SHORTCUT);
+        pageTitle.setText("SHORTCUTS");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.setPadding(dp(8), dp(6), dp(8), dp(2));
+
+        TextView header = label(
+                "SHORTCUTS • FIVE HIGH-FREQUENCY MODES",
+                13, TEXT);
+        header.setTypeface(Typeface.DEFAULT_BOLD);
+        page.addView(header, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+
+        TextView hint = label(
+                "Reorder the five promoted MPC contexts. The mode vocabulary itself remains in Menu.",
+                10, MUTED);
+        page.addView(hint, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+
+        LinearLayout list = column();
+        final MpcUiState.Mode[] modes = navigationController.shortcuts();
+        for (int i = 0; i < MpcNavigationController.SHORTCUT_COUNT; i++) {
+            final int slot = i;
+            LinearLayout row = row();
+            row.setPadding(dp(6), dp(3), dp(6), dp(3));
+            row.setBackground(strokeBackground(
+                    SURFACE_2, LINE, 7));
+
+            TextView position = label(
+                    String.format(Locale.ROOT, "%02d", i + 1),
+                    13, ACCENT);
+            position.setGravity(Gravity.CENTER);
+            position.setTypeface(Typeface.DEFAULT_BOLD);
+            row.addView(position, new LinearLayout.LayoutParams(dp(42), dp(48)));
+
+            TextView modeLabel = label(modes[i].label(), 12, TEXT);
+            modeLabel.setGravity(Gravity.CENTER_VERTICAL);
+            modeLabel.setTypeface(Typeface.DEFAULT_BOLD);
+            row.addView(modeLabel, new LinearLayout.LayoutParams(
+                    0, dp(48), 1));
+
+            Button up = actionButton("▲", v -> {
+                if (slot > 0) {
+                    navigationController.moveShortcut(slot, slot - 1);
+                    showShortcutConfigPage();
+                }
+            });
+            up.setEnabled(i > 0);
+            up.setAlpha(i > 0 ? 1.0f : 0.35f);
+            row.addView(up, new LinearLayout.LayoutParams(dp(52), dp(44)));
+
+            Button down = actionButton("▼", v -> {
+                if (slot < MpcNavigationController.SHORTCUT_COUNT - 1) {
+                    navigationController.moveShortcut(slot, slot + 1);
+                    showShortcutConfigPage();
+                }
+            });
+            down.setEnabled(i < MpcNavigationController.SHORTCUT_COUNT - 1);
+            down.setAlpha(i < MpcNavigationController.SHORTCUT_COUNT - 1 ? 1.0f : 0.35f);
+            row.addView(down, new LinearLayout.LayoutParams(dp(52), dp(44)));
+
+            list.addView(row, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
+        }
+
+        page.addView(list, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout footer = row();
+        footer.addView(actionButton("RESET DEFAULTS", v -> {
+            navigationController.setShortcuts(
+                    MpcModeRegistry.defaultShortcuts());
+            showShortcutConfigPage();
+        }), weight());
+        footer.addView(actionButton("BACK TO MENU", v -> showMenuPage()), weight());
+        page.addView(footer, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+        content.addView(page);
+        updateModeRailSelection();
+        refreshMpcFunctionBar();
+    }
+
 
     private void showAudioSettingsPage() {
         clearStepEditPadLeds();
