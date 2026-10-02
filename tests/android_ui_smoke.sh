@@ -10,7 +10,7 @@ MAIN_ACTIVITY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/
 NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
 
 echo "Running MPC Main UI source preflight..."
-for required in   "MIXER STRIP"   "nativeAudioGetPadSampleName"   "nativeAudioSetPadSampleName"   "BAR %03d  BEAT %d  TICK %03d"   "Main Track View quick sample waveform"   "Main Track View monitor state"   "Main Track View length mode"   "Main Track View velocity state"   "Main Track View selected layer"   "Main Mixer Strip level"   "MPC condensed Mixer Strip show or hide"   "MPC condensed Mixer Strip"; do
+for required in   "MIXER STRIP"   "nativeAudioGetPadSampleName"   "nativeAudioSetPadSampleName"   "BAR %03d  BEAT %d  TICK %03d"   "SEQ\\n"   "TRANSPOSE\\n—"   "Main Track View quick sample waveform"   "Main Track View monitor state"   "Main Track View length mode"   "Main Track View velocity state"   "Main Track View selected layer"   "Main Mixer Strip level"   "MPC condensed Mixer Strip show or hide"   "MPC condensed Mixer Strip"; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MainActivity source contract missing: $required"
     exit 1
