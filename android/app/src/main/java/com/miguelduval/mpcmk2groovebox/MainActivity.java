@@ -753,7 +753,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         setBottomStatus(nativeSequenceSelectTrack(next));
         navigationController.setSelectedTrack(next);
-        showSequencePage();
+        showTrackViewPage();
     }
 
     private void toggleSelectedTrackMute() {
@@ -1302,8 +1302,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeSequenceGetLoopStartBar(),
                 nativeSequenceGetLoopEndBar());
         mainArrangementPreview.setPlayheadBar(
-                1.0f + (float) nativeSequencePositionTicks()
-                        / Math.max(1.0f, getSequenceTicksPerBar()));
+                (float) (1.0 + nativeSequencePositionTicks()
+                        / Math.max(1.0, getSequenceTicksPerBar())));
     }
 
     private void refreshMainTrackTypeVisuals() {
@@ -2169,7 +2169,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int separator = status.indexOf("  |");
         final String withoutEvents = separator >= 0
                 ? status.substring(0, separator) : status;
-        final String kindSeparator = withoutEvents.indexOf("  ");
+        final int kindSeparator = withoutEvents.indexOf("  ");
         if (kindSeparator >= 0 && kindSeparator + 2 < withoutEvents.length()) {
             return withoutEvents.substring(kindSeparator + 2).trim();
         }
