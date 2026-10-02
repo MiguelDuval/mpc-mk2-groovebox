@@ -932,3 +932,27 @@ The currently implemented four-strip mix workspace is classified as `PAD_MIXER`.
 
 ### Safety
 No audio callback, sampler rendering path, sequencer clock/scheduler, raw MkII decoder, or SysEx transport was changed in this slice.
+
+## 2026-10-02 Track View / Main fidelity checkpoint
+
+The canonical MPC navigation layer now has a dedicated Track View workspace rather than treating the legacy Sequencer page as the Track View surface.
+
+Track View currently provides:
+- sequence summary;
+- per-track horizontal strips;
+- selection;
+- record-arm state;
+- mute state;
+- truthful Track Type;
+- truthful Track Program label from the selected Track's `programId`;
+- event-count summary;
+- explicit Grid, Step, New Track and deep Sequence Edit exits;
+- Arrangement remains explicitly reserved until a true linear arranger exists.
+
+Main Mode now uses the existing `SequenceTimelineView` as its selected-track arrangement preview, with time-signature-aware playhead positioning and loop start/end state.
+
+The five promoted shortcuts are now user-reorderable from Menu. The 4×4 Menu remains the canonical mode vocabulary and unsupported contexts continue to be explicitly RESERVED/UNAVAILABLE.
+
+A read-only native track-context bridge exposes Track Type, Program and Mute state to presentation code. This does not implement Program Select yet; full Track→Program ownership remains a protected architectural milestone before Program Edit/Track Edit is opened as a functional editor.
+
+No realtime audio callback, sampler rendering, sequencer scheduler/clock, raw MkII decoder or SysEx transport was changed in this checkpoint.
