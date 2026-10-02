@@ -1061,6 +1061,14 @@ Main and Track View explicitly establish their hardware/Data Dial focus on entry
 - Outer Main Track/Sequence containers were flattened so the workspace reads as one workstation canvas rather than a dashboard of independent Android cards.
 
 
+## 2026-10-02 Main Track sample-state fidelity refinement
+
+The Main Track quick-sample surface now follows the documented empty-pad state more closely:
+- when the selected Drum Pad has no sample, the two action slots are **BROWSE** and **RECORD**;
+- once a sample is assigned, the primary action becomes **AUDITION** and the secondary path remains **BROWSE**;
+- the waveform remains the primary visual editing surface for the loaded-sample state;
+- these are presentation/state-routing changes only; no realtime audio path was changed.
+
 ## 2026-10-02 Main Track/Arrangement header refinement
 
 The Main lower workspace now presents TRACK and ARRANGEMENT as direct sibling header tabs over the same workspace host.
