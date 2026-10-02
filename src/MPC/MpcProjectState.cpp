@@ -105,10 +105,6 @@ bool MpcProjectState::setTrackProgram(
         return false;
     }
 
-    const auto programIndex = activeProgramIndexForTrack(
-            trackIndex);
-    (void) programIndex;
-
     const auto* program = findDrumProgram(programId);
     if (program == nullptr
             || program->type != domain::ProgramType::Drum) {
@@ -205,6 +201,9 @@ bool MpcProjectState::addSequence(std::string name) {
     project_.sequences.push_back(std::move(sequence));
     activeSequenceIndex_ = project_.sequences.size() - 1;
     activeTrackIndex_ = 0;
+    if (!activeSequence().tracks.empty()) {
+        selectTrack(activeTrackIndex_);
+    }
     return true;
 }
 
