@@ -639,8 +639,8 @@ final class MpcArrangeView extends View {
                 Math.min(barCount, nextVisibleBars));
         final int centerBar = clampBar(
                 Math.round(
-                        1f + positionTicks
-                                / Math.max(1.0, ticksPerBar())));
+                        1.0f + (float) positionTicks
+                                / (float) Math.max(1.0, ticksPerBar())));
         final int desiredStart =
                 centerBar - (visibleBars - 1) / 2;
         viewportStartBar = clampViewportStart(desiredStart);
