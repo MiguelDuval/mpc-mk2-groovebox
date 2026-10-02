@@ -419,3 +419,9 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 ## 2026-10-02 Main Track quick-sample increment
 
 - **MPC-style Main Track surface implemented:** the default Main Track view now pairs 4×4 performance pads with a selected Pad/Layer quick waveform context.
+
+### 2026-10-03 Main Sequence information-band fidelity
+
+- Main Sequence header was flattened into a single MPC-style information band: Sequence identity → BPM → SEQ source → Time Signature.
+- BARS / START / END / TRANSPOSE / LOOP are kept in one compact secondary row.
+- The former separate Time Signature/Loop auxiliary band was removed as an invented visual layer; existing semantic editing and Data Dial focus remain unchanged.
