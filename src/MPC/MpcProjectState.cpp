@@ -75,7 +75,101 @@ bool MpcProjectState::selectSequence(std::size_t sequenceIndex) noexcept {
     activeTrackIndex_ = activeSequence().tracks.empty()
             ? 0
             : std::min(activeTrackIndex_, activeSequence().tracks.size() - 1);
+
+    if (!activeSequence().tracks.empty()) {
+        selectTrack(activeTrackIndex_);
+    }
     return true;
+}
+
+bool MpcProjectState::selectTrack(std::size_t trackIndex) noexcept {
+    if (trackIndex >= activeSequence().tracks.size()) {
+        return false;
+    }
+
+    activeTrackIndex_ = trackIndex;
+    const auto& track = activeSequence().tracks[trackIndex];
+    if (track.kind == domain::TrackKind::Drum) {
+        const auto index = activeProgramIndexForTrack(trackIndex);
+        if (index < project_.drumPrograms.size()) {
+            activeDrumProgramIndex_ = index;
+        }
+    }
+    return true;
+}
+
+bool MpcProjectState::setTrackProgram(
+        std::size_t trackIndex,
+        std::string programId) noexcept {
+    if (trackIndex >= activeSequence().tracks.size()) {
+        return false;
+    }
+
+    const auto programIndex = activeProgramIndexForTrack(
+            trackIndex);
+    (void) programIndex;
+
+    const auto* program = findDrumProgram(programId);
+    if (program == nullptr
+            || program->type != domain::ProgramType::Drum) {
+        return false;
+    }
+
+    auto& track = activeSequence().tracks[trackIndex];
+    if (track.kind != domain::TrackKind::Drum
+            || track.type != domain::ProgramType::Drum) {
+        return false;
+    }
+
+    track.programId = program->id;
+    if (trackIndex == activeTrackIndex_) {
+        for (std::size_t i = 0; i < project_.drumPrograms.size(); ++i) {
+            if (project_.drumPrograms[i].id == program->id) {
+                activeDrumProgramIndex_ = i;
+                break;
+            }
+        }
+    }
+    return true;
+}
+
+domain::DrumProgram* MpcProjectState::findDrumProgram(
+        const std::string& programId) noexcept {
+    for (auto& program : project_.drumPrograms) {
+        if (program.id == programId) {
+            return &program;
+        }
+    }
+    return nullptr;
+}
+
+const domain::DrumProgram* MpcProjectState::findDrumProgram(
+        const std::string& programId) const noexcept {
+    for (const auto& program : project_.drumPrograms) {
+        if (program.id == programId) {
+            return &program;
+        }
+    }
+    return nullptr;
+}
+
+std::size_t MpcProjectState::activeProgramIndexForTrack(
+        std::size_t trackIndex) const noexcept {
+    if (trackIndex >= activeSequence().tracks.size()) {
+        return project_.drumPrograms.size();
+    }
+
+    const auto& track = activeSequence().tracks[trackIndex];
+    if (track.programId.empty()) {
+        return project_.drumPrograms.size();
+    }
+
+    for (std::size_t i = 0; i < project_.drumPrograms.size(); ++i) {
+        if (project_.drumPrograms[i].id == track.programId) {
+            return i;
+        }
+    }
+    return project_.drumPrograms.size();
 }
 
 bool MpcProjectState::selectNextSequence() noexcept {
