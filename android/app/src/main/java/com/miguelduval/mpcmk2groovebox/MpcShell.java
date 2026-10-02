@@ -3,6 +3,7 @@ package com.miguelduval.mpcmk2groovebox;
 import android.content.Context;
 import android.graphics.Color;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
@@ -33,7 +34,7 @@ final class MpcShell {
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         toolbar.setBackgroundColor(SURFACE);
         root.addView(toolbar, new LinearLayout.LayoutParams(
-                View.LayoutParams.MATCH_PARENT, dp(context, 52)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 52)));
 
         LinearLayout body = new LinearLayout(context);
         body.setOrientation(LinearLayout.HORIZONTAL);
@@ -43,7 +44,7 @@ final class MpcShell {
         shortcutRail.setBackgroundColor(Color.rgb(18, 21, 24));
         shortcutRail.setPadding(dp(context, 6), dp(context, 6), dp(context, 6), dp(context, 6));
         body.addView(shortcutRail, new LinearLayout.LayoutParams(
-                dp(context, 104), View.LayoutParams.MATCH_PARENT));
+                dp(context, 104), ViewGroup.LayoutParams.MATCH_PARENT));
 
         LinearLayout mainColumn = new LinearLayout(context);
         mainColumn.setOrientation(LinearLayout.VERTICAL);
@@ -53,7 +54,7 @@ final class MpcShell {
         contextArea.setGravity(android.view.Gravity.CENTER_VERTICAL);
         contextArea.setBackgroundColor(SURFACE);
         mainColumn.addView(contextArea, new LinearLayout.LayoutParams(
-                View.LayoutParams.MATCH_PARENT, dp(context, 54)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 54)));
 
         workspace = new FrameLayout(context);
         workspace.setBackgroundColor(BG);
@@ -65,13 +66,13 @@ final class MpcShell {
         functionBar.setGravity(android.view.Gravity.CENTER_VERTICAL);
         functionBar.setBackgroundColor(SURFACE);
         mainColumn.addView(functionBar, new LinearLayout.LayoutParams(
-                View.LayoutParams.MATCH_PARENT, dp(context, 48)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 48)));
 
         body.addView(mainColumn, new LinearLayout.LayoutParams(
-                0, View.LayoutParams.MATCH_PARENT, 1));
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
         root.addView(body, new LinearLayout.LayoutParams(
-                View.LayoutParams.MATCH_PARENT, 0, 1));
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
     }
 
     View root() {
