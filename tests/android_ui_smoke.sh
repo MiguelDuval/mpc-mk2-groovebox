@@ -36,6 +36,7 @@ for required in \
   "Main Track View selected layer" \
   "Main Mode sequence tempo source • SEQ • Global unavailable" \
   "Main Track / Arrangement view switcher" \
+  "Main Mode Track identity header" \
   "MPC Toolbar Menu" \
   "Main Mode sequence header" \
   "Main Mode BPM" \
