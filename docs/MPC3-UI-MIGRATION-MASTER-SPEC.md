@@ -202,10 +202,11 @@ The current seven-page permanent rail must therefore stop being the canonical na
 
 The compact shell must reserve a region for contextual channel/pad information.
 
-Main Mode now renders a compact, read-only Pad Mixer Strip for the selected Drum pad with level, pan and tuning readouts. The strip is presentation-only and reads the existing pad state. Mutations remain in the dedicated Pad Mixer / sampler controls until a full MPC channel-strip backend contract is available.
+Main Mode renders a compact, read-only contextual Channel Strip. For a Drum Track, the strip can cycle between the selected Track strip and selected Pad strip, matching the documented MPC 3.x single-pad / multi-pad channel-strip pattern. Track state shows the selected Track, type and record/mute state; Pad state shows the selected Pad/Bank with level, pan and tuning readouts. The strip is presentation-only and reads existing semantic/domain state. Mutations remain in dedicated Track/Pad Mixer or sampler controls until a full channel-strip backend contract is available.
+
+The compact strip has independent show/hide state and Track/Pad display focus. Changing either presentation state must not change selected Track, Pad, Sequence or transport state.
 
 The Main Track quick-sample surface also displays the selected project's sample name when available. Document-provider display names are propagated on the control thread into the existing SampleRef metadata; no realtime audio path depends on the filename.
-The condensed Mixer Strip can be shown or hidden without changing selected Track, Pad, Sequence or transport state.
 
 Full Channel Mixer and Pad Mixer remain separate modes.
 
@@ -246,6 +247,9 @@ The compact strip is vertical and remains visible while the active workspace cha
 - a thin sequence movement overview.
 
 Sequence, Track and Program fields are direct entry points to the existing Main selection contexts. The strip is presentation-only and reads the existing semantic/domain state; it does not own transport or audio behavior.
+
+
+The compact mixer header also exposes two presentation controls: a channel-strip visibility control and a Drum Track Track/Pad focus control. The focus control is unavailable for non-Drum Track Types, so the UI never presents a pad strip for a track that cannot own Drum pads.
 
 ### Main Program Select truthfulness rule
 
