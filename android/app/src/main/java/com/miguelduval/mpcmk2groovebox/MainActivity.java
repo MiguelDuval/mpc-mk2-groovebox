@@ -1323,10 +1323,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus("TIMING CORRECT • waiting for sequencer");
                 return;
             }
-            setBottomStatus(nativeSequenceSetTimingCorrectEnabled(
-                    !nativeSequenceIsTimingCorrectEnabled()));
-            refreshMpcToolbarState();
-            syncHardwareTransportLeds();
+            showTimingCorrectDialog();
         });
         bar.addView(timingCorrectTopButton,
                 new LinearLayout.LayoutParams(dp(56), dp(36)));
@@ -1372,6 +1369,140 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         midiState = statusChip("MIDI —", MUTED);
 
         return bar;
+    }
+
+    private void showTimingCorrectDialog() {
+        final LinearLayout root = column();
+        root.setPadding(dp(14), dp(6), dp(14), 0);
+
+        final TextView enabled = label(
+                "ENABLED\n"
+                        + (nativeSequenceIsTimingCorrectEnabled() ? "ON" : "OFF"),
+                11,
+                TEXT);
+        enabled.setTypeface(Typeface.DEFAULT_BOLD);
+        enabled.setGravity(Gravity.CENTER_VERTICAL);
+        enabled.setBackground(strokeBackground(
+                SURFACE_2,
+                nativeSequenceIsTimingCorrectEnabled() ? ACTIVE : LINE,
+                5));
+        enabled.setContentDescription("Timing Correct enabled field");
+        root.addView(enabled,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+
+        final TextView timeDiv = label(
+                "TIME DIV\n" + sequenceGridLabel(nativeSequenceGetQuantizeGrid()),
+                11,
+                TEXT);
+        timeDiv.setTypeface(Typeface.DEFAULT_BOLD);
+        timeDiv.setGravity(Gravity.CENTER_VERTICAL);
+        timeDiv.setPadding(dp(10), 0, dp(10), 0);
+        timeDiv.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+        timeDiv.setContentDescription("Timing Correct time division");
+        root.addView(timeDiv,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+
+        LinearLayout divisionButtons = row();
+        final int[] divisions = {60, 120, 240, 480, 960};
+        for (int division : divisions) {
+            Button b = actionButton(
+                    sequenceGridLabel(division).replace("Q ", ""),
+                    v -> {
+                        setBottomStatus(nativeSequenceSetQuantizeGrid(division));
+                        timeDiv.setText(
+                                "TIME DIV\n"
+                                        + sequenceGridLabel(
+                                                nativeSequenceGetQuantizeGrid()));
+                        refreshMpcToolbarState();
+                        refreshSequenceControls();
+                    });
+            b.setTextSize(9);
+            divisionButtons.addView(b, weight());
+        }
+        root.addView(divisionButtons,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+
+        TextView swing = label(
+                "SWING\n" + nativeSequenceGetSwing() + "%",
+                11,
+                TEXT);
+        swing.setTypeface(Typeface.DEFAULT_BOLD);
+        swing.setGravity(Gravity.CENTER_VERTICAL);
+        swing.setPadding(dp(10), 0, dp(10), 0);
+        swing.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+        swing.setContentDescription("Timing Correct swing");
+        root.addView(swing,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+
+        LinearLayout swingButtons = row();
+        swingButtons.addView(actionButton(
+                "−10",
+                v -> {
+                    changeSequenceSwing(-10);
+                    swing.setText(
+                            "SWING\n" + nativeSequenceGetSwing() + "%");
+                }),
+                weight());
+        swingButtons.addView(actionButton(
+                "−1",
+                v -> {
+                    changeSequenceSwing(-1);
+                    swing.setText(
+                            "SWING\n" + nativeSequenceGetSwing() + "%");
+                }),
+                weight());
+        swingButtons.addView(actionButton(
+                "+1",
+                v -> {
+                    changeSequenceSwing(1);
+                    swing.setText(
+                            "SWING\n" + nativeSequenceGetSwing() + "%");
+                }),
+                weight());
+        swingButtons.addView(actionButton(
+                "+10",
+                v -> {
+                    changeSequenceSwing(10);
+                    swing.setText(
+                            "SWING\n" + nativeSequenceGetSwing() + "%");
+                }),
+                weight());
+        root.addView(swingButtons,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+
+        TextView reserved = label(
+                "TYPE • START\nEVENTS • ALL\nSTRENGTH • RESERVED",
+                9,
+                MUTED);
+        reserved.setPadding(dp(10), dp(4), dp(10), dp(4));
+        reserved.setGravity(Gravity.CENTER_VERTICAL);
+        reserved.setContentDescription("Timing Correct reserved fields");
+        root.addView(reserved,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Timing Correct")
+                .setView(root)
+                .setNegativeButton("CANCEL", null)
+                .setPositiveButton("DO IT", (d, which) -> {
+                    refreshMpcToolbarState();
+                    refreshSequenceControls();
+                    setBottomStatus(
+                            "TIMING CORRECT • "
+                                    + (nativeSequenceIsTimingCorrectEnabled()
+                                            ? "ON" : "OFF")
+                                    + " • "
+                                    + sequenceGridLabel(
+                                            nativeSequenceGetQuantizeGrid()));
+                })
+                .create();
+        dialog.show();
     }
 
     private View buildModeRail() {
@@ -8548,12 +8679,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                     ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
                                     : MpcHardwareFeedbackPolicy.LED_OFF);
                     refreshSequenceControls();
+                    refreshMpcToolbarState();
                 } else {
-                    setBottomStatus(
-                            "TIMING CORRECT CONFIG • grid "
-                                    + nativeSequenceGetQuantizeGrid()
-                                    + " ticks, swing "
-                                    + nativeSequenceGetSwing() + "%");
+                    if (startupComplete) {
+                        showTimingCorrectDialog();
+                    } else {
+                        setBottomStatus(
+                                "TIMING CORRECT • waiting for sequencer");
+                    }
                 }
                 return;
             case MpcStudioMk2SemanticActions.ZOOM_CONTEXT:
