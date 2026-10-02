@@ -226,7 +226,7 @@ Main Mode targets include:
 - Mute;
 - Solo.
 
-Do not hard-wire bottom buttons independently inside every page.
+On the Main screen these six semantic actions occupy five visual MPC-style slots: New Track; SEQ + Rec Arm; - Track +; Mute; Solo. Do not hard-wire bottom buttons independently inside every page.
 
 ---
 
