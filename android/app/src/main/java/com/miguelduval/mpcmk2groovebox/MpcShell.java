@@ -32,7 +32,7 @@ final class MpcShell {
 
         toolbar = new LinearLayout(context);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
-        toolbar.setBackgroundColor(Color.rgb(196, 42, 53));
+        toolbar.setBackgroundColor(SURFACE);
         root.addView(toolbar, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 52)));
 
