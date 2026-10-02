@@ -471,10 +471,18 @@ jobs:
           archive: false
           if-no-files-found: error
 
+      - name: Upload Android UI smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mpc-mk2-groovebox-ui-smoke
+          path: build/mpc-ui-smoke
+          if-no-files-found: warn
+
       - name: Run Android emulator smoke test
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: 36
           target: default
           arch: x86_64
           profile: pixel_2
