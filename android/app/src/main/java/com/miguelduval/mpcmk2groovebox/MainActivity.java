@@ -1055,9 +1055,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 action.run();
             }
         });
+        final boolean armed = enabled
+                && startupComplete
+                && nativeSequenceIsSelectedTrackArmed();
         recArm.setEnabled(enabled);
         recArm.setAlpha(enabled ? 1.0f : 0.45f);
-        recArm.setContentDescription("MPC Main sequence REC ARM");
+        recArm.setText(armed ? "REC ARM ON" : "REC ARM");
+        recArm.setTextColor(armed ? BG : TEXT);
+        recArm.setBackground(strokeBackground(
+                armed ? ACTIVE : SURFACE_2,
+                armed ? ACTIVE : LINE,
+                5));
+        recArm.setContentDescription(
+                armed ? "MPC Main sequence REC ARM active"
+                        : "MPC Main sequence REC ARM");
         group.addView(recArm, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
