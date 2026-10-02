@@ -4112,43 +4112,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setHardwareButtonLedState(
                 cc,
                 on
-                        ? isTwoColorButtonLed(cc)
+                        ? MpcHardwareFeedbackPolicy.isTwoColorButton(cc)
                                 ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
                                 : MpcHardwareFeedbackPolicy.LED_COLOR_2_FULL
                         : MpcHardwareFeedbackPolicy.LED_OFF);
-    }
-
-    private boolean isTwoColorButtonLed(int cc) {
-        switch (cc) {
-            case 0:
-            case 4:
-            case 9:
-            case 11:
-            case 12:
-            case 13:
-            case 14:
-            case 33:
-            case 34:
-            case 35:
-            case 36:
-            case 37:
-            case 38:
-            case 39:
-            case 40:
-            case 42:
-            case 49:
-            case 50:
-            case 52:
-            case 53:
-            case 66:
-            case 67:
-            case 75:
-            case 79:
-            case 122:
-                return true;
-            default:
-                return false;
-        }
     }
 
     private void setHardwareButtonLedState(int cc, int state) {
