@@ -68,7 +68,7 @@ final class MpcHardwareFeedbackPolicy {
         if (noteRepeat) {
             return "NOTE REPEAT • " + noteRepeatRateLabel(noteRepeatRate);
         }
-        if ("SAMPLE".equals(page)) {
+        if ("SAMPLE".equals(page) || "SAMPLE_EDIT".equals(page)) {
             switch (focus) {
                 case 7: return "SAMPLE START • " + touchStripModeLabel(touchStripMode);
                 case 8: return "SAMPLE END • " + touchStripModeLabel(touchStripMode);
@@ -78,6 +78,41 @@ final class MpcHardwareFeedbackPolicy {
                 case 12: return "ZOOM V • sample waveform";
                 default: return "SAMPLE • touch strip";
             }
+        }
+        if ("GRID".equals(page)) {
+            switch (focus) {
+                case 13: return "GRID • zoom horizontal";
+                case 14: return "GRID • zoom vertical";
+                default: return "GRID • event editor";
+            }
+        }
+        if ("STEP".equals(page)) {
+            return "STEP • 16-pad step edit";
+        }
+        if ("TRACK_VIEW".equals(page)) {
+            switch (focus) {
+                case 2: return "TRACK SELECT • data dial";
+                case 3: return "SEQUENCE SELECT • data dial";
+                default: return "TRACK VIEW • sequence tracks";
+            }
+        }
+        if ("BROWSER".equals(page)) {
+            return "BROWSER • library / sample";
+        }
+        if ("SAMPLER".equals(page)) {
+            return "SAMPLER • record / monitor";
+        }
+        if ("CHANNEL_MIXER".equals(page)) {
+            return "CHANNEL MIXER • track strips";
+        }
+        if ("PAD_MIXER".equals(page)) {
+            return "PAD MIXER • pad strips";
+        }
+        if ("NEXT_SEQUENCE".equals(page)) {
+            return "NEXT SEQUENCE • queued launch";
+        }
+        if ("ARRANGE".equals(page)) {
+            return "ARRANGE • linear timeline";
         }
         if ("SEQ".equals(page)) {
             switch (focus) {
