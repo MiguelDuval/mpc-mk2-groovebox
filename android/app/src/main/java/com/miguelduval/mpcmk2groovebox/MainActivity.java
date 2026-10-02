@@ -810,8 +810,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         showSequenceStepPage();
                     }
                 });
-                addFunction("ZOOM H", true, v -> zoomSequenceGridHorizontal(1));
-                addFunction("ZOOM V", true, v -> zoomSequenceGridVertical(1));
+                addFunction("ZOOM H", drumGridAvailable(), v -> zoomSequenceGridHorizontal(1));
+                addFunction("ZOOM V", drumGridAvailable(), v -> zoomSequenceGridVertical(1));
                 addFunction("TRACK VIEW", true, v -> showTrackViewPage());
                 addFunction("MAIN", true, v -> showMainPage());
                 addFunction("BACK", true, v -> navigateBackFromShell());
@@ -3300,6 +3300,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         currentPage = "SEQ";
         navigationController.navigate(MpcUiState.Mode.STEP);
         navigationController.setSubcontext(MpcUiState.Subcontext.STEP_EDIT);
+        final int stepTrack = Math.max(0, nativeSequenceGetSelectedTrack());
+        final String stepTrackType = nativeSequenceGetTrackType(stepTrack);
+        final boolean stepSupported =
+                "DRUM".equalsIgnoreCase(stepTrackType);
+        navigationController.setActionAvailable(
+                stepSupported && nativeSequenceIsGridEditable());
         navigationController.setDataDialFocus(
                 MpcUiState.DataDialFocus.STEP);
         navigationController.setActionAvailable(nativeSequenceIsGridEditable());
@@ -3314,6 +3320,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout page = page();
         page.setContentDescription("MPC Step Sequencer workspace");
+
+        if (!stepSupported) {
+            TextView unavailable = label(
+                    "STEP SEQUENCER • " + stepTrackType + " TRACK",
+                    16, TEXT);
+            unavailable.setTypeface(Typeface.DEFAULT_BOLD);
+            unavailable.setGravity(Gravity.CENTER);
+            page.addView(unavailable, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+
+            TextView message = label(
+                    "The current Step backend is Drum Track only. "
+                            + "Select a Drum Track to program 16 steps.",
+                    11, MUTED);
+            message.setGravity(Gravity.CENTER);
+            page.addView(message, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+            content.addView(page);
+            refreshMpcCompactContext();
+            refreshMpcFunctionBar();
+            updateModeRailSelection();
+            return;
+        }
 
         LinearLayout header = row();
         TextView title = label("STEP", 13, TEXT);
@@ -6129,6 +6159,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        if (!"DRUM".equalsIgnoreCase(
+                nativeSequenceGetTrackType(nativeSequenceGetSelectedTrack()))) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step audit track is not Drum");
+            return;
+        }
         View stepCell = findViewWithContentDescription(
                 getWindow().getDecorView(), "Pad 1 step 1 off");
         if (stepCell == null || stepCell.getWidth() <= 0
