@@ -910,16 +910,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         if (mode == MpcUiState.Mode.MAIN) {
             addFunction("NEW TRACK", true, v -> addSequenceTrack(0));
-            addFunction("REC ARM", trackCount > 0, v -> {
-                setBottomStatus(nativeSequenceSetSelectedTrackArmed(
-                        !nativeSequenceIsSelectedTrackArmed()));
-                syncHardwareTransportLeds();
-                showMainPage();
-            });
-            addFunction("TRACK −", trackCount > 0,
-                    v -> selectAdjacentTrack(-1));
-            addFunction("TRACK +", trackCount > 0,
-                    v -> selectAdjacentTrack(1));
+            addSequenceRecArmFunction(
+                    trackCount > 0,
+                    () -> {
+                        setBottomStatus(nativeSequenceSetSelectedTrackArmed(
+                                !nativeSequenceIsSelectedTrackArmed()));
+                        syncHardwareTransportLeds();
+                        showMainPage();
+                    });
+            addTrackStepperFunction(trackCount > 0);
             addFunction("MUTE", trackCount > 0,
                     v -> toggleSelectedTrackMute());
             addFunction("SOLO", false, null);
@@ -928,16 +927,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         if (mode == MpcUiState.Mode.TRACK_VIEW) {
             addFunction("NEW TRACK", true, v -> addSequenceTrack(0));
-            addFunction("REC ARM", trackCount > 0, v -> {
-                setBottomStatus(nativeSequenceSetSelectedTrackArmed(
-                        !nativeSequenceIsSelectedTrackArmed()));
-                syncHardwareTransportLeds();
-                showTrackViewPage();
-            });
-            addFunction("TRACK −", trackCount > 0,
-                    v -> selectAdjacentTrack(-1));
-            addFunction("TRACK +", trackCount > 0,
-                    v -> selectAdjacentTrack(1));
+            addSequenceRecArmFunction(
+                    trackCount > 0,
+                    () -> {
+                        setBottomStatus(nativeSequenceSetSelectedTrackArmed(
+                                !nativeSequenceIsSelectedTrackArmed()));
+                        syncHardwareTransportLeds();
+                        showTrackViewPage();
+                    });
+            addTrackStepperFunction(trackCount > 0);
             addFunction("MUTE", trackCount > 0,
                     v -> toggleSelectedTrackMute());
             addFunction("SOLO", false, null);
@@ -1019,6 +1017,71 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 addFunction("BACK", true, v -> navigateBackFromShell());
                 break;
         }
+    }
+
+    private void addSequenceRecArmFunction(
+            boolean enabled,
+            Runnable action) {
+        LinearLayout group = new LinearLayout(this);
+        group.setOrientation(LinearLayout.HORIZONTAL);
+        group.setGravity(Gravity.CENTER_VERTICAL);
+        group.setContentDescription("MPC Function Bar SEQ REC ARM");
+        group.setPadding(dp(2), dp(2), dp(2), dp(2));
+        group.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+
+        TextView seq = label("SEQ", 8, MUTED);
+        seq.setGravity(Gravity.CENTER);
+        seq.setTypeface(Typeface.DEFAULT_BOLD);
+        seq.setContentDescription("MPC Main sequence record scope");
+        group.addView(seq, new LinearLayout.LayoutParams(
+                dp(26), ViewGroup.LayoutParams.MATCH_PARENT));
+
+        Button recArm = actionButton("REC ARM", v -> {
+            if (action != null) {
+                action.run();
+            }
+        });
+        recArm.setEnabled(enabled);
+        recArm.setAlpha(enabled ? 1.0f : 0.45f);
+        recArm.setContentDescription("MPC Main sequence REC ARM");
+        group.addView(recArm, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+        functionBar.addView(group, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+    }
+
+    private void addTrackStepperFunction(boolean enabled) {
+        LinearLayout group = new LinearLayout(this);
+        group.setOrientation(LinearLayout.HORIZONTAL);
+        group.setGravity(Gravity.CENTER_VERTICAL);
+        group.setContentDescription("MPC Function Bar TRACK previous next");
+        group.setPadding(dp(2), dp(2), dp(2), dp(2));
+        group.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+
+        Button previous = actionButton("−", v -> selectAdjacentTrack(-1));
+        previous.setEnabled(enabled);
+        previous.setAlpha(enabled ? 1.0f : 0.45f);
+        previous.setContentDescription("MPC Main previous track");
+        group.addView(previous, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.42f));
+
+        TextView title = label("TRACK", 8, TEXT);
+        title.setGravity(Gravity.CENTER);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setContentDescription("MPC Main track stepper");
+        group.addView(title, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.9f));
+
+        Button next = actionButton("+", v -> selectAdjacentTrack(1));
+        next.setEnabled(enabled);
+        next.setAlpha(enabled ? 1.0f : 0.45f);
+        next.setContentDescription("MPC Main next track");
+        group.addView(next, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.42f));
+
+        functionBar.addView(group, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
     }
 
     private void addFunction(String text, boolean enabled, View.OnClickListener listener) {
