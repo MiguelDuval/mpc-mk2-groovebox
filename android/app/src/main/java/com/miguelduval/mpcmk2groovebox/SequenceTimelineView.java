@@ -31,7 +31,9 @@ public final class SequenceTimelineView extends View {
     private int barCount = 4;
     private int loopStartBar = 1;
     private int loopEndBar = 4;
-    private float playheadNormalized;
+    private float playheadBar = 1f;
+    private int viewportStartBar = 1;
+    private int viewportVisibleBars = 4;
     private int activeHandle = -1;
     private OnLoopCommitListener loopCommitListener;
 
@@ -63,6 +65,10 @@ public final class SequenceTimelineView extends View {
         loopStartBar = clampBar(loopStartBar);
         loopEndBar = clampBar(loopEndBar);
         if (loopStartBar > loopEndBar) loopStartBar = loopEndBar;
+        viewportVisibleBars = Math.min(viewportVisibleBars, barCount);
+        viewportVisibleBars = Math.max(1, viewportVisibleBars);
+        viewportStartBar = clampViewportStart(viewportStartBar);
+        ensurePlayheadVisible();
         invalidate();
     }
 
@@ -76,11 +82,42 @@ public final class SequenceTimelineView extends View {
     }
 
     public void setPlayheadBar(float bar) {
-        if (bar <= 0f) {
-            playheadNormalized = 0f;
-        } else {
-            playheadNormalized = clamp((bar - 1f) / Math.max(1f, barCount), 0f, 1f);
-        }
+        playheadBar = clamp(
+                bar <= 0f ? 1f : bar,
+                1f,
+                Math.max(1f, barCount));
+        ensurePlayheadVisible();
+        invalidate();
+    }
+
+    public void zoomIn() {
+        final int nextVisible = MpcSequenceZoomPolicy.zoomTimelineBarsIn(
+                viewportVisibleBars,
+                barCount);
+        if (nextVisible == viewportVisibleBars) return;
+        zoomAroundPlayhead(nextVisible);
+    }
+
+    public void zoomOut() {
+        final int nextVisible = MpcSequenceZoomPolicy.zoomTimelineBarsOut(
+                viewportVisibleBars,
+                barCount);
+        if (nextVisible == viewportVisibleBars) return;
+        zoomAroundPlayhead(nextVisible);
+    }
+
+    public int visibleBarsForTest() {
+        return viewportVisibleBars;
+    }
+
+    public int viewportStartBarForTest() {
+        return viewportStartBar;
+    }
+
+    public void resetZoom() {
+        viewportVisibleBars = barCount;
+        viewportStartBar = 1;
+        ensurePlayheadVisible();
         invalidate();
     }
 
@@ -99,27 +136,39 @@ public final class SequenceTimelineView extends View {
         final float bottom = getHeight() - dp(8);
         final float width = Math.max(1f, right - left);
 
+        final float rangeLeft = xForBar(loopStartBar, left, width);
+        final float rangeRight = xForBar(loopEndBar + 0.999f, left, width);
         fillPaint.setColor(RANGE);
-        final float rangeLeft = left + width * (loopStartBar - 1f) / barCount;
-        final float rangeRight = left + width * loopEndBar / barCount;
-        canvas.drawRect(rangeLeft, top, rangeRight, bottom, fillPaint);
+        if (rangeRight >= left && rangeLeft <= right) {
+            canvas.drawRect(
+                    Math.max(left, rangeLeft),
+                    top,
+                    Math.min(right, rangeRight),
+                    bottom,
+                    fillPaint);
+        }
 
         linePaint.setStrokeWidth(dp(1));
         linePaint.setColor(GRID);
-        for (int bar = 0; bar <= barCount; bar++) {
-            final float x = left + width * bar / barCount;
+        for (int visible = 0; visible <= viewportVisibleBars; visible++) {
+            final float x = left + width * visible / viewportVisibleBars;
             canvas.drawLine(x, top, x, bottom, linePaint);
         }
 
         linePaint.setColor(RANGE_EDGE);
         linePaint.setStrokeWidth(dp(2));
-        canvas.drawLine(rangeLeft, top, rangeLeft, bottom, linePaint);
-        canvas.drawLine(rangeRight, top, rangeRight, bottom, linePaint);
+        if (rangeLeft >= left && rangeLeft <= right) {
+            canvas.drawLine(rangeLeft, top, rangeLeft, bottom, linePaint);
+        }
+        if (rangeRight >= left && rangeRight <= right) {
+            canvas.drawLine(rangeRight, top, rangeRight, bottom, linePaint);
+        }
 
         textPaint.setColor(TEXT);
         textPaint.setTextSize(dp(10));
-        for (int bar = 1; bar <= barCount; bar++) {
-            final float x = left + width * (bar - 1f) / barCount;
+        for (int visible = 0; visible < viewportVisibleBars; visible++) {
+            final int bar = viewportStartBar + visible;
+            final float x = left + width * visible / viewportVisibleBars;
             canvas.drawText(
                     String.format(Locale.ROOT, "%02d", bar),
                     x + dp(4),
@@ -127,13 +176,22 @@ public final class SequenceTimelineView extends View {
                     textPaint);
         }
 
-        final float playheadX = left + width * playheadNormalized;
-        linePaint.setColor(PLAYHEAD);
-        linePaint.setStrokeWidth(dp(1));
-        canvas.drawLine(playheadX, top, playheadX, bottom, linePaint);
+        if (playheadBar >= viewportStartBar
+                && playheadBar <= viewportStartBar + viewportVisibleBars) {
+            final float playheadX = xForBar(playheadBar, left, width);
+            linePaint.setColor(PLAYHEAD);
+            linePaint.setStrokeWidth(dp(1));
+            canvas.drawLine(playheadX, top, playheadX, bottom, linePaint);
+        }
 
-        drawHandle(canvas, rangeLeft, top, "IN");
-        drawHandle(canvas, rangeRight, top, "OUT");
+        final float startX = xForBar(loopStartBar, left, width);
+        final float endX = xForBar(loopEndBar + 0.999f, left, width);
+        if (startX >= left && startX <= right) {
+            drawHandle(canvas, startX, top, "IN");
+        }
+        if (endX >= left && endX <= right) {
+            drawHandle(canvas, endX, top, "OUT");
+        }
     }
 
     private void drawHandle(Canvas canvas, float x, float top, String label) {
@@ -152,8 +210,8 @@ public final class SequenceTimelineView extends View {
         final float left = dp(12);
         final float right = getWidth() - dp(12);
         final float width = Math.max(1f, right - left);
-        final float startX = left + width * (loopStartBar - 1f) / barCount;
-        final float endX = left + width * loopEndBar / barCount;
+        final float startX = xForBar(loopStartBar, left, width);
+        final float endX = xForBar(loopEndBar + 0.999f, left, width);
 
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
@@ -193,14 +251,52 @@ public final class SequenceTimelineView extends View {
     }
 
     private void updateHandle(float x, float left, float width) {
-        final int bar = clampBar(1 + Math.round(
-                clamp((x - left) / width, 0f, 0.9999f) * barCount));
+        final int bar = clampBar(
+                viewportStartBar
+                        + (int) Math.floor(
+                                clamp((x - left) / width, 0f, 0.99999f)
+                                        * viewportVisibleBars));
         if (activeHandle == 0) {
             loopStartBar = Math.min(bar, loopEndBar);
         } else if (activeHandle == 1) {
             loopEndBar = Math.max(bar, loopStartBar);
         }
         invalidate();
+    }
+
+    private void zoomAroundPlayhead(int visibleBars) {
+        viewportVisibleBars = Math.max(
+                1,
+                Math.min(barCount, visibleBars));
+        final int centerBar = clampBar(Math.round(playheadBar));
+        final int desiredStart =
+                centerBar - (viewportVisibleBars - 1) / 2;
+        viewportStartBar = clampViewportStart(desiredStart);
+        invalidate();
+    }
+
+    private void ensurePlayheadVisible() {
+        if (playheadBar < viewportStartBar) {
+            viewportStartBar = clampViewportStart(
+                    (int) Math.floor(playheadBar));
+        } else if (playheadBar > viewportStartBar + viewportVisibleBars) {
+            viewportStartBar = clampViewportStart(
+                    (int) Math.ceil(playheadBar) - viewportVisibleBars);
+        }
+    }
+
+    private float xForBar(float bar, float left, float width) {
+        final float relative = (bar - viewportStartBar)
+                / Math.max(1f, viewportVisibleBars);
+        return left + width * relative;
+    }
+
+    private int clampViewportStart(int start) {
+        return Math.max(
+                1,
+                Math.min(
+                        Math.max(1, barCount - viewportVisibleBars + 1),
+                        start));
     }
 
     private int clampBar(int bar) {
