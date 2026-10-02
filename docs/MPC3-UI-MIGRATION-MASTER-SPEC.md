@@ -1061,6 +1061,16 @@ Main and Track View explicitly establish their hardware/Data Dial focus on entry
 - Outer Main Track/Sequence containers were flattened so the workspace reads as one workstation canvas rather than a dashboard of independent Android cards.
 
 
+## 2026-10-02 Main Track/Arrangement header refinement
+
+The Main lower workspace now presents TRACK and ARRANGEMENT as direct sibling header tabs over the same workspace host.
+
+- Removed the generic MAIN VIEW label/selector layer.
+- Removed duplicate TRACK/ARRANGEMENT labels from the child workspaces.
+- Track Edit pencil remains attached to the Track workspace action edge.
+- Arrangement GRID remains attached to the Arrangement workspace action edge.
+- Switching tabs changes presentation only; Sequence, Track, Program/Pad context and transport remain authoritative and unchanged.
+
 ## 2026-10-02 MPC shell / mixer-strip fidelity refinement
 
 - The shell left edge now follows the MPC3 Main composition more closely: five shortcuts sit beside a dedicated condensed Mixer Strip area; central Sequence/Track/Program information is no longer duplicated as a dashboard column.
