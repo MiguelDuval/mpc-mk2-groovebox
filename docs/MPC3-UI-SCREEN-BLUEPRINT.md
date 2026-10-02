@@ -847,3 +847,36 @@ Pixel-identical reproduction is not the acceptance criterion.
 
 Behavioral and information-architecture fidelity is.
 
+
+---
+
+# 23. Main Mode — Program Select subcontext
+
+Program Select is a Main subcontext, not a new top-level mode.
+
+Show:
+
+- selected Track number/name;
+- Track Type;
+- available Drum Programs;
+- current Track Program;
+- explicit current-state indication.
+
+Touch:
+
+- tap a Program -> assign it to the selected Drum Track.
+
+Hardware:
+
+- Program Select context -> Data Dial focus = PROGRAM;
+- Data Dial +/- -> previous/next available Drum Program;
+- Data Dial press -> open/confirm Program Select;
+- non-Drum Track -> explicit unavailable status.
+
+Semantic rule:
+
+- assignment updates the selected Track's `programId`;
+- playback resolves the Program from each Track independently;
+- no global Program swap is used as a substitute for Track ownership.
+
+Program Edit remains reserved until the backend can truthfully edit Program contents.
