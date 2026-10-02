@@ -104,7 +104,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final Button[] sequenceStepButtons = new Button[16];
     private TextView sequenceStepEventInfo;
     private TextView sequenceTransportView;
-    private int sequenceGridPage = 0;
     private int sequenceGridStartStep = 0;
     private int sequenceGridVisibleSteps =
             MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_STEPS;
@@ -1572,7 +1571,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void refreshSequenceStepPage() {
         if (sequenceStepButtons[0] == null) return;
 
-        final int count = sequenceGridPageCount();
+        final int count = sequenceStepPageCount();
         sequenceStepPage = Math.max(
                 0, Math.min(count - 1, sequenceStepPage));
         nativeSequenceSetStepEditContext(true, sequenceStepPage);
@@ -1769,7 +1768,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void moveSequenceStepPage(int delta) {
-        final int count = sequenceGridPageCount();
+        final int count = sequenceStepPageCount();
         sequenceStepPage = Math.max(
                 0, Math.min(count - 1, sequenceStepPage + delta));
         nativeSequenceSetStepEditContext(true, sequenceStepPage);
@@ -2017,6 +2016,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return (int) Math.max(
                 1L,
                 (lengthTicks + gridTicks - 1L) / gridTicks);
+    }
+
+    private int sequenceStepPageCount() {
+        final long gridTicks = Math.max(
+                1L, nativeSequenceGetQuantizeGrid());
+        final long lengthTicks = Math.max(
+                gridTicks,
+                Math.round(getSequenceTicksPerBar())
+                        * Math.max(1, nativeSequenceGetBars()));
+        final long pageTicks =
+                gridTicks * SEQUENCE_GRID_PAGE_STEPS;
+        return (int) Math.max(
+                1L,
+                (lengthTicks + pageTicks - 1L) / pageTicks);
     }
 
     private int sequenceGridPageCount() {
