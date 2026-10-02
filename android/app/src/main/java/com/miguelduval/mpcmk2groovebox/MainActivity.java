@@ -3310,6 +3310,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceStepEventInfo.setGravity(Gravity.CENTER_VERTICAL);
         sequenceStepEventInfo.setPadding(dp(10), 0, dp(10), 0);
         sequenceStepEventInfo.setBackground(strokeBackground(SURFACE_2, LINE, 6));
+        sequenceStepEventInfo.setContentDescription(
+                "Step Edit event information");
         page.addView(sequenceStepEventInfo, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
@@ -6127,8 +6129,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: step shell controls");
             return;
         }
-        if (findViewWithExactText(
-                getWindow().getDecorView(), "STEP 01  •  VEL 110  •  PROB 117  •  RAT 2x") == null) {
+        View stepEventView = findViewWithContentDescription(
+                getWindow().getDecorView(), "Step Edit event information");
+        if (stepEventView == null
+                || !(stepEventView instanceof TextView)
+                || !((TextView) stepEventView).getText().toString()
+                        .contains("STEP 01")) {
             Log.e(TAG, "UI_INTERACTION_FAILED: step event parameters");
             return;
         }

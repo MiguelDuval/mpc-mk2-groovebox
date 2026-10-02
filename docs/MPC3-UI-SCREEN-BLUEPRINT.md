@@ -438,10 +438,6 @@ Bottom:
 - step parameters;
 - edit functions.
 
-### Step shell/function policy
-
-Step Sequencer keeps the 16-step performance surface in the workspace. Event parameters are summarized in one compact event strip; parameter cycling and +/- mutation are promoted to the persistent shell Function Bar, preserving one mutation surface while keeping Data Dial semantics visible.
-
 ## 6.2 Hardware
 
 Pad 1..16:
@@ -510,17 +506,6 @@ Selected pad:
 - tune;
 - envelope;
 - filter.
-
-## 7.3 Grid interaction slice
-
-For the current Drum Track backend the Grid workspace exposes four semantic tools:
-
-- **DRAW** — add a note only when the target cell is empty.
-- **ERASE** — remove a note only when the target cell is occupied.
-- **SELECT** — focus a pad/step without mutating musical data.
-- **MAGNIFY** — navigation/zoom intent; actual viewport movement remains through pinch/drag or hardware Zoom.
-
-The workspace tool palette carries DRAW / ERASE / SELECT / MAGNIFY, while the shell Function Bar carries navigation and editor-context transitions. The workspace header carries Track, Sequence, step range, resolution and current pad. The grid itself remains the main editing surface.
 
 ## 7.4 Safety
 

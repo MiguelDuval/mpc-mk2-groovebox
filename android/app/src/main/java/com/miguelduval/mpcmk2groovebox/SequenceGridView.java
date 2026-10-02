@@ -42,7 +42,6 @@ public final class SequenceGridView extends View {
     private ViewportListener viewportListener;
     private boolean editable = true;
     private int playheadStep = -1;
-    private int selectedPad = 0;
     private int firstStep = 0;
     private int visibleSteps = COLUMNS;
     private int totalSteps = COLUMNS;
@@ -112,12 +111,8 @@ public final class SequenceGridView extends View {
         return visiblePads;
     }
 
-    public void setState(
-            int[] sourceVelocities,
-            int playheadStep,
-            int selectedPad) {
+    public void setState(int[] sourceVelocities, int playheadStep) {
         Arrays.fill(velocities, 0);
-        this.selectedPad = Math.max(0, Math.min(ROWS - 1, selectedPad));
         if (sourceVelocities != null) {
             System.arraycopy(
                     sourceVelocities,
@@ -128,14 +123,6 @@ public final class SequenceGridView extends View {
         }
         this.playheadStep = playheadStep;
         invalidate();
-    }
-
-    public void setState(int[] sourceVelocities, int playheadStep) {
-        setState(sourceVelocities, playheadStep, selectedPad);
-    }
-
-    public int selectedPadForTest() {
-        return selectedPad;
     }
 
     private float dp(float value) {
@@ -185,7 +172,6 @@ public final class SequenceGridView extends View {
 
         for (int row = 0; row < visiblePads; row++) {
             final int padIndex = (ROWS - 1) - (firstPad + row);
-            final boolean selectedRow = padIndex == selectedPad;
             for (int column = 0; column < visibleSteps; column++) {
                 final float x0 = left + column * cellWidth + dp(1);
                 final float y0 = top + row * cellHeight + dp(1);
@@ -198,8 +184,6 @@ public final class SequenceGridView extends View {
 
                 if (velocity > 0) {
                     paint.setColor(ACCENT);
-                } else if (selectedRow) {
-                    paint.setColor(Color.rgb(38, 50, 55));
                 } else {
                     paint.setColor((column % 4 == 0) ? SURFACE_2 : SURFACE);
                 }

@@ -256,23 +256,6 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
 - Persistent compact Program context mirrors the same availability instead of offering a misleading Drum assignment action.
 - Screen Blueprint now documents the compact context semantics and non-Drum behavior.
 
-## 2026-10-02 Step workspace shell migration
-
-- Step Sequencer now exposes a compact 16-step workspace with explicit Track, Pad and focused-event context.
-- Event parameter mutation is promoted to the shared shell Function Bar: PARAM, −, +, NUDGE −, NUDGE + and GRID.
-- Long-press remains the explicit step-selection gesture; Data Dial focus is visible through shell context.
-- The previous large duplicate Velocity/Probability/Ratchet/Duration button wall is removed.
-- UI audit now validates the Step shell controls instead of page-local mutation buttons.
-
-## 2026-10-02 Grid workspace migration increment
-
-- Grid now presents itself as the primary workspace, with Track/Sequence/range context and a selected-pad state visible in the editor header.
-- Tool state is explicit: DRAW, ERASE, SELECT and MAGNIFY.
-- DRAW/ERASE are guarded against no-op misuse; SELECT changes focus without mutating sequence data.
-- Grid editing tools live in the workspace tool palette; the shared shell Function Bar is reserved for editor-context and navigation transitions, avoiding duplicated controls.
-- Drum Grid highlights the selected pad row while preserving existing zoom/playhead behavior.
-- No new realtime/audio dependency was introduced.
-
 ## 2026-10-02 Track View workflow increment
 
 - Track View is now a selectable status-strip workspace; row controls no longer duplicate the shell Function Bar.
