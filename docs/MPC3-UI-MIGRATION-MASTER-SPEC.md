@@ -1177,3 +1177,8 @@ Normal Main presentation no longer reserves permanent height for hardware-feedba
 ### 2026-10-03 Main Track identity header refinement
 
 Main Track presentation now treats Track identity as a single visual container: Track is primary, Program is a compact adjacent context, and Track Type is an indicator rather than a large form control. No semantic navigation or backend ownership changed.
+
+
+### 2026-10-03 XL Channel Strip geometry refinement
+
+The canonical shell geometry was tuned for landscape musical use: shallow Toolbar/Function Bar, five-icon shortcut rail, and a dedicated wider XL Channel Strip column. Mixer tabs are positioned immediately below the Track identity field. No mixer mutation semantics were added.
