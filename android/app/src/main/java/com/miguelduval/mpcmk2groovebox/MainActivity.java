@@ -868,7 +868,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         final boolean enabled = startupComplete
                 && nativeSequenceIsTimingCorrectEnabled();
-        timingCorrectTopButton.setText(enabled ? "TC ON" : "TC OFF");
+        timingCorrectTopButton.setText(
+                enabled
+                        ? "TC " + sequenceGridLabel(nativeSequenceGetQuantizeGrid())
+                        : "TC OFF");
         timingCorrectTopButton.setBackground(strokeBackground(
                 enabled ? Color.rgb(74, 124, 88) : SURFACE_2,
                 enabled ? ACTIVE : LINE,
@@ -1288,6 +1291,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bar.setPadding(dp(8), dp(4), dp(8), dp(4));
         bar.setBackgroundColor(SURFACE);
 
+        Button menu = topButton("▦");
+        menu.setContentDescription("MPC Toolbar Menu");
+        menu.setOnClickListener(v -> showMenuPage());
+        bar.addView(menu, new LinearLayout.LayoutParams(dp(40), dp(36)));
+
         projectState = label("PROJECT\nUNTITLED", 10, TEXT);
         projectState.setTypeface(Typeface.DEFAULT_BOLD);
         projectState.setGravity(Gravity.CENTER_VERTICAL);
@@ -1308,7 +1316,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bar.addView(sequenceTransportView, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1.65f));
 
-        timingCorrectTopButton = topButton("TC");
+        timingCorrectTopButton = topButton("TC OFF");
         timingCorrectTopButton.setContentDescription("Timing Correct");
         timingCorrectTopButton.setOnClickListener(v -> {
             if (!startupComplete) {
@@ -1357,11 +1365,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(sequenceResult + " | " + audioResult);
         });
         bar.addView(stop, new LinearLayout.LayoutParams(dp(42), dp(36)));
-
-        Button menu = topButton("MENU");
-        menu.setContentDescription("Menu");
-        menu.setOnClickListener(v -> showMenuPage());
-        bar.addView(menu, new LinearLayout.LayoutParams(dp(70), dp(36)));
 
         // Keep diagnostic state objects alive for existing refresh logic, but do
         // not duplicate them in the MPC-facing toolbar.
