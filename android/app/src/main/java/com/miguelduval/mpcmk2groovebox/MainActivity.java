@@ -4638,7 +4638,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void refreshSequenceOverview() {
-        if (sequenceOverviewView == null || !startupComplete) {
+        if (!startupComplete) {
+            return;
+        }
+
+        if (mpcShell == null) {
             return;
         }
 
@@ -4664,6 +4668,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeSequenceIsLoopEnabled(),
                 positionTicks,
                 nativeSequenceIsPlaying());
+
+        if (mpcShell != null) {
+            final long ticksPerSequence = Math.max(
+                    1L,
+                    Math.round(getSequenceTicksPerBar() * Math.max(1, bars)));
+            mpcShell.playheadStrip().setState(
+                    positionTicks,
+                    ticksPerSequence,
+                    nativeSequenceIsPlaying());
+        }
 
         syncHardwareLcd();
 
