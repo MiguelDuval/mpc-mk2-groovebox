@@ -731,8 +731,7 @@ final class MpcArrangeView extends View {
 
     private String clip(String value, int maxChars) {
         if (value == null) return "";
-        final String normalized = value.replace('
-', ' ').trim();
+        final String normalized = value.replace("\n", " ").trim();
         if (normalized.length() <= maxChars) return normalized;
         return normalized.substring(0, Math.max(0, maxChars - 1)) + "…";
     }
