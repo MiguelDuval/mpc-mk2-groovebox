@@ -5,7 +5,7 @@ APK="android/app/build/outputs/apk/debug/app-debug.apk"
 PACKAGE="com.miguelduval.mpcmk2groovebox.debug"
 ACTIVITY="$PACKAGE/com.miguelduval.mpcmk2groovebox.MainActivity"
 DUMP="/tmp/mpc-groovebox-ui.xml"
-="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java"
+MAIN_ACTIVITY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java"
 NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
 
 echo "Running MPC Main UI source preflight..."
