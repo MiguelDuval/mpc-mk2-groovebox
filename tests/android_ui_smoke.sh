@@ -82,6 +82,9 @@ for required in \
   "openMainArrangementGridContext" \
   "setOnDoubleTapListener" \
   "MpcTrackEditView" \
+  "hardwareFeedbackView.setVisibility" \
+  "bottomStatus.setVisibility" \
+  "uiAuditSmokeMode ? View.VISIBLE : View.GONE" \
   "mpcShortcutLabel" \
   "mpcShortcutButton" \
   "hardwareFocus = drumTrack ? 10 : 0;" \
@@ -95,6 +98,11 @@ for required in \
     exit 1
   fi
 done
+
+if ! grep -Fq -- "uiAuditSmokeMode ? View.VISIBLE : View.GONE" "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: normal Main must not expose diagnostic footer as permanent UI"
+  exit 1
+fi
 
 if grep -Fq -- "private boolean compactMixerVisible" "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- "private boolean compactMixerPadMode" "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: compact Mixer presentation state leaked back into MainActivity-local booleans"
