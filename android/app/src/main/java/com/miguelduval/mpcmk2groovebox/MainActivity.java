@@ -1265,30 +1265,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(8), dp(4), dp(8), dp(4));
+        bar.setPadding(dp(6), dp(3), dp(6), dp(3));
         bar.setBackgroundColor(SURFACE);
 
-        projectState = label("PROJECT\nUNTITLED", 10, TEXT);
+        Button menu = topButton("▦");
+        menu.setContentDescription("Menu");
+        menu.setTextSize(15);
+        menu.setTypeface(Typeface.DEFAULT_BOLD);
+        menu.setOnClickListener(v -> showMenuPage());
+        bar.addView(menu, new LinearLayout.LayoutParams(dp(42), dp(38)));
+
+        projectState = label("PROJECT\nUNTITLED", 9, TEXT);
         projectState.setTypeface(Typeface.DEFAULT_BOLD);
         projectState.setGravity(Gravity.CENTER_VERTICAL);
+        projectState.setPadding(dp(8), 0, dp(8), 0);
         projectState.setContentDescription("MPC Project");
-        bar.addView(projectState, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 1.15f));
+        projectState.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+        bar.addView(projectState, new LinearLayout.LayoutParams(dp(156), dp(38)));
 
         pageTitle = label("MAIN", 1, TEXT);
         pageTitle.setVisibility(View.GONE);
 
         sequenceTransportView = label(
                 "BAR 001  BEAT 1  TICK 000",
-                10,
+                9,
                 TEXT);
         sequenceTransportView.setGravity(Gravity.CENTER);
         sequenceTransportView.setTypeface(Typeface.DEFAULT_BOLD);
-        sequenceTransportView.setContentDescription("Sequence position and tempo");
-        bar.addView(sequenceTransportView, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 1.65f));
+        sequenceTransportView.setContentDescription(
+                "MPC time counter BAR BEAT TICK");
+        bar.addView(sequenceTransportView,
+                new LinearLayout.LayoutParams(0, dp(38), 1));
 
-        timingCorrectTopButton = topButton("TC");
+        timingCorrectTopButton = topButton("TC\n1/16");
         timingCorrectTopButton.setContentDescription("Timing Correct");
         timingCorrectTopButton.setOnClickListener(v -> {
             if (!startupComplete) {
@@ -1301,55 +1310,46 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             syncHardwareTransportLeds();
         });
         bar.addView(timingCorrectTopButton,
-                new LinearLayout.LayoutParams(dp(56), dp(36)));
+                new LinearLayout.LayoutParams(dp(72), dp(38)));
 
         metronomeTopButton = topButton("METRO");
         metronomeTopButton.setContentDescription("Metronome reserved");
         metronomeTopButton.setEnabled(false);
         metronomeTopButton.setAlpha(0.55f);
         bar.addView(metronomeTopButton,
-                new LinearLayout.LayoutParams(dp(64), dp(36)));
+                new LinearLayout.LayoutParams(dp(78), dp(38)));
 
         automationTopButton = topButton("AUTO");
         automationTopButton.setContentDescription("Automation reserved");
         automationTopButton.setEnabled(false);
         automationTopButton.setAlpha(0.55f);
         bar.addView(automationTopButton,
-                new LinearLayout.LayoutParams(dp(52), dp(36)));
+                new LinearLayout.LayoutParams(dp(68), dp(38)));
 
-        Button play = topButton("▶");
-        play.setContentDescription("Play");
-        play.setTextSize(12);
-        play.setOnClickListener(v -> {
-            final String result = nativeSequenceStart();
-            setAudioStateFromResult(result);
-            setBottomStatus(result);
-        });
-        bar.addView(play, new LinearLayout.LayoutParams(dp(42), dp(36)));
+        TextView midiInIndicator = topStatusBox("IN", "MPC MIDI input indicator");
+        bar.addView(midiInIndicator,
+                new LinearLayout.LayoutParams(dp(34), dp(38)));
 
-        Button stop = topButton("■");
-        stop.setContentDescription("Stop");
-        stop.setTextSize(12);
-        stop.setOnClickListener(v -> {
-            final String sequenceResult = nativeSequenceStop();
-            final String audioResult = nativeAudioStop();
-            setAudioStateFromResult(audioResult);
-            setBottomStatus(sequenceResult + " | " + audioResult);
-        });
-        bar.addView(stop, new LinearLayout.LayoutParams(dp(42), dp(36)));
+        TextView midiOutIndicator = topStatusBox("OUT", "MPC MIDI output indicator");
+        bar.addView(midiOutIndicator,
+                new LinearLayout.LayoutParams(dp(40), dp(38)));
 
-        Button menu = topButton("MENU");
-        menu.setContentDescription("Menu");
-        menu.setOnClickListener(v -> showMenuPage());
-        bar.addView(menu, new LinearLayout.LayoutParams(dp(70), dp(36)));
-
-        // Keep diagnostic state objects alive for existing refresh logic, but do
-        // not duplicate them in the MPC-facing toolbar.
         audioState = statusChip("AUDIO OFF", MUTED);
         midiState = statusChip("MIDI —", MUTED);
 
         return bar;
     }
+
+    private TextView topStatusBox(String text, String contentDescription) {
+        TextView view = label(text, 8, MUTED);
+        view.setGravity(Gravity.CENTER);
+        view.setTypeface(Typeface.DEFAULT_BOLD);
+        view.setContentDescription(contentDescription);
+        view.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+        view.setPadding(dp(2), 0, dp(2), 0);
+        return view;
+    }
+
 
     private View buildModeRail() {
         LinearLayout rail = new LinearLayout(this);
