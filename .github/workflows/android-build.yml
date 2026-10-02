@@ -132,6 +132,8 @@ jobs:
 
       - name: Test Android LCD renderer signature
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcStudioMk2LcdRendererTest
+      - name: Test Android sequence zoom policy
+        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest
 
       - name: Test MPC Studio MkII semantic routing
         shell: bash
