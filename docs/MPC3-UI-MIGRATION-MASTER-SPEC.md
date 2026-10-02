@@ -1114,5 +1114,14 @@ The Studio MkII LCD companion mirror now projects the same Data Dial focus state
 
 ## 2026-10-02 MPC One visual-chrome fidelity checkpoint
 The shared shell now keeps the MPC 3.x dark upper toolbar/workspace relationship, with red used as the focused/selected accent rather than a generic cyan navigation fill. The five shortcut slots use a dark inactive treatment with a red selected/focused state. This is a presentation-only increment; navigation state, semantic actions and realtime/audio boundaries are unchanged.
+## 2026-10-02 Main toolbar / parameter-dialog fidelity refinement
+
+- Toolbar Menu now occupies the leftmost control position before PROJECT, matching the documented MPC Main toolbar hierarchy.
+- The Main Timing Correct field displays its active time division (for example `TC Q 1/16`) instead of a generic ON label.
+- Ordinary TC tap now opens a focused Timing Correct dialog; the existing Shift+TC hardware path remains the quick global enable/disable action.
+- Timing Correct edits are staged until `DO IT`; `CANCEL` leaves the existing sequence state unchanged.
+- Main Time Signature tap now opens a focused Time Signature dialog with `DO IT` / `CANCEL` semantics instead of cycling the value immediately.
+- Only backend-supported Time Signature choices are exposed; unsupported MPC3 ranges are not fabricated.
+
 ## 2026-10-02 Main sequence-field semantic refinement
 Main's Sequence region now has one authoritative Sequence selector. The adjacent `SEQ` field is treated as the MPC tempo-source indicator rather than a duplicate Sequence selector; Global Tempo remains explicitly unavailable until the domain supports it. Numeric BPM/BARS/LOOP START/LOOP END fields support MPC-style double-tap numeric entry while retaining Data Dial/+/- as the hardware path.
