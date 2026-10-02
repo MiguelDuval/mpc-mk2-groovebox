@@ -1929,8 +1929,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             detector.onTouchEvent(event);
             return false;
         });
+        final String fieldLabel;
+        switch (field) {
+            case BPM:
+                fieldLabel = "BPM";
+                break;
+            case BARS:
+                fieldLabel = "BARS";
+                break;
+            case LOOP_START:
+                fieldLabel = "LOOP START";
+                break;
+            case LOOP_END:
+                fieldLabel = "LOOP END";
+                break;
+            default:
+                fieldLabel = "NUMERIC";
+                break;
+        }
         view.setContentDescription(
-                view.getContentDescription() + " • double-tap for numeric entry");
+                "MPC Main " + fieldLabel + " field • double-tap for numeric entry");
     }
 
     private void showMpcNumericEntry(MainNumericField field) {
@@ -2034,8 +2052,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         valueField.setGravity(Gravity.CENTER);
         valueField.setInputType(
                 InputType.TYPE_CLASS_NUMBER
-                        | (decimal ? InputType.TYPE_NUMBER_FLAG_DECIMAL : 0)
-                        | (decimal ? InputType.TYPE_NUMBER_FLAG_SIGNED : 0));
+                        | (decimal ? InputType.TYPE_NUMBER_FLAG_DECIMAL : 0));
         valueField.setBackground(
                 strokeBackground(SURFACE_2, DANGER, 5));
         dialogRoot.addView(valueField, new LinearLayout.LayoutParams(
