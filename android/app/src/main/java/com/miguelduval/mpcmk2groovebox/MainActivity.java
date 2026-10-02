@@ -1298,20 +1298,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceCard.addView(sequenceName, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
+        /*
+         * Keep the Sequence block visually close to MPC Main: the compact
+         * fields expose the familiar SEQ/BARS/START/END/TRANSPOSE vocabulary
+         * while retaining our truthful time-signature and loop state.
+         */
         LinearLayout sequenceMetrics = row();
         TextView bpm = mainMetric("BPM");
+        TextView sequenceType = mainMetric("SEQ");
         TextView bars = mainMetric("BARS");
+        TextView start = mainMetric("START");
+        sequenceMetrics.addView(bpm, weight());
+        sequenceMetrics.addView(sequenceType, weight());
+        sequenceMetrics.addView(bars, weight());
+        sequenceMetrics.addView(start, weight());
+        sequenceCard.addView(sequenceMetrics);
+
+        LinearLayout sequenceStateMetrics = row();
+        TextView end = mainMetric("END");
         TextView timeSig = mainMetric("TIME SIG");
         TextView loop = mainMetric("LOOP");
-        TextView start = mainMetric("START");
-        TextView end = mainMetric("END");
-        sequenceMetrics.addView(bpm, weight());
-        sequenceMetrics.addView(bars, weight());
-        sequenceMetrics.addView(timeSig, weight());
-        sequenceMetrics.addView(loop, weight());
-        sequenceMetrics.addView(start, weight());
-        sequenceMetrics.addView(end, weight());
-        sequenceCard.addView(sequenceMetrics);
+        TextView transpose = mainMetric("TRANSPOSE");
+        sequenceStateMetrics.addView(end, weight());
+        sequenceStateMetrics.addView(timeSig, weight());
+        sequenceStateMetrics.addView(loop, weight());
+        sequenceStateMetrics.addView(transpose, weight());
+        sequenceCard.addView(sequenceStateMetrics);
 
         LinearLayout sequenceActions = row();
         sequenceActions.addView(
@@ -1856,6 +1868,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         sequenceName.setText(String.format(
                 Locale.ROOT, "Sequence %02d", sequenceIndex + 1));
+        sequenceType.setText("SEQ\\n" + String.format(
+                Locale.ROOT, "%02d", sequenceIndex + 1));
+        transpose.setText("TRANSPOSE\\n—");
         final double tempo = nativeStateReady
                 ? nativeSequenceGetTempo() : 120.0;
         final int sequenceBars = nativeStateReady
