@@ -15,7 +15,7 @@ public class MpcNavigationControllerTest {
         assertEquals(MpcUiState.Mode.BROWSER, navigation.shortcut(1));
         assertEquals(MpcUiState.Mode.GRID, navigation.shortcut(2));
         assertEquals(MpcUiState.Mode.SAMPLER, navigation.shortcut(3));
-        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, navigation.shortcut(4));
+        assertEquals(MpcUiState.Mode.PAD_MIXER, navigation.shortcut(4));
     }
 
     @Test
