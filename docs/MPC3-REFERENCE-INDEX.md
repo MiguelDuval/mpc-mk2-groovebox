@@ -467,3 +467,6 @@ Confidence: HIGH for the overall geometry and bottom-tab behavior; individual un
 
 The Studio MkII protocol differentiates single-color LEDs (OFF/DIM/FULL = 0/1/2) from two-color LEDs.
 The Android feedback layer now uses a shared `buttonLedOnState()` policy and retains mutually-exclusive Level/Mute states.
+
+### 2026-10-02 MkII LCD focus projection
+The reference implementation now treats Data Dial focus as part of the controller LCD state. This is an information-parity increment for the Studio MkII display; the exact on-device composition and feedback colors remain subject to real-hardware verification.
