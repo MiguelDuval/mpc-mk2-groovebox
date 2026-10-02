@@ -968,13 +968,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(0, dp(32), 1)));
         sequenceHeader.addView(actionButton(
                 "SEQ SELECT",
-                v -> {
-                    navigationController.setSubcontext(
-                            MpcUiState.Subcontext.SEQUENCE_SELECT);
-                    navigationController.setDataDialFocus(
-                            MpcUiState.DataDialFocus.SEQUENCE);
-                    showSequencePage();
-                }),
+                v -> showSequenceSelectPage()),
                 new LinearLayout.LayoutParams(dp(104), dp(32)));
         sequenceCard.addView(sequenceHeader);
 
@@ -1861,6 +1855,191 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page);
         refreshRecordingInfo();
         startRecordingWaveformUpdates();
+    }
+
+    private void showSequenceSelectPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "MAIN";
+        hardwareFocus = 3;
+        navigationController.navigate(MpcUiState.Mode.MAIN);
+        navigationController.setSubcontext(MpcUiState.Subcontext.SEQUENCE_SELECT);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SEQUENCE);
+        navigationController.setActionAvailable(true);
+        pageTitle.setText("MAIN • SEQUENCE");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.setPadding(dp(8), dp(6), dp(8), dp(2));
+
+        TextView heading = label(
+                "SEQUENCE SELECT  •  DATA DIAL / +/-",
+                13, TEXT);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        page.addView(heading, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        final int count = startupComplete
+                ? Math.max(0, nativeSequenceGetCount()) : 0;
+        final int selected = startupComplete
+                ? Math.max(0, nativeSequenceGetIndex()) : 0;
+
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout list = column();
+        list.setContentDescription("Main Sequence Select list");
+
+        if (count == 0) {
+            list.addView(label("NO SEQUENCES", 12, MUTED));
+        } else {
+            for (int i = 0; i < count; i++) {
+                final int index = i;
+                final double tempo = nativeSequenceGetIndex() == i
+                        ? nativeSequenceGetTempo() : 0.0;
+                final String summary = startupComplete
+                        ? String.format(
+                                Locale.ROOT,
+                                "%02d  SEQUENCE %02d  •  %d BAR%s  •  %s",
+                                i + 1,
+                                i + 1,
+                                i == selected
+                                        ? nativeSequenceGetBars()
+                                        : 0,
+                                i == selected
+                                        && nativeSequenceGetBars() == 1
+                                        ? "" : "S",
+                                i == selected
+                                        ? String.format(
+                                                Locale.ROOT,
+                                                "%.1f BPM",
+                                                tempo)
+                                        : "SELECT")
+                        : String.format(Locale.ROOT, "%02d  SEQUENCE %02d",
+                                i + 1, i + 1);
+                Button button = actionButton(summary, v -> {
+                    setBottomStatus(nativeSequenceSelect(index));
+                    navigationController.setSelectedSequence(index);
+                    showSequenceSelectPage();
+                });
+                button.setGravity(Gravity.CENTER_VERTICAL);
+                button.setPadding(dp(10), 0, dp(10), 0);
+                button.setBackground(strokeBackground(
+                        i == selected
+                                ? Color.rgb(42, 66, 76) : SURFACE_2,
+                        i == selected ? ACCENT : LINE,
+                        7));
+                list.addView(button, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+            }
+        }
+
+        scroll.addView(list);
+        page.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout footer = row();
+        footer.addView(actionButton(
+                "BACK MAIN",
+                v -> showMainPage()), weight());
+        footer.addView(actionButton(
+                "SEQUENCE EDIT",
+                v -> showSequencePage()), weight());
+        page.addView(footer, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+        content.addView(page);
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+    }
+
+    private void showTrackSelectPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "MAIN";
+        hardwareFocus = 2;
+        navigationController.navigate(MpcUiState.Mode.MAIN);
+        navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
+        navigationController.setActionAvailable(true);
+        pageTitle.setText("MAIN • TRACK");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.setPadding(dp(8), dp(6), dp(8), dp(2));
+
+        TextView heading = label(
+                "TRACK SELECT  •  DATA DIAL / +/-",
+                13, TEXT);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        page.addView(heading, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        final int count = startupComplete
+                ? Math.max(0, nativeSequenceGetTrackCount()) : 0;
+        final int selected = startupComplete
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout list = column();
+        list.setContentDescription("Main Track Select list");
+
+        if (count == 0) {
+            list.addView(label("NO TRACKS", 12, MUTED));
+        } else {
+            for (int i = 0; i < count; i++) {
+                final int trackIndex = i;
+                final String status = startupComplete
+                        ? nativeSequenceTrackStatus(i)
+                        : "DRUM  TRACK " + (i + 1);
+                Button button = actionButton(
+                        String.format(
+                                Locale.ROOT,
+                                "%02d  %s  •  %s%s%s",
+                                i + 1,
+                                status,
+                                nativeSequenceGetTrackType(i),
+                                i == selected && startupComplete
+                                        ? "  • CURRENT" : "",
+                                i == selected && startupComplete
+                                        && nativeSequenceIsTrackMuted(i)
+                                        ? "  • M" : ""),
+                        v -> {
+                            setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+                            navigationController.setSelectedTrack(trackIndex);
+                            showTrackSelectPage();
+                        });
+                button.setGravity(Gravity.CENTER_VERTICAL);
+                button.setPadding(dp(10), 0, dp(10), 0);
+                button.setBackground(strokeBackground(
+                        i == selected
+                                ? Color.rgb(42, 66, 76) : SURFACE_2,
+                        i == selected ? ACCENT : LINE,
+                        7));
+                list.addView(button, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+            }
+        }
+
+        scroll.addView(list);
+        page.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout footer = row();
+        footer.addView(actionButton(
+                "BACK MAIN",
+                v -> showMainPage()), weight());
+        footer.addView(actionButton(
+                "TRACK VIEW",
+                v -> showTrackViewPage()), weight());
+        page.addView(footer, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+        content.addView(page);
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
     }
 
     private void showProgramSelectPage() {
@@ -5835,28 +6014,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.TRACK_SELECTION_CONTEXT:
                 hardwareFocus = 2;
-                navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
-                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
-                showSequencePage();
+                showTrackSelectPage();
                 setBottomStatus("TRACK SELECT • DATA DIAL / +/-");
                 return;
             case MpcStudioMk2SemanticActions.SEQUENCE_SELECTION_CONTEXT:
                 hardwareFocus = 3;
-                navigationController.setSubcontext(MpcUiState.Subcontext.SEQUENCE_SELECT);
-                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SEQUENCE);
-                showSequencePage();
+                showSequenceSelectPage();
                 setBottomStatus("SEQUENCE SELECT • DATA DIAL / +/-");
                 return;
             case MpcStudioMk2SemanticActions.PROGRAM_SELECTION_CONTEXT:
                 hardwareFocus = 4;
-                if (nativeSequenceGetTrackType(
-                        nativeSequenceGetSelectedTrack()).equals("DRUM")) {
+                if (!startupComplete) {
+                    setBottomStatus("PROGRAM SELECT • sequencer not ready");
+                } else if ("DRUM".equals(nativeSequenceGetTrackType(
+                        nativeSequenceGetSelectedTrack()))) {
+                    navigationController.setActionAvailable(true);
                     showProgramSelectPage();
                     setBottomStatus(
                             "PROGRAM SELECT • DATA DIAL / +/-");
                 } else {
+                    navigationController.setActionAvailable(false);
                     setBottomStatus(
                             "PROGRAM SELECT • TRACK TYPE IS NOT DRUM");
+                    refreshMpcCompactContext();
+                    refreshMpcFunctionBar();
                 }
                 return;
             case MpcStudioMk2SemanticActions.TRACK_TYPE_SELECTION_CONTEXT:
@@ -6314,10 +6495,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (next < 0) next += count;
             setBottomStatus(nativeSequenceSelectTrack(next));
             navigationController.setSelectedTrack(next);
-            if (navigationController.state().mode() == MpcUiState.Mode.TRACK_VIEW) {
+            if (navigationController.state().mode() == MpcUiState.Mode.MAIN) {
+                showTrackSelectPage();
+            } else if (navigationController.state().mode() == MpcUiState.Mode.TRACK_VIEW) {
                 showTrackViewPage();
             } else {
-                showSequencePage();
+                showMainPage();
             }
             return;
         }
@@ -6349,10 +6532,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(
                     delta > 0 ? nativeSequenceNext() : nativeSequencePrevious());
             navigationController.setSelectedSequence(nativeSequenceGetIndex());
-            if (navigationController.state().mode() == MpcUiState.Mode.TRACK_VIEW) {
+            if (navigationController.state().mode() == MpcUiState.Mode.MAIN) {
+                showSequenceSelectPage();
+            } else if (navigationController.state().mode() == MpcUiState.Mode.TRACK_VIEW) {
                 showTrackViewPage();
             } else {
-                showSequencePage();
+                showMainPage();
             }
             return;
         }
