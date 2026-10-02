@@ -523,14 +523,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         MpcUiState.Mode[] modes = navigationController.shortcuts();
         for (int i = 0; i < modes.length; i++) {
             final MpcUiState.Mode mode = modes[i];
-            Button shortcut = modeButton(
-                    String.format(
-                            Locale.ROOT, "%d\n%s",
-                            i + 1, mode.label()),
-                    mode.name());
-            shortcut.setContentDescription("MPC shortcut " + (i + 1) + " " + mode.label());
-            shortcut.setTag(mode);
-            shortcut.setOnClickListener(v -> navigateToMode(mode));
+            Button shortcut = mpcShortcutButton(
+                    mpcShortcutLabel(mode), mode);
+            shortcut.setContentDescription("MPC shortcut " + mode.label());
             shortcutButtons[i] = shortcut;
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
@@ -1337,6 +1332,43 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             rail.addView(button, params);
         }
         return rail;
+    }
+
+    private Button mpcShortcutButton(String text, MpcUiState.Mode mode) {
+        Button b = button(text);
+        b.setTextSize(9);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
+        b.setPadding(dp(2), 0, dp(2), 0);
+        b.setGravity(Gravity.CENTER);
+        b.setTag(mode);
+        b.setOnClickListener(v -> navigateToMode(mode));
+        return b;
+    }
+
+    private String mpcShortcutLabel(MpcUiState.Mode mode) {
+        if (mode == null) return "□";
+        switch (mode) {
+            case MAIN: return "⌂\nMAIN";
+            case TRACK_VIEW: return "☷\nTRACK";
+            case BROWSER: return "⌕\nBROWSE";
+            case GRID: return "▦\nGRID";
+            case STEP: return "▥\nSTEP";
+            case TRACK_EDIT: return "✎\nEDIT";
+            case SAMPLE_EDIT: return "∿\nSAMPLE";
+            case SAMPLER: return "●\nREC";
+            case CHANNEL_MIXER: return "≡\nMIX";
+            case PAD_MIXER: return "▤\nPAD MIX";
+            case LEVELS_16: return "16\nLEVEL";
+            case PAD_PERFORM: return "✣\nPERFORM";
+            case NEXT_SEQUENCE: return "▶\nNEXT";
+            case ARRANGE: return "╬\nARRANGE";
+            case LIST_EDIT: return "☰\nLIST";
+            case PROJECT: return "P\nPROJECT";
+            case MENU: return "▦\nMENU";
+            default: return "□\n" + mode.label();
+        }
     }
 
     private Button modeButton(String text, String page) {

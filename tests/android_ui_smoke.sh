@@ -39,6 +39,8 @@ for required in \
   "openMainArrangementGridContext" \
   "setOnDoubleTapListener" \
   "MpcTrackEditView" \
+  "mpcShortcutLabel" \
+  "mpcShortcutButton" \
   "hardwareFocus = drumTrack ? 10 : 0;"
   "hardwareFocus == 10"; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then

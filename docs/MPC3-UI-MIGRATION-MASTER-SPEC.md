@@ -1080,3 +1080,8 @@ The Track Edit workspace now follows the documented MPC composition rather than 
 - touch and hardware still converge on the existing semantic layer selection path.
 
 This is a presentation-only refinement; realtime audio, MIDI transport, sequencer timing and sample decoding remain untouched.
+
+## 2026-10-02 MkII-first shortcut presentation checkpoint
+
+The persistent five-slot shortcut rail now presents compact original mode glyphs with short labels instead of numeric ordinals.
+The slots remain navigation adapters backed by MpcNavigationController; selection state is still rendered from application state.

@@ -1018,3 +1018,7 @@ Program Edit remains reserved until the backend can truthfully edit Program cont
 
 A Track Edit build is accepted only when the top TRACK/PAD context and bottom parameter-tab bar are structurally persistent,
 the selected tab is visibly distinct, and reserved functions remain truthful rather than simulated.
+
+### 1.1.3 MkII-first shortcut presentation
+
+Shortcut slots remain five configurable MPC-style mode shortcuts. The visual tile uses an original mode glyph and short label so the phone surface mirrors the controller-centric mode concept without copying proprietary Akai artwork or using numbered page ordinals.
