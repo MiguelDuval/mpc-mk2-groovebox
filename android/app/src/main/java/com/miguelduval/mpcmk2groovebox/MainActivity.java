@@ -7791,6 +7791,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View timeSignatureField = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Time Signature field • tap for editor");
+        if (timeSignatureField == null
+                || !timeSignatureField.performClick()
+                || activeMpcParameterDialog == null
+                || activeMpcParameterDialog.getButton(AlertDialog.BUTTON_NEGATIVE) == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Time Signature dialog");
+            return;
+        }
+        activeMpcParameterDialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+
+        if (timingCorrectTopButton == null
+                || !timingCorrectTopButton.performClick()
+                || activeMpcParameterDialog == null
+                || activeMpcParameterDialog.getButton(AlertDialog.BUTTON_NEGATIVE) == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Timing Correct dialog");
+            return;
+        }
+        activeMpcParameterDialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+
         View quickSampleWaveform = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "Main Track View quick sample waveform");
