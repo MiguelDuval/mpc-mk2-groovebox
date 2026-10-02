@@ -180,6 +180,14 @@ Touch:
 - tap Program field -> Main Program Select subcontext;
 - tap Browser -> Browser for the current loading workflow.
 
+
+### Main Track quick-sample context
+
+- The default Main Track view pairs the performance pad surface with a compact sample waveform for the selected Pad/Layer.
+- Start/End handles use the existing sample-region semantic command; this is a quick-edit surface, not a replacement for full Sample Edit.
+- Layer −/+ changes only the selected sample layer and keeps the current Track/Pad context.
+- AUDITION triggers the currently selected Pad; SAMPLE EDIT opens the dedicated sample editor without changing the selected Track/Sequence.
+
 ## 2.4 Arrangement preview
 
 Show:
