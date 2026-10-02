@@ -56,6 +56,18 @@ Rules:
 - user can reorder from Menu;
 - no hidden sixth/seventh "page" rail.
 
+### Global transport-position strip
+
+Immediately below the persistent Toolbar, every shell context carries the same non-interactive 3dp sequence-position strip.
+
+Rules:
+
+- position is derived from semantic Sequence/transport state;
+- it is visible on Main, Track View, Grid, Step, Browser and future workspaces;
+- it never receives touch or hardware input;
+- it is updated through the existing sequence state refresh path;
+- it is a visual position indicator, not a new transport control.
+
 ### Region C — Compact mixer/channel strips
 
 Context-sensitive.
