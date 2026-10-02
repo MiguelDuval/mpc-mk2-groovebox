@@ -1054,21 +1054,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             TextView bars,
             TextView timeSig,
             TextView loop) {
-        final int sequenceIndex = Math.max(0, nativeSequenceGetIndex());
-        final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
-        final int trackCount = Math.max(1, nativeSequenceGetTrackCount());
+        final boolean nativeStateReady = startupComplete;
+        final int sequenceIndex = nativeStateReady
+                ? Math.max(0, nativeSequenceGetIndex()) : 0;
+        final int trackIndex = nativeStateReady
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        final int trackCount = nativeStateReady
+                ? Math.max(1, nativeSequenceGetTrackCount()) : 1;
 
         sequenceName.setText(String.format(
                 Locale.ROOT, "Sequence %02d", sequenceIndex + 1));
+        final double tempo = nativeStateReady
+                ? nativeSequenceGetTempo() : 120.0;
+        final int sequenceBars = nativeStateReady
+                ? nativeSequenceGetBars() : 1;
+        final int numerator = nativeStateReady
+                ? nativeSequenceGetNumerator() : 4;
+        final int denominator = nativeStateReady
+                ? nativeSequenceGetDenominator() : 4;
+        final boolean loopEnabled = nativeStateReady
+                && nativeSequenceIsLoopEnabled();
         bpm.setText(String.format(
-                Locale.ROOT, "BPM\\n%.1f", nativeSequenceGetTempo()));
+                Locale.ROOT, "BPM\\n%.1f", tempo));
         bars.setText(String.format(
-                Locale.ROOT, "BARS\\n%d", nativeSequenceGetBars()));
+                Locale.ROOT, "BARS\\n%d", sequenceBars));
         timeSig.setText(String.format(
                 Locale.ROOT, "TIME SIG\\n%d/%d",
-                nativeSequenceGetNumerator(), nativeSequenceGetDenominator()));
+                numerator, denominator));
         loop.setText(
-                "LOOP\\n" + (nativeSequenceIsLoopEnabled() ? "ON" : "OFF"));
+                "LOOP\\n" + (loopEnabled ? "ON" : "OFF"));
 
         trackNameRefresh(trackIndex, trackCount);
     }
@@ -1096,7 +1110,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (program != null) program.setText(
                 "PROGRAM\\nDRUM PROGRAM");
         if (record != null) record.setText(
-                "REC\\n" + (nativeSequenceIsSelectedTrackArmed() ? "ARM" : "OFF"));
+                "REC\\n" + (startupComplete && nativeSequenceIsSelectedTrackArmed()
+                        ? "ARM" : "OFF"));
         if (mute != null) mute.setText(
                 "MUTE\\n" + (status.toLowerCase(Locale.ROOT).contains("mute")
                         ? "ON" : "OFF"));
