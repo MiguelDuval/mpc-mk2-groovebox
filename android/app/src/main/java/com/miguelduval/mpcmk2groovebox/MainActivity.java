@@ -704,9 +704,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             final boolean drumProgramContext =
                     "DRUM".equalsIgnoreCase(trackType);
+            final String programStatus =
+                    nativeSequenceGetTrackProgram(trackIndex);
             compactProgramContext.setText(
                     drumProgramContext
-                            ? "PROGRAM • " + nativeSequenceGetTrackProgram(trackIndex)
+                            ? "PROGRAM • " + normalizeProgramLabel(programStatus)
                             : "PROGRAM • N/A (" + trackType + ")");
             compactProgramContext.setEnabled(drumProgramContext);
             compactProgramContext.setAlpha(drumProgramContext ? 1.0f : 0.48f);
@@ -817,26 +819,34 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 addFunction("BACK", true, v -> navigateBackFromShell());
                 break;
 
-            case STEP:
-                addFunction("PARAM", true, v -> {
+            case STEP: {
+                final boolean stepAvailable =
+                        navigationController.state().actionAvailable();
+                final boolean gridAvailable = drumGridAvailable();
+                addFunction("PARAM", stepAvailable, v -> {
                     onHardwareAction(
                             MpcStudioMk2SemanticActions.DATA_DIAL_PRESS,
                             0, 0, 0);
                 });
-                addFunction("−", true, v -> {
+                addFunction("−", stepAvailable, v -> {
                     onHardwareAction(
                             MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
                             -1, 0, 0);
                 });
-                addFunction("+", true, v -> {
+                addFunction("+", stepAvailable, v -> {
                     onHardwareAction(
                             MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
                             1, 0, 0);
                 });
-                addFunction("NUDGE −", true, v -> adjustSelectedStepNudge(-10));
-                addFunction("NUDGE +", true, v -> adjustSelectedStepNudge(10));
-                addFunction("GRID", true, v -> showSequenceGridPage());
+                addFunction("NUDGE −", stepAvailable, v -> adjustSelectedStepNudge(-10));
+                addFunction("NUDGE +", stepAvailable, v -> adjustSelectedStepNudge(10));
+                addFunction("GRID", gridAvailable, v -> {
+                    if (gridAvailable) {
+                        showSequenceGridPage();
+                    }
+                });
                 break;
+            }
 
             case SAMPLE_EDIT:
             case SAMPLER:
@@ -1452,15 +1462,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         String active = "DRUM";
         if (startupComplete) {
             final int index = Math.max(0, nativeSequenceGetSelectedTrack());
-            final String status = nativeSequenceTrackStatus(index);
-            final String firstToken = status == null
-                    ? "" : status.trim().split("\\s+", 2)[0];
-            if ("KEYGROUP".equals(firstToken)
-                    || "PLUGIN".equals(firstToken)
-                    || "MIDI".equals(firstToken)
-                    || "AUDIO".equals(firstToken)
-                    || "DRUM".equals(firstToken)) {
-                active = firstToken;
+            final String backendType = nativeSequenceGetTrackType(index);
+            if (backendType != null && !backendType.trim().isEmpty()) {
+                active = backendType.trim().toUpperCase(Locale.ROOT);
             }
         }
 
@@ -1481,6 +1485,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private String normalizeProgramLabel(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return "—";
+        }
+        final String value = status.trim();
+        return value.startsWith("PROGRAM • ")
+                ? value.substring("PROGRAM • ".length())
+                : value;
+    }
+
     private void trackNameRefresh(
             int trackIndex,
             int trackCount) {
@@ -1496,19 +1510,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String status = startupComplete && trackIndex < trackCount
                 ? nativeSequenceTrackStatus(trackIndex)
                 : "Track 01";
+        final String backendType = startupComplete
+                ? nativeSequenceGetTrackType(trackIndex)
+                : "DRUM";
         trackName.setText(String.format(
                 Locale.ROOT, "Track %02d  •  %s", trackIndex + 1, status));
         if (trackType != null) trackType.setText(
-                "TYPE\\n" + (status.toLowerCase(Locale.ROOT).contains("drum")
-                        ? "DRUM" : "MIDI"));
+                "TYPE\\n" + (backendType == null || backendType.isEmpty()
+                        ? "—" : backendType));
         if (program != null) {
             final String programStatus = startupComplete
                     ? nativeSequenceGetTrackProgram(trackIndex)
                     : "PROGRAM • NONE";
-            final String programLabel = programStatus.startsWith("PROGRAM • ")
-                    ? programStatus.substring("PROGRAM • ".length())
-                    : programStatus;
-            program.setText("PROGRAM\\n" + programLabel);
+            program.setText("PROGRAM\\n" + normalizeProgramLabel(programStatus));
         }
         if (record != null) record.setText(
                 "REC\\n" + (startupComplete && nativeSequenceIsSelectedTrackArmed()
@@ -3304,11 +3318,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String stepTrackType = nativeSequenceGetTrackType(stepTrack);
         final boolean stepSupported =
                 "DRUM".equalsIgnoreCase(stepTrackType);
-        navigationController.setActionAvailable(
-                stepSupported && nativeSequenceIsGridEditable());
+        final boolean stepEditorAvailable =
+                stepSupported && nativeSequenceIsGridEditable();
+        navigationController.setActionAvailable(stepEditorAvailable);
         navigationController.setDataDialFocus(
                 MpcUiState.DataDialFocus.STEP);
-        navigationController.setActionAvailable(nativeSequenceIsGridEditable());
         pageTitle.setText("STEP");
         content.removeAllViews();
         sequenceTimeline = null;
