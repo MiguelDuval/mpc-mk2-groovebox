@@ -469,4 +469,4 @@ The Studio MkII protocol differentiates single-color LEDs (OFF/DIM/FULL = 0/1/2)
 The Android feedback layer now uses a shared `buttonLedOnState()` policy and retains mutually-exclusive Level/Mute states.
 
 ## 2026-10-02 MPC One visual-chrome refinement
-Reference screenshots of MPC Main Mode show a distinctive high-contrast red transport/header band, dark slate editing surfaces and a red active shortcut/focus treatment. The shell now adopts those visual relationships while keeping original application typography/assets and the existing semantic state model. citeturn889880image0turn889880image2
+Reference material for MPC Main Mode shows a dark toolbar/workspace hierarchy with red selection/focus accents and the persistent left shortcut + mixer-strip structure. The shell now follows those visual relationships while keeping original application typography/assets and the existing semantic state model. citeturn889880image0turn889880image2
