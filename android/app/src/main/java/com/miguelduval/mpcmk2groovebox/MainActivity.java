@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -84,6 +85,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView midiState;
     private TextView projectState;
     private TextView bottomStatus;
+    private TextView hardwareFeedbackView;
+    private final int[] hardwareButtonLedStateCache = new int[128];
     private TextView selectedPadInfo;
     private TextView sampleInfo;
     private TextView regionInfo;
@@ -350,6 +353,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     new Handler(Looper.getMainLooper()));
         }
 
+        Arrays.fill(hardwareButtonLedStateCache, -1);
         setContentView(buildApplicationShell());
         applyFullscreenWindowPolicy();
         Log.i(TAG, "UI_READY");
@@ -425,6 +429,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         root.addView(body, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
+        hardwareFeedbackView = label("MKII • MAIN • PAD BANK A", 10, ACCENT);
+        hardwareFeedbackView.setPadding(dp(12), 0, dp(12), 0);
+        hardwareFeedbackView.setGravity(Gravity.CENTER_VERTICAL);
+        hardwareFeedbackView.setTypeface(Typeface.DEFAULT_BOLD);
+        hardwareFeedbackView.setBackgroundColor(SURFACE);
+        hardwareFeedbackView.setContentDescription(
+                "MPC Studio MkII controller feedback status");
+        root.addView(hardwareFeedbackView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+
         bottomStatus = label("Initializing…", 11, MUTED);
         bottomStatus.setPadding(dp(12), 0, dp(12), 0);
         bottomStatus.setGravity(Gravity.CENTER_VERTICAL);
@@ -432,6 +446,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
 
         showMainPage();
+        syncHardwareControllerFeedback();
         updateModeRailSelection();
         return root;
     }
@@ -3519,6 +3534,95 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void setBottomStatus(String text) {
         if (bottomStatus != null && text != null) bottomStatus.setText(text);
+        syncHardwareControllerFeedback();
+    }
+
+    private void syncHardwareControllerFeedback() {
+        final String context = MpcHardwareFeedbackPolicy.contextLabel(
+                currentPage,
+                hardwareFocus,
+                hardwareLocateActive,
+                hardwareEraseActive,
+                hardwareCopyDeleteActive,
+                hardwareCopyDeleteMode,
+                hardwareNoteRepeatActive,
+                hardwareNoteRepeatRateIndex,
+                hardwareTouchStripMode);
+
+        if (hardwareFeedbackView != null) {
+            final String axis = MpcHardwareFeedbackPolicy.focusAxis(hardwareFocus);
+            final String dial = axis.isEmpty()
+                    ? ""
+                    : " • DIAL " + axis;
+            hardwareFeedbackView.setText(
+                    "MKII • " + context
+                            + dial
+                            + " • BANK " + (char) ('A' + hardwarePadBank % 4)
+                            + (hardwarePadBank >= 4 ? "+SHIFT" : ""));
+            hardwareFeedbackView.setTextColor(
+                    hardwareEraseActive
+                            ? DANGER
+                            : hardwareCopyDeleteActive
+                                    ? ACCENT_2
+                                    : hardwareNoteRepeatActive
+                                            ? ACTIVE
+                                            : ACCENT);
+            hardwareFeedbackView.setContentDescription(
+                    "MPC Studio MkII: " + context + dial);
+        }
+
+        if (midiBridge == null) return;
+
+        // The MkII button LEDs are not hardware-owned; host software drives them.
+        // Two-color buttons use color 1 for the primary context and color 2 for
+        // Shift/alternate context, matching the reverse-engineered protocol.
+        final boolean zoomHorizontal =
+                hardwareFocus == 11 || hardwareFocus == 13 || hardwareFocus == 15;
+        final boolean zoomVertical =
+                hardwareFocus == 12 || hardwareFocus == 14;
+        setHardwareButtonLedState(
+                66,
+                MpcHardwareFeedbackPolicy.dualColor(
+                        zoomHorizontal || zoomVertical,
+                        zoomVertical));
+
+        setHardwareButtonLedState(
+                13,
+                MpcHardwareFeedbackPolicy.dualColor(
+                        hardwareFocus == 2 || hardwareFocus == 3,
+                        hardwareFocus == 3));
+
+        setHardwareButtonLedState(
+                14,
+                MpcHardwareFeedbackPolicy.dualColor(
+                        hardwareFocus == 4 || hardwareFocus == 5,
+                        hardwareFocus == 5));
+
+        setHardwareButtonLedState(
+                42,
+                hardwareFocus == 10
+                        ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+        setHardwareButtonLedState(
+                33,
+                hardwareFocus == 7
+                        ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+        setHardwareButtonLedState(
+                34,
+                hardwareFocus == 8
+                        ? MpcHardwareFeedbackPolicy.LED_COLOR_2_FULL
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+        setHardwareButtonLedState(
+                79,
+                hardwareFocus == 9
+                        ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+        setHardwareButtonLedState(
+                15,
+                nativeSequenceIsTimingCorrectEnabled()
+                        ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
     }
 
     private void syncHardwareLcd() {
@@ -3991,53 +4095,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void setHardwareButtonLed(int cc, boolean on) {
-        final int state = on ? 2 : 0;
-        switch (cc) {
-            case 82:
-                if (lastPlayLedState == state) return;
-                lastPlayLedState = state;
-                break;
-            case 73:
-                if (lastRecordLedState == state) return;
-                lastRecordLedState = state;
-                break;
-            case 80:
-                if (lastOverdubLedState == state) return;
-                lastOverdubLedState = state;
-                break;
-            case 11:
-                if (lastNoteRepeatLedState == state) return;
-                lastNoteRepeatLedState = state;
-                break;
-            case 39:
-                if (lastLevelLedState == state) return;
-                lastLevelLedState = state;
-                break;
-            case 40:
-                if (lastSixteenLevelLedState == state) return;
-                lastSixteenLevelLedState = state;
-                break;
-            case 4:
-                if (lastMuteLedState == state) return;
-                lastMuteLedState = state;
-                break;
-            case 9:
-                if (lastEraseLedState == state) return;
-                lastEraseLedState = state;
-                break;
-            case 122:
-                if (lastCopyDeleteLedState == state) return;
-                lastCopyDeleteLedState = state;
-                break;
-            default:
-                break;
-        }
+        setHardwareButtonLedState(
+                cc,
+                on
+                        ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+    }
 
+    private void setHardwareButtonLedState(int cc, int state) {
+        if (cc < 0 || cc >= hardwareButtonLedStateCache.length) return;
+        final int clamped = Math.max(
+                MpcHardwareFeedbackPolicy.LED_OFF,
+                Math.min(MpcHardwareFeedbackPolicy.LED_COLOR_2_FULL, state));
+        if (hardwareButtonLedStateCache[cc] == clamped) return;
+        hardwareButtonLedStateCache[cc] = clamped;
         if (midiBridge != null) {
             midiBridge.send(
                     MpcStudioMk2MidiMessages.buttonLed(
                             cc,
-                            state));
+                            clamped));
         }
     }
 
@@ -4438,6 +4514,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     setBottomStatus(
                             nativeSequenceSetTimingCorrectEnabled(
                                     !nativeSequenceIsTimingCorrectEnabled()));
+                    setHardwareButtonLedState(
+                            15,
+                            nativeSequenceIsTimingCorrectEnabled()
+                                    ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
+                                    : MpcHardwareFeedbackPolicy.LED_OFF);
                     refreshSequenceControls();
                 } else {
                     setBottomStatus(
@@ -4953,6 +5034,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             midiState.setText(connected ? "MIDI ON" : "MIDI —");
             midiState.setTextColor(connected ? ACTIVE : MUTED);
             if (connected) {
+                Arrays.fill(hardwareButtonLedStateCache, -1);
                 lastTouchStripLedSignature = "";
                 lastNoteRepeatDivisionLedSignature = "";
                 lastLcdSignature = "";
