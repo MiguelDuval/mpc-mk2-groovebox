@@ -1541,6 +1541,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         mainTrackWaveform.setOnSelectionCommitListener(
                 (startNormalized, endNormalized) -> commitMainTrackWaveformRegion(
                         startNormalized, endNormalized));
+        mainTrackWaveform.setOnDoubleTapListener(
+                this::openMainTrackEditContext);
         sampleColumn.addView(mainTrackWaveform,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
@@ -1613,6 +1615,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         mainArrangementPreview = new SequenceTimelineView(this);
         mainArrangementPreview.setContentDescription("Main Mode arrangement overview");
+        mainArrangementPreview.setOnDoubleTapListener(
+                this::openMainArrangementGridContext);
         arrangement.addView(mainArrangementPreview, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
@@ -1812,6 +1816,100 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private int selectedPadIndexForUi() {
         return Math.max(0, Math.min(15, selectedPad));
+    }
+
+    private void openMainTrackEditContext() {
+        /*
+         * MPC Main uses double-tap on the Track sample area as the direct
+         * Track Edit entry point. Our Track Edit backend is not implemented
+         * yet, so preserve the semantic destination without fabricating an
+         * editor: navigate to a truthful reserved context with the current
+         * Track/Pad/Layer visible.
+         */
+        navigationController.navigate(MpcUiState.Mode.TRACK_EDIT);
+        navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_SELECT);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_LAYER);
+        navigationController.setActionAvailable(false);
+        currentPage = "TRACK_EDIT";
+        pageTitle.setText("TRACK EDIT");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.setContentDescription("MPC Track Edit workspace");
+        page.setPadding(dp(10), dp(8), dp(10), dp(4));
+
+        LinearLayout header = row();
+        header.addView(sectionLabelView(
+                "TRACK EDIT",
+                new LinearLayout.LayoutParams(0, dp(38), 1)));
+        header.addView(actionButton(
+                "BACK",
+                v -> navigateBackFromShell()),
+                new LinearLayout.LayoutParams(dp(78), dp(38)));
+        page.addView(header);
+
+        TextView context = label("", 12, TEXT);
+        context.setTypeface(Typeface.DEFAULT_BOLD);
+        context.setGravity(Gravity.CENTER_VERTICAL);
+        context.setBackground(strokeBackground(SURFACE_2, LINE, 7));
+        page.addView(context, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
+
+        TextView availability = label(
+                "TRACK EDIT BACKEND RESERVED • Main double-tap entry is wired, "
+                        + "but the editor parameter contract is not yet implemented.",
+                11, MUTED);
+        availability.setContentDescription("Track Edit unavailable explanation");
+        availability.setGravity(Gravity.CENTER_VERTICAL);
+        availability.setPadding(dp(10), 0, dp(10), 0);
+        page.addView(availability, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(62)));
+
+        LinearLayout tabs = row();
+        for (String tab : new String[] {
+                "GLOBAL", "SAMPLES", "ENV", "LFO", "MOD", "FX"
+        }) {
+            Button tabButton = actionButton(tab, null);
+            tabButton.setEnabled(false);
+            tabButton.setAlpha(0.42f);
+            tabs.addView(tabButton, new LinearLayout.LayoutParams(
+                    0, dp(38), 1));
+        }
+        page.addView(tabs);
+
+        TextView padContext = label(
+                String.format(
+                        Locale.ROOT,
+                        "TRACK %02d • PAD %02d • LAYER %d/8",
+                        Math.max(0, nativeSequenceGetSelectedTrack()) + 1,
+                        selectedPadIndexForUi() + 1,
+                        selectedLayer + 1),
+                11, MUTED);
+        padContext.setGravity(Gravity.CENTER);
+        padContext.setBackground(strokeBackground(SURFACE_2, LINE, 7));
+        page.addView(padContext, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        content.addView(page);
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+    }
+
+    private void openMainArrangementGridContext() {
+        final int trackIndex = startupComplete
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        final String trackType = startupComplete
+                ? nativeSequenceGetTrackType(trackIndex) : "DRUM";
+        if (!"DRUM".equalsIgnoreCase(trackType)) {
+            navigationController.setActionAvailable(false);
+            setBottomStatus(
+                    "GRID • unavailable for " + trackType + " Track");
+            refreshMpcCompactContext();
+            refreshMpcFunctionBar();
+            return;
+        }
+        showSequenceGridPage();
     }
 
     private LinearLayout mainSection() {
