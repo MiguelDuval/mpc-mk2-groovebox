@@ -17,7 +17,6 @@ import android.widget.LinearLayout;
 final class MpcShell {
     private static final int BG = Color.rgb(14, 16, 18);
     private static final int SURFACE = Color.rgb(25, 29, 33);
-    private static final int MPC_HEADER = Color.rgb(232, 32, 65);
 
     private final LinearLayout root;
     private final LinearLayout toolbar;
@@ -34,7 +33,7 @@ final class MpcShell {
 
         toolbar = new LinearLayout(context);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
-        toolbar.setBackgroundColor(MPC_HEADER);
+        toolbar.setBackgroundColor(SURFACE);
         root.addView(toolbar, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 52)));
 
