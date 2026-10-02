@@ -10,6 +10,7 @@ UI_STATE_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUi
 NAVIGATION_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcNavigationController.java"
 NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
 TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackEditView.java"
+SHELL_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"
 
 echo "Running MPC Main UI source preflight..."
 for required in \
@@ -116,6 +117,18 @@ if grep -Fq -- "sequenceAuxFields" "$MAIN_ACTIVITY_SOURCE" || \
   echo "ERROR: obsolete stacked Main Sequence field layout is still present"
   exit 1
 fi
+
+echo "Running MPC shell geometry preflight..."
+for required in \
+  "TOOLBAR_HEIGHT_DP = 44" \
+  "SHORTCUT_RAIL_WIDTH_DP = 48" \
+  "CHANNEL_STRIP_WIDTH_DP = 210" \
+  "FUNCTION_BAR_HEIGHT_DP = 40"; do
+  if ! grep -Fq -- "$required" "$SHELL_SOURCE"; then
+    echo "ERROR: MPC shell geometry contract missing: $required"
+    exit 1
+  fi
+done
 
 echo "Running MPC UI state/navigation source preflight..."
 for required in \
