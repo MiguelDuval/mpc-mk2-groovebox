@@ -182,14 +182,21 @@ final class MpcTrackEditView extends LinearLayout {
 
         LinearLayout tabs = row();
         String[] labels = {"GLOBAL", "SAMPLES", "ENV", "LFO", "MOD", "FX"};
+        String[] descriptions = {
+                "Track Edit Global tab",
+                "Track Edit Samples tab",
+                "Track Edit Envelopes tab",
+                "Track Edit LFO tab",
+                "Track Edit Modulations tab",
+                "Track Edit Effects tab"
+        };
         for (int i = 0; i < labels.length; i++) {
             final int index = i;
             Button button = actionButton(labels[i], v -> {
                 tab = Tab.values()[index];
                 render();
             });
-            button.setContentDescription(
-                    "Track Edit " + tabContentDescription(Tab.values()[i]));
+            button.setContentDescription(descriptions[i]);
             tabButtons[i] = button;
             tabs.addView(button, new LinearLayout.LayoutParams(
                     0, dp(40), 1f));
