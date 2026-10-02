@@ -1848,9 +1848,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(dp(78), dp(38)));
         page.addView(header);
 
-        TextView context = label("", 12, TEXT);
+        final int trackIndex = startupComplete
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        final String trackStatus = startupComplete
+                ? nativeSequenceTrackStatus(trackIndex) : "Track 01";
+        final String trackType = startupComplete
+                ? nativeSequenceGetTrackType(trackIndex) : "DRUM";
+
+        TextView context = label(
+                String.format(
+                        Locale.ROOT,
+                        "TRACK %02d • %s • %s",
+                        trackIndex + 1,
+                        trackType,
+                        trackStatus),
+                12, TEXT);
         context.setTypeface(Typeface.DEFAULT_BOLD);
         context.setGravity(Gravity.CENTER_VERTICAL);
+        context.setContentDescription("Track Edit current track context");
         context.setBackground(strokeBackground(SURFACE_2, LINE, 7));
         page.addView(context, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
