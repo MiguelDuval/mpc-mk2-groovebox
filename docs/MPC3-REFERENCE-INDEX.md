@@ -462,3 +462,8 @@ Repository decision:
 the Android Track Edit workspace must keep TRACK/PAD context at the top, parameter content in the middle, and GLOBAL/SAMPLES/AMP ENV/LFO/MODS/EFFECTS navigation at the bottom. Display labels are canonical; internal enum names may remain implementation-oriented.
 
 Confidence: HIGH for the overall geometry and bottom-tab behavior; individual unsupported parameters remain governed by our truthfulness rule.
+
+## 16.5 MkII LED state policy correction
+
+The Studio MkII protocol differentiates single-color LEDs (OFF/DIM/FULL = 0/1/2) from two-color LEDs.
+The Android feedback layer now uses a shared `buttonLedOnState()` policy and retains mutually-exclusive Level/Mute states.

@@ -15,6 +15,12 @@ final class MpcHardwareFeedbackPolicy {
         return alternate ? LED_COLOR_2_FULL : LED_COLOR_1_FULL;
     }
 
+    static int buttonLedOnState(int cc) {
+        return isTwoColorButton(cc)
+                ? LED_COLOR_1_FULL
+                : LED_SINGLE_FULL;
+    }
+
     static boolean isTwoColorButton(int cc) {
         switch (cc) {
             case 0:
@@ -146,8 +152,8 @@ final class MpcHardwareFeedbackPolicy {
 
     private static String noteRepeatRateLabel(int index) {
         final String[] labels = {
-                "1/4", "1/4T", "1/8", "1/8T",
-                "1/16", "1/16T", "1/32", "1/32T"
+                "1/4", "1/8", "1/16", "1/32",
+                "1/64", "1/4T", "1/8T", "1/16T"
         };
         return labels[Math.max(0, Math.min(labels.length - 1, index))];
     }

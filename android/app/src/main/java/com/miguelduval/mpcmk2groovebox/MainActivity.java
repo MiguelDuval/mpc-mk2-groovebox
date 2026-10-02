@@ -221,6 +221,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int lastSixteenLevelLedState = -1;
     private int lastMuteLedState = -1;
     private boolean hardwareNoteRepeatActive;
+    private boolean hardwareFullLevelActive;
+    private boolean hardwareHalfLevelActive;
+    private boolean hardwareSixteenLevelActive;
+    private boolean hardwarePadMuteModeActive;
+    private boolean hardwareTrackMuteModeActive;
     private String lastLcdSignature = "";
     private long lastHardwareTapNanos = 0L;
     private final long[] hardwareTapIntervalsNanos = new long[4];
@@ -6881,6 +6886,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 hardwareFocus == 11 || hardwareFocus == 13 || hardwareFocus == 15;
         final boolean zoomVertical =
                 hardwareFocus == 12 || hardwareFocus == 14;
+        syncPersistentHardwareModeLeds();
         setHardwareButtonLedState(
                 66,
                 MpcHardwareFeedbackPolicy.dualColor(
@@ -6938,6 +6944,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                     : MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL)
                             : MpcHardwareFeedbackPolicy.LED_OFF);
         }
+    }
+
+    private void syncPersistentHardwareModeLeds() {
+        setHardwareButtonLedState(
+                9,
+                hardwareEraseActive
+                        ? MpcHardwareFeedbackPolicy.buttonLedOnState(9)
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+        setHardwareButtonLedState(
+                11,
+                hardwareNoteRepeatActive
+                        ? MpcHardwareFeedbackPolicy.buttonLedOnState(11)
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+        setHardwareButtonLedState(
+                70,
+                hardwareLocateActive
+                        ? MpcHardwareFeedbackPolicy.buttonLedOnState(70)
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+        setHardwareButtonLedState(
+                122,
+                hardwareCopyDeleteActive
+                        ? MpcHardwareFeedbackPolicy.buttonLedOnState(122)
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+        syncHardwareLevelModeLeds();
+        syncHardwareMuteModeLed();
     }
 
     private void syncHardwareLcd() {
@@ -7674,9 +7705,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setHardwareButtonLedState(
                 cc,
                 on
-                        ? MpcHardwareFeedbackPolicy.isTwoColorButton(cc)
-                                ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
-                                : MpcHardwareFeedbackPolicy.LED_COLOR_2_FULL
+                        ? MpcHardwareFeedbackPolicy.buttonLedOnState(cc)
                         : MpcHardwareFeedbackPolicy.LED_OFF);
     }
 
@@ -7708,6 +7737,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         for (int pad = 0; pad < 16; pad++) {
             setHardwarePadRgb(pad, 0, 0, 0);
         }
+    }
+
+    private void syncHardwareLevelModeLeds() {
+        final int levelState = hardwareHalfLevelActive
+                ? MpcHardwareFeedbackPolicy.LED_COLOR_2_FULL
+                : hardwareFullLevelActive
+                        ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
+                        : MpcHardwareFeedbackPolicy.LED_OFF;
+        setHardwareButtonLedState(39, levelState);
+        setHardwareButtonLedState(
+                40,
+                hardwareSixteenLevelActive
+                        ? MpcHardwareFeedbackPolicy.buttonLedOnState(40)
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+    }
+
+    private void syncHardwareMuteModeLed() {
+        setHardwareButtonLedState(
+                4,
+                MpcHardwareFeedbackPolicy.dualColor(
+                        hardwarePadMuteModeActive || hardwareTrackMuteModeActive,
+                        hardwareTrackMuteModeActive));
     }
 
     private void syncHardwareTransportLeds() {
@@ -7956,15 +8007,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 + touchStripModeLabel(value0));
                 return;
             case MpcStudioMk2SemanticActions.FULL_LEVEL_STATE:
-                setHardwareButtonLed(39, value0 != 0);
+                hardwareFullLevelActive = value0 != 0;
+                if (hardwareFullLevelActive) hardwareHalfLevelActive = false;
+                syncHardwareLevelModeLeds();
                 setBottomStatus(value0 != 0 ? "FULL LEVEL ON • 127" : "FULL LEVEL OFF");
                 return;
             case MpcStudioMk2SemanticActions.HALF_LEVEL_STATE:
-                setHardwareButtonLed(39, value0 != 0);
+                hardwareHalfLevelActive = value0 != 0;
+                if (hardwareHalfLevelActive) hardwareFullLevelActive = false;
+                syncHardwareLevelModeLeds();
                 setBottomStatus(value0 != 0 ? "HALF LEVEL ON • 64" : "HALF LEVEL OFF");
                 return;
             case MpcStudioMk2SemanticActions.SIXTEEN_LEVEL_STATE:
-                setHardwareButtonLed(40, value0 != 0);
+                hardwareSixteenLevelActive = value0 != 0;
+                if (hardwareSixteenLevelActive) {
+                    hardwareFullLevelActive = false;
+                    hardwareHalfLevelActive = false;
+                }
+                syncHardwareLevelModeLeds();
                 if (value0 != 0 && value1 >= 0) {
                     setBottomStatus(
                             "16 LEVEL • VELOCITY • SOURCE PAD " + (value1 + 1));
@@ -7975,11 +8035,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
                 return;
             case MpcStudioMk2SemanticActions.PAD_MUTE_MODE_STATE:
-                setHardwareButtonLed(4, value0 != 0);
+                hardwarePadMuteModeActive = value0 != 0;
+                if (hardwarePadMuteModeActive) hardwareTrackMuteModeActive = false;
+                syncHardwareMuteModeLed();
                 setBottomStatus(value0 != 0 ? "PAD MUTE MODE" : "PAD MUTE MODE OFF");
                 return;
             case MpcStudioMk2SemanticActions.TRACK_MUTE_MODE_STATE:
-                setHardwareButtonLed(4, value0 != 0);
+                hardwareTrackMuteModeActive = value0 != 0;
+                if (hardwareTrackMuteModeActive) hardwarePadMuteModeActive = false;
+                syncHardwareMuteModeLed();
                 setBottomStatus(value0 != 0 ? "TRACK MUTE MODE" : "TRACK MUTE MODE OFF");
                 return;
             case MpcStudioMk2SemanticActions.PAD_MUTE_TARGET:

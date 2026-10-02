@@ -41,8 +41,12 @@ for required in \
   "MpcTrackEditView" \
   "mpcShortcutLabel" \
   "mpcShortcutButton" \
-  "hardwareFocus = drumTrack ? 10 : 0;"
-  "hardwareFocus == 10"; do
+  "hardwareFocus = drumTrack ? 10 : 0;" \
+  "hardwareFocus == 10" \
+  "buttonLedOnState" \
+  "syncHardwareLevelModeLeds" \
+  "syncHardwareMuteModeLed" \
+  "syncPersistentHardwareModeLeds"; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MainActivity source contract missing: $required"
     exit 1

@@ -1085,3 +1085,8 @@ This is a presentation-only refinement; realtime audio, MIDI transport, sequence
 
 The persistent five-slot shortcut rail now presents compact original mode glyphs with short labels instead of numeric ordinals.
 The slots remain navigation adapters backed by MpcNavigationController; selection state is still rendered from application state.
+
+## 2026-10-02 MkII feedback fidelity checkpoint
+
+Controller indication is now treated as persistent state projection: single-color/two-color LED encoding is centralized,
+Full/Half/16 Levels and Pad/Track Mute modes are stateful, and Note Repeat rate labels share the native index order.

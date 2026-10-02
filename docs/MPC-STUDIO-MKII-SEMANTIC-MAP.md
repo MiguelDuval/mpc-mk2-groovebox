@@ -878,3 +878,11 @@ Reference sources: Akai Professional MPC Studio MkII support/manual material and
 
 
 - **Track Edit pad synchronization:** physical pad selection now reaches the same Track Edit refresh path as touch selection; the selected Pad/Layer context is kept synchronized without adding hardware-specific UI logic.
+
+## 2026-10-02 MkII feedback-state correction
+
+The host feedback path now distinguishes single-color and two-color button LED encodings through one shared policy.
+Full Level / Half Level / 16 Levels and Pad Mute / Track Mute mode state are retained and re-projected on refresh.
+Note Repeat rate labels follow the native repeat-rate index order.
+
+Physical MkII verification remains pending.

@@ -15,6 +15,29 @@ public final class MpcHardwareFeedbackPolicyTest {
     }
 
     @Test
+    public void singleColorButtonsUseSingleColorFullState() {
+        assertEquals(
+                MpcHardwareFeedbackPolicy.LED_SINGLE_FULL,
+                MpcHardwareFeedbackPolicy.buttonLedOnState(82));
+        assertEquals(
+                MpcHardwareFeedbackPolicy.LED_SINGLE_FULL,
+                MpcHardwareFeedbackPolicy.buttonLedOnState(70));
+        assertEquals(
+                MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL,
+                MpcHardwareFeedbackPolicy.buttonLedOnState(11));
+    }
+
+    @Test
+    public void noteRepeatRateLabelsFollowNativeRateIndexOrder() {
+        assertTrue(MpcHardwareFeedbackPolicy.contextLabel(
+                "MAIN", 0, false, false, false, 0,
+                true, 1, 0).contains("1/8"));
+        assertTrue(MpcHardwareFeedbackPolicy.contextLabel(
+                "MAIN", 0, false, false, false, 0,
+                true, 5, 0).contains("1/4T"));
+    }
+
+    @Test
     public void dualColorContextUsesPrimaryAndAlternateLedStates() {
         assertEquals(
                 MpcHardwareFeedbackPolicy.LED_OFF,
