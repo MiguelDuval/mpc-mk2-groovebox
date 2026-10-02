@@ -6276,6 +6276,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshAllInspectorState();
         refreshMainModePadVisuals();
         refreshMainTrackQuickSample();
+        refreshTrackEditView();
     }
 
     private void refreshAllInspectorState() {
