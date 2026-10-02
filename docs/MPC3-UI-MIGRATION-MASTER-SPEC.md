@@ -1090,3 +1090,6 @@ The slots remain navigation adapters backed by MpcNavigationController; selectio
 
 Controller indication is now treated as persistent state projection: single-color/two-color LED encoding is centralized,
 Full/Half/16 Levels and Pad/Track Mute modes are stateful, and Note Repeat rate labels share the native index order.
+
+## 2026-10-02 MkII LCD focus checkpoint
+The Studio MkII LCD companion mirror now projects the same Data Dial focus state used by the Android UI. The LCD deliberately remains a glanceable controller companion rather than a miniature copy of the main display: page/transport/sequence-track context remain visible, while a compact FOCUS line identifies the active Data Dial axis/selector. The projection is signature-gated and uses the existing six-chunk LCD SysEx transport.
