@@ -22,6 +22,7 @@ for required in \
   "Main Track View length mode" \
   "Main Track View velocity state" \
   "Main Track View selected layer" \
+  "Main Mode sequence tempo source • SEQ • Global unavailable" \
   "Main Track View record sample" \
   "Main Track View browse samples" \
   "DRUM • TYPE" \
