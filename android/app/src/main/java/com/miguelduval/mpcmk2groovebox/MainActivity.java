@@ -1442,10 +1442,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             final Object tag = button.getTag();
             final boolean selected = tag == active;
-            button.setTextColor(selected ? BG : TEXT);
+            button.setTextColor(selected ? TEXT : MUTED);
             button.setBackground(strokeBackground(
-                    selected ? ACCENT : SURFACE_2,
-                    selected ? ACCENT : LINE,
+                    selected ? SURFACE_2 : BG,
+                    selected ? DANGER : LINE,
                     8));
         }
     }
