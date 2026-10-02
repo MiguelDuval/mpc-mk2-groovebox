@@ -100,7 +100,7 @@ bool MpcProjectState::selectTrack(std::size_t trackIndex) noexcept {
 
 bool MpcProjectState::setTrackProgram(
         std::size_t trackIndex,
-        std::string programId) noexcept {
+        std::string programId) {
     if (trackIndex >= activeSequence().tracks.size()) {
         return false;
     }
