@@ -345,7 +345,13 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadSampleName(
                 "Sample name update failed: no sample assigned");
     }
 
-    auto* sample = state.findSample(layerState.sample);
+    mpc::domain::SampleRef* sample = nullptr;
+    for (auto& candidate : state.project().samples) {
+        if (candidate.assetId.value == layerState.sample.value) {
+            sample = &candidate;
+            break;
+        }
+    }
     if (sample == nullptr) {
         return toJString(
                 env,
