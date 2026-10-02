@@ -1464,24 +1464,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout trackDetailRow = row();
         TextView monitorDetail = mainMetric("MONITOR");
         monitorDetail.setContentDescription("Main Track View monitor state");
-        monitorDetail.setText("MONITOR\\n—");
+        monitorDetail.setText("MONITOR\n—");
         trackDetailRow.addView(monitorDetail, weight());
 
         TextView lengthDetail = mainMetric("LENGTH");
         lengthDetail.setContentDescription("Main Track View length mode");
-        lengthDetail.setText("LENGTH\\nSEQ");
+        lengthDetail.setText("LENGTH\nSEQ");
         trackDetailRow.addView(lengthDetail, weight());
 
         TextView velocityDetail = mainMetric("VELOCITY");
         velocityDetail.setContentDescription("Main Track View velocity state");
-        velocityDetail.setText("VELOCITY\\n—");
+        velocityDetail.setText("VELOCITY\n—");
         trackDetailRow.addView(velocityDetail, weight());
 
         TextView layerDetail = mainMetric("LAYER");
         layerDetail.setContentDescription("Main Track View selected layer");
         layerDetail.setText(String.format(
                 Locale.ROOT,
-                "LAYER\\n%d/8",
+                "LAYER\n%d/8",
                 selectedLayer + 1));
         trackDetailRow.addView(layerDetail, weight());
 
@@ -1758,9 +1758,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     drum
                             ? String.format(
                                     Locale.ROOT,
-                                    "LAYER\\n%d/8",
+                                    "LAYER\n%d/8",
                                     selectedLayer + 1)
-                            : "LAYER\\n—");
+                            : "LAYER\n—");
         }
     }
 
@@ -1868,9 +1868,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         sequenceName.setText(String.format(
                 Locale.ROOT, "Sequence %02d", sequenceIndex + 1));
-        sequenceType.setText("SEQ\\n" + String.format(
+        sequenceType.setText("SEQ\n" + String.format(
                 Locale.ROOT, "%02d", sequenceIndex + 1));
-        transpose.setText("TRANSPOSE\\n—");
+        transpose.setText("TRANSPOSE\n—");
         final double tempo = nativeStateReady
                 ? nativeSequenceGetTempo() : 120.0;
         final int sequenceBars = nativeStateReady
@@ -1882,20 +1882,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final boolean loopEnabled = nativeStateReady
                 && nativeSequenceIsLoopEnabled();
         bpm.setText(String.format(
-                Locale.ROOT, "BPM\\n%.1f", tempo));
+                Locale.ROOT, "BPM\n%.1f", tempo));
         bars.setText(String.format(
-                Locale.ROOT, "BARS\\n%d", sequenceBars));
+                Locale.ROOT, "BARS\n%d", sequenceBars));
         timeSig.setText(String.format(
-                Locale.ROOT, "TIME SIG\\n%d/%d",
+                Locale.ROOT, "TIME SIG\n%d/%d",
                 numerator, denominator));
         loop.setText(
-                "LOOP\\n" + (loopEnabled ? "ON" : "OFF"));
+                "LOOP\n" + (loopEnabled ? "ON" : "OFF"));
         final int loopStartBar = nativeStateReady
                 ? nativeSequenceGetLoopStartBar() : 1;
         final int loopEndBar = nativeStateReady
                 ? nativeSequenceGetLoopEndBar() : sequenceBars;
-        start.setText(String.format(Locale.ROOT, "START\\nBAR %d", loopStartBar));
-        end.setText(String.format(Locale.ROOT, "END\\nBAR %d", loopEndBar));
+        start.setText(String.format(Locale.ROOT, "START\nBAR %d", loopStartBar));
+        end.setText(String.format(Locale.ROOT, "END\nBAR %d", loopEndBar));
 
         trackNameRefresh(trackIndex, trackCount);
         refreshMainTrackTypeVisuals();
@@ -2054,19 +2054,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackName.setText(String.format(
                 Locale.ROOT, "Track %02d  •  %s", trackIndex + 1, status));
         if (trackType != null) trackType.setText(
-                "TYPE\\n" + (backendType == null || backendType.isEmpty()
+                "TYPE\n" + (backendType == null || backendType.isEmpty()
                         ? "—" : backendType));
         if (program != null) {
             final String programStatus = startupComplete
                     ? nativeSequenceGetTrackProgram(trackIndex)
                     : "PROGRAM • NONE";
-            program.setText("PROGRAM\\n" + normalizeProgramLabel(programStatus));
+            program.setText("PROGRAM\n" + normalizeProgramLabel(programStatus));
         }
         if (record != null) record.setText(
-                "REC\\n" + (startupComplete && nativeSequenceIsSelectedTrackArmed()
+                "REC\n" + (startupComplete && nativeSequenceIsSelectedTrackArmed()
                         ? "ARM" : "OFF"));
         if (mute != null) mute.setText(
-                "MUTE\\n" + (status.toLowerCase(Locale.ROOT).contains("mute")
+                "MUTE\n" + (status.toLowerCase(Locale.ROOT).contains("mute")
                         ? "ON" : "OFF"));
     }
 
