@@ -261,7 +261,7 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
 - Grid now presents itself as the primary workspace, with Track/Sequence/range context and a selected-pad state visible in the editor header.
 - Tool state is explicit: DRAW, ERASE, SELECT and MAGNIFY.
 - DRAW/ERASE are guarded against no-op misuse; SELECT changes focus without mutating sequence data.
-- Grid high-frequency actions are mirrored by the shared shell Function Bar instead of a competing local action bar.
+- Grid editing tools live in the workspace tool palette; the shared shell Function Bar is reserved for editor-context and navigation transitions, avoiding duplicated controls.
 - Drum Grid highlights the selected pad row while preserving existing zoom/playhead behavior.
 - No new realtime/audio dependency was introduced.
 

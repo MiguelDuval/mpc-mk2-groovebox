@@ -516,7 +516,7 @@ For the current Drum Track backend the Grid workspace exposes four semantic tool
 - **SELECT** — focus a pad/step without mutating musical data.
 - **MAGNIFY** — navigation/zoom intent; actual viewport movement remains through pinch/drag or hardware Zoom.
 
-The shell Function Bar repeats the high-frequency Grid actions; the workspace header carries Track, Sequence, step range, resolution and current pad. The grid itself remains the main editing surface.
+The workspace tool palette carries DRAW / ERASE / SELECT / MAGNIFY, while the shell Function Bar carries navigation and editor-context transitions. The workspace header carries Track, Sequence, step range, resolution and current pad. The grid itself remains the main editing surface.
 
 ## 7.4 Safety
 

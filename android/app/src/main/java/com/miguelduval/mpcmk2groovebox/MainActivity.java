@@ -805,21 +805,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 break;
 
             case GRID:
-                addFunction("DRAW", true, v -> {
-                    navigationController.setEditorTool(MpcUiState.EditorTool.DRAW);
-                    refreshGridToolState();
-                });
-                addFunction("ERASE", true, v -> {
-                    navigationController.setEditorTool(MpcUiState.EditorTool.ERASE);
-                    refreshGridToolState();
-                });
-                addFunction("SELECT", true, v -> {
-                    navigationController.setEditorTool(MpcUiState.EditorTool.SELECT);
-                    refreshGridToolState();
-                });
+                addFunction("STEP", true, v -> showSequenceStepPage());
                 addFunction("ZOOM H", true, v -> zoomSequenceGridHorizontal(1));
                 addFunction("ZOOM V", true, v -> zoomSequenceGridVertical(1));
-                addFunction("STEP", true, v -> showSequenceStepPage());
+                addFunction("TRACK VIEW", true, v -> showTrackViewPage());
+                addFunction("MAIN", true, v -> showMainPage());
+                addFunction("BACK", true, v -> navigateBackFromShell());
                 break;
 
             case SAMPLE_EDIT:
@@ -6057,9 +6048,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         View gridView = findViewWithContentDescription(
-                getWindow().getDecorView(), "Sequence 16 by 16 step grid");
+                getWindow().getDecorView(), "MPC Grid View drum event grid");
         if (gridView == null || gridView.getHeight() <= dp(120)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: sequence grid editor");
+            return;
+        }
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "Grid Draw tool") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Grid Erase tool") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Grid Select tool") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Grid Navigation tool") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Grid tool palette");
             return;
         }
 
