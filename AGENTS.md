@@ -31,6 +31,9 @@ Use these documents together:
 - `docs/MIDI-TRANSPORT.md` — Android MIDI boundary.
 - `docs/MPC-DOMAIN-MODEL.md` — musical domain model.
 - `docs/MPC-UX-REFERENCE.md` — standalone-style UX reference.
+- `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md` — permanent MPC 3.9 UI architecture and migration contract.
+- `docs/MPC3-REFERENCE-INDEX.md` — searchable MPC 3.9 research/source index.
+- `docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md` — protected lower-layer and UI migration safety rules.
 - `docs/PHYSICAL-TEST-CHECKLIST.md` — hardware acceptance tests.
 - `THIRD_PARTY_NOTICES.md` — dependency/license record.
 
