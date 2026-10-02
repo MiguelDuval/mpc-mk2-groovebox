@@ -467,3 +467,7 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - The shared MPC shell now uses a high-contrast red upper chrome aligned with MPC One Main-screen references.
 - The five shortcut slots use a dark inactive treatment and red selected/focused treatment, avoiding a generic cyan application-navigation state.
 - No navigation, domain, MIDI, sequencer or realtime behavior changed in this increment.
+## 2026-10-02 Main numeric-entry + shortcut fidelity increment
+- Main BPM, BARS, LOOP START and LOOP END are now double-tap numeric-entry targets while preserving Data Dial/+/- editing.
+- The Main `SEQ` field is now a non-mutable tempo-source indicator; Sequence selection remains on the Sequence field itself.
+- The five left shortcuts are icon-first and content-description driven, preserving accessibility and UI-audit robustness while reclaiming workspace width.
