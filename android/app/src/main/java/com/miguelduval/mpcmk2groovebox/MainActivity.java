@@ -662,9 +662,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? nativeSequenceGetTrackCount() : 0;
 
         if (mode == MpcUiState.Mode.MAIN) {
-            addFunction("MIDI", true, v -> showMidiPage());
-            addFunction("AUDIO", true, v -> showAudioSettingsPage());
-            addFunction("TRACK", true, v -> showTrackViewPage());
+            addFunction("NEW TRACK", true, v -> addSequenceTrack(0));
+            addFunction("REC ARM", trackCount > 0, v -> {
+                setBottomStatus(nativeSequenceSetSelectedTrackArmed(
+                        !nativeSequenceIsSelectedTrackArmed()));
+                syncHardwareTransportLeds();
+                showMainPage();
+            });
+            addFunction("TRACK −", trackCount > 0,
+                    v -> selectAdjacentTrack(-1));
+            addFunction("TRACK +", trackCount > 0,
+                    v -> selectAdjacentTrack(1));
             addFunction("MUTE", trackCount > 0,
                     v -> toggleSelectedTrackMute());
             addFunction("SOLO", false, null);
@@ -1016,112 +1024,83 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceCard.addView(sequenceActions, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
-        LinearLayout trackCard = panel();
-        trackCard.setContentDescription("Main Mode Track card");
+        LinearLayout trackProgramSection = mainSection();
+        trackProgramSection.setContentDescription("Main Mode Track Program section");
 
-        LinearLayout trackHeader = row();
-        trackHeader.addView(sectionLabelView(
+        LinearLayout trackProgramHeader = row();
+        trackProgramHeader.addView(sectionLabelView(
                 "TRACK",
-                new LinearLayout.LayoutParams(0, dp(32), 1)));
-        trackHeader.addView(actionButton(
-                "TRACK VIEW",
-                v -> showTrackViewPage()),
-                new LinearLayout.LayoutParams(dp(104), dp(32)));
-        trackCard.addView(trackHeader);
+                new LinearLayout.LayoutParams(dp(58), dp(32))));
 
-        TextView trackName = label("", 16, TEXT);
+        TextView trackName = mainField("TRACK");
         trackName.setTypeface(Typeface.DEFAULT_BOLD);
+        trackName.setTextSize(14);
         trackName.setContentDescription("Main Mode selected track");
-        trackCard.addView(trackName, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+        trackName.setOnClickListener(v -> showTrackSelectPage());
+        trackProgramHeader.addView(trackName, new LinearLayout.LayoutParams(
+                0, dp(42), 1.35f));
 
-        trackCard.addView(buildMainTrackTypeSelector(),
+        TextView program = mainField("PROGRAM");
+        program.setContentDescription("Main Mode selected program");
+        program.setOnClickListener(v -> showProgramSelectPage());
+        trackProgramHeader.addView(program, new LinearLayout.LayoutParams(
+                0, dp(42), 1.75f));
+
+        trackProgramHeader.addView(actionButton(
+                "BROWSER",
+                v -> showBrowserPage()),
+                new LinearLayout.LayoutParams(dp(84), dp(32)));
+        trackProgramSection.addView(trackProgramHeader, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        trackProgramSection.addView(buildMainTrackTypeSelector(),
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
-        LinearLayout trackBody = row();
+        LinearLayout trackState = row();
         TextView trackType = mainInfo("TYPE");
-        TextView program = mainInfo("PROGRAM");
         TextView record = mainInfo("REC");
         TextView mute = mainInfo("MUTE");
-        trackBody.addView(trackType, new LinearLayout.LayoutParams(0, dp(48), 1.35f));
-        trackBody.addView(program, new LinearLayout.LayoutParams(0, dp(48), 1.55f));
-        trackBody.addView(record, new LinearLayout.LayoutParams(0, dp(48), 0.8f));
-        trackBody.addView(mute, new LinearLayout.LayoutParams(0, dp(48), 0.8f));
-        trackCard.addView(trackBody);
-
-        LinearLayout trackActions = row();
-        trackActions.addView(actionButton(
-                "REC ARM",
-                v -> {
-                    setBottomStatus(nativeSequenceSetSelectedTrackArmed(
-                            !nativeSequenceIsSelectedTrackArmed()));
-                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop, start, end);
-                }), weight());
-        trackActions.addView(actionButton(
-                "MUTE",
-                v -> {
-                    toggleSelectedTrackMute();
-                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop, start, end);
-                }), weight());
-        trackActions.addView(actionButton(
-                "GRID",
-                v -> showSequenceGridPage()), weight());
-        trackActions.addView(actionButton(
-                "TRACK EDIT",
-                v -> {
-                    navigationController.setActionAvailable(false);
-                    setBottomStatus(
-                            "TRACK EDIT • RESERVED until Track→Program resolution");
-                    refreshMpcCompactContext();
-                    refreshMpcFunctionBar();
-                }), weight());
-        trackCard.addView(trackActions, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
-
-        LinearLayout programCard = panel();
-        programCard.setContentDescription("Main Mode Program card");
-
-        LinearLayout programHeader = row();
-        programHeader.addView(sectionLabelView(
-                "PROGRAM",
-                new LinearLayout.LayoutParams(0, dp(32), 1)));
-        programHeader.addView(actionButton(
-                "SELECT",
-                v -> showProgramSelectPage()),
-                new LinearLayout.LayoutParams(dp(72), dp(32)));
-        programHeader.addView(actionButton(
-                "BROWSER",
-                v -> showBrowserPage()),
-                new LinearLayout.LayoutParams(dp(82), dp(32)));
-        programCard.addView(programHeader);
-
-        TextView programName = label("", 15, TEXT);
-        programName.setTypeface(Typeface.DEFAULT_BOLD);
-        programCard.addView(programName, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+        trackState.addView(trackType, new LinearLayout.LayoutParams(0, dp(44), 1.25f));
+        trackState.addView(record, new LinearLayout.LayoutParams(0, dp(44), 0.85f));
+        trackState.addView(mute, new LinearLayout.LayoutParams(0, dp(44), 0.85f));
+        trackProgramSection.addView(trackState, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
         LinearLayout lower = row();
+
         LinearLayout pads = column();
+        pads.setContentDescription("Main Mode performance pads");
         pads.addView(buildMiniMainPadGrid(), new LinearLayout.LayoutParams(
                 0, 0, 1));
         lower.addView(pads, new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.MATCH_PARENT, 0.48f));
+                ViewGroup.LayoutParams.MATCH_PARENT, 0.44f));
 
-        LinearLayout arrangement = panel();
-        arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
+        LinearLayout arrangement = column();
+        arrangement.setPadding(dp(6), dp(3), dp(6), dp(3));
+        arrangement.setBackground(strokeBackground(SURFACE_2, LINE, 4));
         arrangement.setContentDescription("Main Mode arrangement preview");
-        arrangement.addView(sectionLabel("ARRANGEMENT PREVIEW"));
+
+        LinearLayout arrangementHeader = row();
+        arrangementHeader.addView(sectionLabelView(
+                "ARRANGEMENT",
+                new LinearLayout.LayoutParams(0, dp(28), 1)));
+        arrangementHeader.addView(actionButton(
+                "GRID",
+                v -> showSequenceGridPage()),
+                new LinearLayout.LayoutParams(dp(68), dp(28)));
+        arrangement.addView(arrangementHeader);
+
         TextView arrangementInfo = label(
-                "LINEAR • current Sequence • playhead-aware",
+                "SEQUENCE • selected Track • playhead-aware",
                 10, MUTED);
         arrangement.addView(arrangementInfo, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(20)));
 
         mainArrangementPreview = new SequenceTimelineView(this);
         mainArrangementPreview.setContentDescription("Main Mode arrangement overview");
         arrangement.addView(mainArrangementPreview, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         TextView eventSummary = label("TRACK EVENTS • —", 9, MUTED);
         eventSummary.setContentDescription("Main Mode arrangement event summary");
@@ -1129,16 +1108,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
 
         lower.addView(arrangement, new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.MATCH_PARENT, 0.52f));
-        programCard.addView(lower, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0.56f));
+        trackProgramSection.addView(lower, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         page.addView(sequenceCard, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.22f));
-        page.addView(trackCard, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.24f));
-        page.addView(programCard, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.54f));
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.27f));
+        page.addView(trackProgramSection, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.73f));
 
         content.addView(page);
         refreshMainModeState(sequenceName, bpm, bars, timeSig, loop, start, end);
@@ -1147,12 +1124,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         updateModeRailSelection();
     }
 
+    private LinearLayout mainSection() {
+        LinearLayout section = column();
+        section.setPadding(dp(8), dp(6), dp(8), dp(6));
+        section.setBackground(strokeBackground(SURFACE, LINE, 4));
+        return section;
+    }
+
     private TextView mainMetric(String title) {
         TextView view = label("", 12, TEXT);
         view.setTypeface(Typeface.DEFAULT_BOLD);
         view.setGravity(Gravity.CENTER_VERTICAL);
         view.setPadding(dp(6), 0, dp(6), 0);
-        view.setBackground(strokeBackground(SURFACE_2, LINE, 6));
+        view.setBackground(strokeBackground(SURFACE_2, LINE, 4));
+        view.setTag(title);
+        return view;
+    }
+
+    private TextView mainField(String title) {
+        TextView view = label("", 14, TEXT);
+        view.setTypeface(Typeface.DEFAULT_BOLD);
+        view.setGravity(Gravity.CENTER_VERTICAL);
+        view.setPadding(dp(8), 0, dp(8), 0);
+        view.setBackground(strokeBackground(SURFACE_2, LINE, 4));
         view.setTag(title);
         return view;
     }
@@ -2080,6 +2074,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         } else {
             ScrollView scroll = new ScrollView(this);
             LinearLayout list = column();
+            list.setContentDescription("Main Program Select list");
             for (int i = 0; i < programCount; i++) {
                 final int programIndex = i;
                 Button b = actionButton(
