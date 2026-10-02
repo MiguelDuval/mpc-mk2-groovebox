@@ -1039,3 +1039,8 @@ The normal MPC shell ends at the Function Bar. Development-only hardware/status 
 ## 2026-10-03 Main Track identity header fidelity
 
 The Track header is rendered as one continuous identity band rather than a standalone `TRACK` caption plus independent form-like fields. Track identity remains the primary selection surface, Program remains an adjacent selectable name, and Track Type is a compact indicator. This mirrors the MPC3 one-to-one Track workflow while preserving the existing semantic Track Select and Program Select entry points.
+
+
+## 2026-10-03 XL Channel Strip geometry fidelity
+
+The shell's compact left column now uses a shallow top control area and a dedicated XL-width channel column. Within the Track strip, the LVL / FX / SEND / I/O tab row immediately follows the selected Track identity, matching the documented MPC channel-strip hierarchy. The normal Function Bar remains the bottom shell boundary.
