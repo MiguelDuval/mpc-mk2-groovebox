@@ -245,3 +245,18 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
 - **Live-display discipline:** the projected LCD signature uses coarse bar/beat position while playing, so the hardware display is not regenerated for every 80 ms UI tick.
 - **State separation preserved:** LCD rendering consumes semantic/application state and does not introduce raw controller MIDI identifiers into UI code.
 - Physical MkII verification remains required.
+
+
+## 2026-10-02 Controller feedback contract
+
+Hardware indication is now treated as a first-class part of every MkII controller feature, not as a final polish pass.
+
+- SEMANTIC → FEEDBACK → PHONE parity: each controller context must project its active state to the MkII LEDs and to a persistent phone-side controller-status strip.
+- Two-color MkII buttons: primary context uses protocol color 1/full, Shift/alternate context uses protocol color 2/full; inactive state is explicitly cleared.
+- Context focus: Zoom, Track/Sequence Select, Program/Track Type, Sample Select/Start/End and Tune have explicit feedback focus on the controller where the corresponding function is implemented.
+- Persistent phone indication: the shell displays MKII, active context, DIAL axis and BANK so the physical controller never becomes an invisible mode switch.
+- Stateful performance contexts: Locate, Erase, Copy/Delete, Note Repeat, Full/Half Level, 16 Level and transport keep their state indication synchronized.
+- Timing Correct: its enabled state is mirrored to the controller button LED.
+- Feedback is state-driven: repeated identical LED frames are suppressed; LCD rendering remains signature-gated.
+- Unknown/unimplemented contexts must be visibly reported instead of appearing active.
+- Physical MkII verification remains required for LED colors, brightness semantics and all controller-specific feedback paths.
