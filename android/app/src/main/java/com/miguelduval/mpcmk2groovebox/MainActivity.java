@@ -1074,7 +1074,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout programHeader = row();
         programHeader.addView(sectionLabelView(
-                "DRUM PROGRAM",
+                "PROGRAM",
                 new LinearLayout.LayoutParams(0, dp(32), 1)));
         programHeader.addView(actionButton(
                 "BROWSER",
@@ -1246,7 +1246,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         row.setContentDescription("Main Mode track type selector");
 
         final String[] labels = {
-                "DRUM", "KEYGROUP", "PLUGIN", "MIDI", "CLIP", "CV"
+                "DRUM", "KEYGROUP", "PLUGIN", "MIDI", "AUDIO", "CV"
         };
         final boolean[] available = {
                 true, false, false, false, false, false
