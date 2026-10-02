@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -36,6 +37,8 @@ public final class SequenceTimelineView extends View {
     private int viewportVisibleBars = 4;
     private int activeHandle = -1;
     private OnLoopCommitListener loopCommitListener;
+    private GestureDetector gestureDetector;
+    private OnDoubleTapListener doubleTapListener;
 
     public SequenceTimelineView(Context context) {
         super(context);
@@ -53,6 +56,17 @@ public final class SequenceTimelineView extends View {
     }
 
     private void init() {
+        gestureDetector = new GestureDetector(
+                getContext(),
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onDoubleTap(MotionEvent event) {
+                        if (doubleTapListener != null) {
+                            doubleTapListener.onDoubleTapped();
+                        }
+                        return true;
+                    }
+                });
         fillPaint.setStyle(Paint.Style.FILL);
         linePaint.setStyle(Paint.Style.STROKE);
         textPaint.setTextSize(dp(10));
@@ -123,6 +137,10 @@ public final class SequenceTimelineView extends View {
 
     public void setOnLoopCommitListener(OnLoopCommitListener listener) {
         loopCommitListener = listener;
+    }
+
+    public void setOnDoubleTapListener(OnDoubleTapListener listener) {
+        doubleTapListener = listener;
     }
 
     @Override
@@ -207,6 +225,7 @@ public final class SequenceTimelineView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        gestureDetector.onTouchEvent(event);
         final float left = dp(12);
         final float right = getWidth() - dp(12);
         final float width = Math.max(1f, right - left);
