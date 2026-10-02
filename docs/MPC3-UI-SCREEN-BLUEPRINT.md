@@ -457,6 +457,13 @@ Data Dial press:
 
 - cycles supported parameter focus.
 
+
+
+### 6.4 Truthful Track-Type gating
+
+- The Step workspace exposes editor mutation only when the selected Track Type has a truthful Step backend; unsupported Track Types keep the context visible but disable Step mutation controls.
+- Main Track Type presentation resolves directly from the semantic Track Type query rather than parsing display/status text.
+- Persistent Program context normalizes the Program label once, so the shell never renders duplicated `PROGRAM •` prefixes.
 ## 6.3 Visual states
 
 At least distinguish:
