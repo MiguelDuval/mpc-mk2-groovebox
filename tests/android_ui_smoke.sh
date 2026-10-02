@@ -23,6 +23,9 @@ for required in \
   "Main Track View velocity state" \
   "Main Track View selected layer" \
   "Main Mode sequence tempo source • SEQ • Global unavailable" \
+  "Main Track / Arrangement view switcher" \
+  "Main Track View header" \
+  "Main Arrangement View header" \
   "Main Track View record sample" \
   "Main Track View browse samples" \
   "DRUM • TYPE" \
@@ -169,4 +172,3 @@ assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.m
 adb exec-out screencap -p > build/mpc-ui-smoke/audit-final.png
 
 echo "Android emulator startup and UI audit smoke test passed."
-
