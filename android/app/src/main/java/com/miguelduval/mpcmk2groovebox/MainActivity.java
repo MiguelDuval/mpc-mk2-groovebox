@@ -641,13 +641,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int trackCount = startupComplete
                 ? nativeSequenceGetTrackCount() : 0;
 
-        if (mode == MpcUiState.Mode.MAIN || mode == MpcUiState.Mode.TRACK_VIEW) {
+        if (mode == MpcUiState.Mode.MAIN) {
+            addFunction("MIDI", true, v -> showMidiPage());
+            addFunction("AUDIO", true, v -> showAudioSettingsPage());
+            addFunction("TRACK", true, v -> showTrackViewPage());
+            addFunction("MUTE", trackCount > 0,
+                    v -> toggleSelectedTrackMute());
+            addFunction("SOLO", false, null);
+            return;
+        }
+
+        if (mode == MpcUiState.Mode.TRACK_VIEW) {
             addFunction("NEW TRACK", true, v -> addSequenceTrack(0));
-            addFunction("REC ARM", true, v -> {
+            addFunction("REC ARM", trackCount > 0, v -> {
                 setBottomStatus(nativeSequenceSetSelectedTrackArmed(
                         !nativeSequenceIsSelectedTrackArmed()));
                 syncHardwareTransportLeds();
-                refreshSequenceControls();
+                showTrackViewPage();
             });
             addFunction("TRACK −", trackCount > 0,
                     v -> selectAdjacentTrack(-1));
