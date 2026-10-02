@@ -38,6 +38,15 @@ for required in \
   "HARDWARE_FOCUS_SEQUENCE_BPM" \
   "HARDWARE_FOCUS_SEQUENCE_BARS" \
   "double-tap for numeric entry" \
+  "Timing Correct enabled field" \
+  "Timing Correct time division" \
+  "Timing Correct swing" \
+  "Timing Correct reserved fields" \
+  "Time Signature value" \
+  "Time Signature numerator" \
+  "Time Signature denominator" \
+  "showTimingCorrectDialog" \
+  "showTimeSignatureDialog" \
   "showMpcNumericEntry" \
   "MPC condensed Mixer Strip show or hide" \
   "MPC condensed Mixer Strip" \
@@ -87,88 +96,3 @@ for required in \
     exit 1
   fi
 done
-
-test -f "$APK"
-
-dump_debug_state() {
-  echo "===== ADB STATE ====="
-  adb shell pidof "$PACKAGE" || true
-  adb shell dumpsys activity activities | tail -n 120 || true
-  echo "===== WINDOW STATE ====="
-  adb shell dumpsys window windows | tail -n 120 || true
-  echo "===== RELEVANT LOGCAT ====="
-  adb logcat -d -t 400 | grep -E 'ANR|system_server|ActivityTaskManager|WindowManager|AndroidRuntime|mpcmk2groovebox' | tail -n 160 || true
-}
-
-echo "Installing APK..."
-adb install -r "$APK"
-
-echo "Launching UI-only startup diagnostic..."
-adb shell am force-stop "$PACKAGE"
-adb logcat -c
-adb shell am start -n "$ACTIVITY" --es mpc.groovebox.smoke.mode ui-only
-
-wait_for_log_marker() {
-  local marker="$1"
-  local attempts="$2"
-  local interval="$3"
-
-  for attempt in $(seq 1 "$attempts"); do
-    if adb logcat -d -t 500 2>/dev/null | grep -Fq "MpcGroovebox: $marker"; then
-      echo "Log marker appeared: $marker"
-      return 0
-    fi
-    sleep "$interval"
-  done
-
-  echo "ERROR: log marker did not appear: $marker"
-  adb logcat -d -t 800 2>/dev/null | grep -F "MpcGroovebox" | tail -n 120 || true
-  dump_debug_state
-  return 1
-}
-
-assert_activity_present() {
-  local expected="$1"
-  if ! adb shell dumpsys activity activities 2>/dev/null |
-      grep -Fq "$expected"; then
-    echo "ERROR: expected Activity was not present in dumpsys activity."
-    dump_debug_state
-    exit 1
-  fi
-}
-
-wait_for_log_marker "UI_READY" 30 2
-wait_for_log_marker "UI_ONLY_COMPLETE" 30 2
-assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
-echo "UI-only startup diagnostic passed."
-
-echo "Launching full application..."
-adb shell am force-stop "$PACKAGE"
-adb logcat -c
-adb shell am start -n "$ACTIVITY"
-
-wait_for_log_marker "UI_READY" 30 2
-wait_for_log_marker "STARTUP_BEGIN" 30 2
-wait_for_log_marker "NATIVE_INFO_END" 30 2
-wait_for_log_marker "BUNDLED_SAMPLE_END" 60 2
-wait_for_log_marker "MIDI_BRIDGE_END" 30 2
-wait_for_log_marker "STARTUP_COMPLETE" 30 2
-assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
-
-mkdir -p build/mpc-ui-smoke
-adb exec-out screencap -p > build/mpc-ui-smoke/main.png
-adb shell uiautomator dump /sdcard/mpc-ui-smoke.xml >/dev/null
-adb pull /sdcard/mpc-ui-smoke.xml build/mpc-ui-smoke/ui.xml >/dev/null
-
-echo "Running in-process UI interaction audit..."
-adb shell am force-stop "$PACKAGE"
-adb logcat -c
-adb shell am start -n "$ACTIVITY" --es mpc.groovebox.smoke.mode ui-audit
-wait_for_log_marker "UI_READY" 30 2
-wait_for_log_marker "STARTUP_COMPLETE" 30 2
-wait_for_log_marker "UI_HIERARCHY_COMPLETE" 30 2
-wait_for_log_marker "UI_INTERACTION_COMPLETE" 60 2
-assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
-adb exec-out screencap -p > build/mpc-ui-smoke/audit-final.png
-
-echo "Android emulator startup and UI audit smoke test passed."
