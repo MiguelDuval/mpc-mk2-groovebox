@@ -115,6 +115,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceTimelineView sequenceTimeline;
     private SequenceTimelineView mainArrangementPreview;
     private MpcArrangeView arrangementView;
+    private final ArrayList<MpcArrangeView.Lane> arrangementLanes = new ArrayList<>();
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
     private SequenceLauncherView sequenceLauncherView;
@@ -748,6 +749,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void toggleSelectedTrackMute() {
         final int track = nativeSequenceGetSelectedTrack();
         setBottomStatus(nativeSequenceToggleTrackMute(track));
+        if ("ARRANGE".equals(currentPage)) {
+            loadArrangementLanes();
+            refreshArrangeView();
+        }
         refreshSequenceControls();
     }
 
@@ -1269,6 +1274,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         b.setGravity(Gravity.CENTER);
         b.setBackground(strokeBackground(SURFACE_2, LINE, 5));
         return b;
+    }
+
+    private void refreshMainArrangementPreview() {
+        if (mainArrangementPreview == null || !startupComplete) {
+            return;
+        }
+        mainArrangementPreview.setBarCount(
+                Math.max(1, nativeSequenceGetBars()));
+        mainArrangementPreview.setLoop(
+                nativeSequenceGetLoopStartBar(),
+                nativeSequenceGetLoopEndBar());
+        mainArrangementPreview.setPlayheadBar(
+                1.0f + (float) nativeSequencePositionTicks()
+                        / Math.max(1.0f, getSequenceTicksPerBar()));
     }
 
     private void refreshMainTrackTypeVisuals() {
@@ -1860,6 +1879,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             public void onTrackSelected(int trackIndex) {
                 setBottomStatus(nativeSequenceSelectTrack(trackIndex));
                 navigationController.setSelectedTrack(trackIndex);
+                loadArrangementLanes();
                 refreshArrangeView();
             }
 
@@ -1918,18 +1938,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         content.addView(page);
+        loadArrangementLanes();
         refreshArrangeView();
         updateModeRailSelection();
     }
 
-    private void refreshArrangeView() {
+    private void loadArrangementLanes() {
         if (arrangementView == null || !startupComplete) {
             return;
         }
 
         final int trackCount = Math.max(0, nativeSequenceGetTrackCount());
         final int selected = Math.max(0, nativeSequenceGetSelectedTrack());
-        final ArrayList<MpcArrangeView.Lane> lanes = new ArrayList<>();
+        arrangementLanes.clear();
 
         for (int trackIndex = 0; trackIndex < trackCount; trackIndex++) {
             final String status = nativeSequenceTrackStatus(trackIndex);
@@ -1954,9 +1975,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 eventData = data.substring(separator + 1);
             }
 
-            lanes.add(new MpcArrangeView.Lane(
+            arrangementLanes.add(new MpcArrangeView.Lane(
                     trackIndex,
-                    status == null ? "Track " + (trackIndex + 1) : status,
+                    arrangementTrackName(status, trackIndex),
                     type,
                     program,
                     muted,
@@ -1965,8 +1986,33 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     MpcArrangeView.decodeEventData(eventData)));
         }
 
+        arrangementView.setLanes(arrangementLanes, selected);
+    }
+
+    private String arrangementTrackName(String status, int trackIndex) {
+        if (status == null || status.isEmpty()) {
+            return "Track " + (trackIndex + 1);
+        }
+        final int separator = status.indexOf("  |");
+        final String withoutEvents = separator >= 0
+                ? status.substring(0, separator) : status;
+        final String kindSeparator = withoutEvents.indexOf("  ");
+        if (kindSeparator >= 0 && kindSeparator + 2 < withoutEvents.length()) {
+            return withoutEvents.substring(kindSeparator + 2).trim();
+        }
+        return withoutEvents.trim();
+    }
+
+    private void refreshArrangeView() {
+        if (arrangementView == null || !startupComplete) {
+            return;
+        }
+
+        if (arrangementLanes.isEmpty() && nativeSequenceGetTrackCount() > 0) {
+            loadArrangementLanes();
+        }
+
         final int bars = Math.max(1, nativeSequenceGetBars());
-        arrangementView.setLanes(lanes, selected);
         arrangementView.setTimeline(
                 bars,
                 nativeSequenceGetLoopStartBar(),
@@ -3646,6 +3692,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     }
                     if ("ARRANGE".equals(currentPage)) {
                         refreshArrangeView();
+                    }
+                    if ("MAIN".equals(currentPage)) {
+                        refreshMainArrangementPreview();
                     }
                 }
 
