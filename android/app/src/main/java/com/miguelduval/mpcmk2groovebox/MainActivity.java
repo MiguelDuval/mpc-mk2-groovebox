@@ -805,7 +805,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 break;
 
             case GRID:
-                addFunction("STEP", true, v -> showSequenceStepPage());
+                addFunction("STEP", drumGridAvailable(), v -> {
+                    if (drumGridAvailable()) {
+                        showSequenceStepPage();
+                    }
+                });
                 addFunction("ZOOM H", true, v -> zoomSequenceGridHorizontal(1));
                 addFunction("ZOOM V", true, v -> zoomSequenceGridVertical(1));
                 addFunction("TRACK VIEW", true, v -> showTrackViewPage());
@@ -2921,7 +2925,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.navigate(MpcUiState.Mode.GRID);
         navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
-        navigationController.setActionAvailable(nativeSequenceIsGridEditable());
+        final int gridTrack = Math.max(0, nativeSequenceGetSelectedTrack());
+        final String gridTrackType = nativeSequenceGetTrackType(gridTrack);
+        final boolean drumGrid = "DRUM".equalsIgnoreCase(gridTrackType);
+        navigationController.setActionAvailable(drumGrid
+                && nativeSequenceIsGridEditable());
         pageTitle.setText("GRID");
         content.removeAllViews();
         sequenceTimeline = null;
@@ -3003,6 +3011,38 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         info.setPadding(dp(8), 0, dp(8), 0);
         page.addView(info, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
+
+        if (!drumGrid) {
+            LinearLayout unavailable = panel();
+            unavailable.setContentDescription("MPC Grid View unavailable track type");
+            TextView unavailableTitle = label(
+                    "GRID • " + gridTrackType + " TRACK",
+                    16, TEXT);
+            unavailableTitle.setTypeface(Typeface.DEFAULT_BOLD);
+            unavailableTitle.setGravity(Gravity.CENTER);
+            unavailable.addView(unavailableTitle,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+            TextView unavailableBody = label(
+                    "This Track Type requires its dedicated MPC Grid renderer. "
+                            + "Drum Grid is not substituted here.",
+                    11, MUTED);
+            unavailableBody.setGravity(Gravity.CENTER);
+            unavailable.addView(unavailableBody,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+            page.addView(unavailable,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+            content.addView(page);
+            refreshMpcCompactContext();
+            refreshMpcFunctionBar();
+            updateModeRailSelection();
+            return;
+        }
 
         sequenceGridView = new SequenceGridView(this);
         sequenceGridView.setContentDescription("MPC Grid View drum event grid");
@@ -3124,9 +3164,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackContext.setText(String.format(
                 Locale.ROOT,
                 "TRACK %02d • %s",
-                nativeSequenceGetSelectedTrack() + 1,
-                nativeSequenceTrackStatus(
-                        nativeSequenceGetSelectedTrack())));
+                gridTrack + 1,
+                nativeSequenceTrackStatus(gridTrack)));
         range.setText(String.format(
                 Locale.ROOT,
                 "STEPS %02d–%02d / %02d",
@@ -3148,6 +3187,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMpcCompactContext();
         refreshMpcFunctionBar();
         updateModeRailSelection();
+    }
+
+    private boolean drumGridAvailable() {
+        if (!startupComplete) {
+            return false;
+        }
+        final int track = Math.max(0, nativeSequenceGetSelectedTrack());
+        return "DRUM".equalsIgnoreCase(nativeSequenceGetTrackType(track));
     }
 
     private void refreshGridToolState() {
@@ -6057,6 +6104,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getWindow().getDecorView(), "MPC Grid View drum event grid");
         if (gridView == null || gridView.getHeight() <= dp(120)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: sequence grid editor");
+            return;
+        }
+        if (!drumGridAvailable()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: audit track is not Drum");
             return;
         }
         if (findViewWithContentDescription(
