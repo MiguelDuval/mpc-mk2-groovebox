@@ -2050,6 +2050,71 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackProgram(
             "PROGRAM • " + track.programId);
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetDrumProgramCount(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jint>(
+            mpc::MpcCore::instance().projectState().project().drumPrograms.size());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetDrumProgramName(
+        JNIEnv* env, jobject /* thiz */, jint programIndex)
+{
+    const auto& programs =
+            mpc::MpcCore::instance().projectState().project().drumPrograms;
+    if (programIndex < 0
+            || static_cast<std::size_t>(programIndex) >= programs.size()) {
+        return toJString(env, "NONE");
+    }
+    const auto& program = programs[static_cast<std::size_t>(programIndex)];
+    return toJString(
+            env,
+            program.name.empty() ? program.id : program.name);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackProgramIndex(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    if (trackIndex < 0) {
+        return -1;
+    }
+    return static_cast<jint>(
+            state.activeProgramIndexForTrack(
+                    static_cast<std::size_t>(trackIndex)));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTrackProgram(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jint programIndex)
+{
+    if (trackIndex < 0 || programIndex < 0) {
+        return toJString(env, "Program selection failed");
+    }
+
+    auto& state = mpc::MpcCore::instance().projectState();
+    const auto& programs = state.project().drumPrograms;
+    if (static_cast<std::size_t>(programIndex) >= programs.size()) {
+        return toJString(env, "Program selection failed: invalid program");
+    }
+
+    const std::string programId =
+            programs[static_cast<std::size_t>(programIndex)].id;
+    if (!state.setTrackProgram(
+            static_cast<std::size_t>(trackIndex), programId)) {
+        return toJString(
+                env,
+                "Program selection failed: Track requires a Drum Program");
+    }
+
+    return toJString(
+            env,
+            "Program • " + programs[static_cast<std::size_t>(programIndex)].name);
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelectTrack(
         JNIEnv* env, jobject /* thiz */, jint trackIndex)
