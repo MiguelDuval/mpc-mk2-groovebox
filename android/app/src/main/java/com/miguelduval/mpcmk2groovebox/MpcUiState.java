@@ -213,7 +213,7 @@ final class MpcUiState {
             case "SEQ":
                 return state.withMode(Mode.TRACK_VIEW);
             case "MIX":
-                return state.withMode(Mode.CHANNEL_MIXER);
+                return state.withMode(Mode.PAD_MIXER);
             case "MENU":
                 return state.withMode(Mode.MENU);
             default:
