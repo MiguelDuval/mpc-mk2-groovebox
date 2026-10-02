@@ -131,6 +131,12 @@ assert_activity_present() {
 }
 
 wait_for_log_marker "UI_READY" 30 2
+if adb logcat -d -t 500 2>/dev/null | grep -Fq "MpcGroovebox: NATIVE_LIBRARY_LOAD_FAILED"; then
+  echo "ERROR: native library failed to load during UI-only startup."
+  adb logcat -d -t 800 2>/dev/null | grep -F "MpcGroovebox:" | tail -n 120 || true
+  dump_debug_state
+  exit 1
+fi
 wait_for_log_marker "UI_ONLY_COMPLETE" 30 2
 assert_activity_present "com.miguelduval.mpcmk2groovebox.debug/com.miguelduval.mpcmk2groovebox.MainActivity"
 echo "UI-only startup diagnostic passed."
