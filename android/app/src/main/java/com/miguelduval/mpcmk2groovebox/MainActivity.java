@@ -4968,7 +4968,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshGridToolState();
         }
 
-        View parent = sequenceGridView.getParent();
+        android.view.ViewParent parent = sequenceGridView.getParent();
         if (parent instanceof LinearLayout) {
             LinearLayout page = (LinearLayout) parent;
             if (page.getChildCount() >= 5
@@ -5041,8 +5041,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 sequenceGridVisiblePads);
         sequenceGridView.setState(
                 nativeSequenceGetGridVelocities(firstStep, gridTicks),
-                localPlayhead,
-                selectedPad);
+                localPlayhead);
         refreshSequenceGridPageInfo();
     }
 
@@ -5292,8 +5291,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             sequenceGridView.setState(
                     nativeSequenceGetGridVelocities(
                             (int) firstStep, gridTicks),
-                    localStep,
-                    selectedPad);
+                    localStep);
         }
 
         if (sequenceStepButtons[0] != null) {

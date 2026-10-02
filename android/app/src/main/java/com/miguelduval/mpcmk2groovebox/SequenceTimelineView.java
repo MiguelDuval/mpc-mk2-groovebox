@@ -16,6 +16,10 @@ public final class SequenceTimelineView extends View {
         void onLoopCommitted(int startBar, int endBar);
     }
 
+    public interface OnDoubleTapListener {
+        void onDoubleTapped();
+    }
+
     private static final int BG = 0xff111518;
     private static final int GRID = 0xff344047;
     private static final int TEXT = 0xffb2bdc4;
