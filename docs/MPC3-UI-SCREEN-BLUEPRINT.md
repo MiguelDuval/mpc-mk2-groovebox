@@ -1044,3 +1044,8 @@ The Track header is rendered as one continuous identity band rather than a stand
 ## 2026-10-03 XL Channel Strip geometry fidelity
 
 The shell's compact left column now uses a shallow top control area and a dedicated XL-width channel column. Within the Track strip, the LVL / FX / SEND / I/O tab row immediately follows the selected Track identity, matching the documented MPC channel-strip hierarchy. The normal Function Bar remains the bottom shell boundary.
+
+
+## 2026-10-03 Pad XL Channel Strip tab parity
+
+Pad-strip presentation now uses the same LVL / FX / SEND / I/O tab geometry as the Track strip. LVL is the only active presentation because the current backend exposes truthful Pad level/pan/tune state; FX, SEND and I/O remain visually reserved rather than simulated.
