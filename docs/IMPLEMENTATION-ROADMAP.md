@@ -409,6 +409,12 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **State synchronization:** changing the selected layer updates the Main Layer field without changing Track, Sequence or transport context.
 - **QA contract extended:** the Android UI smoke preflight now requires all four Main Track-state content descriptions.
 
+## 2026-10-02 Main semantic double-tap increment
+
+- **Track Edit entry gesture wired:** double-tapping Main's Track sample/waveform enters the Track Edit semantic context; until the backend editor contract exists, the app shows a reserved gateway with current Track/Pad/Layer rather than a silent no-op.
+- **Arrangement → Grid gesture wired:** double-tapping Main's Arrangement overview opens Grid for supported Drum tracks and explicitly refuses unsupported Track Types.
+- **Gesture infrastructure isolated:** reusable double-tap hooks were added to the existing WaveformView and SequenceTimelineView without changing their sample-region, loop, zoom or transport semantics.
+
 ## 2026-10-02 Main Sequence field parity increment
 
 - **MPC Sequence vocabulary aligned:** Main now presents SEQ / BARS / START / END / TRANSPOSE as compact state fields around the existing sequence name and BPM.
