@@ -74,6 +74,11 @@ for required in \
   "MPC condensed Mixer Strip Track or Pad selector" \
   "MPC condensed Mixer Strip showing Track" \
   "MPC condensed Mixer Strip showing Pad" \
+  "MPC Mixer Strip LVL active" \
+  "MPC Mixer Strip FX unavailable" \
+  "MPC Mixer Strip SEND unavailable" \
+  "MPC Mixer Strip I/O unavailable" \
+  "private LinearLayout buildCompactMixerTabs()" \
   "MPC condensed Mixer Strip" \
   "LVL" \
   "FX" \
