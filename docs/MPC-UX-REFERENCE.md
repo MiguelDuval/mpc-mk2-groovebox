@@ -38,3 +38,17 @@ The application uses a **horizontal / landscape display orientation** as a hard 
 All primary UI layouts, screen compositions and interaction surfaces must be designed for a landscape canvas. Portrait orientation must not become the default or an alternate application mode.
 
 This matches the intended standalone-workstation presentation and the horizontal display relationship of hardware such as the MPC One.
+
+### Controller indication invariant
+
+The MPC Studio MkII is the primary physical surface. Its buttons are not assumed to be self-explanatory: every latched or contextual action must expose its current state on the controller and on the Android screen.
+
+The phone-side controller strip is persistent and answers four questions without navigation:
+1. What MkII context is active?
+2. What does Data Dial / +/- currently edit?
+3. Which pad bank is active?
+4. Is the context primary, alternate/Shift, active, or unavailable?
+
+The controller side mirrors the same state using the MkII's available button LEDs, pad RGB, Touch Strip segments and LCD. A transient action-result message is never the sole indication of a latched context.
+
+This is a production/live-performance invariant: a performer must be able to recover the current control state at a glance after looking away from the screen.
