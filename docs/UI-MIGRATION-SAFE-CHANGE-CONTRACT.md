@@ -182,3 +182,25 @@ For each meaningful refactor record:
 - remaining gaps.
 
 This makes the global rewrite auditable across future sessions.
+
+
+## 2026-10-02 Phase 1/2 implementation checkpoint
+
+Branch: `work/mpc3-ui-migration-master-spec`  
+Checkpoint head: `5dadbbfa6e7c1485d5098f1bd2f6c795a0472ddf`
+
+The presentation migration now has its first executable boundary:
+
+- `MpcUiState` is the UI/navigation snapshot and does not own audio or realtime objects.
+- `MpcNavigationController` owns mode, subcontext, focus, history and exactly five configurable shortcuts.
+- `MpcShell` owns the Toolbar / Shortcuts / compact context / Workspace / Function Bar composition.
+- `MainActivity` keeps legacy workspace implementations as temporary render adapters while the shell becomes the canonical composition.
+- MPC Studio MkII Main and Track View semantic navigation now enter different contexts; the previous routing of both actions to the Main workspace is removed.
+- Browser, Grid, Sampler and Channel Mixer are exposed through the five initial shortcut slots.
+- The Android UI smoke audit now verifies the five-shortcut shell before exercising the existing Grid/Step/Sample/record workflows.
+
+No realtime audio, sampler, sequencer scheduler/clock, raw MIDI decoder or hardware SysEx layer was changed by this slice.
+
+Verification:
+- GitHub Actions: no completed status was available at this checkpoint; do not treat the branch as CI-green.
+- Physical MkII verification: pending.
