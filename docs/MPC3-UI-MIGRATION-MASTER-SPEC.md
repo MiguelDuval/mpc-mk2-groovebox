@@ -911,3 +911,24 @@ The migration is complete when:
 - audio/sequencer engine remains stable and independently testable.
 
 This is the permanent UI direction for MPC MK2 Groovebox.
+
+
+## 2026-10-02 implementation checkpoint — Main/Menu vertical slice
+The first functional Main/Menu vertical slice is now on `work/mpc3-ui-migration-master-spec`.
+
+### Main Mode
+The legacy Main composition has been replaced by a three-level MPC-style overview:
+`Sequence → Track → Program/Performance/Arrangement`.
+The existing pad engine, sample editor, sequencer and transport remain behind the workspace; no realtime/native foundation was rewritten.
+
+### Menu
+The launcher is now a canonical 4×4 vocabulary backed by `MpcModeRegistry`. Available contexts navigate into existing workspaces. Contexts that cannot yet be implemented truthfully are explicitly marked `RESERVED`, rather than exposing dead controls.
+
+### Shell
+The shell now keeps persistent timing context in the top toolbar. Timing Correct is functional; Metronome and Automation remain explicit future contexts.
+
+### Semantic correction
+The currently implemented four-strip mix workspace is classified as `PAD_MIXER`. `CHANNEL_MIXER` is reserved until the backend can represent real per-track strips without fabricating controls.
+
+### Safety
+No audio callback, sampler rendering path, sequencer clock/scheduler, raw MkII decoder, or SysEx transport was changed in this slice.
