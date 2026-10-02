@@ -87,6 +87,28 @@ int main() {
     assert(state.activeTrackIndex() == 1);
     assert(state.selectTrack(0));
     assert(state.activeTrackIndex() == 0);
+    assert(state.activeProgramIndexForTrack(0) == 0);
+
+    mpc::domain::DrumProgram secondProgram;
+    secondProgram.id = "drum-program-2";
+    secondProgram.name = "Drum Program 2";
+    secondProgram.type = mpc::domain::ProgramType::Drum;
+    for (std::size_t pad = 0; pad < mpc::domain::kMaxProgramPads; ++pad) {
+        secondProgram.pads[pad].index = static_cast<std::uint16_t>(pad);
+        secondProgram.pads[pad].midiNote =
+                static_cast<std::uint8_t>(48 + pad);
+        secondProgram.pads[pad].name = "Program 2 Pad " + std::to_string(pad + 1);
+    }
+    state.project().drumPrograms.push_back(std::move(secondProgram));
+
+    assert(state.setTrackProgram(0, "drum-program-2"));
+    assert(state.activeSequence().tracks[0].programId == "drum-program-2");
+    assert(state.activeProgramIndexForTrack(0) == 1);
+
+    assert(state.selectTrack(0));
+    assert(state.activeDrumProgram().id == "drum-program-2");
+    assert(!state.setTrackProgram(0, "missing-program"));
+
     assert(!state.selectTrack(99));
 
     assert(state.sequenceCount() == 1);
