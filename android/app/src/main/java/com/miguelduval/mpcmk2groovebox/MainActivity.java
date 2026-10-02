@@ -5606,6 +5606,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             padButtons[i].setBackground(strokeBackground(fill, stroke, 8));
         }
         refreshAllInspectorState();
+        refreshMainModePadVisuals();
+        refreshMainTrackQuickSample();
     }
 
     private void refreshAllInspectorState() {
