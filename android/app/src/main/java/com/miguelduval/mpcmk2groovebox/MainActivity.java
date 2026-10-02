@@ -88,6 +88,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView compactProgramContext;
     private TextView compactPadContext;
     private TextView compactFocusContext;
+    private android.widget.ProgressBar compactPadLevelMeter;
+    private TextView compactPadLevelLabel;
     private Button timingCorrectTopButton;
     private Button metronomeTopButton;
     private Button automationTopButton;
@@ -550,6 +552,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         area.addView(compactPadContext, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
 
+        TextView mixerHeader = label("MIXER STRIP", 8, MUTED);
+        mixerHeader.setTypeface(Typeface.DEFAULT_BOLD);
+        mixerHeader.setPadding(dp(7), dp(3), dp(7), 0);
+        area.addView(mixerHeader, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
+
+        compactPadLevelMeter = new android.widget.ProgressBar(
+                this, null, android.R.attr.progressBarStyleHorizontal);
+        compactPadLevelMeter.setMax(100);
+        compactPadLevelMeter.setProgress(100);
+        compactPadLevelMeter.setContentDescription(
+                "MPC Main Mixer Strip level meter");
+        area.addView(compactPadLevelMeter, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
+
+        compactPadLevelLabel = label(
+                "LEVEL 100%",
+                9,
+                TEXT);
+        compactPadLevelLabel.setGravity(Gravity.CENTER_VERTICAL);
+        compactPadLevelLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        compactPadLevelLabel.setContentDescription(
+                "MPC Main Mixer Strip level");
+        area.addView(compactPadLevelLabel, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+
         compactFocusContext = compactContextField(
                 "DIAL • NONE",
                 "MPC shell dial focus",
@@ -734,12 +762,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     v -> showProgramSelectPage());
         }
 
+        final char padBank = (char) ('A' + Math.max(
+                0,
+                Math.min(7, navigationController.state().padBank())));
         compactPadContext.setText(String.format(
                 Locale.ROOT, "PAD %02d • BANK %s",
                 selectedPad + 1,
-                (char) ('A' + Math.max(
-                        0,
-                        Math.min(7, navigationController.state().padBank())))));
+                padBank));
+
+        if (compactPadLevelMeter != null && compactPadLevelLabel != null) {
+            final int levelPercent = nativeStateReady
+                    ? Math.max(0, Math.min(100,
+                            Math.round(nativeAudioGetPadLevel(selectedPad) * 100.0f)))
+                    : 100;
+            compactPadLevelMeter.setProgress(levelPercent);
+            compactPadLevelLabel.setText(String.format(
+                    Locale.ROOT,
+                    "LEVEL %d%%  •  PAD %02d",
+                    levelPercent,
+                    selectedPad + 1));
+        }
 
         final MpcUiState state = navigationController.state();
         compactFocusContext.setText(
@@ -954,7 +996,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bar.addView(pageTitle, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 0.55f));
 
-        sequenceTransportView = label("S01 001.1.000 120.0", 10, TEXT);
+        sequenceTransportView = label(
+                "BAR 001  BEAT 1  TICK 000",
+                10,
+                TEXT);
         sequenceTransportView.setGravity(Gravity.CENTER);
         sequenceTransportView.setTypeface(Typeface.DEFAULT_BOLD);
         sequenceTransportView.setContentDescription("Sequence position and tempo");
@@ -4585,6 +4630,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getSequenceTicksPerBeat() * Math.max(1, nativeSequenceGetNumerator()));
     }
 
+    private String formatMpcToolbarPosition(long positionTicks) {
+        final long ticksPerBeat = Math.max(1L, Math.round(getSequenceTicksPerBeat()));
+        final long ticksPerBar = Math.max(
+                ticksPerBeat,
+                Math.round(getSequenceTicksPerBar()));
+        long normalized = Math.max(0L, positionTicks);
+        final int bar = (int) (normalized / ticksPerBar) + 1;
+        normalized %= ticksPerBar;
+        final int beat = (int) (normalized / ticksPerBeat) + 1;
+        final int tick = (int) (normalized % ticksPerBeat);
+        return String.format(
+                Locale.ROOT,
+                "BAR %03d  BEAT %d  TICK %03d",
+                bar,
+                beat,
+                tick);
+    }
+
     private String formatSequencePosition(long positionTicks) {
         final long ticksPerBeat = Math.max(1L, Math.round(getSequenceTicksPerBeat()));
         final long ticksPerBar = Math.max(
@@ -4866,14 +4929,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     && queuedIndex < sequenceCount
                     ? String.format(Locale.ROOT, " →S%02d", queuedIndex + 1)
                     : "";
-            sequenceTransportView.setText(String.format(
-                    Locale.ROOT,
-                    "S%02d/%02d%s %s %.1f",
-                    sequenceIndex + 1,
-                    sequenceCount,
-                    queueLabel,
-                    formatSequencePosition(positionTicks),
-                    tempo));
+            sequenceTransportView.setText(
+                    formatMpcToolbarPosition(positionTicks));
         }
     }
 
@@ -4909,7 +4966,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             level.setProgress(Math.round(nativeAudioGetPadLevel(p) * 100));
             level.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                 @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
-                    if (fromUser) nativeAudioSetPadLevel(p, progress / 100.0f);
+                    if (fromUser) {
+                        nativeAudioSetPadLevel(p, progress / 100.0f);
+                        refreshMpcCompactContext();
+                    }
                 }
                 @Override public void onStartTrackingTouch(SeekBar bar) {}
                 @Override public void onStopTrackingTouch(SeekBar bar) {}
