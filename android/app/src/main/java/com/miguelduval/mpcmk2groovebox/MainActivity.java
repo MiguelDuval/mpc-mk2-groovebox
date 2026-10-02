@@ -579,6 +579,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Button shortcut = mpcShortcutButton(
                     mpcShortcutLabel(mode), mode);
             shortcut.setContentDescription("MPC shortcut " + mode.label());
+            shortcut.setTextSize(18);
+            shortcut.setTypeface(Typeface.DEFAULT_BOLD);
             shortcutButtons[i] = shortcut;
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
@@ -1403,24 +1405,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private String mpcShortcutLabel(MpcUiState.Mode mode) {
         if (mode == null) return "□";
         switch (mode) {
-            case MAIN: return "⌂\nMAIN";
-            case TRACK_VIEW: return "☷\nTRACK";
-            case BROWSER: return "⌕\nBROWSE";
-            case GRID: return "▦\nGRID";
-            case STEP: return "▥\nSTEP";
-            case TRACK_EDIT: return "✎\nEDIT";
-            case SAMPLE_EDIT: return "∿\nSAMPLE";
-            case SAMPLER: return "●\nREC";
-            case CHANNEL_MIXER: return "≡\nMIX";
-            case PAD_MIXER: return "▤\nPAD MIX";
-            case LEVELS_16: return "16\nLEVEL";
-            case PAD_PERFORM: return "✣\nPERFORM";
-            case NEXT_SEQUENCE: return "▶\nNEXT";
-            case ARRANGE: return "╬\nARRANGE";
-            case LIST_EDIT: return "☰\nLIST";
-            case PROJECT: return "P\nPROJECT";
-            case MENU: return "▦\nMENU";
-            default: return "□\n" + mode.label();
+            case MAIN: return "⌂";
+            case TRACK_VIEW: return "☷";
+            case BROWSER: return "⌕";
+            case GRID: return "▦";
+            case STEP: return "▥";
+            case TRACK_EDIT: return "✎";
+            case SAMPLE_EDIT: return "∿";
+            case SAMPLER: return "●";
+            case CHANNEL_MIXER: return "≡";
+            case PAD_MIXER: return "▤";
+            case LEVELS_16: return "16";
+            case PAD_PERFORM: return "✣";
+            case NEXT_SEQUENCE: return "▶";
+            case ARRANGE: return "╬";
+            case LIST_EDIT: return "☰";
+            case PROJECT: return "P";
+            case MENU: return "▦";
+            default: return "□";
         }
     }
 
@@ -1856,11 +1858,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 MpcUiState.DataDialFocus.SEQUENCE,
                 3,
                 "SEQUENCE • DATA DIAL / +/-"));
-        sequenceType.setOnClickListener(v -> focusMainSequenceField(
-                MpcUiState.Subcontext.SEQUENCE_SELECT,
-                MpcUiState.DataDialFocus.SEQUENCE,
-                3,
-                "SEQUENCE • DATA DIAL / +/-"));
+        sequenceType.setOnClickListener(v -> setBottomStatus(
+                "SEQ TEMPO • Sequence tempo source is fixed to SEQ in the current backend"));
+        sequenceType.setEnabled(false);
+        sequenceType.setAlpha(0.7f);
+        sequenceType.setContentDescription(
+                "Main Mode sequence tempo source • SEQ • Global unavailable");
         bpm.setOnClickListener(v -> focusMainSequenceField(
                 MpcUiState.Subcontext.NONE,
                 MpcUiState.DataDialFocus.SEQUENCE,
@@ -2604,7 +2607,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final int focus = hardwareFocus;
         setMainFieldFocus(mainSequenceNameField, focus == 3);
-        setMainFieldFocus(mainSequenceTypeField, focus == 3);
+        setMainFieldFocus(mainSequenceTypeField, false);
         setMainFieldFocus(mainSequenceBpmField, focus == HARDWARE_FOCUS_SEQUENCE_BPM);
         setMainFieldFocus(mainSequenceBarsField, focus == HARDWARE_FOCUS_SEQUENCE_BARS);
         setMainFieldFocus(mainSequenceStartField, focus == HARDWARE_FOCUS_SEQUENCE_START);
@@ -7458,7 +7461,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void runUiAudit() {
         Log.i(TAG, "UI_HIERARCHY_BEGIN");
         String[] expected = {
-                "MAIN", "BROWSER", "GRID", "SAMPLER", "PAD MIXER",
+                "GRID", "SAMPLER", "PAD MIXER",
                 "MENU", "PLAY", "STOP", "MIDI", "01", "16", "LOAD"
         };
 
@@ -7472,15 +7475,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Log.i(TAG, "UI_HIERARCHY_COMPLETE");
         Log.i(TAG, "UI_INTERACTION_BEGIN");
 
-        View browserShortcut = findViewWithExactText(
-                getWindow().getDecorView(), "BROWSER");
+        View browserShortcut = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC shortcut BROWSER");
         if (browserShortcut == null || !browserShortcut.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: BROWSER shortcut");
             return;
         }
 
-        View mainShortcut = findViewWithExactText(
-                getWindow().getDecorView(), "MAIN");
+        View mainShortcut = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC shortcut MAIN");
         if (mainShortcut == null || !mainShortcut.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MAIN shortcut return");
             return;
