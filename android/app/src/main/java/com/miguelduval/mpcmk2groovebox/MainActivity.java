@@ -3994,6 +3994,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         pageTitle.setText("SHORTCUTS");
         content.removeAllViews();
 
+        final MpcModeRegistry.Entry[] allModes = MpcModeRegistry.menuEntries();
+        final ArrayList<MpcModeRegistry.Entry> availableModes = new ArrayList<>();
+        for (MpcModeRegistry.Entry entry : allModes) {
+            if (entry.available) {
+                availableModes.add(entry);
+            }
+        }
+
         LinearLayout page = page();
         page.setPadding(dp(8), dp(6), dp(8), dp(2));
 
@@ -4005,31 +4013,74 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
         TextView hint = label(
-                "Reorder the five promoted MPC contexts. The mode vocabulary itself remains in Menu.",
+                "Each slot can promote any implemented context. RESERVED modes stay in Menu.",
                 10, MUTED);
         page.addView(hint, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
 
         LinearLayout list = column();
-        final MpcUiState.Mode[] modes = navigationController.shortcuts();
+        MpcUiState.Mode[] current = navigationController.shortcuts();
         for (int i = 0; i < MpcNavigationController.SHORTCUT_COUNT; i++) {
             final int slot = i;
             LinearLayout row = row();
             row.setPadding(dp(6), dp(3), dp(6), dp(3));
-            row.setBackground(strokeBackground(
-                    SURFACE_2, LINE, 7));
+            row.setBackground(strokeBackground(SURFACE_2, LINE, 7));
 
             TextView position = label(
                     String.format(Locale.ROOT, "%02d", i + 1),
                     13, ACCENT);
             position.setGravity(Gravity.CENTER);
             position.setTypeface(Typeface.DEFAULT_BOLD);
-            row.addView(position, new LinearLayout.LayoutParams(dp(42), dp(48)));
+            row.addView(position, new LinearLayout.LayoutParams(
+                    dp(42), dp(48)));
 
-            TextView modeLabel = label(modes[i].label(), 12, TEXT);
-            modeLabel.setGravity(Gravity.CENTER_VERTICAL);
-            modeLabel.setTypeface(Typeface.DEFAULT_BOLD);
-            row.addView(modeLabel, new LinearLayout.LayoutParams(
+            android.widget.Spinner spinner = new android.widget.Spinner(this);
+            ArrayList<String> labels = new ArrayList<>();
+            int selectedIndex = 0;
+            for (int j = 0; j < availableModes.size(); j++) {
+                MpcModeRegistry.Entry entry = availableModes.get(j);
+                labels.add(entry.label);
+                if (entry.mode == current[i]) {
+                    selectedIndex = j;
+                }
+            }
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                    this,
+                    android.R.layout.simple_spinner_item,
+                    labels);
+            adapter.setDropDownViewResource(
+                    android.R.layout.simple_spinner_dropdown_item);
+            spinner.setAdapter(adapter);
+            spinner.setSelection(selectedIndex);
+            spinner.setContentDescription(
+                    "Shortcut " + (i + 1) + " mode selector");
+            spinner.setOnItemSelectedListener(
+                    new android.widget.AdapterView.OnItemSelectedListener() {
+                        @Override
+                        public void onItemSelected(
+                                android.widget.AdapterView<?> parent,
+                                View view,
+                                int positionIndex,
+                                long id) {
+                            if (positionIndex >= 0
+                                    && positionIndex < availableModes.size()) {
+                                navigationController.setShortcut(
+                                        slot,
+                                        availableModes.get(positionIndex).mode);
+                                setBottomStatus(String.format(
+                                        Locale.ROOT,
+                                        "SHORTCUT %d • %s",
+                                        slot + 1,
+                                        availableModes.get(positionIndex).label));
+                            }
+                        }
+
+                        @Override
+                        public void onNothingSelected(
+                                android.widget.AdapterView<?> parent) {
+                        }
+                    });
+            row.addView(spinner, new LinearLayout.LayoutParams(
                     0, dp(48), 1));
 
             Button up = actionButton("▲", v -> {
@@ -4040,7 +4091,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             });
             up.setEnabled(i > 0);
             up.setAlpha(i > 0 ? 1.0f : 0.35f);
-            row.addView(up, new LinearLayout.LayoutParams(dp(52), dp(44)));
+            row.addView(up, new LinearLayout.LayoutParams(dp(50), dp(44)));
 
             Button down = actionButton("▼", v -> {
                 if (slot < MpcNavigationController.SHORTCUT_COUNT - 1) {
@@ -4049,8 +4100,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
             });
             down.setEnabled(i < MpcNavigationController.SHORTCUT_COUNT - 1);
-            down.setAlpha(i < MpcNavigationController.SHORTCUT_COUNT - 1 ? 1.0f : 0.35f);
-            row.addView(down, new LinearLayout.LayoutParams(dp(52), dp(44)));
+            down.setAlpha(
+                    i < MpcNavigationController.SHORTCUT_COUNT - 1
+                            ? 1.0f : 0.35f);
+            row.addView(down, new LinearLayout.LayoutParams(dp(50), dp(44)));
 
             list.addView(row, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
