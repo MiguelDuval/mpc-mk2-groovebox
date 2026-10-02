@@ -849,17 +849,38 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         setBottomStatus(nativeSequenceSelectTrack(next));
         navigationController.setSelectedTrack(next);
-        showTrackViewPage();
+
+        final MpcUiState.Mode mode = navigationController.state().mode();
+        if (mode == MpcUiState.Mode.MAIN) {
+            showMainPage();
+        } else if (mode == MpcUiState.Mode.TRACK_VIEW) {
+            showTrackViewPage();
+        } else {
+            showMainPage();
+        }
     }
 
     private void toggleSelectedTrackMute() {
         final int track = nativeSequenceGetSelectedTrack();
         setBottomStatus(nativeSequenceToggleTrackMute(track));
+
         if ("ARRANGE".equals(currentPage)) {
             loadArrangementLanes();
             refreshArrangeView();
+            refreshMpcCompactContext();
+            return;
         }
+
+        if ("TRACK_VIEW".equals(currentPage)) {
+            showTrackViewPage();
+            return;
+        }
+
         refreshSequenceControls();
+        refreshMpcCompactContext();
+        if ("MAIN".equals(currentPage)) {
+            refreshMainArrangementPreview();
+        }
     }
 
     private View buildTopBar() {
@@ -2488,10 +2509,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.navigate(MpcUiState.Mode.TRACK_VIEW);
         navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
+        navigationController.setActionAvailable(true);
         pageTitle.setText("TRACK VIEW");
         content.removeAllViews();
 
         LinearLayout page = page();
+        page.setContentDescription("MPC Track View workspace");
         page.setPadding(dp(8), dp(6), dp(8), dp(2));
 
         LinearLayout header = row();
@@ -2512,24 +2535,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(dp(90), dp(34)));
         page.addView(header);
 
-        LinearLayout sequenceSummary = panel();
-        sequenceSummary.setContentDescription("Track View sequence overview");
-
-        TextView sequenceName = label("", 15, TEXT);
-        sequenceName.setTypeface(Typeface.DEFAULT_BOLD);
-        sequenceSummary.addView(sequenceName, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
-
-        TextView sequenceStats = label("", 10, MUTED);
-        sequenceSummary.addView(sequenceStats, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
-
-        page.addView(sequenceSummary, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(70)));
-
         ScrollView scroll = new ScrollView(this);
         LinearLayout strips = column();
-        strips.setPadding(0, dp(2), 0, dp(2));
+        strips.setPadding(0, dp(4), 0, dp(4));
         scroll.addView(strips);
 
         final int count = startupComplete
@@ -2539,28 +2547,43 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         if (count == 0) {
             strips.addView(label(
-                    "NO TRACKS • add a track from the Sequence editor",
+                    "NO TRACKS • NEW TRACK is available in the shell Function Bar",
                     12, MUTED));
         } else {
             for (int i = 0; i < count; i++) {
                 final int trackIndex = i;
+                final boolean isSelected = i == selected;
+                final boolean muted = nativeSequenceIsTrackMuted(trackIndex);
+                final boolean armed = isSelected
+                        && nativeSequenceIsSelectedTrackArmed();
+
                 LinearLayout strip = row();
-                strip.setPadding(dp(6), dp(3), dp(6), dp(3));
+                strip.setPadding(dp(7), dp(4), dp(7), dp(4));
+                strip.setGravity(Gravity.CENTER_VERTICAL);
+                strip.setContentDescription(
+                        "Track View track " + (i + 1));
                 strip.setBackground(strokeBackground(
-                        i == selected
+                        isSelected
                                 ? Color.rgb(42, 66, 76) : SURFACE_2,
-                        i == selected ? ACCENT : LINE,
+                        isSelected ? ACCENT : LINE,
                         7));
+                strip.setOnClickListener(v -> {
+                    setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+                    navigationController.setSelectedTrack(trackIndex);
+                    showTrackViewPage();
+                });
 
                 TextView name = label(
-                        String.format(Locale.ROOT, "%02d  %s",
-                                i + 1, nativeSequenceTrackStatus(i)),
+                        String.format(
+                                Locale.ROOT,
+                                "%02d  %s",
+                                i + 1,
+                                nativeSequenceTrackStatus(trackIndex)),
                         12, TEXT);
                 name.setTypeface(Typeface.DEFAULT_BOLD);
-                name.setContentDescription(
-                        "Track View track " + (i + 1));
+                name.setGravity(Gravity.CENTER_VERTICAL);
                 strip.addView(name, new LinearLayout.LayoutParams(
-                        0, dp(46), 1.7f));
+                        0, dp(52), 1.75f));
 
                 TextView type = label(
                         nativeSequenceGetTrackType(trackIndex),
@@ -2568,101 +2591,82 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 type.setGravity(Gravity.CENTER_VERTICAL);
                 type.setTypeface(Typeface.DEFAULT_BOLD);
                 strip.addView(type, new LinearLayout.LayoutParams(
-                        0, dp(46), 0.75f));
+                        0, dp(52), 0.75f));
 
+                String programName = nativeSequenceGetTrackProgram(trackIndex);
+                if (programName == null || programName.trim().isEmpty()) {
+                    programName = "—";
+                } else {
+                    programName = programName.replace("PROGRAM • ", "");
+                }
                 TextView program = label(
-                        nativeSequenceGetTrackProgram(trackIndex)
-                                .replace("PROGRAM • ", ""),
+                        programName,
                         9, MUTED);
                 program.setGravity(Gravity.CENTER_VERTICAL);
                 strip.addView(program, new LinearLayout.LayoutParams(
-                        0, dp(46), 1.15f));
+                        0, dp(52), 1.15f));
 
                 TextView events = label(
                         trackEventSummary(nativeSequenceTrackStatus(trackIndex)),
                         9, MUTED);
                 events.setGravity(Gravity.CENTER_VERTICAL);
                 strip.addView(events, new LinearLayout.LayoutParams(
-                        0, dp(46), 0.8f));
+                        0, dp(52), 0.75f));
 
-                Button select = actionButton("SELECT", v -> {
-                    setBottomStatus(nativeSequenceSelectTrack(trackIndex));
-                    navigationController.setSelectedTrack(trackIndex);
-                    showTrackViewPage();
-                });
-                strip.addView(select, new LinearLayout.LayoutParams(dp(78), dp(42)));
+                TextView rec = label(
+                        armed ? "REC" : "R",
+                        9,
+                        armed ? DANGER : MUTED);
+                rec.setGravity(Gravity.CENTER);
+                rec.setTypeface(Typeface.DEFAULT_BOLD);
+                rec.setBackground(strokeBackground(
+                        armed ? Color.rgb(104, 64, 64) : Color.TRANSPARENT,
+                        armed ? DANGER : LINE,
+                        6));
+                strip.addView(rec, new LinearLayout.LayoutParams(
+                        dp(46), dp(40)));
 
-                final boolean muted = nativeSequenceIsTrackMuted(trackIndex);
-                Button mute = actionButton(muted ? "M ON" : "M", v -> {
-                    setBottomStatus(nativeSequenceToggleTrackMute(trackIndex));
-                    showTrackViewPage();
-                });
+                TextView mute = label(
+                        muted ? "MUTE" : "M",
+                        9,
+                        muted ? ACTIVE : MUTED);
+                mute.setGravity(Gravity.CENTER);
+                mute.setTypeface(Typeface.DEFAULT_BOLD);
                 mute.setBackground(strokeBackground(
                         muted ? Color.rgb(74, 124, 88) : Color.TRANSPARENT,
                         muted ? ACTIVE : LINE,
                         6));
-                strip.addView(mute, new LinearLayout.LayoutParams(dp(58), dp(42)));
+                strip.addView(mute, new LinearLayout.LayoutParams(
+                        dp(58), dp(40)));
 
-                Button arm = actionButton(
-                        trackIndex == selected
-                                && nativeSequenceIsSelectedTrackArmed()
-                                ? "R ON" : "R",
-                        v -> {
-                            setBottomStatus(nativeSequenceSelectTrack(trackIndex));
-                            setBottomStatus(nativeSequenceSetSelectedTrackArmed(
-                                    !nativeSequenceIsSelectedTrackArmed()));
-                            showTrackViewPage();
-                        });
-                arm.setBackground(strokeBackground(
-                        trackIndex == selected
-                                && nativeSequenceIsSelectedTrackArmed()
-                                ? Color.rgb(104, 64, 64) : Color.TRANSPARENT,
-                        trackIndex == selected
-                                && nativeSequenceIsSelectedTrackArmed()
-                                ? DANGER : LINE,
-                        6));
-                strip.addView(arm, new LinearLayout.LayoutParams(dp(58), dp(42)));
-
-                Button solo = actionButton("S", null);
-                solo.setEnabled(false);
-                solo.setAlpha(0.45f);
-                solo.setContentDescription("Solo reserved");
-                strip.addView(solo, new LinearLayout.LayoutParams(dp(50), dp(42)));
+                TextView solo = label("SOLO", 8, MUTED);
+                solo.setGravity(Gravity.CENTER);
+                solo.setTypeface(Typeface.DEFAULT_BOLD);
+                solo.setAlpha(0.48f);
+                solo.setContentDescription(
+                        "Track View solo unavailable");
+                strip.addView(solo, new LinearLayout.LayoutParams(
+                        dp(50), dp(40)));
 
                 strips.addView(strip, new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(62)));
             }
         }
 
         page.addView(scroll, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        LinearLayout functions = row();
-        functions.addView(actionButton("GRID", v -> showSequenceGridPage()), weight());
-        functions.addView(actionButton("STEP", v -> showSequenceStepPage()), weight());
-        functions.addView(actionButton("NEW TRACK", v -> addSequenceTrack(0)), weight());
-        functions.addView(actionButton("SEQUENCE EDIT", v -> showSequencePage()), weight());
-        page.addView(functions, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+        TextView hint = label(
+                "SELECTED TRACK • use the shell Function Bar for REC ARM / TRACK − / TRACK + / MUTE / SOLO",
+                9, MUTED);
+        hint.setGravity(Gravity.CENTER_VERTICAL);
+        hint.setPadding(dp(8), 0, dp(8), 0);
+        page.addView(hint, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
         content.addView(page);
-
-        if (startupComplete) {
-            sequenceName.setText(String.format(
-                    Locale.ROOT, "Sequence %02d",
-                    Math.max(0, nativeSequenceGetIndex()) + 1));
-            sequenceStats.setText(String.format(
-                    Locale.ROOT, "%.1f BPM • %d bars • %d/%d • %s",
-                    nativeSequenceGetTempo(),
-                    nativeSequenceGetBars(),
-                    nativeSequenceGetNumerator(),
-                    nativeSequenceGetDenominator(),
-                    nativeSequenceIsLoopEnabled() ? "LOOP ON" : "LOOP OFF"));
-        } else {
-            sequenceName.setText("Sequence 01");
-            sequenceStats.setText("120.0 BPM • 1 bar • 4/4 • LOOP OFF");
-        }
-
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
         updateModeRailSelection();
     }
 
@@ -5770,6 +5774,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getWindow().getDecorView(), "TRACK VIEW");
         if (trackView == null || !trackView.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: TRACK VIEW");
+            return;
+        }
+
+        View trackViewWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Track View workspace");
+        if (trackViewWorkspace == null
+                || trackViewWorkspace.getHeight() <= dp(180)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track View workspace");
+            return;
+        }
+
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "Track View track 1") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track View track strips");
             return;
         }
 

@@ -256,6 +256,13 @@ This controller work supplements Stages 1, 2 and 7; it does not replace the over
 - Persistent compact Program context mirrors the same availability instead of offering a misleading Drum assignment action.
 - Screen Blueprint now documents the compact context semantics and non-Drum behavior.
 
+## 2026-10-02 Track View workflow increment
+
+- Track View is now a selectable status-strip workspace; row controls no longer duplicate the shell Function Bar.
+- Track View exposes type, Program/instrument, event summary, REC-arm, mute and unavailable Solo state at a glance.
+- TRACK − / TRACK + now preserve the current Main/Track View context instead of forcing navigation into Track View.
+- Track View has an explicit UI-audit workspace/row contract.
+
 ## 2026-10-02 MPC 3.9 shell context/channel increment
 
 - Shell composition advanced — the persistent left edge is now: five shortcuts → compact contextual track/program channel strip → workspace.

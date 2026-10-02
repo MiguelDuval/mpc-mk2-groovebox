@@ -251,6 +251,22 @@ Each strip:
 Bottom:
 function bar.
 
+### Track View selection/status policy
+
+Track View rows are **selectable channel strips**, not mini editor cards.
+
+Each row shows:
+
+- track number/name;
+- type;
+- current Program/instrument context;
+- compact event information;
+- REC-arm state;
+- mute state;
+- unavailable SOLO state.
+
+The entire row selects the Track. Track mutations are performed by the shared shell Function Bar, so Track View does not duplicate REC/MUTE/Track navigation controls inside each row or add a second local action bar.
+
 ## 3.2 Functions
 
 Primary:

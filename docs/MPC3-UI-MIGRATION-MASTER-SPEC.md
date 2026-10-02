@@ -240,6 +240,10 @@ Sequence, Track and Program fields are direct entry points to the existing Main 
 
 The persistent Program field and Main Program Select context are enabled only for a Drum Track. When another Track Type is selected, the UI must show an explicit unavailable state rather than exposing the Drum Program list as though it were owned by that Track.
 
+### Track View shell authority
+
+Track View uses the persistent shell Function Bar as the single mutation surface for the selected Track. Track rows expose status and selection, while REC ARM, Track −, Track +, Mute and Solo remain contextual shell actions. Changing Track from Main must not navigate away from Main merely to reveal the new selection.
+
 ## 5. Main Mode — P0
 
 Main Mode becomes the center of the application.
