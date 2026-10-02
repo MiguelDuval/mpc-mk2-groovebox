@@ -263,6 +263,10 @@ Required conceptual regions:
 5. Track / Arrangement Views
 6. Function Buttons
 
+### Main Track quick-sample surface
+
+For a Drum Track, Main Track may provide a compact performance/sample surface: pads plus a selected Pad/Layer waveform with Start/End editing, audition, and entry into the dedicated Sample Edit context. This surface reuses existing audio/sample-region semantics and must not introduce a second audio editing model.
+
 ### Sequence section
 
 Show:
