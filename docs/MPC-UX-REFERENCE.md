@@ -52,3 +52,25 @@ The phone-side controller strip is persistent and answers four questions without
 The controller side mirrors the same state using the MkII's available button LEDs, pad RGB, Touch Strip segments and LCD. A transient action-result message is never the sole indication of a latched context.
 
 This is a production/live-performance invariant: a performer must be able to recover the current control state at a glance after looking away from the screen.
+
+## Permanent migration rule — 2026-10-02
+
+This document is now a compact pointer to the permanent migration program.
+
+For detailed screen-by-screen architecture, source evidence, migration order and protected-layer rules, read:
+
+- docs/MPC3-UI-MIGRATION-MASTER-SPEC.md
+- docs/MPC3-REFERENCE-INDEX.md
+- docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md
+
+The target is **MPC Standalone OS 3.9 information architecture and interaction behavior**, not a color/shape imitation.
+
+The canonical shell is:
+
+Toolbar → Five Shortcuts → Compact Mixer/Channel context → Main Workspace → Contextual Function Bar
+
+Menu is the operating-system launcher.
+
+The current seven-page rail, current diagnostic pages and Android Document Picker presentation are migration scaffolding and must not be treated as the final product architecture.
+
+The existing sampler, sequencer, MIDI and feedback layers are preserved beneath this UI migration.
