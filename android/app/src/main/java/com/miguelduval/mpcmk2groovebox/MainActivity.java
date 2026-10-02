@@ -4537,9 +4537,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void runUiAudit() {
         Log.i(TAG, "UI_HIERARCHY_BEGIN");
         String[] expected = {
-                "MAIN", "BROWSER", "GRID", "SAMPLER", "CHANNEL MIXER",
-                "SAMPLE", "SEQ", "MIX", "REC", "MENU",
-                "PLAY", "STOP", "MIDI", "01", "16", "LOAD"
+                "MAIN", "BROWSER", "GRID", "SAMPLER", "PAD MIXER",
+                "MENU", "PLAY", "STOP", "MIDI", "01", "16", "LOAD"
         };
 
         for (String text : expected) {
@@ -4576,9 +4575,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View seq = findViewWithExactText(getWindow().getDecorView(), "SEQ");
-        if (seq == null || !seq.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: SEQ mode");
+        View trackView = findViewWithExactText(
+                getWindow().getDecorView(), "TRACK VIEW");
+        if (trackView == null || !trackView.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: TRACK VIEW");
             return;
         }
 
@@ -4682,24 +4682,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         onHardwareAction(
                 MpcStudioMk2SemanticActions.LOCATE_STATE, 0, 0, 0);
 
-        View backSeq = findViewWithExactText(
-                getWindow().getDecorView(), "BACK SEQ");
-        if (backSeq == null || !backSeq.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: return to SEQ");
-            return;
-        }
-
-        View newSequence = findViewWithExactText(
-                getWindow().getDecorView(), "NEW");
-        if (newSequence == null || !newSequence.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: NEW sequence");
+        View menuAfterStep = findViewWithExactText(
+                getWindow().getDecorView(), "MENU");
+        if (menuAfterStep == null || !menuAfterStep.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after STEP");
             return;
         }
 
         View launch = findViewWithExactText(
-                getWindow().getDecorView(), "LAUNCH");
+                getWindow().getDecorView(), "NEXT SEQUENCE");
         if (launch == null || !launch.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: LAUNCH mode");
+            Log.e(TAG, "UI_INTERACTION_FAILED: NEXT SEQUENCE");
             return;
         }
 
@@ -4710,9 +4703,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View sample = findViewWithExactText(getWindow().getDecorView(), "SAMPLE");
+        View menuAfterLauncher = findViewWithExactText(
+                getWindow().getDecorView(), "MENU");
+        if (menuAfterLauncher == null || !menuAfterLauncher.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after launcher");
+            return;
+        }
+
+        View sample = findViewWithExactText(
+                getWindow().getDecorView(), "SAMPLE EDIT");
         if (sample == null || !sample.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLE");
+            Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLE EDIT");
             return;
         }
 
@@ -4724,9 +4725,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View rec = findViewWithExactText(getWindow().getDecorView(), "REC");
+        View menuAfterSample = findViewWithExactText(
+                getWindow().getDecorView(), "MENU");
+        if (menuAfterSample == null || !menuAfterSample.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after SAMPLE EDIT");
+            return;
+        }
+
+        View rec = findViewWithExactText(
+                getWindow().getDecorView(), "SAMPLER");
         if (rec == null || !rec.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: REC mode");
+            Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLER mode");
             return;
         }
 
