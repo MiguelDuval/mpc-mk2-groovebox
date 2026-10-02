@@ -2,6 +2,7 @@ package com.miguelduval.mpcmk2groovebox;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -16,15 +17,19 @@ import android.os.Bundle;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
@@ -46,6 +51,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity implements AndroidMidiBridge.Listener {
+
+    private enum MainNumericField {
+        BPM,
+        BARS,
+        LOOP_START,
+        LOOP_END
+    }
+
+    private interface MainNumericCommitter {
+        String commit(String value);
+    }
+
     private static final String TAG = "MpcGroovebox";
     private static final int REQUEST_OPEN_WAV = 1001;
     private static final int REQUEST_RECORD_AUDIO = 1002;
@@ -1864,6 +1881,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 MpcUiState.DataDialFocus.SEQUENCE_END,
                 18,
                 "LOOP END • DATA DIAL / +/-"));
+
+        installMainNumericEntry(bpm, MainNumericField.BPM);
+        installMainNumericEntry(bars, MainNumericField.BARS);
+        installMainNumericEntry(start, MainNumericField.LOOP_START);
+        installMainNumericEntry(end, MainNumericField.LOOP_END);
         timeSig.setOnClickListener(v -> {
             setBottomStatus("TIME SIGNATURE • " + nativeSequenceGetNumerator()
                     + "/" + nativeSequenceGetDenominator());
@@ -1883,6 +1905,249 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMainTrackQuickSample();
         refreshMainDataDialFocusVisuals();
         updateModeRailSelection();
+    }
+
+
+    private void installMainNumericEntry(
+            View view,
+            MainNumericField field) {
+        final GestureDetector detector = new GestureDetector(
+                this,
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onDown(MotionEvent event) {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onDoubleTap(MotionEvent event) {
+                        showMpcNumericEntry(field);
+                        return true;
+                    }
+                });
+        view.setOnTouchListener((v, event) -> {
+            detector.onTouchEvent(event);
+            return false;
+        });
+        view.setContentDescription(
+                view.getContentDescription() + " • double-tap for numeric entry");
+    }
+
+    private void showMpcNumericEntry(MainNumericField field) {
+        final String title;
+        final String initial;
+        final boolean decimal;
+        final MainNumericCommitter committer;
+
+        switch (field) {
+            case BPM:
+                title = "BPM";
+                initial = String.format(
+                        Locale.ROOT, "%.1f", nativeSequenceGetTempo());
+                decimal = true;
+                committer = value -> {
+                    try {
+                        final double bpm = Double.parseDouble(value);
+                        if (!Double.isFinite(bpm) || bpm < 20.0 || bpm > 300.0) {
+                            return "BPM must be between 20 and 300";
+                        }
+                        return nativeSequenceSetTempo(bpm);
+                    } catch (NumberFormatException error) {
+                        return "BPM • enter a number";
+                    }
+                };
+                break;
+            case BARS:
+                title = "BARS";
+                initial = String.valueOf(Math.max(1, nativeSequenceGetBars()));
+                decimal = false;
+                committer = value -> {
+                    try {
+                        final int bars = Integer.parseInt(value);
+                        if (bars < 1) return "BARS must be at least 1";
+                        return nativeSequenceSetBars(bars);
+                    } catch (NumberFormatException error) {
+                        return "BARS • enter a whole number";
+                    }
+                };
+                break;
+            case LOOP_START:
+                title = "LOOP START";
+                initial = String.valueOf(
+                        Math.max(1, nativeSequenceGetLoopStartBar()));
+                decimal = false;
+                committer = value -> {
+                    try {
+                        final int startBar = Integer.parseInt(value);
+                        final int bars = Math.max(1, nativeSequenceGetBars());
+                        final int endBar = Math.max(
+                                startBar,
+                                nativeSequenceGetLoopEndBar());
+                        if (startBar < 1 || startBar > bars) {
+                            return "LOOP START must be inside the sequence";
+                        }
+                        if (startBar > endBar) {
+                            return "LOOP START cannot exceed END";
+                        }
+                        return nativeSequenceSetLoopBars(startBar, endBar);
+                    } catch (NumberFormatException error) {
+                        return "LOOP START • enter a whole number";
+                    }
+                };
+                break;
+            case LOOP_END:
+                title = "LOOP END";
+                initial = String.valueOf(
+                        Math.max(1, nativeSequenceGetLoopEndBar()));
+                decimal = false;
+                committer = value -> {
+                    try {
+                        final int endBar = Integer.parseInt(value);
+                        final int bars = Math.max(1, nativeSequenceGetBars());
+                        final int startBar = Math.max(
+                                1, nativeSequenceGetLoopStartBar());
+                        if (endBar < 1 || endBar > bars) {
+                            return "LOOP END must be inside the sequence";
+                        }
+                        if (endBar < startBar) {
+                            return "LOOP END cannot precede START";
+                        }
+                        return nativeSequenceSetLoopBars(startBar, endBar);
+                    } catch (NumberFormatException error) {
+                        return "LOOP END • enter a whole number";
+                    }
+                };
+                break;
+            default:
+                return;
+        }
+
+        final LinearLayout dialogRoot = column();
+        dialogRoot.setPadding(dp(14), dp(4), dp(14), 0);
+
+        final EditText valueField = new EditText(this);
+        valueField.setText(initial);
+        valueField.setSelectAllOnFocus(true);
+        valueField.setSingleLine(true);
+        valueField.setTextSize(24);
+        valueField.setTextColor(TEXT);
+        valueField.setGravity(Gravity.CENTER);
+        valueField.setInputType(
+                InputType.TYPE_CLASS_NUMBER
+                        | (decimal ? InputType.TYPE_NUMBER_FLAG_DECIMAL : 0)
+                        | (decimal ? InputType.TYPE_NUMBER_FLAG_SIGNED : 0));
+        valueField.setBackground(
+                strokeBackground(SURFACE_2, DANGER, 5));
+        dialogRoot.addView(valueField, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+
+        final GridLayout keypad = new GridLayout(this);
+        keypad.setColumnCount(3);
+        keypad.setRowCount(4);
+        keypad.setPadding(0, dp(8), 0, 0);
+
+        final String[] keys = decimal
+                ? new String[]{"1", "2", "3", "4", "5", "6",
+                        "7", "8", "9", "DEL", "0", "."}
+                : new String[]{"1", "2", "3", "4", "5", "6",
+                        "7", "8", "9", "DEL", "0", "OK"};
+
+        for (String key : keys) {
+            Button button = actionButton(key, null);
+            button.setTextSize(key.equals("DEL") ? 9 : 16);
+            button.setBackground(strokeBackground(
+                    SURFACE_2,
+                    LINE,
+                    5));
+            button.setOnClickListener(v -> {
+                if ("DEL".equals(key)) {
+                    final int end = valueField.getSelectionEnd();
+                    final int start = valueField.getSelectionStart();
+                    if (start != end) {
+                        valueField.getText().delete(
+                                Math.min(start, end), Math.max(start, end));
+                    } else if (end > 0) {
+                        valueField.getText().delete(end - 1, end);
+                    }
+                    return;
+                }
+                if ("OK".equals(key)) {
+                    final String result = committer.commit(
+                            valueField.getText().toString().trim());
+                    if (result != null && result.startsWith("OK")) {
+                        setBottomStatus(result);
+                        refreshMainModeFields();
+                        refreshMainDataDialFocusVisuals();
+                    } else {
+                        setBottomStatus(result);
+                        if (result != null
+                                && !result.toLowerCase(Locale.ROOT)
+                                        .contains("must")
+                                && !result.toLowerCase(Locale.ROOT)
+                                        .contains("enter")
+                                && !result.toLowerCase(Locale.ROOT)
+                                        .contains("cannot")
+                                && !result.toLowerCase(Locale.ROOT)
+                                        .contains("inside")) {
+                            refreshMainModeFields();
+                            refreshMainDataDialFocusVisuals();
+                        }
+                    }
+                    if (result == null
+                            || !result.toLowerCase(Locale.ROOT)
+                                    .contains("must")) {
+                        // Native command results are the authoritative status.
+                        // Keep the dialog open only for explicit input errors.
+                    }
+                    return;
+                }
+
+                final int selectionStart = valueField.getSelectionStart();
+                final int selectionEnd = valueField.getSelectionEnd();
+                final int left = Math.min(selectionStart, selectionEnd);
+                final int right = Math.max(selectionStart, selectionEnd);
+                valueField.getText().replace(
+                        left, right, key);
+            });
+
+            keypad.addView(button, new GridLayout.LayoutParams(
+                    new android.view.ViewGroup.LayoutParams(
+                            dp(92), dp(46))));
+        }
+
+        dialogRoot.addView(keypad, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(190)));
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setView(dialogRoot)
+                .setNegativeButton("CANCEL", null)
+                .setPositiveButton("ENTER", null)
+                .create();
+
+        dialog.setOnShowListener(ignored -> {
+            final Button enter = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            enter.setOnClickListener(v -> {
+                final String result = committer.commit(
+                        valueField.getText().toString().trim());
+                setBottomStatus(result);
+                final boolean inputError = result != null
+                        && (result.toLowerCase(Locale.ROOT).contains("must")
+                        || result.toLowerCase(Locale.ROOT).contains("enter")
+                        || result.toLowerCase(Locale.ROOT).contains("cannot")
+                        || result.toLowerCase(Locale.ROOT).contains("inside"));
+                if (!inputError) {
+                    refreshMainModeFields();
+                    refreshMainDataDialFocusVisuals();
+                    syncHardwareLcd();
+                    dialog.dismiss();
+                }
+            });
+        });
+        dialog.show();
+        valueField.requestFocus();
+        dialog.getWindow().setSoftInputMode(
+                android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
     private void commitMainTrackWaveformRegion(
