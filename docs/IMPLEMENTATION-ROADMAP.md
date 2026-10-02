@@ -393,3 +393,11 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **Persistent shell playhead implemented:** a thin non-interactive position strip now sits directly beneath Toolbar and above every workspace.
 - **Single state source:** the strip reads Sequence position from the existing refreshSequenceOverview() path; no new timer, clock or audio-callback work was introduced.
 - **Navigation continuity:** Main, Track View, Grid, Step, Browser and future shell contexts retain the same transport-position indicator without changing Navigation Mode.
+
+
+## 2026-10-02 Main Track quick-sample increment
+
+- **MPC-style Main Track surface implemented:** the default Main Track view now pairs 4×4 performance pads with a selected Pad/Layer quick waveform context.
+- **Quick sample editing reuses existing backend semantics:** waveform Start/End edits call the existing sample-region command; no new realtime/audio engine boundary was added.
+- **Layer context is explicit:** Layer −/+ remains inside Main and does not leave the selected Track/Sequence context.
+- **Full Sample Edit remains separate:** Main offers AUDITION and SAMPLE EDIT rather than duplicating the full editor's controls.
