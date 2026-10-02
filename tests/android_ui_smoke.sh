@@ -54,6 +54,9 @@ for required in \
   "showTimeSignatureDialog" \
   "showMpcNumericEntry" \
   "MPC condensed Mixer Strip show or hide" \
+  "MPC condensed Mixer Strip Track or Pad selector" \
+  "MPC condensed Mixer Strip showing Track" \
+  "MPC condensed Mixer Strip showing Pad" \
   "MPC condensed Mixer Strip" \
   "openMainTrackEditContext" \
   "openMainArrangementGridContext" \
