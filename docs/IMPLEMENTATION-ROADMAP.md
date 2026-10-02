@@ -447,3 +447,9 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Tuned shell proportions toward the documented MPC landscape composition.
 - Widened the XL Channel Strip and reduced vertical chrome.
 - Moved Track-strip LVL / FX / SEND / I/O tabs directly under Track identity.
+
+
+### 2026-10-03 Pad XL Strip tab parity
+
+- Added MPC-style LVL / FX / SEND / I/O tab presentation to the Pad XL Strip.
+- Kept only LVL active to avoid fabricating unsupported mixer state.
