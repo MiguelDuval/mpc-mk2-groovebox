@@ -316,6 +316,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native int nativeSequenceDrainRecordEvents();
     private static native int nativeSequenceGetTrackCount();
     private static native int nativeSequenceGetSelectedTrack();
+    private static native String nativeSequenceGetTrackProgram(int trackIndex);
     private static native String nativeSequenceSelectTrack(int trackIndex);
     private static native String nativeSequenceAddTrack(int kind);
     private static native String nativeSequenceTrackStatus(int trackIndex);
@@ -1171,8 +1172,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (trackType != null) trackType.setText(
                 "TYPE\\n" + (status.toLowerCase(Locale.ROOT).contains("drum")
                         ? "DRUM" : "MIDI"));
-        if (program != null) program.setText(
-                "PROGRAM\\nDRUM PROGRAM");
+        if (program != null) {
+            final String programStatus = startupComplete
+                    ? nativeSequenceGetTrackProgram(trackIndex)
+                    : "PROGRAM • NONE";
+            final String programLabel = programStatus.startsWith("PROGRAM • ")
+                    ? programStatus.substring("PROGRAM • ".length())
+                    : programStatus;
+            program.setText("PROGRAM\\n" + programLabel);
+        }
         if (record != null) record.setText(
                 "REC\\n" + (startupComplete && nativeSequenceIsSelectedTrackArmed()
                         ? "ARM" : "OFF"));
