@@ -113,9 +113,9 @@ Lower-layer edits are allowed only for truthful semantic prerequisites such as T
 
 ### Migration order
 
-1. Documentation lock.
-2. UI state/navigation extraction.
-3. MPC shell extraction.
+1. Documentation lock. **DONE — canonical MPC3 migration docs are locked.**
+2. UI state/navigation extraction. **FOUNDATION IMPLEMENTED — `MpcUiState` and `MpcNavigationController` are now separate presentation-layer boundaries.**
+3. MPC shell extraction. **FOUNDATION IMPLEMENTED — `MpcShell` now owns Toolbar / five shortcuts / compact context / Workspace / Function Bar composition.**
 4. Menu + five shortcuts.
 5. Main Mode.
 6. Track View + Arrangement.
@@ -133,7 +133,7 @@ Lower-layer edits are allowed only for truthful semantic prerequisites such as T
 No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry path, semantic state, backend command and controller feedback are documented first.
 
 ## Stage 7 — MPC 3.9 standalone UI migration
-- UI shell. **IMPLEMENTED FOUNDATION — landscape-only standalone-style shell with persistent transport/status bar, persistent mode rail, fixed main workspace, and no root diagnostic ScrollView.**
+- UI shell. **MPC 3.9 MIGRATION FOUNDATION IMPLEMENTED — `MpcShell` owns the persistent Toolbar / five configurable shortcuts / compact channel context / Workspace / contextual Function Bar. Legacy seven-page rail is no longer the canonical shell; legacy workspace pages remain temporary adapters.**
 - Main. **UI FOUNDATION IMPLEMENTED — 4x4 software performance pads, selected-pad inspector, quick tone controls, layer selection and direct audition trigger.**
 - Browser. **UI FOUNDATION IMPLEMENTED — dedicated Browser mode with explicit WAV load target; full indexed/searchable browser is a later slice.**
 - Sampler. **UI FOUNDATION + WAVEFORM IMPLEMENTED — dedicated sample editor context with a shared editable waveform, region/edit, envelope, filter and layer tabs.**
