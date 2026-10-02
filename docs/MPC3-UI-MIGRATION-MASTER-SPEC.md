@@ -1167,3 +1167,8 @@ Main's Sequence region now has one authoritative Sequence selector. The adjacent
 ### 2026-10-03 Main Sequence information-band refinement
 
 Main Sequence presentation is now treated as one continuous MPC information band rather than stacked Android-style cards. Sequence identity is left-owned; BPM and the fixed SEQ tempo-source indicator sit beside it; Time Signature is placed immediately next to the tempo area. The lower compact row is reserved for BARS / START / END / TRANSPOSE / LOOP. This is a presentation-only fidelity change and preserves the existing semantic focus and numeric-entry paths.
+
+
+### 2026-10-03 Main diagnostic footer parity
+
+Normal Main presentation no longer reserves permanent height for hardware-feedback and bottom-status diagnostics. Those views remain audit-visible only. The Function Bar is therefore the actual bottom edge of the MPC-style shell during normal operation.
