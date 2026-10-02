@@ -708,8 +708,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             : "PROGRAM • N/A (" + trackType + ")");
             compactProgramContext.setEnabled(drumProgramContext);
             compactProgramContext.setAlpha(drumProgramContext ? 1.0f : 0.48f);
-            compactProgramContext.setOnClickListener(
-                    drumProgramContext ? v -> showProgramSelectPage() : null);
+            if (drumProgramContext) {
+                compactProgramContext.setOnClickListener(
+                        v -> showProgramSelectPage());
+            } else {
+                compactProgramContext.setOnClickListener(null);
+            }
         } else {
             compactTrackContext.setText("TRACK 01 • DRUM");
             compactProgramContext.setText("PROGRAM • —");

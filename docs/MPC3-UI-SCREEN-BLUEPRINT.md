@@ -84,8 +84,6 @@ The bar must:
 
 ---
 
-# 2. Main Mode blueprint
-
 ## 1.1 Persistent left context strip
 
 The shell's left edge is deliberately split into two persistent functional columns:
@@ -105,6 +103,8 @@ The persistent context strip exposes state, not duplicate editing controls:
 - **Pad:** selected software/hardware pad and bank.
 - **Dial:** current Data Dial focus and Main subcontext.
 - **Sequence overview:** thin movement/loop indicator.
+
+# 2. Main Mode blueprint
 
 ## 2.1 Layout
 
