@@ -470,3 +470,5 @@ The Android feedback layer now uses a shared `buttonLedOnState()` policy and ret
 
 ## 2026-10-02 MPC One visual-chrome refinement
 Reference material for MPC Main Mode shows a dark toolbar/workspace hierarchy with red selection/focus accents and the persistent left shortcut + mixer-strip structure. The shell now follows those visual relationships while keeping original application typography/assets and the existing semantic state model. citeturn889880image0turn889880image2
+## 2026-10-02 Main numeric-entry and sequence-source fidelity
+The MPC operation model specifies red-focused parameters adjusted with Data Dial or −/+ and double-tap numeric values opening a numeric keypad. It also distinguishes the Sequence tempo source control adjacent to BPM from the Sequence selector. The implementation now reflects those distinctions in Main, while unsupported Global Tempo remains explicitly unavailable. citeturn489319search0turn489319search1
