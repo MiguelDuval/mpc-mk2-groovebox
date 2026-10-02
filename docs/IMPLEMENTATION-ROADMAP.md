@@ -249,6 +249,14 @@ Note Repeat scheduling, Touch Strip contextual control, complete button/pad/LCD 
 This controller work supplements Stages 1, 2 and 7; it does not replace the overall roadmap.
 
 
+## 2026-10-02 Main Mode UI composition refinement
+
+- **MPC One-style Main region refinement —** Sequence remains the upper context while Track + Program are composed as one continuous Track region; the Program field is directly owned by the selected Track.
+- **Selection contexts are now visually explicit —** Sequence Select, Track Select and Program Select remain Main subcontexts rather than creating unrelated top-level pages.
+- **Main function bar carries high-frequency Track operations —** New Track, Rec Arm, Track −, Track + and Mute are kept in the contextual function bar; reserved Solo remains visible but unavailable.
+- **Workspace duplication reduced —** Track View/Program Select/Browser transitions are kept contextual instead of duplicating the same controls across separate cards.
+- **UI audit coverage added —** the in-process smoke audit now verifies Main Track/Program composition and the three Main selection subcontexts.
+
 ## 2026-10-01 Note Repeat production increment
 
 - **Independent repeat-rate control implemented:** Note Repeat no longer derives its playback interval from the Sequence recording grid. It owns a separate eight-position rate map with straight and triplet divisions.
