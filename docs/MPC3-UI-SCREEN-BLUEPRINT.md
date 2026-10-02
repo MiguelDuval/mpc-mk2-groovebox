@@ -187,6 +187,8 @@ Touch:
 ### Main Track quick-sample context
 
 - The default Main Track view pairs the performance pad surface with a compact sample waveform for the selected Pad/Layer.
+- A compact MPC-style track-state row sits directly above the canvas with **Monitor / Length / Velocity / Layer** vocabulary.
+- Only truthful backend state is surfaced: Monitor is currently unavailable, Length is sequence-scoped, Velocity has no track-level semantic in the current backend, and Layer is the actual selected Drum sample layer.
 - Start/End handles use the existing sample-region semantic command; this is a quick-edit surface, not a replacement for full Sample Edit.
 - Layer −/+ changes only the selected sample layer and keeps the current Track/Pad context.
 - AUDITION triggers the currently selected Pad; SAMPLE EDIT opens the dedicated sample editor without changing the selected Track/Sequence.
