@@ -623,12 +623,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         area.addView(header, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
-        // Compatibility state object: Sequence is already represented centrally
-        // in Main, so this object is intentionally not attached to the shell.
+        // Sequence stays a glanceable shell context and is also a direct
+        // entry point into the existing Main Sequence Select subcontext.
         compactSequenceContext = compactContextField(
                 "SEQ 01 • 120.0 BPM",
                 "MPC shell sequence context",
-                null);
+                v -> showSequenceSelectPage());
         area.addView(compactSequenceContext,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
@@ -649,20 +649,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactTrackContext = compactContextField(
                 "TRACK 01 • DRUM",
                 "MPC shell track mixer strip",
-                null);
+                v -> showTrackSelectPage());
         compactMixerPanel.addView(compactTrackContext,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
-        compactProgramContext = label(
+        compactProgramContext = compactContextField(
                 "PROGRAM • —",
-                8,
-                TEXT);
+                "MPC shell selected Program",
+                v -> showProgramSelectPage());
         compactProgramContext.setTypeface(Typeface.DEFAULT_BOLD);
         compactProgramContext.setGravity(Gravity.CENTER_VERTICAL);
         compactProgramContext.setPadding(dp(4), 0, dp(4), 0);
         compactProgramContext.setContentDescription(
                 "MPC shell selected Program");
+        compactProgramContext.setClickable(true);
         compactMixerPanel.addView(compactProgramContext,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(25)));
@@ -1026,6 +1027,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             nativeSequenceGetTrackProgram(trackIndex))
                     : "—";
             compactProgramContext.setText("PROGRAM • " + programName);
+            compactProgramContext.setEnabled(drumTrack);
+            compactProgramContext.setAlpha(drumTrack ? 1.0f : 0.45f);
 
             if (compactTrackStateLabel != null) {
                 compactTrackStateLabel.setText(
@@ -1046,6 +1049,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             compactMixerPadMode = false;
             compactTrackContext.setText("TRACK 01 • DRUM");
             compactProgramContext.setText("PROGRAM • —");
+            compactProgramContext.setEnabled(false);
+            compactProgramContext.setAlpha(0.45f);
             if (compactTrackStateLabel != null) {
                 compactTrackStateLabel.setText("REC OFF • MUTE OFF • SOLO —");
             }

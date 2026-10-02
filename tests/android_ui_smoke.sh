@@ -14,6 +14,13 @@ for required in \
   "MPC shell mixer strips" \
   "MPC shell sequence context" \
   "MPC shell selected Program" \
+  "compactSequenceContext = compactContextField" \
+  "v -> showSequenceSelectPage()" \
+  "compactTrackContext = compactContextField" \
+  "v -> showTrackSelectPage()" \
+  "compactProgramContext = compactContextField" \
+  "v -> showProgramSelectPage()" \
+  "compactProgramContext.setEnabled(drumTrack)" \
   "MPC shell Track record mute and solo state" \
   "nativeAudioGetPadSampleName" \
   "nativeAudioSetPadSampleName" \

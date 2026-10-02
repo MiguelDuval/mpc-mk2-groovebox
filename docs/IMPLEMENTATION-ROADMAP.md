@@ -153,6 +153,13 @@ No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry 
 - The Track/Pad focus is presentation-only and never mutates musical selection or transport state.
 - Non-Drum Track Types disable the Pad strip focus so the UI cannot imply a Drum-pad context that the backend does not own.
 
+### 2026-10-03 Main compact-context direct-entry increment
+
+- Persistent Sequence and Track context fields now open the existing Main Sequence Select and Main Track Select subcontexts directly from the shell.
+- Persistent Program context now opens Main Program Select only while the selected Track is a Drum Track; non-Drum Tracks keep the field explicitly disabled/unavailable.
+- No new backend or realtime semantics were introduced; the change reuses existing selection commands and navigation state.
+- Android UI smoke now audits the field-to-subcontext entry wiring and Program availability gate.
+
 ## Stage 8 — Ableton Link
 - tempo.
 - beat phase.

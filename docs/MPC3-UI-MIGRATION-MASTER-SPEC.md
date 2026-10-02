@@ -259,6 +259,17 @@ The persistent Program field and Main Program Select context are enabled only fo
 
 Track View uses the persistent shell Function Bar as the single mutation surface for the selected Track. Track rows expose status and selection, while REC ARM, Track −, Track +, Mute and Solo remain contextual shell actions. Changing Track from Main must not navigate away from Main merely to reveal the new selection.
 
+## 2026-10-03 Main compact-context direct-entry increment
+
+The persistent Main shell context is now an actionable entry surface for the selection contexts already defined by this specification:
+
+- Sequence context opens Main Sequence Select.
+- Track context opens Main Track Select.
+- Program context opens Main Program Select only for the selected Drum Track.
+- Non-Drum Program context is disabled rather than routing into a mismatched Drum-program list.
+
+The change remains presentation/navigation-only and reuses the existing semantic selection commands; no realtime audio, scheduler, MIDI transport or domain playback path is changed.
+
 ## 5. Main Mode — P0
 
 Main Mode becomes the center of the application.
