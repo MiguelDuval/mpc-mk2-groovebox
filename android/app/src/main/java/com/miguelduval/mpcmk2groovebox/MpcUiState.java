@@ -51,6 +51,8 @@ final class MpcUiState {
         SAMPLE_SELECT,
         SAMPLE_START,
         SAMPLE_END,
+        SEQUENCE_START,
+        SEQUENCE_END,
         TUNE,
         STEP_EDIT,
         BROWSER,
@@ -61,6 +63,8 @@ final class MpcUiState {
     enum DataDialFocus {
         NONE,
         SEQUENCE,
+        SEQUENCE_START,
+        SEQUENCE_END,
         TRACK,
         PROGRAM,
         TRACK_TYPE,
