@@ -38,7 +38,6 @@ public:
         stop();
 
         const auto& sequence = projectState_.activeSequence();
-        const auto& program = projectState_.activeDrumProgram();
 
         for (const auto& track : sequence.tracks) {
             if (track.patterns.empty()) {
@@ -48,10 +47,16 @@ public:
                 continue;
             }
 
+            const auto* program =
+                    projectState_.findDrumProgram(track.programId);
+            if (program == nullptr) {
+                continue;
+            }
+
             playbacks_.push_back(std::make_unique<MpcSequencerPlayback>(
                     sequence,
                     track.patterns.front(),
-                    program,
+                    *program,
                     audio_.triggerQueue(),
                     &track.muted));
         }
