@@ -86,6 +86,26 @@ The bar must:
 
 # 2. Main Mode blueprint
 
+## 1.1 Persistent left context strip
+
+The shell's left edge is deliberately split into two persistent functional columns:
+
+- **Shortcut rail:** exactly five configurable high-frequency destinations.
+- **Compact context/channel rail:** persistent Sequence, Track, Program, Pad and Data Dial context.
+
+The compact context rail remains visible while the workspace changes. It is a glanceable status surface and a direct-entry surface for Sequence Select, Track Select and Program Select; it is not a second workspace.
+
+## 1.2 Compact context semantics
+
+The persistent context strip exposes state, not duplicate editing controls:
+
+- **Sequence:** current sequence and tempo; opens Main Sequence Select.
+- **Track:** current track, type, REC-arm and mute state; opens Main Track Select.
+- **Program:** current Program for a Drum Track; opens Main Program Select. For non-Drum Tracks it becomes visibly unavailable rather than presenting a false Drum-program list.
+- **Pad:** selected software/hardware pad and bank.
+- **Dial:** current Data Dial focus and Main subcontext.
+- **Sequence overview:** thin movement/loop indicator.
+
 ## 2.1 Layout
 
 Top:
