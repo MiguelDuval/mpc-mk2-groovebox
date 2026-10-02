@@ -181,6 +181,13 @@ Show:
 Double tap:
 open Grid/appropriate editor.
 
+
+### Main Track / Arrangement switch
+
+- Main presents Track and Arrangement as sibling local views of the same selected Track/Sequence context.
+- Track View is the default Main view on entry, matching the MPC workflow; switching to Arrangement changes presentation only and does not create a new navigation mode.
+- Track View keeps performance pad access plus truthful entries to Sample Edit and the current Grid editor; full Track Edit remains reserved until its backend contract exists.
+
 ## 2.5 Main function bar
 
 Initial target:
