@@ -270,7 +270,7 @@ Required conceptual regions:
 
 ### Main Track quick-sample surface
 
-For a Drum Track, Main Track may provide a compact performance/sample surface: pads plus a selected Pad/Layer waveform with Start/End editing, audition, and entry into the dedicated Sample Edit context. This surface reuses existing audio/sample-region semantics and must not introduce a second audio editing model.
+For a Drum Track, Main Track may provide a compact performance/sample surface: pads plus a selected Pad/Layer waveform with Start/End editing, audition, and entry into the dedicated Sample Edit context. Directly above that canvas, the UI uses the MPC Main track-state vocabulary **Monitor / Length / Velocity / Layer**; unsupported values are rendered as unavailable rather than fabricated. This surface reuses existing audio/sample-region semantics and must not introduce a second audio editing model.
 
 ### Sequence section
 
