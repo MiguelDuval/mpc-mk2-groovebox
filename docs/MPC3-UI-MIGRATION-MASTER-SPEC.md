@@ -1043,3 +1043,6 @@ Main and Track View explicitly establish their hardware/Data Dial focus on entry
 - Main pencil and Main Track waveform double-tap enter the same Track Edit workspace with the selected Track/Pad/Layer context preserved.
 - Track Edit is now a truthful promotable mode in the Menu/shortcut registry; unsupported sub-tabs remain individually reserved.
 - Studio MkII Data Dial layer focus is correctly established at hardware focus 10, with Data Dial/+/- changing the same selected-layer state used by the editor.
+
+
+- **Pad-selection synchronization:** the shared pad-selection refresh path now also refreshes Track Edit, so physical pad selection, touch selection and the editor's Track/Pad context remain synchronized.

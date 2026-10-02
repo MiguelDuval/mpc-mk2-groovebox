@@ -439,3 +439,6 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Main pencil and Main Track waveform double-tap now enter the same Track Edit workspace; selected Track/Pad/Layer context is preserved.
 - **Studio MkII layer focus corrected:** Track Edit and Sample Select use hardware focus 10 for Data Dial/+/- layer selection.
 - **Track Edit became a promotable Menu/shortcut mode** because the currently implemented subset is truthful; unsupported tabs remain individually reserved.
+
+
+- **Track Edit controller synchronization refinement:** shared pad selection now refreshes the active Track Edit workspace, keeping MkII pad selection and the Track Edit context synchronized.

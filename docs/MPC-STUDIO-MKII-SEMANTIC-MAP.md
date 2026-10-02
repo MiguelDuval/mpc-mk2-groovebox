@@ -875,3 +875,6 @@ Reference sources: Akai Professional MPC Studio MkII support/manual material and
 - Data Dial/+/- layer selection is wired through hardware focus 10 in the Android UI command bridge.
 - The Track Edit workspace does not invent physical controls for LFO, Modulation or Effects; those tabs remain reserved until corresponding semantic commands exist.
 - Touch and hardware layer selection converge on the same `selectedLayer` state; sample editing continues to reuse the existing sample-region domain commands.
+
+
+- **Track Edit pad synchronization:** physical pad selection now reaches the same Track Edit refresh path as touch selection; the selected Pad/Layer context is kept synchronized without adding hardware-specific UI logic.
