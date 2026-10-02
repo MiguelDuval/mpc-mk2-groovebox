@@ -179,6 +179,12 @@ Persistent top-level information:
 - system/resource state where appropriate;
 - transport.
 
+### Persistent playhead strip
+
+The shell places a thin, non-interactive sequence-position strip directly below the Toolbar.
+
+It is presentation-only and receives normalized position from the existing semantic Sequence state. It remains visible while the workspace changes so transport position is never visually lost during live navigation. It does not own timing, scheduling, or touch handling.
+
 ### Shortcuts
 
 MPC 3.x documents five left-side shortcuts that are user-configurable.
