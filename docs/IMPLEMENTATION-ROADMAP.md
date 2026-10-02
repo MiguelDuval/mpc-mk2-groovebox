@@ -372,3 +372,10 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **New Drum Track default is semantic.** A newly created Drum Track inherits the current active Drum Program rather than a hard-coded program identifier.
 - **Main/Track View hardware focus is synchronized on entry.** Main clears selection subcontext and returns Data Dial focus to NONE; Track View enters TRACK_SELECT/Data Dial TRACK; returning from Program Select therefore cannot leave a stale Program focus behind.
 - Physical MkII verification remains required.
+
+## 2026-10-02 Main/Step presentation truthfulness increment
+
+- **Track Type display now resolves from semantic backend state:** Main no longer infers a Track Type from human-readable status text, avoiding incorrect MIDI/DRUM fallbacks.
+- **Program label normalization hardened:** the persistent compact Program context and Main Program field strip the backend's existing `PROGRAM •` prefix before composing their own field label.
+- **Step mutation controls are backend-gated:** unsupported Track Types now leave Step navigation visible while disabling parameter mutation actions, matching the same truthfulness rule already used by Grid.
+
