@@ -121,6 +121,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Runnable recordingWaveformUpdater;
     private WaveformView sampleWaveform;
     private WaveformView mainTrackWaveform;
+    private Button mainTrackSampleActionButton;
     private WaveformView recordingWaveform;
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
@@ -1377,19 +1378,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackProgramSection.addView(trackProgramHeader, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
+        /*
+         * MPC Main uses a compact track-type icon next to the Track field.
+         * Only Drum is currently implemented by our semantic backend, so the
+         * selector is intentionally compact rather than presenting a row of
+         * pretend track types.
+         */
         trackProgramSection.addView(buildMainTrackTypeSelector(),
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
-
-        LinearLayout trackState = row();
-        TextView trackType = mainInfo("TYPE");
-        TextView record = mainInfo("REC");
-        TextView mute = mainInfo("MUTE");
-        trackState.addView(trackType, new LinearLayout.LayoutParams(0, dp(44), 1.25f));
-        trackState.addView(record, new LinearLayout.LayoutParams(0, dp(44), 0.85f));
-        trackState.addView(mute, new LinearLayout.LayoutParams(0, dp(44), 0.85f));
-        trackProgramSection.addView(trackState, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
         /*
          * MPC Main keeps Track and Arrangement as sibling views of the same
@@ -1485,10 +1482,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 selectedLayer + 1));
         trackDetailRow.addView(layerDetail, weight());
 
-        trackWorkspace.addView(trackDetailRow,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
-
         LinearLayout quickTrack = row();
 
         LinearLayout padColumn = column();
@@ -1560,9 +1553,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "AUDITION",
                 v -> selectAndTriggerPad(selectedPadIndexForUi(), 112)),
                 new LinearLayout.LayoutParams(0, dp(34), 1));
-        sampleActions.addView(actionButton(
-                "SAMPLE EDIT",
-                v -> showSamplePage()),
+        mainTrackSampleActionButton = actionButton(
+                "BROWSE",
+                v -> showBrowserPage());
+        mainTrackSampleActionButton.setContentDescription(
+                "Main Track View sample secondary action");
+        sampleActions.addView(mainTrackSampleActionButton,
                 new LinearLayout.LayoutParams(0, dp(34), 1));
         sampleColumn.addView(sampleActions,
                 new LinearLayout.LayoutParams(
@@ -1576,21 +1572,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        LinearLayout trackWorkspaceFooter = row();
-        TextView selectedPad = label("", 11, TEXT);
-        selectedPad.setTypeface(Typeface.DEFAULT_BOLD);
-        selectedPad.setGravity(Gravity.CENTER_VERTICAL);
-        selectedPad.setContentDescription("Main Track View selected pad");
-        trackWorkspaceFooter.addView(selectedPad,
-                new LinearLayout.LayoutParams(0, dp(34), 1));
-
-        trackWorkspaceFooter.addView(actionButton(
-                "GRID",
-                v -> showSequenceGridPage()),
-                new LinearLayout.LayoutParams(dp(68), dp(34)));
-        trackWorkspace.addView(trackWorkspaceFooter,
+        /*
+         * In MPC Main the track-specific fields sit below the waveform/track
+         * canvas. Keep that hierarchy rather than placing them above it.
+         */
+        trackWorkspace.addView(trackDetailRow,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
 
         LinearLayout arrangement = column();
         arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
