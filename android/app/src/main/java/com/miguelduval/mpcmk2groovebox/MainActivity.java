@@ -7498,6 +7498,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View bpmField = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main BPM field • double-tap for numeric entry");
+        View barsField = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main BARS field • double-tap for numeric entry");
+        View loopStartField = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main LOOP START field • double-tap for numeric entry");
+        View loopEndField = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main LOOP END field • double-tap for numeric entry");
+        if (bpmField == null || barsField == null
+                || loopStartField == null || loopEndField == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main numeric entry targets");
+            return;
+        }
+
         View quickSampleWaveform = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "Main Track View quick sample waveform");
