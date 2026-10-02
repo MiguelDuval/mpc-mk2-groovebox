@@ -1811,67 +1811,73 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout page = page();
         page.setPadding(dp(8), dp(6), dp(8), dp(2));
 
+        /*
+         * Main's Sequence header is a single information band: sequence
+         * identity on the left, tempo/source in the center-right, and the
+         * project time signature at the far right. Keep high-frequency loop
+         * fields in the compact row below instead of creating a secondary
+         * "card" just for Time Signature.
+         */
         LinearLayout sequenceCard = column();
         sequenceCard.setContentDescription("Main Mode Sequence section");
         sequenceCard.setPadding(0, 0, 0, dp(4));
 
         LinearLayout sequenceHeader = row();
-        sequenceHeader.addView(sectionLabelView(
-                "SEQUENCE",
-                new LinearLayout.LayoutParams(dp(82), dp(32))));
+        sequenceHeader.setContentDescription("Main Mode sequence header");
 
-        TextView sequenceName = label("", 16, TEXT);
+        TextView sequenceName = mainField("SEQUENCE");
+        sequenceName.setTextSize(15);
         sequenceName.setTypeface(Typeface.DEFAULT_BOLD);
-        sequenceName.setGravity(Gravity.CENTER_VERTICAL);
         sequenceName.setContentDescription("Main Mode selected sequence");
         sequenceName.setPadding(dp(8), 0, dp(8), 0);
-        sequenceName.setBackground(strokeBackground(SURFACE_2, LINE, 2));
         sequenceName.setOnClickListener(v -> focusMainSequenceField(
                 MpcUiState.Subcontext.SEQUENCE_SELECT,
                 MpcUiState.DataDialFocus.SEQUENCE,
                 3,
                 "SEQUENCE • DATA DIAL / +/-"));
         sequenceHeader.addView(sequenceName,
-                new LinearLayout.LayoutParams(0, dp(38), 1));
+                new LinearLayout.LayoutParams(0, dp(40), 1));
+
+        TextView bpm = mainHeaderMetric("BPM");
+        bpm.setContentDescription("Main Mode BPM");
+        sequenceHeader.addView(bpm,
+                new LinearLayout.LayoutParams(dp(82), dp(36)));
+
+        TextView sequenceType = mainHeaderMetric("SEQ");
+        sequenceType.setContentDescription(
+                "Main Mode sequence tempo source • SEQ • Global unavailable");
+        sequenceHeader.addView(sequenceType,
+                new LinearLayout.LayoutParams(dp(46), dp(36)));
+
+        TextView timeSig = mainHeaderMetric("TIME SIG");
+        timeSig.setContentDescription("Main Time Signature field • tap for editor");
+        sequenceHeader.addView(timeSig,
+                new LinearLayout.LayoutParams(dp(56), dp(36)));
 
         Button sequenceEdit = actionButton("✎", null);
         sequenceEdit.setEnabled(false);
         sequenceEdit.setAlpha(0.42f);
         sequenceEdit.setContentDescription("Main Sequence Edit RESERVED");
         sequenceHeader.addView(sequenceEdit,
-                new LinearLayout.LayoutParams(dp(40), dp(32)));
-        sequenceCard.addView(sequenceHeader);
+                new LinearLayout.LayoutParams(dp(36), dp(32)));
+        sequenceCard.addView(sequenceHeader,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
 
         LinearLayout sequenceFields = row();
-        TextView bpm = mainMetric("BPM");
-        TextView sequenceType = mainMetric("SEQ");
         TextView bars = mainMetric("BARS");
         TextView start = mainMetric("START");
         TextView end = mainMetric("END");
         TextView transpose = mainMetric("TRANSPOSE");
-        sequenceFields.addView(bpm, weight());
-        sequenceFields.addView(sequenceType, weight());
+        TextView loop = mainMetric("LOOP");
         sequenceFields.addView(bars, weight());
         sequenceFields.addView(start, weight());
         sequenceFields.addView(end, weight());
         sequenceFields.addView(transpose, weight());
+        sequenceFields.addView(loop, weight());
         sequenceCard.addView(sequenceFields,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
-
-        LinearLayout sequenceAuxFields = row();
-        TextView timeSig = mainMetric("TIME SIG");
-        TextView loop = mainMetric("LOOP");
-        sequenceAuxFields.addView(timeSig,
-                new LinearLayout.LayoutParams(0, dp(36), 1));
-        sequenceAuxFields.addView(loop,
-                new LinearLayout.LayoutParams(0, dp(36), 1));
-        sequenceAuxFields.addView(new android.widget.Space(this),
-                new LinearLayout.LayoutParams(0, dp(36), 4));
-        sequenceCard.addView(sequenceAuxFields);
-        sequenceCard.addView(new android.widget.Space(this),
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(4)));
 
         LinearLayout trackProgramSection = mainSection();
         trackProgramSection.setContentDescription("Main Mode Track Program section");
@@ -2927,6 +2933,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return view;
     }
 
+    private TextView mainHeaderMetric(String title) {
+        TextView view = label("", 11, TEXT);
+        view.setTypeface(Typeface.DEFAULT_BOLD);
+        view.setGravity(Gravity.CENTER);
+        view.setPadding(dp(4), 0, dp(4), 0);
+        view.setBackground(strokeBackground(SURFACE_2, LINE, 2));
+        view.setTag(title);
+        return view;
+    }
+
     private TextView mainField(String title) {
         TextView view = label("", 13, TEXT);
         view.setTypeface(Typeface.DEFAULT_BOLD);
@@ -3046,11 +3062,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final boolean loopEnabled = nativeStateReady
                 && nativeSequenceIsLoopEnabled();
         bpm.setText(String.format(
-                Locale.ROOT, "BPM\n%.1f", tempo));
+                Locale.ROOT, "%.1f", tempo));
         bars.setText(String.format(
                 Locale.ROOT, "BARS\n%d", sequenceBars));
         timeSig.setText(String.format(
-                Locale.ROOT, "TIME SIG\n%d/%d",
+                Locale.ROOT, "%d/%d",
                 numerator, denominator));
         loop.setText(
                 "LOOP\n" + (loopEnabled ? "ON" : "OFF"));
