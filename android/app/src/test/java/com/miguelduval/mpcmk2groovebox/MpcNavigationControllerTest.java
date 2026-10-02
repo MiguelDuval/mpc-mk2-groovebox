@@ -46,6 +46,16 @@ public class MpcNavigationControllerTest {
     }
 
     @Test
+    public void shortcutsCanBeReorderedWithoutChangingSlotCount() {
+        MpcNavigationController navigation = new MpcNavigationController();
+        navigation.moveShortcut(4, 1);
+
+        assertEquals(5, navigation.shortcuts().length);
+        assertEquals(MpcUiState.Mode.PAD_MIXER, navigation.shortcut(1));
+        assertEquals(MpcUiState.Mode.BROWSER, navigation.shortcut(2));
+    }
+
+    @Test
     public void shortcutsAreConfigurableButRemainFiveSlots() {
         MpcNavigationController navigation = new MpcNavigationController();
         navigation.setShortcuts(
