@@ -970,7 +970,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactMixerPanel.setVisibility(
                 compactMixerVisible ? View.VISIBLE : View.GONE);
         compactMixerToggle.setText(
-                compactMixerVisible ? "MIX ON" : "MIX OFF");
+                compactMixerVisible ? "◉" : "○");
+        compactMixerToggle.setTextSize(12);
         compactMixerToggle.setTextColor(
                 compactMixerVisible ? BG : TEXT);
         compactMixerToggle.setBackground(strokeBackground(
