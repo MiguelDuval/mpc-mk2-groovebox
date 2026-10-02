@@ -3621,7 +3621,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setHardwareButtonLedState(
                 15,
                 nativeSequenceIsTimingCorrectEnabled()
-                        ? MpcHardwareFeedbackPolicy.LED_COLOR_2_FULL
+                        ? MpcHardwareFeedbackPolicy.LED_SINGLE_FULL
                         : MpcHardwareFeedbackPolicy.LED_OFF);
 
         for (int i = 0; i < 4; i++) {
