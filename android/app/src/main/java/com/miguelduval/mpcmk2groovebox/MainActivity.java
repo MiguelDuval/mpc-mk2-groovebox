@@ -105,6 +105,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView sequenceStepEventInfo;
     private TextView sequenceTransportView;
     private int sequenceGridPage = 0;
+    private int sequenceGridStartStep = 0;
+    private int sequenceGridVisibleSteps = MpcZoomPolicy.MAX_HORIZONTAL_SPAN >= 0
+            ? MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_STEPS : 16;
+    private int sequenceGridStartPad = 0;
+    private int sequenceGridVisiblePads = MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_PADS;
     private int sequenceStepPage = 0;
     private int launcherBank = 0;
     private String lastLauncherLedSignature = "";
@@ -1278,17 +1283,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
         sequenceGridView = new SequenceGridView(this);
-        sequenceGridView.setContentDescription("Sequence 16 by 16 step grid");
-        sequenceGridView.setListener((padIndex, pageStep) -> {
+        sequenceGridView.setContentDescription("Zoomable sequence step grid");
+        sequenceGridView.setListener((padIndex, absoluteStep) -> {
             final int gridTicks = nativeSequenceGetQuantizeGrid();
-            final int absoluteStep =
-                    sequenceGridPage * SEQUENCE_GRID_PAGE_STEPS + pageStep;
             final String result = nativeSequenceToggleGridStep(
                     padIndex, absoluteStep, gridTicks);
             setBottomStatus(result);
             refreshSequenceGrid();
             refreshSequenceControls();
         });
+        sequenceGridView.setViewportListener(
+                (firstStep, visibleSteps, firstPad, visiblePads) -> {
+                    sequenceGridStartStep = firstStep;
+                    sequenceGridVisibleSteps = visibleSteps;
+                    sequenceGridStartPad = firstPad;
+                    sequenceGridVisiblePads = visiblePads;
+                    refreshSequenceGrid();
+                });
         page.addView(sequenceGridView, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
@@ -1996,49 +2007,107 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
-    private int sequenceGridPageCount() {
+    private int sequenceGridTotalSteps() {
         final long gridTicks = Math.max(
                 1L, nativeSequenceGetQuantizeGrid());
         final long lengthTicks = Math.max(
                 gridTicks,
                 Math.round(getSequenceTicksPerBar())
                         * Math.max(1, nativeSequenceGetBars()));
-        final long pageTicks =
-                gridTicks * SEQUENCE_GRID_PAGE_STEPS;
         return (int) Math.max(
                 1L,
-                (lengthTicks + pageTicks - 1L) / pageTicks);
+                (lengthTicks + gridTicks - 1L) / gridTicks);
+    }
+
+    private int sequenceGridPageCount() {
+        final int totalSteps = sequenceGridTotalSteps();
+        final int visibleSteps = Math.max(
+                1,
+                Math.min(
+                        MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_STEPS,
+                        sequenceGridVisibleSteps));
+        return Math.max(
+                1,
+                (totalSteps + visibleSteps - 1) / visibleSteps);
+    }
+
+    private int sequenceGridMaxStartStep() {
+        return Math.max(
+                0,
+                sequenceGridTotalSteps() - sequenceGridVisibleSteps);
+    }
+
+    private int sequenceGridMaxStartPad() {
+        return Math.max(
+                0,
+                MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_PADS
+                        - sequenceGridVisiblePads);
     }
 
     private void moveSequenceGridPage(int delta) {
-        final int count = sequenceGridPageCount();
-        sequenceGridPage = Math.max(
-                0, Math.min(count - 1, sequenceGridPage + delta));
+        final int step = Math.max(
+                1,
+                sequenceGridVisibleSteps);
+        sequenceGridStartStep = Math.max(
+                0,
+                Math.min(
+                        sequenceGridMaxStartStep(),
+                        sequenceGridStartStep + delta * step));
         refreshSequenceGrid();
     }
 
     private void refreshSequenceGrid() {
         if (sequenceGridView == null) return;
 
-        final int count = sequenceGridPageCount();
-        sequenceGridPage = Math.max(
-                0, Math.min(count - 1, sequenceGridPage));
+        final int totalSteps = sequenceGridTotalSteps();
+        sequenceGridVisibleSteps = Math.max(
+                1,
+                Math.min(
+                        MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_STEPS,
+                        Math.min(sequenceGridVisibleSteps, totalSteps)));
+        sequenceGridStartStep = Math.max(
+                0,
+                Math.min(
+                        totalSteps - sequenceGridVisibleSteps,
+                        sequenceGridStartStep));
+        sequenceGridVisiblePads = Math.max(
+                1,
+                Math.min(
+                        MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_PADS,
+                        sequenceGridVisiblePads));
+        sequenceGridStartPad = Math.max(
+                0,
+                Math.min(
+                        sequenceGridMaxStartPad(),
+                        sequenceGridStartPad));
 
         final int gridTicks = Math.max(
                 1, nativeSequenceGetQuantizeGrid());
-        final int firstStep = sequenceGridPage * SEQUENCE_GRID_PAGE_STEPS;
+        final long absoluteStep = Math.max(
+                0L,
+                nativeSequencePositionTicks() / gridTicks);
+        final int firstStep = sequenceGridStartStep;
+        final int localPlayhead =
+                absoluteStep >= firstStep
+                        && absoluteStep < firstStep + sequenceGridVisibleSteps
+                        ? (int) absoluteStep
+                        : -1;
 
         sequenceGridView.setEditable(nativeSequenceIsGridEditable());
+        sequenceGridView.setViewport(
+                sequenceGridStartStep,
+                sequenceGridVisibleSteps,
+                totalSteps,
+                sequenceGridStartPad,
+                sequenceGridVisiblePads);
         sequenceGridView.setState(
                 nativeSequenceGetGridVelocities(firstStep, gridTicks),
-                -1);
+                localPlayhead);
         refreshSequenceGridPageInfo();
     }
 
     private void refreshSequenceGridPageInfo() {
         if (sequenceGridView == null) return;
-        // The page indicator is part of the grid screen header; redraw is kept
-        // local so tapping a cell never reconstructs the whole page.
         final View root = sequenceGridView.getParent() instanceof View
                 ? (View) sequenceGridView.getParent()
                 : null;
@@ -2053,11 +2122,70 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 || !(header.getChildAt(2) instanceof TextView)) return;
 
         final TextView pageInfo = (TextView) header.getChildAt(2);
+        final int first = sequenceGridStartStep + 1;
+        final int last = Math.min(
+                sequenceGridTotalSteps(),
+                sequenceGridStartStep + sequenceGridVisibleSteps);
         pageInfo.setText(String.format(
                 Locale.ROOT,
-                "PAGE %02d/%02d",
-                sequenceGridPage + 1,
-                sequenceGridPageCount()));
+                "%02d–%02d/%02d",
+                first,
+                last,
+                sequenceGridTotalSteps()));
+    }
+
+    private void zoomSequenceGridHorizontal(int delta) {
+        if (sequenceGridView == null) return;
+        final int oldVisible = sequenceGridVisibleSteps;
+        final int nextVisible = delta > 0
+                ? MpcSequenceZoomPolicy.zoomGridStepsIn(oldVisible)
+                : MpcSequenceZoomPolicy.zoomGridStepsOut(oldVisible);
+        final int totalSteps = sequenceGridTotalSteps();
+        final int clampedVisible = Math.max(
+                1,
+                Math.min(nextVisible, Math.max(1, totalSteps)));
+        if (clampedVisible == oldVisible) return;
+
+        final int center = sequenceGridStartStep + oldVisible / 2;
+        sequenceGridVisibleSteps = clampedVisible;
+        sequenceGridStartStep = Math.max(
+                0,
+                Math.min(
+                        sequenceGridTotalSteps() - sequenceGridVisibleSteps,
+                        center - sequenceGridVisibleSteps / 2));
+        refreshSequenceGrid();
+        setBottomStatus(
+                "GRID ZOOM H • "
+                        + sequenceGridStartStep + 1
+                        + "–"
+                        + Math.min(
+                                sequenceGridTotalSteps(),
+                                sequenceGridStartStep + sequenceGridVisibleSteps));
+    }
+
+    private void zoomSequenceGridVertical(int delta) {
+        if (sequenceGridView == null) return;
+        final int oldVisible = sequenceGridVisiblePads;
+        final int nextVisible = delta > 0
+                ? MpcSequenceZoomPolicy.zoomGridPadsIn(oldVisible)
+                : MpcSequenceZoomPolicy.zoomGridPadsOut(oldVisible);
+        if (nextVisible == oldVisible) return;
+
+        final int selectedRow = Math.max(
+                0,
+                Math.min(15, 15 - selectedPad));
+        sequenceGridVisiblePads = nextVisible;
+        sequenceGridStartPad = Math.max(
+                0,
+                Math.min(
+                        sequenceGridMaxStartPad(),
+                        selectedRow - sequenceGridVisiblePads / 2));
+        refreshSequenceGrid();
+        setBottomStatus(
+                "GRID ZOOM V • PADS "
+                        + (16 - sequenceGridStartPad)
+                        + "–"
+                        + (17 - sequenceGridStartPad - sequenceGridVisiblePads));
     }
 
     private TextView sequenceTempoViewHolder() {
@@ -2197,11 +2325,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final long absoluteStep =
                     Math.max(0L, nativeSequencePositionTicks() / gridTicks);
             final long firstStep =
-                    (long) sequenceGridPage * SEQUENCE_GRID_PAGE_STEPS;
+                    Math.max(0L, sequenceGridStartStep);
             final int localStep =
                     absoluteStep >= firstStep
-                            && absoluteStep < firstStep + SEQUENCE_GRID_PAGE_STEPS
-                            ? (int) (absoluteStep - firstStep)
+                            && absoluteStep < firstStep + sequenceGridVisibleSteps
+                            ? (int) absoluteStep
                             : -1;
             sequenceGridView.setState(
                     nativeSequenceGetGridVelocities(
@@ -4319,16 +4447,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
                 return;
             case MpcStudioMk2SemanticActions.ZOOM_CONTEXT:
-                hardwareFocus = value0 != 0 ? 12 : 11;
                 if ("SAMPLE".equals(currentPage) && sampleWaveform != null) {
+                    hardwareFocus = value0 != 0 ? 12 : 11;
                     setBottomStatus(value0 != 0
                             ? "ZOOM VERTICAL • DATA DIAL / +/-"
                             : "ZOOM HORIZONTAL • DATA DIAL / +/-");
+                } else if ("SEQ".equals(currentPage) && sequenceGridView != null) {
+                    hardwareFocus = value0 != 0 ? 14 : 13;
+                    setBottomStatus(value0 != 0
+                            ? "GRID ZOOM VERTICAL • DATA DIAL / +/-"
+                            : "GRID ZOOM HORIZONTAL • DATA DIAL / +/-");
+                } else if ("SEQ".equals(currentPage) && sequenceTimeline != null) {
+                    if (value0 != 0) {
+                        hardwareFocus = 16;
+                        setBottomStatus("TIMELINE HAS NO VERTICAL AXIS");
+                    } else {
+                        hardwareFocus = 15;
+                        setBottomStatus("TIMELINE ZOOM HORIZONTAL • DATA DIAL / +/-");
+                    }
                 } else {
-                    setBottomStatus(
-                            value0 != 0
-                                    ? "ZOOM VERTICAL • SAMPLE EDIT ONLY"
-                                    : "ZOOM HORIZONTAL • SAMPLE EDIT ONLY");
+                    hardwareFocus = 0;
+                    setBottomStatus(value0 != 0
+                            ? "ZOOM VERTICAL • CONTEXT REQUIRED"
+                            : "ZOOM HORIZONTAL • CONTEXT REQUIRED");
                 }
                 return;
             case MpcStudioMk2SemanticActions.COPY_CONTEXT:
@@ -4470,24 +4611,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             }
             if (hardwareFocus == 11) {
-                if (delta > 0) {
-                    sampleWaveform.zoomIn();
-                } else {
-                    sampleWaveform.zoomOut();
-                }
+                if (delta > 0) sampleWaveform.zoomIn();
+                else sampleWaveform.zoomOut();
                 setBottomStatus(
                         "ZOOM HORIZONTAL • "
                                 + (delta > 0 ? "IN" : "OUT"));
             } else {
-                if (delta > 0) {
-                    sampleWaveform.zoomVerticalIn();
-                } else {
-                    sampleWaveform.zoomVerticalOut();
-                }
+                if (delta > 0) sampleWaveform.zoomVerticalIn();
+                else sampleWaveform.zoomVerticalOut();
                 setBottomStatus(
                         "ZOOM VERTICAL • "
                                 + (delta > 0 ? "IN" : "OUT"));
             }
+            return;
+        }
+        if (hardwareFocus == 13 || hardwareFocus == 14) {
+            if (sequenceGridView == null || !"SEQ".equals(currentPage)) {
+                setBottomStatus("GRID ZOOM • SEQ GRID REQUIRED");
+                return;
+            }
+            if (hardwareFocus == 13) {
+                zoomSequenceGridHorizontal(delta);
+            } else {
+                zoomSequenceGridVertical(delta);
+            }
+            return;
+        }
+        if (hardwareFocus == 15) {
+            if (sequenceTimeline == null || !"SEQ".equals(currentPage)) {
+                setBottomStatus("TIMELINE ZOOM • SEQ REQUIRED");
+                return;
+            }
+            if (delta > 0) sequenceTimeline.zoomIn();
+            else sequenceTimeline.zoomOut();
+            setBottomStatus(
+                    "TIMELINE ZOOM H • "
+                            + (delta > 0 ? "IN" : "OUT"));
             return;
         }
         setBottomStatus("DATA DIAL " + (delta > 0 ? "+" : "−") + " • no focused selector");
