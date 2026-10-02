@@ -1896,34 +1896,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackProgramSection.setBackgroundColor(BG);
         trackProgramSection.setPadding(0, dp(4), 0, 0);
 
+        TextView program = mainField("PROGRAM");
+        program.setTextSize(12);
+        program.setContentDescription("Main Mode selected program");
+        program.setOnClickListener(v -> showProgramSelectPage());
+
         LinearLayout trackProgramHeader = row();
-        trackProgramHeader.addView(sectionLabelView(
-                "TRACK",
-                new LinearLayout.LayoutParams(dp(58), dp(32))));
+        trackProgramHeader.setContentDescription("Main Mode Track identity header");
+        trackProgramHeader.setPadding(dp(4), dp(2), dp(4), dp(2));
 
         TextView trackName = mainField("TRACK");
         trackName.setTypeface(Typeface.DEFAULT_BOLD);
-        trackName.setTextSize(14);
+        trackName.setTextSize(13);
         trackName.setContentDescription("Main Mode selected track");
         trackName.setOnClickListener(v -> showTrackSelectPage());
-        trackProgramHeader.addView(trackName, new LinearLayout.LayoutParams(
-                0, dp(42), 1.35f));
+        trackProgramHeader.addView(trackName,
+                new LinearLayout.LayoutParams(0, dp(40), 1.30f));
 
-        TextView program = mainField("PROGRAM");
-        program.setContentDescription("Main Mode selected program");
-        program.setOnClickListener(v -> showProgramSelectPage());
         mainTrackField = trackName;
         mainProgramField = program;
         mainTrackTypeField = buildMainTrackTypeSelector();
-        trackProgramHeader.addView(program, new LinearLayout.LayoutParams(
-                0, dp(42), 1.75f));
+        trackProgramHeader.addView(program,
+                new LinearLayout.LayoutParams(0, dp(40), 1.20f));
 
         trackProgramHeader.addView(
                 mainTrackTypeField,
-                new LinearLayout.LayoutParams(dp(88), dp(42)));
+                new LinearLayout.LayoutParams(dp(76), dp(40)));
         trackProgramSection.addView(trackProgramHeader,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
         /*
          * MPC Main presents Track and Arrangement as sibling headers of the
@@ -3198,8 +3199,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? ((String) tag).replace("TRACKTYPE_", "") : "";
         final boolean selected = type.equals(active);
         final boolean editable = "DRUM".equalsIgnoreCase(active);
-        button.setText(active + " • TYPE"
-                + (editable ? "" : " • RESERVED"));
+        button.setText(active + (editable ? "" : " • RESERVED"));
         button.setEnabled(editable);
         button.setAlpha(editable ? 1.0f : 0.45f);
         button.setTextColor(selected && editable ? BG : TEXT);
@@ -3246,7 +3246,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final String programStatus = startupComplete
                     ? nativeSequenceGetTrackProgram(trackIndex)
                     : "PROGRAM • NONE";
-            program.setText("PROGRAM\n" + normalizeProgramLabel(programStatus));
+            program.setText(normalizeProgramLabel(programStatus));
         }
         if (record != null) record.setText(
                 "REC\n" + (startupComplete && nativeSequenceIsSelectedTrackArmed()
