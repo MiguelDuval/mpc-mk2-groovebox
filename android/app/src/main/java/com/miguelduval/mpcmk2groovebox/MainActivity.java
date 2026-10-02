@@ -120,6 +120,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final ArrayList<MpcArrangeView.Lane> arrangementLanes = new ArrayList<>();
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
+    private FrameLayout mainTrackArrangementHost;
+    private Button mainTrackViewButton;
+    private Button mainArrangementViewButton;
     private SequenceLauncherView sequenceLauncherView;
     private final Button[] sequenceStepButtons = new Button[16];
     private TextView sequenceStepEventInfo;
@@ -1222,28 +1225,101 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackProgramSection.addView(trackState, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
-        LinearLayout lower = row();
+        /*
+         * MPC Main keeps Track and Arrangement as sibling views of the same
+         * Main-mode lower region. Track View is the default entry; switching
+         * views changes presentation only and never changes Navigation mode or
+         * the selected Track/Sequence.
+         */
+        LinearLayout viewSelector = row();
+        TextView selectorLabel = sectionLabelView(
+                "MAIN VIEW",
+                new LinearLayout.LayoutParams(dp(82), dp(34)));
+        viewSelector.addView(selectorLabel);
 
-        LinearLayout pads = column();
-        pads.setContentDescription("Main Mode performance pads");
-        pads.addView(buildMiniMainPadGrid(), new LinearLayout.LayoutParams(
-                0, 0, 1));
-        lower.addView(pads, new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.MATCH_PARENT, 0.44f));
+        mainTrackViewButton = actionButton("TRACK", v -> setMainTrackArrangementView(false));
+        mainTrackViewButton.setContentDescription("Main Track View selector");
+        viewSelector.addView(mainTrackViewButton,
+                new LinearLayout.LayoutParams(0, dp(34), 1));
+
+        mainArrangementViewButton = actionButton(
+                "ARRANGEMENT",
+                v -> setMainTrackArrangementView(true));
+        mainArrangementViewButton.setContentDescription("Main Arrangement View selector");
+        viewSelector.addView(mainArrangementViewButton,
+                new LinearLayout.LayoutParams(0, dp(34), 1));
+        trackProgramSection.addView(viewSelector);
+
+        mainTrackArrangementHost = new FrameLayout(this);
+        mainTrackArrangementHost.setContentDescription(
+                "Main Track and Arrangement workspace");
+
+        LinearLayout trackWorkspace = column();
+        trackWorkspace.setContentDescription("Main Mode Track View workspace");
+        trackWorkspace.setPadding(dp(6), dp(4), dp(6), dp(4));
+        trackWorkspace.setBackground(strokeBackground(SURFACE_2, LINE, 4));
+
+        LinearLayout trackWorkspaceHeader = row();
+        trackWorkspaceHeader.addView(sectionLabelView(
+                "TRACK VIEW",
+                new LinearLayout.LayoutParams(0, dp(30), 1)));
+
+        Button sampleEdit = actionButton("SAMPLE EDIT", v -> showSamplePage());
+        trackWorkspaceHeader.addView(sampleEdit,
+                new LinearLayout.LayoutParams(dp(104), dp(30)));
+
+        Button trackEdit = actionButton("TRACK EDIT", v -> setBottomStatus(
+                "TRACK EDIT • RESERVED / UNAVAILABLE"));
+        trackEdit.setEnabled(false);
+        trackEdit.setAlpha(0.45f);
+        trackWorkspaceHeader.addView(trackEdit,
+                new LinearLayout.LayoutParams(dp(90), dp(30)));
+
+        trackWorkspace.addView(trackWorkspaceHeader,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        TextView trackWorkspaceInfo = label(
+                "PERFORMANCE • selected pad follows MPC Studio MkII bank/selection",
+                9, MUTED);
+        trackWorkspaceInfo.setContentDescription("Main Track View guidance");
+        trackWorkspace.addView(trackWorkspaceInfo,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
+
+        trackWorkspace.addView(buildMiniMainPadGrid(),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout trackWorkspaceFooter = row();
+        TextView selectedPad = label("", 11, TEXT);
+        selectedPad.setTypeface(Typeface.DEFAULT_BOLD);
+        selectedPad.setGravity(Gravity.CENTER_VERTICAL);
+        selectedPad.setContentDescription("Main Track View selected pad");
+        trackWorkspaceFooter.addView(selectedPad,
+                new LinearLayout.LayoutParams(0, dp(34), 1));
+
+        trackWorkspaceFooter.addView(actionButton(
+                "GRID",
+                v -> showSequenceGridPage()),
+                new LinearLayout.LayoutParams(dp(68), dp(34)));
+        trackWorkspace.addView(trackWorkspaceFooter,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
         LinearLayout arrangement = column();
-        arrangement.setPadding(dp(6), dp(3), dp(6), dp(3));
+        arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
         arrangement.setBackground(strokeBackground(SURFACE_2, LINE, 4));
         arrangement.setContentDescription("Main Mode arrangement preview");
 
         LinearLayout arrangementHeader = row();
         arrangementHeader.addView(sectionLabelView(
                 "ARRANGEMENT",
-                new LinearLayout.LayoutParams(0, dp(28), 1)));
+                new LinearLayout.LayoutParams(0, dp(30), 1)));
         arrangementHeader.addView(actionButton(
                 "GRID",
                 v -> showSequenceGridPage()),
-                new LinearLayout.LayoutParams(dp(68), dp(28)));
+                new LinearLayout.LayoutParams(dp(68), dp(30)));
         arrangement.addView(arrangementHeader);
 
         TextView arrangementInfo = label(
@@ -1262,10 +1338,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangement.addView(eventSummary, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
 
-        lower.addView(arrangement, new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.MATCH_PARENT, 0.56f));
-        trackProgramSection.addView(lower, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        mainTrackArrangementHost.addView(trackWorkspace,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+        mainTrackArrangementHost.addView(arrangement,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+        trackProgramSection.addView(mainTrackArrangementHost,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        setMainTrackArrangementView(false);
 
         page.addView(sequenceCard, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.27f));
@@ -1277,6 +1362,55 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMpcToolbarState();
         refreshMainModePadVisuals();
         updateModeRailSelection();
+    }
+
+    private void setMainTrackArrangementView(boolean arrangementSelected) {
+        if (mainTrackArrangementHost == null
+                || mainTrackViewButton == null
+                || mainArrangementViewButton == null) {
+            return;
+        }
+
+        final View trackView = mainTrackArrangementHost.getChildAt(0);
+        final View arrangementView = mainTrackArrangementHost.getChildAt(1);
+        final boolean trackVisible = !arrangementSelected;
+        trackView.setVisibility(trackVisible ? View.VISIBLE : View.GONE);
+        arrangementView.setVisibility(trackVisible ? View.GONE : View.VISIBLE);
+
+        mainTrackViewButton.setTextColor(trackVisible ? BG : TEXT);
+        mainTrackViewButton.setBackground(strokeBackground(
+                trackVisible ? ACCENT : SURFACE_2,
+                trackVisible ? ACCENT : LINE,
+                6));
+        mainArrangementViewButton.setTextColor(trackVisible ? TEXT : BG);
+        mainArrangementViewButton.setBackground(strokeBackground(
+                trackVisible ? SURFACE_2 : ACCENT,
+                trackVisible ? LINE : ACCENT,
+                6));
+
+        if (trackVisible) {
+            final TextView selectedPad =
+                    findTextByContentDescription(
+                            mainTrackArrangementHost,
+                            "Main Track View selected pad");
+            if (selectedPad != null) {
+                selectedPad.setText(String.format(
+                        Locale.ROOT,
+                        "PAD %02d • BANK %s • Track %02d",
+                        selectedPadIndexForUi() + 1,
+                        (char) ('A' + Math.max(
+                                0,
+                                Math.min(7, navigationController.state().padBank()))),
+                        Math.max(0, nativeSequenceGetSelectedTrack()) + 1));
+            }
+            refreshMainModePadVisuals();
+        } else {
+            refreshMainArrangementPreview();
+        }
+    }
+
+    private int selectedPadIndexForUi() {
+        return Math.max(0, Math.min(15, selectedPad));
     }
 
     private LinearLayout mainSection() {
