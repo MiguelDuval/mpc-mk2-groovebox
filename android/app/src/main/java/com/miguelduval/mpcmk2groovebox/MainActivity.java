@@ -7557,6 +7557,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View quickSamplePrimary = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View sample primary action");
+        View quickSampleBrowse = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View browse samples");
+        if (quickSamplePrimary == null || quickSampleBrowse == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main sample action state");
+            return;
+        }
+
         View layerUp = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "Main Track View next sample layer");
