@@ -2050,7 +2050,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? new String[]{"1", "2", "3", "4", "5", "6",
                         "7", "8", "9", "DEL", "0", "."}
                 : new String[]{"1", "2", "3", "4", "5", "6",
-                        "7", "8", "9", "DEL", "0", "OK"};
+                        "7", "8", "9", "DEL", "0", "00"};
 
         for (String key : keys) {
             Button button = actionButton(key, null);
@@ -2071,34 +2071,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     }
                     return;
                 }
-                if ("OK".equals(key)) {
-                    final String result = committer.commit(
-                            valueField.getText().toString().trim());
-                    if (result != null && result.startsWith("OK")) {
-                        setBottomStatus(result);
-                        refreshMainModeFields();
-                        refreshMainDataDialFocusVisuals();
-                    } else {
-                        setBottomStatus(result);
-                        if (result != null
-                                && !result.toLowerCase(Locale.ROOT)
-                                        .contains("must")
-                                && !result.toLowerCase(Locale.ROOT)
-                                        .contains("enter")
-                                && !result.toLowerCase(Locale.ROOT)
-                                        .contains("cannot")
-                                && !result.toLowerCase(Locale.ROOT)
-                                        .contains("inside")) {
-                            refreshMainModeFields();
-                            refreshMainDataDialFocusVisuals();
-                        }
-                    }
-                    if (result == null
-                            || !result.toLowerCase(Locale.ROOT)
-                                    .contains("must")) {
-                        // Native command results are the authoritative status.
-                        // Keep the dialog open only for explicit input errors.
-                    }
+                if ("00".equals(key)) {
+                    final int selectionStart = valueField.getSelectionStart();
+                    final int selectionEnd = valueField.getSelectionEnd();
+                    final int left = Math.min(selectionStart, selectionEnd);
+                    final int right = Math.max(selectionStart, selectionEnd);
+                    valueField.getText().replace(left, right, "00");
                     return;
                 }
 
