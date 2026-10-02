@@ -230,6 +230,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native long nativeAudioGetPadSampleRegionStart(int pad, int layer);
     private static native long nativeAudioGetPadSampleRegionEnd(int pad, int layer);
     private static native long nativeAudioGetPadSampleFrameCount(int pad, int layer);
+    private static native String nativeAudioGetPadSampleName(int pad, int layer);
     private static native int nativeAudioGetPadSampleRate(int pad, int layer);
     private static native float[] nativeAudioGetPadWaveformPeaks(
             int pad, int layer, int points);
@@ -1608,6 +1609,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         mainTrackWaveform.setRecording(false);
 
+        final String sampleName = startupComplete
+                ? nativeAudioGetPadSampleName(selectedPad, selectedLayer)
+                : "";
+        final String displaySampleName =
+                sampleName == null || sampleName.trim().isEmpty()
+                        ? "NO NAME"
+                        : sampleName.trim();
+
         final TextView info = findTextByContentDescription(
                 content,
                 "Main Track View quick sample info");
@@ -1621,9 +1630,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             } else {
                 info.setText(String.format(
                         Locale.ROOT,
-                        "PAD %02d • LAYER %d/8 • %d frames • S %d • E %d",
-                        selectedPad + 1,
-                        selectedLayer + 1,
+                        "%s • %d frames • S %d • E %d",
+                        displaySampleName,
                         frames,
                         nativeAudioGetPadSampleRegionStart(
                                 selectedPad, selectedLayer),
@@ -1638,7 +1646,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (context != null) {
             context.setText(String.format(
                     Locale.ROOT,
-                    "SAMPLE • PAD %02d • LAYER %d/8",
+                    "SAMPLE • %s • PAD %02d • LAYER %d/8",
+                    displaySampleName,
                     selectedPad + 1,
                     selectedLayer + 1));
         }
@@ -2807,9 +2816,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (startupComplete) {
             final long frames = nativeAudioGetPadSampleFrameCount(
                     selectedPad, selectedLayer);
+            final String sampleName = nativeAudioGetPadSampleName(
+                    selectedPad, selectedLayer);
             browserView.setCurrentSampleName(
                     frames > 0
-                            ? "ASSIGNED • " + frames + " frames"
+                            ? (sampleName == null || sampleName.trim().isEmpty()
+                                    ? "ASSIGNED"
+                                    : sampleName)
                             : "NONE");
         } else {
             browserView.setCurrentSampleName("NONE");
