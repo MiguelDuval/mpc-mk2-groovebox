@@ -144,14 +144,17 @@ final class MpcTrackEditView extends LinearLayout {
     private static final int LINE = Color.rgb(64, 72, 80);
     private static final int TEXT = Color.rgb(235, 239, 242);
     private static final int MUTED = Color.rgb(156, 166, 174);
-    // MPC-style selected/latched state uses a red accent.\n    private static final int ACCENT = Color.rgb(221, 52, 52);
+    // MPC-style selected/latched state uses a red accent.
+    private static final int ACCENT = Color.rgb(221, 52, 52);
 
     private final Listener listener;
     private final Button[] tabButtons = new Button[Tab.values().length];
-    private final TextView titleView;
     private final TextView contextView;
+    private final TextView padContextView;
+    private final Button editAllLayersButton;
     private final LinearLayout body;
-    pri    MpcTrackEditView(Context context, Listener listener) {
+
+    MpcTrackEditView(Context context, Listener listener) {
         super(context);
         this.listener = listener;
         setOrientation(VERTICAL);
