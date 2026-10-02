@@ -579,10 +579,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showAudioSettingsPage();
                 break;
             default:
-                navigationController.navigate(mode);
+                navigationController.setActionAvailable(false);
                 setBottomStatus(
-                        mode.label() + " is reserved/unavailable");
-                updateModeRailSelection();
+                        mode.label() + " • RESERVED / UNAVAILABLE");
+                updateMpcShellState();
                 break;
         }
     }
@@ -1067,9 +1067,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackActions.addView(actionButton(
                 "TRACK EDIT",
                 v -> {
-                    navigationController.navigate(MpcUiState.Mode.RESERVED);
-                    setBottomStatus("TRACK EDIT • RESERVED until Track→Program resolution");
-                    updateMpcShellState();
+                    navigationController.setActionAvailable(false);
+                    setBottomStatus(
+                            "TRACK EDIT • RESERVED until Track→Program resolution");
+                    refreshMpcCompactContext();
+                    refreshMpcFunctionBar();
                 }), weight());
         trackCard.addView(trackActions, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
@@ -2002,7 +2004,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(header);
 
         TextView info = label(
-                "LOOP BRACE edits Sequence loop • double-tap an event to continue in Grid",
+                "LOOP BRACE edits Sequence loop • event placement is read-only in the current pattern model • double-tap an event for Grid",
                 9, MUTED);
         info.setContentDescription("Arrangement editing guidance");
         page.addView(info, new LinearLayout.LayoutParams(
@@ -2123,12 +2125,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(nativeSequenceNext());
             showTrackViewPage();
         }), new LinearLayout.LayoutParams(dp(66), dp(34)));
-        header.addView(actionButton("ARRANGE", v -> {
-            navigationController.navigate(MpcUiState.Mode.ARRANGE);
-            navigationController.setActionAvailable(false);
-            setBottomStatus("ARRANGE • RESERVED until linear arranger workspace");
-            updateMpcShellState();
-        }), new LinearLayout.LayoutParams(dp(90), dp(34)));
+        header.addView(actionButton(
+                "ARRANGE",
+                v -> showArrangePage()),
+                new LinearLayout.LayoutParams(dp(90), dp(34)));
         page.addView(header);
 
         LinearLayout sequenceSummary = panel();
@@ -3994,12 +3994,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 weight());
         system.addView(actionButton("MIDI / CONTROL", v -> showMidiPage()),
                 weight());
-        system.addView(actionButton("SAVE / PROJECT", v -> {
-            navigationController.navigate(MpcUiState.Mode.PROJECT);
-            navigationController.setActionAvailable(false);
-            setBottomStatus("PROJECT • RESERVED until project UI slice");
-            updateMpcShellState();
-        }), weight());
+        Button saveProject = actionButton(
+                "SAVE / PROJECT",
+                null);
+        saveProject.setEnabled(false);
+        saveProject.setAlpha(0.45f);
+        saveProject.setContentDescription(
+                "Save and Project reserved");
+        system.addView(saveProject, weight());
         system.addView(actionButton(
                 "EDIT SHORTCUTS",
                 v -> showShortcutConfigPage()),
