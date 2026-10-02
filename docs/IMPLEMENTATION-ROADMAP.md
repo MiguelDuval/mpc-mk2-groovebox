@@ -386,3 +386,10 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **No duplicate top-level mode introduced:** the view switch is local to Main and preserves transport, selected Track, selected Sequence and Data Dial state.
 - **Track workspace keeps truthful affordances:** performance pads and Grid remain available; Track Edit is visible as reserved until its semantic/backend contract is implemented.
 
+
+
+## 2026-10-02 Global transport-position strip increment
+
+- **Persistent shell playhead implemented:** a thin non-interactive position strip now sits directly beneath Toolbar and above every workspace.
+- **Single state source:** the strip reads Sequence position from the existing refreshSequenceOverview() path; no new timer, clock or audio-callback work was introduced.
+- **Navigation continuity:** Main, Track View, Grid, Step, Browser and future shell contexts retain the same transport-position indicator without changing Navigation Mode.
