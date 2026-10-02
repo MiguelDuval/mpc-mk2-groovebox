@@ -848,31 +848,327 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
-        LinearLayout workspace = row();
+        page.setPadding(dp(8), dp(6), dp(8), dp(2));
 
-        LinearLayout padSurface = column();
-        padSurface.addView(sectionLabel("PERFORM / 16 PADS"));
-        padSurface.addView(buildPadGrid(), new LinearLayout.LayoutParams(
+        LinearLayout sequenceCard = panel();
+        sequenceCard.setContentDescription("Main Mode Sequence card");
+
+        LinearLayout sequenceHeader = row();
+        sequenceHeader.addView(sectionLabelView(
+                "SEQUENCE",
+                new LinearLayout.LayoutParams(0, dp(32), 1)));
+        sequenceHeader.addView(actionButton(
+                "SEQ SELECT",
+                v -> {
+                    navigationController.setSubcontext(
+                            MpcUiState.Subcontext.SEQUENCE_SELECT);
+                    navigationController.setDataDialFocus(
+                            MpcUiState.DataDialFocus.SEQUENCE);
+                    showSequencePage();
+                }),
+                new LinearLayout.LayoutParams(dp(104), dp(32)));
+        sequenceCard.addView(sequenceHeader);
+
+        TextView sequenceName = label("", 16, TEXT);
+        sequenceName.setTypeface(Typeface.DEFAULT_BOLD);
+        sequenceName.setContentDescription("Main Mode selected sequence");
+        sequenceCard.addView(sequenceName, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+
+        LinearLayout sequenceMetrics = row();
+        TextView bpm = mainMetric("BPM");
+        TextView bars = mainMetric("BARS");
+        TextView timeSig = mainMetric("TIME SIG");
+        TextView loop = mainMetric("LOOP");
+        sequenceMetrics.addView(bpm, weight());
+        sequenceMetrics.addView(bars, weight());
+        sequenceMetrics.addView(timeSig, weight());
+        sequenceMetrics.addView(loop, weight());
+        sequenceCard.addView(sequenceMetrics);
+
+        LinearLayout sequenceActions = row();
+        sequenceActions.addView(
+                actionButton("BPM −", v -> changeSequenceTempo(-1.0)),
+                weight());
+        sequenceActions.addView(
+                actionButton("BPM +", v -> changeSequenceTempo(1.0)),
+                weight());
+        sequenceActions.addView(
+                actionButton("BARS −", v -> changeSequenceBars(-1)),
+                weight());
+        sequenceActions.addView(
+                actionButton("BARS +", v -> changeSequenceBars(1)),
+                weight());
+        sequenceActions.addView(
+                actionButton("LOOP", v -> {
+                    setBottomStatus(nativeSequenceSetLoopEnabled(
+                            !nativeSequenceIsLoopEnabled()));
+                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop);
+                }),
+                weight());
+        sequenceCard.addView(sequenceActions, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        LinearLayout trackCard = panel();
+        trackCard.setContentDescription("Main Mode Track card");
+
+        LinearLayout trackHeader = row();
+        trackHeader.addView(sectionLabelView(
+                "TRACK",
+                new LinearLayout.LayoutParams(0, dp(32), 1)));
+        trackHeader.addView(actionButton(
+                "TRACK VIEW",
+                v -> showSequencePage()),
+                new LinearLayout.LayoutParams(dp(104), dp(32)));
+        trackCard.addView(trackHeader);
+
+        TextView trackName = label("", 16, TEXT);
+        trackName.setTypeface(Typeface.DEFAULT_BOLD);
+        trackName.setContentDescription("Main Mode selected track");
+        trackCard.addView(trackName, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+
+        LinearLayout trackBody = row();
+        TextView trackType = mainInfo("TYPE");
+        TextView program = mainInfo("PROGRAM");
+        TextView record = mainInfo("REC");
+        TextView mute = mainInfo("MUTE");
+        trackBody.addView(trackType, new LinearLayout.LayoutParams(0, dp(48), 1.35f));
+        trackBody.addView(program, new LinearLayout.LayoutParams(0, dp(48), 1.55f));
+        trackBody.addView(record, new LinearLayout.LayoutParams(0, dp(48), 0.8f));
+        trackBody.addView(mute, new LinearLayout.LayoutParams(0, dp(48), 0.8f));
+        trackCard.addView(trackBody);
+
+        LinearLayout trackActions = row();
+        trackActions.addView(actionButton(
+                "REC ARM",
+                v -> {
+                    setBottomStatus(nativeSequenceSetSelectedTrackArmed(
+                            !nativeSequenceIsSelectedTrackArmed()));
+                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop);
+                }), weight());
+        trackActions.addView(actionButton(
+                "MUTE",
+                v -> {
+                    toggleSelectedTrackMute();
+                    refreshMainModeState(sequenceName, bpm, bars, timeSig, loop);
+                }), weight());
+        trackActions.addView(actionButton(
+                "GRID",
+                v -> showSequenceGridPage()), weight());
+        trackActions.addView(actionButton(
+                "TRACK EDIT",
+                v -> {
+                    navigationController.navigate(MpcUiState.Mode.RESERVED);
+                    setBottomStatus("TRACK EDIT • RESERVED until Track→Program resolution");
+                    updateMpcShellState();
+                }), weight());
+        trackCard.addView(trackActions, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        LinearLayout programCard = panel();
+        programCard.setContentDescription("Main Mode Program card");
+
+        LinearLayout programHeader = row();
+        programHeader.addView(sectionLabelView(
+                "DRUM PROGRAM",
+                new LinearLayout.LayoutParams(0, dp(32), 1)));
+        programHeader.addView(actionButton(
+                "BROWSER",
+                v -> showBrowserPage()),
+                new LinearLayout.LayoutParams(dp(96), dp(32)));
+        programCard.addView(programHeader);
+
+        TextView programName = label("", 15, TEXT);
+        programName.setTypeface(Typeface.DEFAULT_BOLD);
+        programCard.addView(programName, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+
+        LinearLayout lower = row();
+        LinearLayout pads = column();
+        pads.addView(buildMiniMainPadGrid(), new LinearLayout.LayoutParams(
+                0, 0, 1));
+        lower.addView(pads, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.MATCH_PARENT, 0.48f));
+
+        LinearLayout arrangement = panel();
+        arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
+        arrangement.setContentDescription("Main Mode arrangement preview");
+        arrangement.addView(sectionLabel("ARRANGEMENT"));
+        TextView arrangementInfo = label(
+                "LINEAR • current Sequence • playhead-aware",
+                10, MUTED);
+        arrangement.addView(arrangementInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
+
+        SequenceOverviewView overview = new SequenceOverviewView(this);
+        overview.setContentDescription("Main Mode arrangement overview");
+        arrangement.addView(overview, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
+
+        lower.addView(arrangement, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.MATCH_PARENT, 0.52f));
+        programCard.addView(lower, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        LinearLayout quick = row();
-        quick.addView(actionButton("LOAD", v -> openWavPicker()), weight());
-        quick.addView(actionButton("SAMPLE", v -> showSamplePage()), weight());
-        quick.addView(actionButton("REC", v -> showRecordPage()), weight());
-        quick.addView(actionButton("MIX", v -> showMixPage()), weight());
-        padSurface.addView(quick, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+        page.addView(sequenceCard, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.22f));
+        page.addView(trackCard, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.24f));
+        page.addView(programCard, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.54f));
 
-        workspace.addView(padSurface, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.60f));
-        workspace.addView(buildInspector(), new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 0.40f));
-
-        page.addView(workspace, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         content.addView(page);
-        refreshPadSelectionVisuals();
+        refreshMainModeState(sequenceName, bpm, bars, timeSig, loop);
+        refreshMainModePadVisuals();
         updateModeRailSelection();
+    }
+
+    private TextView mainMetric(String title) {
+        TextView view = label("", 12, TEXT);
+        view.setTypeface(Typeface.DEFAULT_BOLD);
+        view.setGravity(Gravity.CENTER_VERTICAL);
+        view.setPadding(dp(6), 0, dp(6), 0);
+        view.setBackground(strokeBackground(SURFACE_2, LINE, 6));
+        view.setTag(title);
+        return view;
+    }
+
+    private TextView mainInfo(String title) {
+        TextView view = label("", 11, TEXT);
+        view.setGravity(Gravity.CENTER_VERTICAL);
+        view.setPadding(dp(6), 0, dp(6), 0);
+        view.setBackground(strokeBackground(SURFACE_2, LINE, 6));
+        view.setTag(title);
+        return view;
+    }
+
+    private void refreshMainModeState(
+            TextView sequenceName,
+            TextView bpm,
+            TextView bars,
+            TextView timeSig,
+            TextView loop) {
+        final int sequenceIndex = Math.max(0, nativeSequenceGetIndex());
+        final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
+        final int trackCount = Math.max(1, nativeSequenceGetTrackCount());
+
+        sequenceName.setText(String.format(
+                Locale.ROOT, "Sequence %02d", sequenceIndex + 1));
+        bpm.setText(String.format(
+                Locale.ROOT, "BPM\\n%.1f", nativeSequenceGetTempo()));
+        bars.setText(String.format(
+                Locale.ROOT, "BARS\\n%d", nativeSequenceGetBars()));
+        timeSig.setText(String.format(
+                Locale.ROOT, "TIME SIG\\n%d/%d",
+                nativeSequenceGetNumerator(), nativeSequenceGetDenominator()));
+        loop.setText(
+                "LOOP\\n" + (nativeSequenceIsLoopEnabled() ? "ON" : "OFF"));
+
+        trackNameRefresh(trackIndex, trackCount);
+    }
+
+    private void trackNameRefresh(
+            int trackIndex,
+            int trackCount) {
+        View root = content;
+        TextView trackName = findTextByContentDescription(
+                root, "Main Mode selected track");
+        TextView trackType = findTextByTag(root, "TYPE");
+        TextView program = findTextByTag(root, "PROGRAM");
+        TextView record = findTextByTag(root, "REC");
+        TextView mute = findTextByTag(root, "MUTE");
+        if (trackName == null) return;
+
+        final String status = startupComplete && trackIndex < trackCount
+                ? nativeSequenceTrackStatus(trackIndex)
+                : "Track 01";
+        trackName.setText(String.format(
+                Locale.ROOT, "Track %02d  •  %s", trackIndex + 1, status));
+        if (trackType != null) trackType.setText(
+                "TYPE\\n" + (status.toLowerCase(Locale.ROOT).contains("drum")
+                        ? "DRUM" : "MIDI"));
+        if (program != null) program.setText(
+                "PROGRAM\\nDRUM PROGRAM");
+        if (record != null) record.setText(
+                "REC\\n" + (nativeSequenceIsSelectedTrackArmed() ? "ARM" : "OFF"));
+        if (mute != null) mute.setText(
+                "MUTE\\n" + (status.toLowerCase(Locale.ROOT).contains("mute")
+                        ? "ON" : "OFF"));
+    }
+
+    private TextView findTextByContentDescription(View root, String description) {
+        if (root == null) return null;
+        if (description.contentEquals(root.getContentDescription())
+                && root instanceof TextView) {
+            return (TextView) root;
+        }
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                TextView match = findTextByContentDescription(
+                        group.getChildAt(i), description);
+                if (match != null) return match;
+            }
+        }
+        return null;
+    }
+
+    private TextView findTextByTag(View root, String tag) {
+        if (root == null) return null;
+        if (tag.equals(root.getTag()) && root instanceof TextView) {
+            return (TextView) root;
+        }
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                TextView match = findTextByTag(group.getChildAt(i), tag);
+                if (match != null) return match;
+            }
+        }
+        return null;
+    }
+
+    private View buildMiniMainPadGrid() {
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(4);
+        grid.setRowCount(4);
+        for (int displayRow = 0; displayRow < 4; displayRow++) {
+            for (int displayColumn = 0; displayColumn < 4; displayColumn++) {
+                final int pad = (3 - displayRow) * 4 + displayColumn;
+                Button b = button(String.format(Locale.ROOT, "%02d", pad + 1));
+                b.setTextSize(11);
+                b.setTypeface(Typeface.DEFAULT_BOLD);
+                b.setContentDescription("Main Mode pad " + (pad + 1));
+                b.setOnClickListener(v -> {
+                    selectAndTriggerPad(pad, 112);
+                    navigationController.setSelectedPad(pad);
+                    refreshMainModePadVisuals();
+                });
+                GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+                lp.width = 0;
+                lp.height = 0;
+                lp.columnSpec = GridLayout.spec(displayColumn, 1f);
+                lp.rowSpec = GridLayout.spec(displayRow, 1f);
+                grid.addView(b, lp);
+            }
+        }
+        return grid;
+    }
+
+    private void refreshMainModePadVisuals() {
+        View root = content;
+        if (root == null) return;
+        for (int pad = 0; pad < 16; pad++) {
+            View v = findViewWithContentDescription(
+                    root, "Main Mode pad " + (pad + 1));
+            if (v == null) continue;
+            final boolean selected = pad == selectedPad;
+            v.setBackground(strokeBackground(
+                    selected ? Color.rgb(45, 72, 82) : SURFACE_2,
+                    selected ? ACCENT : LINE,
+                    6));
+        }
     }
 
     private View buildPadGrid() {
