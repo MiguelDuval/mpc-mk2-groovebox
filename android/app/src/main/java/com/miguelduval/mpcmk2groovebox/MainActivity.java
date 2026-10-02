@@ -134,6 +134,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private FrameLayout mainTrackArrangementHost;
     private Button mainTrackViewButton;
     private Button mainArrangementViewButton;
+    private TextView mainSequenceNameField;
+    private TextView mainSequenceTypeField;
+    private TextView mainSequenceBpmField;
+    private TextView mainSequenceBarsField;
+    private TextView mainSequenceStartField;
+    private TextView mainSequenceEndField;
+    private TextView mainSequenceTimeSigField;
+    private TextView mainSequenceLoopField;
+    private TextView mainSequenceTransposeField;
     private SequenceLauncherView sequenceLauncherView;
     private final Button[] sequenceStepButtons = new Button[16];
     private TextView sequenceStepEventInfo;
@@ -1697,6 +1706,55 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(trackProgramSection, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.73f));
 
+        mainSequenceNameField = sequenceName;
+        mainSequenceTypeField = sequenceType;
+        mainSequenceBpmField = bpm;
+        mainSequenceBarsField = bars;
+        mainSequenceStartField = start;
+        mainSequenceEndField = end;
+        mainSequenceTimeSigField = timeSig;
+        mainSequenceLoopField = loop;
+        mainSequenceTransposeField = transpose;
+
+        sequenceName.setOnClickListener(v -> focusMainSequenceField(
+                MpcUiState.Subcontext.SEQUENCE_SELECT,
+                MpcUiState.DataDialFocus.SEQUENCE,
+                3,
+                "SEQUENCE • DATA DIAL / +/-"));
+        sequenceType.setOnClickListener(v -> focusMainSequenceField(
+                MpcUiState.Subcontext.SEQUENCE_SELECT,
+                MpcUiState.DataDialFocus.SEQUENCE,
+                3,
+                "SEQUENCE • DATA DIAL / +/-"));
+        bpm.setOnClickListener(v -> focusMainSequenceField(
+                MpcUiState.Subcontext.NONE,
+                MpcUiState.DataDialFocus.SEQUENCE,
+                19,
+                "BPM • DATA DIAL / +/-"));
+        bars.setOnClickListener(v -> focusMainSequenceField(
+                MpcUiState.Subcontext.NONE,
+                MpcUiState.DataDialFocus.SEQUENCE,
+                20,
+                "BARS • DATA DIAL / +/-"));
+        start.setOnClickListener(v -> focusMainSequenceField(
+                MpcUiState.Subcontext.SEQUENCE_START,
+                MpcUiState.DataDialFocus.SEQUENCE_START,
+                17,
+                "LOOP START • DATA DIAL / +/-"));
+        end.setOnClickListener(v -> focusMainSequenceField(
+                MpcUiState.Subcontext.SEQUENCE_END,
+                MpcUiState.DataDialFocus.SEQUENCE_END,
+                18,
+                "LOOP END • DATA DIAL / +/-"));
+        timeSig.setOnClickListener(v -> {
+            setBottomStatus("TIME SIGNATURE • " + nativeSequenceGetNumerator()
+                    + "/" + nativeSequenceGetDenominator());
+            cycleTimeSignature(1);
+            refreshMainModeFields();
+        });
+        transpose.setOnClickListener(v -> setBottomStatus(
+                "TRANSPOSE • unavailable in current Sequence backend"));
+
         content.addView(page);
         refreshMainModeState(
                 sequenceName, sequenceType, bpm, bars, timeSig, loop,
@@ -2032,6 +2090,43 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         view.setBackground(strokeBackground(SURFACE_2, LINE, 6));
         view.setTag(title);
         return view;
+    }
+
+    private void focusMainSequenceField(
+            MpcUiState.Subcontext subcontext,
+            MpcUiState.DataDialFocus focus,
+            int focusId,
+            String message) {
+        hardwareFocus = focusId;
+        navigationController.setSubcontext(subcontext);
+        navigationController.setDataDialFocus(focus);
+        navigationController.setActionAvailable(true);
+        setBottomStatus(message);
+        refreshMpcCompactContext();
+    }
+
+    private void refreshMainModeFields() {
+        if (mainSequenceNameField == null
+                || mainSequenceTypeField == null
+                || mainSequenceBpmField == null
+                || mainSequenceBarsField == null
+                || mainSequenceTimeSigField == null
+                || mainSequenceLoopField == null
+                || mainSequenceStartField == null
+                || mainSequenceEndField == null
+                || mainSequenceTransposeField == null) {
+            return;
+        }
+        refreshMainModeState(
+                mainSequenceNameField,
+                mainSequenceTypeField,
+                mainSequenceBpmField,
+                mainSequenceBarsField,
+                mainSequenceTimeSigField,
+                mainSequenceLoopField,
+                mainSequenceStartField,
+                mainSequenceEndField,
+                mainSequenceTransposeField);
     }
 
     private void refreshMainModeState(
@@ -5110,6 +5205,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 20.0, Math.min(300.0, nativeSequenceGetTempo() + delta));
         setBottomStatus(nativeSequenceSetTempo(tempo));
         refreshSequenceControls();
+        refreshMainModeFields();
     }
 
     private void changeSequenceBars(int delta) {
@@ -5117,6 +5213,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 1, Math.min(128, nativeSequenceGetBars() + delta));
         setBottomStatus(nativeSequenceSetBars(bars));
         refreshSequenceControls();
+        refreshMainModeFields();
     }
 
     private static final int[][] SEQUENCE_TIME_SIGNATURES = {
