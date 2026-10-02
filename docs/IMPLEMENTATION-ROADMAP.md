@@ -426,5 +426,6 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **Direct field focus implemented:** Main SEQ/BPM/BARS/START/END fields now establish the shared Data Dial focus instead of being presentation-only.
 - **Sequence loop editing implemented:** START and END fields use the existing loop-bar semantic command; BARS and BPM use the existing Sequence setters, keeping all mutations outside realtime audio.
 - **MPC Function Bar parity refined:** Main and Track View now use five visual slots with grouped SEQ + REC ARM and − TRACK + controls while retaining all six semantic operations.
+- **REC ARM indication parity:** the grouped REC ARM control now visibly latches ON/OFF from the real selected-track armed state; the UI audit exercises both transitions.
 - **Track header parity refined:** the six-button Track Type row was reduced to a single MPC-style type field; unsupported Track Types remain visibly reserved.
 - **Sample workflow parity refined:** an empty Drum pad exposes RECORD as the secondary Main action; a populated pad exposes BROWSE. Track Edit is represented by the compact pencil affordance and the documented double-tap gesture.
