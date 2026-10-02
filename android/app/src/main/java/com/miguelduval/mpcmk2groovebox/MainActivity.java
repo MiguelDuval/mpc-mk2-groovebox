@@ -4082,7 +4082,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void runUiAudit() {
         Log.i(TAG, "UI_HIERARCHY_BEGIN");
         String[] expected = {
-                "MAIN", "BROWSE", "SAMPLE", "SEQ", "MIX", "REC", "MENU",
+                "MAIN", "BROWSER", "GRID", "SAMPLER", "CHANNEL MIXER",
+                "SAMPLE", "SEQ", "MIX", "REC", "MENU",
                 "PLAY", "STOP", "MIDI", "01", "16", "LOAD"
         };
 
@@ -4095,6 +4096,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         Log.i(TAG, "UI_HIERARCHY_COMPLETE");
         Log.i(TAG, "UI_INTERACTION_BEGIN");
+
+        View browserShortcut = findViewWithExactText(
+                getWindow().getDecorView(), "BROWSER");
+        if (browserShortcut == null || !browserShortcut.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: BROWSER shortcut");
+            return;
+        }
+
+        View mainShortcut = findViewWithExactText(
+                getWindow().getDecorView(), "MAIN");
+        if (mainShortcut == null || !mainShortcut.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MAIN shortcut return");
+            return;
+        }
 
         View pad1 = findViewWithExactText(getWindow().getDecorView(), "01");
         if (pad1 == null || !pad1.performClick()) {
