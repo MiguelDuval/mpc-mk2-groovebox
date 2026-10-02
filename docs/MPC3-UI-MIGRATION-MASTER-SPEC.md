@@ -1031,3 +1031,15 @@ The playback session resolves each Drum Track independently, so multiple Drum Tr
 A newly created Drum Track inherits the currently active Drum Program rather than assuming `drum-program-1`. This keeps Track creation consistent with the selected program context.
 
 Main and Track View explicitly establish their hardware/Data Dial focus on entry, preventing stale selection contexts from leaking across views.
+
+## 2026-10-02 Track Edit semantic slice
+
+- **Track Edit now has a real bounded workspace** via `MpcTrackEditView`, replacing the previous reserved-only gateway.
+- **Global** remains truthful for every Track Type as Track context; Drum Tracks additionally expose the existing pad-global tune/level/pan semantics.
+- **Samples** is functional for Drum Tracks using the existing eight-layer sample model, waveform region editing, per-layer gain/tuning/pan, velocity range and audition semantics.
+- **Envelopes** is functional for Drum Tracks using the existing pad amp envelope and filter cutoff semantics.
+- **LFO / Modulations / Effects** remain explicit RESERVED/UNAVAILABLE tabs because their complete backend/semantic contracts do not yet exist.
+- **Edit All Layers** remains visible but disabled because the current backend has no atomic multi-layer command.
+- Main pencil and Main Track waveform double-tap enter the same Track Edit workspace with the selected Track/Pad/Layer context preserved.
+- Track Edit is now a truthful promotable mode in the Menu/shortcut registry; unsupported sub-tabs remain individually reserved.
+- Studio MkII Data Dial layer focus is correctly established at hardware focus 10, with Data Dial/+/- changing the same selected-layer state used by the editor.

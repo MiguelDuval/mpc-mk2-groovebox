@@ -867,3 +867,11 @@ Every newly implemented hardware control must define:
 5. behavior when the context is unavailable on the current page.
 
 Reference sources: Akai Professional MPC Studio MkII support/manual material and the public reverse-engineering repository bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts.
+
+
+## 2026-10-02 Track Edit layer-focus and command-surface checkpoint
+
+- Track Edit consumes the existing `SAMPLE_LAYER` semantic focus for the eight-layer Drum context.
+- Data Dial/+/- layer selection is wired through hardware focus 10 in the Android UI command bridge.
+- The Track Edit workspace does not invent physical controls for LFO, Modulation or Effects; those tabs remain reserved until corresponding semantic commands exist.
+- Touch and hardware layer selection converge on the same `selectedLayer` state; sample editing continues to reuse the existing sample-region domain commands.

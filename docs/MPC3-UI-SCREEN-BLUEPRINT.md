@@ -217,8 +217,8 @@ open Grid/appropriate editor.
 
 - Main presents Track and Arrangement as sibling local views of the same selected Track/Sequence context.
 - Track View is the default Main view on entry, matching the MPC workflow; switching to Arrangement changes presentation only and does not create a new navigation mode.
-- Track View keeps the performance pad/sample surface; full Track Edit remains reserved until its backend contract exists.
-- The Track section exposes a compact pencil affordance for Track Edit, matching the MPC entry point. Until the backend editor contract exists, it opens a truthful reserved Track Edit context showing the current Track/Pad/Layer.
+- Track View keeps the performance pad/sample surface; Track Edit now provides a bounded truthful editor for the currently implemented Drum pad semantics.
+- The Track section exposes a compact pencil affordance for Track Edit, matching the MPC entry point. The same semantic destination is also opened by double-tapping the Main Track sample/waveform area.
 - The Track section's compact pencil affordance and a double-tap on the Main Track sample/waveform area are the same semantic Track Edit entry gesture.
 - Double-tap on the Main Arrangement overview opens Grid for a Drum Track; unsupported Track Types remain explicitly unavailable rather than being routed into a mismatched editor.
 
@@ -550,6 +550,13 @@ Selected pad:
 - tune;
 - envelope;
 - filter.
+
+Current implementation coverage:
+- **Global:** Track context plus pad-global tune/level/pan.
+- **Samples:** layer select, sample identity, waveform region, gain/tune/pan, velocity range and audition.
+- **Envelopes:** amp ADSR and filter cutoff.
+- **LFO / Modulations / Effects:** explicit RESERVED/UNAVAILABLE until the relevant domain contract exists.
+- **Edit All Layers:** explicit disabled/reserved because there is no atomic multi-layer command yet.
 
 ## 7.4 Safety
 

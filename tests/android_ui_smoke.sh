@@ -7,6 +7,7 @@ ACTIVITY="$PACKAGE/com.miguelduval.mpcmk2groovebox.MainActivity"
 DUMP="/tmp/mpc-groovebox-ui.xml"
 MAIN_ACTIVITY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java"
 NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
+TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackEditView.java"
 
 echo "Running MPC Main UI source preflight..."
 for required in \
@@ -36,9 +37,29 @@ for required in \
   "MPC condensed Mixer Strip" \
   "openMainTrackEditContext" \
   "openMainArrangementGridContext" \
-  "setOnDoubleTapListener"; do
+  "setOnDoubleTapListener"
+  "MpcTrackEditView"
+  "hardwareFocus = drumTrack ? 10 : 0;"
+  "hardwareFocus == 10"; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MainActivity source contract missing: $required"
+    exit 1
+  fi
+done
+
+echo "Running Track Edit workspace source preflight..."
+for required in \
+  "Track Edit Global tab" \
+  "Track Edit Samples tab" \
+  "Track Edit Envelopes tab" \
+  "Track Edit LFO tab" \
+  "Track Edit Modulations tab" \
+  "Track Edit Effects tab" \
+  "Track Edit Edit All Layers RESERVED" \
+  "Track Edit Samples waveform" \
+  "LAYER %d/8"; do
+  if ! grep -Fq -- "$required" "$TRACK_EDIT_SOURCE"; then
+    echo "ERROR: Track Edit source contract missing: $required"
     exit 1
   fi
 done

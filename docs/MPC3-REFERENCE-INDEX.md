@@ -415,3 +415,19 @@ When a source changes, update:
 - regression/physical test.
 
 The reference index exists so future sessions do not rebuild the research from memory.
+
+
+---
+
+## 16.1 Track Edit current implementation evidence
+
+Current Akai support material confirms that Track Edit exposes pad parameters for Drum tracks, including tuning, filter and amp envelopes, and that the Samples tab presents the assigned layers with tuning/level controls. The current product implementation mirrors only the subset already backed by our domain/audio semantics.
+
+Source checked:
+https://support.akaipro.com/en/support/solutions/articles/69000874731-akai-mpc-series-tuning-basics
+
+Checked:
+2026-10-02
+
+Repository decision:
+Implement Track Edit Global/Samples/Envelopes against existing control-thread state; keep LFO/Modulations/Effects reserved until their semantic/backend contracts exist.

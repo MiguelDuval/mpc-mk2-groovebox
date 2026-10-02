@@ -429,3 +429,13 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **REC ARM indication parity:** the grouped REC ARM control now visibly latches ON/OFF from the real selected-track armed state; the UI audit exercises both transitions.
 - **Track header parity refined:** the six-button Track Type row was reduced to a single MPC-style type field; unsupported Track Types remain visibly reserved.
 - **Sample workflow parity refined:** an empty Drum pad exposes RECORD as the secondary Main action; a populated pad exposes BROWSE. Track Edit is represented by the compact pencil affordance and the documented double-tap gesture.
+
+## 2026-10-02 Track Edit bounded semantic workspace checkpoint
+
+- **Track Edit transitioned from reserved gateway to a real `MpcTrackEditView` workspace.**
+- **Global/Samples/Envelopes** consume existing control-thread/native queries and existing setters; no new realtime path was added.
+- **LFO/Modulations/Effects** remain visibly reserved, not simulated.
+- **Edit All Layers** remains disabled because an atomic multi-layer backend operation does not exist.
+- Main pencil and Main Track waveform double-tap now enter the same Track Edit workspace; selected Track/Pad/Layer context is preserved.
+- **Studio MkII layer focus corrected:** Track Edit and Sample Select use hardware focus 10 for Data Dial/+/- layer selection.
+- **Track Edit became a promotable Menu/shortcut mode** because the currently implemented subset is truthful; unsupported tabs remain individually reserved.
