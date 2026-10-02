@@ -67,3 +67,28 @@ The design deliberately preserves the actual MkII surface: Data Dial and Touch S
 The sequence transport path now preserves a stopped playhead position when Play is pressed, and mute state is applied without tearing down the active playback session. These are live-workflow behaviors, not cosmetic mappings.
 
 Physical-device verification is still required before repository-level probable mappings are promoted to CONFIRMED.
+
+
+## Feedback / indication implementation contract
+
+The project must always expose controller state on both sides of the connection.
+
+### MPC Studio MkII
+
+The controller's LEDs are host-driven. The reverse-engineered protocol identifies the button CC mapping, one-color/two-color LED states, pad RGB SysEx and Touch Strip segment feedback. Our adapter keeps MIDI identifiers in the hardware layer; UI/domain code expresses semantic state only.
+
+The controller feedback layer therefore owns:
+- button state and explicit clear;
+- alternate/Shift state;
+- pad RGB state;
+- Touch Strip mode/value segments;
+- Note Repeat rate indicators;
+- 160x80 LCD context mirror.
+
+### Android phone
+
+A persistent controller-status strip sits below the transport/application shell and reports the active MkII context, focused axis or selector, and current pad bank. Transient bottom status remains action-result feedback; it must never be the sole indication of a latched controller mode.
+
+### Engineering rule
+
+No hardware feature is considered complete when its action works but its active state is invisible. The implementation must provide indication on every available surface before the slice is considered production-ready.
