@@ -1375,24 +1375,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final LinearLayout root = column();
         root.setPadding(dp(14), dp(6), dp(14), 0);
 
+        final boolean[] enabledState = {
+                nativeSequenceIsTimingCorrectEnabled()
+        };
+        final int[] divisionState = {
+                nativeSequenceGetQuantizeGrid()
+        };
+        final int[] swingState = {
+                nativeSequenceGetSwing()
+        };
+
         final TextView enabled = label(
-                "ENABLED\n"
-                        + (nativeSequenceIsTimingCorrectEnabled() ? "ON" : "OFF"),
+                "ENABLED\n" + (enabledState[0] ? "ON" : "OFF"),
                 11,
                 TEXT);
         enabled.setTypeface(Typeface.DEFAULT_BOLD);
         enabled.setGravity(Gravity.CENTER_VERTICAL);
+        enabled.setPadding(dp(10), 0, dp(10), 0);
         enabled.setBackground(strokeBackground(
                 SURFACE_2,
-                nativeSequenceIsTimingCorrectEnabled() ? ACTIVE : LINE,
+                enabledState[0] ? ACTIVE : LINE,
                 5));
         enabled.setContentDescription("Timing Correct enabled field");
+        enabled.setOnClickListener(v -> {
+            enabledState[0] = !enabledState[0];
+            enabled.setText("ENABLED\n" + (enabledState[0] ? "ON" : "OFF"));
+            enabled.setBackground(strokeBackground(
+                    SURFACE_2,
+                    enabledState[0] ? ACTIVE : LINE,
+                    5));
+        });
         root.addView(enabled,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
 
         final TextView timeDiv = label(
-                "TIME DIV\n" + sequenceGridLabel(nativeSequenceGetQuantizeGrid()),
+                "TIME DIV\n" + sequenceGridLabel(divisionState[0]),
                 11,
                 TEXT);
         timeDiv.setTypeface(Typeface.DEFAULT_BOLD);
@@ -1410,13 +1428,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Button b = actionButton(
                     sequenceGridLabel(division).replace("Q ", ""),
                     v -> {
-                        setBottomStatus(nativeSequenceSetQuantizeGrid(division));
+                        divisionState[0] = division;
                         timeDiv.setText(
-                                "TIME DIV\n"
-                                        + sequenceGridLabel(
-                                                nativeSequenceGetQuantizeGrid()));
-                        refreshMpcToolbarState();
-                        refreshSequenceControls();
+                                "TIME DIV\n" + sequenceGridLabel(divisionState[0]));
                     });
             b.setTextSize(9);
             divisionButtons.addView(b, weight());
@@ -1425,8 +1439,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
 
-        TextView swing = label(
-                "SWING\n" + nativeSequenceGetSwing() + "%",
+        final TextView swing = label(
+                "SWING\n" + swingState[0] + "%",
                 11,
                 TEXT);
         swing.setTypeface(Typeface.DEFAULT_BOLD);
@@ -1439,38 +1453,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
 
         LinearLayout swingButtons = row();
-        swingButtons.addView(actionButton(
-                "−10",
-                v -> {
-                    changeSequenceSwing(-10);
-                    swing.setText(
-                            "SWING\n" + nativeSequenceGetSwing() + "%");
-                }),
-                weight());
-        swingButtons.addView(actionButton(
-                "−1",
-                v -> {
-                    changeSequenceSwing(-1);
-                    swing.setText(
-                            "SWING\n" + nativeSequenceGetSwing() + "%");
-                }),
-                weight());
-        swingButtons.addView(actionButton(
-                "+1",
-                v -> {
-                    changeSequenceSwing(1);
-                    swing.setText(
-                            "SWING\n" + nativeSequenceGetSwing() + "%");
-                }),
-                weight());
-        swingButtons.addView(actionButton(
-                "+10",
-                v -> {
-                    changeSequenceSwing(10);
-                    swing.setText(
-                            "SWING\n" + nativeSequenceGetSwing() + "%");
-                }),
-                weight());
+        for (int delta : new int[]{-10, -1, 1, 10}) {
+            Button b = actionButton(
+                    delta > 0 ? "+" + delta : "−" + Math.abs(delta),
+                    v -> {
+                        swingState[0] = Math.max(
+                                0, Math.min(100, swingState[0] + delta));
+                        swing.setText("SWING\n" + swingState[0] + "%");
+                    });
+            swingButtons.addView(b, weight());
+        }
         root.addView(swingButtons,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
@@ -1491,15 +1483,116 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 .setView(root)
                 .setNegativeButton("CANCEL", null)
                 .setPositiveButton("DO IT", (d, which) -> {
+                    setBottomStatus(
+                            nativeSequenceSetQuantizeGrid(divisionState[0]));
+                    setBottomStatus(
+                            nativeSequenceSetSwing(swingState[0]));
+                    setBottomStatus(
+                            nativeSequenceSetTimingCorrectEnabled(enabledState[0]));
                     refreshMpcToolbarState();
                     refreshSequenceControls();
                     setBottomStatus(
                             "TIMING CORRECT • "
-                                    + (nativeSequenceIsTimingCorrectEnabled()
-                                            ? "ON" : "OFF")
+                                    + (enabledState[0] ? "ON" : "OFF")
                                     + " • "
-                                    + sequenceGridLabel(
-                                            nativeSequenceGetQuantizeGrid()));
+                                    + sequenceGridLabel(divisionState[0])
+                                    + " • SWING " + swingState[0] + "%");
+                })
+                .create();
+        dialog.show();
+    }
+
+    private void showTimeSignatureDialog() {
+        final LinearLayout root = column();
+        root.setPadding(dp(14), dp(6), dp(14), 0);
+
+        final int[] numeratorState = {nativeSequenceGetNumerator()};
+        final int[] denominatorState = {nativeSequenceGetDenominator()};
+
+        final TextView current = label(
+                "TIME SIGNATURE\n"
+                        + numeratorState[0] + "/" + denominatorState[0],
+                12,
+                TEXT);
+        current.setTypeface(Typeface.DEFAULT_BOLD);
+        current.setGravity(Gravity.CENTER_VERTICAL);
+        current.setPadding(dp(10), 0, dp(10), 0);
+        current.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+        current.setContentDescription("Time Signature value");
+        root.addView(current,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        TextView numerator = label(
+                "BEATS / BAR\n" + numeratorState[0],
+                10,
+                TEXT);
+        numerator.setGravity(Gravity.CENTER_VERTICAL);
+        numerator.setPadding(dp(10), 0, dp(10), 0);
+        numerator.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+        numerator.setContentDescription("Time Signature numerator");
+        root.addView(numerator,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+
+        LinearLayout numeratorButtons = row();
+        for (int value : new int[]{3, 4, 5, 6, 7, 12}) {
+            Button b = actionButton(String.valueOf(value), v -> {
+                numeratorState[0] = value;
+                current.setText(
+                        "TIME SIGNATURE\n"
+                                + numeratorState[0] + "/" + denominatorState[0]);
+                numerator.setText(
+                        "BEATS / BAR\n" + numeratorState[0]);
+            });
+            numeratorButtons.addView(b, weight());
+        }
+        root.addView(numeratorButtons,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        TextView denominator = label(
+                "NOTE VALUE\n" + denominatorState[0],
+                10,
+                TEXT);
+        denominator.setGravity(Gravity.CENTER_VERTICAL);
+        denominator.setPadding(dp(10), 0, dp(10), 0);
+        denominator.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+        denominator.setContentDescription("Time Signature denominator");
+        root.addView(denominator,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+
+        LinearLayout denominatorButtons = row();
+        for (int value : new int[]{4, 8}) {
+            Button b = actionButton(String.valueOf(value), v -> {
+                denominatorState[0] = value;
+                current.setText(
+                        "TIME SIGNATURE\n"
+                                + numeratorState[0] + "/" + denominatorState[0]);
+                denominator.setText(
+                        "NOTE VALUE\n" + denominatorState[0]);
+            });
+            denominatorButtons.addView(b, weight());
+        }
+        root.addView(denominatorButtons,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Time Signature")
+                .setView(root)
+                .setNegativeButton("CANCEL", null)
+                .setPositiveButton("DO IT", (d, which) -> {
+                    setBottomStatus(
+                            nativeSequenceSetTimeSignature(
+                                    numeratorState[0], denominatorState[0]));
+                    refreshMainModeFields();
+                    refreshSequenceControls();
+                    setBottomStatus(
+                            "TIME SIGNATURE • "
+                                    + numeratorState[0] + "/"
+                                    + denominatorState[0]);
                 })
                 .create();
         dialog.show();
@@ -2035,10 +2128,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         installMainNumericEntry(start, MainNumericField.LOOP_START);
         installMainNumericEntry(end, MainNumericField.LOOP_END);
         timeSig.setOnClickListener(v -> {
-            setBottomStatus("TIME SIGNATURE • " + nativeSequenceGetNumerator()
-                    + "/" + nativeSequenceGetDenominator());
-            cycleTimeSignature(1);
-            refreshMainModeFields();
+            if (!startupComplete) {
+                setBottomStatus("TIME SIGNATURE • waiting for sequencer");
+                return;
+            }
+            showTimeSignatureDialog();
         });
         transpose.setOnClickListener(v -> setBottomStatus(
                 "TRANSPOSE • unavailable in current Sequence backend"));
