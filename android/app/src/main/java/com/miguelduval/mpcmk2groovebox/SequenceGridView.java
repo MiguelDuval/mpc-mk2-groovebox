@@ -171,7 +171,7 @@ public final class SequenceGridView extends View {
         }
 
         for (int row = 0; row < visiblePads; row++) {
-            final int sourceRow = firstPad + row;
+            final int padIndex = (ROWS - 1) - (firstPad + row);
             for (int column = 0; column < visibleSteps; column++) {
                 final float x0 = left + column * cellWidth + dp(1);
                 final float y0 = top + row * cellHeight + dp(1);
@@ -179,7 +179,7 @@ public final class SequenceGridView extends View {
                 final float y1 = top + (row + 1) * cellHeight - dp(1);
 
                 final int velocity =
-                        velocities[sourceRow * COLUMNS + column];
+                        velocities[padIndex * COLUMNS + column];
                 paint.setStyle(Paint.Style.FILL);
 
                 if (velocity > 0) {
@@ -263,10 +263,11 @@ public final class SequenceGridView extends View {
 
             final float cellWidth = width / visibleSteps;
             final float cellHeight = height / visiblePads;
-            final int stepShift = visibleSteps < COLUMNS
+            final boolean horizontalGesture = Math.abs(dx) >= Math.abs(dy);
+            final int stepShift = horizontalGesture && visibleSteps < COLUMNS
                     ? Math.round(-dx / Math.max(1f, cellWidth))
                     : 0;
-            final int padShift = visiblePads < ROWS
+            final int padShift = !horizontalGesture && visiblePads < ROWS
                     ? Math.round(-dy / Math.max(1f, cellHeight))
                     : 0;
             if (stepShift == 0 && padShift == 0) {
