@@ -157,9 +157,10 @@ Fields:
 
 Interaction:
 
-- single tap selects field;
+- single tap selects the Sequence field;
+- Time Signature tap opens a focused modal editor with DO IT / CANCEL;
 - double tap opens numeric/list editing where appropriate;
-- Data Dial edits selected field;
+- Data Dial edits the currently focused field;
 - +/- perform incremental change;
 - changes are semantic commands.
 
