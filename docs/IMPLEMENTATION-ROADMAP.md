@@ -425,3 +425,10 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Main Sequence header was flattened into a single MPC-style information band: Sequence identity → BPM → SEQ source → Time Signature.
 - BARS / START / END / TRANSPOSE / LOOP are kept in one compact secondary row.
 - The former separate Time Signature/Loop auxiliary band was removed as an invented visual layer; existing semantic editing and Data Dial focus remain unchanged.
+
+
+### 2026-10-03 Main normal footer hierarchy
+
+- Removed the development-only hardware/status footer from normal Main presentation.
+- Kept both diagnostics available during `ui-audit` runs.
+- Function Bar is now the true bottom boundary of the normal MPC shell.
