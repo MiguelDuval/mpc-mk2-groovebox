@@ -153,6 +153,8 @@ final class MpcTrackEditView extends LinearLayout {
     private final TextView padContextView;
     private final Button editAllLayersButton;
     private final LinearLayout body;
+    private Tab tab = Tab.GLOBAL;
+    private Snapshot snapshot;
 
     MpcTrackEditView(Context context, Listener listener) {
         super(context);
