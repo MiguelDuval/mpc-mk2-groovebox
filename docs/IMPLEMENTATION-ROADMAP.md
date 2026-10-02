@@ -335,3 +335,11 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Browser: **workspace foundation implemented** with MPC information architecture; Android Document Provider remains storage backend.
 - Arrangement: **read/write loop-brace + read-only linear event projection implemented**; full clip-placement editing remains blocked by the current pattern-only domain.
 - Five shortcuts: **assignment + ordering implemented**; reserved modes cannot be promoted.
+
+## 2026-10-02 Track → Program semantic ownership checkpoint
+
+- **Track → Program is now authoritative for Drum Tracks.** Presentation queries resolve the selected Track's `programId`; playback resolves each Drum Track against its own Program instead of a global active Program.
+- **Program Select is implemented as a Main subcontext.** The selected Drum Track can choose among available Drum Programs by touch or MkII Data Dial; non-Drum Tracks remain explicitly gated.
+- **New Drum Track default is semantic.** A newly created Drum Track inherits the current active Drum Program rather than a hard-coded program identifier.
+- **Main/Track View hardware focus is synchronized on entry.** Main clears selection subcontext and returns Data Dial focus to NONE; Track View enters TRACK_SELECT/Data Dial TRACK; returning from Program Select therefore cannot leave a stale Program focus behind.
+- Physical MkII verification remains required.
