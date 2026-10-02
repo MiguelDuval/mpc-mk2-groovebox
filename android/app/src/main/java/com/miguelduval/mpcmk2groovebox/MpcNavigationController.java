@@ -51,7 +51,13 @@ final class MpcNavigationController {
         if (slot < 0 || slot >= SHORTCUT_COUNT) {
             throw new IllegalArgumentException("Shortcut slot out of range: " + slot);
         }
-        shortcuts[slot] = Objects.requireNonNull(mode, "mode");
+        final MpcUiState.Mode value = Objects.requireNonNull(
+                mode, "mode");
+        if (!isPromotable(value)) {
+            throw new IllegalArgumentException(
+                    "Shortcut mode is not implemented: " + value);
+        }
+        shortcuts[slot] = value;
         notifyListener();
     }
 
@@ -78,7 +84,13 @@ final class MpcNavigationController {
             throw new IllegalArgumentException("Exactly five shortcuts are required");
         }
         for (int i = 0; i < SHORTCUT_COUNT; i++) {
-            shortcuts[i] = Objects.requireNonNull(modes[i], "shortcut[" + i + "]");
+            final MpcUiState.Mode value = Objects.requireNonNull(
+                    modes[i], "shortcut[" + i + "]");
+            if (!isPromotable(value)) {
+                throw new IllegalArgumentException(
+                        "Shortcut mode is not implemented: " + value);
+            }
+            shortcuts[i] = value;
         }
         notifyListener();
     }
@@ -184,6 +196,15 @@ final class MpcNavigationController {
     void setActionAvailable(boolean available) {
         state = state.withActionAvailable(available);
         notifyListener();
+    }
+
+    private boolean isPromotable(MpcUiState.Mode mode) {
+        for (MpcModeRegistry.Entry entry : MpcModeRegistry.menuEntries()) {
+            if (entry.mode == mode) {
+                return entry.available;
+            }
+        }
+        return false;
     }
 
     void clearHistory() {
