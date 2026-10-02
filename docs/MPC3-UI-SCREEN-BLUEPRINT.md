@@ -74,10 +74,12 @@ Context-sensitive.
 
 Rules:
 
-- selected track/pad is visually obvious;
-- current value visible;
-- detailed mixer is opened by explicit navigation;
-- hide/show state is persistent.
+- selected Track or Pad channel context is visually obvious;
+- current values remain read-only until the full channel-strip command surface exists;
+- the Drum Track context can cycle between Track and Pad strip presentation;
+- the strip has an independent show/hide control;
+- changing strip visibility/focus never changes selected Track, Pad, Sequence or transport state;
+- detailed mixer is opened by explicit navigation.
 
 ### Region D — Workspace
 
@@ -118,6 +120,7 @@ The persistent context strip exposes state, not duplicate editing controls:
 - **Main Mixer Strip:** the persistent channel/context column exposes compact read-only level, pan and tuning values for the selected Drum pad. Values are read directly from the existing pad state; editing remains in Pad Mixer / sampler controls until the full MPC channel-strip command surface is implemented.
 - **Selected sample identity:** the Main Track quick-sample context displays the selected layer's real project sample name when available. Document-provider display names are propagated through the existing control-thread import path; the realtime audio path does not depend on filenames.
 - **Mixer visibility:** the condensed Mixer Strip can be shown or hidden without changing selected Track, Pad, Sequence or transport state.
+- **Mixer strip focus:** on Drum Tracks, the condensed strip can switch between Track and Pad presentation using the single-pad / multi-pad channel-context affordance. Non-Drum Tracks keep the pad presentation unavailable.
 
 # 2. Main Mode blueprint
 
