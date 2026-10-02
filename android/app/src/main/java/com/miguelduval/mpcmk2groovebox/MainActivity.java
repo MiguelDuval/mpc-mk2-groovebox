@@ -1633,7 +1633,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.73f));
 
         content.addView(page);
-        refreshMainModeState(sequenceName, bpm, bars, timeSig, loop, start, end);
+        refreshMainModeState(
+                sequenceName, sequenceType, bpm, bars, timeSig, loop,
+                start, end, transpose);
         refreshMpcToolbarState();
         refreshMainModePadVisuals();
         refreshMainTrackQuickSample();
@@ -1953,12 +1955,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void refreshMainModeState(
             TextView sequenceName,
+            TextView sequenceType,
             TextView bpm,
             TextView bars,
             TextView timeSig,
             TextView loop,
             TextView start,
-            TextView end) {
+            TextView end,
+            TextView transpose) {
         final boolean nativeStateReady = startupComplete;
         final int sequenceIndex = nativeStateReady
                 ? Math.max(0, nativeSequenceGetIndex()) : 0;
