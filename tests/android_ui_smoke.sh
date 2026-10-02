@@ -24,6 +24,11 @@ for required in \
   "Main Track View selected layer" \
   "Main Mode sequence tempo source • SEQ • Global unavailable" \
   "Main Track / Arrangement view switcher" \
+  "MPC Toolbar Menu" \
+  "Timing Correct" \
+  "Time Signature value" \
+  "Time Signature numerator" \
+  "Time Signature denominator" \
   "Main Track View header" \
   "Main Arrangement View header" \
   "Main Track View record sample" \
