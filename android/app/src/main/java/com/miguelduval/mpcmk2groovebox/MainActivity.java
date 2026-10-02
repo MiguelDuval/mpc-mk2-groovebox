@@ -1217,10 +1217,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout layerRow = row();
         Button layerDown = actionButton("LAYER −", v -> {
             selectedLayer = Math.max(0, selectedLayer - 1);
+            navigationController.setSelectedLayer(selectedLayer);
             refreshAllInspectorState();
         });
         Button layerUp = actionButton("LAYER +", v -> {
             selectedLayer = Math.min(7, selectedLayer + 1);
+            navigationController.setSelectedLayer(selectedLayer);
             refreshAllInspectorState();
         });
         layerRow.addView(layerDown, touchButtonWeight());
@@ -3715,6 +3717,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void selectAndTriggerPad(int pad, int velocity) {
         selectedPad = pad;
+        if (navigationController != null) {
+            navigationController.setSelectedPad(pad);
+        }
         refreshPadSelectionVisuals();
         if (startupComplete) {
             final String startResult = nativeAudioStart();
