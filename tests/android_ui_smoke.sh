@@ -11,7 +11,7 @@ TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/Mpc
 
 echo "Running MPC Main UI source preflight..."
 for required in \
-  "MIXER STRIP" \
+  "MPC shell mixer strips" \
   "nativeAudioGetPadSampleName" \
   "nativeAudioSetPadSampleName" \
   "BAR %03d  BEAT %d  TICK %03d" \
