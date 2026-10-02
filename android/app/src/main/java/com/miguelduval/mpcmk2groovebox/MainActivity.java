@@ -87,6 +87,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView compactTrackContext;
     private TextView compactPadContext;
     private TextView compactFocusContext;
+    private Button timingCorrectTopButton;
+    private Button metronomeTopButton;
+    private Button automationTopButton;
     private final Button[] shortcutButtons =
             new Button[MpcNavigationController.SHORTCUT_COUNT];
     private TextView pageTitle;
@@ -572,7 +575,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void updateMpcShellState() {
         updateModeRailSelection();
         refreshMpcCompactContext();
+        refreshMpcToolbarState();
         refreshMpcFunctionBar();
+    }
+
+    private void refreshMpcToolbarState() {
+        if (timingCorrectTopButton == null) {
+            return;
+        }
+        final boolean enabled = startupComplete
+                && nativeSequenceIsTimingCorrectEnabled();
+        timingCorrectTopButton.setText(enabled ? "TC ON" : "TC OFF");
+        timingCorrectTopButton.setBackground(strokeBackground(
+                enabled ? Color.rgb(74, 124, 88) : SURFACE_2,
+                enabled ? ACTIVE : LINE,
+                6));
+
+        if (metronomeTopButton != null) {
+            metronomeTopButton.setText("METRO");
+        }
+        if (automationTopButton != null) {
+            automationTopButton.setText("AUTO");
+        }
     }
 
     private void refreshMpcCompactContext() {
@@ -707,7 +731,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bar.addView(projectState, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1.2f));
 
-        pageTitle = label("MAIN", 12, ACCENT);
+        pageTitle = label("MAIN", 12, Color.WHITE);
         pageTitle.setGravity(Gravity.CENTER);
         pageTitle.setTypeface(Typeface.DEFAULT_BOLD);
         bar.addView(pageTitle, new LinearLayout.LayoutParams(
@@ -742,6 +766,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(sequenceResult + " | " + audioResult);
         });
         bar.addView(stop, new LinearLayout.LayoutParams(dp(72), dp(38)));
+
+        timingCorrectTopButton = topButton("TC");
+        timingCorrectTopButton.setContentDescription("Timing Correct");
+        timingCorrectTopButton.setOnClickListener(v -> {
+            if (!startupComplete) {
+                setBottomStatus("TIMING CORRECT • waiting for sequencer");
+                return;
+            }
+            setBottomStatus(nativeSequenceSetTimingCorrectEnabled(
+                    !nativeSequenceIsTimingCorrectEnabled()));
+            refreshMpcToolbarState();
+            syncHardwareTransportLeds();
+        });
+        bar.addView(timingCorrectTopButton,
+                new LinearLayout.LayoutParams(dp(58), dp(38)));
+
+        metronomeTopButton = topButton("METRO");
+        metronomeTopButton.setContentDescription("Metronome reserved");
+        metronomeTopButton.setEnabled(false);
+        metronomeTopButton.setAlpha(0.55f);
+        bar.addView(metronomeTopButton,
+                new LinearLayout.LayoutParams(dp(68), dp(38)));
+
+        automationTopButton = topButton("AUTO");
+        automationTopButton.setContentDescription("Automation reserved");
+        automationTopButton.setEnabled(false);
+        automationTopButton.setAlpha(0.55f);
+        bar.addView(automationTopButton,
+                new LinearLayout.LayoutParams(dp(58), dp(38)));
 
         Button midi = topButton("MIDI");
         midi.setOnClickListener(v -> showMidiPage());
@@ -1025,6 +1078,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         content.addView(page);
         refreshMainModeState(sequenceName, bpm, bars, timeSig, loop);
+        refreshMpcToolbarState();
         refreshMainModePadVisuals();
         updateModeRailSelection();
     }
@@ -3130,6 +3184,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeSequenceIsPlaying());
 
         syncHardwareLcd();
+
+        refreshMpcToolbarState();
 
         if (sequenceTransportView != null) {
             final int queuedIndex = nativeSequenceGetQueuedIndex();
