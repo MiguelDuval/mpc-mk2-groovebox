@@ -953,7 +953,7 @@ Main Mode now uses the existing `SequenceTimelineView` as its selected-track arr
 
 The five promoted shortcuts are now user-reorderable from Menu. The 4×4 Menu remains the canonical mode vocabulary and unsupported contexts continue to be explicitly RESERVED/UNAVAILABLE.
 
-A read-only native track-context bridge exposes Track Type, Program and Mute state to presentation code. This does not implement Program Select yet; full Track→Program ownership remains a protected architectural milestone before Program Edit/Track Edit is opened as a functional editor.
+A native track-context bridge exposes Track Type, Program and Mute state to presentation code. Track→Program ownership is now semantic: each Drum Track resolves playback from its own `programId`, and Main exposes Program Select for the selected Drum Track. Program Edit and Track Edit remain reserved because editing the contents of a Program is a separate backend capability.
 
 No realtime audio callback, sampler rendering, sequencer scheduler/clock, raw MkII decoder or SysEx transport was changed in this checkpoint.
 
