@@ -26,6 +26,7 @@ for required in \
   "DRUM • TYPE" \
   "Main Track Edit" \
   "MPC Function Bar SEQ REC ARM" \
+  "MPC Main sequence REC ARM" \
   "MPC Function Bar TRACK previous next" \
   "HARDWARE_FOCUS_SEQUENCE_START" \
   "HARDWARE_FOCUS_SEQUENCE_END" \
