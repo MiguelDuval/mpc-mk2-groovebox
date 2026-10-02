@@ -22,6 +22,8 @@ public final class MpcModeRegistryTest {
         assertFalse(MpcModeRegistry.menuEntry(8).available);
         assertEquals(MpcUiState.Mode.CHANNEL_MIXER, MpcModeRegistry.menuEntry(8).mode);
         assertTrue(MpcModeRegistry.menuEntry(9).available);
+        assertTrue(MpcModeRegistry.menuEntry(13).available);
+        assertEquals(MpcUiState.Mode.ARRANGE, MpcModeRegistry.menuEntry(13).mode);
     }
 
     @Test
