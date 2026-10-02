@@ -1029,3 +1029,8 @@ Shortcut slots remain five configurable MPC-style mode shortcuts. The visual til
 ## 2026-10-03 Main Sequence header fidelity increment
 
 The Main Sequence region now follows the documented MPC visual hierarchy more closely: one continuous information band keeps Sequence identity at left, BPM/SEQ tempo-source context adjacent to it, and Time Signature at the far right; BARS / START / END / TRANSPOSE / LOOP remain the compact high-frequency row below. This removes the previously invented separate Time Signature/Loop band and keeps Time Signature adjacent to BPM, matching Akai's documented MPC 3.x placement.
+
+
+## 2026-10-03 Main diagnostic footer parity
+
+The normal MPC shell ends at the Function Bar. Development-only hardware/status diagnostics remain available to `ui-audit` runs but are not rendered as permanent footer bands in normal musical use. This keeps diagnostic instrumentation from changing the Main Mode information hierarchy or stealing vertical workspace from the Track/Arrangement surface.
