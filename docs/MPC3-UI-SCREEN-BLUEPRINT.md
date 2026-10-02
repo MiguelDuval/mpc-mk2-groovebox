@@ -1,0 +1,849 @@
+# MPC 3.9 Screen-by-Screen UI Blueprint
+
+## Purpose
+
+This is the implementation blueprint beneath MPC3-UI-MIGRATION-MASTER-SPEC.md.
+
+Each screen is specified by:
+
+- shell regions;
+- information hierarchy;
+- touch targets;
+- hardware entry path;
+- Data Dial focus;
+- bottom functions;
+- backend dependencies;
+- indication;
+- acceptance tests.
+
+The blueprint is intentionally implementation-oriented. It does not prescribe proprietary Akai assets.
+
+---
+
+## 1. Global shell blueprint
+
+All product screens share the same horizontal composition unless the reference context explicitly requires a different full-screen editor.
+
+### Region A — Toolbar
+
+Persistent:
+
+- project name;
+- time counter;
+- Timing Correct;
+- metronome;
+- automation;
+- MIDI I/O/monitor status where applicable;
+- transport.
+
+Touch:
+- tap field -> open focused contextual dialog;
+- long press -> documented alternate state where applicable.
+
+Hardware:
+- transport buttons remain active while navigating;
+- contextual controls update the same semantic state.
+
+### Region B — Shortcut rail
+
+Exactly five configurable high-frequency destinations.
+
+Rules:
+
+- icon + short label;
+- current destination visually selected;
+- one action per slot;
+- user can reorder from Menu;
+- no hidden sixth/seventh "page" rail.
+
+### Region C — Compact mixer/channel strips
+
+Context-sensitive.
+
+Rules:
+
+- selected track/pad is visually obvious;
+- current value visible;
+- detailed mixer is opened by explicit navigation;
+- hide/show state is persistent.
+
+### Region D — Workspace
+
+The active context owns the majority of the screen.
+
+### Region E — Function Bar
+
+Bottom functions are determined from semantic context.
+
+The bar must:
+
+- expose only currently meaningful actions;
+- preserve stable left-to-right ordering inside a context;
+- visually distinguish primary action from inactive/unavailable action;
+- mirror hardware context where possible.
+
+---
+
+# 2. Main Mode blueprint
+
+## 2.1 Layout
+
+Top:
+Toolbar.
+
+Left:
+Five shortcuts + compact mixer strip.
+
+Center:
+Sequence section.
+
+Below/center:
+Track section.
+
+Lower center:
+Track/Arrangement switch and selected-track timeline/preview.
+
+Bottom:
+Function bar.
+
+## 2.2 Sequence section
+
+Fields:
+
+- Sequence;
+- BPM;
+- time signature;
+- length;
+- loop;
+- start;
+- end.
+
+Interaction:
+
+- single tap selects field;
+- double tap opens numeric/list editing where appropriate;
+- Data Dial edits selected field;
+- +/- perform incremental change;
+- changes are semantic commands.
+
+## 2.3 Track section
+
+Fields:
+
+- track number;
+- track name;
+- track type icon;
+- program/instrument;
+- selected pad for Drum;
+- program/preset for instrument tracks;
+- Track Edit entry;
+- track length;
+- inserts/I/O entry.
+
+## 2.4 Arrangement preview
+
+Show:
+
+- selected track;
+- timeline;
+- events;
+- playhead;
+- loop brace.
+
+Double tap:
+open Grid/appropriate editor.
+
+## 2.5 Main function bar
+
+Initial target:
+
+- New Track;
+- Rec Arm;
+- Track -;
+- Track +;
+- Mute;
+- Solo.
+
+## 2.6 Hardware
+
+Main -> Main.
+
+Shift + Main -> Track View.
+
+Track/Sequence Select sets the current focus.
+
+Data Dial edits the focused Main field.
+
+## 2.7 Acceptance
+
+A Main screen build is accepted when:
+
+- changing track updates the Track section and preview together;
+- changing sequence updates the sequence context;
+- transport remains running while navigating;
+- program shown equals the selected track's actual program/container;
+- Data Dial focus is visible;
+- five shortcuts are present;
+- function bar is semantic.
+
+---
+
+# 3. Track View blueprint
+
+## 3.1 Layout
+
+Top:
+Toolbar + focused Track field.
+
+Main:
+vertical list of horizontal track strips.
+
+Each strip:
+
+- track number/name;
+- type;
+- record-arm;
+- mute;
+- solo;
+- automation status;
+- compact event/timeline information.
+
+Bottom:
+function bar.
+
+## 3.2 Functions
+
+Primary:
+
+- New Track;
+- Rec Arm;
+- Track -;
+- Track +;
+- Mute;
+- Solo.
+
+Shift layer:
+
+- Duplicate Track;
+- Timing Correct;
+- Click;
+- Track Settings.
+
+## 3.3 Hardware
+
+Shift + Main -> Track View.
+
+Track Select + Data Dial -> track focus.
+
+Pads may become direct track selection only when explicitly entered into track-select context.
+
+---
+
+# 4. Arrangement blueprint
+
+## 4.1 Layout
+
+Top:
+Toolbar.
+
+Left:
+track headers.
+
+Center:
+linear timeline.
+
+Timeline:
+
+- time ruler;
+- playhead;
+- loop brace;
+- events/regions;
+- selection.
+
+Bottom:
+Cut, Copy, Paste, Duplicate plus context functions.
+
+## 4.2 Interaction
+
+- drag loop brace;
+- tap track;
+- double tap event/region -> editor;
+- pinch/spread -> zoom;
+- fit-to-view;
+- six locators.
+
+## 4.3 Live rule
+
+Changing arrangement selection must not stop the transport.
+
+Destructive edit actions require clear selection/confirmation semantics.
+
+---
+
+# 5. Grid View blueprint
+
+## 5.1 Layout
+
+Top:
+track/sequence/time context.
+
+Main:
+
+- left row labels;
+- grid/timeline;
+- playhead.
+
+Bottom:
+tool bar / function bar.
+
+## 5.2 Drum grid
+
+Rows:
+
+- pad 1..N;
+- pad name;
+- selected row.
+
+Columns:
+
+- musical time.
+
+Cells:
+
+- velocity/intensity;
+- event presence;
+- selection.
+
+## 5.3 Melodic grid
+
+Use piano-roll semantics:
+
+- pitch labels;
+- note events;
+- duration;
+- velocity/modifier lane.
+
+## 5.4 Tools
+
+Canonical roles:
+
+- Draw;
+- Erase;
+- Select;
+- Magnify/Navigation.
+
+## 5.5 Zoom
+
+Existing MpcSequenceZoomPolicy remains the shared policy.
+
+Horizontal:
+time density.
+
+Vertical:
+pad/pitch density.
+
+Do not couple Grid zoom to Step page count.
+
+## 5.6 Hardware
+
+Shift + Main -> Grid.
+
+Zoom -> current axis.
+
+Data Dial -> focused event/row/value.
+
++/- -> focused increment.
+
+Pads -> context-specific row/step selection.
+
+---
+
+# 6. Step Sequencer blueprint
+
+## 6.1 Layout
+
+Top:
+
+- sequence;
+- track;
+- bar;
+- step division;
+- timing correct.
+
+Center:
+
+- 16 step indicators;
+- event state;
+- current selected step;
+- playhead.
+
+Bottom:
+
+- step parameters;
+- edit functions.
+
+## 6.2 Hardware
+
+Pad 1..16:
+
+- step selection/entry.
+
+Step navigation:
+
+- Bar -/+;
+- Step -/+.
+
+Data Dial:
+
+- current Step Edit parameter.
+
+Data Dial press:
+
+- cycles supported parameter focus.
+
+## 6.3 Visual states
+
+At least distinguish:
+
+- empty;
+- active;
+- selected;
+- playhead;
+- selected + playhead;
+- unavailable.
+
+Phone and pad LED feedback must agree.
+
+---
+
+# 7. Track Edit blueprint
+
+## 7.1 Entry
+
+From Main Track section:
+
+- tap pencil/edit;
+- double tap relevant track/program area;
+- hardware Mode shortcut where supported.
+
+## 7.2 Tab bar
+
+Target:
+
+- Global;
+- Samples;
+- Envelopes;
+- LFO;
+- Modulations;
+- Effects.
+
+## 7.3 Drum context
+
+Selected pad:
+
+- 16 physical performance pads remain visible conceptually;
+- selected pad state;
+- up to eight sample layers;
+- sample region;
+- level;
+- pan;
+- tune;
+- envelope;
+- filter.
+
+## 7.4 Safety
+
+Playback-critical edits that current engine disallows while running remain clearly disabled or deferred.
+
+Never silently stop playback to make a UI operation work.
+
+---
+
+# 8. Sample Edit blueprint
+
+## 8.1 Layout
+
+Top:
+
+- sample name;
+- current pad/layer;
+- time/frame context.
+
+Center:
+
+- large waveform;
+- time ruler;
+- start/end;
+- loop;
+- playhead.
+
+Bottom:
+
+- edit tool set;
+- audition;
+- crop;
+- chop;
+- assign;
+- processing actions;
+- zoom/navigation.
+
+## 8.2 Touch
+
+- finger-safe start/end handles;
+- drag;
+- pinch zoom;
+- horizontal pan;
+- tap audition.
+
+## 8.3 Hardware
+
+Sample Start / Sample End:
+select corresponding focus.
+
+Zoom:
+horizontal/vertical focus.
+
+Tune:
+parameter context.
+
+Sample Select:
+layer/sample focus.
+
+Touch Strip:
+parameter-aware control.
+
+---
+
+# 9. Sampler / recording blueprint
+
+Sampler is reached through the documented hardware/controller relationship rather than as an isolated diagnostic page.
+
+Show:
+
+- input source;
+- armed state;
+- monitor;
+- threshold;
+- record state;
+- live waveform;
+- captured duration;
+- peak;
+- assignment target.
+
+Record and Monitor are independent states.
+
+The UI must never imply that monitoring is enabled merely because recording is armed.
+
+---
+
+# 10. Browser blueprint
+
+## 10.1 Layout
+
+Left:
+
+Places.
+
+Center/left:
+
+Content and category/filter controls.
+
+Main:
+
+result list.
+
+Right/lower:
+
+preview + selected item metadata + load destination.
+
+Top:
+
+search.
+
+## 10.2 Primary concepts
+
+- Places;
+- Content;
+- Expansions;
+- Sample Assign;
+- favourites 1-5;
+- filters;
+- audition;
+- Browser Options.
+
+## 10.3 Hardware
+
+Browse -> Browser.
+
+Shift + Browse/Save -> Save where the physical workflow defines it.
+
+Data Dial:
+result/folder selection.
+
+Dial press:
+open/confirm.
+
+Shift + navigation:
+parent/alternate function where defined.
+
+---
+
+# 11. Channel Mixer blueprint
+
+## 11.1 Layout
+
+Multiple compact strips.
+
+Per strip:
+
+- track name/number;
+- level;
+- meter;
+- pan;
+- solo;
+- mute;
+- record;
+- selected state.
+
+Additional:
+
+- sends;
+- inserts;
+- I/O;
+- returns;
+- outputs.
+
+Navigation:
+
+- horizontal paging;
+- focus retention.
+
+---
+
+# 12. Pad Mixer blueprint
+
+Per visible pad strip:
+
+- pad number/name;
+- level;
+- pan;
+- routing;
+- mute/solo where relevant;
+- selected state.
+
+The selected pad must remain synchronized with the physical pad.
+
+---
+
+# 13. Menu blueprint
+
+## 13.1 Layout
+
+4x4 large mode cells.
+
+Required behavior:
+
+- tap to enter mode;
+- drag to reorder;
+- left-most column becomes the high-frequency shortcut region;
+- unavailable modes show reserved/unavailable status rather than dead clicks.
+
+## 13.2 System controls
+
+Accessible from Menu family:
+
+- New Project;
+- Save;
+- Project;
+- Preferences;
+- system/resource information.
+
+---
+
+# 14. 16 Levels blueprint
+
+Show:
+
+- source pad/sample;
+- 16 velocity positions;
+- current fixed velocity;
+- performance status.
+
+Pad grid:
+
+position 1 -> velocity step 1
+...
+position 16 -> velocity step 16.
+
+The current semantic implementation already defines the velocity mapping; the migration changes presentation, not engine behavior.
+
+---
+
+# 15. Pad Perform blueprint
+
+Current supported target:
+
+- Notes;
+- future Chords;
+- future Scales.
+
+Display must answer:
+
+- what pads mean;
+- current bank/range;
+- current octave/range;
+- active mode.
+
+Do not expose "Pad Perform" as a hidden mode whose pad interpretation cannot be inferred from the screen.
+
+---
+
+# 16. Next Sequence blueprint
+
+Show:
+
+- current sequence;
+- next/queued sequence;
+- launch quantization;
+- pad matrix;
+- active and queued states.
+
+Live rule:
+
+queueing must not tear down active audio playback.
+
+---
+
+# 17. Project / Preferences blueprint
+
+System views may temporarily be simpler than MPC 3.9 while the musical contexts are migrated.
+
+However:
+
+- navigation remains within the same shell;
+- modal windows are used only for focused system tasks;
+- returning from system screens restores prior musical context;
+- no transport reset unless explicitly required by a future documented operation.
+
+---
+
+# 18. Global keyboard/controller focus model
+
+Only one semantic focus exists for Data Dial at a time.
+
+Focus can be:
+
+- selector;
+- numeric field;
+- event;
+- timeline;
+- pad row;
+- sample boundary;
+- mixer strip;
+- browser result.
+
+Phone UI must show the focus.
+
+Hardware feedback should mirror it where the physical device supports it.
+
+Data Dial press:
+
+- opens/commits selector;
+- cycles editor target only where documented by our application;
+- never silently changes operating mode without indication.
+
+---
+
+# 19. Global modal policy
+
+Prefer in-place context transitions.
+
+Use a modal only for:
+
+- destructive confirmation;
+- complex parameter entry;
+- track/program creation;
+- Browser options;
+- system preferences;
+- operations that truly need an isolated task.
+
+A modal must provide:
+
+- title;
+- current context;
+- explicit primary action;
+- cancel/close;
+- hardware route where practical.
+
+---
+
+# 20. UI density and touch-size rules
+
+The display is a musical instrument surface.
+
+Therefore:
+
+- preserve functional controls before decoration;
+- keep touch targets large enough for live use;
+- do not turn compact MPC-like regions into tiny unreadable text;
+- use hierarchy, not oversized labels, to show importance;
+- retain immediate value visibility for high-frequency controls;
+- avoid full-screen dialogs for simple one-value adjustments.
+
+---
+
+# 21. State rendering and performance
+
+UI state updates must be diff-driven.
+
+When a MIDI event or audio status changes:
+
+1. update semantic state;
+2. compute minimal UI diff;
+3. update affected context;
+4. update hardware feedback only if projected state changed.
+
+Do not rebuild the complete view tree per MIDI message.
+
+Do not make transport timing dependent on Android UI frame timing.
+
+---
+
+# 22. Regression matrix
+
+Every new context must prove these baseline behaviors still work:
+
+- pad audition;
+- transport;
+- record;
+- overdub;
+- Note Repeat;
+- Timing Correct;
+- Step Edit;
+- Locate;
+- Erase;
+- Copy/Delete;
+- Undo/Redo;
+- pad banks;
+- touch strip;
+- hardware feedback;
+- LCD status.
+
+---
+
+# 23. Definition of "faithful"
+
+A screen is "MPC 3.9-faithful" when:
+
+- its information hierarchy matches the reference;
+- its main controls occupy the corresponding conceptual regions;
+- the same user intent can be reached through equivalent interaction steps;
+- hardware and touch use the same semantic action layer;
+- context/focus is visible;
+- bottom functions are contextual;
+- it does not invent unrelated app navigation.
+
+Pixel-identical reproduction is not the acceptance criterion.
+
+Behavioral and information-architecture fidelity is.
+
