@@ -88,6 +88,7 @@ final class MpcHardwareFeedbackPolicy {
                 case 13: return "ZOOM H • grid time";
                 case 14: return "ZOOM V • grid pads";
                 case 15: return "ZOOM H • timeline";
+                case 16: return "ZOOM V • timeline unavailable";
                 default: return "SEQ • playback / edit";
             }
         }
