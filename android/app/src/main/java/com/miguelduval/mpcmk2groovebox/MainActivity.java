@@ -2060,7 +2060,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         timeSig.setBackground(strokeBackground(
                 SURFACE_2,
                 MPC_TIME_SIGNATURE_HIGHLIGHT,
-                2));
+                MPC_MAIN_RADIUS_DP));
         sequenceHeader.addView(timeSig,
                 new LinearLayout.LayoutParams(dp(56), dp(MPC_MAIN_METRIC_HEIGHT_DP)));
 
@@ -2240,7 +2240,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         layerControls.addView(layerUpButton,
                 new LinearLayout.LayoutParams(dp(24), dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
         trackDetailRow.addView(layerControls,
-                new LinearLayout.LayoutParams(0, dp(42), 1));
+                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
 
         compactMixerStripModeToggle = actionButton("□  ▦", v -> {
             final MpcUiState state = navigationController.state();
