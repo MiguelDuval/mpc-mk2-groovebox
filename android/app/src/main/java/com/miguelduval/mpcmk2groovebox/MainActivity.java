@@ -664,6 +664,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "MPC shell compact track program context");
         compactContextPanel.setPadding(dp(2), dp(2), dp(2), dp(2));
 
+        compactContextPanel.addView(compactContextCaption("SEQUENCE"),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(14)));
+
         compactSequenceContext = compactContextField(
                 "SEQ 01\n120.0 BPM",
                 "MPC shell sequence context",
@@ -676,14 +680,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 });
         compactContextPanel.addView(compactSequenceContext,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
 
-        compactTrackCaption = label("TRACK", 8, MUTED);
-        compactTrackCaption.setTypeface(Typeface.DEFAULT_BOLD);
-        compactTrackCaption.setPadding(dp(3), dp(1), dp(3), 0);
+        compactTrackCaption = compactContextCaption("TRACK");
         compactContextPanel.addView(compactTrackCaption,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(14)));
 
         compactTrackContext = compactContextField(
                 "TRACK 01 • DRUM",
@@ -691,7 +693,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 v -> focusMainTrackField());
         compactContextPanel.addView(compactTrackContext,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        compactContextPanel.addView(compactContextCaption("PROGRAM"),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(14)));
 
         compactProgramContext = compactContextField(
                 "PROGRAM\n—",
@@ -713,14 +719,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 });
         compactContextPanel.addView(compactProgramContext,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
-        compactPadCaption = label("PAD", 8, MUTED);
-        compactPadCaption.setTypeface(Typeface.DEFAULT_BOLD);
-        compactPadCaption.setPadding(dp(3), dp(3), dp(3), 0);
+        compactPadCaption = compactContextCaption("PAD");
         compactContextPanel.addView(compactPadCaption,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(20)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(14)));
 
         compactPadContext = compactContextField(
                 "PAD 01 • BANK A",
@@ -730,20 +734,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
+        compactContextPanel.addView(compactContextCaption("DATA DIAL"),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(14)));
+
         compactDialContext = compactContextField(
                 "DIAL\nNONE",
                 "MPC shell Data Dial focus",
                 null);
         compactContextPanel.addView(compactDialContext,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
         compactSequenceOverviewView = new SequenceOverviewView(this);
         compactSequenceOverviewView.setContentDescription(
                 "MPC shell sequence overview");
         compactContextPanel.addView(compactSequenceOverviewView,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
 
         // Mixer detail layer: visibility state applies only to these controls.
         compactMixerPanel = column();
@@ -912,13 +920,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private TextView compactContextCaption(String text) {
+        TextView caption = label(text, 8, MUTED);
+        caption.setGravity(Gravity.BOTTOM | Gravity.START);
+        caption.setTypeface(Typeface.DEFAULT_BOLD);
+        caption.setPadding(dp(3), 0, dp(3), 0);
+        caption.setContentDescription("MPC shell context section " + text);
+        return caption;
+    }
+
     private TextView compactContextField(
             String initialText,
             String contentDescription,
             View.OnClickListener listener) {
-        TextView field = label(initialText, 10, TEXT);
+        TextView field = label(initialText, 9, TEXT);
         field.setGravity(Gravity.CENTER_VERTICAL);
-        field.setPadding(dp(7), 0, dp(7), 0);
+        field.setPadding(dp(6), 0, dp(6), 0);
         field.setTypeface(Typeface.DEFAULT_BOLD);
         field.setContentDescription(contentDescription);
         field.setBackground(strokeBackground(
@@ -931,6 +948,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             field.setClickable(true);
         }
         return field;
+    }
+
+    private void setCompactContextFocus(View view, boolean active) {
+        if (view == null) return;
+        view.setBackground(strokeBackground(
+                SURFACE_2,
+                active ? DANGER : LINE,
+                MPC_FLAT_RADIUS_DP));
+    }
+
+    private String compactDialFocusLabel(MpcUiState.DataDialFocus focus) {
+        if (focus == null) return "NONE";
+        switch (focus) {
+            case SEQUENCE:
+                return "SEQUENCE";
+            case SEQUENCE_START:
+                return "SEQ START";
+            case SEQUENCE_END:
+                return "SEQ END";
+            case SEQUENCE_BPM:
+                return "BPM";
+            case SEQUENCE_BARS:
+                return "BARS";
+            case TRACK:
+                return "TRACK";
+            case PROGRAM:
+                return "PROGRAM";
+            case TRACK_TYPE:
+                return "TRACK TYPE";
+            case PAD:
+                return "PAD";
+            case SAMPLE_LAYER:
+                return "LAYER";
+            default:
+                return focus.name().replace('_', ' ');
+        }
     }
 
     private void navigateToMode(MpcUiState.Mode mode) {
@@ -1082,12 +1135,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String subcontextLabel = dialSubcontext == null
                 ? ""
                 : dialSubcontext.name().replace('_', ' ');
-        compactDialContext.setText("DIAL\n" + dialLabel);
+        compactDialContext.setText(
+                "DIAL\n" + compactDialFocusLabel(dialFocus));
         compactDialContext.setContentDescription(
                 "MPC shell Data Dial focus • " + dialLabel
                         + (subcontextLabel.isEmpty()
                                 ? ""
                                 : " • " + subcontextLabel));
+
+        final boolean sequenceFocus =
+                dialFocus == MpcUiState.DataDialFocus.SEQUENCE
+                        || dialFocus == MpcUiState.DataDialFocus.SEQUENCE_START
+                        || dialFocus == MpcUiState.DataDialFocus.SEQUENCE_END
+                        || dialFocus == MpcUiState.DataDialFocus.SEQUENCE_BPM
+                        || dialFocus == MpcUiState.DataDialFocus.SEQUENCE_BARS;
+        final boolean trackFocus =
+                dialFocus == MpcUiState.DataDialFocus.TRACK
+                        || dialFocus == MpcUiState.DataDialFocus.TRACK_TYPE
+                        || dialFocus == MpcUiState.DataDialFocus.SAMPLE_LAYER;
+        final boolean programFocus =
+                dialFocus == MpcUiState.DataDialFocus.PROGRAM;
+        final boolean padFocus =
+                dialFocus == MpcUiState.DataDialFocus.PAD;
+        setCompactContextFocus(compactSequenceContext, sequenceFocus);
+        setCompactContextFocus(compactTrackContext, trackFocus);
+        setCompactContextFocus(compactProgramContext, programFocus);
+        setCompactContextFocus(compactPadContext, padFocus);
+        setCompactContextFocus(
+                compactDialContext,
+                dialFocus != MpcUiState.DataDialFocus.NONE);
 
         if (nativeStateReady) {
             final String trackType = nativeSequenceGetTrackType(trackIndex);
