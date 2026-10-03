@@ -1220,6 +1220,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         group.setBackground(strokeBackground(
                 SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
 
+        TextView seq = label("SEQ", 8, MUTED);
+        seq.setGravity(Gravity.CENTER);
+        seq.setTypeface(Typeface.DEFAULT_BOLD);
+        seq.setContentDescription("MPC Main sequence record scope");
+        group.addView(seq, new LinearLayout.LayoutParams(
+                dp(26), ViewGroup.LayoutParams.MATCH_PARENT));
+
         Button recArm = actionButton("REC ARM", v -> {
             if (action != null) {
                 action.run();

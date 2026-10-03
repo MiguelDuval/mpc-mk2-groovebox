@@ -277,11 +277,7 @@ if [[ -z "$rec_arm_start" || -z "$rec_arm_end" || "$rec_arm_end" -le "$rec_arm_s
   exit 1
 fi
 rec_arm_block=$(sed -n "${rec_arm_start},$((rec_arm_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
-if grep -Fq -- 'label("SEQ"' <<<"$rec_arm_block" || grep -Fq -- 'MPC Main sequence record scope' <<<"$rec_arm_block"; then
-  echo "ERROR: Main REC ARM must not contain a duplicate visible SEQ scope label"
-  exit 1
-fi
-if ! grep -Fq -- 'MPC Function Bar REC ARM' <<<"$rec_arm_block" || ! grep -Fq -- 'MPC_FLAT_RADIUS_DP));' <<<"$rec_arm_block"; then
+if ! grep -Fq -- 'MPC Function Bar REC ARM' <<<"$rec_arm_block" || ! grep -Fq -- 'MPC Main sequence record scope' <<<"$rec_arm_block" || ! grep -Fq -- 'MPC_FLAT_RADIUS_DP));' <<<"$rec_arm_block"; then
   echo "ERROR: Main REC ARM flat-chrome contract is missing"
   exit 1
 fi
