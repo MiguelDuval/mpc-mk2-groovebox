@@ -7268,28 +7268,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final MpcModeRegistry.Entry[] entries = MpcModeRegistry.menuEntries();
         for (int i = 0; i < entries.length; i++) {
             final MpcModeRegistry.Entry entry = entries[i];
-            final Button b = actionButton(
-                    entry.available ? entry.label : entry.label + "\nRESERVED",
-                    v -> {
-                        if (!entry.available) {
-                            navigationController.navigate(MpcUiState.Mode.RESERVED);
-                            navigationController.setActionAvailable(false);
-                            setBottomStatus(
-                                    entry.label + " • RESERVED / UNAVAILABLE");
-                            updateMpcShellState();
-                            return;
-                        }
-                        navigateToMode(entry.mode);
-                    });
-            b.setEnabled(entry.available);
-            b.setAlpha(entry.available ? 1.0f : 0.55f);
-            b.setGravity(Gravity.CENTER);
-            b.setTextSize(11);
-            b.setTypeface(Typeface.DEFAULT_BOLD);
-            b.setContentDescription(
-                    entry.available
-                            ? "MPC Menu " + entry.label
-                            : "MPC Menu " + entry.label + " reserved");
+            final Button b = buildMpcMenuTile(entry);
 
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
             lp.width = 0;
@@ -7305,10 +7284,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         LinearLayout system = row();
-        system.addView(actionButton("PREFERENCES", v -> showAudioSettingsPage()),
-                weight());
-        system.addView(actionButton("MIDI / CONTROL", v -> showMidiPage()),
-                weight());
+        Button preferences = actionButton(
+                "PREFERENCES", v -> showAudioSettingsPage());
+        Button midiControl = actionButton(
+                "MIDI / CONTROL", v -> showMidiPage());
+        system.addView(styleMpcMenuFooterButton(preferences), weight());
+        system.addView(styleMpcMenuFooterButton(midiControl), weight());
         Button saveProject = actionButton(
                 "SAVE / PROJECT",
                 null);
@@ -7316,18 +7297,112 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         saveProject.setAlpha(0.45f);
         saveProject.setContentDescription(
                 "Save and Project reserved");
-        system.addView(saveProject, weight());
-        system.addView(actionButton(
+        system.addView(styleMpcMenuFooterButton(saveProject), weight());
+
+        Button editShortcuts = actionButton(
                 "EDIT SHORTCUTS",
-                v -> showShortcutConfigPage()),
-                weight());
-        system.addView(actionButton("BACK", v -> navigateBackFromShell()), weight());
+                v -> showShortcutConfigPage());
+        Button back = actionButton(
+                "BACK", v -> navigateBackFromShell());
+        system.addView(styleMpcMenuFooterButton(editShortcuts), weight());
+        system.addView(styleMpcMenuFooterButton(back), weight());
         page.addView(system, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
         content.addView(page);
         updateModeRailSelection();
     }
+    private Button buildMpcMenuTile(MpcModeRegistry.Entry entry) {
+        final String title = entry.available
+                ? entry.label
+                : entry.label + "\nRESERVED";
+        final String glyph = mpcShortcutLabel(entry.mode);
+
+        final Button b = actionButton(
+                glyph + "\n" + title,
+                v -> {
+                    if (!entry.available) {
+                        navigationController.navigate(MpcUiState.Mode.RESERVED);
+                        navigationController.setActionAvailable(false);
+                        setBottomStatus(
+                                entry.label + " • RESERVED / UNAVAILABLE");
+                        updateMpcShellState();
+                        return;
+                    }
+                    navigateToMode(entry.mode);
+                });
+
+        b.setGravity(Gravity.CENTER);
+        b.setTextSize(10);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
+        b.setPadding(dp(4), dp(6), dp(4), dp(4));
+        b.setTextColor(entry.available ? TEXT : MUTED);
+        b.setAlpha(entry.available ? 1.0f : 0.48f);
+        b.setBackground(strokeBackground(
+                MPC_PANEL_DARK,
+                MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));
+        b.setContentDescription(
+                entry.available
+                        ? "MPC Menu " + entry.label
+                        : "MPC Menu " + entry.label + " reserved");
+        return b;
+    }
+
+    private Button buildMpcMenuTile(MpcModeRegistry.Entry entry) {
+        final String title = entry.available
+                ? entry.label
+                : entry.label + "\nRESERVED";
+        final String glyph = mpcShortcutLabel(entry.mode);
+
+        final Button b = actionButton(
+                glyph + "\n" + title,
+                v -> {
+                    if (!entry.available) {
+                        navigationController.navigate(MpcUiState.Mode.RESERVED);
+                        navigationController.setActionAvailable(false);
+                        setBottomStatus(
+                                entry.label + " • RESERVED / UNAVAILABLE");
+                        updateMpcShellState();
+                        return;
+                    }
+                    navigateToMode(entry.mode);
+                });
+
+        b.setGravity(Gravity.CENTER);
+        b.setTextSize(10);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
+        b.setPadding(dp(4), dp(6), dp(4), dp(4));
+        b.setTextColor(entry.available ? TEXT : MUTED);
+        b.setAlpha(entry.available ? 1.0f : 0.48f);
+        b.setBackground(strokeBackground(
+                MPC_PANEL_DARK,
+                MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));
+        b.setContentDescription(
+                entry.available
+                        ? "MPC Menu " + entry.label
+                        : "MPC Menu " + entry.label + " reserved");
+        return b;
+    }
+
+    private Button styleMpcMenuFooterButton(Button button) {
+        button.setTextSize(9);
+        button.setTypeface(Typeface.DEFAULT_BOLD);
+        button.setMinHeight(0);
+        button.setMinimumHeight(0);
+        button.setTextColor(TEXT);
+        button.setBackground(strokeBackground(
+                MPC_PANEL,
+                MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));
+        return button;
+    }
+
     private void showShortcutConfigPage() {
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
