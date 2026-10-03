@@ -9056,8 +9056,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private View findViewWithContentDescription(
             View view, String expectedDescription) {
-        CharSequence actual = view.getContentDescription();
-        if (expectedDescription.contentEquals(actual)) return view;
+        if (view == null || expectedDescription == null) return null;
+
+        final CharSequence actual = view.getContentDescription();
+        if (actual != null && expectedDescription.contentEquals(actual)) {
+            return view;
+        }
 
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
@@ -9071,9 +9075,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private View findViewWithExactText(View view, String expectedText) {
+        if (view == null || expectedText == null) return null;
+
         if (view instanceof TextView) {
-            CharSequence actual = ((TextView) view).getText();
-            if (expectedText.contentEquals(actual)) return view;
+            final CharSequence actual = ((TextView) view).getText();
+            if (actual != null && expectedText.contentEquals(actual)) {
+                return view;
+            }
         }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
