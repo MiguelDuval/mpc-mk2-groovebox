@@ -151,7 +151,15 @@ if grep -Fq -- 'mainField("PROGRAM")' <<<"$main_identity_block" || grep -Fq -- '
   echo "ERROR: MPC3 Main Track identity band must not expose a duplicate Program field"
   exit 1
 fi
-if ! grep -Fq -- 'mainProgramField = null;' <<<"$main_identity_block" || ! grep -Fq -- 'mainTrackTypeField = buildMainTrackTypeSelector();' <<<"$main_identity_block"; then
+if grep -Fq -- 'mainField("PROGRAM")' <<<"$main_identity_block" || grep -Fq -- 'Main Mode selected program' <<<"$main_identity_block"; then
+  echo "ERROR: MPC3 Main Track identity band must not expose a duplicate Program field"
+  exit 1
+fi
+if grep -Fq -- 'mainProgramField' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: obsolete Main Program field presentation pointer remains"
+  exit 1
+fi
+if ! grep -Fq -- 'mainTrackTypeField = buildMainTrackTypeSelector();' <<<"$main_identity_block"; then
   echo "ERROR: unified Main Track identity ownership contract is missing"
   exit 1
 fi

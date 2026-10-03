@@ -188,7 +188,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView mainSequenceLoopField;
     private TextView mainSequenceTransposeField;
     private TextView mainTrackField;
-    private TextView mainProgramField;
     private View mainTrackTypeField;
     private TextView mainTrackLayerField;
     private SequenceLauncherView sequenceLauncherView;
@@ -1968,7 +1967,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(0, dp(40), 1.0f));
 
         mainTrackField = trackName;
-        mainProgramField = null;
         mainTrackTypeField = buildMainTrackTypeSelector();
 
         trackProgramHeader.addView(
@@ -3100,7 +3098,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         setMainFieldFocus(mainSequenceLoopField, false);
         setMainFieldFocus(mainTrackField, focus == 2);
-        setMainFieldFocus(mainProgramField, focus == 4);
         setMainFieldFocus(mainTrackLayerField, focus == 10);
         if (mainTrackTypeField != null) {
             mainTrackTypeField.setBackground(strokeBackground(
