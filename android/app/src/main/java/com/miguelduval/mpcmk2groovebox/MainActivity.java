@@ -114,6 +114,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int MPC_MAIN_FIELD_HEIGHT_DP = 40;
     private static final int MPC_MAIN_METRIC_HEIGHT_DP = 36;
     private static final int MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40;
+    private static final int MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36;
+    private static final int MPC_MAIN_PROGRAM_HEIGHT_DP = 32;
+    private static final float MPC_MAIN_WORKSPACE_WEIGHT = 1.0f;
     private static final int MPC_MAIN_RADIUS_DP = 0;
 
 
@@ -2332,8 +2335,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          */
         LinearLayout trackContextHeader = row();
         trackContextHeader.setContentDescription(
-                "Main Mode Track / Arrangement context header");
-        trackContextHeader.setPadding(dp(4), dp(2), dp(4), dp(2));
+                "Main Track visual hierarchy • Track / Program / workspace header");
+        trackContextHeader.setPadding(dp(4), dp(1), dp(4), dp(1));
 
         TextView trackName = mainField("TRACK");
         trackName.setTypeface(Typeface.DEFAULT_BOLD);
@@ -2345,13 +2348,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         mainTrackField = trackName;
         mainTrackTypeField = buildMainTrackTypeSelector();
-        trackContextHeader.addView(
-                mainTrackTypeField,
-                new LinearLayout.LayoutParams(dp(68), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+        mainTrackTypeField.setVisibility(View.GONE);
 
         trackContextHeader.addView(
                 buildMainTrackTypeIconStrip(),
-                new LinearLayout.LayoutParams(dp(120), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+                new LinearLayout.LayoutParams(dp(104), dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
         Button trackEditHeader = mainActionButton("✎", v -> openMainTrackEditContext());
         trackEditHeader.setTextSize(15);
@@ -2359,25 +2360,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackEditHeader.setBackground(strokeBackground(
                 SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         trackContextHeader.addView(trackEditHeader,
-                new LinearLayout.LayoutParams(dp(38), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+                new LinearLayout.LayoutParams(dp(34), dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
-        mainTrackViewButton = mainActionButton(
+        LinearLayout trackArrangementToggle = row();
+        trackArrangementToggle.setContentDescription(
+                "Main Track Arrangement segmented control");
+        trackArrangementToggle.setPadding(dp(1), dp(1), dp(1), dp(1));
+        mainTrackViewButton = mainSectionToggle(
                 "TRACK",
                 v -> setMainTrackArrangementView(false));
         mainTrackViewButton.setContentDescription("Main Track View header");
-        trackContextHeader.addView(mainTrackViewButton,
-                new LinearLayout.LayoutParams(dp(74), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+        trackArrangementToggle.addView(mainTrackViewButton,
+                new LinearLayout.LayoutParams(0, dp(32), 1));
 
-        mainArrangementViewButton = mainActionButton(
+        mainArrangementViewButton = mainSectionToggle(
                 "ARRANGEMENT",
                 v -> setMainTrackArrangementView(true));
         mainArrangementViewButton.setContentDescription("Main Arrangement View header");
-        trackContextHeader.addView(mainArrangementViewButton,
-                new LinearLayout.LayoutParams(dp(112), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+        trackArrangementToggle.addView(mainArrangementViewButton,
+                new LinearLayout.LayoutParams(0, dp(32), 1));
+        trackContextHeader.addView(trackArrangementToggle,
+                new LinearLayout.LayoutParams(dp(150), dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
         trackProgramSection.addView(trackContextHeader,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
         // MPC One keeps the selected Track's Program visible directly below
         // the Track identity band. This is the same semantic Program context
@@ -2392,7 +2399,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         programCaption.setPadding(dp(4), 0, dp(8), 0);
         programContextRow.addView(
                 programCaption,
-                new LinearLayout.LayoutParams(dp(94), dp(34)));
+                new LinearLayout.LayoutParams(dp(90), dp(MPC_MAIN_PROGRAM_HEIGHT_DP)));
 
         Button programField = mainActionButton(
                 "—",
@@ -2422,7 +2429,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 MPC_FLAT_RADIUS_DP));
         programContextRow.addView(
                 programField,
-                new LinearLayout.LayoutParams(0, dp(34), 1));
+                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_PROGRAM_HEIGHT_DP), 1));
 
         TextView programStatus = label("TRACK-OWNED", 8, MUTED);
         programStatus.setGravity(Gravity.CENTER);
@@ -2431,7 +2438,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Main Mode program ownership status");
         programContextRow.addView(
                 programStatus,
-                new LinearLayout.LayoutParams(dp(82), dp(34)));
+                new LinearLayout.LayoutParams(dp(78), dp(MPC_MAIN_PROGRAM_HEIGHT_DP)));
 
         trackProgramSection.addView(
                 programContextRow,
@@ -2443,7 +2450,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Main Track and Arrangement workspace");
 
         LinearLayout trackWorkspace = column();
-        trackWorkspace.setContentDescription("Main Mode Track View workspace");
+        trackWorkspace.setContentDescription("Main Mode Track workspace");
         trackWorkspace.setPadding(dp(6), dp(2), dp(6), dp(4));
         trackWorkspace.setBackgroundColor(BG);
 
@@ -2610,7 +2617,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         trackWorkspace.addView(quickTrack,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, MPC_MAIN_WORKSPACE_WEIGHT));
 
         LinearLayout arrangement = column();
         arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
@@ -2646,9 +2653,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT));
         trackProgramSection.addView(mainTrackArrangementHost,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, MPC_MAIN_WORKSPACE_WEIGHT));
         trackProgramSection.setContentDescription(
-                "Main Mode Track / Arrangement workspace section");
+                "Main Track visual hierarchy • Track / Program / workspace section");
 
         // Rebuilding Main must preserve the prior Track/Arrangement presentation.
         setMainTrackArrangementView(previousMainArrangementView);
@@ -3128,21 +3135,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementView.setVisibility(trackVisible ? View.GONE : View.VISIBLE);
 
         /*
-         * MPC presents Track / Arrangement as contextual headers, not as
-         * large rounded Android cards. Keep the active context flat and use
-         * the MPC red focus accent for the selected header.
+         * MPC presents Track / Arrangement as a compact segmented context
+         * control. The active segment is filled with the MPC selection red;
+         * the inactive segment remains flat and quiet so the workspace keeps
+         * the dominant visual weight.
          */
-        mainTrackViewButton.setTextColor(
-                trackVisible ? TEXT : MUTED);
+        mainTrackViewButton.setTextColor(trackVisible ? TEXT : MUTED);
         mainTrackViewButton.setBackground(strokeBackground(
-                trackVisible ? SURFACE_2 : BG,
-                trackVisible ? DANGER : LINE,
+                trackVisible ? MPC_SELECTED : MPC_PANEL_DARK,
+                trackVisible ? MPC_SELECTED : MPC_PANEL_BORDER,
                 MPC_FLAT_RADIUS_DP));
-        mainArrangementViewButton.setTextColor(
-                trackVisible ? MUTED : TEXT);
+        mainArrangementViewButton.setTextColor(trackVisible ? MUTED : TEXT);
         mainArrangementViewButton.setBackground(strokeBackground(
-                trackVisible ? BG : SURFACE_2,
-                trackVisible ? LINE : DANGER,
+                trackVisible ? MPC_PANEL_DARK : MPC_SELECTED,
+                trackVisible ? MPC_PANEL_BORDER : MPC_SELECTED,
                 MPC_FLAT_RADIUS_DP));
 
         if (trackVisible) {
@@ -3439,6 +3445,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Button b = actionButton(text, listener);
         b.setBackground(strokeBackground(
                 SURFACE_2, LINE, MPC_MAIN_RADIUS_DP));
+        return b;
+    }
+
+    private Button mainSectionToggle(String text, View.OnClickListener listener) {
+        Button b = mainActionButton(text, listener);
+        b.setTextSize(8);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setAllCaps(true);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(2), 0, dp(2), 0);
+        b.setMinWidth(0);
+        b.setMinimumWidth(0);
+        b.setContentDescription("Main Track Arrangement segmented control • " + text);
         return b;
     }
 
