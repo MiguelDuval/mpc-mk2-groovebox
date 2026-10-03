@@ -857,7 +857,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         area.addView(compactContextPanel,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(304)));
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT));
         area.addView(compactMixerPanel,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
