@@ -235,7 +235,8 @@ for required in \
   'MPC_MAIN_FIELD_HEIGHT_DP = 40' \
   'MPC_MAIN_METRIC_HEIGHT_DP = 36' \
   'MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40' \
-  'MPC_MAIN_RADIUS_DP = 0' \
+  'MPC_MAIN_RADIUS_DP = 0' \\
+  'private Button mainActionButton(' \\
   'page.setPadding(dp(MPC_MAIN_CONTENT_GUTTER_DP), dp(2)' \
   'sequenceCard.setPadding(0, 0, 0, dp(MPC_MAIN_SECTION_GAP_DP));' \
   'sequenceCard.addView(sequenceHeader' \
