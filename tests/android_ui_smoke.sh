@@ -76,10 +76,6 @@ for required in \
   "MPC condensed Mixer Strip Track or Pad selector" \
   "MPC condensed Mixer Strip showing Track" \
   "MPC condensed Mixer Strip showing Pad" \
-
-
-
-
   "private LinearLayout buildCompactMixerTabs()" \
   "MPC condensed Mixer Strip" \
   "LVL" \
