@@ -1037,3 +1037,5 @@ The Main presentation now uses explicit MPC One geometry constants instead of sc
 - compact 4dp insets for the shell shortcut/context rails.
 
 This is presentation-only. MpcUiState, MpcNavigationController, native sequencing/audio semantics, the five-slot Function Bar and the Track/Arrangement sibling model are unchanged.
+
+- Main interactive controls now use a dedicated flat Main action helper; the global Android-style rounded button default is no longer inherited by Main controls.
