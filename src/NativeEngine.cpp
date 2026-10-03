@@ -1046,6 +1046,65 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetQueuedIndex(
                     .queuedSequenceIndex());
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLauncherContext(
+        JNIEnv* /* env */,
+        jobject /* thiz */,
+        jboolean enabled,
+        jint bank)
+{
+    // Launcher context is owned by the Java MPC shell. Keep this legacy native
+    // entry point ABI-compatible without introducing a second native owner.
+    (void) enabled;
+    (void) bank;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepEditContext(
+        JNIEnv* /* env */,
+        jobject /* thiz */,
+        jboolean enabled,
+        jint page)
+{
+    // Step-edit context is owned by the Java MPC shell. This entry point is
+    // retained so existing UI routing does not raise UnsatisfiedLinkError.
+    (void) enabled;
+    (void) page;
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeStepEditParameterNext(
+        JNIEnv* /* env */,
+        jobject /* thiz */,
+        jint parameter)
+{
+    using mpc::sequencer::step_edit::Parameter;
+    const auto current = static_cast<Parameter>(
+            std::clamp(parameter, 0, 4));
+    return static_cast<jint>(
+            mpc::sequencer::step_edit::nextParameter(current));
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeStepEditParameterDelta(
+        JNIEnv* /* env */,
+        jobject /* thiz */,
+        jint parameter,
+        jint gridTicks,
+        jint direction,
+        jboolean fine)
+{
+    using mpc::sequencer::step_edit::Parameter;
+    const auto current = static_cast<Parameter>(
+            std::clamp(parameter, 0, 4));
+    return static_cast<jint>(
+            mpc::sequencer::step_edit::deltaFor(
+                    current,
+                    gridTicks,
+                    direction,
+                    fine == JNI_TRUE));
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsGridEditable(
         JNIEnv* /* env */, jobject /* thiz */)
