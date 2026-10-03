@@ -2673,16 +2673,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackView.setVisibility(trackVisible ? View.VISIBLE : View.GONE);
         arrangementView.setVisibility(trackVisible ? View.GONE : View.VISIBLE);
 
-        mainTrackViewButton.setTextColor(trackVisible ? BG : TEXT);
+        /*
+         * MPC presents Track / Arrangement as contextual headers, not as
+         * large rounded Android cards. Keep the active context flat and use
+         * the MPC red focus accent for the selected header.
+         */
+        mainTrackViewButton.setTextColor(
+                trackVisible ? TEXT : MUTED);
         mainTrackViewButton.setBackground(strokeBackground(
-                trackVisible ? ACCENT : SURFACE_2,
-                trackVisible ? ACCENT : LINE,
-                6));
-        mainArrangementViewButton.setTextColor(trackVisible ? TEXT : BG);
+                trackVisible ? SURFACE_2 : BG,
+                trackVisible ? DANGER : LINE,
+                0));
+        mainArrangementViewButton.setTextColor(
+                trackVisible ? MUTED : TEXT);
         mainArrangementViewButton.setBackground(strokeBackground(
-                trackVisible ? SURFACE_2 : ACCENT,
-                trackVisible ? LINE : ACCENT,
-                6));
+                trackVisible ? BG : SURFACE_2,
+                trackVisible ? LINE : DANGER,
+                0));
 
         if (trackVisible) {
             final TextView selectedPad =
