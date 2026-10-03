@@ -513,7 +513,7 @@ for required in \
   "compactSequenceOverviewView" \
   "\"MPC shell compact track program context\"" \
   "\"MPC shell track context\"" \
-  "focusMainTrackField();" \
+  "focusMainTrackField()" \
   "showSequenceSelectPage();" \
   "showProgramSelectPage();" \
   "\"MPC shell sequence context\"" \
