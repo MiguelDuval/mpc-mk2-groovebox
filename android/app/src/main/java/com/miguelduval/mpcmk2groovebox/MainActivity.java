@@ -3771,11 +3771,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private TextView findTextByContentDescription(View root, String description) {
-        if (root == null) return null;
-        if (description.contentEquals(root.getContentDescription())
+        if (root == null || description == null) return null;
+
+        // Android Views commonly have a null contentDescription. Calling
+        // String.contentEquals(null) dereferences the CharSequence internally
+        // and crashes with "CharSequence.length() on a null object reference".
+        final CharSequence actualDescription = root.getContentDescription();
+        if (actualDescription != null
+                && description.contentEquals(actualDescription)
                 && root instanceof TextView) {
             return (TextView) root;
         }
+
         if (root instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) root;
             for (int i = 0; i < group.getChildCount(); i++) {
