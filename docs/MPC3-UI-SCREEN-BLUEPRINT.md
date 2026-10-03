@@ -1038,6 +1038,16 @@ The persistent context rail is intentionally denser than a general Android dashb
 
 These rules are presentation-only and must not create duplicate domain or transport ownership.
 
+## 2026-10-03 Main section framing fidelity checkpoint
+
+Main is rendered as two visually coherent framed workspaces beneath the shared shell:
+
+- **Sequence section:** one flat panel containing Sequence/BPM/SEQ/Time Signature/header controls and the BARS/START/END/TRANSPOSE/Loop row;
+- **Track / Arrangement section:** one flat panel containing the selected Track identity, Track Type, Track Edit entry, Track/Arrangement context and the active performance/timeline workspace;
+- no separate Arrangement-edit control is rendered in the header because the Arrangement workspace itself is the navigation surface.
+
+The selected parameter continues to use the red focus outline; section framing itself does not become an additional semantic focus state.
+
 ## 2026-10-03 Main shell geometry fidelity checkpoint
 
 The Main presentation now uses explicit MPC One geometry constants instead of scattered legacy spacing:
