@@ -1104,6 +1104,17 @@ The compact left context rail now uses a denser MPC-facing information hierarchy
 
 This is presentation-only. MpcUiState, MpcNavigationController, native sequencing/audio timing and the shared shell layout remain unchanged.
 
+## 2026-10-03 Main section framing fidelity checkpoint
+
+The Main workspace now mirrors the documented MPC composition more closely:
+
+- the Sequence section is a single flat framed surface containing the sequence header and its lower BARS/START/END/TRANSPOSE/Loop row;
+- the Track / Arrangement area is a single framed workspace surface around the selected Track header and performance/arrangement canvas;
+- Loop remains a dedicated lower-row control with explicit ON/OFF visual state;
+- the redundant Arrangement-edit button was removed so Arrangement is entered through its header/workspace itself.
+
+The framing is presentation-only. Existing Sequence, Track, Arrangement and Track Edit semantic paths remain unchanged.
+
 ## 2026-10-03 Main Geometry Fidelity Pass
 
 The bounded Main visual-fidelity slice is now implemented against the existing architecture:
