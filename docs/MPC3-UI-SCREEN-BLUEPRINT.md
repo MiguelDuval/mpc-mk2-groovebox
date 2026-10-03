@@ -189,6 +189,14 @@ Touch:
 - tap Browser -> Browser for the current loading workflow.
 
 
+### Main Track Select context
+
+- Track selection is a compact 4×4 matrix rather than a generic vertical Android list.
+- Each cell represents one Track using the MPC-style pad-like selection model: track number + user-facing Track name.
+- The selected Track keeps the single red focus treatment.
+- Selecting a Track returns to Main while retaining Track Data Dial focus.
+- The current implementation supports the project's available Track set; category filters and the hardware press-and-hold Main gesture remain future increments until their semantics are implemented.
+
 ### Main Track quick-sample context
 
 - The default Main Track view pairs the performance pad surface with a compact sample waveform for the selected Pad/Layer.
