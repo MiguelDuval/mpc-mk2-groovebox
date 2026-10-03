@@ -1006,12 +1006,14 @@ Program Edit remains reserved until the backend can truthfully edit Program cont
 - Main Track/Arrangement is flattened into one central MPC-style work surface; the old nested Android-card appearance is no longer the target.
 
 
-## 2026-10-02 Main shell fidelity refinement
+## 2026-10-03 Main shell persistent-context checkpoint
 
-- The shell's left column now follows the MPC Mixer Strip composition rather than duplicating Sequence/Track/Program/Pad context.
-- Main central content remains the authoritative Sequence and Track/Arrangement workspace.
-- The shell Mixer Strip shows selected Track state plus the selected Drum Pad's real level/pan/tune; unavailable Track/Main Output levels remain RESERVED.
-- The top toolbar is reduced to the MPC information hierarchy and no longer exposes diagnostic MIDI/audio chips as primary product controls.
+- The shell left edge is explicitly split into two persistent functional layers: five shortcuts and a compact context rail followed by the workspace.
+- The persistent context rail carries Sequence + BPM, selected Track identity/state, selected Track Program where truthful, selected Pad, semantic Data Dial focus/subcontext, and a thin sequence movement overview.
+- Mixer Strip detail visibility affects only mixer-detail controls; it must not hide or reset persistent Sequence/Track/Program/Pad/Dial context or sequence state.
+- Sequence, Track and Program entries are direct semantic entry points into the existing Main selection contexts. Non-Drum Program selection remains explicitly unavailable.
+- The shell geometry implementation contract is 44dp Toolbar, 48dp shortcut rail, 210dp context/channel rail and 40dp Function Bar. These are implementation geometry baselines, not claims of pixel-equivalent Akai hardware dimensions.
+- The Toolbar remains reduced to the MPC information hierarchy and does not expose diagnostic AUDIO/MIDI chips as primary product controls.
 
 
 ### 7.5 Geometry acceptance
