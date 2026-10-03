@@ -176,17 +176,16 @@ Fields:
 - track number;
 - track name;
 - track type icon;
-- program/instrument;
-- selected pad for Drum;
-- program/preset for instrument tracks;
 - Track Edit entry;
+- selected pad for Drum;
 - track length;
-- inserts/I/O entry.
+- inserts/I/O entry where supported.
+
+MPC3 unifies Programs into the Track container rather than presenting a persistent standalone Program field in the Main Track header. Program selection remains a dedicated contextual workflow for the supported Drum-track backend.
 
 Touch:
 
 - tap Track field -> Main Track Select subcontext;
-- tap Program field -> Main Program Select subcontext;
 - tap Browser -> Browser for the current loading workflow.
 
 
