@@ -3783,7 +3783,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         b.setPadding(dp(4), 0, dp(4), 0);
         b.setGravity(Gravity.CENTER);
         b.setBackground(strokeBackground(
-                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+                MPC_PANEL_DARK, MPC_PANEL_BORDER, MPC_FLAT_RADIUS_DP));
         return b;
     }
 
@@ -4004,6 +4004,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Button b = button(String.format(Locale.ROOT, "%02d", pad + 1));
                 b.setTextSize(11);
                 b.setTypeface(Typeface.DEFAULT_BOLD);
+                b.setPadding(0, 0, 0, 0);
+                b.setGravity(Gravity.CENTER);
+                b.setBackground(strokeBackground(
+                        MPC_PANEL_DARK,
+                        MPC_PANEL_BORDER,
+                        MPC_FLAT_RADIUS_DP));
                 b.setContentDescription("Main Mode pad " + (pad + 1));
                 b.setOnClickListener(v -> {
                     selectAndTriggerPad(pad, 112);
@@ -4029,9 +4035,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (v == null) continue;
             final boolean selected = pad == selectedPad;
             v.setBackground(strokeBackground(
-                    selected ? Color.rgb(45, 72, 82) : SURFACE_2,
-                    selected ? ACCENT : LINE,
-                    6));
+                    selected ? MPC_SELECTED : MPC_PANEL_DARK,
+                    selected ? MPC_SELECTED : MPC_PANEL_BORDER,
+                    MPC_FLAT_RADIUS_DP));
+            if (v instanceof TextView) {
+                ((TextView) v).setTextColor(
+                        selected ? MPC_TOOLBAR_TEXT : TEXT);
+            }
         }
 
         if (mainTrackArrangementHost != null) {
