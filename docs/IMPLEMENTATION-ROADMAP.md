@@ -457,6 +457,10 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 
 ### 2026-10-03 Main Mode visual density refinement
 
+### 2026-10-03 Main Time Signature highlight
+
+- Added the documented yellow visual emphasis to the Main Time Signature field while keeping its existing semantic dialog editor.
+
 - Tightened Main page edge padding and increased the Sequence region to roughly one-third of the available workspace height.
 - Updated the Drum Track lower-right selector presentation to show the single-pad / four-squares pair while retaining one semantic Track↔Pad focus state.
 
