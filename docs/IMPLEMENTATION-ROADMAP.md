@@ -502,3 +502,8 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Kept unsupported strip functions explicitly unavailable; REC and MUTE are now directly actionable against truthful existing backend semantics.
 - Shared Function Bar remains the stable high-frequency Track operation surface.
 - Physical MkII verification remains required.
+
+
+### 2026-10-03 Track View selection identity refinement
+
+- Track View strip selection/identity refinement: direct strip selection added; technical `events=` / `ARM` metadata is removed from displayed Track names while remaining available as status information.
