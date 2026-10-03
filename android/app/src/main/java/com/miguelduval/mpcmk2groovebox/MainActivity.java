@@ -1951,10 +1951,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackProgramSection.setPadding(0, dp(4), 0, 0);
 
         /*
-         * MPC3 unifies Program and Track into the same Track container. Keep
-         * the Main header focused on the user-facing Track identity, its type
-         * selector, and the Track Edit affordance. Program selection remains
-         * available through the dedicated hardware Program Select context.
+         * MPC3 keeps Track and Program inside one continuous Track context.
+         * Program is a field of that context, not a duplicate top-level
+         * workspace. Track/Program therefore share one identity band while
+         * Track Type and Track Edit remain attached to its right edge.
          */
         LinearLayout trackProgramHeader = row();
         trackProgramHeader.setContentDescription("Main Mode Track identity header");
@@ -1966,10 +1966,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackName.setContentDescription("Main Mode selected track");
         trackName.setOnClickListener(v -> focusMainTrackField());
         trackProgramHeader.addView(trackName,
-                new LinearLayout.LayoutParams(0, dp(40), 1));
+                new LinearLayout.LayoutParams(0, dp(40), 1.0f));
+
+        TextView program = mainField("PROGRAM");
+        program.setTextSize(12);
+        program.setContentDescription("Main Mode selected program");
+        program.setOnClickListener(v -> {
+            final int trackIndex = startupComplete
+                    ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+            final String trackType = startupComplete
+                    ? nativeSequenceGetTrackType(trackIndex) : "DRUM";
+            if (!"DRUM".equalsIgnoreCase(trackType)) {
+                setBottomStatus(
+                        "PROGRAM SELECT • " + trackType + " TRACK • unavailable");
+                return;
+            }
+            showProgramSelectPage();
+        });
+        trackProgramHeader.addView(program,
+                new LinearLayout.LayoutParams(0, dp(40), 1.0f));
 
         mainTrackField = trackName;
-        mainProgramField = null;
+        mainProgramField = program;
         mainTrackTypeField = buildMainTrackTypeSelector();
 
         trackProgramHeader.addView(
@@ -4147,7 +4165,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                     programIndex));
                             navigationController.setSelectedProgram(
                                     nativeSequenceGetDrumProgramName(programIndex));
-                            showProgramSelectPage();
+                            showMainPage();
+                            hardwareFocus = 4;
+                            navigationController.setSubcontext(
+                                    MpcUiState.Subcontext.PROGRAM_SELECT);
+                            navigationController.setDataDialFocus(
+                                    MpcUiState.DataDialFocus.PROGRAM);
+                            navigationController.setActionAvailable(true);
+                            refreshMainDataDialFocusVisuals();
                         });
                 b.setGravity(Gravity.CENTER_VERTICAL);
                 b.setPadding(dp(10), 0, dp(10), 0);
@@ -9412,7 +9437,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(nativeSequenceSetTrackProgram(track, next));
             navigationController.setSelectedProgram(
                     nativeSequenceGetDrumProgramName(next));
-            showProgramSelectPage();
+
+            final boolean programSelectPageVisible =
+                    pageTitle != null
+                            && "MAIN • PROGRAM".equals(
+                                    pageTitle.getText().toString());
+            if (programSelectPageVisible) {
+                showProgramSelectPage();
+            } else {
+                showMainPage();
+                hardwareFocus = 4;
+                navigationController.setSubcontext(
+                        MpcUiState.Subcontext.PROGRAM_SELECT);
+                navigationController.setDataDialFocus(
+                        MpcUiState.DataDialFocus.PROGRAM);
+                navigationController.setActionAvailable(true);
+                refreshMainDataDialFocusVisuals();
+            }
             return;
         }
         if (hardwareFocus == 3) {
@@ -9421,15 +9462,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(
                     delta > 0 ? nativeSequenceNext() : nativeSequencePrevious());
             navigationController.setSelectedSequence(nativeSequenceGetIndex());
-            if (navigationController.state().mode() == MpcUiState.Mode.MAIN) {
+
+            final boolean sequenceSelectPageVisible =
+                    pageTitle != null
+                            && "MAIN • SEQUENCE".equals(
+                                    pageTitle.getText().toString());
+            if (sequenceSelectPageVisible) {
                 showSequenceSelectPage();
-            } else if (navigationController.state().mode() == MpcUiState.Mode.TRACK_VIEW) {
+            } else if (navigationController.state().mode()
+                    == MpcUiState.Mode.TRACK_VIEW) {
                 showTrackViewPage();
             } else {
                 showMainPage();
+                hardwareFocus = 3;
+                navigationController.setSubcontext(
+                        MpcUiState.Subcontext.SEQUENCE_SELECT);
+                navigationController.setDataDialFocus(
+                        MpcUiState.DataDialFocus.SEQUENCE);
+                navigationController.setActionAvailable(true);
+                refreshMainDataDialFocusVisuals();
             }
             return;
         }
+        if (hardwareFocus == 5) {
+            setBottomStatus(
+                    "TRACK TYPE • DRUM is the only implemented Track Type");
+            refreshMainDataDialFocusVisuals();
+            return;
+        }
+
         if (hardwareFocus == 10) {
             final int trackIndex = startupComplete
                     ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;

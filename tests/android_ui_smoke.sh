@@ -258,6 +258,33 @@ if ! grep -Fq -- 'trackName.setOnClickListener(v -> focusMainTrackField())' "$MA
   exit 1
 fi
 
+if ! grep -Fq -- 'program.setContentDescription("Main Mode selected program")' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'program.setOnClickListener(v -> {' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'mainProgramField = program;' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Program field must remain a touch-selectable field inside the Track context"
+  exit 1
+fi
+
+program_select_start=$(grep -n -m1 'private void showProgramSelectPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+program_select_end=$(grep -n -m1 'private void showBrowserPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$program_select_start" || -z "$program_select_end" || "$program_select_end" -le "$program_select_start" ]]; then
+  echo "ERROR: Main Program Select source boundary is missing"
+  exit 1
+fi
+program_select_block=$(sed -n "${program_select_start},$((program_select_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if ! grep -Fq -- 'nativeSequenceSetTrackProgram(' <<<"$program_select_block" ||    ! grep -Fq -- 'showMainPage();' <<<"$program_select_block" ||    ! grep -Fq -- 'MpcUiState.DataDialFocus.PROGRAM' <<<"$program_select_block"; then
+  echo "ERROR: Program Select must apply to the selected Track and return to Main with Program focus"
+  exit 1
+fi
+
+if ! grep -Fq -- 'PROGRAM SELECT • DRUM TRACK REQUIRED' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'programSelectPageVisible' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Program Data Dial routing contract is missing"
+  exit 1
+fi
+
+if ! grep -Fq -- 'TRACK TYPE • DRUM is the only implemented Track Type' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Track Type Data Dial must remain truthful/reserved instead of routing to another screen"
+  exit 1
+fi
+
 for required in   'MPC_FLAT_RADIUS_DP));'   'group.setBackground(strokeBackground('   'b.setBackground(strokeBackground('; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Main MPC flat-chrome contract missing: $required"
