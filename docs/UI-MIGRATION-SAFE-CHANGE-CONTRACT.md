@@ -219,3 +219,39 @@ Verification target:
 - Android source preflight includes the Track Edit geometry/content-description contract;
 - GitHub Actions must re-run for the new commit;
 - physical MkII verification remains pending.
+
+
+## 2026-10-03 Persistent MPC context / buildability checkpoint
+
+Branch: `work/mpc3-ui-migration-master-spec`
+
+The recovered full project tree was preserved while the next UI slice was hardened:
+
+- corrected the Main smoke-test assertion so the documented Track-state row remains immediately above the performance canvas;
+- aligned `MpcShell` to the current implementation geometry contract: 44dp Toolbar, 48dp shortcut rail, 210dp context/channel rail, 40dp Function Bar;
+- restored four missing `MainActivity` JNI bridge entry points for launcher/step-edit context compatibility and the existing step-edit parameter policy;
+- added the persistent Main context rail for Sequence + BPM, Track, Program, Pad, semantic Data Dial focus/subcontext and sequence overview;
+- separated persistent context from Mixer Strip detail visibility so hiding the mixer does not hide the canonical context state;
+- kept all changes on a normal fast-forward commit chain from recovery HEAD; no files were deleted or replaced by a repository-wide tree rewrite.
+
+Files changed in this slice:
+- `MainActivity.java`
+- `MpcShell.java`
+- `NativeEngine.cpp`
+- `tests/android_ui_smoke.sh`
+- `docs/MPC3-UI-SCREEN-BLUEPRINT.md`
+- this contract
+
+Verification:
+- source-level Main/shell/context contracts pass;
+- Java native declaration audit: 136/136 declarations have matching C++ JNI definitions;
+- existing step-edit policy assertions pass in an isolated native compile/test;
+- required project tree files remain present;
+- GitHub Actions/status for the current commits: no completed workflow/status result is available through the connected GitHub checks, so CI is not considered green;
+- local Android/Gradle build was not executed because no local checkout/build environment was available;
+- physical MPC Studio MkII verification remains pending.
+
+Remaining gaps:
+- obtain a real Android/native CI or local build result;
+- run emulator/static smoke in the actual repository checkout;
+- perform physical MkII interaction verification after the next runnable checkpoint.
