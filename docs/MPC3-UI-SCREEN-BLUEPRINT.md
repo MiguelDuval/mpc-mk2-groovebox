@@ -1049,3 +1049,8 @@ The shell's compact left column now uses a shallow top control area and a dedica
 ## 2026-10-03 Pad XL Channel Strip tab parity
 
 Pad-strip presentation now uses the same LVL / FX / SEND / I/O tab geometry as the Track strip. LVL is the only active presentation because the current backend exposes truthful Pad level/pan/tune state; FX, SEND and I/O remain visually reserved rather than simulated.
+
+
+## 2026-10-03 Main Track state-row ordering
+
+The compact Monitor / Length / Velocity / Layer row is positioned immediately above the Main Track performance canvas. The Track Edit pencil remains on the canvas header, while the lower-right Track/Pad selector stays in the same state row so the single local workspace has one coherent control edge.
