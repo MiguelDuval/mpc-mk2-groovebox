@@ -507,3 +507,15 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 ### 2026-10-03 Track View selection identity refinement
 
 - Track View strip selection/identity refinement: direct strip selection added; technical `events=` / `ARM` metadata is removed from displayed Track names while remaining available as status information.
+
+
+
+### 2026-10-03 Main Track ergonomics and Track Select fidelity
+
+- Main Track identity now exposes only track number + clean user-facing Track name; native status metadata does not leak into the primary field.
+- Tapping the Main Track field establishes Track Data Dial focus in place instead of navigating to a generic selector screen.
+- Track -/+ changes the active Track while preserving the Main Track/Arrangement presentation and restoring Track Data Dial focus.
+- Main's visible Program field was removed to match the MPC3 unified Track container model; dedicated Program Select remains available through its semantic hardware/context route for the current Drum backend.
+- Track Select context now uses a 4×4 MPC-style matrix of Track cells and returns to Main with the selected Track focused.
+- No realtime/audio/MIDI backend path changed.
+
