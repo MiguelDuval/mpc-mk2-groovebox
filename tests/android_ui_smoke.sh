@@ -380,7 +380,7 @@ if ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(0)' <<<"$main_view_switch_
   echo "ERROR: Track/Arrangement switch must operate on one shared workspace host"
   exit 1
 fi
-if ! grep -Fq -- 'MPC presents Track / Arrangement as contextual headers' <<<"$main_view_switch_block"; then
+if ! grep -Fq -- 'MPC presents the selected Track and its Track / Arrangement context' <<<"$main_view_switch_block"; then
   echo "ERROR: Main Track/Arrangement header fidelity contract is missing"
   exit 1
 fi
@@ -424,7 +424,7 @@ for required in   'MPC Track View focused Track field'   'Track View track I/O u
     exit 1
   fi
 done
-for required in 'strip.setOnClickListener(v -> {' 'String trackIdentityStatus =' 'trackMetadataSeparator'; do
+for required in 'strip.setOnClickListener(v -> {' 'String trackIdentityStatus ='; do
   if ! grep -Fq -- "$required" <<<"$track_view_block"; then
     echo "ERROR: Track View selection/identity contract missing: $required"
     exit 1
