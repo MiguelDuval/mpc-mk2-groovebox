@@ -5,7 +5,10 @@
 namespace mpc::audio {
 
 struct AudioOutputPolicy final {
-    oboe::SharingMode preferredSharingMode = oboe::SharingMode::Exclusive;
+    // Shared mode is the portable Android baseline. Exclusive output is not
+    // guaranteed on physical devices and can destabilize startup when the
+    // audio service cannot satisfy an exclusive stream request.
+    oboe::SharingMode preferredSharingMode = oboe::SharingMode::Shared;
     oboe::PerformanceMode performanceMode = oboe::PerformanceMode::LowLatency;
     bool floatFormat = true;
     bool allowFormatConversion = true;
