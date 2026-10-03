@@ -1200,3 +1200,8 @@ Main presentation now keeps a denser edge-to-edge workspace, slightly increases 
 ### 2026-10-03 Main Track state-row ordering correction
 
 Main Track places the compact Monitor / Length / Velocity / Layer context directly below the performance canvas, with the Track/Pad selector at the lower-right edge of the Track/Arrangement section. This placement was corrected after a fresh cross-check against Akai's current MPC 3 Output Routing Basics reference; no backend semantics changed.
+
+
+## 2026-10-03 Track/Arrangement header fidelity increment
+
+Main's Track / Arrangement switch is treated as a contextual header pair rather than generic rounded action cards. The active context remains the only visual state change, using the MPC red focus accent while preserving the shared workspace and all existing semantic navigation behavior.
