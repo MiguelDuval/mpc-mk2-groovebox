@@ -1996,7 +1996,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
         /*
-         * MPC Main exposes a compact track-state row below the
+         * MPC Main exposes the compact Track-state row below the
          * Track/Arrangement canvas. Keep the vocabulary recognizable while
          * only exposing values that our backend can state truthfully:
          * Monitor is unavailable, Length is sequence-scoped, Velocity is not
@@ -2137,16 +2137,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         0, ViewGroup.LayoutParams.MATCH_PARENT, 0.48f));
 
         /*
-         * Keep the compact Track-state row directly above the performance
-         * canvas, matching the documented Main Track hierarchy.
+         * Keep the compact Track-state row directly below the performance
+         * canvas. The Track/Pad selector at the row's right edge is therefore
+         * the documented lower-right control for the Main Track/Arrangement
+         * section.
          */
-        trackWorkspace.addView(trackDetailRow,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
-
         trackWorkspace.addView(quickTrack,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        trackWorkspace.addView(trackDetailRow,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
 
         LinearLayout arrangement = column();
         arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
