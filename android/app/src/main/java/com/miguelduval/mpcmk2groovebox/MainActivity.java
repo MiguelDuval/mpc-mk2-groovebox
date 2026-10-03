@@ -1673,13 +1673,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 dp(MPC_TOOLBAR_MENU_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
 
-        projectState = label("PROJECT\nUNTITLED", 9, TEXT);
+        projectState = label("PROJECT\nUNTITLED", 9, MPC_TOOLBAR_TEXT);
         projectState.setTypeface(Typeface.DEFAULT_BOLD);
         projectState.setGravity(Gravity.CENTER_VERTICAL);
-        projectState.setPadding(dp(6), 0, dp(6), 0);
+        projectState.setPadding(dp(6), 0, dp(2), 0);
         projectState.setContentDescription("MPC Project");
         bar.addView(projectState, new LinearLayout.LayoutParams(
-                dp(MPC_TOOLBAR_PROJECT_WIDTH_DP),
+                dp(106),
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
+
+        // MPC One keeps a direct project/browser affordance next to project
+        // identity. It is deliberately a compact entry point rather than a
+        // second navigation surface.
+        Button projectBrowser = topButton("□");
+        projectBrowser.setTextSize(13);
+        projectBrowser.setContentDescription("MPC Project Browser");
+        projectBrowser.setOnClickListener(v -> showBrowserPage());
+        bar.addView(projectBrowser, new LinearLayout.LayoutParams(
+                dp(26),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
 
         // showMainPage() is part of shell construction, so the current-page
