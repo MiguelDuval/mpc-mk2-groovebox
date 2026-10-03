@@ -277,9 +277,22 @@ if ! grep -Fq -- 'mainTrackSampleActionButton.setText("SAMPLE EDIT");' "$MAIN_AC
   echo "ERROR: loaded Main Track sample must expose SAMPLE EDIT"
   exit 1
 fi
-if grep -Fq -- '"SEQUENCE EDIT"' "$MAIN_ACTIVITY_SOURCE" || \
-   grep -Fq -- '"TRACK VIEW"' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main selector contexts must not duplicate navigation actions inside their local footer"
+sequence_select_start=$(grep -n -m1 'private void showSequenceSelectPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+track_select_start=$(grep -n -m1 'private void showTrackSelectPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+program_select_start=$(grep -n -m1 'private void showProgramSelectPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$sequence_select_start" || -z "$track_select_start" || -z "$program_select_start" || \
+      "$track_select_start" -le "$sequence_select_start" || "$program_select_start" -le "$track_select_start" ]]; then
+  echo "ERROR: Main selector source boundaries are missing"
+  exit 1
+fi
+sequence_select_block=$(sed -n "$sequence_select_start,$((track_select_start - 1))p" "$MAIN_ACTIVITY_SOURCE")
+track_select_block=$(sed -n "$track_select_start,$((program_select_start - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- '"SEQUENCE EDIT"' <<<"$sequence_select_block"; then
+  echo "ERROR: Sequence Select must not expose a duplicate SEQUENCE EDIT action"
+  exit 1
+fi
+if grep -Fq -- '"TRACK VIEW"' <<<"$track_select_block"; then
+  echo "ERROR: Track Select must not expose a duplicate TRACK VIEW action"
   exit 1
 fi
 
