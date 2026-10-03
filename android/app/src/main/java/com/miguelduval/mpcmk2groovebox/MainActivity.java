@@ -1937,6 +1937,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackProgramHeader.addView(
                 mainTrackTypeField,
                 new LinearLayout.LayoutParams(dp(76), dp(40)));
+
+        Button trackEditHeader = actionButton("✎", v -> openMainTrackEditContext());
+        trackEditHeader.setTextSize(15);
+        trackEditHeader.setContentDescription("Main Track Edit");
+        trackProgramHeader.addView(trackEditHeader,
+                new LinearLayout.LayoutParams(dp(40), dp(40)));
+
         trackProgramSection.addView(trackProgramHeader,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
@@ -1975,25 +1982,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout trackWorkspace = column();
         trackWorkspace.setContentDescription("Main Mode Track View workspace");
-        trackWorkspace.setPadding(dp(6), dp(4), dp(6), dp(4));
+        trackWorkspace.setPadding(dp(6), dp(2), dp(6), dp(4));
         trackWorkspace.setBackgroundColor(BG);
-
-        LinearLayout trackWorkspaceHeader = row();
-        trackWorkspaceHeader.setContentDescription("Main Track View workspace actions");
-
-        android.widget.Space trackHeaderSpacer = new android.widget.Space(this);
-        trackWorkspaceHeader.addView(trackHeaderSpacer,
-                new LinearLayout.LayoutParams(0, dp(30), 1));
-
-        Button trackEdit = actionButton("✎", v -> openMainTrackEditContext());
-        trackEdit.setTextSize(16);
-        trackEdit.setContentDescription("Main Track Edit");
-        trackWorkspaceHeader.addView(trackEdit,
-                new LinearLayout.LayoutParams(dp(42), dp(30)));
-
-        trackWorkspace.addView(trackWorkspaceHeader,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
         /*
          * MPC Main exposes the compact Track-state row below the
