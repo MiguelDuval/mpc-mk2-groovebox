@@ -272,6 +272,31 @@ Verification target:
 - source smoke checks lock the hierarchy helper, compact field heights and focus projection;
 - GitHub Actions and physical MkII verification remain separate acceptance gates.
 
+## 2026-10-04 MPC One visual-fidelity checkpoint
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The next Main/shell presentation slice moves the implementation closer to the physical MPC One / documented MPC3 visual language without changing realtime or domain ownership:
+
+- the persistent Toolbar now uses the MPC One red status-bar treatment and keeps the legacy page title out of the visible chrome;
+- Toolbar time-counter text is compact and status-oriented;
+- shortcut buttons use an icon-first, flat selected-state treatment instead of generic Android button chrome;
+- Function Bar controls use flat graphite surfaces with stable left-to-right semantic ordering;
+- Main Track now exposes the selected Track's Program directly below the Track identity band, matching the documented MPC Main information hierarchy;
+- the Main Track header now has a compact Track-type icon cluster; unsupported types remain explicitly unavailable;
+- the persistent left context rail remains the canonical glance/entry surface and shares the same Track/Program state.
+
+This is a presentation/navigation slice. No realtime audio callback, sampler scheduler, sequencer clock, raw MIDI decoder, or native audio ownership changed.
+
+External visual reference used during implementation:
+- documented MPC3 Main Mode / MPC One workflow screenshots;
+- official Akai MPC3 support material and MPC One documentation.
+
+Acceptance:
+- all existing source-level UI contracts remain green;
+- GitHub Actions must build and run the Android emulator smoke test for the new commit;
+- physical MkII verification remains a separate hardware gate.
+
 ## 2026-10-03 Compact context sizing checkpoint
 
 The persistent context panel may use WRAP_CONTENT/content-sized geometry. A fixed height must not be reintroduced solely to reserve space for the optional Mixer Strip detail layer.
