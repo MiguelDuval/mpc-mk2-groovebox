@@ -482,3 +482,14 @@ jobs:
           emulator-boot-timeout: 1200
           disable-animations: true
           script: bash tests/android_ui_smoke.sh
+
+      - name: Upload MPC UI visual evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mpc-ui-visual-evidence
+          path: |
+            /tmp/mpc-groovebox-startup.png
+            /tmp/mpc-groovebox-ui.xml
+          if-no-files-found: warn
+          archive: true
