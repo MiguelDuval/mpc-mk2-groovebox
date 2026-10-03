@@ -272,7 +272,7 @@ for required in \
   'MPC_TOOLBAR_METRO_WIDTH_DP = 58' \
   'MPC_TOOLBAR_AUTO_WIDTH_DP = 48' \
   'MPC_TOOLBAR_TRANSPORT_WIDTH_DP = 40' \
-  'bar.setContentDescription("MPC Main Toolbar")' \
+  'bar.setContentDescription("MPC One Main Toolbar")' \
   'BAR 001  BEAT 1  TICK 000' \
   'MPC Toolbar Menu'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
