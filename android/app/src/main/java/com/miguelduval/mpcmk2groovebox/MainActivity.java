@@ -88,6 +88,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int DANGER = Color.rgb(236, 83, 83);
     private static final int MPC_TIME_SIGNATURE_HIGHLIGHT = Color.rgb(240, 194, 48);
     private static final int ACTIVE = Color.rgb(63, 207, 117);
+    // MPC3 Toolbar geometry: fixed hit-target zones, with only the transport clock expanding.
+    private static final int MPC_TOOLBAR_INSET_DP = 6;
+    private static final int MPC_TOOLBAR_CONTROL_HEIGHT_DP = 34;
+    private static final int MPC_TOOLBAR_GAP_DP = 2;
+    private static final int MPC_TOOLBAR_MENU_WIDTH_DP = 38;
+    private static final int MPC_TOOLBAR_PROJECT_WIDTH_DP = 132;
+    private static final int MPC_TOOLBAR_TIMING_WIDTH_DP = 60;
+    private static final int MPC_TOOLBAR_METRO_WIDTH_DP = 58;
+    private static final int MPC_TOOLBAR_AUTO_WIDTH_DP = 48;
+    private static final int MPC_TOOLBAR_TRANSPORT_WIDTH_DP = 40;
+
     // MPC One Main geometry: dense, edge-tight, and independent of legacy page spacing.
     private static final int MPC_MAIN_CONTENT_GUTTER_DP = 4;
     private static final int MPC_MAIN_SECTION_GAP_DP = 2;
@@ -1505,33 +1516,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(8), dp(4), dp(8), dp(4));
+        bar.setPadding(
+                dp(MPC_TOOLBAR_INSET_DP), dp(3),
+                dp(MPC_TOOLBAR_INSET_DP), dp(3));
         bar.setBackgroundColor(SURFACE);
+        bar.setContentDescription("MPC Main Toolbar");
 
         Button menu = topButton("▦");
         menu.setContentDescription("MPC Toolbar Menu");
         menu.setOnClickListener(v -> showMenuPage());
-        bar.addView(menu, new LinearLayout.LayoutParams(dp(40), dp(36)));
+        bar.addView(menu, new LinearLayout.LayoutParams(
+                dp(MPC_TOOLBAR_MENU_WIDTH_DP),
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
 
-        projectState = label("PROJECT\nUNTITLED", 10, TEXT);
+        projectState = label("PROJECT\nUNTITLED", 9, TEXT);
         projectState.setTypeface(Typeface.DEFAULT_BOLD);
         projectState.setGravity(Gravity.CENTER_VERTICAL);
+        projectState.setPadding(dp(6), 0, dp(6), 0);
         projectState.setContentDescription("MPC Project");
         bar.addView(projectState, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 1.15f));
-
-        pageTitle = label("MAIN", 1, TEXT);
-        pageTitle.setVisibility(View.GONE);
+                dp(MPC_TOOLBAR_PROJECT_WIDTH_DP),
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
 
         sequenceTransportView = label(
                 "BAR 001  BEAT 1  TICK 000",
-                10,
+                9,
                 TEXT);
         sequenceTransportView.setGravity(Gravity.CENTER);
         sequenceTransportView.setTypeface(Typeface.DEFAULT_BOLD);
         sequenceTransportView.setContentDescription("Sequence position and tempo");
         bar.addView(sequenceTransportView, new LinearLayout.LayoutParams(
-                0, ViewGroup.LayoutParams.MATCH_PARENT, 1.65f));
+                0,
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP),
+                1));
 
         timingCorrectTopButton = topButton("TC OFF");
         timingCorrectTopButton.setContentDescription("Timing Correct");
@@ -1542,22 +1559,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             showTimingCorrectDialog();
         });
-        bar.addView(timingCorrectTopButton,
-                new LinearLayout.LayoutParams(dp(56), dp(36)));
+        LinearLayout.LayoutParams timingLp = new LinearLayout.LayoutParams(
+                dp(MPC_TOOLBAR_TIMING_WIDTH_DP),
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP));
+        timingLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
+        bar.addView(timingCorrectTopButton, timingLp);
 
         metronomeTopButton = topButton("METRO");
         metronomeTopButton.setContentDescription("Metronome reserved");
         metronomeTopButton.setEnabled(false);
         metronomeTopButton.setAlpha(0.55f);
-        bar.addView(metronomeTopButton,
-                new LinearLayout.LayoutParams(dp(64), dp(36)));
+        LinearLayout.LayoutParams metroLp = new LinearLayout.LayoutParams(
+                dp(MPC_TOOLBAR_METRO_WIDTH_DP),
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP));
+        metroLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
+        bar.addView(metronomeTopButton, metroLp);
 
         automationTopButton = topButton("AUTO");
         automationTopButton.setContentDescription("Automation reserved");
         automationTopButton.setEnabled(false);
         automationTopButton.setAlpha(0.55f);
-        bar.addView(automationTopButton,
-                new LinearLayout.LayoutParams(dp(52), dp(36)));
+        LinearLayout.LayoutParams autoLp = new LinearLayout.LayoutParams(
+                dp(MPC_TOOLBAR_AUTO_WIDTH_DP),
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP));
+        autoLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
+        bar.addView(automationTopButton, autoLp);
 
         Button play = topButton("▶");
         play.setContentDescription("Play");
@@ -1567,7 +1593,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setAudioStateFromResult(result);
             setBottomStatus(result);
         });
-        bar.addView(play, new LinearLayout.LayoutParams(dp(42), dp(36)));
+        LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams(
+                dp(MPC_TOOLBAR_TRANSPORT_WIDTH_DP),
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP));
+        playLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
+        bar.addView(play, playLp);
 
         Button stop = topButton("■");
         stop.setContentDescription("Stop");
@@ -1578,7 +1608,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setAudioStateFromResult(audioResult);
             setBottomStatus(sequenceResult + " | " + audioResult);
         });
-        bar.addView(stop, new LinearLayout.LayoutParams(dp(42), dp(36)));
+        LinearLayout.LayoutParams stopLp = new LinearLayout.LayoutParams(
+                dp(MPC_TOOLBAR_TRANSPORT_WIDTH_DP),
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP));
+        stopLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
+        bar.addView(stop, stopLp);
 
         // Keep diagnostic state objects alive for existing refresh logic, but do
         // not duplicate them in the MPC-facing toolbar.
