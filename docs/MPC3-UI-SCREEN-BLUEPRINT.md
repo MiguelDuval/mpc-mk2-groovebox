@@ -1063,6 +1063,10 @@ Main is rendered as two visually coherent framed workspaces beneath the shared s
 
 The selected parameter continues to use the red focus outline; section framing itself does not become an additional semantic focus state.
 
+## 2026-10-04 Main Toolbar project-entry fidelity increment
+
+The persistent Toolbar keeps project identity and a compact adjacent Browser/project affordance, matching the documented MPC workflow where project context and browsing remain one glance away. The affordance opens the existing Browser semantic context; it does not introduce a second navigation model.
+
 ## 2026-10-04 Main Track type affordance fidelity checkpoint
 
 The Main Track header now reserves the full six-choice Program Type affordance documented for MPC Main:
