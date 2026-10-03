@@ -3132,13 +3132,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void focusMainTrackField() {
+        /*
+         * Main Track is a selection entry point, not merely a passive
+         * parameter highlight. Touch and MkII Track-Select resolve through
+         * the same 4×4 Main context.
+         */
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
-        navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
-        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
-        navigationController.setActionAvailable(true);
-        setBottomStatus("TRACK • DATA DIAL / +/-");
-        refreshMpcCompactContext();
-        refreshMainDataDialFocusVisuals();
+        showTrackSelectPage();
+        setBottomStatus("TRACK SELECT • DATA DIAL / +/-");
     }
 
     private void focusMainSequenceField(

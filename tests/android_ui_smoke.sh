@@ -262,8 +262,8 @@ if ! grep -Fq -- 'compactMixerStripModeToggle = actionButton("□  ▦",' "$MAIN
   exit 1
 fi
 
-if ! grep -Fq -- 'trackName.setOnClickListener(v -> focusMainTrackField())' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'private void focusMainTrackField()' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Track tap must focus the Track field instead of navigating to a separate picker"
+if ! grep -Fq -- 'trackName.setOnClickListener(v -> focusMainTrackField())' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'private void focusMainTrackField()' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'showTrackSelectPage();' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track tap must enter the canonical 4x4 Track Select context"
   exit 1
 fi
 
