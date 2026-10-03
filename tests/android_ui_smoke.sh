@@ -24,7 +24,6 @@ for required in \
   "MPC shell track mixer strip" \
   "Main Mode selected sequence" \
   "Main Mode selected track" \
-  "Main Mode selected program" \
   "nativeAudioGetPadSampleName" \
   "nativeAudioSetPadSampleName" \
   "BAR %03d  BEAT %d  TICK %03d" \
@@ -35,8 +34,8 @@ for required in \
   "Main Track View velocity state" \
   "Main Track View selected layer" \
   "Main Mode sequence tempo source • SEQ • Global unavailable" \
-  "Main Track / Arrangement view switcher" \
-  "Main Mode Track identity header" \
+  "Main Mode Track / Arrangement context header" \
+  "Main Mode selected track" \
   "MPC Toolbar Menu" \
   "Main Mode sequence header" \
   "Main Mode BPM" \
@@ -53,8 +52,8 @@ for required in \
   "Main Track View browse samples" \
   "DRUM • TYPE" \
   "Main Track Edit" \
-  "trackProgramHeader.addView(trackEditHeader," \
-  "MPC Function Bar SEQ REC ARM" \
+  "trackContextHeader.addView(trackEditHeader," \
+  "MPC Function Bar REC ARM" \
   "MPC Main sequence REC ARM" \
   "MPC Function Bar TRACK previous next" \
   "HARDWARE_FOCUS_SEQUENCE_START" \
