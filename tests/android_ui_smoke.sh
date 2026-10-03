@@ -139,6 +139,16 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
   exit 1
 fi
 
+if ! grep -Fq -- 'compactMixerStripModeToggle = actionButton("□  ▦",' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track lower-right selector must expose the single-pad / four-squares pair"
+  exit 1
+fi
+
+if ! grep -Fq -- '0.33f' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- '0.67f' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Sequence/Track workspace proportions drifted from the MPC density target"
+  exit 1
+fi
+
 track_detail_line=$(grep -n -m1 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 track_canvas_line=$(grep -n -m1 'trackWorkspace.addView(quickTrack,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_detail_line" -le "$track_canvas_line" ]]; then
