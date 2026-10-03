@@ -210,7 +210,7 @@ if ! grep -Fq -- 'MPC_FLAT_RADIUS_DP' <<<"$track_view_block"; then
   echo "ERROR: Track View channel-strip flat chrome contract is missing"
   exit 1
 fi
-for required in   'MPC Track View focused Track field'   'Track View track I/O unavailable'   'Track View track note range unavailable'   'Track View track monitor unavailable'   'Track View track level unavailable'   'Track View track pan unavailable'   'Track View track solo unavailable'   'Track View track MIDI filter unavailable'   'nativeSequenceToggleTrackMute(trackIndex)'; do
+for required in   'MPC Track View focused Track field'   'Track View track I/O unavailable'   'Track View track key range unavailable'   'Track View track monitor unavailable'   'Track View track level unavailable'   'Track View track pan unavailable'   'Track View track solo unavailable'   'Track View track MIDI filter unavailable'   'nativeSequenceToggleTrackMute(trackIndex)'; do
   if ! grep -Fq -- "$required" <<<"$track_view_block"; then
     echo "ERROR: Track View strip control contract missing: $required"
     exit 1

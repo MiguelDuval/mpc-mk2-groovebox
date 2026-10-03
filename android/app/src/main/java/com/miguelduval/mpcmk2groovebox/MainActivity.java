@@ -3249,10 +3249,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         button.setEnabled(editable);
         button.setAlpha(editable ? 1.0f : 0.45f);
         button.setTextColor(selected && editable ? BG : TEXT);
+        final boolean focused = editable && hardwareFocus == 5;
         button.setBackground(strokeBackground(
-                selected && editable ? ACCENT : SURFACE_2,
-                selected && editable ? ACCENT : LINE,
-                5));
+                SURFACE_2,
+                focused ? DANGER : LINE,
+                MPC_FLAT_RADIUS_DP));
     }
 
     private String normalizeProgramLabel(String status) {
@@ -4534,19 +4535,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         0, dp(30), 1.05f));
 
                 TextView range = trackViewReservedControl(
-                        "RANGE —",
-                        "Track View track note range unavailable");
+                        "KEY RANGE —",
+                        "Track View track key range unavailable");
                 controls.addView(range, new LinearLayout.LayoutParams(
                         0, dp(30), 1.05f));
 
                 TextView monitor = trackViewReservedControl(
-                        "MON —",
+                        "MONITOR —",
                         "Track View track monitor unavailable");
                 controls.addView(monitor, new LinearLayout.LayoutParams(
                         0, dp(30), 0.82f));
 
                 TextView level = trackViewReservedControl(
-                        "LVL —",
+                        "LEVEL —",
                         "Track View track level unavailable");
                 controls.addView(level, new LinearLayout.LayoutParams(
                         0, dp(30), 0.82f));
@@ -4607,7 +4608,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         0, dp(30), 0.82f));
 
                 TextView midiFilter = trackViewReservedControl(
-                        "FILTER —",
+                        "FILTER",
                         "Track View track MIDI filter unavailable");
                 controls.addView(midiFilter, new LinearLayout.LayoutParams(
                         0, dp(30), 1.0f));
