@@ -2045,6 +2045,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         viewSelector.addView(mainArrangementViewButton,
                 new LinearLayout.LayoutParams(0, dp(36), 1));
 
+        Button arrangementEdit = actionButton("✎",
+                v -> setBottomStatus(
+                        "ARRANGEMENT EDIT • RESERVED until arrangement edit semantics exist"));
+        arrangementEdit.setTextSize(15);
+        arrangementEdit.setContentDescription("Main Arrangement Edit RESERVED");
+        arrangementEdit.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        viewSelector.addView(arrangementEdit,
+                new LinearLayout.LayoutParams(dp(40), dp(36)));
+
         trackProgramSection.addView(viewSelector,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
@@ -2223,22 +2233,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangement.setBackgroundColor(BG);
         arrangement.setContentDescription("Main Mode arrangement preview");
 
-        LinearLayout arrangementHeader = row();
-        android.widget.Space arrangementHeaderSpacer = new android.widget.Space(this);
-        arrangementHeader.addView(arrangementHeaderSpacer,
-                new LinearLayout.LayoutParams(0, dp(30), 1));
-        Button arrangementEdit = actionButton(
-                "✎",
-                v -> setBottomStatus(
-                        "ARRANGEMENT EDIT • RESERVED until arrangement edit semantics exist"));
-        arrangementEdit.setTextSize(15);
-        arrangementEdit.setContentDescription("Main Arrangement Edit RESERVED");
-        arrangementEdit.setBackground(strokeBackground(
-                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
-        arrangementHeader.addView(
-                arrangementEdit,
-                new LinearLayout.LayoutParams(dp(40), dp(30)));
-        arrangement.addView(arrangementHeader);
 
         TextView arrangementInfo = label(
                 "SEQUENCE • selected Track • playhead-aware",

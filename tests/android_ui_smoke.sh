@@ -164,8 +164,8 @@ if ! grep -Fq -- 'mainTrackTypeField = buildMainTrackTypeSelector();' <<<"$main_
   exit 1
 fi
 
-if ! grep -Fq -- 'arrangementHeader.addView(' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Arrangement contextual action header must remain present"
+if ! grep -Fq -- 'Main Arrangement Edit RESERVED' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'viewSelector.addView(arrangementEdit,' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Arrangement edit action must stay attached to the Arrangement header boundary"
   exit 1
 fi
 
