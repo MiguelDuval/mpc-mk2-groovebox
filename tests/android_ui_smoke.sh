@@ -44,6 +44,8 @@ for required in \
   "Main Mode selected program" \
   "Main Mode program ownership status" \
   "buildMainTrackTypeIconStrip" \
+  "buildMpcMenuTile" \
+  "styleMpcMenuFooterButton" \
   "Main Mode BPM" \
   "Main Time Signature field • tap for editor" \
   "MPC_TIME_SIGNATURE_HIGHLIGHT" \
