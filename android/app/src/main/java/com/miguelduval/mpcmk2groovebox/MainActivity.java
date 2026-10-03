@@ -1260,7 +1260,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         group.setGravity(Gravity.CENTER_VERTICAL);
         group.setContentDescription("MPC Function Bar TRACK previous next");
         group.setPadding(dp(2), dp(2), dp(2), dp(2));
-        group.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+        group.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
 
         Button previous = actionButton("−", v -> selectAdjacentTrack(-1));
         previous.setEnabled(enabled);
@@ -3238,7 +3239,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         b.setTypeface(Typeface.DEFAULT_BOLD);
         b.setPadding(dp(4), 0, dp(4), 0);
         b.setGravity(Gravity.CENTER);
-        b.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+        b.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         return b;
     }
 
