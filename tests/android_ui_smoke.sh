@@ -745,6 +745,12 @@ if grep -Eq 'AndroidRuntime: FATAL EXCEPTION|Fatal signal [0-9]+|FATAL EXCEPTION
   exit 1
 fi
 
+echo "Capturing startup UI screenshot..."
+adb exec-out screencap -p > /tmp/mpc-groovebox-startup.png || {
+  echo "ERROR: startup screenshot capture failed"
+  exit 1
+}
+
 echo "Dumping startup UI..."
 adb shell uiautomator dump "$DUMP" >/tmp/mpc-groovebox-uiautomator.txt 2>&1 || {
   cat /tmp/mpc-groovebox-uiautomator.txt || true
