@@ -1580,7 +1580,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private View findViewWithContentDescription(
             View view, String expectedDescription) {
         CharSequence actual = view.getContentDescription();
-        if (expectedDescription.contentEquals(actual)) return view;
+        if (actual != null && expectedDescription.contentEquals(actual)) return view;
 
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
