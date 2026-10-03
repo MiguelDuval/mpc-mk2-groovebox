@@ -560,6 +560,25 @@ for required in \
   fi
 done
 
+echo "Running persistent MPC context hierarchy preflight..."
+for required in \
+  'compactContextCaption("SEQUENCE")' \
+  'compactContextCaption("PROGRAM")' \
+  'compactContextCaption("DATA DIAL")' \
+  'private TextView compactContextField(' \
+  'private void setCompactContextFocus(' \
+  'private String compactDialFocusLabel(' \
+  'dp(14)' \
+  'dp(36)' \
+  'dp(34)' \
+  'active ? DANGER : LINE' \
+  '"DIAL\\n" + compactDialFocusLabel(dialFocus)'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: persistent MPC context hierarchy contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running persistent MPC context rail source preflight..."
 for required in \
   "compactContextPanel" \
