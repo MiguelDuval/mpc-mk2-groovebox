@@ -1063,6 +1063,19 @@ Main is rendered as two visually coherent framed workspaces beneath the shared s
 
 The selected parameter continues to use the red focus outline; section framing itself does not become an additional semantic focus state.
 
+## 2026-10-04 Main Track type affordance fidelity checkpoint
+
+The Main Track header now reserves the full six-choice Program Type affordance documented for MPC Main:
+
+- Drum;
+- Keygroup;
+- Plugin;
+- MIDI;
+- Clip;
+- CV.
+
+Only Drum is enabled because it is the only Track Type with a truthful backend in the current build. The complete six-icon presentation remains visible so the Main screen follows the reference hierarchy without inventing unsupported behavior.
+
 ## 2026-10-03 Main shell geometry fidelity checkpoint
 
 The Main presentation now uses explicit MPC One geometry constants instead of scattered legacy spacing:
