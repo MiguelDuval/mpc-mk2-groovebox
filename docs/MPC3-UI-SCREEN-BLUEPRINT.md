@@ -1084,3 +1084,8 @@ Track View is now treated as a pure shell workspace: the local header carries on
 ## 2026-10-03 Main Track/Arrangement header treatment
 
 The sibling Track / Arrangement headers use a flat contextual treatment rather than generic rounded action cards. The active header remains visually distinct with the MPC red focus accent, while the workspace itself stays shared and the selection semantics are unchanged.
+
+
+### 2026-10-03 Track View selection identity refinement
+
+Track View strips are directly selectable by touch, with the selected strip using the MPC red focus treatment. Track names are presentation-clean: event count and REC-arm state remain separate status fields rather than being appended to the user-facing track name.
