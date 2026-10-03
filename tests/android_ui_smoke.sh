@@ -141,8 +141,8 @@ if ! grep -Fq -- 'arrangementHeader.addView(' "$MAIN_ACTIVITY_SOURCE"; then
   exit 1
 fi
 
-if grep -Fq -- 'Main Sequence Edit RESERVED' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main must not expose an invented Sequence Edit affordance"
+if ! grep -Fq -- 'Main Sequence Edit/Copy RESERVED until semantic backend exists' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Sequence pencil affordance must remain visible as truthful reserved UI"
   exit 1
 fi
 

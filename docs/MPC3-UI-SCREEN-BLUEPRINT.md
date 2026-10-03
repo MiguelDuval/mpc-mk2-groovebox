@@ -207,7 +207,7 @@ Touch:
 
 ### Main chrome treatment
 
-Main-facing fields and shell controls use compact, flat rectangular surfaces rather than generic rounded Android cards. Sequence/Track information fields, Track/Arrangement headers, contextual edit affordances, and the persistent Function Bar remain dense and segmented; focus is communicated by the existing red focus outline, while Time Signature retains its yellow distinction. Do not add a standalone Sequence Edit affordance without a documented semantic/backend contract.
+Main-facing fields and shell controls use compact, flat rectangular surfaces rather than generic rounded Android cards. Sequence/Track information fields, Track/Arrangement headers, contextual edit affordances, and the persistent Function Bar remain dense and segmented; focus is communicated by the existing red focus outline, while Time Signature retains its yellow distinction. Keep the documented Sequence Edit/Copy pencil affordance at the right edge of the Sequence header; when its backend contract is not implemented, render it disabled/reserved rather than removing the visual affordance.
 
 ## 2.4 Arrangement preview
 

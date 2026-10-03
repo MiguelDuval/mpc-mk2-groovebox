@@ -1892,6 +1892,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceHeader.addView(timeSig,
                 new LinearLayout.LayoutParams(dp(56), dp(36)));
 
+        Button sequenceEdit = actionButton("✎", null);
+        sequenceEdit.setEnabled(false);
+        sequenceEdit.setAlpha(0.42f);
+        sequenceEdit.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        sequenceEdit.setContentDescription(
+                "Main Sequence Edit/Copy RESERVED until semantic backend exists");
+        sequenceHeader.addView(sequenceEdit,
+                new LinearLayout.LayoutParams(dp(36), dp(32)));
+
         sequenceCard.addView(sequenceHeader,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));

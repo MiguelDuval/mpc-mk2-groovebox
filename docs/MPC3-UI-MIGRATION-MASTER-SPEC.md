@@ -1206,7 +1206,7 @@ Main Track places the compact Monitor / Length / Velocity / Layer context direct
 
 Main-facing shell chrome uses compact rectangular surfaces with zero corner radius for the Sequence/Track fields, contextual Track/Arrangement headers, Track Edit/Arrangement affordances, and persistent Function Bar/Toolbar controls. The goal is to remove Android-card visual language while preserving dense MPC segmented controls. Existing red Data Dial focus and the documented yellow Time Signature distinction remain unchanged.
 
-The Main Sequence header contains no standalone Sequence Edit affordance unless a documented, backed semantic entry point exists.
+The Main Sequence header retains the documented right-edge Sequence Edit/Copy pencil affordance. It remains visibly present but disabled/reserved until the product has an honest Sequence Edit/Copy semantic backend contract.
 
 ## 2026-10-03 Track/Arrangement header fidelity increment
 

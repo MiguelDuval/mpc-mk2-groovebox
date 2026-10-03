@@ -473,7 +473,7 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 
 ### 2026-10-03 Main flat-chrome fidelity refinement
 
-- Removed the unused Main Sequence Edit affordance.
+- Restored the documented Main Sequence Edit/Copy pencil affordance as a disabled/reserved control because the backend semantic contract is not yet implemented.
 - Flattened MPC-facing Main/shell chrome to rectangular zero-radius surfaces for Sequence/Track fields, contextual Track/Arrangement headers, edit affordances, Toolbar controls and the Function Bar.
 - Preserved Data Dial red focus and the Time Signature yellow distinction.
 - No semantic/backend or realtime changes.
