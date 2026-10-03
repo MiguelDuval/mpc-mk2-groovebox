@@ -81,6 +81,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int ACCENT = Color.rgb(69, 211, 255);
     private static final int ACCENT_2 = Color.rgb(255, 180, 72);
     private static final int DANGER = Color.rgb(236, 83, 83);
+    private static final int MPC_TIME_SIGNATURE_HIGHLIGHT = Color.rgb(240, 194, 48);
     private static final int ACTIVE = Color.rgb(63, 207, 117);
 
     static {
@@ -1878,6 +1879,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         TextView timeSig = mainHeaderMetric("TIME SIG");
         timeSig.setContentDescription("Main Time Signature field • tap for editor");
+        timeSig.setBackground(strokeBackground(
+                SURFACE_2,
+                MPC_TIME_SIGNATURE_HIGHLIGHT,
+                2));
         sequenceHeader.addView(timeSig,
                 new LinearLayout.LayoutParams(dp(56), dp(36)));
 
@@ -2999,6 +3004,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setMainFieldFocus(mainSequenceEndField, focus == HARDWARE_FOCUS_SEQUENCE_END);
         setMainFieldFocus(mainSequenceTransposeField, false);
         setMainFieldFocus(mainSequenceTimeSigField, false);
+        if (mainSequenceTimeSigField != null) {
+            mainSequenceTimeSigField.setBackground(strokeBackground(
+                    SURFACE_2,
+                    MPC_TIME_SIGNATURE_HIGHLIGHT,
+                    2));
+        }
         setMainFieldFocus(mainSequenceLoopField, false);
         setMainFieldFocus(mainTrackField, focus == 2);
         setMainFieldFocus(mainProgramField, focus == 4);
