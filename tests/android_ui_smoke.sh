@@ -102,8 +102,8 @@ for required in \
   fi
 done
 
-if grep -Fq -- 'private int hardwareFocus' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Data Dial focus must not have an independent MainActivity hardwareFocus owner"
+if grep -Eq -- 'private int hardwareFocus([[:space:]]|=)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Data Dial focus must not have an independent MainActivity hardwareFocus field"
   exit 1
 fi
 for required in   'private int hardwareFocusId()'   'navigationController.state().dataDialFocus()'   'MpcUiState.DataDialFocus.SEQUENCE_BPM'   'MpcUiState.DataDialFocus.SEQUENCE_BARS'   'MpcUiState.DataDialFocus.TRACK'   'MpcUiState.DataDialFocus.PROGRAM'   'MpcUiState.DataDialFocus.TRACK_TYPE'   'MpcUiState.DataDialFocus.SAMPLE_LAYER'; do
