@@ -2093,7 +2093,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackDetailRow.addView(velocityDetail, weight());
 
         TextView layerDetail = mainMetric("LAYER");
-        layerDetail.setContentDescription("Main Track View selected layer");
+        layerDetail.setContentDescription("Main Track View selected layer • tap to focus Layer");
+        layerDetail.setOnClickListener(v -> {
+            navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_SELECT);
+            navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_LAYER);
+            navigationController.setActionAvailable(true);
+            setBottomStatus("LAYER • DATA DIAL / +/-");
+            refreshMainDataDialFocusVisuals();
+        });
         layerDetail.setText(String.format(
                 Locale.ROOT,
                 "LAYER\n%d/8",
@@ -2146,23 +2153,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sampleHeader.addView(sampleTitle,
                 new LinearLayout.LayoutParams(0, dp(28), 1));
 
-        Button layerDownButton = actionButton("L−", v -> {
-            selectedLayer = Math.max(0, selectedLayer - 1);
-            navigationController.setSelectedLayer(selectedLayer);
-            refreshMainTrackQuickSample();
-        });
-        layerDownButton.setContentDescription("Main Track View previous sample layer");
-        sampleHeader.addView(layerDownButton,
-                new LinearLayout.LayoutParams(dp(48), dp(28)));
 
-        Button layerUpButton = actionButton("L+", v -> {
-            selectedLayer = Math.min(7, selectedLayer + 1);
-            navigationController.setSelectedLayer(selectedLayer);
-            refreshMainTrackQuickSample();
-        });
-        layerUpButton.setContentDescription("Main Track View next sample layer");
-        sampleHeader.addView(layerUpButton,
-                new LinearLayout.LayoutParams(dp(48), dp(28)));
         sampleColumn.addView(sampleHeader,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));

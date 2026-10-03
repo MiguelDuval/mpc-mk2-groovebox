@@ -206,6 +206,14 @@ if ! grep -Fq -- 'MPC_TIME_SIGNATURE_HIGHLIGHT' "$MAIN_ACTIVITY_SOURCE"; then
   exit 1
 fi
 
+if grep -Fq -- 'actionButton("L−"' "$MAIN_ACTIVITY_SOURCE" || grep -Fq -- 'actionButton("L+"' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track View must not duplicate the LAYER field with separate +/- controls"
+  exit 1
+fi
+if ! grep -Fq -- 'MpcUiState.DataDialFocus.SAMPLE_LAYER' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'LAYER • DATA DIAL / +/-' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main LAYER field must retain semantic Data Dial focus entry"
+  exit 1
+fi
 if ! grep -Fq -- 'Button loop = actionButton("↻"' "$MAIN_ACTIVITY_SOURCE" ||
    ! grep -Fq -- 'nativeSequenceSetLoopEnabled(' "$MAIN_ACTIVITY_SOURCE" ||
    ! grep -Fq -- 'loop.setContentDescription(' "$MAIN_ACTIVITY_SOURCE"; then
