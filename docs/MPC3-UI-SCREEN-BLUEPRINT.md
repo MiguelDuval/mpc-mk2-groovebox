@@ -1038,6 +1038,10 @@ The persistent context rail is intentionally denser than a general Android dashb
 
 These rules are presentation-only and must not create duplicate domain or transport ownership.
 
+## 2026-10-03 Compact context sizing checkpoint
+
+The persistent context panel is content-sized rather than fixed-height. This keeps Sequence/Track/Program/Pad/Data Dial information tightly grouped and prevents empty space from appearing when Mixer Strip details are hidden.
+
 ## 2026-10-03 Main section framing fidelity checkpoint
 
 Main is rendered as two visually coherent framed workspaces beneath the shared shell:
