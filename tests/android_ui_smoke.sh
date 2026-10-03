@@ -253,6 +253,18 @@ if ! grep -Fq -- 'compactMixerStripModeToggle = actionButton("□  ▦",' "$MAIN
   exit 1
 fi
 
+if ! grep -Fq -- 'trackName.setOnClickListener(v -> focusMainTrackField())' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'private void focusMainTrackField()' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track tap must focus the Track field instead of navigating to a separate picker"
+  exit 1
+fi
+
+for required in   'MPC_FLAT_RADIUS_DP));'   'group.setBackground(strokeBackground('   'b.setBackground(strokeBackground('; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Main MPC flat-chrome contract missing: $required"
+    exit 1
+  fi
+done
+
 if ! grep -Fq -- '0.33f' "$MAIN_ACTIVITY_SOURCE" || \
    ! grep -Fq -- '0.67f' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Sequence/Track workspace proportions drifted from the MPC density target"
