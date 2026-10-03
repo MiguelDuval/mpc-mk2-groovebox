@@ -48,6 +48,7 @@ for required in \
   "Time Signature denominator" \
   "Main Track View header" \
   "Main Arrangement View header" \
+  "Main Arrangement Edit RESERVED" \
   "Main Track View record sample" \
   "Main Track View browse samples" \
   "DRUM • TYPE" \
@@ -131,6 +132,11 @@ fi
 
 if ! grep -Fq -- 'trackProgramHeader.addView(trackEditHeader,' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track Edit pencil must stay in the Track identity header"
+  exit 1
+fi
+
+if ! grep -Fq -- 'arrangementHeader.addView(' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Arrangement contextual action header must remain present"
   exit 1
 fi
 
