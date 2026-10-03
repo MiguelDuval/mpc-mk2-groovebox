@@ -3289,6 +3289,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 : value;
     }
 
+    private String cleanTrackDisplayName(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return "—";
+        }
+        String displayName = status.trim();
+        final int typeSeparator = displayName.indexOf("  ");
+        if (typeSeparator >= 0) {
+            displayName = displayName.substring(typeSeparator + 2);
+        }
+        final int metadataSeparator = displayName.indexOf("  |");
+        if (metadataSeparator >= 0) {
+            displayName = displayName.substring(0, metadataSeparator);
+        }
+        displayName = displayName.trim();
+        return displayName.isEmpty() ? "—" : displayName;
+    }
+
     private void trackNameRefresh(
             int trackIndex,
             int trackCount) {
@@ -3307,8 +3324,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String backendType = startupComplete
                 ? nativeSequenceGetTrackType(trackIndex)
                 : "DRUM";
+        /*
+         * MPC Main Track identity is intentionally compact: track number +
+         * user-facing name. Native trackStatus also carries event/arm
+         * diagnostics; those belong to contextual/status surfaces, not the
+         * primary Track field.
+         */
         trackName.setText(String.format(
-                Locale.ROOT, "Track %02d  •  %s", trackIndex + 1, status));
+                Locale.ROOT, "%d  %s",
+                trackIndex + 1,
+                cleanTrackDisplayName(status)));
         if (trackType != null) trackType.setText(
                 "TYPE\n" + (backendType == null || backendType.isEmpty()
                         ? "—" : backendType));
