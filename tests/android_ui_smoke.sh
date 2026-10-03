@@ -211,6 +211,39 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
   exit 1
 fi
 
+echo "Running Main workspace state-preservation preflight..."
+main_page_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_page_end=$(grep -n -m1 'private void installMainNumericEntry' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_page_start" || -z "$main_page_end" || "$main_page_end" -le "$main_page_start" ]]; then
+  echo "ERROR: Main page source boundary is missing"
+  exit 1
+fi
+main_page_block=$(sed -n "${main_page_start},$((main_page_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);' <<<"$main_page_block"; then
+  echo "ERROR: Main page rebuild must not unconditionally clear semantic Data Dial focus"
+  exit 1
+fi
+for required in   'previousFocus'   'previousSubcontext'   'isMainWorkspaceDataDialFocus(previousFocus)'   'preserveMainContext'; do
+  if ! grep -Fq -- "$required" <<<"$main_page_block"; then
+    echo "ERROR: Main workspace focus-preservation contract missing: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'private boolean isMainWorkspaceDataDialFocus(' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main-valid Data Dial focus policy helper is missing"
+  exit 1
+fi
+
+main_view_switch_block=$(sed -n "${main_view_switch_start},$((main_view_switch_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'showMainPage();' <<<"$main_view_switch_block"; then
+  echo "ERROR: Track/Arrangement sibling switch must not rebuild Main page"
+  exit 1
+fi
+if ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(0)' <<<"$main_view_switch_block" ||    ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1)' <<<"$main_view_switch_block"; then
+  echo "ERROR: Track/Arrangement switch must operate on one shared workspace host"
+  exit 1
+fi
+
 echo "Running Main Track/Arrangement header styling preflight..."
 main_view_switch_start=$(grep -n -m1 'private void setMainTrackArrangementView(boolean arrangementSelected)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 main_view_switch_end=$(grep -n -m1 'private int selectedPadIndexForUi()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
@@ -320,8 +353,12 @@ if grep -Fq -- '"TRACK VIEW"' <<<"$track_select_block"; then
   exit 1
 fi
 
-if ! grep -Fq -- 'program.setContentDescription("Main Mode selected program")' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'program.setOnClickListener(v -> {' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'mainProgramField = program;' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Program field must remain a touch-selectable field inside the Track context"
+if grep -Fq -- 'mainProgramField' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: obsolete Main Program presentation pointer remains"
+  exit 1
+fi
+if ! grep -Fq -- 'nativeSequenceSetTrackProgram(' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'MpcUiState.DataDialFocus.PROGRAM' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Program semantics must remain available without a duplicate Main Program field"
   exit 1
 fi
 

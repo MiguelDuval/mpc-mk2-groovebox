@@ -1849,6 +1849,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMainPage() {
+        /*
+         * Main is a persistent workspace, not a disposable page. Preserve
+         * semantic selection/focus when the shell returns to Main, but never
+         * leak editor-only focus (sample zoom, timeline, etc.) into Main.
+         * MpcUiState remains the sole owner of the semantic Data Dial focus.
+         */
+        final MpcUiState.DataDialFocus previousFocus =
+                navigationController.state().dataDialFocus();
+        final MpcUiState.Subcontext previousSubcontext =
+                navigationController.state().subcontext();
+        final boolean preserveMainContext =
+                isMainWorkspaceDataDialFocus(previousFocus);
+
         clearStepEditPadLeds();
         if (NATIVE_LIBRARY_LOADED) {
             nativeSequenceSetStepEditContext(false, 0);
@@ -1856,10 +1869,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         clearSequenceLauncherLeds();
         currentPage = "MAIN";
-        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
         navigationController.navigate(MpcUiState.Mode.MAIN);
-        navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
-        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
+        navigationController.setSubcontext(
+                preserveMainContext
+                        ? previousSubcontext
+                        : MpcUiState.Subcontext.NONE);
+        navigationController.setDataDialFocus(
+                preserveMainContext
+                        ? previousFocus
+                        : MpcUiState.DataDialFocus.NONE);
         navigationController.setActionAvailable(true);
         pageTitle.setText("MAIN");
         content.removeAllViews();
@@ -3075,6 +3093,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return 15;
             default:
                 return 0;
+        }
+    }
+
+    private boolean isMainWorkspaceDataDialFocus(
+            MpcUiState.DataDialFocus focus) {
+        if (focus == null) return false;
+        switch (focus) {
+            case SEQUENCE:
+            case SEQUENCE_START:
+            case SEQUENCE_END:
+            case SEQUENCE_BPM:
+            case SEQUENCE_BARS:
+            case TRACK:
+            case PROGRAM:
+            case TRACK_TYPE:
+            case SAMPLE_LAYER:
+                return true;
+            default:
+                return false;
         }
     }
 
