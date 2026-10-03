@@ -2344,7 +2344,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackName.setContentDescription("Main Mode selected track");
         trackName.setOnClickListener(v -> focusMainTrackField());
         trackContextHeader.addView(trackName,
-                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_FIELD_HEIGHT_DP), 1.0f));
+                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP), 1.0f));
 
         mainTrackField = trackName;
         mainTrackTypeField = buildMainTrackTypeSelector();
