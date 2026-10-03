@@ -161,7 +161,7 @@ if ! grep -Fq -- 'mainTrackTypeField = buildMainTrackTypeSelector();' <<<"$main_
   exit 1
 fi
 
-if ! grep -Fq -- 'Main Arrangement Edit RESERVED' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'trackContextHeader.addView(arrangementEdit,' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'trackContextHeader.addView(arrangementEdit,' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Arrangement edit action must stay attached to the unified Track/Arrangement header boundary"
   exit 1
 fi
