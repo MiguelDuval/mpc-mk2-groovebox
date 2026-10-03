@@ -689,3 +689,57 @@ for required in \
     exit 1
   fi
 done
+
+echo "Running Android runtime startup smoke..."
+echo "Installing debug APK..."
+adb install -r "$APK"
+
+echo "Clearing logcat and launching MainActivity..."
+adb logcat -c
+adb shell am force-stop "$PACKAGE"
+adb shell am start -W -n "$ACTIVITY" --es "$SMOKE_MODE_EXTRA" "ui-audit" 2>&1 | tee /tmp/mpc-groovebox-am-start.txt
+
+echo "Allowing startup path to settle..."
+sleep 5
+
+if ! adb shell pidof "$PACKAGE" | tr -d '\r' | grep -Eq '[0-9]'; then
+  echo "ERROR: MPC Groovebox process is not alive after launch"
+  adb logcat -d -v brief > /tmp/mpc-groovebox-logcat.txt || true
+  tail -n 250 /tmp/mpc-groovebox-logcat.txt || true
+  exit 1
+fi
+
+if ! adb shell dumpsys activity activities | grep -Fq "$ACTIVITY"; then
+  echo "ERROR: MainActivity is not present in activity manager after launch"
+  adb shell dumpsys activity activities > /tmp/mpc-groovebox-activities.txt || true
+  tail -n 250 /tmp/mpc-groovebox-activities.txt || true
+  exit 1
+fi
+
+adb logcat -d -v threadtime > /tmp/mpc-groovebox-logcat.txt
+if grep -Eq 'AndroidRuntime: FATAL EXCEPTION|Fatal signal [0-9]+|FATAL EXCEPTION IN SYSTEM PROCESS' /tmp/mpc-groovebox-logcat.txt; then
+  echo "ERROR: Android runtime/native fatal crash detected during startup"
+  grep -E -A 35 -B 5 'AndroidRuntime: FATAL EXCEPTION|Fatal signal [0-9]+|FATAL EXCEPTION IN SYSTEM PROCESS' /tmp/mpc-groovebox-logcat.txt | tail -n 250 || true
+  exit 1
+fi
+
+echo "Dumping startup UI..."
+adb shell uiautomator dump "$DUMP" >/tmp/mpc-groovebox-uiautomator.txt 2>&1 || {
+  cat /tmp/mpc-groovebox-uiautomator.txt || true
+  echo "ERROR: uiautomator dump failed after startup"
+  exit 1
+}
+adb pull "$DUMP" "$DUMP" >/dev/null 2>&1 || true
+
+if [ ! -s "$DUMP" ]; then
+  echo "ERROR: startup UI dump is empty"
+  exit 1
+fi
+
+if ! grep -Fq 'MPC' "$DUMP"; then
+  echo "ERROR: startup UI dump does not contain MPC shell content"
+  cat "$DUMP"
+  exit 1
+fi
+
+echo "Android runtime startup smoke passed."
