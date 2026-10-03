@@ -151,6 +151,23 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
   exit 1
 fi
 
+echo "Running Main Track/Arrangement header styling preflight..."
+main_view_switch_start=$(grep -n -m1 'private void setMainTrackArrangementView(boolean arrangementSelected)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_view_switch_end=$(grep -n -m1 'private int selectedPadIndexForUi()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_view_switch_start" || -z "$main_view_switch_end" || "$main_view_switch_end" -le "$main_view_switch_start" ]]; then
+  echo "ERROR: Main Track/Arrangement style method boundary is missing"
+  exit 1
+fi
+main_view_switch_block=$(sed -n "${main_view_switch_start},$((main_view_switch_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if ! grep -Fq -- 'MPC presents Track / Arrangement as contextual headers' <<<"$main_view_switch_block"; then
+  echo "ERROR: Main Track/Arrangement header fidelity contract is missing"
+  exit 1
+fi
+if grep -Fq -- 'trackVisible ? ACCENT : SURFACE_2' <<<"$main_view_switch_block" ||    grep -Fq -- 'trackVisible ? SURFACE_2 : ACCENT' <<<"$main_view_switch_block"; then
+  echo "ERROR: Main Track/Arrangement headers must not regress to cyan-card active styling"
+  exit 1
+fi
+
 echo "Running Track View shell ownership preflight..."
 track_view_start=$(grep -n -m1 'private void showTrackViewPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 track_view_end=$(grep -n -m1 'private void showSequencePage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
