@@ -464,4 +464,4 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 ### 2026-10-03 Main Track state-row ordering
 
 - Places the Main Track Monitor / Length / Velocity / Layer context row below the performance canvas.
-- Keeps Track Edit in the Track identity header and the Track/Pad selector in the lower-right context row, matching the current Akai MPC 3 reference.
+- Keeps Track Edit in the Track identity header, the Arrangement pencil at the Arrangement workspace edge, and the Track/Pad selector in the lower-right context row. Arrangement editing remains explicitly RESERVED.
