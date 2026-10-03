@@ -455,6 +455,12 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Kept only LVL active to avoid fabricating unsupported mixer state.
 
 
+### 2026-10-03 Main Mode visual density refinement
+
+- Tightened Main page edge padding and increased the Sequence region to roughly one-third of the available workspace height.
+- Updated the Drum Track lower-right selector presentation to show the single-pad / four-squares pair while retaining one semantic Track↔Pad focus state.
+
+
 ### 2026-10-03 Main Track state-row ordering
 
 - Places the Main Track Monitor / Length / Velocity / Layer context row below the performance canvas.
