@@ -205,7 +205,7 @@ if ! grep -Fq -- 'MPC_TIME_SIGNATURE_HIGHLIGHT' "$MAIN_ACTIVITY_SOURCE"; then
   exit 1
 fi
 
-if ! grep -Fq -- 'actionButton("−", v -> adjustMainLayer(-1))' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'actionButton("+", v -> adjustMainLayer(1))' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'mainActionButton("−", v -> adjustMainLayer(-1))' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'mainActionButton("+", v -> adjustMainLayer(1))' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main LAYER must expose compact previous/next layer controls"
   exit 1
 fi
@@ -213,7 +213,7 @@ if ! grep -Fq -- 'MpcUiState.DataDialFocus.SAMPLE_LAYER' "$MAIN_ACTIVITY_SOURCE"
   echo "ERROR: Main LAYER field must retain semantic Data Dial focus entry"
   exit 1
 fi
-if ! grep -Fq -- 'Button loop = actionButton("↻"' "$MAIN_ACTIVITY_SOURCE" ||
+if ! grep -Fq -- 'Button loop = mainActionButton("↻"' "$MAIN_ACTIVITY_SOURCE" ||
    ! grep -Fq -- 'nativeSequenceSetLoopEnabled(' "$MAIN_ACTIVITY_SOURCE" ||
    ! grep -Fq -- 'loop.setContentDescription(' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Sequence Loop must be a dedicated semantic toggle button"
@@ -392,7 +392,7 @@ if grep -Fq -- 'SELECTED TRACK • shell Function Bar' <<<"$track_view_block"; t
   exit 1
 fi
 
-if ! grep -Fq -- 'Track −/+ is a high-frequency Main action, not a navigation command' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1).getVisibility()' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'MpcUiState.DataDialFocus.TRACK' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'Track −/+ is a high-frequency Main action' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1).getVisibility()' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'MpcUiState.DataDialFocus.TRACK' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track −/+ must preserve local view context and restore Track Data Dial focus"
   exit 1
 fi
@@ -407,7 +407,7 @@ if ! grep -Fq -- 'Track identity is intentionally compact' "$MAIN_ACTIVITY_SOURC
   exit 1
 fi
 
-if ! grep -Fq -- 'compactMixerStripModeToggle = actionButton("□  ▦",' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'compactMixerStripModeToggle = mainActionButton("□  ▦",' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track lower-right selector must expose the single-pad / four-squares pair"
   exit 1
 fi
