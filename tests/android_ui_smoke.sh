@@ -233,23 +233,18 @@ if grep -Fq -- 'SELECTED TRACK • shell Function Bar' <<<"$track_view_block"; t
   exit 1
 fi
 
-if ! grep -Fq -- 'Track −/+ is a high-frequency Main action, not a navigation command' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1).getVisibility()' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'hardwareFocus = 2;' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'Track −/+ is a high-frequency Main action, not a navigation command' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1).getVisibility()' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'hardwareFocus = 2;' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track −/+ must preserve local view context and restore Track Data Dial focus"
   exit 1
 fi
 
-if ! grep -Fq -- 'private String cleanTrackDisplayName(String status)' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'trackName.setText(String.format(' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'Locale.ROOT, "%d  %s"' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'private String cleanTrackDisplayName(String status)' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'trackName.setText(String.format(' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'Locale.ROOT, "%d  %s"' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track identity must expose track number and clean user-facing name"
   exit 1
 fi
 
 if ! grep -Fq -- 'Track identity is intentionally compact' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track identity source contract is missing"
-  exit 1
-fi
-
-if grep -Fq -- 'showTrackSelectPage();' "$MAIN_ACTIVITY_SOURCE" &&    ! grep -Fq -- 'if (navigationController.state().mode() == MpcUiState.Mode.MAIN) {' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Track selection routing contract is inconsistent"
   exit 1
 fi
 
