@@ -1861,6 +1861,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController.state().subcontext();
         final boolean preserveMainContext =
                 isMainWorkspaceDataDialFocus(previousFocus);
+        final boolean previousMainArrangementView =
+                mainTrackArrangementHost != null
+                        && mainTrackArrangementHost.getChildCount() > 1
+                        && mainTrackArrangementHost.getChildAt(1).getVisibility()
+                                == View.VISIBLE;
 
         clearStepEditPadLeds();
         if (NATIVE_LIBRARY_LOADED) {
@@ -2249,7 +2254,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        setMainTrackArrangementView(false);
+        // Rebuilding Main must preserve the prior Track/Arrangement presentation.
+        setMainTrackArrangementView(previousMainArrangementView);
 
         /*
          * The Sequence band is content-sized. Its two compact 42dp rows

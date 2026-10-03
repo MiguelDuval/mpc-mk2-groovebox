@@ -233,6 +233,14 @@ if ! grep -Fq -- 'private boolean isMainWorkspaceDataDialFocus(' "$MAIN_ACTIVITY
   echo "ERROR: Main-valid Data Dial focus policy helper is missing"
   exit 1
 fi
+if ! grep -Fq -- 'previousMainArrangementView' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main rebuild must preserve Track/Arrangement presentation state"
+  exit 1
+fi
+if ! grep -Fq -- 'setMainTrackArrangementView(previousMainArrangementView);' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main rebuild must restore the prior Track/Arrangement presentation"
+  exit 1
+fi
 
 echo "Running Main Track/Arrangement header styling preflight..."
 main_view_switch_start=$(grep -n -m1 'private void setMainTrackArrangementView(boolean arrangementSelected)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
