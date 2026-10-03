@@ -2104,9 +2104,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         padColumn.addView(buildMiniMainPadGrid(),
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        /* The touch pad fallback stays compact so the waveform remains the
+         * dominant Main Track canvas, while four rows of pads retain usable
+         * near-square hit targets on the MPC One-sized landscape display. */
         quickTrack.addView(padColumn,
                 new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.52f));
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.36f));
 
         LinearLayout sampleColumn = column();
         sampleColumn.setPadding(dp(6), 0, 0, 0);
@@ -2186,7 +2189,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         quickTrack.addView(sampleColumn,
                 new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.48f));
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.64f));
 
         /*
          * Keep the compact Track-state row directly below the performance

@@ -427,6 +427,22 @@ if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_detail_line"
   exit 1
 fi
 
+echo "Running Main Track/Arrangement horizontal canvas preflight..."
+main_pad_split=$(grep -n -m1 '0, ViewGroup.LayoutParams.MATCH_PARENT, 0.36f' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_wave_split=$(grep -n -m1 '0, ViewGroup.LayoutParams.MATCH_PARENT, 0.64f' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_pad_split" || -z "$main_wave_split" || "$main_pad_split" -ge "$main_wave_split" ]]; then
+  echo "ERROR: Main Track touch-pad / waveform split is missing or reversed"
+  exit 1
+fi
+if grep -Fq -- '0.52f' "$MAIN_ACTIVITY_SOURCE" || grep -Fq -- '0.48f' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: obsolete near-equal Main Track pad/waveform split remains"
+  exit 1
+fi
+if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_detail_line" -le "$track_canvas_line" ]]; then
+  echo "ERROR: Main Track state row must remain below the performance canvas"
+  exit 1
+fi
+
 echo "Running MPC shell geometry preflight..."
 for required in \
   "TOOLBAR_HEIGHT_DP = 44" \
