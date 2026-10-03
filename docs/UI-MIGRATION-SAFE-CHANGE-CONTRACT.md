@@ -268,3 +268,5 @@ The latest bounded Main UI slice tightened the MPC-facing presentation without c
 - smoke source preflight now locks these geometry invariants.
 
 Verification remains source-level because no Android build/physical MkII run is available in this environment; GitHub Actions/status for the current commit is still not reported by the connector.
+
+- The Main-specific action helper prevents legacy rounded button styling from leaking into the MPC Main surface; legacy pages remain unchanged.
