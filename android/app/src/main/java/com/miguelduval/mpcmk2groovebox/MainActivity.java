@@ -1963,7 +1963,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackName.setTypeface(Typeface.DEFAULT_BOLD);
         trackName.setTextSize(13);
         trackName.setContentDescription("Main Mode selected track");
-        trackName.setOnClickListener(v -> showTrackSelectPage());
+        trackName.setOnClickListener(v -> focusMainTrackField());
         trackProgramHeader.addView(trackName,
                 new LinearLayout.LayoutParams(0, dp(40), 1));
 
@@ -3069,6 +3069,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (view == null) return;
         view.setBackground(strokeBackground(
                 SURFACE_2, active ? DANGER : LINE, MPC_FLAT_RADIUS_DP));
+    }
+
+    private void focusMainTrackField() {
+        hardwareFocus = 2;
+        navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
+        navigationController.setActionAvailable(true);
+        setBottomStatus("TRACK • DATA DIAL / +/-");
+        refreshMpcCompactContext();
+        refreshMainDataDialFocusVisuals();
     }
 
     private void focusMainSequenceField(
