@@ -2149,10 +2149,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         android.widget.Space arrangementHeaderSpacer = new android.widget.Space(this);
         arrangementHeader.addView(arrangementHeaderSpacer,
                 new LinearLayout.LayoutParams(0, dp(30), 1));
-        arrangementHeader.addView(actionButton(
-                "GRID",
-                v -> showSequenceGridPage()),
-                new LinearLayout.LayoutParams(dp(68), dp(30)));
+        Button arrangementEdit = actionButton(
+                "✎",
+                v -> setBottomStatus(
+                        "ARRANGEMENT EDIT • RESERVED until arrangement edit semantics exist"));
+        arrangementEdit.setTextSize(15);
+        arrangementEdit.setContentDescription("Main Arrangement Edit RESERVED");
+        arrangementHeader.addView(
+                arrangementEdit,
+                new LinearLayout.LayoutParams(dp(40), dp(30)));
         arrangement.addView(arrangementHeader);
 
         TextView arrangementInfo = label(
