@@ -1104,6 +1104,12 @@ The compact left context rail now uses a denser MPC-facing information hierarchy
 
 This is presentation-only. MpcUiState, MpcNavigationController, native sequencing/audio timing and the shared shell layout remain unchanged.
 
+## 2026-10-03 Compact context sizing checkpoint
+
+The persistent context rail no longer reserves a fixed 304dp height after its density refinement. Its context panel is content-sized so that hiding Mixer Strip details does not leave a dead vertical region beneath Data Dial context.
+
+The shared 210dp context rail width and persistent visibility remain unchanged.
+
 ## 2026-10-03 Main section framing fidelity checkpoint
 
 The Main workspace now mirrors the documented MPC composition more closely:
