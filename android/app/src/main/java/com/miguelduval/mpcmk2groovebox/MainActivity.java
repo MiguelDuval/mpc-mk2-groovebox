@@ -793,7 +793,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         final boolean padMode = compactMixerPadModeForDisplay();
-        compactMixerStripModeToggle.setText(padMode ? "•" : "▦");
+        compactMixerStripModeToggle.setText(padMode ? "□  ▦" : "■  ▦");
         compactMixerStripModeToggle.setContentDescription(
                 padMode
                         ? "MPC condensed Mixer Strip showing Pad"
@@ -1836,7 +1836,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
-        page.setPadding(dp(8), dp(6), dp(8), dp(2));
+        page.setPadding(dp(4), dp(3), dp(4), 0);
 
         /*
          * Main's Sequence header is a single information band: sequence
@@ -2018,7 +2018,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackDetailRow.addView(layerDetail,
                 new LinearLayout.LayoutParams(0, dp(42), 1));
 
-        compactMixerStripModeToggle = actionButton("▦", v -> {
+        compactMixerStripModeToggle = actionButton("□  ▦", v -> {
             final MpcUiState state = navigationController.state();
             if (!compactMixerStripModeAvailable()) {
                 setBottomStatus("TRACK/PAD CONTEXT • DRUM TRACK REQUIRED");
@@ -2028,7 +2028,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     state.compactMixerVisible(),
                     !state.compactMixerPadMode());
         });
-        compactMixerStripModeToggle.setTextSize(12);
+        compactMixerStripModeToggle.setTextSize(11);
         compactMixerStripModeToggle.setContentDescription(
                 "MPC condensed Mixer Strip Track or Pad selector");
         compactMixerStripModeToggle.setGravity(Gravity.CENTER);
@@ -2188,9 +2188,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setMainTrackArrangementView(false);
 
         page.addView(sequenceCard, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.27f));
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.33f));
         page.addView(trackProgramSection, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.73f));
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.67f));
 
         mainSequenceNameField = sequenceName;
         mainSequenceTypeField = sequenceType;
