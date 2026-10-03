@@ -2064,7 +2064,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceHeader.addView(timeSig,
                 new LinearLayout.LayoutParams(dp(56), dp(MPC_MAIN_METRIC_HEIGHT_DP)));
 
-        Button sequenceEdit = actionButton("✎", null);
+        Button sequenceEdit = mainActionButton("✎", null);
         sequenceEdit.setEnabled(false);
         sequenceEdit.setAlpha(0.42f);
         sequenceEdit.setBackground(strokeBackground(
@@ -2083,7 +2083,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         TextView start = mainMetric("START");
         TextView end = mainMetric("END");
         TextView transpose = mainMetric("TRANSPOSE");
-        Button loop = actionButton("↻", v -> {
+        Button loop = mainActionButton("↻", v -> {
             if (!startupComplete) {
                 setBottomStatus("LOOP • waiting for sequencer");
                 return;
@@ -2142,7 +2142,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 mainTrackTypeField,
                 new LinearLayout.LayoutParams(dp(68), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
-        Button trackEditHeader = actionButton("✎", v -> openMainTrackEditContext());
+        Button trackEditHeader = mainActionButton("✎", v -> openMainTrackEditContext());
         trackEditHeader.setTextSize(15);
         trackEditHeader.setContentDescription("Main Track Edit");
         trackEditHeader.setBackground(strokeBackground(
@@ -2150,21 +2150,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackContextHeader.addView(trackEditHeader,
                 new LinearLayout.LayoutParams(dp(38), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
-        mainTrackViewButton = actionButton(
+        mainTrackViewButton = mainActionButton(
                 "TRACK",
                 v -> setMainTrackArrangementView(false));
         mainTrackViewButton.setContentDescription("Main Track View header");
         trackContextHeader.addView(mainTrackViewButton,
                 new LinearLayout.LayoutParams(dp(74), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
-        mainArrangementViewButton = actionButton(
+        mainArrangementViewButton = mainActionButton(
                 "ARRANGEMENT",
                 v -> setMainTrackArrangementView(true));
         mainArrangementViewButton.setContentDescription("Main Arrangement View header");
         trackContextHeader.addView(mainArrangementViewButton,
                 new LinearLayout.LayoutParams(dp(112), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
-        Button arrangementEdit = actionButton("✎",
+        Button arrangementEdit = mainActionButton("✎",
                 v -> setBottomStatus(
                         "ARRANGEMENT EDIT • RESERVED until arrangement edit semantics exist"));
         arrangementEdit.setTextSize(15);
@@ -2212,7 +2212,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackDetailRow.addView(velocityDetail, weight());
 
         LinearLayout layerControls = row();
-        Button layerDownButton = actionButton("−", v -> adjustMainLayer(-1));
+        Button layerDownButton = mainActionButton("−", v -> adjustMainLayer(-1));
         layerDownButton.setTextSize(13);
         layerDownButton.setContentDescription("Main Track View previous sample layer");
         layerControls.addView(layerDownButton,
@@ -2234,7 +2234,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         layerControls.addView(layerDetail,
                 new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
 
-        Button layerUpButton = actionButton("+", v -> adjustMainLayer(1));
+        Button layerUpButton = mainActionButton("+", v -> adjustMainLayer(1));
         layerUpButton.setTextSize(13);
         layerUpButton.setContentDescription("Main Track View next sample layer");
         layerControls.addView(layerUpButton,
@@ -2242,7 +2242,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackDetailRow.addView(layerControls,
                 new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
 
-        compactMixerStripModeToggle = actionButton("□  ▦", v -> {
+        compactMixerStripModeToggle = mainActionButton("□  ▦", v -> {
             final MpcUiState state = navigationController.state();
             if (!compactMixerStripModeAvailable()) {
                 setBottomStatus("TRACK/PAD CONTEXT • DRUM TRACK REQUIRED");
@@ -2315,7 +2315,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
 
         LinearLayout sampleActions = row();
-        mainTrackSamplePrimaryButton = actionButton(
+        mainTrackSamplePrimaryButton = mainActionButton(
                 "AUDITION",
                 v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
         mainTrackSamplePrimaryButton.setContentDescription(
@@ -2324,7 +2324,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 mainTrackSamplePrimaryButton,
                 new LinearLayout.LayoutParams(0, dp(34), 1));
 
-        mainTrackSampleActionButton = actionButton(
+        mainTrackSampleActionButton = mainActionButton(
                 "BROWSE",
                 v -> showBrowserPage());
         mainTrackSampleActionButton.setContentDescription(
@@ -3174,6 +3174,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         view.setBackground(strokeBackground(SURFACE_2, LINE, MPC_MAIN_RADIUS_DP));
         view.setTag(title);
         return view;
+    }
+
+    private Button mainActionButton(String text, View.OnClickListener listener) {
+        Button b = actionButton(text, listener);
+        b.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_MAIN_RADIUS_DP));
+        return b;
     }
 
     private TextView mainHeaderMetric(String title) {
