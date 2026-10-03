@@ -1026,6 +1026,18 @@ the selected tab is visibly distinct, and reserved functions remain truthful rat
 Shortcut slots remain five configurable MPC-style mode shortcuts. The visual tile uses an original mode glyph and short label so the phone surface mirrors the controller-centric mode concept without copying proprietary Akai artwork or using numbered page ordinals.
 
 
+## 2026-10-03 Persistent context hierarchy fidelity checkpoint
+
+The persistent context rail is intentionally denser than a general Android dashboard:
+
+- each context group has a small uppercase section caption;
+- value fields remain flat rectangular surfaces with compact typography;
+- the active Main Data Dial focus uses the red interaction outline on the corresponding Sequence, Track, Program or Pad context field;
+- the dedicated Data Dial field summarizes active focus using operator-facing labels rather than raw enum names;
+- the sequence overview remains a thin non-interactive visual indicator.
+
+These rules are presentation-only and must not create duplicate domain or transport ownership.
+
 ## 2026-10-03 Main shell geometry fidelity checkpoint
 
 The Main presentation now uses explicit MPC One geometry constants instead of scattered legacy spacing:
