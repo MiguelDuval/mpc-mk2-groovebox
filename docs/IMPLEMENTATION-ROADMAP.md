@@ -477,3 +477,10 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Removed the redundant Track View instruction footer so the selectable Track list gets the freed vertical space.
 - Selected Track focus now uses the MPC red-selection accent rather than the generic cyan shell accent.
 - Track View is now the next migration surface after the Main foundation, with its list rows remaining presentation-only and semantic Track selection preserved.
+
+
+### 2026-10-03 Main Track/Arrangement header treatment
+
+- Flattened the sibling Main Track / Arrangement headers to remove the Android-card appearance.
+- Active header now uses the MPC red focus accent; inactive header remains subdued.
+- Kept the existing shared-workspace switch and Track/Arrangement semantic routing unchanged.
