@@ -205,8 +205,8 @@ if ! grep -Fq -- 'MPC_TIME_SIGNATURE_HIGHLIGHT' "$MAIN_ACTIVITY_SOURCE"; then
   exit 1
 fi
 
-if grep -Fq -- 'actionButton("L−"' "$MAIN_ACTIVITY_SOURCE" || grep -Fq -- 'actionButton("L+"' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Track View must not duplicate the LAYER field with separate +/- controls"
+if ! grep -Fq -- 'actionButton("−", v -> adjustMainLayer(-1))' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'actionButton("+", v -> adjustMainLayer(1))' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main LAYER must expose compact previous/next layer controls"
   exit 1
 fi
 if ! grep -Fq -- 'MpcUiState.DataDialFocus.SAMPLE_LAYER' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'LAYER • DATA DIAL / +/-' "$MAIN_ACTIVITY_SOURCE"; then
@@ -451,8 +451,8 @@ fi
 
 track_detail_line=$(grep -n -m1 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 track_canvas_line=$(grep -n -m1 'trackWorkspace.addView(quickTrack,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_detail_line" -le "$track_canvas_line" ]]; then
-  echo "ERROR: Main Track state row must remain below the performance canvas"
+if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_detail_line" -ge "$track_canvas_line" ]]; then
+  echo "ERROR: Main Track state row must remain directly above the performance canvas"
   exit 1
 fi
 

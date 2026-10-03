@@ -2084,6 +2084,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         velocityDetail.setText("VELOCITY\n—");
         trackDetailRow.addView(velocityDetail, weight());
 
+        LinearLayout layerControls = row();
+        Button layerDownButton = actionButton("−", v -> adjustMainLayer(-1));
+        layerDownButton.setTextSize(13);
+        layerDownButton.setContentDescription("Main Track View previous sample layer");
+        layerControls.addView(layerDownButton,
+                new LinearLayout.LayoutParams(dp(24), dp(42)));
+
         TextView layerDetail = mainMetric("LAYER");
         layerDetail.setContentDescription("Main Track View selected layer • tap to focus Layer");
         layerDetail.setOnClickListener(v -> {
@@ -2097,7 +2104,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Locale.ROOT,
                 "LAYER\n%d/8",
                 selectedLayer + 1));
-        trackDetailRow.addView(layerDetail,
+        layerControls.addView(layerDetail,
+                new LinearLayout.LayoutParams(0, dp(42), 1));
+
+        Button layerUpButton = actionButton("+", v -> adjustMainLayer(1));
+        layerUpButton.setTextSize(13);
+        layerUpButton.setContentDescription("Main Track View next sample layer");
+        layerControls.addView(layerUpButton,
+                new LinearLayout.LayoutParams(dp(24), dp(42)));
+        trackDetailRow.addView(layerControls,
                 new LinearLayout.LayoutParams(0, dp(42), 1));
 
         compactMixerStripModeToggle = actionButton("□  ▦", v -> {
@@ -2198,18 +2213,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         0, ViewGroup.LayoutParams.MATCH_PARENT, 0.64f));
 
         /*
-         * Keep the compact Track-state row directly below the performance
-         * canvas. The Track/Pad selector at the row's right edge is therefore
-         * the documented lower-right control for the Main Track/Arrangement
-         * section.
+         * MPC Main places the compact Track-state controls immediately above
+         * the Track canvas. Layer +/- stays inside this same row so Layer is
+         * one coherent high-frequency semantic control.
          */
-        trackWorkspace.addView(quickTrack,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-
         trackWorkspace.addView(trackDetailRow,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+
+        trackWorkspace.addView(quickTrack,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         LinearLayout arrangement = column();
         arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
@@ -2767,8 +2781,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
-    private int selectedPadIndexForUi() {
-        return Math.max(0, Math.min(15, selectedPad));
+    private void adjustMainLayer(int delta) {
+        final int next = Math.max(0, Math.min(7, selectedLayer + delta));
+        if (next == selectedLayer) return;
+        selectedLayer = next;
+        navigationController.setSelectedLayer(selectedLayer);
+        navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_SELECT);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_LAYER);
+        navigationController.setActionAvailable(true);
+        setBottomStatus("LAYER " + (selectedLayer + 1) + "/8");
+        refreshMainTrackQuickSample();
+        refreshMainDataDialFocusVisuals();
+    }
+
+    private int selectedPadIndexForUi() {        return Math.max(0, Math.min(15, selectedPad));
     }
 
     private void openMainTrackEditContext() {
