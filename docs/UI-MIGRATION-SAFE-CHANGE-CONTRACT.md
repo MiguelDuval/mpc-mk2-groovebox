@@ -257,6 +257,21 @@ Remaining gaps:
 - perform physical MkII interaction verification after the next runnable checkpoint.
 
 
+## 2026-10-03 Persistent context hierarchy checkpoint
+
+The compact persistent context rail may receive presentation-only refinements that:
+
+- preserve the fixed shell width and persistent visibility;
+- use small section captions and compact value fields to establish Sequence → Track → Program → Pad → Data Dial hierarchy;
+- project semantic Main Data Dial focus onto the corresponding context field without adding a second focus state;
+- keep mixer-detail visibility separate from the persistent context layer.
+
+Forbidden regressions remain: no domain ownership in the shell, no hiding of canonical context when Mixer Strip details are toggled, no duplicate transport controls, and no realtime/audio-thread coupling.
+
+Verification target:
+- source smoke checks lock the hierarchy helper, compact field heights and focus projection;
+- GitHub Actions and physical MkII verification remain separate acceptance gates.
+
 ## 2026-10-03 Main geometry fidelity checkpoint
 
 The latest bounded Main UI slice tightened the MPC-facing presentation without changing domain/state ownership:
