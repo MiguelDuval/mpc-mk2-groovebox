@@ -37,6 +37,7 @@ for required in \
   "Main Mode Track / Arrangement context header" \
   "Main Mode selected track" \
   "MPC Toolbar Menu" \
+  "MPC Project Browser" \
   "MPC_TOOLBAR_BG" \
   "pageTitle.setVisibility(View.GONE)" \
   "Main Mode sequence header" \
