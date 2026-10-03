@@ -505,6 +505,41 @@ for required in \
   fi
 done
 
+echo "Running persistent MPC context rail source preflight..."
+for required in \
+  "compactSequenceContext" \
+  "compactDialContext" \
+  "compactSequenceOverviewView" \
+  "\"MPC shell sequence context\"" \
+  "\"MPC shell Data Dial focus\"" \
+  "\"MPC shell sequence overview\"" \
+  "compactSequenceOverviewView.setState("; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Persistent MPC context rail contract missing: $required"
+    exit 1
+  fi
+done
+
+context_visibility_start=$(grep -n -m1 'private void applyCompactMixerVisibility()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+context_visibility_end=$(grep -n -m1 'private void refreshMpcCompactContext()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$context_visibility_start" || -z "$context_visibility_end" || "$context_visibility_end" -le "$context_visibility_start" ]]; then
+  echo "ERROR: compact Mixer visibility method boundary is missing"
+  exit 1
+fi
+context_visibility_block=$(sed -n "${context_visibility_start},$((context_visibility_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+for forbidden in \
+  "compactTrackContext.setVisibility" \
+  "compactProgramContext.setVisibility" \
+  "compactPadContext.setVisibility" \
+  "compactSequenceContext.setVisibility" \
+  "compactDialContext.setVisibility" \
+  "compactSequenceOverviewView.setVisibility"; do
+  if grep -Fq -- "$forbidden" <<<"$context_visibility_block"; then
+    echo "ERROR: persistent MPC context must not be hidden with Mixer Strip: $forbidden"
+    exit 1
+  fi
+done
+
 echo "Running MPC UI state/navigation source preflight..."
 for required in \
   "compactMixerVisible" \
