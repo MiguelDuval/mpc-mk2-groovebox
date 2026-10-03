@@ -467,10 +467,8 @@ if grep -Fq -- '0.52f' "$MAIN_ACTIVITY_SOURCE" || grep -Fq -- '0.48f' "$MAIN_ACT
   echo "ERROR: obsolete near-equal Main Track pad/waveform split remains"
   exit 1
 fi
-if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_detail_line" -le "$track_canvas_line" ]]; then
-  echo "ERROR: Main Track state row must remain below the performance canvas"
-  exit 1
-fi
+# The Track state row is intentionally rendered immediately above the performance canvas
+# (see the positive ordering assertion above). Do not assert the inverse here.
 
 echo "Running MPC shell geometry preflight..."
 for required in \
