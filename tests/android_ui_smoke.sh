@@ -482,6 +482,18 @@ for required in \
   fi
 done
 
+echo "Running native JNI bridge source preflight..."
+for required in \
+  "Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLauncherContext" \
+  "Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepEditContext" \
+  "Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeStepEditParameterNext" \
+  "Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeStepEditParameterDelta"; do
+  if ! grep -Fq -- "$required" "$NATIVE_ENGINE_SOURCE"; then
+    echo "ERROR: Native JNI bridge contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC UI state/navigation source preflight..."
 for required in \
   "compactMixerVisible" \
