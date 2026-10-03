@@ -1215,16 +1215,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout group = new LinearLayout(this);
         group.setOrientation(LinearLayout.HORIZONTAL);
         group.setGravity(Gravity.CENTER_VERTICAL);
-        group.setContentDescription("MPC Function Bar SEQ REC ARM");
+        group.setContentDescription("MPC Function Bar REC ARM");
         group.setPadding(dp(2), dp(2), dp(2), dp(2));
-        group.setBackground(strokeBackground(SURFACE_2, LINE, 5));
-
-        TextView seq = label("SEQ", 8, MUTED);
-        seq.setGravity(Gravity.CENTER);
-        seq.setTypeface(Typeface.DEFAULT_BOLD);
-        seq.setContentDescription("MPC Main sequence record scope");
-        group.addView(seq, new LinearLayout.LayoutParams(
-                dp(26), ViewGroup.LayoutParams.MATCH_PARENT));
+        group.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
 
         Button recArm = actionButton("REC ARM", v -> {
             if (action != null) {
@@ -1241,7 +1235,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recArm.setBackground(strokeBackground(
                 armed ? ACTIVE : SURFACE_2,
                 armed ? ACTIVE : LINE,
-                5));
+                MPC_FLAT_RADIUS_DP));
         recArm.setContentDescription(
                 armed ? "MPC Main sequence REC ARM active"
                         : "MPC Main sequence REC ARM");

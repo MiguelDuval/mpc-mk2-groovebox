@@ -269,6 +269,22 @@ if grep -Fq -- 'trackVisible ? ACCENT : SURFACE_2' <<<"$main_view_switch_block" 
   exit 1
 fi
 
+echo "Running Main Function Bar geometry preflight..."
+rec_arm_start=$(grep -n -m1 'private void addSequenceRecArmFunction(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+rec_arm_end=$(grep -n -m1 'private void addTrackStepperFunction(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$rec_arm_start" || -z "$rec_arm_end" || "$rec_arm_end" -le "$rec_arm_start" ]]; then
+  echo "ERROR: Main REC ARM Function Bar source boundary is missing"
+  exit 1
+fi
+rec_arm_block=$(sed -n "${rec_arm_start},$((rec_arm_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'label("SEQ"' <<<"$rec_arm_block" || grep -Fq -- 'MPC Main sequence record scope' <<<"$rec_arm_block"; then
+  echo "ERROR: Main REC ARM must not contain a duplicate visible SEQ scope label"
+  exit 1
+fi
+if ! grep -Fq -- 'MPC Function Bar REC ARM' <<<"$rec_arm_block" || ! grep -Fq -- 'MPC_FLAT_RADIUS_DP));' <<<"$rec_arm_block"; then
+  echo "ERROR: Main REC ARM flat-chrome contract is missing"
+  exit 1
+fi
 echo "Running Track View shell ownership preflight..."
 track_view_start=$(grep -n -m1 'private void showTrackViewPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 track_view_end=$(grep -n -m1 'private void showSequencePage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
