@@ -1322,7 +1322,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         : 0.0f;
                 compactPadTuneLabel.setText(String.format(
                         Locale.ROOT,
-                        "TUNE %+0.1f",
+                        "TUNE %+.1f",
                         tune));
             }
         }
@@ -1657,6 +1657,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         projectState.setContentDescription("MPC Project");
         bar.addView(projectState, new LinearLayout.LayoutParams(
                 dp(MPC_TOOLBAR_PROJECT_WIDTH_DP),
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
+
+        // showMainPage() is part of shell construction, so the current-page
+        // field must exist before the first page render. Keep it in the MPC
+        // toolbar instead of leaving the legacy field uninitialized.
+        pageTitle = label("MAIN", 9, ACCENT);
+        pageTitle.setGravity(Gravity.CENTER);
+        pageTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        pageTitle.setContentDescription("MPC current page");
+        bar.addView(pageTitle, new LinearLayout.LayoutParams(
+                dp(62),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
 
         sequenceTransportView = label(
@@ -3760,11 +3771,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private TextView findTextByContentDescription(View root, String description) {
-        if (root == null) return null;
-        if (description.contentEquals(root.getContentDescription())
+        if (root == null || description == null) return null;
+
+        // Android Views commonly have a null contentDescription. Calling
+        // String.contentEquals(null) dereferences the CharSequence internally
+        // and crashes with "CharSequence.length() on a null object reference".
+        final CharSequence actualDescription = root.getContentDescription();
+        if (actualDescription != null
+                && description.contentEquals(actualDescription)
                 && root instanceof TextView) {
             return (TextView) root;
         }
+
         if (root instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) root;
             for (int i = 0; i < group.getChildCount(); i++) {
@@ -9038,8 +9056,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private View findViewWithContentDescription(
             View view, String expectedDescription) {
-        CharSequence actual = view.getContentDescription();
-        if (expectedDescription.contentEquals(actual)) return view;
+        if (view == null || expectedDescription == null) return null;
+
+        final CharSequence actual = view.getContentDescription();
+        if (actual != null && expectedDescription.contentEquals(actual)) {
+            return view;
+        }
 
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
@@ -9053,9 +9075,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private View findViewWithExactText(View view, String expectedText) {
+        if (view == null || expectedText == null) return null;
+
         if (view instanceof TextView) {
-            CharSequence actual = ((TextView) view).getText();
-            if (expectedText.contentEquals(actual)) return view;
+            final CharSequence actual = ((TextView) view).getText();
+            if (actual != null && expectedText.contentEquals(actual)) {
+                return view;
+            }
         }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
