@@ -228,6 +228,26 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
   exit 1
 fi
 
+echo "Running MPC3 Toolbar geometry preflight..."
+for required in \
+  'MPC_TOOLBAR_INSET_DP = 6' \
+  'MPC_TOOLBAR_CONTROL_HEIGHT_DP = 34' \
+  'MPC_TOOLBAR_GAP_DP = 2' \
+  'MPC_TOOLBAR_MENU_WIDTH_DP = 38' \
+  'MPC_TOOLBAR_PROJECT_WIDTH_DP = 132' \
+  'MPC_TOOLBAR_TIMING_WIDTH_DP = 60' \
+  'MPC_TOOLBAR_METRO_WIDTH_DP = 58' \
+  'MPC_TOOLBAR_AUTO_WIDTH_DP = 48' \
+  'MPC_TOOLBAR_TRANSPORT_WIDTH_DP = 40' \
+  'bar.setContentDescription("MPC Main Toolbar")' \
+  'BAR 001  BEAT 1  TICK 000' \
+  'MPC Toolbar Menu'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC3 Toolbar geometry/content contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC One Main geometry preflight..."
 for required in \
   'MPC_MAIN_CONTENT_GUTTER_DP = 4' \
