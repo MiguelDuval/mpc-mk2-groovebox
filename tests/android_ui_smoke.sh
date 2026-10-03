@@ -228,6 +228,18 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
   exit 1
 fi
 
+echo "Running MPC One Main geometry preflight..."
+for required in   'MPC_MAIN_CONTENT_GUTTER_DP = 4'   'MPC_MAIN_SECTION_GAP_DP = 2'   'MPC_MAIN_FIELD_HEIGHT_DP = 40'   'MPC_MAIN_METRIC_HEIGHT_DP = 36'   'MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40'   'MPC_MAIN_RADIUS_DP = 0'   'page.setPadding(dp(MPC_MAIN_CONTENT_GUTTER_DP)'   'sequenceCard.setPadding(0, 0, 0, dp(MPC_MAIN_SECTION_GAP_DP))'   'sequenceHeader, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_FIELD_HEIGHT_DP))'   'trackContextHeader, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_FIELD_HEIGHT_DP))'   'trackWorkspace.addView(trackDetailRow'   'dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP))'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC One Main geometry contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'trackContextHeader, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44))' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track context header still uses the pre-fidelity 44dp geometry"
+  exit 1
+fi
+
 echo "Running Main workspace state-preservation preflight..."
 main_page_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 main_page_end=$(grep -n -m1 'private void installMainNumericEntry' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
