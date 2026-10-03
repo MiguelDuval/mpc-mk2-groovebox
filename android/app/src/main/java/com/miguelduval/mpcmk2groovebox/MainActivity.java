@@ -472,27 +472,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController = new MpcNavigationController(
                 uiState -> runOnUiThread(this::updateMpcShellState));
 
-        audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
-        if (audioManager != null) {
-            audioDeviceCallback = new AudioDeviceCallback() {
-                @Override
-                public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
-                    refreshAudioDevicesFromSystem();
-                }
+        try {
+            audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+            if (audioManager != null) {
+                audioDeviceCallback = new AudioDeviceCallback() {
+                    @Override
+                    public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
+                        refreshAudioDevicesFromSystem();
+                    }
 
-                @Override
-                public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
-                    refreshAudioDevicesFromSystem();
-                }
-            };
-            audioManager.registerAudioDeviceCallback(
-                    audioDeviceCallback,
-                    new Handler(Looper.getMainLooper()));
+                    @Override
+                    public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
+                        refreshAudioDevicesFromSystem();
+                    }
+                };
+                audioManager.registerAudioDeviceCallback(
+                        audioDeviceCallback,
+                        new Handler(Looper.getMainLooper()));
+            }
+        } catch (Throwable error) {
+            Log.e(TAG, "AUDIO_DEVICE_CALLBACK_UNAVAILABLE", error);
+            audioManager = null;
+            audioDeviceCallback = null;
         }
 
         Arrays.fill(hardwareButtonLedStateCache, -1);
-        setContentView(buildApplicationShell());
-        applyFullscreenWindowPolicy();
+        try {
+            setContentView(buildApplicationShell());
+            applyFullscreenWindowPolicy();
+        } catch (Throwable error) {
+            Log.e(TAG, "UI_SHELL_BUILD_FAILED", error);
+            showStartupFailure("UI shell startup failed", error);
+            return;
+        }
         Log.i(TAG, "UI_READY");
 
         if (!NATIVE_LIBRARY_LOADED) {
@@ -522,40 +534,50 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.postOnAnimation(() -> {
             Log.i(TAG, "STARTUP_BEGIN");
             startupExecutor.execute(() -> {
-                Log.i(TAG, "NATIVE_INFO_BEGIN");
-                final String engineInfo = nativeEngineInfo();
-                Log.i(TAG, "NATIVE_INFO_END");
+                try {
+                    Log.i(TAG, "NATIVE_INFO_BEGIN");
+                    final String engineInfo = nativeEngineInfo();
+                    Log.i(TAG, "NATIVE_INFO_END");
 
-                Log.i(TAG, "BUNDLED_SAMPLE_BEGIN");
-                final String sampleResult = loadBundledSample();
-                Log.i(TAG, "BUNDLED_SAMPLE_END");
+                    Log.i(TAG, "BUNDLED_SAMPLE_BEGIN");
+                    final String sampleResult = loadBundledSample();
+                    Log.i(TAG, "BUNDLED_SAMPLE_END");
 
-                final String audioResult = nativeAudioStart();
-                Log.i(TAG, "AUDIO_START_RESULT=" + audioResult);
+                    final String audioResult = nativeAudioStart();
+                    Log.i(TAG, "AUDIO_START_RESULT=" + audioResult);
 
-                runOnUiThread(() -> {
-                    if (destroyed) return;
+                    runOnUiThread(() -> {
+                        if (destroyed) return;
 
-                    startupComplete = true;
-                    bottomStatus.setText(
-                            engineInfo + " | " + sampleResult + " | " + audioResult);
-                    setAudioStateFromResult(audioResult);
-                    refreshAllInspectorState();
-                    if ("MAIN".equals(currentPage)) {
-                        refreshMainTrackQuickSample();
-                    }
-                    startSequenceUiUpdater();
-                    refreshSequenceOverview();
+                        startupComplete = true;
+                        bottomStatus.setText(
+                                engineInfo + " | " + sampleResult + " | " + audioResult);
+                        setAudioStateFromResult(audioResult);
+                        refreshAllInspectorState();
+                        if ("MAIN".equals(currentPage)) {
+                            refreshMainTrackQuickSample();
+                        }
+                        startSequenceUiUpdater();
+                        refreshSequenceOverview();
 
-                    Log.i(TAG, "MIDI_BRIDGE_BEGIN");
-                    midiBridge = new AndroidMidiBridge(this, this);
-                    Log.i(TAG, "MIDI_BRIDGE_END");
-                    Log.i(TAG, "STARTUP_COMPLETE");
+                        Log.i(TAG, "MIDI_BRIDGE_BEGIN");
+                        try {
+                            midiBridge = new AndroidMidiBridge(this, this);
+                            Log.i(TAG, "MIDI_BRIDGE_END");
+                        } catch (Throwable error) {
+                            Log.e(TAG, "MIDI_BRIDGE_STARTUP_FAILED", error);
+                            setBottomStatus("MIDI unavailable • " + error.getClass().getSimpleName());
+                        }
+                        Log.i(TAG, "STARTUP_COMPLETE");
 
-                    if (uiAuditSmokeMode) {
-                        runUiAudit();
-                    }
-                });
+                        if (uiAuditSmokeMode) {
+                            runUiAudit();
+                        }
+                    });
+                } catch (Throwable error) {
+                    Log.e(TAG, "STARTUP_NATIVE_FAILED", error);
+                    runOnUiThread(() -> showStartupFailure("Native startup failed", error));
+                }
             });
         });
     }
@@ -8118,6 +8140,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return fallback + " | " + padLayer;
         } catch (IOException | IllegalArgumentException e) {
             return "Sample asset load failed: " + e.getMessage();
+        }
+    }
+
+    private void showStartupFailure(String prefix, Throwable error) {
+        final String detail = prefix + ": "
+                + error.getClass().getSimpleName()
+                + (error.getMessage() == null ? "" : " • " + error.getMessage());
+        Log.e(TAG, detail, error);
+        if (bottomStatus != null) {
+            bottomStatus.setVisibility(View.VISIBLE);
+            bottomStatus.setText(detail);
+        }
+        try {
+            new AlertDialog.Builder(this)
+                    .setTitle("MPC Groovebox startup error")
+                    .setMessage(detail)
+                    .setPositiveButton("OK", null)
+                    .show();
+        } catch (Throwable dialogError) {
+            Log.e(TAG, "STARTUP_ERROR_DIALOG_FAILED", dialogError);
         }
     }
 
