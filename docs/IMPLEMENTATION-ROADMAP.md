@@ -469,3 +469,11 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 
 - Places the Main Track Monitor / Length / Velocity / Layer context row below the performance canvas.
 - Keeps Track Edit in the Track identity header, the Arrangement pencil at the Arrangement workspace edge, and the Track/Pad selector in the lower-right context row. Arrangement editing remains explicitly RESERVED.
+
+
+### 2026-10-03 Track View shell/function-bar parity
+
+- Removed duplicate local PREV / NEXT / ARRANGE controls from Track View; track stepping and navigation remain in the shared MPC Function Bar / shortcut system.
+- Removed the redundant Track View instruction footer so the selectable Track list gets the freed vertical space.
+- Selected Track focus now uses the MPC red-selection accent rather than the generic cyan shell accent.
+- Track View is now the next migration surface after the Main foundation, with its list rows remaining presentation-only and semantic Track selection preserved.
