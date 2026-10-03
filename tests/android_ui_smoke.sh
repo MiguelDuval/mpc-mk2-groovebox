@@ -216,6 +216,12 @@ for required in   'MPC Track View focused Track field'   'Track View track I/O u
     exit 1
   fi
 done
+for required in 'strip.setOnClickListener(v -> {' 'String trackIdentityStatus =' 'trackMetadataSeparator'; do
+  if ! grep -Fq -- "$required" <<<"$track_view_block"; then
+    echo "ERROR: Track View selection/identity contract missing: $required"
+    exit 1
+  fi
+done
 for obsolete in 'actionButton("PREV"' 'actionButton("NEXT"' 'v -> showArrangePage()'; do
   if grep -Fq -- "$obsolete" <<<"$track_view_block"; then
     echo "ERROR: Track View must not duplicate shell navigation control: $obsolete"
