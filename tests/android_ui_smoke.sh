@@ -29,7 +29,6 @@ for required in \
   "nativeAudioSetPadSampleName" \
   "BAR %03d  BEAT %d  TICK %03d" \
   'sequenceType.setText("SEQ")' \
-
   "Main Track View quick sample waveform" \
   "Main Track View monitor state" \
   "Main Track View length mode" \
