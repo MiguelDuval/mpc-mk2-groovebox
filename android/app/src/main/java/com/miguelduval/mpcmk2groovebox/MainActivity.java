@@ -1659,6 +1659,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 dp(MPC_TOOLBAR_PROJECT_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
 
+        // showMainPage() is part of shell construction, so the current-page
+        // field must exist before the first page render. Keep it in the MPC
+        // toolbar instead of leaving the legacy field uninitialized.
+        pageTitle = label("MAIN", 9, ACCENT);
+        pageTitle.setGravity(Gravity.CENTER);
+        pageTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        pageTitle.setContentDescription("MPC current page");
+        bar.addView(pageTitle, new LinearLayout.LayoutParams(
+                dp(62),
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
+
         sequenceTransportView = label(
                 "BAR 001  BEAT 1  TICK 000",
                 9,
