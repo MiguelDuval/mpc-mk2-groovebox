@@ -242,7 +242,6 @@ if [[ -z "$main_view_switch_start" || -z "$main_view_switch_end" || "$main_view_
   exit 1
 fi
 main_view_switch_block=$(sed -n "${main_view_switch_start},$((main_view_switch_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
-main_view_switch_block=$(sed -n "${main_view_switch_start},$((main_view_switch_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
 if grep -Fq -- 'showMainPage();' <<<"$main_view_switch_block"; then
   echo "ERROR: Track/Arrangement sibling switch must not rebuild Main page"
   exit 1
@@ -255,11 +254,9 @@ fi
 if ! grep -Fq -- 'MPC presents Track / Arrangement as contextual headers' <<<"$main_view_switch_block"; then
   echo "ERROR: Main Track/Arrangement header fidelity contract is missing"
   exit 1
-fi then
-  echo "ERROR: Main Track/Arrangement header fidelity contract is missing"
-  exit 1
 fi
-if grep -Fq -- 'trackVisible ? ACCENT : SURFACE_2' <<<"$main_view_switch_block" ||    grep -Fq -- 'trackVisible ? SURFACE_2 : ACCENT' <<<"$main_view_switch_block"; then
+if grep -Fq -- 'trackVisible ? ACCENT : SURFACE_2' <<<"$main_view_switch_block" || \
+   grep -Fq -- 'trackVisible ? SURFACE_2 : ACCENT' <<<"$main_view_switch_block"; then
   echo "ERROR: Main Track/Arrangement headers must not regress to cyan-card active styling"
   exit 1
 fi
