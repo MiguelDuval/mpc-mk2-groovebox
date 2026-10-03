@@ -2137,7 +2137,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          */
         LinearLayout sequenceCard = column();
         sequenceCard.setContentDescription("Main Mode Sequence section");
-        sequenceCard.setPadding(0, 0, 0, dp(MPC_MAIN_SECTION_GAP_DP));
+        sequenceCard.setPadding(dp(4), dp(4), dp(4), dp(MPC_MAIN_SECTION_GAP_DP));
+        sequenceCard.setBackground(strokeBackground(
+                SURFACE, LINE, MPC_MAIN_RADIUS_DP));
 
         LinearLayout sequenceHeader = row();
         sequenceHeader.setContentDescription("Main Mode sequence header");
@@ -2217,8 +2219,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout trackProgramSection = mainSection();
         trackProgramSection.setContentDescription("Main Mode Track Program section");
-        trackProgramSection.setBackgroundColor(BG);
-        trackProgramSection.setPadding(0, dp(MPC_MAIN_SECTION_GAP_DP), 0, 0);
+        trackProgramSection.setBackground(strokeBackground(
+                SURFACE, LINE, MPC_MAIN_RADIUS_DP));
+        trackProgramSection.setPadding(
+                dp(4), dp(MPC_MAIN_SECTION_GAP_DP), dp(4), 0);
 
         /*
          * MPC3 uses one unified Track container. Keep the Main identity band
@@ -2273,16 +2277,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         mainArrangementViewButton.setContentDescription("Main Arrangement View header");
         trackContextHeader.addView(mainArrangementViewButton,
                 new LinearLayout.LayoutParams(dp(112), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
-
-        Button arrangementEdit = mainActionButton("✎",
-                v -> setBottomStatus(
-                        "ARRANGEMENT EDIT • RESERVED until arrangement edit semantics exist"));
-        arrangementEdit.setTextSize(15);
-        arrangementEdit.setContentDescription("Main Arrangement Edit RESERVED");
-        arrangementEdit.setBackground(strokeBackground(
-                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
-        trackContextHeader.addView(arrangementEdit,
-                new LinearLayout.LayoutParams(dp(38), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
         trackProgramSection.addView(trackContextHeader,
                 new LinearLayout.LayoutParams(
@@ -2497,6 +2491,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackProgramSection.addView(mainTrackArrangementHost,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        trackProgramSection.setContentDescription(
+                "Main Mode Track / Arrangement workspace section");
 
         // Rebuilding Main must preserve the prior Track/Arrangement presentation.
         setMainTrackArrangementView(previousMainArrangementView);
