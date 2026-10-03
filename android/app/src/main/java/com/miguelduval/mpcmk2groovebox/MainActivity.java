@@ -1956,12 +1956,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         TextView start = mainMetric("START");
         TextView end = mainMetric("END");
         TextView transpose = mainMetric("TRANSPOSE");
-        TextView loop = mainMetric("LOOP");
+        Button loop = actionButton("↻", v -> {
+            if (!startupComplete) {
+                setBottomStatus("LOOP • waiting for sequencer");
+                return;
+            }
+            setBottomStatus(nativeSequenceSetLoopEnabled(
+                    !nativeSequenceIsLoopEnabled()));
+            refreshMainModeFields();
+        });
+        loop.setTextSize(15);
+        loop.setTypeface(Typeface.DEFAULT_BOLD);
+        loop.setContentDescription("Main Sequence Loop button");
+        loop.setGravity(Gravity.CENTER);
         sequenceFields.addView(bars, weight());
         sequenceFields.addView(start, weight());
         sequenceFields.addView(end, weight());
         sequenceFields.addView(transpose, weight());
-        sequenceFields.addView(loop, weight());
+        sequenceFields.addView(loop, new LinearLayout.LayoutParams(dp(48), dp(42)));
         sequenceCard.addView(sequenceFields,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
@@ -3252,8 +3264,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         timeSig.setText(String.format(
                 Locale.ROOT, "%d/%d",
                 numerator, denominator));
-        loop.setText(
-                "LOOP\n" + (loopEnabled ? "ON" : "OFF"));
+        loop.setText("↻");
+        loop.setContentDescription(
+                "Main Sequence Loop button • " + (loopEnabled ? "ON" : "OFF"));
+        loop.setTextColor(loopEnabled ? BG : TEXT);
+        loop.setBackground(strokeBackground(
+                loopEnabled ? ACCENT : SURFACE_2,
+                loopEnabled ? ACCENT : LINE,
+                MPC_FLAT_RADIUS_DP));
         final int loopStartBar = nativeStateReady
                 ? nativeSequenceGetLoopStartBar() : 1;
         final int loopEndBar = nativeStateReady

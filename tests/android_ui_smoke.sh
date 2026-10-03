@@ -206,6 +206,16 @@ if ! grep -Fq -- 'MPC_TIME_SIGNATURE_HIGHLIGHT' "$MAIN_ACTIVITY_SOURCE"; then
   exit 1
 fi
 
+if ! grep -Fq -- 'Button loop = actionButton("↻"' "$MAIN_ACTIVITY_SOURCE" ||
+   ! grep -Fq -- 'nativeSequenceSetLoopEnabled(' "$MAIN_ACTIVITY_SOURCE" ||
+   ! grep -Fq -- 'loop.setContentDescription(' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Sequence Loop must be a dedicated semantic toggle button"
+  exit 1
+fi
+if grep -Fq -- 'sequenceFields.addView(loop, weight());' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Sequence Loop must not consume a full parameter-field slot"
+  exit 1
+fi
 if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track state row must remain in the workspace"
   exit 1
