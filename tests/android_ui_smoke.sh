@@ -572,7 +572,7 @@ for required in \
   'dp(36)' \
   'dp(34)' \
   'active ? DANGER : LINE' \
-  '"DIAL\\n" + compactDialFocusLabel(dialFocus)'; do
+  '"DIAL\n" + compactDialFocusLabel(dialFocus)'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: persistent MPC context hierarchy contract missing: $required"
     exit 1
