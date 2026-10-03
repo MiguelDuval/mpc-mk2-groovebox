@@ -1046,7 +1046,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetQueuedIndex(
                     .queuedSequenceIndex());
 }
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT __attribute__((weak)) void JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLauncherContext(
         JNIEnv* /* env */,
         jobject /* thiz */,
@@ -1059,7 +1059,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLauncherConte
     (void) bank;
 }
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT __attribute__((weak)) void JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepEditContext(
         JNIEnv* /* env */,
         jobject /* thiz */,
@@ -1072,7 +1072,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepEditConte
     (void) page;
 }
 
-extern "C" JNIEXPORT jint JNICALL
+extern "C" JNIEXPORT __attribute__((weak)) jint JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeStepEditParameterNext(
         JNIEnv* /* env */,
         jobject /* thiz */,
@@ -1085,7 +1085,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeStepEditParameterNext(
             mpc::sequencer::step_edit::nextParameter(current));
 }
 
-extern "C" JNIEXPORT jint JNICALL
+extern "C" JNIEXPORT __attribute__((weak)) jint JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeStepEditParameterDelta(
         JNIEnv* /* env */,
         jobject /* thiz */,
