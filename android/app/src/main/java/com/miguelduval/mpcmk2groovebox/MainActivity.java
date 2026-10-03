@@ -467,10 +467,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         uiOnlySmokeMode = "ui-only".equals(smokeMode);
         uiAuditSmokeMode = "ui-audit".equals(smokeMode);
 
-        applyFullscreenWindowPolicy();
-
-        navigationController = new MpcNavigationController(
-                uiState -> runOnUiThread(this::updateMpcShellState));
+        try {
+            applyFullscreenWindowPolicy();
+            navigationController = new MpcNavigationController(
+                    uiState -> runOnUiThread(this::updateMpcShellState));
+        } catch (Throwable error) {
+            Log.e(TAG, "EARLY_STARTUP_SETUP_FAILED", error);
+            showStartupFailure("Early startup setup failed", error);
+            return;
+        }
 
         try {
             audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
@@ -548,30 +553,34 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
                     runOnUiThread(() -> {
                         if (destroyed) return;
-
-                        startupComplete = true;
-                        bottomStatus.setText(
-                                engineInfo + " | " + sampleResult + " | " + audioResult);
-                        setAudioStateFromResult(audioResult);
-                        refreshAllInspectorState();
-                        if ("MAIN".equals(currentPage)) {
-                            refreshMainTrackQuickSample();
-                        }
-                        startSequenceUiUpdater();
-                        refreshSequenceOverview();
-
-                        Log.i(TAG, "MIDI_BRIDGE_BEGIN");
                         try {
-                            midiBridge = new AndroidMidiBridge(this, this);
-                            Log.i(TAG, "MIDI_BRIDGE_END");
-                        } catch (Throwable error) {
-                            Log.e(TAG, "MIDI_BRIDGE_STARTUP_FAILED", error);
-                            setBottomStatus("MIDI unavailable • " + error.getClass().getSimpleName());
-                        }
-                        Log.i(TAG, "STARTUP_COMPLETE");
+                            startupComplete = true;
+                            bottomStatus.setText(
+                                    engineInfo + " | " + sampleResult + " | " + audioResult);
+                            setAudioStateFromResult(audioResult);
+                            refreshAllInspectorState();
+                            if ("MAIN".equals(currentPage)) {
+                                refreshMainTrackQuickSample();
+                            }
+                            startSequenceUiUpdater();
+                            refreshSequenceOverview();
 
-                        if (uiAuditSmokeMode) {
-                            runUiAudit();
+                            Log.i(TAG, "MIDI_BRIDGE_BEGIN");
+                            try {
+                                midiBridge = new AndroidMidiBridge(this, this);
+                                Log.i(TAG, "MIDI_BRIDGE_END");
+                            } catch (Throwable error) {
+                                Log.e(TAG, "MIDI_BRIDGE_STARTUP_FAILED", error);
+                                setBottomStatus("MIDI unavailable • " + error.getClass().getSimpleName());
+                            }
+                            Log.i(TAG, "STARTUP_COMPLETE");
+
+                            if (uiAuditSmokeMode) {
+                                runUiAudit();
+                            }
+                        } catch (Throwable error) {
+                            Log.e(TAG, "UI_STARTUP_FINALIZATION_FAILED", error);
+                            showStartupFailure("UI startup finalization failed", error);
                         }
                     });
                 } catch (Throwable error) {
