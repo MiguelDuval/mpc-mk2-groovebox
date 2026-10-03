@@ -238,6 +238,21 @@ if ! grep -Fq -- 'Track −/+ is a high-frequency Main action, not a navigation 
   exit 1
 fi
 
+if ! grep -Fq -- 'private String cleanTrackDisplayName(String status)' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'trackName.setText(String.format(' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'Locale.ROOT, "%d  %s"' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track identity must expose track number and clean user-facing name"
+  exit 1
+fi
+
+if ! grep -Fq -- 'Track identity is intentionally compact' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track identity source contract is missing"
+  exit 1
+fi
+
+if grep -Fq -- 'showTrackSelectPage();' "$MAIN_ACTIVITY_SOURCE" &&    ! grep -Fq -- 'if (navigationController.state().mode() == MpcUiState.Mode.MAIN) {' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track selection routing contract is inconsistent"
+  exit 1
+fi
+
 if ! grep -Fq -- 'compactMixerStripModeToggle = actionButton("□  ▦",' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track lower-right selector must expose the single-pad / four-squares pair"
   exit 1
