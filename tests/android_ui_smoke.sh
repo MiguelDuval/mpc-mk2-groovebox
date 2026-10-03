@@ -52,6 +52,7 @@ for required in \
   "Main Track View browse samples" \
   "DRUM • TYPE" \
   "Main Track Edit" \
+  "trackProgramHeader.addView(trackEditHeader," \
   "MPC Function Bar SEQ REC ARM" \
   "MPC Main sequence REC ARM" \
   "MPC Function Bar TRACK previous next" \
@@ -120,6 +121,16 @@ fi
 if grep -Fq -- "sequenceAuxFields" "$MAIN_ACTIVITY_SOURCE" || \
    grep -Fq -- "sequenceFields.addView(bpm, weight())" "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: obsolete stacked Main Sequence field layout is still present"
+  exit 1
+fi
+
+if grep -Fq -- "trackWorkspaceHeader" "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track Edit must not use a separate blank workspace action header"
+  exit 1
+fi
+
+if ! grep -Fq -- 'trackProgramHeader.addView(trackEditHeader,' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track Edit pencil must stay in the Track identity header"
   exit 1
 fi
 
