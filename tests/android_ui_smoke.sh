@@ -233,6 +233,11 @@ if grep -Fq -- 'SELECTED TRACK • shell Function Bar' <<<"$track_view_block"; t
   exit 1
 fi
 
+if ! grep -Fq -- 'Track −/+ is a high-frequency Main action, not a navigation command' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1).getVisibility()' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'hardwareFocus = 2;' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track −/+ must preserve local view context and restore Track Data Dial focus"
+  exit 1
+fi
+
 if ! grep -Fq -- 'compactMixerStripModeToggle = actionButton("□  ▦",' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track lower-right selector must expose the single-pad / four-squares pair"
   exit 1
