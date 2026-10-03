@@ -15,8 +15,9 @@ import android.widget.LinearLayout;
  * migrated to its permanent context implementation.
  */
 final class MpcShell {
-    private static final int BG = Color.rgb(14, 16, 18);
-    private static final int SURFACE = Color.rgb(25, 29, 33);
+    // MPC One-style graphite shell chrome. Keep this class presentation-only.
+    private static final int BG = Color.rgb(17, 19, 22);
+    private static final int SURFACE = Color.rgb(38, 42, 46);
 
     // Canonical MPC shell geometry used by the UI migration smoke contract.
     private static final int TOOLBAR_HEIGHT_DP = 44;
@@ -42,7 +43,7 @@ final class MpcShell {
 
         toolbar = new LinearLayout(context);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
-        toolbar.setBackgroundColor(SURFACE);
+        toolbar.setBackgroundColor(Color.rgb(224, 30, 61));
         root.addView(toolbar, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(context, TOOLBAR_HEIGHT_DP)));
 
@@ -55,7 +56,7 @@ final class MpcShell {
 
         shortcutRail = new LinearLayout(context);
         shortcutRail.setOrientation(LinearLayout.VERTICAL);
-        shortcutRail.setBackgroundColor(Color.rgb(18, 21, 24));
+        shortcutRail.setBackgroundColor(Color.rgb(23, 25, 28));
         shortcutRail.setPadding(
                 dp(context, RAIL_CONTENT_INSET_DP),
                 dp(context, RAIL_CONTENT_INSET_DP),
@@ -72,7 +73,7 @@ final class MpcShell {
          */
         contextArea = new LinearLayout(context);
         contextArea.setOrientation(LinearLayout.VERTICAL);
-        contextArea.setBackgroundColor(Color.rgb(16, 19, 22));
+        contextArea.setBackgroundColor(Color.rgb(27, 30, 33));
         contextArea.setPadding(
                 dp(context, CONTEXT_CONTENT_INSET_DP),
                 dp(context, CONTEXT_CONTENT_INSET_DP),
