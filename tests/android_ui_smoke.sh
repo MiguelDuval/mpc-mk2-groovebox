@@ -29,7 +29,7 @@ for required in \
   "nativeAudioSetPadSampleName" \
   "BAR %03d  BEAT %d  TICK %03d" \
   'sequenceType.setText("SEQ")' \
-  "TRANSPOSE\\n—" \
+
   "Main Track View quick sample waveform" \
   "Main Track View monitor state" \
   "Main Track View length mode" \
@@ -77,10 +77,10 @@ for required in \
   "MPC condensed Mixer Strip Track or Pad selector" \
   "MPC condensed Mixer Strip showing Track" \
   "MPC condensed Mixer Strip showing Pad" \
-  "MPC Mixer Strip LVL active" \
-  "MPC Mixer Strip FX unavailable" \
-  "MPC Mixer Strip SEND unavailable" \
-  "MPC Mixer Strip I/O unavailable" \
+
+
+
+
   "private LinearLayout buildCompactMixerTabs()" \
   "MPC condensed Mixer Strip" \
   "LVL" \
@@ -155,6 +155,21 @@ if ! grep -Fq -- 'compactContextField(' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq
   echo "ERROR: compact Mixer/Shortcut chrome flat styling contract is missing"
   exit 1
 fi
+
+if ! grep -Fq -- '"TRANSPOSE\\n—"' "$MAIN_ACTIVITY_SOURCE" &&    ! grep -Fq -- '"TRANSPOSE\\\\n—"' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main TRANSPOSE unavailable state contract is missing"
+  exit 1
+fi
+
+if ! grep -Fq -- 'new String[]{"LVL", "FX", "SEND", "I/O"}' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: compact Mixer tab vocabulary contract is missing"
+  exit 1
+fi
+if ! grep -Fq -- '(active ? " active" : " unavailable")' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: compact Mixer active/unavailable state policy is missing"
+  exit 1
+fi
+
 
 
 if ! grep -Fq -- 'MPC_TIME_SIGNATURE_HIGHLIGHT' "$MAIN_ACTIVITY_SOURCE"; then
