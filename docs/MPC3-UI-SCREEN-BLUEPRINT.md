@@ -123,6 +123,8 @@ The persistent left rail exposes mixer state, not duplicate Main selection contr
 
 ## 2.1 Layout
 
+Implementation fidelity note: Main keeps the Sequence block visually substantial enough to preserve its continuous information hierarchy; the Track/Arrangement workspace remains the dominant lower region. The lower-right Drum Track selector presents the single-pad / four-squares pair as one compact focus control.
+
 Top:
 Toolbar.
 
