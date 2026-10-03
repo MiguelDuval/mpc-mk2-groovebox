@@ -1,0 +1,484 @@
+name: Android Build
+
+on:
+  push:
+    branches:
+      - main
+      - "foundation/**"
+      - "feature/**"
+      - "work/**"
+  pull_request:
+
+concurrency:
+  group: android-build-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle 9.6
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.6.0"
+          cache-provider: basic
+
+      - name: Accept Android SDK licenses
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+
+          if [ ! -x "$SDKMANAGER" ]; then
+            echo "sdkmanager not found at $SDKMANAGER"
+            find "$ANDROID_HOME/cmdline-tools" -maxdepth 2 -type f -name sdkmanager -print || true
+            exit 1
+          fi
+
+          set +o pipefail
+          yes | "$SDKMANAGER" --licenses > /dev/null
+          SDKMANAGER_STATUS=${PIPESTATUS[1]}
+          set -o pipefail
+
+          if [ "$SDKMANAGER_STATUS" -ne 0 ]; then
+            echo "sdkmanager --licenses failed with status $SDKMANAGER_STATUS"
+            exit "$SDKMANAGER_STATUS"
+          fi
+
+      - name: Install Android toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+
+          set +o pipefail
+          yes | "$SDKMANAGER"             "platforms;android-36"             "build-tools;36.0.0"             "ndk;28.2.13676358"             "cmake;3.22.1"
+          SDKMANAGER_STATUS=${PIPESTATUS[1]}
+          set -o pipefail
+
+          if [ "$SDKMANAGER_STATUS" -ne 0 ]; then
+            echo "sdkmanager install failed with status $SDKMANAGER_STATUS"
+            exit "$SDKMANAGER_STATUS"
+          fi
+
+      - name: Test AudioEngine header compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          c++ -std=c++20 -Wall -Wextra -Wno-unused-parameter -include cstring \
+            -Ithird_party/oboe/include -Isrc \
+            -c tests/AudioEngineHeaderCompileTests.cpp \
+            -o build/native-tests/audio_engine_header_compile_tests.o
+
+      - name: Test MPC Studio MkII MIDI decoder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcStudioMk2InputDecoderTests.cpp \
+            src/MPC/MpcStudioMk2InputDecoder.cpp \
+            src/MPC/MpcStudioMk2ControlMap.cpp \
+            src/MPC/MpcStudioMk2LedProtocol.cpp \
+            -o build/native-tests/mpc_input_decoder_tests
+          build/native-tests/mpc_input_decoder_tests
+
+      - name: Test MPC Studio MkII Note Repeat timing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcNoteRepeatSchedulerTests.cpp             -o build/native-tests/mpc_note_repeat_scheduler_tests
+          build/native-tests/mpc_note_repeat_scheduler_tests
+
+      - name: Test MPC Studio MkII step-edit routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcStepEditRoutingTests.cpp             -o build/native-tests/mpc_step_edit_routing_tests
+          build/native-tests/mpc_step_edit_routing_tests
+
+      - name: Test MPC Studio MkII Step Edit parameter policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcStepEditParameterPolicyTests.cpp             -o build/native-tests/mpc_step_edit_parameter_policy_tests
+          build/native-tests/mpc_step_edit_parameter_policy_tests
+
+      - name: Test MPC Studio MkII Locate policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcLocatePolicyTests.cpp             -o build/native-tests/mpc_locate_policy_tests
+          build/native-tests/mpc_locate_policy_tests
+
+      - name: Test Android LCD renderer signature
+        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcStudioMk2LcdRendererTest
+      - name: Test Android sequence zoom policy
+        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest
+
+      - name: Test MPC Studio MkII semantic routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror -Isrc             tests/MpcStudioMk2SemanticAdapterTests.cpp             src/MPC/MpcStudioMk2SemanticAdapter.cpp             src/MPC/MpcStudioMk2InputDecoder.cpp             src/MPC/MpcStudioMk2ControlMap.cpp             -o build/native-tests/mpc_mk2_semantic_adapter_tests
+          build/native-tests/mpc_mk2_semantic_adapter_tests
+
+      - name: Test shared waveform peak extraction
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/WaveformTests.cpp \
+            src/Audio/Waveform.cpp \
+            -o build/native-tests/waveform_tests
+          build/native-tests/waveform_tests
+
+      - name: Test PCM WAV sample decoder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/WavSampleTests.cpp \
+            src/Audio/WavSample.cpp \
+            -o build/native-tests/wav_sample_tests
+          build/native-tests/wav_sample_tests
+
+      - name: Test sample playback regions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/SampleRegionTests.cpp             -o build/native-tests/sample_region_tests
+          build/native-tests/sample_region_tests
+
+      - name: Test sample crop
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/SampleCropTests.cpp             -o build/native-tests/sample_crop_tests
+          build/native-tests/sample_crop_tests
+
+      - name: Test sample chop plans
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/SampleChopTests.cpp             -o build/native-tests/sample_chop_tests
+          build/native-tests/sample_chop_tests
+
+      - name: Test recording threshold
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/RecordingThresholdTests.cpp             -o build/native-tests/recording_threshold_tests
+          build/native-tests/recording_threshold_tests
+
+      - name: Test sample layer tuning parameters
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/SampleLayerTuningTests.cpp \
+            -o build/native-tests/sample_layer_tuning_tests
+          build/native-tests/sample_layer_tuning_tests
+
+      - name: Test sample layer pan parameters
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/SampleLayerPanTests.cpp \
+            -o build/native-tests/sample_layer_pan_tests
+          build/native-tests/sample_layer_pan_tests
+
+      - name: Test sample layer gain parameters
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/SampleLayerParametersTests.cpp \
+            -o build/native-tests/sample_layer_parameters_tests
+          build/native-tests/sample_layer_parameters_tests
+
+      - name: Test sample envelope and filter parameters
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/SampleEnvelopeFilterTests.cpp \
+            -o build/native-tests/sample_envelope_filter_tests
+          build/native-tests/sample_envelope_filter_tests
+
+      - name: Test sample playback cursor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/SamplePlaybackCursorTests.cpp             -o build/native-tests/sample_playback_cursor_tests
+          build/native-tests/sample_playback_cursor_tests
+
+      - name: Test audio output policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror -Wno-unused-parameter -include cstring -Ithird_party/oboe/include -Isrc tests/AudioOutputPolicyTests.cpp -o build/native-tests/audio_output_policy_tests
+          build/native-tests/audio_output_policy_tests
+
+      - name: Test sample layer velocity ranges
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/SampleLayerVelocityRangeTests.cpp \
+            -o build/native-tests/sample_layer_velocity_range_tests
+          build/native-tests/sample_layer_velocity_range_tests
+
+      - name: Test MPC pattern operations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcPatternOpsTests.cpp \
+            -o build/native-tests/mpc_pattern_ops_tests
+          build/native-tests/mpc_pattern_ops_tests
+
+      - name: Test MPC pattern scheduler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcPatternSchedulerTests.cpp \
+            src/MPC/Sequencer/MpcPatternScheduler.cpp \
+            -o build/native-tests/mpc_pattern_scheduler_tests
+          build/native-tests/mpc_pattern_scheduler_tests
+
+      - name: Test MPC ratchet expansion
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcRatchetExpanderTests.cpp \
+            src/MPC/Sequencer/MpcPatternScheduler.cpp \
+            -o build/native-tests/mpc_ratchet_expander_tests
+          build/native-tests/mpc_ratchet_expander_tests
+
+      - name: Test MPC sequencer cursor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcSequencerCursorTests.cpp             src/MPC/Sequencer/MpcSequencerCursor.cpp             -o build/native-tests/mpc_sequencer_cursor_tests
+          build/native-tests/mpc_sequencer_cursor_tests
+
+      - name: Test MPC sequencer pad routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcSequencerPadRouterTests.cpp \
+            -o build/native-tests/mpc_sequencer_pad_router_tests
+          build/native-tests/mpc_sequencer_pad_router_tests
+
+      - name: Test bounded audio trigger queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror -pthread             -Isrc             tests/AudioTriggerQueueTests.cpp             -o build/native-tests/audio_trigger_queue_tests
+          build/native-tests/audio_trigger_queue_tests
+
+      - name: Test composed sequencer playback
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcSequencerPlaybackTests.cpp             src/MPC/Sequencer/MpcSequencerCursor.cpp             src/MPC/Sequencer/MpcPatternScheduler.cpp             -o build/native-tests/mpc_sequencer_playback_tests
+          build/native-tests/mpc_sequencer_playback_tests
+
+      - name: Test sequencer to audio trigger bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcSequencerAudioBridgeTests.cpp             -o build/native-tests/mpc_sequencer_audio_bridge_tests
+          build/native-tests/mpc_sequencer_audio_bridge_tests
+
+      - name: Test MPC sequencer runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcSequencerRuntimeTests.cpp \
+            src/MPC/Sequencer/MpcSequencerCursor.cpp \
+            src/MPC/Sequencer/MpcPatternScheduler.cpp \
+            -o build/native-tests/mpc_sequencer_runtime_tests
+          build/native-tests/mpc_sequencer_runtime_tests
+
+      - name: Test MPC project state
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcProjectStateTests.cpp \
+            src/MPC/MpcProjectState.cpp \
+            -o build/native-tests/mpc_project_state_tests
+          build/native-tests/mpc_project_state_tests
+
+      - name: Test sequence transport clock
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcSequenceTransportTests.cpp \
+            src/MPC/MpcProjectState.cpp \
+            -o build/native-tests/mpc_sequence_transport_tests
+          build/native-tests/mpc_sequence_transport_tests
+
+      - name: Test sequence live launcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcSequenceLauncherTests.cpp             src/MPC/MpcProjectState.cpp             -o build/native-tests/mpc_sequence_launcher_tests
+          build/native-tests/mpc_sequence_launcher_tests
+
+      - name: Test sequence recorder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcSequenceRecorderTests.cpp \
+            src/MPC/MpcProjectState.cpp \
+            -o build/native-tests/mpc_sequence_recorder_tests
+          build/native-tests/mpc_sequence_recorder_tests
+
+      - name: Test semantic drum-pad MIDI lookup
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/DrumProgramOpsTests.cpp \
+            -o build/native-tests/drum_program_ops_tests
+          build/native-tests/drum_program_ops_tests
+
+      - name: Test MPC drum program domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/DrumProgramDomainTests.cpp \
+            -o build/native-tests/drum_program_domain_tests
+          build/native-tests/drum_program_domain_tests
+
+      - name: Test MPC Studio MkII Touch Strip policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcTouchStripPolicyTests.cpp             -o build/native-tests/mpc_touch_strip_policy_tests
+          build/native-tests/mpc_touch_strip_policy_tests
+
+      - name: Test MPC Studio MkII Erase policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcErasePolicyTests.cpp             -o build/native-tests/mpc_erase_policy_tests
+          build/native-tests/mpc_erase_policy_tests
+
+      - name: Test MPC Studio MkII Pad Aftertouch policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcPadAftertouchPolicyTests.cpp             -o build/native-tests/mpc_pad_aftertouch_policy_tests
+          build/native-tests/mpc_pad_aftertouch_policy_tests
+
+      - name: Compile and run MPC edit history tests
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror -Isrc             tests/MpcEditHistoryTests.cpp             -o build/native-tests/mpc_edit_history_tests
+          build/native-tests/mpc_edit_history_tests
+
+      - name: Assemble debug APK
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Upload debug APK
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mpc-mk2-groovebox-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          archive: false
+          if-no-files-found: error
+
+      - name: Run Android emulator smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-snapshot-load -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          emulator-boot-timeout: 1200
+          disable-animations: true
+          script: bash tests/android_ui_smoke.sh
