@@ -4406,9 +4406,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         "Track View track " + (i + 1));
                 strip.setBackground(strokeBackground(
                         isSelected
-                                ? Color.rgb(42, 66, 76) : SURFACE_2,
-                        isSelected ? ACCENT : LINE,
-                        7));
+                                ? Color.rgb(42, 36, 39) : SURFACE_2,
+                        isSelected ? DANGER : LINE,
+                        4));
                 strip.setOnClickListener(v -> {
                     setBottomStatus(nativeSequenceSelectTrack(trackIndex));
                     navigationController.setSelectedTrack(trackIndex);
@@ -4497,14 +4497,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         page.addView(scroll, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-
-        TextView hint = label(
-                "SELECTED TRACK • shell Function Bar: REC ARM / TRACK − / TRACK + / MUTE / SOLO",
-                9, MUTED);
-        hint.setGravity(Gravity.CENTER_VERTICAL);
-        hint.setPadding(dp(8), 0, dp(8), 0);
-        page.addView(hint, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
         content.addView(page);
         refreshMpcCompactContext();
