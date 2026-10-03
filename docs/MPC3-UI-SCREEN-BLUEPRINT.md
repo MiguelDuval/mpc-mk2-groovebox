@@ -161,6 +161,7 @@ Interaction:
 
 - single tap selects the Sequence field;
 - Time Signature tap opens a focused modal editor with DO IT / CANCEL;
+- Time Signature uses the documented yellow-highlight treatment so the editable project field is visually distinct from ordinary Main metrics;
 - double tap opens numeric/list editing where appropriate;
 - Data Dial edits the currently focused field;
 - +/- perform incremental change;
