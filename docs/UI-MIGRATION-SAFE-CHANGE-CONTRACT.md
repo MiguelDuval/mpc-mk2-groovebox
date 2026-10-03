@@ -272,6 +272,17 @@ Verification target:
 - source smoke checks lock the hierarchy helper, compact field heights and focus projection;
 - GitHub Actions and physical MkII verification remain separate acceptance gates.
 
+## 2026-10-03 Main section framing checkpoint
+
+Main presentation may consolidate the Sequence and Track/Arrangement regions into flat framed surfaces, provided the change:
+
+- does not create a second semantic focus model;
+- preserves Track/Arrangement as sibling local views;
+- keeps Loop as a dedicated Sequence control;
+- avoids duplicate Arrangement navigation/edit controls.
+
+No realtime, native sequencing or MIDI ownership may be introduced by framing changes.
+
 ## 2026-10-03 Main geometry fidelity checkpoint
 
 The latest bounded Main UI slice tightened the MPC-facing presentation without changing domain/state ownership:
