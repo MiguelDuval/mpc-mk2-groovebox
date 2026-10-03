@@ -3966,62 +3966,97 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
+        page.setContentDescription("MPC Main Track Select context");
         page.setPadding(dp(8), dp(6), dp(8), dp(2));
 
-        TextView heading = label(
-                "TRACK SELECT  •  DATA DIAL / +/-",
+        LinearLayout heading = row();
+        TextView title = label(
+                "TRACK SELECT  •  4×4",
                 13, TEXT);
-        heading.setTypeface(Typeface.DEFAULT_BOLD);
-        page.addView(heading, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        heading.addView(title, new LinearLayout.LayoutParams(
+                0, dp(34), 1));
 
         final int count = startupComplete
                 ? Math.max(0, nativeSequenceGetTrackCount()) : 0;
         final int selected = startupComplete
                 ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        TextView countLabel = label(
+                String.format(Locale.ROOT, "%02d TRACKS", count),
+                9, MUTED);
+        countLabel.setGravity(Gravity.CENTER);
+        countLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        countLabel.setContentDescription("Main Track Select track count");
+        heading.addView(countLabel,
+                new LinearLayout.LayoutParams(dp(76), dp(34)));
+        page.addView(heading);
 
         ScrollView scroll = new ScrollView(this);
-        LinearLayout list = column();
-        list.setContentDescription("Main Track Select list");
+        scroll.setContentDescription("Main Track Select 4x4 grid");
+        LinearLayout grid = column();
+        grid.setPadding(0, dp(2), 0, dp(2));
 
         if (count == 0) {
-            list.addView(label("NO TRACKS", 12, MUTED));
+            grid.addView(label("NO TRACKS", 12, MUTED));
         } else {
-            for (int i = 0; i < count; i++) {
-                final int trackIndex = i;
-                final String status = startupComplete
-                        ? nativeSequenceTrackStatus(i)
-                        : "DRUM  TRACK " + (i + 1);
-                Button button = actionButton(
-                        String.format(
-                                Locale.ROOT,
-                                "%02d  %s  •  %s%s%s",
-                                i + 1,
-                                status,
-                                nativeSequenceGetTrackType(i),
-                                i == selected && startupComplete
-                                        ? "  • CURRENT" : "",
-                                i == selected && startupComplete
-                                        && nativeSequenceIsTrackMuted(i)
-                                        ? "  • M" : ""),
-                        v -> {
-                            setBottomStatus(nativeSequenceSelectTrack(trackIndex));
-                            navigationController.setSelectedTrack(trackIndex);
-                            showTrackSelectPage();
-                        });
-                button.setGravity(Gravity.CENTER_VERTICAL);
-                button.setPadding(dp(10), 0, dp(10), 0);
-                button.setBackground(strokeBackground(
-                        i == selected
-                                ? Color.rgb(42, 66, 76) : SURFACE_2,
-                        i == selected ? ACCENT : LINE,
-                        7));
-                list.addView(button, new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+            for (int rowStart = 0; rowStart < count; rowStart += 4) {
+                LinearLayout gridRow = row();
+                gridRow.setContentDescription(
+                        "Main Track Select row " + (rowStart / 4 + 1));
+
+                for (int column = 0; column < 4; column++) {
+                    final int trackIndex = rowStart + column;
+                    if (trackIndex >= count) {
+                        gridRow.addView(
+                                new android.widget.Space(this),
+                                new LinearLayout.LayoutParams(
+                                        0, dp(68), 1));
+                        continue;
+                    }
+
+                    final boolean isSelected = trackIndex == selected;
+                    final String status = nativeSequenceTrackStatus(trackIndex);
+                    final String displayName = cleanTrackDisplayName(status);
+
+                    Button trackButton = actionButton(
+                            String.format(
+                                    Locale.ROOT,
+                                    "%02d\n%s",
+                                    trackIndex + 1,
+                                    displayName),
+                            v -> {
+                                setBottomStatus(
+                                        nativeSequenceSelectTrack(trackIndex));
+                                navigationController.setSelectedTrack(trackIndex);
+                                showMainPage();
+                                hardwareFocus = 2;
+                                navigationController.setSubcontext(
+                                        MpcUiState.Subcontext.TRACK_SELECT);
+                                navigationController.setDataDialFocus(
+                                        MpcUiState.DataDialFocus.TRACK);
+                                navigationController.setActionAvailable(true);
+                                refreshMainDataDialFocusVisuals();
+                            });
+                    trackButton.setTextSize(9);
+                    trackButton.setTypeface(Typeface.DEFAULT_BOLD);
+                    trackButton.setGravity(Gravity.CENTER);
+                    trackButton.setContentDescription(
+                            "Main Track Select track " + (trackIndex + 1));
+                    trackButton.setBackground(strokeBackground(
+                            isSelected ? SURFACE_2 : BG,
+                            isSelected ? DANGER : LINE,
+                            MPC_FLAT_RADIUS_DP));
+                    gridRow.addView(trackButton,
+                            new LinearLayout.LayoutParams(
+                                    0, dp(68), 1));
+                }
+
+                grid.addView(gridRow, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(68)));
             }
         }
 
-        scroll.addView(list);
+        scroll.addView(grid);
         page.addView(scroll, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
