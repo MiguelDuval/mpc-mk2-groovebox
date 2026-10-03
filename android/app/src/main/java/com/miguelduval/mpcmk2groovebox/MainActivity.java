@@ -4375,13 +4375,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         String headerIdentity = startupComplete
                 ? nativeSequenceTrackStatus(headerTrack)
                 : "Track 01";
-        final int eventMarker = headerIdentity.indexOf("  | events=");
-        if (eventMarker >= 0) {
-            headerIdentity = headerIdentity.substring(0, eventMarker);
-        }
         final int typeSeparator = headerIdentity.indexOf("  ");
         if (typeSeparator >= 0) {
             headerIdentity = headerIdentity.substring(typeSeparator + 2);
+        }
+        final int metadataSeparator = headerIdentity.indexOf("  |");
+        if (metadataSeparator >= 0) {
+            headerIdentity = headerIdentity.substring(0, metadataSeparator);
         }
 
         TextView selectedTrackContext = label("", 13, TEXT);
@@ -4455,16 +4455,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 ? Color.rgb(42, 36, 39) : SURFACE_2,
                         isSelected ? DANGER : LINE,
                         MPC_FLAT_RADIUS_DP));
+                strip.setOnClickListener(v -> {
+                    setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+                    navigationController.setSelectedTrack(trackIndex);
+                    showTrackViewPage();
+                });
 
                 LinearLayout identity = row();
                 identity.setMinimumHeight(dp(26));
+
+                String trackIdentityStatus =
+                        nativeSequenceTrackStatus(trackIndex);
+                final int trackTypeSeparator = trackIdentityStatus.indexOf("  ");
+                String trackDisplayName = trackTypeSeparator >= 0
+                        ? trackIdentityStatus.substring(
+                                trackTypeSeparator + 2)
+                        : trackIdentityStatus;
+                final int trackMetadataSeparator =
+                        trackDisplayName.indexOf("  |");
+                if (trackMetadataSeparator >= 0) {
+                    trackDisplayName = trackDisplayName.substring(
+                            0, trackMetadataSeparator);
+                }
 
                 TextView name = label(
                         String.format(
                                 Locale.ROOT,
                                 "%02d  %s",
                                 i + 1,
-                                nativeSequenceTrackStatus(trackIndex)),
+                                trackDisplayName),
                         11, TEXT);
                 name.setTypeface(Typeface.DEFAULT_BOLD);
                 name.setGravity(Gravity.CENTER_VERTICAL);
