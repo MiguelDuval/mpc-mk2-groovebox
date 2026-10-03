@@ -3562,7 +3562,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setMainFieldFocus(mainTrackLayerField, focus == 10);
         if (mainTrackTypeField != null) {
             mainTrackTypeField.setBackground(strokeBackground(
-                    SURFACE_2, focus == 5 ? DANGER : LINE, 2));
+                    MPC_PANEL_DARK, focus == 5 ? DANGER : MPC_PANEL_BORDER,
+                    MPC_FLAT_RADIUS_DP));
         }
     }
 
