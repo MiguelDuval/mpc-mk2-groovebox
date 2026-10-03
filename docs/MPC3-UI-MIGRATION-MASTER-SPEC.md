@@ -1189,6 +1189,6 @@ The canonical shell geometry was tuned for landscape musical use: shallow Toolba
 Track and Pad XL Strip presentations share one tab hierarchy: LVL / FX / SEND / I/O. Only LVL is active while the current backend lacks truthful compact FX/Send/I/O mutations or values.
 
 
-### 2026-10-03 Main Track state-row ordering
+### 2026-10-03 Main Track state-row ordering correction
 
-Main Track now places the compact Monitor / Length / Velocity / Layer context directly above the performance canvas. This is a layout-only correction to the documented hierarchy; existing Track Edit, Pad and sample actions remain unchanged.
+Main Track places the compact Monitor / Length / Velocity / Layer context directly below the performance canvas, with the Track/Pad selector at the lower-right edge of the Track/Arrangement section. This placement was corrected after a fresh cross-check against Akai's current MPC 3 Output Routing Basics reference; no backend semantics changed.
