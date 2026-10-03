@@ -1064,3 +1064,8 @@ The compact Monitor / Length / Velocity / Layer row is positioned immediately ab
 ## 2026-10-03 Track View shell/function-bar parity
 
 Track View is now treated as a pure shell workspace: the local header carries only Sequence/Track context, while Track −/+, Rec Arm and other Track View actions remain owned by the shared Function Bar. The workspace no longer duplicates PREV/NEXT/ARRANGE controls or a second instructional footer, preserving one command surface and more vertical space for the selectable Track list.
+
+
+## 2026-10-03 Main Track/Arrangement header treatment
+
+The sibling Track / Arrangement headers use a flat contextual treatment rather than generic rounded action cards. The active header remains visually distinct with the MPC red focus accent, while the workspace itself stays shared and the selection semantics are unchanged.
