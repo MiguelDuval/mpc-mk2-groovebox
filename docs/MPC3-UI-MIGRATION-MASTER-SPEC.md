@@ -1092,6 +1092,18 @@ Controller indication is now treated as persistent state projection: single-colo
 Full/Half/16 Levels and Pad/Track Mute modes are stateful, and Note Repeat rate labels share the native index order.
 
 
+## 2026-10-03 Persistent context hierarchy fidelity checkpoint
+
+The compact left context rail now uses a denser MPC-facing information hierarchy without changing its semantic ownership:
+
+- thin section captions establish SEQUENCE, TRACK, PROGRAM, PAD and DATA DIAL groups instead of presenting every value as an equally weighted card;
+- compact fields use smaller typography and stable flat geometry while preserving the fixed 210dp context rail;
+- Main Data Dial focus is projected back onto the relevant persistent context field with the same red focus accent used by Main workspace focus;
+- Data Dial labels collapse verbose enum names into operator-facing labels such as BPM, BARS, SEQ START, TRACK TYPE and LAYER;
+- Mixer Strip visibility still affects only mixer-detail controls; the canonical Sequence/Track/Program/Pad/Dial context remains visible.
+
+This is presentation-only. MpcUiState, MpcNavigationController, native sequencing/audio timing and the shared shell layout remain unchanged.
+
 ## 2026-10-03 Main Geometry Fidelity Pass
 
 The bounded Main visual-fidelity slice is now implemented against the existing architecture:
