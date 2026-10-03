@@ -144,7 +144,8 @@ if ! grep -Fq -- 'compactMixerStripModeToggle = actionButton("□  ▦",' "$MAIN
   exit 1
 fi
 
-if ! grep -Fq -- '0.33f' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- '0.67f' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- '0.33f' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- '0.67f' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Sequence/Track workspace proportions drifted from the MPC density target"
   exit 1
 fi
