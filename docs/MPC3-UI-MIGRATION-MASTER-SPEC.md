@@ -1107,7 +1107,7 @@ The Main lower workspace now presents TRACK and ARRANGEMENT as direct sibling he
 
 - Removed the generic MAIN VIEW label/selector layer.
 - Removed duplicate TRACK/ARRANGEMENT labels from the child workspaces.
-- Track Edit pencil remains attached to the Track workspace action edge.
+- Track Edit pencil is attached to the right edge of the Track identity header.
 - Arrangement GRID remains attached to the Arrangement workspace action edge.
 - Switching tabs changes presentation only; Sequence, Track, Program/Pad context and transport remain authoritative and unchanged.
 
