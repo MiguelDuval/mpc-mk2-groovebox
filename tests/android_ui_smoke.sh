@@ -37,7 +37,13 @@ for required in \
   "Main Mode Track / Arrangement context header" \
   "Main Mode selected track" \
   "MPC Toolbar Menu" \
+  "MPC_TOOLBAR_BG" \
+  "pageTitle.setVisibility(View.GONE)" \
   "Main Mode sequence header" \
+  "Main Mode Track Program context" \
+  "Main Mode selected program" \
+  "Main Mode program ownership status" \
+  "buildMainTrackTypeIconStrip" \
   "Main Mode BPM" \
   "Main Time Signature field • tap for editor" \
   "MPC_TIME_SIGNATURE_HIGHLIGHT" \
@@ -175,6 +181,22 @@ fi
 
 if ! grep -Fq -- 'MPC_FLAT_RADIUS_DP = 0' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: MPC Main/shell flat-chrome radius contract is missing"
+  exit 1
+fi
+if ! grep -Fq -- 'private static final int MPC_TOOLBAR_BG' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MPC One toolbar visual contract is missing"
+  exit 1
+fi
+if ! grep -Fq -- 'pageTitle.setVisibility(View.GONE);' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: legacy duplicate Main page title must remain hidden in the MPC toolbar"
+  exit 1
+fi
+if ! grep -Fq -- 'buildMainTrackTypeIconStrip()' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track type icon cluster contract is missing"
+  exit 1
+fi
+if ! grep -Fq -- 'Main Mode selected program' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: central MPC Program context contract is missing"
   exit 1
 fi
 
