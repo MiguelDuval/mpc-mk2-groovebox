@@ -2251,10 +2251,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         setMainTrackArrangementView(false);
 
+        /*
+         * The Sequence band is content-sized. Its two compact 42dp rows
+         * must not consume an arbitrary third of the Main workspace and leave
+         * dead vertical space before the Track/Arrangement canvas.
+         */
         page.addView(sequenceCard, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.33f));
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
         page.addView(trackProgramSection, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.67f));
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         mainSequenceNameField = sequenceName;
         mainSequenceTypeField = sequenceType;

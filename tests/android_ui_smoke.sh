@@ -391,9 +391,24 @@ for required in   'MPC_FLAT_RADIUS_DP));'   'group.setBackground(strokeBackgroun
   fi
 done
 
-if ! grep -Fq -- '0.33f' "$MAIN_ACTIVITY_SOURCE" || \
-   ! grep -Fq -- '0.67f' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Sequence/Track workspace proportions drifted from the MPC density target"
+echo "Running Main workspace density preflight..."
+main_geometry_start=$(grep -n -m1 'page.addView(sequenceCard, new LinearLayout.LayoutParams(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_geometry_end=$(grep -n -m1 'page.addView(trackProgramSection, new LinearLayout.LayoutParams(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_geometry_start" || -z "$main_geometry_end" || "$main_geometry_end" -le "$main_geometry_start" ]]; then
+  echo "ERROR: Main Sequence/Track layout boundary is missing"
+  exit 1
+fi
+main_geometry_block=$(sed -n "${main_geometry_start},$((main_geometry_end + 2))p" "$MAIN_ACTIVITY_SOURCE")
+if ! grep -Fq -- 'ViewGroup.LayoutParams.WRAP_CONTENT' <<<"$main_geometry_block"; then
+  echo "ERROR: Main Sequence band must be content-sized instead of consuming a proportional workspace weight"
+  exit 1
+fi
+if grep -Fq -- '0.33f' <<<"$main_geometry_block" || grep -Fq -- '0.67f' <<<"$main_geometry_block"; then
+  echo "ERROR: Main Sequence/Track layout must not reserve dead proportional space"
+  exit 1
+fi
+if ! grep -Fq -- 'ViewGroup.LayoutParams.MATCH_PARENT, 0, 1' <<<"$main_geometry_block"; then
+  echo "ERROR: Main Track/Arrangement workspace must own the remaining vertical space"
   exit 1
 fi
 
