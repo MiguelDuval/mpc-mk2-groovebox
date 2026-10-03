@@ -316,6 +316,21 @@ if grep -Fq -- 'dp(44)' <<<"$main_header_block"; then
   exit 1
 fi
 
+echo "Running MPC One Main visual hierarchy preflight..."
+for required in \
+  'mainSectionToggle(' \
+  'Main Track Arrangement segmented control' \
+  'Main Mode Track workspace' \
+  'Main Mode selected program' \
+  'Main Track visual hierarchy' \
+  'MPC_MAIN_WORKSPACE_WEIGHT' \
+  'MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC One Main visual hierarchy contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running Main workspace state-preservation preflight..."
 main_page_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 main_page_end=$(grep -n -m1 'private void installMainNumericEntry' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
