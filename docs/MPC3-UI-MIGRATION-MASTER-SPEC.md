@@ -274,6 +274,17 @@ The persistent Main shell context is now an actionable entry surface for the sel
 
 The change remains presentation/navigation-only and reuses the existing semantic selection commands; no realtime audio, scheduler, MIDI transport or domain playback path is changed.
 
+## 2026-10-03 MPC3 Main Track-container reconciliation
+
+Current MPC3 references confirm that Main's Track/Arrangement area presents the selected Track as the primary identity, with track type and the Track Edit affordance; Programs are unified into the Track container rather than exposed as a persistent standalone Program field in the Main header. Program selection remains a supported contextual workflow in this project because the current backend still models Drum Track `programId` ownership.
+
+Main Track selection behavior is also explicitly separated into two ergonomics paths:
+
+- Track field + Data Dial / +/- changes the selected Track while remaining on Main.
+- Press-and-hold Main may open the dedicated 4×4 Track selection window on MPC hardware; that hold gesture remains a later hardware-fidelity increment and is not fabricated in the current adapter.
+
+The current UI therefore keeps Program Select reachable through its dedicated hardware/context action without reserving visible Main header space for a duplicate Program field. The Track identity shown in Main is user-facing track number + track name; backend status metadata such as event count and record-arm state stays outside that identity.
+
 ## 2026-10-03 MPC compact-context state ownership increment
 
 The compact channel-context presentation is now represented by the UI/navigation state machine rather than duplicated Activity-local booleans:
