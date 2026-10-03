@@ -507,9 +507,15 @@ done
 
 echo "Running persistent MPC context rail source preflight..."
 for required in \
+  "compactContextPanel" \
   "compactSequenceContext" \
   "compactDialContext" \
   "compactSequenceOverviewView" \
+  "\"MPC shell compact track program context\"" \
+  "\"MPC shell track context\"" \
+  "focusMainTrackField();" \
+  "showSequenceSelectPage();" \
+  "showProgramSelectPage();" \
   "\"MPC shell sequence context\"" \
   "\"MPC shell Data Dial focus\"" \
   "\"MPC shell sequence overview\"" \
