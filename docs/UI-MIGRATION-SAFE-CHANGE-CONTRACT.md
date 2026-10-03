@@ -272,6 +272,10 @@ Verification target:
 - source smoke checks lock the hierarchy helper, compact field heights and focus projection;
 - GitHub Actions and physical MkII verification remain separate acceptance gates.
 
+## 2026-10-03 Compact context sizing checkpoint
+
+The persistent context panel may use WRAP_CONTENT/content-sized geometry. A fixed height must not be reintroduced solely to reserve space for the optional Mixer Strip detail layer.
+
 ## 2026-10-03 Main section framing checkpoint
 
 Main presentation may consolidate the Sequence and Track/Arrangement regions into flat framed surfaces, provided the change:
