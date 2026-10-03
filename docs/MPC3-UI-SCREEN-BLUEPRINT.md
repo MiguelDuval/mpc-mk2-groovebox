@@ -223,7 +223,8 @@ open Grid/appropriate editor.
 - Main presents Track and Arrangement as sibling local views of the same selected Track/Sequence context.
 - Track View is the default Main view on entry, matching the MPC workflow; switching to Arrangement changes presentation only and does not create a new navigation mode.
 - Track View keeps the performance pad/sample surface; Track Edit now provides a bounded truthful editor for the currently implemented Drum pad semantics.
-- The Track identity header exposes a compact pencil affordance for Track Edit, matching the MPC entry point. The same semantic destination is also opened by double-tapping the Main Track sample/waveform area.
+- The Track identity header exposes a compact pencil affordance for Track Edit, matching the MPC entry point.
+- The Arrangement tab exposes its own compact pencil affordance; it remains a truthful RESERVED action until arrangement-level edit semantics exist. Double-tapping the Arrangement preview still opens Grid. The same semantic destination is also opened by double-tapping the Main Track sample/waveform area.
 - The Track identity header's compact pencil affordance and a double-tap on the Main Track sample/waveform area are the same semantic Track Edit entry gesture.
 - The Track/Pad selector remains at the lower-right edge of the Track/Arrangement section; in the current implementation it is the rightmost control of the compact state row below the performance canvas.
 - Double-tap on the Main Arrangement overview opens Grid for a Drum Track; unsupported Track Types remain explicitly unavailable rather than being routed into a mismatched editor.
