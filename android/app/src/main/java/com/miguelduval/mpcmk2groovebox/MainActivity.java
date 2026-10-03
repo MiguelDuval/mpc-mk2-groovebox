@@ -997,8 +997,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         field.setBackground(strokeBackground(
                 MPC_PANEL,
                 MPC_PANEL_BORDER,
-                MPC_FLAT_RADIUS_DP));        if (listener != null) {            field.setOnClickListener(listener);
-            field.setFocusable(true);
+                MPC_FLAT_RADIUS_DP));        if (listener != null) {            field.setOnClickListener(listener);            field.setFocusable(true);
             field.setClickable(true);
         }
         return field;
@@ -1218,6 +1217,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setCompactContextFocus(
                 compactDialContext,
                 dialFocus != MpcUiState.DataDialFocus.NONE);
+
+        // In MPC Main the selected channel/track strip is a strong visual
+        // anchor. Keep the persistent Track context visibly selected while
+        // retaining a white focus border when Data Dial is on Track.
+        compactTrackContext.setTextColor(MPC_TOOLBAR_TEXT);
+        compactTrackContext.setBackground(strokeBackground(
+                MPC_TOOLBAR_BG,
+                trackFocus ? Color.WHITE : Color.rgb(183, 35, 57),
+                MPC_FLAT_RADIUS_DP));
 
         if (nativeStateReady) {
             final String trackType = nativeSequenceGetTrackType(trackIndex);
@@ -1997,8 +2005,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 .setView(root)
                 .setNegativeButton("CANCEL", null)                .setPositiveButton("DO IT", (d, which) -> {
                     setBottomStatus(                            nativeSequenceSetTimeSignature(
-                                    numeratorState[0], denominatorState[0]));
-                    refreshMainModeFields();
+                                    numeratorState[0], denominatorState[0]));                    refreshMainModeFields();
                     refreshSequenceControls();
                     setBottomStatus(
                             "TIME SIGNATURE • "
@@ -2997,8 +3004,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             mainTrackWaveform.setSelection(                    start / (float) frames,
                     end / (float) frames);            mainTrackWaveform.setDurationMs(
                     sampleRate > 0
-                            ? frames * 1000.0f / sampleRate
-                            : 0.0f);
+                            ? frames * 1000.0f / sampleRate                            : 0.0f);
         }
         mainTrackWaveform.setRecording(false);
 
@@ -3997,8 +4003,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 lp.width = 0;
                 lp.height = 0;
                 lp.columnSpec = GridLayout.spec(displayColumn, 1f);
-                lp.rowSpec = GridLayout.spec(displayRow, 1f);
-                grid.addView(b, lp);
+                lp.rowSpec = GridLayout.spec(displayRow, 1f);                grid.addView(b, lp);
             }
         }
         return grid;
@@ -4997,8 +5002,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? status.substring(0, separator) : status;
         final int kindSeparator = withoutEvents.indexOf("  ");
         if (kindSeparator >= 0 && kindSeparator + 2 < withoutEvents.length()) {
-            return withoutEvents.substring(kindSeparator + 2).trim();
-        }
+            return withoutEvents.substring(kindSeparator + 2).trim();        }
         return withoutEvents.trim();
     }
 
@@ -5997,8 +6001,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(sequenceStepEventInfo, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
-        TextView toolInfo = label(
-                "STEP PARAMETER • Data Dial / +/− edit the focused event field",
+        TextView toolInfo = label(                "STEP PARAMETER • Data Dial / +/− edit the focused event field",
                 9, MUTED);
         toolInfo.setGravity(Gravity.CENTER_VERTICAL);
         toolInfo.setPadding(dp(10), 0, dp(10), 0);
@@ -6998,7 +7001,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setBottomStatus(nativeSequenceSetQuantizeGrid(values[index]));
         refreshSequencePageTools();
     }
-
     private void refreshSequencePageTools() {
         refreshSequenceControls();
         if (sequenceQuantizeView != null) {
@@ -7997,8 +7999,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             recordingTelemetry.setText(String.format(
                     Locale.ROOT,
                     "Duration %.2fs  •  Peak %d%%  •  Frames %d",
-                    seconds,
-                    Math.round(peak * 100.0f),
+                    seconds,                    Math.round(peak * 100.0f),
                     frames));
         }
     }
@@ -8997,8 +8998,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         backMain = findViewWithExactText(
                 getWindow().getDecorView(), "BACK MAIN");
         if (backMain == null || !backMain.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Select back");
-            return;
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Select back");            return;
         }
 
         onHardwareAction(
