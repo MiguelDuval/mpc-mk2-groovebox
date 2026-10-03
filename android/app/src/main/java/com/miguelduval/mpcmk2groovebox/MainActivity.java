@@ -4334,22 +4334,47 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.setContentDescription("MPC Track View workspace");
         page.setPadding(dp(8), dp(6), dp(8), dp(2));
 
+        /*
+         * MPC Track View is a context/list surface inside the common shell.
+         * Track stepping and arrangement navigation belong to the shared
+         * Function Bar / shortcut system; do not duplicate those controls
+         * inside the workspace header.
+         */
         LinearLayout header = row();
-        header.addView(sectionLabelView(
-                "SEQUENCE • TRACK VIEW",
-                new LinearLayout.LayoutParams(0, dp(34), 1)));
-        header.addView(actionButton("PREV", v -> {
-            setBottomStatus(nativeSequencePrevious());
-            showTrackViewPage();
-        }), new LinearLayout.LayoutParams(dp(66), dp(34)));
-        header.addView(actionButton("NEXT", v -> {
-            setBottomStatus(nativeSequenceNext());
-            showTrackViewPage();
-        }), new LinearLayout.LayoutParams(dp(66), dp(34)));
-        header.addView(actionButton(
-                "ARRANGE",
-                v -> showArrangePage()),
-                new LinearLayout.LayoutParams(dp(90), dp(34)));
+        header.setContentDescription("MPC Track View context header");
+
+        TextView sequenceContext = label("", 12, TEXT);
+        sequenceContext.setTypeface(Typeface.DEFAULT_BOLD);
+        sequenceContext.setGravity(Gravity.CENTER_VERTICAL);
+        sequenceContext.setPadding(dp(6), 0, dp(6), 0);
+        sequenceContext.setText(String.format(
+                Locale.ROOT,
+                "SEQUENCE %02d • TRACK VIEW",
+                startupComplete
+                        ? nativeSequenceGetIndex() + 1
+                        : 1));
+        header.addView(sequenceContext,
+                new LinearLayout.LayoutParams(0, dp(34), 1));
+
+        TextView selectedTrackContext = label("", 11, MUTED);
+        selectedTrackContext.setTypeface(Typeface.DEFAULT_BOLD);
+        selectedTrackContext.setGravity(Gravity.CENTER_VERTICAL);
+        selectedTrackContext.setPadding(dp(6), 0, dp(6), 0);
+        selectedTrackContext.setContentDescription(
+                "MPC Track View selected track context");
+        final int headerTrack = startupComplete
+                ? Math.max(0, nativeSequenceGetSelectedTrack())
+                : 0;
+        final int headerTrackCount = startupComplete
+                ? Math.max(1, nativeSequenceGetTrackCount())
+                : 1;
+        selectedTrackContext.setText(String.format(
+                Locale.ROOT,
+                "TRACK %02d/%02d",
+                headerTrack + 1,
+                headerTrackCount));
+        header.addView(selectedTrackContext,
+                new LinearLayout.LayoutParams(dp(82), dp(34)));
         page.addView(header);
 
         ScrollView scroll = new ScrollView(this);
@@ -4474,7 +4499,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         TextView hint = label(
-                "SELECTED TRACK • use the shell Function Bar for REC ARM / TRACK − / TRACK + / MUTE / SOLO",
+                "SELECTED TRACK • shell Function Bar: REC ARM / TRACK − / TRACK + / MUTE / SOLO",
                 9, MUTED);
         hint.setGravity(Gravity.CENTER_VERTICAL);
         hint.setPadding(dp(8), 0, dp(8), 0);
