@@ -258,7 +258,7 @@ for required in \
   'MPC_MAIN_RADIUS_DP = 0' \\
   'private Button mainActionButton(' \\
   'page.setPadding(dp(MPC_MAIN_CONTENT_GUTTER_DP), dp(2)' \
-  'sequenceCard.setPadding(0, 0, 0, dp(MPC_MAIN_SECTION_GAP_DP));' \
+  'sequenceCard.setPadding(dp(4), dp(4), dp(4), dp(MPC_MAIN_SECTION_GAP_DP));' \
   'sequenceCard.addView(sequenceHeader' \
   'sequenceCard.addView(sequenceFields' \
   'trackProgramSection.addView(trackContextHeader' \
