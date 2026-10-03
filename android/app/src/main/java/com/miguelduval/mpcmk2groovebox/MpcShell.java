@@ -23,6 +23,8 @@ final class MpcShell {
     private static final int SHORTCUT_RAIL_WIDTH_DP = 48;
     private static final int CHANNEL_STRIP_WIDTH_DP = 210;
     private static final int FUNCTION_BAR_HEIGHT_DP = 40;
+    private static final int RAIL_CONTENT_INSET_DP = 4;
+    private static final int CONTEXT_CONTENT_INSET_DP = 4;
 
     private final LinearLayout root;
     private final LinearLayout toolbar;
@@ -36,6 +38,7 @@ final class MpcShell {
         root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
+        // Keep shell chrome edge-tight; workspaces own their internal gutters.
 
         toolbar = new LinearLayout(context);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
@@ -53,7 +56,11 @@ final class MpcShell {
         shortcutRail = new LinearLayout(context);
         shortcutRail.setOrientation(LinearLayout.VERTICAL);
         shortcutRail.setBackgroundColor(Color.rgb(18, 21, 24));
-        shortcutRail.setPadding(dp(context, 6), dp(context, 6), dp(context, 6), dp(context, 6));
+        shortcutRail.setPadding(
+                dp(context, RAIL_CONTENT_INSET_DP),
+                dp(context, RAIL_CONTENT_INSET_DP),
+                dp(context, RAIL_CONTENT_INSET_DP),
+                dp(context, RAIL_CONTENT_INSET_DP));
         body.addView(shortcutRail, new LinearLayout.LayoutParams(
                 dp(context, SHORTCUT_RAIL_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -67,8 +74,10 @@ final class MpcShell {
         contextArea.setOrientation(LinearLayout.VERTICAL);
         contextArea.setBackgroundColor(Color.rgb(16, 19, 22));
         contextArea.setPadding(
-                dp(context, 5), dp(context, 6),
-                dp(context, 5), dp(context, 6));
+                dp(context, CONTEXT_CONTENT_INSET_DP),
+                dp(context, CONTEXT_CONTENT_INSET_DP),
+                dp(context, CONTEXT_CONTENT_INSET_DP),
+                dp(context, CONTEXT_CONTENT_INSET_DP));
         body.addView(contextArea, new LinearLayout.LayoutParams(
                 dp(context, CHANNEL_STRIP_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT));
 
