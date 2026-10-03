@@ -483,6 +483,16 @@ for required in   'MPC_FLAT_RADIUS_DP));'   'group.setBackground(strokeBackgroun
   fi
 done
 
+echo "Running compact context sizing preflight..."
+if grep -Fq -- 'ViewGroup.LayoutParams.MATCH_PARENT, dp(304)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: persistent MPC context rail must not reserve the obsolete fixed 304dp height"
+  exit 1
+fi
+if ! grep -Fq -- 'ViewGroup.LayoutParams.WRAP_CONTENT));' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: persistent MPC context rail must remain content-sized"
+  exit 1
+fi
+
 echo "Running Main section framing preflight..."
 for required in \
   'sequenceCard.setBackground(strokeBackground(' \
