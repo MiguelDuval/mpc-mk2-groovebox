@@ -151,7 +151,7 @@ if ! grep -Fq -- 'compactContextField(' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq
   exit 1
 fi
 
-if ! grep -Fq -- '"TRANSPOSE\\n—"' "$MAIN_ACTIVITY_SOURCE" &&    ! grep -Fq -- '"TRANSPOSE\\\\n—"' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'transpose.setText("TRANSPOSE\\n—");' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main TRANSPOSE unavailable state contract is missing"
   exit 1
 fi
