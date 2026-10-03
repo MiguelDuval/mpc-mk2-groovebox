@@ -86,6 +86,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int ACCENT = Color.rgb(69, 211, 255);
     private static final int ACCENT_2 = Color.rgb(255, 180, 72);
     private static final int DANGER = Color.rgb(236, 83, 83);
+    // MPC One / MPC3 visual language: vivid transport header over graphite UI.
+    // These are presentation constants only; semantic state continues to use
+    // the existing domain/UI-state model.
+    private static final int MPC_TOOLBAR_BG = Color.rgb(224, 30, 61);
+    private static final int MPC_TOOLBAR_TEXT = Color.WHITE;
+    private static final int MPC_PANEL = Color.rgb(39, 43, 47);
+    private static final int MPC_PANEL_DARK = Color.rgb(28, 31, 34);
+    private static final int MPC_PANEL_BORDER = Color.rgb(75, 82, 88);
+    private static final int MPC_SELECTED = Color.rgb(235, 42, 68);
     private static final int MPC_TIME_SIGNATURE_HIGHLIGHT = Color.rgb(240, 194, 48);
     private static final int ACTIVE = Color.rgb(63, 207, 117);
     // MPC3 Toolbar geometry: fixed hit-target zones, with only the transport clock expanding.
@@ -707,6 +716,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactContextPanel.setContentDescription(
                 "MPC shell compact track program context");
         compactContextPanel.setPadding(dp(2), dp(2), dp(2), dp(2));
+        compactContextPanel.setBackgroundColor(MPC_PANEL_DARK);
 
         compactContextPanel.addView(compactContextCaption("SEQUENCE"),
                 new LinearLayout.LayoutParams(
@@ -802,6 +812,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactMixerPanel.setContentDescription(
                 "MPC condensed Mixer Strip");
         compactMixerPanel.setPadding(dp(2), dp(2), dp(2), dp(2));
+        compactMixerPanel.setBackgroundColor(MPC_PANEL);
 
         LinearLayout trackTabs = buildCompactMixerTabs();
         compactTrackTabs = trackTabs;
@@ -984,8 +995,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         field.setTypeface(Typeface.DEFAULT_BOLD);
         field.setContentDescription(contentDescription);
         field.setBackground(strokeBackground(
-                SURFACE_2,
-                LINE,
+                MPC_PANEL,
+                MPC_PANEL_BORDER,
                 MPC_FLAT_RADIUS_DP));
         if (listener != null) {
             field.setOnClickListener(listener);
@@ -1107,9 +1118,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ? "TC " + sequenceGridLabel(
                                 nativeSequenceGetQuantizeGrid()).replace("Q ", "")
                         : "TC OFF");
+        timingCorrectTopButton.setTextColor(MPC_TOOLBAR_TEXT);
         timingCorrectTopButton.setBackground(strokeBackground(
-                enabled ? Color.rgb(74, 124, 88) : SURFACE_2,
-                enabled ? ACTIVE : LINE,
+                enabled ? Color.rgb(183, 35, 57) : Color.TRANSPARENT,
+                enabled ? Color.WHITE : Color.TRANSPARENT,
                 MPC_FLAT_RADIUS_DP));
 
         if (metronomeTopButton != null) {
@@ -1551,6 +1563,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         b.setEnabled(enabled);
         b.setAlpha(enabled ? 1.0f : 0.45f);
         b.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        b.setTextColor(TEXT);
+        b.setBackground(strokeBackground(
+                MPC_PANEL_DARK,
+                MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));
+        b.setTypeface(Typeface.DEFAULT_BOLD);
         functionBar.addView(b, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
     }
@@ -1640,8 +1658,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bar.setPadding(
                 dp(MPC_TOOLBAR_INSET_DP), dp(3),
                 dp(MPC_TOOLBAR_INSET_DP), dp(3));
-        bar.setBackgroundColor(SURFACE);
-        bar.setContentDescription("MPC Main Toolbar");
+        bar.setBackgroundColor(MPC_TOOLBAR_BG);
+        bar.setContentDescription("MPC One Main Toolbar");
 
         Button menu = topButton("▦");
         menu.setContentDescription("MPC Toolbar Menu");
@@ -1662,18 +1680,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // showMainPage() is part of shell construction, so the current-page
         // field must exist before the first page render. Keep it in the MPC
         // toolbar instead of leaving the legacy field uninitialized.
-        pageTitle = label("MAIN", 9, ACCENT);
+        pageTitle = label("MAIN", 9, MPC_TOOLBAR_TEXT);
         pageTitle.setGravity(Gravity.CENTER);
         pageTitle.setTypeface(Typeface.DEFAULT_BOLD);
         pageTitle.setContentDescription("MPC current page");
-        bar.addView(pageTitle, new LinearLayout.LayoutParams(
-                dp(62),
-                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
+        // MPC One's Toolbar is status-oriented; the active page is communicated
+        // by the left shortcut/context system, not by a duplicate title chip.
+        pageTitle.setVisibility(View.GONE);
 
         sequenceTransportView = label(
-                "BAR 001  BEAT 1  TICK 000",
+                "BAR  001    BEAT  1    TICK  000",
                 9,
-                TEXT);
+                MPC_TOOLBAR_TEXT);
         sequenceTransportView.setGravity(Gravity.CENTER);
         sequenceTransportView.setTypeface(Typeface.DEFAULT_BOLD);
         sequenceTransportView.setContentDescription("Sequence position and tempo");
@@ -2018,13 +2036,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private Button mpcShortcutButton(String text, MpcUiState.Mode mode) {
         Button b = button(text);
-        b.setTextSize(9);
+        b.setTextSize(18);
+        b.setTextColor(MUTED);
         b.setTypeface(Typeface.DEFAULT_BOLD);
         b.setMinHeight(0);
         b.setMinimumHeight(0);
         b.setPadding(dp(2), 0, dp(2), 0);
         b.setGravity(Gravity.CENTER);
+        b.setBackground(strokeBackground(
+                BG,
+                Color.TRANSPARENT,
+                MPC_FLAT_RADIUS_DP));
         b.setTag(mode);
+        b.setContentDescription("MPC shortcut " + (mode == null ? "unknown" : mode.label()));
         b.setOnClickListener(v -> navigateToMode(mode));
         return b;
     }
@@ -2110,8 +2134,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final boolean selected = tag == active;
             button.setTextColor(selected ? TEXT : MUTED);
             button.setBackground(strokeBackground(
-                    selected ? SURFACE_2 : BG,
-                    selected ? DANGER : LINE,
+                    selected ? MPC_SELECTED : BG,
+                    selected ? MPC_SELECTED : Color.TRANSPARENT,
                     MPC_FLAT_RADIUS_DP));
         }
     }
@@ -2195,7 +2219,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceCard.setContentDescription("Main Mode Sequence section");
         sequenceCard.setPadding(dp(4), dp(4), dp(4), dp(MPC_MAIN_SECTION_GAP_DP));
         sequenceCard.setBackground(strokeBackground(
-                SURFACE, LINE, MPC_MAIN_RADIUS_DP));
+                MPC_PANEL, MPC_PANEL_BORDER, MPC_MAIN_RADIUS_DP));
 
         LinearLayout sequenceHeader = row();
         sequenceHeader.setContentDescription("Main Mode sequence header");
@@ -2276,7 +2300,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout trackProgramSection = mainSection();
         trackProgramSection.setContentDescription("Main Mode Track Program section");
         trackProgramSection.setBackground(strokeBackground(
-                SURFACE, LINE, MPC_MAIN_RADIUS_DP));
+                MPC_PANEL, MPC_PANEL_BORDER, MPC_MAIN_RADIUS_DP));
         trackProgramSection.setPadding(
                 dp(4), dp(MPC_MAIN_SECTION_GAP_DP), dp(4), 0);
 
@@ -8427,7 +8451,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Button topButton(String text) {
         Button b = button(text);
         b.setTextSize(10);
-        b.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        b.setTextColor(MPC_TOOLBAR_TEXT);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setBackground(strokeBackground(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
+                MPC_FLAT_RADIUS_DP));
         return b;
     }
 
