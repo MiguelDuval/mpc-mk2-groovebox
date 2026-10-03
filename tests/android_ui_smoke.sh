@@ -92,14 +92,23 @@ for required in \
   "uiAuditSmokeMode ? View.VISIBLE : View.GONE" \
   "mpcShortcutLabel" \
   "mpcShortcutButton" \
-  "hardwareFocus = drumTrack ? 10 : 0;" \
-  "hardwareFocus == 10" \
   "buttonLedOnState" \
   "syncHardwareLevelModeLeds" \
   "syncHardwareMuteModeLed" \
   "syncPersistentHardwareModeLeds"; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MainActivity source contract missing: $required"
+    exit 1
+  fi
+done
+
+if grep -Fq -- 'private int hardwareFocus' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Data Dial focus must not have an independent MainActivity hardwareFocus owner"
+  exit 1
+fi
+for required in   'private int hardwareFocusId()'   'navigationController.state().dataDialFocus()'   'MpcUiState.DataDialFocus.SEQUENCE_BPM'   'MpcUiState.DataDialFocus.SEQUENCE_BARS'   'MpcUiState.DataDialFocus.TRACK'   'MpcUiState.DataDialFocus.PROGRAM'   'MpcUiState.DataDialFocus.TRACK_TYPE'   'MpcUiState.DataDialFocus.SAMPLE_LAYER'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: semantic Data Dial owner contract missing: $required"
     exit 1
   fi
 done
@@ -233,7 +242,7 @@ if grep -Fq -- 'SELECTED TRACK • shell Function Bar' <<<"$track_view_block"; t
   exit 1
 fi
 
-if ! grep -Fq -- 'Track −/+ is a high-frequency Main action, not a navigation command' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1).getVisibility()' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'hardwareFocus = 2;' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'Track −/+ is a high-frequency Main action, not a navigation command' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1).getVisibility()' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'MpcUiState.DataDialFocus.TRACK' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track −/+ must preserve local view context and restore Track Data Dial focus"
   exit 1
 fi

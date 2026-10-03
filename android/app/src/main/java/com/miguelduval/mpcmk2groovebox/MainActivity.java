@@ -237,7 +237,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int HARDWARE_FOCUS_SEQUENCE_BPM = 19;
     private static final int HARDWARE_FOCUS_SEQUENCE_BARS = 20;
 
-    private int hardwareFocus = 0;
     private int stepEditParameter = STEP_EDIT_PARAMETER_VELOCITY;
     private int hardwarePadBank = 0;
     private int hardwareTouchStripMode = TOUCH_STRIP_MODE_LEVEL;
@@ -1333,7 +1332,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                     == View.VISIBLE;
             showMainPage();
             setMainTrackArrangementView(arrangementSelected);
-            hardwareFocus = 2;
+            navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
             navigationController.setSubcontext(
                     MpcUiState.Subcontext.TRACK_SELECT);
             navigationController.setDataDialFocus(
@@ -1342,7 +1341,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshMainDataDialFocusVisuals();
         } else if (mode == MpcUiState.Mode.TRACK_VIEW) {
             showTrackViewPage();
-            hardwareFocus = 2;
+            navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
             navigationController.setSubcontext(
                     MpcUiState.Subcontext.TRACK_SELECT);
             navigationController.setDataDialFocus(
@@ -1858,7 +1857,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         clearSequenceLauncherLeds();
         currentPage = "MAIN";
-        hardwareFocus = 0;
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
         navigationController.navigate(MpcUiState.Mode.MAIN);
         navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
@@ -1891,7 +1890,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceName.setOnClickListener(v -> focusMainSequenceField(
                 MpcUiState.Subcontext.SEQUENCE_SELECT,
                 MpcUiState.DataDialFocus.SEQUENCE,
-                3,
                 "SEQUENCE • DATA DIAL / +/-"));
         sequenceHeader.addView(sequenceName,
                 new LinearLayout.LayoutParams(0, dp(40), 1));
@@ -2274,7 +2272,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceName.setOnClickListener(v -> focusMainSequenceField(
                 MpcUiState.Subcontext.SEQUENCE_SELECT,
                 MpcUiState.DataDialFocus.SEQUENCE,
-                3,
                 "SEQUENCE • DATA DIAL / +/-"));
         sequenceType.setOnClickListener(v -> setBottomStatus(
                 "SEQ TEMPO • Sequence tempo source is fixed to SEQ in the current backend"));
@@ -2284,23 +2281,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Main Mode sequence tempo source • SEQ • Global unavailable");
         bpm.setOnClickListener(v -> focusMainSequenceField(
                 MpcUiState.Subcontext.NONE,
-                MpcUiState.DataDialFocus.SEQUENCE,
-                19,
+                MpcUiState.DataDialFocus.SEQUENCE_BPM,
                 "BPM • DATA DIAL / +/-"));
         bars.setOnClickListener(v -> focusMainSequenceField(
                 MpcUiState.Subcontext.NONE,
-                MpcUiState.DataDialFocus.SEQUENCE,
-                20,
+                MpcUiState.DataDialFocus.SEQUENCE_BARS,
                 "BARS • DATA DIAL / +/-"));
         start.setOnClickListener(v -> focusMainSequenceField(
                 MpcUiState.Subcontext.SEQUENCE_START,
                 MpcUiState.DataDialFocus.SEQUENCE_START,
-                17,
                 "LOOP START • DATA DIAL / +/-"));
         end.setOnClickListener(v -> focusMainSequenceField(
                 MpcUiState.Subcontext.SEQUENCE_END,
                 MpcUiState.DataDialFocus.SEQUENCE_END,
-                18,
                 "LOOP END • DATA DIAL / +/-"));
 
         installMainNumericEntry(bpm, MainNumericField.BPM);
@@ -2791,7 +2784,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         : MpcUiState.DataDialFocus.NONE);
         navigationController.setActionAvailable(drumTrack);
         currentPage = "TRACK_EDIT";
-        hardwareFocus = drumTrack ? 10 : 0;
         pageTitle.setText("TRACK EDIT");
         content.removeAllViews();
 
@@ -3056,10 +3048,59 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return view;
     }
 
+    /*
+     * MpcUiState owns semantic Data Dial focus. This integer is only a
+     * protocol/rendering projection for existing MkII LED/LCD feedback.
+     */
+    private int hardwareFocusId() {
+        if (navigationController == null) return 0;
+        final MpcUiState.DataDialFocus focus =
+                navigationController.state().dataDialFocus();
+        switch (focus) {
+            case TRACK:
+                return 2;
+            case SEQUENCE:
+                return 3;
+            case PROGRAM:
+                return 4;
+            case TRACK_TYPE:
+                return 5;
+            case SAMPLE_LAYER:
+                return 10;
+            case SAMPLE_START:
+                return 7;
+            case SAMPLE_END:
+                return 8;
+            case TUNE:
+                return 9;
+            case SEQUENCE_START:
+                return HARDWARE_FOCUS_SEQUENCE_START;
+            case SEQUENCE_END:
+                return HARDWARE_FOCUS_SEQUENCE_END;
+            case SEQUENCE_BPM:
+                return HARDWARE_FOCUS_SEQUENCE_BPM;
+            case SEQUENCE_BARS:
+                return HARDWARE_FOCUS_SEQUENCE_BARS;
+            case ZOOM_HORIZONTAL:
+                if ("SAMPLE".equals(currentPage)) return 11;
+                if ("SEQ".equals(currentPage) && sequenceGridView != null) return 13;
+                return 11;
+            case ZOOM_VERTICAL:
+                if ("SAMPLE".equals(currentPage)) return 12;
+                if ("SEQ".equals(currentPage) && sequenceGridView != null) return 14;
+                if ("SEQ".equals(currentPage) && sequenceTimeline != null) return 16;
+                return 12;
+            case TIMELINE:
+                return 15;
+            default:
+                return 0;
+        }
+    }
+
     private void refreshMainDataDialFocusVisuals() {
         if (!"MAIN".equals(currentPage)) return;
 
-        final int focus = hardwareFocus;
+        final int focus = hardwareFocusId();
         setMainFieldFocus(mainSequenceNameField, focus == 3);
         setMainFieldFocus(mainSequenceTypeField, false);
         setMainFieldFocus(mainSequenceBpmField, focus == HARDWARE_FOCUS_SEQUENCE_BPM);
@@ -3091,7 +3132,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void focusMainTrackField() {
-        hardwareFocus = 2;
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
         navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
         navigationController.setActionAvailable(true);
@@ -3103,9 +3144,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void focusMainSequenceField(
             MpcUiState.Subcontext subcontext,
             MpcUiState.DataDialFocus focus,
-            int focusId,
             String message) {
-        hardwareFocus = focusId;
         navigationController.setSubcontext(subcontext);
         navigationController.setDataDialFocus(focus);
         navigationController.setActionAvailable(true);
@@ -3239,7 +3278,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "TRACKTYPE_DRUM");
         typeField.setContentDescription("Main Mode track type selector");
         typeField.setOnClickListener(v -> {
-            hardwareFocus = 5;
+            navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK_TYPE);
             setBottomStatus(
                     "TRACK TYPE • DRUM is the only implemented Main Track type");
             navigationController.setSubcontext(
@@ -3301,7 +3340,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         button.setEnabled(editable);
         button.setAlpha(editable ? 1.0f : 0.45f);
         button.setTextColor(selected && editable ? BG : TEXT);
-        final boolean focused = editable && hardwareFocus == 5;
+        final boolean focused = editable && hardwareFocusId() == 5;
         button.setBackground(strokeBackground(
                 SURFACE_2,
                 focused ? DANGER : LINE,
@@ -3879,7 +3918,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MAIN";
-        hardwareFocus = 3;
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SEQUENCE);
         navigationController.navigate(MpcUiState.Mode.MAIN);
         navigationController.setSubcontext(MpcUiState.Subcontext.SEQUENCE_SELECT);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SEQUENCE);
@@ -3975,7 +4014,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MAIN";
-        hardwareFocus = 2;
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
         navigationController.navigate(MpcUiState.Mode.MAIN);
         navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
@@ -4047,7 +4086,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         nativeSequenceSelectTrack(trackIndex));
                                 navigationController.setSelectedTrack(trackIndex);
                                 showMainPage();
-                                hardwareFocus = 2;
+                                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
                                 navigationController.setSubcontext(
                                         MpcUiState.Subcontext.TRACK_SELECT);
                                 navigationController.setDataDialFocus(
@@ -4103,7 +4142,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.navigate(MpcUiState.Mode.MAIN);
         navigationController.setSubcontext(MpcUiState.Subcontext.PROGRAM_SELECT);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PROGRAM);
-        hardwareFocus = 4;
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PROGRAM);
         pageTitle.setText("MAIN • PROGRAM");
         content.removeAllViews();
 
@@ -4166,7 +4205,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             navigationController.setSelectedProgram(
                                     nativeSequenceGetDrumProgramName(programIndex));
                             showMainPage();
-                            hardwareFocus = 4;
+                            navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PROGRAM);
                             navigationController.setSubcontext(
                                     MpcUiState.Subcontext.PROGRAM_SELECT);
                             navigationController.setDataDialFocus(
@@ -4465,7 +4504,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "TRACK_VIEW";
-        hardwareFocus = 2;
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
         navigationController.navigate(MpcUiState.Mode.TRACK_VIEW);
         navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
@@ -7801,7 +7840,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 : navigationController.state().mode().name();
         final String context = MpcHardwareFeedbackPolicy.contextLabel(
                 hardwareContext,
-                hardwareFocus,
+                hardwareFocusId(),
                 hardwareLocateActive,
                 hardwareEraseActive,
                 hardwareCopyDeleteActive,
@@ -7811,7 +7850,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 hardwareTouchStripMode);
 
         if (hardwareFeedbackView != null) {
-            final String axis = MpcHardwareFeedbackPolicy.focusAxis(hardwareFocus);
+            final String axis = MpcHardwareFeedbackPolicy.focusAxis(hardwareFocusId());
             final String dial = axis.isEmpty()
                     ? ""
                     : " • DIAL " + axis;
@@ -7838,9 +7877,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // Two-color buttons use color 1 for the primary context and color 2 for
         // Shift/alternate context, matching the reverse-engineered protocol.
         final boolean zoomHorizontal =
-                hardwareFocus == 11 || hardwareFocus == 13 || hardwareFocus == 15;
+                hardwareFocusId() == 11 || hardwareFocusId() == 13 || hardwareFocusId() == 15;
         final boolean zoomVertical =
-                hardwareFocus == 12 || hardwareFocus == 14;
+                hardwareFocusId() == 12 || hardwareFocusId() == 14;
         syncPersistentHardwareModeLeds();
         setHardwareButtonLedState(
                 66,
@@ -7851,33 +7890,33 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setHardwareButtonLedState(
                 13,
                 MpcHardwareFeedbackPolicy.dualColor(
-                        hardwareFocus == 2 || hardwareFocus == 3,
-                        hardwareFocus == 3));
+                        hardwareFocusId() == 2 || hardwareFocusId() == 3,
+                        hardwareFocusId() == 3));
 
         setHardwareButtonLedState(
                 14,
                 MpcHardwareFeedbackPolicy.dualColor(
-                        hardwareFocus == 4 || hardwareFocus == 5,
-                        hardwareFocus == 5));
+                        hardwareFocusId() == 4 || hardwareFocusId() == 5,
+                        hardwareFocusId() == 5));
 
         setHardwareButtonLedState(
                 42,
-                hardwareFocus == 10
+                hardwareFocusId() == 10
                         ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
                         : MpcHardwareFeedbackPolicy.LED_OFF);
         setHardwareButtonLedState(
                 33,
-                hardwareFocus == 7
+                hardwareFocusId() == 7
                         ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
                         : MpcHardwareFeedbackPolicy.LED_OFF);
         setHardwareButtonLedState(
                 34,
-                hardwareFocus == 8
+                hardwareFocusId() == 8
                         ? MpcHardwareFeedbackPolicy.LED_COLOR_2_FULL
                         : MpcHardwareFeedbackPolicy.LED_OFF);
         setHardwareButtonLedState(
                 79,
-                hardwareFocus == 9
+                hardwareFocusId() == 9
                         ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
                         : MpcHardwareFeedbackPolicy.LED_OFF);
         setHardwareButtonLedState(
@@ -7959,7 +7998,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         hardwareEraseActive,
                         stepEditParameter,
                         selectedSequenceStep,
-                        hardwareFocus,
+                        hardwareFocusId(),
                         status);
 
         final String signature = state.signature();
@@ -8828,12 +8867,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         switch (actionType) {
             case MpcStudioMk2SemanticActions.NAVIGATE_MAIN:
-                hardwareFocus = 0;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
                 showMainPage();
                 setBottomStatus("MAIN");
                 return;
             case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_VIEW:
-                hardwareFocus = 0;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
                 showTrackViewPage();
                 setBottomStatus("TRACK VIEW");
                 return;
@@ -8865,17 +8904,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus("BROWSER UP");
                 return;
             case MpcStudioMk2SemanticActions.TRACK_SELECTION_CONTEXT:
-                hardwareFocus = 2;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
                 showTrackSelectPage();
                 setBottomStatus("TRACK SELECT • DATA DIAL / +/-");
                 return;
             case MpcStudioMk2SemanticActions.SEQUENCE_SELECTION_CONTEXT:
-                hardwareFocus = 3;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SEQUENCE);
                 showSequenceSelectPage();
                 setBottomStatus("SEQUENCE SELECT • DATA DIAL / +/-");
                 return;
             case MpcStudioMk2SemanticActions.PROGRAM_SELECTION_CONTEXT:
-                hardwareFocus = 4;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PROGRAM);
                 if (!startupComplete) {
                     setBottomStatus("PROGRAM SELECT • sequencer not ready");
                 } else if ("DRUM".equals(nativeSequenceGetTrackType(
@@ -8893,7 +8932,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
                 return;
             case MpcStudioMk2SemanticActions.TRACK_TYPE_SELECTION_CONTEXT:
-                hardwareFocus = 5;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK_TYPE);
                 setBottomStatus("TRACK TYPE • reserved");
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_DELTA:
@@ -8904,7 +8943,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 if (hardwareLocateActive) {
                     setBottomStatus(
                             "LOCATE • DATA DIAL = ±1 BEAT • SHIFT = ±1 TICK");
-                } else if (hardwareFocus == 4) {
+                } else if (hardwareFocusId() == 4) {
                     showProgramSelectPage();
                     setBottomStatus("PROGRAM SELECT • DATA DIAL / +/-");
                 } else if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
@@ -8992,7 +9031,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 hardwareTouchStripMode = Math.max(
                         TOUCH_STRIP_MODE_LEVEL,
                         Math.min(TOUCH_STRIP_MODE_SAMPLE_END, value0));
-                hardwareFocus = 0;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
                 syncHardwareTouchStripModeLeds();
                 setBottomStatus(
                         "TOUCH STRIP • "
@@ -9142,7 +9181,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 handleHardwareTouchStrip(value0);
                 return;
             case MpcStudioMk2SemanticActions.SAMPLE_SELECT_CONTEXT:
-                hardwareFocus = 10;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_LAYER);
                 navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_SELECT);
                 navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_LAYER);
                 showSamplePage();
@@ -9153,7 +9192,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_START);
                 navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_START);
                 syncHardwareTouchStripModeLeds();
-                hardwareFocus = 7;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_START);
                 showSamplePage();
                 setBottomStatus(value0 != 0
                         ? "SAMPLE START • FINE"
@@ -9164,7 +9203,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_END);
                 navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_END);
                 syncHardwareTouchStripModeLeds();
-                hardwareFocus = 8;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_END);
                 showSamplePage();
                 setBottomStatus(value0 != 0
                         ? "SAMPLE END • FINE"
@@ -9173,7 +9212,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MpcStudioMk2SemanticActions.TUNE_CONTEXT:
                 hardwareTouchStripMode = TOUCH_STRIP_MODE_TUNE;
                 syncHardwareTouchStripModeLeds();
-                hardwareFocus = 9;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TUNE);
                 showSamplePage();
                 setBottomStatus(value0 != 0
                         ? "TUNE • FINE"
@@ -9211,25 +9250,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.ZOOM_CONTEXT:
                 if ("SAMPLE".equals(currentPage) && sampleWaveform != null) {
-                    hardwareFocus = value0 != 0 ? 12 : 11;
+                    navigationController.setDataDialFocus(
+                            value0 != 0
+                                    ? MpcUiState.DataDialFocus.ZOOM_VERTICAL
+                                    : MpcUiState.DataDialFocus.ZOOM_HORIZONTAL);
                     setBottomStatus(value0 != 0
                             ? "ZOOM VERTICAL • DATA DIAL / +/-"
                             : "ZOOM HORIZONTAL • DATA DIAL / +/-");
                 } else if ("SEQ".equals(currentPage) && sequenceGridView != null) {
-                    hardwareFocus = value0 != 0 ? 14 : 13;
+                    navigationController.setDataDialFocus(
+                            value0 != 0
+                                    ? MpcUiState.DataDialFocus.ZOOM_VERTICAL
+                                    : MpcUiState.DataDialFocus.ZOOM_HORIZONTAL);
                     setBottomStatus(value0 != 0
                             ? "GRID ZOOM VERTICAL • DATA DIAL / +/-"
                             : "GRID ZOOM HORIZONTAL • DATA DIAL / +/-");
                 } else if ("SEQ".equals(currentPage) && sequenceTimeline != null) {
                     if (value0 != 0) {
-                        hardwareFocus = 16;
+                        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.ZOOM_VERTICAL);
                         setBottomStatus("TIMELINE HAS NO VERTICAL AXIS");
                     } else {
-                        hardwareFocus = 15;
+                        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TIMELINE);
                         setBottomStatus("TIMELINE ZOOM HORIZONTAL • DATA DIAL / +/-");
                     }
                 } else {
-                    hardwareFocus = 0;
+                    navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
                     setBottomStatus(value0 != 0
                             ? "ZOOM VERTICAL • CONTEXT REQUIRED"
                             : "ZOOM HORIZONTAL • CONTEXT REQUIRED");
@@ -9352,15 +9397,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             adjustSelectedStepParameter(delta, fine);
             return;
         }
-        if (hardwareFocus == HARDWARE_FOCUS_SEQUENCE_BPM) {
+        if (hardwareFocusId() == HARDWARE_FOCUS_SEQUENCE_BPM) {
             changeSequenceTempo(fine ? delta * 0.1 : delta);
             return;
         }
-        if (hardwareFocus == HARDWARE_FOCUS_SEQUENCE_BARS) {
+        if (hardwareFocusId() == HARDWARE_FOCUS_SEQUENCE_BARS) {
             changeSequenceBars(delta);
             return;
         }
-        if (hardwareFocus == HARDWARE_FOCUS_SEQUENCE_START) {
+        if (hardwareFocusId() == HARDWARE_FOCUS_SEQUENCE_START) {
             final int loopEnd = Math.max(
                     1, Math.min(128, nativeSequenceGetLoopEndBar()));
             final int nextStart = Math.max(
@@ -9372,7 +9417,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshMpcCompactContext();
             return;
         }
-        if (hardwareFocus == HARDWARE_FOCUS_SEQUENCE_END) {
+        if (hardwareFocusId() == HARDWARE_FOCUS_SEQUENCE_END) {
             final int bars = Math.max(
                     1, Math.min(128, nativeSequenceGetBars()));
             final int loopStart = Math.max(
@@ -9386,7 +9431,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshMpcCompactContext();
             return;
         }
-        if (hardwareFocus == 2) {
+        if (hardwareFocusId() == 2) {
             navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
             navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
             final int count = nativeSequenceGetTrackCount();
@@ -9404,7 +9449,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         == View.VISIBLE;
                 showMainPage();
                 setMainTrackArrangementView(arrangementSelected);
-                hardwareFocus = 2;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
                 navigationController.setSubcontext(
                         MpcUiState.Subcontext.TRACK_SELECT);
                 navigationController.setDataDialFocus(
@@ -9418,7 +9463,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             return;
         }
-        if (hardwareFocus == 4) {
+        if (hardwareFocusId() == 4) {
             final int track = nativeSequenceGetSelectedTrack();
             if (!"DRUM".equals(nativeSequenceGetTrackType(track))) {
                 setBottomStatus("PROGRAM SELECT • DRUM TRACK REQUIRED");
@@ -9446,7 +9491,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showProgramSelectPage();
             } else {
                 showMainPage();
-                hardwareFocus = 4;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PROGRAM);
                 navigationController.setSubcontext(
                         MpcUiState.Subcontext.PROGRAM_SELECT);
                 navigationController.setDataDialFocus(
@@ -9456,7 +9501,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             return;
         }
-        if (hardwareFocus == 3) {
+        if (hardwareFocusId() == 3) {
             navigationController.setSubcontext(MpcUiState.Subcontext.SEQUENCE_SELECT);
             navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SEQUENCE);
             setBottomStatus(
@@ -9474,7 +9519,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showTrackViewPage();
             } else {
                 showMainPage();
-                hardwareFocus = 3;
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SEQUENCE);
                 navigationController.setSubcontext(
                         MpcUiState.Subcontext.SEQUENCE_SELECT);
                 navigationController.setDataDialFocus(
@@ -9484,14 +9529,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             return;
         }
-        if (hardwareFocus == 5) {
+        if (hardwareFocusId() == 5) {
             setBottomStatus(
                     "TRACK TYPE • DRUM is the only implemented Track Type");
             refreshMainDataDialFocusVisuals();
             return;
         }
 
-        if (hardwareFocus == 10) {
+        if (hardwareFocusId() == 10) {
             final int trackIndex = startupComplete
                     ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
             if (!startupComplete
@@ -9503,12 +9548,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             adjustTrackEditLayer(delta);
             return;
         }
-        if (hardwareFocus == 11 || hardwareFocus == 12) {
+        if (hardwareFocusId() == 11 || hardwareFocusId() == 12) {
             if (sampleWaveform == null || !"SAMPLE".equals(currentPage)) {
                 setBottomStatus("ZOOM • SAMPLE EDIT REQUIRED");
                 return;
             }
-            if (hardwareFocus == 11) {
+            if (hardwareFocusId() == 11) {
                 if (delta > 0) sampleWaveform.zoomIn();
                 else sampleWaveform.zoomOut();
                 setBottomStatus(
@@ -9523,19 +9568,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             return;
         }
-        if (hardwareFocus == 13 || hardwareFocus == 14) {
+        if (hardwareFocusId() == 13 || hardwareFocusId() == 14) {
             if (sequenceGridView == null || !"SEQ".equals(currentPage)) {
                 setBottomStatus("GRID ZOOM • SEQ GRID REQUIRED");
                 return;
             }
-            if (hardwareFocus == 13) {
+            if (hardwareFocusId() == 13) {
                 zoomSequenceGridHorizontal(delta);
             } else {
                 zoomSequenceGridVertical(delta);
             }
             return;
         }
-        if (hardwareFocus == 15) {
+        if (hardwareFocusId() == 15) {
             if (sequenceTimeline == null || !"SEQ".equals(currentPage)) {
                 setBottomStatus("TIMELINE ZOOM • SEQ REQUIRED");
                 return;

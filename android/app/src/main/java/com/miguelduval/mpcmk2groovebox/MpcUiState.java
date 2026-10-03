@@ -65,6 +65,8 @@ final class MpcUiState {
         SEQUENCE,
         SEQUENCE_START,
         SEQUENCE_END,
+        SEQUENCE_BPM,
+        SEQUENCE_BARS,
         TRACK,
         PROGRAM,
         TRACK_TYPE,
