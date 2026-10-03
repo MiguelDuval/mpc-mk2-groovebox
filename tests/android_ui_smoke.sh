@@ -44,6 +44,12 @@ for required in \
   "Main Mode selected program" \
   "Main Mode program ownership status" \
   "buildMainTrackTypeIconStrip" \
+  '"Drum Track type"' \
+  '"Keygroup Track type reserved"' \
+  '"Plugin Track type reserved"' \
+  '"MIDI Track type reserved"' \
+  '"Clip Track type reserved"' \
+  '"CV Track type reserved"' \
   "buildMpcMenuTile" \
   "styleMpcMenuFooterButton" \
   "Main Mode BPM" \
