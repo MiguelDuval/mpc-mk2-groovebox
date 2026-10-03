@@ -1191,6 +1191,10 @@ Track and Pad XL Strip presentations share one tab hierarchy: LVL / FX / SEND / 
 
 ### 2026-10-03 Main Mode visual density refinement
 
+### 2026-10-03 Main Time Signature highlight
+
+The Main Time Signature field now uses a dedicated yellow highlight consistent with Akai's documented Main workflow. Its existing tap-to-dialog semantic is unchanged.
+
 Main presentation now keeps a denser edge-to-edge workspace, slightly increases the Sequence region's vertical share, and renders the Drum Track lower-right selector as the MPC-style single-pad / four-squares pair. This remains presentation-only; selected Track/Sequence, transport and mixer state ownership are unchanged.
 
 ### 2026-10-03 Main Track state-row ordering correction
