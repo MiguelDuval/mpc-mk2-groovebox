@@ -135,13 +135,13 @@ if grep -Fq -- "trackWorkspaceHeader" "$MAIN_ACTIVITY_SOURCE"; then
   exit 1
 fi
 
-if ! grep -Fq -- 'trackProgramHeader.addView(trackEditHeader,' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'trackContextHeader.addView(trackEditHeader,' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track Edit pencil must stay in the Track identity header"
   exit 1
 fi
 main_identity_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 main_identity_type=$(grep -n -m1 'TextView trackName = mainField("TRACK")' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-main_identity_view=$(grep -n -m1 'mainTrackViewButton = actionButton("TRACK"' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_identity_view=$(grep -n -m1 'mainTrackViewButton = actionButton(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 if [[ -z "$main_identity_start" || -z "$main_identity_type" || -z "$main_identity_view" || "$main_identity_type" -le "$main_identity_start" || "$main_identity_view" -le "$main_identity_type" ]]; then
   echo "ERROR: Main Track identity band source boundary is missing"
   exit 1
@@ -164,8 +164,8 @@ if ! grep -Fq -- 'mainTrackTypeField = buildMainTrackTypeSelector();' <<<"$main_
   exit 1
 fi
 
-if ! grep -Fq -- 'Main Arrangement Edit RESERVED' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'viewSelector.addView(arrangementEdit,' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Arrangement edit action must stay attached to the Arrangement header boundary"
+if ! grep -Fq -- 'Main Arrangement Edit RESERVED' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'trackContextHeader.addView(arrangementEdit,' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Arrangement edit action must stay attached to the unified Track/Arrangement header boundary"
   exit 1
 fi
 

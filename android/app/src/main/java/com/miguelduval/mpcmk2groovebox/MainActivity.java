@@ -1990,60 +1990,52 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          * Program selection remains available through the semantic Program
          * context without consuming Main workspace width.
          */
-        LinearLayout trackProgramHeader = row();
-        trackProgramHeader.setContentDescription("Main Mode Track identity header");
-        trackProgramHeader.setPadding(dp(4), dp(2), dp(4), dp(2));
+        /*
+         * MPC presents the selected Track and its Track / Arrangement context
+         * as one compact header boundary over the shared workspace. Keeping
+         * these controls on one row removes an otherwise empty separator row
+         * and gives the waveform/performance canvas more vertical room.
+         */
+        LinearLayout trackContextHeader = row();
+        trackContextHeader.setContentDescription(
+                "Main Mode Track / Arrangement context header");
+        trackContextHeader.setPadding(dp(4), dp(2), dp(4), dp(2));
 
         TextView trackName = mainField("TRACK");
         trackName.setTypeface(Typeface.DEFAULT_BOLD);
         trackName.setTextSize(13);
         trackName.setContentDescription("Main Mode selected track");
         trackName.setOnClickListener(v -> focusMainTrackField());
-        trackProgramHeader.addView(trackName,
+        trackContextHeader.addView(trackName,
                 new LinearLayout.LayoutParams(0, dp(40), 1.0f));
 
         mainTrackField = trackName;
         mainTrackTypeField = buildMainTrackTypeSelector();
-
-        trackProgramHeader.addView(
+        trackContextHeader.addView(
                 mainTrackTypeField,
-                new LinearLayout.LayoutParams(dp(76), dp(40)));
+                new LinearLayout.LayoutParams(dp(68), dp(40)));
 
         Button trackEditHeader = actionButton("✎", v -> openMainTrackEditContext());
         trackEditHeader.setTextSize(15);
         trackEditHeader.setContentDescription("Main Track Edit");
         trackEditHeader.setBackground(strokeBackground(
                 SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
-        trackProgramHeader.addView(trackEditHeader,
-                new LinearLayout.LayoutParams(dp(40), dp(40)));
+        trackContextHeader.addView(trackEditHeader,
+                new LinearLayout.LayoutParams(dp(38), dp(40)));
 
-        trackProgramSection.addView(trackProgramHeader,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
-
-        /*
-         * MPC Main presents Track and Arrangement as sibling headers of the
-         * same lower workspace. Keep the switch directly in that workspace
-         * rather than introducing a generic nested view selector.
-         * The selected header remains the only view-state affordance; the
-         * workspace below changes presentation without changing Navigation
-         * mode or the selected Track/Sequence.
-         */
-        LinearLayout viewSelector = row();
-        viewSelector.setContentDescription("Main Track / Arrangement view switcher");
-        viewSelector.setPadding(dp(6), dp(2), dp(6), dp(2));
-
-        mainTrackViewButton = actionButton("TRACK", v -> setMainTrackArrangementView(false));
+        mainTrackViewButton = actionButton(
+                "TRACK",
+                v -> setMainTrackArrangementView(false));
         mainTrackViewButton.setContentDescription("Main Track View header");
-        viewSelector.addView(mainTrackViewButton,
-                new LinearLayout.LayoutParams(0, dp(36), 1));
+        trackContextHeader.addView(mainTrackViewButton,
+                new LinearLayout.LayoutParams(dp(74), dp(40)));
 
         mainArrangementViewButton = actionButton(
                 "ARRANGEMENT",
                 v -> setMainTrackArrangementView(true));
         mainArrangementViewButton.setContentDescription("Main Arrangement View header");
-        viewSelector.addView(mainArrangementViewButton,
-                new LinearLayout.LayoutParams(0, dp(36), 1));
+        trackContextHeader.addView(mainArrangementViewButton,
+                new LinearLayout.LayoutParams(dp(112), dp(40)));
 
         Button arrangementEdit = actionButton("✎",
                 v -> setBottomStatus(
@@ -2052,12 +2044,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementEdit.setContentDescription("Main Arrangement Edit RESERVED");
         arrangementEdit.setBackground(strokeBackground(
                 SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
-        viewSelector.addView(arrangementEdit,
-                new LinearLayout.LayoutParams(dp(40), dp(36)));
+        trackContextHeader.addView(arrangementEdit,
+                new LinearLayout.LayoutParams(dp(38), dp(40)));
 
-        trackProgramSection.addView(viewSelector,
+        trackProgramSection.addView(trackContextHeader,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
         mainTrackArrangementHost = new FrameLayout(this);
         mainTrackArrangementHost.setContentDescription(
