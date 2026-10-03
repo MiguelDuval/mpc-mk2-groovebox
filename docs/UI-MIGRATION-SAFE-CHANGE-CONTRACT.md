@@ -272,6 +272,10 @@ Verification target:
 - source smoke checks lock the hierarchy helper, compact field heights and focus projection;
 - GitHub Actions and physical MkII verification remain separate acceptance gates.
 
+### 2026-10-04 Main Track type fidelity increment
+
+The Main Track header now presents all six documented Program Type affordances (Drum / Keygroup / Plugin / MIDI / Clip / CV) as a compact visual cluster. Unsupported types are disabled rather than removed, preserving the reference information hierarchy while keeping backend truthfulness. No audio, MIDI, scheduler, or native realtime path changed.
+
 ## 2026-10-04 MPC One visual-fidelity checkpoint
 
 Branch: `feature/mpc-one-ui-fidelity`
