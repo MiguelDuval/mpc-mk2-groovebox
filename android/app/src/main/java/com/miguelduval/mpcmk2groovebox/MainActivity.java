@@ -1685,9 +1685,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // MPC One keeps a direct project/browser affordance next to project
         // identity. It is deliberately a compact entry point rather than a
         // second navigation surface.
-        Button projectBrowser = topButton("□");
-        projectBrowser.setTextSize(13);
+        Button projectBrowser = topButton("");
         projectBrowser.setContentDescription("MPC Project Browser");
+        projectBrowser.setForeground(new MpcFolderIconDrawable());
         projectBrowser.setOnClickListener(v -> showBrowserPage());
         bar.addView(projectBrowser, new LinearLayout.LayoutParams(
                 dp(26),
