@@ -1090,3 +1090,16 @@ The slots remain navigation adapters backed by MpcNavigationController; selectio
 
 Controller indication is now treated as persistent state projection: single-color/two-color LED encoding is centralized,
 Full/Half/16 Levels and Pad/Track Mute modes are stateful, and Note Repeat rate labels share the native index order.
+
+
+## 2026-10-03 Main Geometry Fidelity Pass
+
+The bounded Main visual-fidelity slice is now implemented against the existing architecture:
+
+- Main uses explicit dense geometry constants for outer gutter, section gap, field/header height, compact metrics and Track-state height;
+- Main interactive controls use a dedicated flat rectangular action helper so legacy Android rounded-button styling does not leak into the MPC surface;
+- Main Track/Arrangement header, Sequence band and Track-state row retain the existing semantic ownership and sibling-view model;
+- MpcShell keeps the canonical 44dp Toolbar, 48dp five-shortcut rail, 210dp context/channel rail and 40dp Function Bar while tightening internal rail insets;
+- no changes were made to MpcUiState, navigation semantics, realtime audio/MIDI ownership or native sequencing behavior.
+
+Verification boundary: source-level contracts and GitHub readback pass; no Android/Gradle build or physical MPC Studio MkII verification is available in the current environment, and GitHub Actions/status is not reporting a runnable result for the current branch updates.
