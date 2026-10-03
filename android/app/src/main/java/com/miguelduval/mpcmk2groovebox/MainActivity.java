@@ -122,6 +122,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private MpcShell mpcShell;
     private LinearLayout functionBar;
     private TextView compactTrackContext;
+    private TextView compactProgramContext;
     private TextView compactPadContext;
     private TextView compactTrackLevelLabel;
     private TextView compactTrackStateLabel;
@@ -674,6 +675,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(25)));
 
+        compactProgramContext = compactContextField(
+                "PROGRAM\n—",
+                "MPC shell program context",
+                v -> {
+                    if (!startupComplete) {
+                        setBottomStatus("PROGRAM SELECT • waiting for sequencer");
+                        return;
+                    }
+                    final int selectedTrack = Math.max(
+                            0, nativeSequenceGetSelectedTrack());
+                    if ("DRUM".equalsIgnoreCase(
+                            nativeSequenceGetTrackType(selectedTrack))) {
+                        showProgramSelectPage();
+                    } else {
+                        setBottomStatus(
+                                "PROGRAM SELECT • TRACK TYPE IS NOT DRUM");
+                    }
+                });
+        compactMixerPanel.addView(compactProgramContext,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+
         compactTrackLevelLabel = label("LEVEL —", 8, MUTED);
         compactTrackLevelLabel.setTypeface(Typeface.DEFAULT_BOLD);
         compactTrackLevelLabel.setGravity(Gravity.CENTER_VERTICAL);
@@ -1005,11 +1028,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 + " • SOLO —");
             }
 
+            if (compactProgramContext != null) {
+                String program = nativeSequenceGetTrackProgram(trackIndex);
+                if (program == null || program.trim().isEmpty()) {
+                    program = "—";
+                } else {
+                    program = program.replace("PROGRAM • ", "").trim();
+                }
+                compactProgramContext.setText("PROGRAM\n" + program);
+                compactProgramContext.setEnabled(drumTrack);
+                compactProgramContext.setAlpha(drumTrack ? 1.0f : 0.48f);
+                compactProgramContext.setContentDescription(
+                        drumTrack
+                                ? "MPC shell program context"
+                                : "MPC shell program context unavailable");
+            }
+
             if (compactTrackLevelLabel != null) {
                 compactTrackLevelLabel.setText(
                         "LEVEL —  •  TRACK MIXER RESERVED");
             }
         } else {
+            if (compactProgramContext != null) {
+                compactProgramContext.setText("PROGRAM\n—");
+                compactProgramContext.setEnabled(false);
+                compactProgramContext.setAlpha(0.45f);
+                compactProgramContext.setContentDescription(
+                        "MPC shell program context unavailable");
+            }
+
             if (compactMixerStripModeToggle != null) {
                 compactMixerStripModeToggle.setEnabled(false);
                 compactMixerStripModeToggle.setAlpha(0.45f);
