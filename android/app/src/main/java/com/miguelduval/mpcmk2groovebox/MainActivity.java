@@ -4421,7 +4421,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         isSelected
                                 ? Color.rgb(42, 36, 39) : SURFACE_2,
                         isSelected ? DANGER : LINE,
-                        4));
+                        MPC_FLAT_RADIUS_DP));
                 strip.setOnClickListener(v -> {
                     setBottomStatus(nativeSequenceSelectTrack(trackIndex));
                     navigationController.setSelectedTrack(trackIndex);
@@ -4477,7 +4477,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 rec.setBackground(strokeBackground(
                         armed ? Color.rgb(104, 64, 64) : Color.TRANSPARENT,
                         armed ? DANGER : LINE,
-                        6));
+                        MPC_FLAT_RADIUS_DP));
                 strip.addView(rec, new LinearLayout.LayoutParams(
                         dp(46), dp(40)));
 
@@ -4490,7 +4490,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 mute.setBackground(strokeBackground(
                         muted ? Color.rgb(74, 124, 88) : Color.TRANSPARENT,
                         muted ? ACTIVE : LINE,
-                        6));
+                        MPC_FLAT_RADIUS_DP));
                 strip.addView(mute, new LinearLayout.LayoutParams(
                         dp(58), dp(40)));
 

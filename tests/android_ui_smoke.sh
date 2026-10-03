@@ -196,6 +196,10 @@ if ! grep -Fq -- 'MPC Track View context header' <<<"$track_view_block"; then
   echo "ERROR: Track View context header contract is missing"
   exit 1
 fi
+if ! grep -Fq -- 'MPC_FLAT_RADIUS_DP' <<<"$track_view_block"; then
+  echo "ERROR: Track View channel-strip flat chrome contract is missing"
+  exit 1
+fi
 for obsolete in 'actionButton("PREV"' 'actionButton("NEXT"' 'v -> showArrangePage()'; do
   if grep -Fq -- "$obsolete" <<<"$track_view_block"; then
     echo "ERROR: Track View must not duplicate shell navigation control: $obsolete"
