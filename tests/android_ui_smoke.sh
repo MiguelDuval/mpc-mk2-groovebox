@@ -483,6 +483,23 @@ for required in   'MPC_FLAT_RADIUS_DP));'   'group.setBackground(strokeBackgroun
   fi
 done
 
+echo "Running Main section framing preflight..."
+for required in \
+  'sequenceCard.setBackground(strokeBackground(' \
+  'trackProgramSection.setBackground(strokeBackground(' \
+  'Main Mode Track / Arrangement workspace section' \
+  'Main Sequence Loop button'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Main section framing contract missing: $required"
+    exit 1
+  fi
+done
+
+if grep -Fq -- 'Main Arrangement Edit RESERVED' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: redundant Main Arrangement-edit header control remains"
+  exit 1
+fi
+
 echo "Running Main workspace density preflight..."
 main_geometry_start=$(grep -n -m1 'page.addView(sequenceCard, new LinearLayout.LayoutParams(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 main_geometry_end=$(grep -n -m1 'page.addView(trackProgramSection, new LinearLayout.LayoutParams(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
