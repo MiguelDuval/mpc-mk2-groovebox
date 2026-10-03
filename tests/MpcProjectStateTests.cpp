@@ -25,5 +25,31 @@ int main() {
     state.activeDrumProgram().pad(0).layer(0).sample = sampleId;
     assert(state.activeDrumProgram().pad(0).layer(0).isAssigned());
 
+    assert(state.project().sequences.size() == 1);
+    assert(state.activeSequence().tracks.size() == 8);
+    assert(state.activeSequence().tracks[0].name == "DRUMS");
+    assert(state.activeSequence().tracks[1].name == "PERC");
+
+    assert(state.selectTrack(0));
+    assert(state.setTrackMuted(0, true));
+    assert(state.activeSequence().tracks[0].muted);
+    assert(state.setTrackSoloed(1, true));
+    assert(!state.activeSequence().tracks[0].soloed);
+    assert(state.activeSequence().tracks[1].soloed);
+    assert(state.setTrackArmed(1, true));
+    assert(!state.activeSequence().tracks[0].recordArmed);
+    assert(state.activeSequence().tracks[1].recordArmed);
+
+    assert(state.addSequence());
+    assert(state.sequenceCount() == 2);
+    assert(state.activeSequenceIndex() == 1);
+    assert(state.activeSequence().tracks.size() == 8);
+    assert(!state.activeSequence().tracks[0].muted);
+    assert(!state.activeSequence().tracks[1].soloed);
+    assert(!state.activeSequence().tracks[1].recordArmed);
+    assert(state.nextSequence());
+    assert(state.activeSequenceIndex() == 0);
+    assert(state.activeSequence().tracks[0].muted);
+
     return 0;
 }
