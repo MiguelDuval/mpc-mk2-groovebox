@@ -123,6 +123,11 @@ if grep -Fq -- "sequenceAuxFields" "$MAIN_ACTIVITY_SOURCE" || \
   exit 1
 fi
 
+if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track state row must remain in the workspace"
+  exit 1
+fi
+
 echo "Running MPC shell geometry preflight..."
 for required in \
   "TOOLBAR_HEIGHT_DP = 44" \
