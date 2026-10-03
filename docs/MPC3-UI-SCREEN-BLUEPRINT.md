@@ -1059,3 +1059,8 @@ Pad-strip presentation now uses the same LVL / FX / SEND / I/O tab geometry as t
 ## 2026-10-03 Main Track state-row ordering
 
 The compact Monitor / Length / Velocity / Layer row is positioned immediately above the Main Track performance canvas. The Track Edit pencil remains on the canvas header, while the lower-right Track/Pad selector stays in the same state row so the single local workspace has one coherent control edge.
+
+
+## 2026-10-03 Track View shell/function-bar parity
+
+Track View is now treated as a pure shell workspace: the local header carries only Sequence/Track context, while Track −/+, Rec Arm and other Track View actions remain owned by the shared Function Bar. The workspace no longer duplicates PREV/NEXT/ARRANGE controls or a second instructional footer, preserving one command surface and more vertical space for the selectable Track list.
