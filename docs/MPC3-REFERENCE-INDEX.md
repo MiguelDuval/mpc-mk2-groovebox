@@ -463,6 +463,20 @@ the Android Track Edit workspace must keep TRACK/PAD context at the top, paramet
 
 Confidence: HIGH for the overall geometry and bottom-tab behavior; individual unsupported parameters remain governed by our truthfulness rule.
 
+## 16.6 Main flat-chrome fidelity
+
+Checked:
+2026-10-03
+
+Evidence:
+Official MPC3 reference material describes Main as a dense operational surface built from Toolbar, Shortcuts, Mixer Strips, Sequence, Track/Arrangement Views and Function Buttons; current official routing material also shows the compact XL Channel Strip relationship and Track/Pad selector in Main. citeturn698245search2turn193571search15
+
+Repository decision:
+Keep MPC-facing Main/shell controls rectangular and visually flat (zero-corner surfaces) instead of introducing generic rounded Android-card chrome. Remove unsupported standalone controls such as a Sequence Edit affordance without a documented semantic target. This is a presentation rule only; selection/focus remains state-driven.
+
+Confidence:
+HIGH for information hierarchy; visual-chrome treatment is a repository fidelity decision grounded in current official MPC3 reference material.
+
 ## 16.5 MkII LED state policy correction
 
 The Studio MkII protocol differentiates single-color LEDs (OFF/DIM/FULL = 0/1/2) from two-color LEDs.

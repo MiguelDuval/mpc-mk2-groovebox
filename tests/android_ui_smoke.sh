@@ -141,6 +141,17 @@ if ! grep -Fq -- 'arrangementHeader.addView(' "$MAIN_ACTIVITY_SOURCE"; then
   exit 1
 fi
 
+if grep -Fq -- 'Main Sequence Edit RESERVED' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main must not expose an invented Sequence Edit affordance"
+  exit 1
+fi
+
+if ! grep -Fq -- 'MPC_FLAT_RADIUS_DP = 0' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MPC Main/shell flat-chrome radius contract is missing"
+  exit 1
+fi
+
+
 if ! grep -Fq -- 'MPC_TIME_SIGNATURE_HIGHLIGHT' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Time Signature yellow highlight contract is missing"
   exit 1

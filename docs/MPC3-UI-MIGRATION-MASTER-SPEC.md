@@ -1202,6 +1202,12 @@ Main presentation now keeps a denser edge-to-edge workspace, slightly increases 
 Main Track places the compact Monitor / Length / Velocity / Layer context directly below the performance canvas, with the Track/Pad selector at the lower-right edge of the Track/Arrangement section. This placement was corrected after a fresh cross-check against Akai's current MPC 3 Output Routing Basics reference; no backend semantics changed.
 
 
+## 2026-10-03 Main flat-chrome fidelity rule
+
+Main-facing shell chrome uses compact rectangular surfaces with zero corner radius for the Sequence/Track fields, contextual Track/Arrangement headers, Track Edit/Arrangement affordances, and persistent Function Bar/Toolbar controls. The goal is to remove Android-card visual language while preserving dense MPC segmented controls. Existing red Data Dial focus and the documented yellow Time Signature distinction remain unchanged.
+
+The Main Sequence header contains no standalone Sequence Edit affordance unless a documented, backed semantic entry point exists.
+
 ## 2026-10-03 Track/Arrangement header fidelity increment
 
 Main's Track / Arrangement switch is treated as a contextual header pair rather than generic rounded action cards. The active context remains the only visual state change, using the MPC red focus accent while preserving the shared workspace and all existing semantic navigation behavior.

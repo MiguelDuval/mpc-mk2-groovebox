@@ -471,6 +471,14 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Keeps Track Edit in the Track identity header, the Arrangement pencil at the Arrangement workspace edge, and the Track/Pad selector in the lower-right context row. Arrangement editing remains explicitly RESERVED.
 
 
+### 2026-10-03 Main flat-chrome fidelity refinement
+
+- Removed the unused Main Sequence Edit affordance.
+- Flattened MPC-facing Main/shell chrome to rectangular zero-radius surfaces for Sequence/Track fields, contextual Track/Arrangement headers, edit affordances, Toolbar controls and the Function Bar.
+- Preserved Data Dial red focus and the Time Signature yellow distinction.
+- No semantic/backend or realtime changes.
+- Main visual audit now treats remaining discrepancies as information hierarchy, density and interaction issues rather than generic Android styling.
+
 ### 2026-10-03 Track View shell/function-bar parity
 
 - Removed duplicate local PREV / NEXT / ARRANGE controls from Track View; track stepping and navigation remain in the shared MPC Function Bar / shortcut system.

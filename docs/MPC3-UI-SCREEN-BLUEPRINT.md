@@ -205,6 +205,10 @@ Touch:
 - Existing time-signature and loop state remain visible because they are backed by the current Sequence model.
 - TRANSPOSE is explicitly shown as unavailable until a real domain semantic exists.
 
+### Main chrome treatment
+
+Main-facing fields and shell controls use compact, flat rectangular surfaces rather than generic rounded Android cards. Sequence/Track information fields, Track/Arrangement headers, contextual edit affordances, and the persistent Function Bar remain dense and segmented; focus is communicated by the existing red focus outline, while Time Signature retains its yellow distinction. Do not add a standalone Sequence Edit affordance without a documented semantic/backend contract.
+
 ## 2.4 Arrangement preview
 
 Show:

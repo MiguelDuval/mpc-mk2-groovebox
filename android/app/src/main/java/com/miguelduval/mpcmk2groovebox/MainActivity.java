@@ -74,6 +74,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private static final int BG = Color.rgb(14, 16, 18);
     private static final int SURFACE = Color.rgb(25, 29, 33);
+
+    /**
+     * MPC-facing shell chrome uses compact rectangular surfaces rather than Android-style rounded cards.
+     */
+    private static final int MPC_FLAT_RADIUS_DP = 0;
     private static final int SURFACE_2 = Color.rgb(32, 37, 42);
     private static final int LINE = Color.rgb(64, 72, 80);
     private static final int TEXT = Color.rgb(235, 239, 242);
@@ -939,7 +944,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         timingCorrectTopButton.setBackground(strokeBackground(
                 enabled ? Color.rgb(74, 124, 88) : SURFACE_2,
                 enabled ? ACTIVE : LINE,
-                6));
+                MPC_FLAT_RADIUS_DP));
 
         if (metronomeTopButton != null) {
             metronomeTopButton.setText("METRO");
@@ -1286,6 +1291,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Button b = actionButton(text, listener);
         b.setEnabled(enabled);
         b.setAlpha(enabled ? 1.0f : 0.45f);
+        b.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         functionBar.addView(b, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
     }
@@ -1886,12 +1892,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceHeader.addView(timeSig,
                 new LinearLayout.LayoutParams(dp(56), dp(36)));
 
-        Button sequenceEdit = actionButton("✎", null);
-        sequenceEdit.setEnabled(false);
-        sequenceEdit.setAlpha(0.42f);
-        sequenceEdit.setContentDescription("Main Sequence Edit RESERVED");
-        sequenceHeader.addView(sequenceEdit,
-                new LinearLayout.LayoutParams(dp(36), dp(32)));
         sequenceCard.addView(sequenceHeader,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
@@ -1946,6 +1946,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Button trackEditHeader = actionButton("✎", v -> openMainTrackEditContext());
         trackEditHeader.setTextSize(15);
         trackEditHeader.setContentDescription("Main Track Edit");
+        trackEditHeader.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         trackProgramHeader.addView(trackEditHeader,
                 new LinearLayout.LayoutParams(dp(40), dp(40)));
 
@@ -2160,6 +2162,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         "ARRANGEMENT EDIT • RESERVED until arrangement edit semantics exist"));
         arrangementEdit.setTextSize(15);
         arrangementEdit.setContentDescription("Main Arrangement Edit RESERVED");
+        arrangementEdit.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         arrangementHeader.addView(
                 arrangementEdit,
                 new LinearLayout.LayoutParams(dp(40), dp(30)));
@@ -2683,13 +2687,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         mainTrackViewButton.setBackground(strokeBackground(
                 trackVisible ? SURFACE_2 : BG,
                 trackVisible ? DANGER : LINE,
-                0));
+                MPC_FLAT_RADIUS_DP));
         mainArrangementViewButton.setTextColor(
                 trackVisible ? MUTED : TEXT);
         mainArrangementViewButton.setBackground(strokeBackground(
                 trackVisible ? BG : SURFACE_2,
                 trackVisible ? LINE : DANGER,
-                0));
+                MPC_FLAT_RADIUS_DP));
 
         if (trackVisible) {
             final TextView selectedPad =
@@ -2965,7 +2969,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         view.setTypeface(Typeface.DEFAULT_BOLD);
         view.setGravity(Gravity.CENTER_VERTICAL);
         view.setPadding(dp(6), 0, dp(6), 0);
-        view.setBackground(strokeBackground(SURFACE_2, LINE, 2));
+        view.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         view.setTag(title);
         return view;
     }
@@ -2975,7 +2979,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         view.setTypeface(Typeface.DEFAULT_BOLD);
         view.setGravity(Gravity.CENTER);
         view.setPadding(dp(4), 0, dp(4), 0);
-        view.setBackground(strokeBackground(SURFACE_2, LINE, 2));
+        view.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         view.setTag(title);
         return view;
     }
@@ -2985,7 +2989,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         view.setTypeface(Typeface.DEFAULT_BOLD);
         view.setGravity(Gravity.CENTER_VERTICAL);
         view.setPadding(dp(8), 0, dp(8), 0);
-        view.setBackground(strokeBackground(SURFACE_2, LINE, 2));
+        view.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         view.setTag(title);
         return view;
     }
@@ -3015,7 +3019,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             mainSequenceTimeSigField.setBackground(strokeBackground(
                     SURFACE_2,
                     MPC_TIME_SIGNATURE_HIGHLIGHT,
-                    2));
+                    MPC_FLAT_RADIUS_DP));
         }
         setMainFieldFocus(mainSequenceLoopField, false);
         setMainFieldFocus(mainTrackField, focus == 2);
@@ -3030,7 +3034,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void setMainFieldFocus(View view, boolean active) {
         if (view == null) return;
         view.setBackground(strokeBackground(
-                SURFACE_2, active ? DANGER : LINE, 2));
+                SURFACE_2, active ? DANGER : LINE, MPC_FLAT_RADIUS_DP));
     }
 
     private void focusMainSequenceField(
@@ -7756,6 +7760,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Button topButton(String text) {
         Button b = button(text);
         b.setTextSize(10);
+        b.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         return b;
     }
 
