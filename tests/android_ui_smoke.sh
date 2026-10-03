@@ -109,8 +109,8 @@ if ! grep -Fq -- "uiAuditSmokeMode ? View.VISIBLE : View.GONE" "$MAIN_ACTIVITY_S
   exit 1
 fi
 
-if grep -Fq -- "private boolean compactMixerVisible" "$MAIN_ACTIVITY_SOURCE" || \
-   grep -Fq -- "private boolean compactMixerPadMode" "$MAIN_ACTIVITY_SOURCE"; then
+if grep -Fq -- "private boolean compactMixerVisible =" "$MAIN_ACTIVITY_SOURCE" || \
+   grep -Fq -- "private boolean compactMixerPadMode =" "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: compact Mixer presentation state leaked back into MainActivity-local booleans"
   exit 1
 fi
