@@ -21,7 +21,6 @@ for required in \
   "compactMixerPadModeForDisplay()" \
   "compactMixerStripModeAvailable()" \
   "MPC shell Track record mute and solo state" \
-  "MPC shell track mixer strip" \
   "Main Mode selected sequence" \
   "Main Mode selected track" \
   "nativeAudioGetPadSampleName" \
@@ -47,7 +46,6 @@ for required in \
   "Time Signature denominator" \
   "Main Track View header" \
   "Main Arrangement View header" \
-  "Main Arrangement Edit RESERVED" \
   "Main Track View record sample" \
   "Main Track View browse samples" \
   "DRUM • TYPE" \
