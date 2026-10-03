@@ -255,3 +255,16 @@ Remaining gaps:
 - obtain a real Android/native CI or local build result;
 - run emulator/static smoke in the actual repository checkout;
 - perform physical MkII interaction verification after the next runnable checkpoint.
+
+
+## 2026-10-03 Main geometry fidelity checkpoint
+
+The latest bounded Main UI slice tightened the MPC-facing presentation without changing domain/state ownership:
+
+- MainActivity.showMainPage() now uses explicit 4dp/2dp/40dp/36dp geometry constants;
+- Main Track/Arrangement header and Track-state row use the compact 40dp band;
+- Main presentation helpers use zero-radius rectangular surfaces;
+- MpcShell shortcut/context rails use 4dp content insets while preserving 44dp Toolbar, 48dp shortcut rail, 210dp context/channel rail and 40dp Function Bar;
+- smoke source preflight now locks these geometry invariants.
+
+Verification remains source-level because no Android build/physical MkII run is available in this environment; GitHub Actions/status for the current commit is still not reported by the connector.
