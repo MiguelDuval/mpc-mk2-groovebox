@@ -34,7 +34,7 @@ for required in \
   "Main Track View velocity state" \
   "Main Track View selected layer" \
   "Main Mode sequence tempo source • SEQ • Global unavailable" \
-  "Main Mode Track / Arrangement context header" \
+  "Main Track visual hierarchy • Track / Program / workspace header" \
   "Main Mode selected track" \
   "MPC Toolbar Menu" \
   "MPC Project Browser" \
@@ -156,7 +156,7 @@ if ! grep -Fq -- 'trackContextHeader.addView(trackEditHeader,' "$MAIN_ACTIVITY_S
 fi
 main_identity_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 main_identity_type=$(grep -n -m1 'TextView trackName = mainField("TRACK")' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-main_identity_view=$(grep -n -m1 'mainTrackViewButton = mainActionButton(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_identity_view=$(grep -n -m1 'mainTrackViewButton = mainSectionToggle(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 if [[ -z "$main_identity_start" || -z "$main_identity_type" || -z "$main_identity_view" || "$main_identity_type" -le "$main_identity_start" || "$main_identity_view" -le "$main_identity_type" ]]; then
   echo "ERROR: Main Track identity band source boundary is missing"
   exit 1
@@ -179,7 +179,7 @@ if ! grep -Fq -- 'mainTrackTypeField = buildMainTrackTypeSelector();' <<<"$main_
   exit 1
 fi
 
-if ! grep -Fq -- 'mainArrangementViewButton = mainActionButton(' "$MAIN_ACTIVITY_SOURCE" || \
+if ! grep -Fq -- 'mainArrangementViewButton = mainSectionToggle(' "$MAIN_ACTIVITY_SOURCE" || \
    ! grep -Fq -- 'trackContextHeader.addView(mainArrangementViewButton,' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Arrangement action must stay attached to the unified Track/Arrangement header boundary"
   exit 1
@@ -546,7 +546,7 @@ echo "Running Main section framing preflight..."
 for required in \
   'sequenceCard.setBackground(strokeBackground(' \
   'trackProgramSection.setBackground(strokeBackground(' \
-  'Main Mode Track / Arrangement workspace section' \
+  'Main Track visual hierarchy • Track / Program / workspace section' \
   'Main Sequence Loop button'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Main section framing contract missing: $required"
