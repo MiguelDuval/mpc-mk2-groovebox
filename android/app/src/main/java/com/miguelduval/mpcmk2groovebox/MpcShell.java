@@ -18,6 +18,12 @@ final class MpcShell {
     private static final int BG = Color.rgb(14, 16, 18);
     private static final int SURFACE = Color.rgb(25, 29, 33);
 
+    // Canonical MPC shell geometry used by the UI migration smoke contract.
+    private static final int TOOLBAR_HEIGHT_DP = 44;
+    private static final int SHORTCUT_RAIL_WIDTH_DP = 48;
+    private static final int CHANNEL_STRIP_WIDTH_DP = 210;
+    private static final int FUNCTION_BAR_HEIGHT_DP = 40;
+
     private final LinearLayout root;
     private final LinearLayout toolbar;
     private final MpcPlayheadStrip playheadStrip;
@@ -35,7 +41,7 @@ final class MpcShell {
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         toolbar.setBackgroundColor(SURFACE);
         root.addView(toolbar, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 52)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, TOOLBAR_HEIGHT_DP)));
 
         playheadStrip = new MpcPlayheadStrip(context);
         root.addView(playheadStrip, new LinearLayout.LayoutParams(
@@ -49,7 +55,7 @@ final class MpcShell {
         shortcutRail.setBackgroundColor(Color.rgb(18, 21, 24));
         shortcutRail.setPadding(dp(context, 6), dp(context, 6), dp(context, 6), dp(context, 6));
         body.addView(shortcutRail, new LinearLayout.LayoutParams(
-                dp(context, 70), ViewGroup.LayoutParams.MATCH_PARENT));
+                dp(context, SHORTCUT_RAIL_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT));
 
         /*
          * Shortcuts and persistent context are separate columns. The context
@@ -64,7 +70,7 @@ final class MpcShell {
                 dp(context, 5), dp(context, 6),
                 dp(context, 5), dp(context, 6));
         body.addView(contextArea, new LinearLayout.LayoutParams(
-                dp(context, 164), ViewGroup.LayoutParams.MATCH_PARENT));
+                dp(context, CHANNEL_STRIP_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT));
 
         LinearLayout mainColumn = new LinearLayout(context);
         mainColumn.setOrientation(LinearLayout.VERTICAL);
@@ -79,7 +85,7 @@ final class MpcShell {
         functionBar.setGravity(android.view.Gravity.CENTER_VERTICAL);
         functionBar.setBackgroundColor(SURFACE);
         mainColumn.addView(functionBar, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 48)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, FUNCTION_BAR_HEIGHT_DP)));
 
         body.addView(mainColumn, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
