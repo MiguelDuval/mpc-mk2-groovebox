@@ -1326,10 +1326,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
              * while making the newly selected Track the active Data Dial focus.
              */
             final boolean arrangementSelected =
-                    mainArrangementViewButton != null
-                            && mainArrangementViewButton.getText() != null
-                            && mainArrangementViewButton.getText().toString().equals(
-                                    "ARRANGEMENT");
+                    mainTrackArrangementHost != null
+                            && mainTrackArrangementHost.getChildCount() > 1
+                            && mainTrackArrangementHost.getChildAt(1).getVisibility()
+                                    == View.VISIBLE;
             showMainPage();
             setMainTrackArrangementView(arrangementSelected);
             hardwareFocus = 2;
