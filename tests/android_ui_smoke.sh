@@ -180,8 +180,9 @@ if ! grep -Fq -- 'mainTrackTypeField = buildMainTrackTypeSelector();' <<<"$main_
 fi
 
 if ! grep -Fq -- 'mainArrangementViewButton = mainSectionToggle(' "$MAIN_ACTIVITY_SOURCE" || \
-   ! grep -Fq -- 'trackContextHeader.addView(mainArrangementViewButton,' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Arrangement action must stay attached to the unified Track/Arrangement header boundary"
+   ! grep -Fq -- 'trackArrangementToggle.addView(mainArrangementViewButton,' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'trackContextHeader.addView(trackArrangementToggle,' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Arrangement action must stay inside the unified Track/Arrangement segmented header"
   exit 1
 fi
 
