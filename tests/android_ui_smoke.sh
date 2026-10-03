@@ -42,6 +42,8 @@ for required in \
   "pageTitle.setVisibility(View.GONE)" \
   "Main Mode sequence header" \
   "Main Mode Track Program context" \
+  "MPC_PANEL_DARK" \
+  "MPC_FLAT_RADIUS_DP));" \
   "Main Mode selected program" \
   "Main Mode program ownership status" \
   "buildMainTrackTypeIconStrip" \
