@@ -457,5 +457,5 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 
 ### 2026-10-03 Main Track state-row ordering
 
-- Moved the Main Track Monitor / Length / Velocity / Layer context row above the performance canvas to match the canonical blueprint.
-- Kept Track Edit at the canvas edge and Track/Pad switching in the lower-right context row.
+- Places the Main Track Monitor / Length / Velocity / Layer context row below the performance canvas.
+- Keeps Track Edit at the canvas edge and the Track/Pad selector in the lower-right context row, matching the current Akai MPC 3 reference.
