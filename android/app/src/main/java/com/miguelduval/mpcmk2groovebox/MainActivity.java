@@ -2136,17 +2136,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         0, ViewGroup.LayoutParams.MATCH_PARENT, 0.48f));
 
-        trackWorkspace.addView(quickTrack,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-
         /*
-         * In MPC Main the track-specific fields sit below the waveform/track
-         * canvas. Keep that hierarchy rather than placing them above it.
+         * Keep the compact Track-state row directly above the performance
+         * canvas, matching the documented Main Track hierarchy.
          */
         trackWorkspace.addView(trackDetailRow,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+
+        trackWorkspace.addView(quickTrack,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         LinearLayout arrangement = column();
         arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
