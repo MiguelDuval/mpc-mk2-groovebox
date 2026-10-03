@@ -138,7 +138,7 @@ Track section.
 Lower center:
 Direct sibling TRACK / ARRANGEMENT header tabs immediately above one shared selected-track workspace host; the active tab switches only the presentation of that workspace.
 
-There is no generic nested MAIN VIEW selector and no duplicate TRACK / ARRANGEMENT header inside the child workspace. Contextual actions (Track Edit pencil / Arrangement GRID) stay at the top edge of the active workspace.
+There is no generic nested MAIN VIEW selector and no duplicate TRACK / ARRANGEMENT header inside the child workspace. Track Edit is attached to the right edge of the Track identity band; Arrangement GRID remains at the top edge of the Arrangement workspace.
 
 Bottom:
 Function bar.
@@ -221,8 +221,8 @@ open Grid/appropriate editor.
 - Main presents Track and Arrangement as sibling local views of the same selected Track/Sequence context.
 - Track View is the default Main view on entry, matching the MPC workflow; switching to Arrangement changes presentation only and does not create a new navigation mode.
 - Track View keeps the performance pad/sample surface; Track Edit now provides a bounded truthful editor for the currently implemented Drum pad semantics.
-- The Track section exposes a compact pencil affordance for Track Edit, matching the MPC entry point. The same semantic destination is also opened by double-tapping the Main Track sample/waveform area.
-- The Track section's compact pencil affordance and a double-tap on the Main Track sample/waveform area are the same semantic Track Edit entry gesture.
+- The Track identity header exposes a compact pencil affordance for Track Edit, matching the MPC entry point. The same semantic destination is also opened by double-tapping the Main Track sample/waveform area.
+- The Track identity header's compact pencil affordance and a double-tap on the Main Track sample/waveform area are the same semantic Track Edit entry gesture.
 - The Track/Pad selector remains at the lower-right edge of the Track/Arrangement section; in the current implementation it is the rightmost control of the compact state row below the performance canvas.
 - Double-tap on the Main Arrangement overview opens Grid for a Drum Track; unsupported Track Types remain explicitly unavailable rather than being routed into a mismatched editor.
 
