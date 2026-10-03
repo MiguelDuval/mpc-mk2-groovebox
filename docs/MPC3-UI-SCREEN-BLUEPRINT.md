@@ -1039,3 +1039,5 @@ The Main presentation now uses explicit MPC One geometry constants instead of sc
 This is presentation-only. MpcUiState, MpcNavigationController, native sequencing/audio semantics, the five-slot Function Bar and the Track/Arrangement sibling model are unchanged.
 
 - Main interactive controls now use a dedicated flat Main action helper; the global Android-style rounded button default is no longer inherited by Main controls.
+
+- Main Toolbar fidelity checkpoint: fixed Menu/Project zones, a flexible BAR/BEAT/TICK transport cluster, and fixed right-side TC/METRO/AUTO/PLAY/STOP hit-targets keep the MPC3 hierarchy stable across screen widths.
