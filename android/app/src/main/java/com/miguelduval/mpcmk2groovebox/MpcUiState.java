@@ -65,6 +65,8 @@ final class MpcUiState {
         SEQUENCE,
         SEQUENCE_START,
         SEQUENCE_END,
+        SEQUENCE_BPM,
+        SEQUENCE_BARS,
         TRACK,
         PROGRAM,
         TRACK_TYPE,
@@ -435,7 +437,40 @@ final class MpcUiState {
                 selectedPad, selectedLayer, padBank, dataDialFocus, zoomFocus, playing,
                 loopEnabled, timingCorrect, metronome, recordArmed, muted, soloed,
                 browserLocation, browserFilter, browserSearch, editorTool, shiftActive,
-                alternateActive, actionAvailable);
+                alternateActive, actionAvailable, compactMixerVisible, compactMixerPadMode);
+    }
+
+    private MpcUiState copy(
+            Mode mode,
+            Subcontext subcontext,
+            int selectedSequence,
+            int selectedTrack,
+            String selectedProgram,
+            int selectedPad,
+            int selectedLayer,
+            int padBank,
+            DataDialFocus dataDialFocus,
+            ZoomFocus zoomFocus,
+            boolean playing,
+            boolean loopEnabled,
+            boolean timingCorrect,
+            boolean metronome,
+            boolean recordArmed,
+            boolean muted,
+            boolean soloed,
+            String browserLocation,
+            String browserFilter,
+            String browserSearch,
+            EditorTool editorTool,
+            boolean shiftActive,
+            boolean alternateActive,
+            boolean actionAvailable) {
+        return copy(
+                mode, subcontext, selectedSequence, selectedTrack, selectedProgram,
+                selectedPad, selectedLayer, padBank, dataDialFocus, zoomFocus, playing,
+                loopEnabled, timingCorrect, metronome, recordArmed, muted, soloed,
+                browserLocation, browserFilter, browserSearch, editorTool, shiftActive,
+                alternateActive, actionAvailable, compactMixerVisible, compactMixerPadMode);
     }
 
     private static String safe(String value) {
