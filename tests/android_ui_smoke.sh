@@ -494,6 +494,17 @@ for required in \
   fi
 done
 
+echo "Running persistent Program context source preflight..."
+for required in \
+  "compactProgramContext" \
+  ""MPC shell program context"" \
+  "nativeSequenceGetTrackProgram(trackIndex)"; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Persistent compact Program context contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC UI state/navigation source preflight..."
 for required in \
   "compactMixerVisible" \
