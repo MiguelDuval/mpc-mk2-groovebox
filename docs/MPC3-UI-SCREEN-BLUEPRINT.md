@@ -199,6 +199,17 @@ Touch:
 - Existing time-signature and loop state remain visible because they are backed by the current Sequence model.
 - TRANSPOSE is explicitly shown as unavailable until a real domain semantic exists.
 
+### Main visual-fidelity presentation rules
+
+The Main surface should visually read as an MPC One / MPC3 instrument screen before any implementation detail is considered:
+
+- Toolbar uses the vivid MPC red status-band treatment and carries project identity, compact time-counter state, Timing Correct, metronome/automation state and transport.
+- The visible page title is not a separate Android-style title chip; the selected shortcut and active Main sections provide the context.
+- Track identity remains one coherent header band.
+- The selected Track's Program is visible directly beneath that header as a Track-owned field.
+- Track-type affordances are represented as a compact icon cluster; unsupported types remain explicitly unavailable.
+- Shortcut and Function Bar controls use flat rectangular surfaces with clear focus/selection state rather than generic rounded Android cards.
+
 ## 2.4 Arrangement preview
 
 Show:
