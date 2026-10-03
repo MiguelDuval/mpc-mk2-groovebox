@@ -151,6 +151,29 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
   exit 1
 fi
 
+echo "Running Track View shell ownership preflight..."
+track_view_start=$(grep -n -m1 'private void showTrackViewPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+track_view_end=$(grep -n -m1 'private void showSequencePage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$track_view_start" || -z "$track_view_end" || "$track_view_end" -le "$track_view_start" ]]; then
+  echo "ERROR: Track View source boundary is missing"
+  exit 1
+fi
+track_view_block=$(sed -n "${track_view_start},$((track_view_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if ! grep -Fq -- 'MPC Track View context header' <<<"$track_view_block"; then
+  echo "ERROR: Track View context header contract is missing"
+  exit 1
+fi
+for obsolete in 'actionButton("PREV"' 'actionButton("NEXT"' 'v -> showArrangePage()'; do
+  if grep -Fq -- "$obsolete" <<<"$track_view_block"; then
+    echo "ERROR: Track View must not duplicate shell navigation control: $obsolete"
+    exit 1
+  fi
+done
+if grep -Fq -- 'SELECTED TRACK • shell Function Bar' <<<"$track_view_block"; then
+  echo "ERROR: Track View must not render a duplicate instructional footer"
+  exit 1
+fi
+
 if ! grep -Fq -- 'compactMixerStripModeToggle = actionButton("□  ▦",' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track lower-right selector must expose the single-pad / four-squares pair"
   exit 1
