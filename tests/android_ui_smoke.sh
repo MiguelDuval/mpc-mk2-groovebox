@@ -234,16 +234,6 @@ if ! grep -Fq -- 'private boolean isMainWorkspaceDataDialFocus(' "$MAIN_ACTIVITY
   exit 1
 fi
 
-main_view_switch_block=$(sed -n "${main_view_switch_start},$((main_view_switch_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
-if grep -Fq -- 'showMainPage();' <<<"$main_view_switch_block"; then
-  echo "ERROR: Track/Arrangement sibling switch must not rebuild Main page"
-  exit 1
-fi
-if ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(0)' <<<"$main_view_switch_block" ||    ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1)' <<<"$main_view_switch_block"; then
-  echo "ERROR: Track/Arrangement switch must operate on one shared workspace host"
-  exit 1
-fi
-
 echo "Running Main Track/Arrangement header styling preflight..."
 main_view_switch_start=$(grep -n -m1 'private void setMainTrackArrangementView(boolean arrangementSelected)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 main_view_switch_end=$(grep -n -m1 'private int selectedPadIndexForUi()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
@@ -252,7 +242,20 @@ if [[ -z "$main_view_switch_start" || -z "$main_view_switch_end" || "$main_view_
   exit 1
 fi
 main_view_switch_block=$(sed -n "${main_view_switch_start},$((main_view_switch_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+main_view_switch_block=$(sed -n "${main_view_switch_start},$((main_view_switch_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'showMainPage();' <<<"$main_view_switch_block"; then
+  echo "ERROR: Track/Arrangement sibling switch must not rebuild Main page"
+  exit 1
+fi
+if ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(0)' <<<"$main_view_switch_block" || \
+   ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1)' <<<"$main_view_switch_block"; then
+  echo "ERROR: Track/Arrangement switch must operate on one shared workspace host"
+  exit 1
+fi
 if ! grep -Fq -- 'MPC presents Track / Arrangement as contextual headers' <<<"$main_view_switch_block"; then
+  echo "ERROR: Main Track/Arrangement header fidelity contract is missing"
+  exit 1
+fi then
   echo "ERROR: Main Track/Arrangement header fidelity contract is missing"
   exit 1
 fi
