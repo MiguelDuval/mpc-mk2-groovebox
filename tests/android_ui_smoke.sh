@@ -138,7 +138,7 @@ if ! grep -Fq -- 'trackContextHeader.addView(trackEditHeader,' "$MAIN_ACTIVITY_S
 fi
 main_identity_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 main_identity_type=$(grep -n -m1 'TextView trackName = mainField("TRACK")' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-main_identity_view=$(grep -n -m1 'mainTrackViewButton = actionButton(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_identity_view=$(grep -n -m1 'mainTrackViewButton = mainActionButton(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 if [[ -z "$main_identity_start" || -z "$main_identity_type" || -z "$main_identity_view" || "$main_identity_type" -le "$main_identity_start" || "$main_identity_view" -le "$main_identity_type" ]]; then
   echo "ERROR: Main Track identity band source boundary is missing"
   exit 1
