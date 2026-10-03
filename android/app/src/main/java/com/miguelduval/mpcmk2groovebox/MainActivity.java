@@ -1949,10 +1949,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackProgramSection.setPadding(0, dp(4), 0, 0);
 
         /*
-         * MPC3 keeps Track and Program inside one continuous Track context.
-         * Program is a field of that context, not a duplicate top-level
-         * workspace. Track/Program therefore share one identity band while
-         * Track Type and Track Edit remain attached to its right edge.
+         * MPC3 uses one unified Track container. Keep the Main identity band
+         * focused on the selected Track itself; Program is contextual state
+         * owned by that Track rather than a second visible header field.
+         * Program selection remains available through the semantic Program
+         * context without consuming Main workspace width.
          */
         LinearLayout trackProgramHeader = row();
         trackProgramHeader.setContentDescription("Main Mode Track identity header");
@@ -1966,26 +1967,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackProgramHeader.addView(trackName,
                 new LinearLayout.LayoutParams(0, dp(40), 1.0f));
 
-        TextView program = mainField("PROGRAM");
-        program.setTextSize(12);
-        program.setContentDescription("Main Mode selected program");
-        program.setOnClickListener(v -> {
-            final int trackIndex = startupComplete
-                    ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
-            final String trackType = startupComplete
-                    ? nativeSequenceGetTrackType(trackIndex) : "DRUM";
-            if (!"DRUM".equalsIgnoreCase(trackType)) {
-                setBottomStatus(
-                        "PROGRAM SELECT • " + trackType + " TRACK • unavailable");
-                return;
-            }
-            showProgramSelectPage();
-        });
-        trackProgramHeader.addView(program,
-                new LinearLayout.LayoutParams(0, dp(40), 1.0f));
-
         mainTrackField = trackName;
-        mainProgramField = program;
+        mainProgramField = null;
         mainTrackTypeField = buildMainTrackTypeSelector();
 
         trackProgramHeader.addView(
