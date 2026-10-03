@@ -453,3 +453,9 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 
 - Added MPC-style LVL / FX / SEND / I/O tab presentation to the Pad XL Strip.
 - Kept only LVL active to avoid fabricating unsupported mixer state.
+
+
+### 2026-10-03 Main Track state-row ordering
+
+- Moved the Main Track Monitor / Length / Velocity / Layer context row above the performance canvas to match the canonical blueprint.
+- Kept Track Edit at the canvas edge and Track/Pad switching in the lower-right context row.
