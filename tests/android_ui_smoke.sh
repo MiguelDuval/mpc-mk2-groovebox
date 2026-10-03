@@ -28,7 +28,7 @@ for required in \
   "nativeAudioGetPadSampleName" \
   "nativeAudioSetPadSampleName" \
   "BAR %03d  BEAT %d  TICK %03d" \
-  "SEQ\\n" \
+  'sequenceType.setText("SEQ")' \
   "TRANSPOSE\\n—" \
   "Main Track View quick sample waveform" \
   "Main Track View monitor state" \
