@@ -616,27 +616,40 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bottomStatus.setPadding(dp(12), 0, dp(12), 0);
         bottomStatus.setGravity(Gravity.CENTER_VERTICAL);
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
+        /*
+         * The MPC shell is the real instrument surface. Keep it MATCH_PARENT
+         * rather than relying on a weighted zero-height child: this avoids
+         * device-specific measure passes producing a blank/preview-colored
+         * window before the nested shell has a concrete height.
+         */
+        FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(BG);
-        root.addView(mpcShell.root(), new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        root.addView(mpcShell.root(), new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+
         /*
          * These two views are diagnostics, not part of the MPC Main surface.
-         * Keep them available to UI-audit runs but remove them from the
-         * normal musical workspace so the Function Bar is the true bottom
-         * edge of the instrument UI.
+         * Keep them available only to UI-audit runs and pin them to the bottom
+         * as an overlay so they cannot participate in shell measurement.
          */
         hardwareFeedbackView.setVisibility(
                 uiAuditSmokeMode ? View.VISIBLE : View.GONE);
         bottomStatus.setVisibility(
                 uiAuditSmokeMode ? View.VISIBLE : View.GONE);
-        root.addView(hardwareFeedbackView, new LinearLayout.LayoutParams(
+
+        FrameLayout.LayoutParams feedbackLp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                uiAuditSmokeMode ? dp(24) : 0));
-        root.addView(bottomStatus, new LinearLayout.LayoutParams(
+                uiAuditSmokeMode ? dp(24) : 0,
+                Gravity.BOTTOM);
+        feedbackLp.bottomMargin = uiAuditSmokeMode ? dp(28) : 0;
+        root.addView(hardwareFeedbackView, feedbackLp);
+
+        FrameLayout.LayoutParams statusLp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                uiAuditSmokeMode ? dp(28) : 0));
+                uiAuditSmokeMode ? dp(28) : 0,
+                Gravity.BOTTOM);
+        root.addView(bottomStatus, statusLp);
 
         refreshMpcFunctionBar();
         showMainPage();
