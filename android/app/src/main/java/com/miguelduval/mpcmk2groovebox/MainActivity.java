@@ -2336,6 +2336,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 mainTrackTypeField,
                 new LinearLayout.LayoutParams(dp(68), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
+        trackContextHeader.addView(
+                buildMainTrackTypeIconStrip(),
+                new LinearLayout.LayoutParams(dp(120), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+
         Button trackEditHeader = mainActionButton("✎", v -> openMainTrackEditContext());
         trackEditHeader.setTextSize(15);
         trackEditHeader.setContentDescription("Main Track Edit");
@@ -2361,6 +2365,65 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackProgramSection.addView(trackContextHeader,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+
+        // MPC One keeps the selected Track's Program visible directly below
+        // the Track identity band. This is the same semantic Program context
+        // exposed by the persistent left rail, not a second state model.
+        LinearLayout programContextRow = row();
+        programContextRow.setContentDescription("Main Mode Track Program context");
+        programContextRow.setPadding(dp(4), dp(2), dp(4), dp(2));
+
+        TextView programCaption = label("DRUM PROGRAM", 9, MUTED);
+        programCaption.setTypeface(Typeface.DEFAULT_BOLD);
+        programCaption.setGravity(Gravity.CENTER_VERTICAL);
+        programCaption.setPadding(dp(4), 0, dp(8), 0);
+        programContextRow.addView(
+                programCaption,
+                new LinearLayout.LayoutParams(dp(94), dp(34)));
+
+        Button programField = mainActionButton(
+                "—",
+                v -> {
+                    if (!startupComplete) {
+                        setBottomStatus("PROGRAM SELECT • waiting for sequencer");
+                        return;
+                    }
+                    final int selectedTrack = Math.max(
+                            0, nativeSequenceGetSelectedTrack());
+                    final String trackType = nativeSequenceGetTrackType(selectedTrack);
+                    if ("DRUM".equalsIgnoreCase(trackType)) {
+                        showProgramSelectPage();
+                    } else {
+                        setBottomStatus(
+                                "PROGRAM SELECT • TRACK TYPE IS NOT DRUM");
+                    }
+                });
+        programField.setContentDescription("Main Mode selected program");
+        programField.setGravity(Gravity.CENTER_VERTICAL);
+        programField.setTypeface(Typeface.DEFAULT_BOLD);
+        programField.setTextSize(11);
+        programField.setPadding(dp(8), 0, dp(8), 0);
+        programField.setBackground(strokeBackground(
+                MPC_PANEL_DARK,
+                MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));
+        programContextRow.addView(
+                programField,
+                new LinearLayout.LayoutParams(0, dp(34), 1));
+
+        TextView programStatus = label("TRACK-OWNED", 8, MUTED);
+        programStatus.setGravity(Gravity.CENTER);
+        programStatus.setTypeface(Typeface.DEFAULT_BOLD);
+        programStatus.setContentDescription(
+                "Main Mode program ownership status");
+        programContextRow.addView(
+                programStatus,
+                new LinearLayout.LayoutParams(dp(82), dp(34)));
+
+        trackProgramSection.addView(
+                programContextRow,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
         mainTrackArrangementHost = new FrameLayout(this);
         mainTrackArrangementHost.setContentDescription(
@@ -3647,6 +3710,36 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return "EVENTS • " + status.substring(start, end);
     }
 
+    private LinearLayout buildMainTrackTypeIconStrip() {
+        final LinearLayout strip = row();
+        strip.setGravity(Gravity.CENTER_VERTICAL);
+
+        final String[] glyphs = {"▦", "♫", "▤", "CV"};
+        final String[] descriptions = {
+                "Drum Track type",
+                "Plugin Track type reserved",
+                "MIDI Track type reserved",
+                "CV Track type reserved"
+        };
+
+        for (int i = 0; i < glyphs.length; i++) {
+            final Button icon = mainActionButton(glyphs[i], null);
+            icon.setTextSize(i == 3 ? 8 : 13);
+            icon.setTypeface(Typeface.DEFAULT_BOLD);
+            icon.setEnabled(i == 0);
+            icon.setAlpha(i == 0 ? 1.0f : 0.38f);
+            icon.setContentDescription(descriptions[i]);
+            icon.setBackground(strokeBackground(
+                    i == 0 ? MPC_SELECTED : MPC_PANEL_DARK,
+                    i == 0 ? MPC_SELECTED : MPC_PANEL_BORDER,
+                    MPC_FLAT_RADIUS_DP));
+            strip.addView(
+                    icon,
+                    new LinearLayout.LayoutParams(0, dp(32), 1));
+        }
+        return strip;
+    }
+
     private Button buildMainTrackTypeSelector() {
         final Button typeField = mainInfoButton(
                 "DRUM • TYPE",
@@ -3780,11 +3873,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (trackType != null) trackType.setText(
                 "TYPE\n" + (backendType == null || backendType.isEmpty()
                         ? "—" : backendType));
+        final String programStatus = startupComplete
+                ? nativeSequenceGetTrackProgram(trackIndex)
+                : "PROGRAM • NONE";
+        final String normalizedProgram = normalizeProgramLabel(programStatus);
         if (program != null) {
-            final String programStatus = startupComplete
-                    ? nativeSequenceGetTrackProgram(trackIndex)
-                    : "PROGRAM • NONE";
-            program.setText(normalizeProgramLabel(programStatus));
+            program.setText(normalizedProgram);
+        }
+
+        final TextView centralProgram = findTextByContentDescription(
+                root, "Main Mode selected program");
+        if (centralProgram != null) {
+            centralProgram.setText(normalizedProgram);
+        }
+
+        final TextView programOwnership = findTextByContentDescription(
+                root, "Main Mode program ownership status");
+        if (programOwnership != null) {
+            final boolean drumTrack = "DRUM".equalsIgnoreCase(backendType);
+            programOwnership.setText(
+                    drumTrack ? "TRACK-OWNED" : "UNAVAILABLE");
+            programOwnership.setTextColor(
+                    drumTrack ? MUTED : DANGER);
         }
         if (record != null) record.setText(
                 "REC\n" + (startupComplete && nativeSequenceIsSelectedTrackArmed()
