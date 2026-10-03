@@ -276,6 +276,10 @@ Verification target:
 
 The Main Track header now presents all six documented Program Type affordances (Drum / Keygroup / Plugin / MIDI / Clip / CV) as a compact visual cluster. Unsupported types are disabled rather than removed, preserving the reference information hierarchy while keeping backend truthfulness. No audio, MIDI, scheduler, or native realtime path changed.
 
+### 2026-10-04 Toolbar project-entry increment
+
+The Toolbar now includes a compact project/browser entry beside project identity. This is presentation/navigation only and routes into the existing Browser semantic context. No project persistence, audio, MIDI, or transport ownership changed.
+
 ## 2026-10-04 MPC One visual-fidelity checkpoint
 
 Branch: `feature/mpc-one-ui-fidelity`
