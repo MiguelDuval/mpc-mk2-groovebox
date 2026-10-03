@@ -42,6 +42,7 @@ for required in \
   "Main Mode sequence header" \
   "Main Mode BPM" \
   "Main Time Signature field • tap for editor" \
+  "MPC_TIME_SIGNATURE_HIGHLIGHT" \
   "Timing Correct" \
   "Time Signature value" \
   "Time Signature numerator" \
@@ -137,6 +138,11 @@ fi
 
 if ! grep -Fq -- 'arrangementHeader.addView(' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Arrangement contextual action header must remain present"
+  exit 1
+fi
+
+if ! grep -Fq -- 'MPC_TIME_SIGNATURE_HIGHLIGHT' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Time Signature yellow highlight contract is missing"
   exit 1
 fi
 
