@@ -302,17 +302,28 @@ function bar.
 
 ### Track View selection/status policy
 
-Track View rows are **selectable channel strips**, not mini editor cards.
+Track View rows are **horizontal channel strips**, not mini editor cards.
 
-Each row shows:
+The workspace header is a focused Track field. Each strip has an identity row with:
 
 - track number/name;
 - type;
 - current Program/instrument context;
-- compact event information;
-- REC-arm state;
-- mute state;
-- unavailable SOLO state.
+- compact event information.
+
+The lower strip row mirrors the documented Track View control vocabulary:
+
+- I/O;
+- note range;
+- monitor;
+- level;
+- pan;
+- REC arm;
+- MUTE;
+- SOLO;
+- MIDI filter.
+
+REC arm and MUTE are directly actionable with the current backend. The remaining fields are rendered as visibly unavailable/reserved until truthful semantics exist. The shared Function Bar remains the high-frequency context action surface.
 
 The entire row selects the Track. Track mutations are performed by the shared shell Function Bar, so Track View does not duplicate REC/MUTE/Track navigation controls inside each row or add a second local action bar.
 
