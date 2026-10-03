@@ -88,6 +88,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int DANGER = Color.rgb(236, 83, 83);
     private static final int MPC_TIME_SIGNATURE_HIGHLIGHT = Color.rgb(240, 194, 48);
     private static final int ACTIVE = Color.rgb(63, 207, 117);
+    // MPC One Main geometry: dense, edge-tight, and independent of legacy page spacing.
+    private static final int MPC_MAIN_CONTENT_GUTTER_DP = 4;
+    private static final int MPC_MAIN_SECTION_GAP_DP = 2;
+    private static final int MPC_MAIN_FIELD_HEIGHT_DP = 40;
+    private static final int MPC_MAIN_METRIC_HEIGHT_DP = 36;
+    private static final int MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40;
+    private static final int MPC_MAIN_RADIUS_DP = 0;
+
 
     static {
         boolean loaded = false;
@@ -2008,7 +2016,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
-        page.setPadding(dp(4), dp(3), dp(4), 0);
+        page.setPadding(dp(MPC_MAIN_CONTENT_GUTTER_DP), dp(2), dp(MPC_MAIN_CONTENT_GUTTER_DP), 0);
 
         /*
          * Main's Sequence header is a single information band: sequence
@@ -2019,7 +2027,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          */
         LinearLayout sequenceCard = column();
         sequenceCard.setContentDescription("Main Mode Sequence section");
-        sequenceCard.setPadding(0, 0, 0, dp(4));
+        sequenceCard.setPadding(0, 0, 0, dp(MPC_MAIN_SECTION_GAP_DP));
 
         LinearLayout sequenceHeader = row();
         sequenceHeader.setContentDescription("Main Mode sequence header");
@@ -2034,18 +2042,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 MpcUiState.DataDialFocus.SEQUENCE,
                 "SEQUENCE • DATA DIAL / +/-"));
         sequenceHeader.addView(sequenceName,
-                new LinearLayout.LayoutParams(0, dp(40), 1));
+                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_FIELD_HEIGHT_DP), 1));
 
         TextView bpm = mainHeaderMetric("BPM");
         bpm.setContentDescription("Main Mode BPM");
         sequenceHeader.addView(bpm,
-                new LinearLayout.LayoutParams(dp(82), dp(36)));
+                new LinearLayout.LayoutParams(dp(82), dp(MPC_MAIN_METRIC_HEIGHT_DP)));
 
         TextView sequenceType = mainHeaderMetric("SEQ");
         sequenceType.setContentDescription(
                 "Main Mode sequence tempo source • SEQ • Global unavailable");
         sequenceHeader.addView(sequenceType,
-                new LinearLayout.LayoutParams(dp(46), dp(36)));
+                new LinearLayout.LayoutParams(dp(46), dp(MPC_MAIN_METRIC_HEIGHT_DP)));
 
         TextView timeSig = mainHeaderMetric("TIME SIG");
         timeSig.setContentDescription("Main Time Signature field • tap for editor");
@@ -2054,7 +2062,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 MPC_TIME_SIGNATURE_HIGHLIGHT,
                 2));
         sequenceHeader.addView(timeSig,
-                new LinearLayout.LayoutParams(dp(56), dp(36)));
+                new LinearLayout.LayoutParams(dp(56), dp(MPC_MAIN_METRIC_HEIGHT_DP)));
 
         Button sequenceEdit = actionButton("✎", null);
         sequenceEdit.setEnabled(false);
@@ -2068,7 +2076,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         sequenceCard.addView(sequenceHeader,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
         LinearLayout sequenceFields = row();
         TextView bars = mainMetric("BARS");
@@ -2092,15 +2100,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceFields.addView(start, weight());
         sequenceFields.addView(end, weight());
         sequenceFields.addView(transpose, weight());
-        sequenceFields.addView(loop, new LinearLayout.LayoutParams(dp(48), dp(42)));
+        sequenceFields.addView(loop, new LinearLayout.LayoutParams(dp(48), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
         sequenceCard.addView(sequenceFields,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
         LinearLayout trackProgramSection = mainSection();
         trackProgramSection.setContentDescription("Main Mode Track Program section");
         trackProgramSection.setBackgroundColor(BG);
-        trackProgramSection.setPadding(0, dp(4), 0, 0);
+        trackProgramSection.setPadding(0, dp(MPC_MAIN_SECTION_GAP_DP), 0, 0);
 
         /*
          * MPC3 uses one unified Track container. Keep the Main identity band
@@ -2126,13 +2134,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackName.setContentDescription("Main Mode selected track");
         trackName.setOnClickListener(v -> focusMainTrackField());
         trackContextHeader.addView(trackName,
-                new LinearLayout.LayoutParams(0, dp(40), 1.0f));
+                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_FIELD_HEIGHT_DP), 1.0f));
 
         mainTrackField = trackName;
         mainTrackTypeField = buildMainTrackTypeSelector();
         trackContextHeader.addView(
                 mainTrackTypeField,
-                new LinearLayout.LayoutParams(dp(68), dp(40)));
+                new LinearLayout.LayoutParams(dp(68), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
         Button trackEditHeader = actionButton("✎", v -> openMainTrackEditContext());
         trackEditHeader.setTextSize(15);
@@ -2140,21 +2148,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackEditHeader.setBackground(strokeBackground(
                 SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         trackContextHeader.addView(trackEditHeader,
-                new LinearLayout.LayoutParams(dp(38), dp(40)));
+                new LinearLayout.LayoutParams(dp(38), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
         mainTrackViewButton = actionButton(
                 "TRACK",
                 v -> setMainTrackArrangementView(false));
         mainTrackViewButton.setContentDescription("Main Track View header");
         trackContextHeader.addView(mainTrackViewButton,
-                new LinearLayout.LayoutParams(dp(74), dp(40)));
+                new LinearLayout.LayoutParams(dp(74), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
         mainArrangementViewButton = actionButton(
                 "ARRANGEMENT",
                 v -> setMainTrackArrangementView(true));
         mainArrangementViewButton.setContentDescription("Main Arrangement View header");
         trackContextHeader.addView(mainArrangementViewButton,
-                new LinearLayout.LayoutParams(dp(112), dp(40)));
+                new LinearLayout.LayoutParams(dp(112), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
         Button arrangementEdit = actionButton("✎",
                 v -> setBottomStatus(
@@ -2164,11 +2172,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementEdit.setBackground(strokeBackground(
                 SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         trackContextHeader.addView(arrangementEdit,
-                new LinearLayout.LayoutParams(dp(38), dp(40)));
+                new LinearLayout.LayoutParams(dp(38), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
         trackProgramSection.addView(trackContextHeader,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
         mainTrackArrangementHost = new FrameLayout(this);
         mainTrackArrangementHost.setContentDescription(
@@ -2208,7 +2216,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         layerDownButton.setTextSize(13);
         layerDownButton.setContentDescription("Main Track View previous sample layer");
         layerControls.addView(layerDownButton,
-                new LinearLayout.LayoutParams(dp(24), dp(42)));
+                new LinearLayout.LayoutParams(dp(24), dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
 
         TextView layerDetail = mainMetric("LAYER");
         layerDetail.setContentDescription("Main Track View selected layer • tap to focus Layer");
@@ -2224,13 +2232,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "LAYER\n%d/8",
                 selectedLayer + 1));
         layerControls.addView(layerDetail,
-                new LinearLayout.LayoutParams(0, dp(42), 1));
+                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
 
         Button layerUpButton = actionButton("+", v -> adjustMainLayer(1));
         layerUpButton.setTextSize(13);
         layerUpButton.setContentDescription("Main Track View next sample layer");
         layerControls.addView(layerUpButton,
-                new LinearLayout.LayoutParams(dp(24), dp(42)));
+                new LinearLayout.LayoutParams(dp(24), dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
         trackDetailRow.addView(layerControls,
                 new LinearLayout.LayoutParams(0, dp(42), 1));
 
@@ -2338,7 +2346,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          */
         trackWorkspace.addView(trackDetailRow,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
 
         trackWorkspace.addView(quickTrack,
                 new LinearLayout.LayoutParams(
@@ -3153,37 +3161,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private LinearLayout mainSection() {
         LinearLayout section = column();
-        section.setPadding(dp(8), dp(6), dp(8), dp(6));
-        section.setBackground(strokeBackground(SURFACE, LINE, 4));
+        section.setPadding(dp(6), dp(4), dp(6), dp(4));
+        section.setBackground(strokeBackground(SURFACE, LINE, MPC_MAIN_RADIUS_DP));
         return section;
     }
 
     private TextView mainMetric(String title) {
-        TextView view = label("", 11, TEXT);
+        TextView view = label("", 10, TEXT);
         view.setTypeface(Typeface.DEFAULT_BOLD);
         view.setGravity(Gravity.CENTER_VERTICAL);
-        view.setPadding(dp(6), 0, dp(6), 0);
-        view.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        view.setPadding(dp(5), 0, dp(5), 0);
+        view.setBackground(strokeBackground(SURFACE_2, LINE, MPC_MAIN_RADIUS_DP));
         view.setTag(title);
         return view;
     }
 
     private TextView mainHeaderMetric(String title) {
-        TextView view = label("", 11, TEXT);
+        TextView view = label("", 10, TEXT);
         view.setTypeface(Typeface.DEFAULT_BOLD);
         view.setGravity(Gravity.CENTER);
         view.setPadding(dp(4), 0, dp(4), 0);
-        view.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        view.setBackground(strokeBackground(SURFACE_2, LINE, MPC_MAIN_RADIUS_DP));
         view.setTag(title);
         return view;
     }
 
     private TextView mainField(String title) {
-        TextView view = label("", 13, TEXT);
+        TextView view = label("", 12, TEXT);
         view.setTypeface(Typeface.DEFAULT_BOLD);
         view.setGravity(Gravity.CENTER_VERTICAL);
-        view.setPadding(dp(8), 0, dp(8), 0);
-        view.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        view.setPadding(dp(7), 0, dp(7), 0);
+        view.setBackground(strokeBackground(SURFACE_2, LINE, MPC_MAIN_RADIUS_DP));
         view.setTag(title);
         return view;
     }
