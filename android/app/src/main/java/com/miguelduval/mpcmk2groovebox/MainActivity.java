@@ -1949,11 +1949,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackProgramSection.setBackgroundColor(BG);
         trackProgramSection.setPadding(0, dp(4), 0, 0);
 
-        TextView program = mainField("PROGRAM");
-        program.setTextSize(12);
-        program.setContentDescription("Main Mode selected program");
-        program.setOnClickListener(v -> showProgramSelectPage());
-
+        /*
+         * MPC3 unifies Program and Track into the same Track container. Keep
+         * the Main header focused on the user-facing Track identity, its type
+         * selector, and the Track Edit affordance. Program selection remains
+         * available through the dedicated hardware Program Select context.
+         */
         LinearLayout trackProgramHeader = row();
         trackProgramHeader.setContentDescription("Main Mode Track identity header");
         trackProgramHeader.setPadding(dp(4), dp(2), dp(4), dp(2));
@@ -1964,13 +1965,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackName.setContentDescription("Main Mode selected track");
         trackName.setOnClickListener(v -> showTrackSelectPage());
         trackProgramHeader.addView(trackName,
-                new LinearLayout.LayoutParams(0, dp(40), 1.30f));
+                new LinearLayout.LayoutParams(0, dp(40), 1));
 
         mainTrackField = trackName;
-        mainProgramField = program;
+        mainProgramField = null;
         mainTrackTypeField = buildMainTrackTypeSelector();
-        trackProgramHeader.addView(program,
-                new LinearLayout.LayoutParams(0, dp(40), 1.20f));
 
         trackProgramHeader.addView(
                 mainTrackTypeField,
