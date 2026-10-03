@@ -1322,7 +1322,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         : 0.0f;
                 compactPadTuneLabel.setText(String.format(
                         Locale.ROOT,
-                        "TUNE %+0.1f",
+                        "TUNE %+.1f",
                         tune));
             }
         }
