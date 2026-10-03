@@ -229,13 +229,35 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
 fi
 
 echo "Running MPC One Main geometry preflight..."
-for required in   'MPC_MAIN_CONTENT_GUTTER_DP = 4'   'MPC_MAIN_SECTION_GAP_DP = 2'   'MPC_MAIN_FIELD_HEIGHT_DP = 40'   'MPC_MAIN_METRIC_HEIGHT_DP = 36'   'MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40'   'MPC_MAIN_RADIUS_DP = 0'   'page.setPadding(dp(MPC_MAIN_CONTENT_GUTTER_DP)'   'sequenceCard.setPadding(0, 0, 0, dp(MPC_MAIN_SECTION_GAP_DP))'   'sequenceHeader, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_FIELD_HEIGHT_DP))'   'trackContextHeader, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_FIELD_HEIGHT_DP))'   'trackWorkspace.addView(trackDetailRow'   'dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP))'; do
+for required in \
+  'MPC_MAIN_CONTENT_GUTTER_DP = 4' \
+  'MPC_MAIN_SECTION_GAP_DP = 2' \
+  'MPC_MAIN_FIELD_HEIGHT_DP = 40' \
+  'MPC_MAIN_METRIC_HEIGHT_DP = 36' \
+  'MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40' \
+  'MPC_MAIN_RADIUS_DP = 0' \
+  'page.setPadding(dp(MPC_MAIN_CONTENT_GUTTER_DP), dp(2)' \
+  'sequenceCard.setPadding(0, 0, 0, dp(MPC_MAIN_SECTION_GAP_DP));' \
+  'sequenceCard.addView(sequenceHeader' \
+  'sequenceCard.addView(sequenceFields' \
+  'trackProgramSection.addView(trackContextHeader' \
+  'trackWorkspace.addView(trackDetailRow' \
+  'MPC_MAIN_FIELD_HEIGHT_DP' \
+  'MPC_MAIN_METRIC_HEIGHT_DP' \
+  'MPC_MAIN_TRACK_STATE_HEIGHT_DP'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MPC One Main geometry contract missing: $required"
     exit 1
   fi
 done
-if grep -Fq -- 'trackContextHeader, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(44))' "$MAIN_ACTIVITY_SOURCE"; then
+
+main_header_start=$(grep -n -m1 'trackProgramSection.addView(trackContextHeader' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_header_start" ]]; then
+  echo "ERROR: Main Track header geometry anchor is missing"
+  exit 1
+fi
+main_header_block=$(sed -n "$main_header_start,$((main_header_start + 8))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'dp(44)' <<<"$main_header_block"; then
   echo "ERROR: Main Track context header still uses the pre-fidelity 44dp geometry"
   exit 1
 fi
