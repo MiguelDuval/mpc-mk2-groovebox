@@ -19,6 +19,7 @@
 #include "MPC/Sequencer/MpcSequenceSettings.h"
 #include "MPC/Sequencer/MpcLocatePolicy.h"
 #include "MPC/Sequencer/MpcErasePolicy.h"
+#include "MPC/Sequencer/MpcStepEditParameterPolicy.h"
 
 namespace {
 
@@ -1154,6 +1155,73 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetGridVelocitie
     env->SetIntArrayRegion(
             result, 0, static_cast<jsize>(values.size()), values.data());
     return result;
+}
+
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLauncherContext(
+        JNIEnv* /* env */,
+        jobject /* thiz */,
+        jboolean enabled,
+        jint bank)
+{
+    // Launcher context is a UI semantic projection. Sequence launch itself
+    // receives bank/pad explicitly, so there is no realtime/native state to mutate.
+    (void)enabled;
+    (void)bank;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepEditContext(
+        JNIEnv* /* env */,
+        jobject /* thiz */,
+        jboolean enabled,
+        jint page)
+{
+    // Step Edit routing is expressed by explicit pad/step commands. Keep this
+    // compatibility projection side-effect free until native LED/context state
+    // requires a dedicated domain contract.
+    (void)enabled;
+    (void)page;
+}
+
+namespace {
+
+mpc::sequencer::step_edit::Parameter stepEditParameterFromJava(
+        jint parameter) noexcept {
+    const auto clamped = std::clamp(parameter, 0, 4);
+    return static_cast<mpc::sequencer::step_edit::Parameter>(clamped);
+}
+
+} // namespace
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeStepEditParameterNext(
+        JNIEnv* /* env */,
+        jobject /* thiz */,
+        jint parameter)
+{
+    const auto current = stepEditParameterFromJava(parameter);
+    return static_cast<jint>(
+            mpc::sequencer::step_edit::nextParameter(current));
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeStepEditParameterDelta(
+        JNIEnv* /* env */,
+        jobject /* thiz */,
+        jint parameter,
+        jint gridTicks,
+        jint direction,
+        jboolean fine)
+{
+    const auto current = stepEditParameterFromJava(parameter);
+    return static_cast<jint>(
+            mpc::sequencer::step_edit::deltaFor(
+                    current,
+                    gridTicks,
+                    direction,
+                    fine != JNI_FALSE));
 }
 
 extern "C" JNIEXPORT jintArray JNICALL
