@@ -1024,3 +1024,16 @@ the selected tab is visibly distinct, and reserved functions remain truthful rat
 ### 1.1.3 MkII-first shortcut presentation
 
 Shortcut slots remain five configurable MPC-style mode shortcuts. The visual tile uses an original mode glyph and short label so the phone surface mirrors the controller-centric mode concept without copying proprietary Akai artwork or using numbered page ordinals.
+
+
+## 2026-10-03 Main shell geometry fidelity checkpoint
+
+The Main presentation now uses explicit MPC One geometry constants instead of scattered legacy spacing:
+
+- 4dp Main outer gutter and 2dp section gap;
+- 40dp primary Main field/header and Track-state bands;
+- 36dp compact Sequence metrics;
+- zero-radius Main surfaces, preserving the flat rectangular MPC chrome;
+- compact 4dp insets for the shell shortcut/context rails.
+
+This is presentation-only. MpcUiState, MpcNavigationController, native sequencing/audio semantics, the five-slot Function Bar and the Track/Arrangement sibling model are unchanged.
