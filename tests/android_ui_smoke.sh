@@ -361,7 +361,7 @@ if [[ -z "$track_view_start" || -z "$track_view_end" || "$track_view_end" -le "$
   exit 1
 fi
 track_view_block=$(sed -n "${track_view_start},$((track_view_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
-if ! grep -Fq -- 'MPC Track View context header' <<<"$track_view_block"; then
+if ! grep -Fq -- 'MPC Track View focused track header' <<<"$track_view_block"; then
   echo "ERROR: Track View context header contract is missing"
   exit 1
 fi
