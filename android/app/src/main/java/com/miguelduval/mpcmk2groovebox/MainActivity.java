@@ -1215,9 +1215,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout group = new LinearLayout(this);
         group.setOrientation(LinearLayout.HORIZONTAL);
         group.setGravity(Gravity.CENTER_VERTICAL);
-        group.setContentDescription("MPC Function Bar SEQ REC ARM");
+        group.setContentDescription("MPC Function Bar REC ARM");
         group.setPadding(dp(2), dp(2), dp(2), dp(2));
-        group.setBackground(strokeBackground(SURFACE_2, LINE, 5));
+        group.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
 
         TextView seq = label("SEQ", 8, MUTED);
         seq.setGravity(Gravity.CENTER);
@@ -1241,7 +1242,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recArm.setBackground(strokeBackground(
                 armed ? ACTIVE : SURFACE_2,
                 armed ? ACTIVE : LINE,
-                5));
+                MPC_FLAT_RADIUS_DP));
         recArm.setContentDescription(
                 armed ? "MPC Main sequence REC ARM active"
                         : "MPC Main sequence REC ARM");
@@ -1955,12 +1956,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         TextView start = mainMetric("START");
         TextView end = mainMetric("END");
         TextView transpose = mainMetric("TRANSPOSE");
-        TextView loop = mainMetric("LOOP");
+        Button loop = actionButton("↻", v -> {
+            if (!startupComplete) {
+                setBottomStatus("LOOP • waiting for sequencer");
+                return;
+            }
+            setBottomStatus(nativeSequenceSetLoopEnabled(
+                    !nativeSequenceIsLoopEnabled()));
+            refreshMainModeFields();
+        });
+        loop.setTextSize(15);
+        loop.setTypeface(Typeface.DEFAULT_BOLD);
+        loop.setContentDescription("Main Sequence Loop button");
+        loop.setGravity(Gravity.CENTER);
         sequenceFields.addView(bars, weight());
         sequenceFields.addView(start, weight());
         sequenceFields.addView(end, weight());
         sequenceFields.addView(transpose, weight());
-        sequenceFields.addView(loop, weight());
+        sequenceFields.addView(loop, new LinearLayout.LayoutParams(dp(48), dp(42)));
         sequenceCard.addView(sequenceFields,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
@@ -1977,64 +1990,66 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          * Program selection remains available through the semantic Program
          * context without consuming Main workspace width.
          */
-        LinearLayout trackProgramHeader = row();
-        trackProgramHeader.setContentDescription("Main Mode Track identity header");
-        trackProgramHeader.setPadding(dp(4), dp(2), dp(4), dp(2));
+        /*
+         * MPC presents the selected Track and its Track / Arrangement context
+         * as one compact header boundary over the shared workspace. Keeping
+         * these controls on one row removes an otherwise empty separator row
+         * and gives the waveform/performance canvas more vertical room.
+         */
+        LinearLayout trackContextHeader = row();
+        trackContextHeader.setContentDescription(
+                "Main Mode Track / Arrangement context header");
+        trackContextHeader.setPadding(dp(4), dp(2), dp(4), dp(2));
 
         TextView trackName = mainField("TRACK");
         trackName.setTypeface(Typeface.DEFAULT_BOLD);
         trackName.setTextSize(13);
         trackName.setContentDescription("Main Mode selected track");
         trackName.setOnClickListener(v -> focusMainTrackField());
-        trackProgramHeader.addView(trackName,
+        trackContextHeader.addView(trackName,
                 new LinearLayout.LayoutParams(0, dp(40), 1.0f));
 
         mainTrackField = trackName;
         mainTrackTypeField = buildMainTrackTypeSelector();
-
-        trackProgramHeader.addView(
+        trackContextHeader.addView(
                 mainTrackTypeField,
-                new LinearLayout.LayoutParams(dp(76), dp(40)));
+                new LinearLayout.LayoutParams(dp(68), dp(40)));
 
         Button trackEditHeader = actionButton("✎", v -> openMainTrackEditContext());
         trackEditHeader.setTextSize(15);
         trackEditHeader.setContentDescription("Main Track Edit");
         trackEditHeader.setBackground(strokeBackground(
                 SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
-        trackProgramHeader.addView(trackEditHeader,
-                new LinearLayout.LayoutParams(dp(40), dp(40)));
+        trackContextHeader.addView(trackEditHeader,
+                new LinearLayout.LayoutParams(dp(38), dp(40)));
 
-        trackProgramSection.addView(trackProgramHeader,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
-
-        /*
-         * MPC Main presents Track and Arrangement as sibling headers of the
-         * same lower workspace. Keep the switch directly in that workspace
-         * rather than introducing a generic nested view selector.
-         * The selected header remains the only view-state affordance; the
-         * workspace below changes presentation without changing Navigation
-         * mode or the selected Track/Sequence.
-         */
-        LinearLayout viewSelector = row();
-        viewSelector.setContentDescription("Main Track / Arrangement view switcher");
-        viewSelector.setPadding(dp(6), dp(2), dp(6), dp(2));
-
-        mainTrackViewButton = actionButton("TRACK", v -> setMainTrackArrangementView(false));
+        mainTrackViewButton = actionButton(
+                "TRACK",
+                v -> setMainTrackArrangementView(false));
         mainTrackViewButton.setContentDescription("Main Track View header");
-        viewSelector.addView(mainTrackViewButton,
-                new LinearLayout.LayoutParams(0, dp(36), 1));
+        trackContextHeader.addView(mainTrackViewButton,
+                new LinearLayout.LayoutParams(dp(74), dp(40)));
 
         mainArrangementViewButton = actionButton(
                 "ARRANGEMENT",
                 v -> setMainTrackArrangementView(true));
         mainArrangementViewButton.setContentDescription("Main Arrangement View header");
-        viewSelector.addView(mainArrangementViewButton,
-                new LinearLayout.LayoutParams(0, dp(36), 1));
+        trackContextHeader.addView(mainArrangementViewButton,
+                new LinearLayout.LayoutParams(dp(112), dp(40)));
 
-        trackProgramSection.addView(viewSelector,
+        Button arrangementEdit = actionButton("✎",
+                v -> setBottomStatus(
+                        "ARRANGEMENT EDIT • RESERVED until arrangement edit semantics exist"));
+        arrangementEdit.setTextSize(15);
+        arrangementEdit.setContentDescription("Main Arrangement Edit RESERVED");
+        arrangementEdit.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        trackContextHeader.addView(arrangementEdit,
+                new LinearLayout.LayoutParams(dp(38), dp(40)));
+
+        trackProgramSection.addView(trackContextHeader,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
         mainTrackArrangementHost = new FrameLayout(this);
         mainTrackArrangementHost.setContentDescription(
@@ -2070,7 +2085,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackDetailRow.addView(velocityDetail, weight());
 
         TextView layerDetail = mainMetric("LAYER");
-        layerDetail.setContentDescription("Main Track View selected layer");
+        layerDetail.setContentDescription("Main Track View selected layer • tap to focus Layer");
+        layerDetail.setOnClickListener(v -> {
+            navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_SELECT);
+            navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_LAYER);
+            navigationController.setActionAvailable(true);
+            setBottomStatus("LAYER • DATA DIAL / +/-");
+            refreshMainDataDialFocusVisuals();
+        });
         layerDetail.setText(String.format(
                 Locale.ROOT,
                 "LAYER\n%d/8",
@@ -2104,9 +2126,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         padColumn.addView(buildMiniMainPadGrid(),
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        /* The touch pad fallback stays compact so the waveform remains the
+         * dominant Main Track canvas, while four rows of pads retain usable
+         * near-square hit targets on the MPC One-sized landscape display. */
         quickTrack.addView(padColumn,
                 new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.52f));
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.36f));
 
         LinearLayout sampleColumn = column();
         sampleColumn.setPadding(dp(6), 0, 0, 0);
@@ -2120,23 +2145,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sampleHeader.addView(sampleTitle,
                 new LinearLayout.LayoutParams(0, dp(28), 1));
 
-        Button layerDownButton = actionButton("L−", v -> {
-            selectedLayer = Math.max(0, selectedLayer - 1);
-            navigationController.setSelectedLayer(selectedLayer);
-            refreshMainTrackQuickSample();
-        });
-        layerDownButton.setContentDescription("Main Track View previous sample layer");
-        sampleHeader.addView(layerDownButton,
-                new LinearLayout.LayoutParams(dp(48), dp(28)));
 
-        Button layerUpButton = actionButton("L+", v -> {
-            selectedLayer = Math.min(7, selectedLayer + 1);
-            navigationController.setSelectedLayer(selectedLayer);
-            refreshMainTrackQuickSample();
-        });
-        layerUpButton.setContentDescription("Main Track View next sample layer");
-        sampleHeader.addView(layerUpButton,
-                new LinearLayout.LayoutParams(dp(48), dp(28)));
         sampleColumn.addView(sampleHeader,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
@@ -2186,7 +2195,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         quickTrack.addView(sampleColumn,
                 new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.48f));
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.64f));
 
         /*
          * Keep the compact Track-state row directly below the performance
@@ -2207,22 +2216,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangement.setBackgroundColor(BG);
         arrangement.setContentDescription("Main Mode arrangement preview");
 
-        LinearLayout arrangementHeader = row();
-        android.widget.Space arrangementHeaderSpacer = new android.widget.Space(this);
-        arrangementHeader.addView(arrangementHeaderSpacer,
-                new LinearLayout.LayoutParams(0, dp(30), 1));
-        Button arrangementEdit = actionButton(
-                "✎",
-                v -> setBottomStatus(
-                        "ARRANGEMENT EDIT • RESERVED until arrangement edit semantics exist"));
-        arrangementEdit.setTextSize(15);
-        arrangementEdit.setContentDescription("Main Arrangement Edit RESERVED");
-        arrangementEdit.setBackground(strokeBackground(
-                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
-        arrangementHeader.addView(
-                arrangementEdit,
-                new LinearLayout.LayoutParams(dp(40), dp(30)));
-        arrangement.addView(arrangementHeader);
 
         TextView arrangementInfo = label(
                 "SEQUENCE • selected Track • playhead-aware",
@@ -3248,8 +3241,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         timeSig.setText(String.format(
                 Locale.ROOT, "%d/%d",
                 numerator, denominator));
-        loop.setText(
-                "LOOP\n" + (loopEnabled ? "ON" : "OFF"));
+        loop.setText("↻");
+        loop.setContentDescription(
+                "Main Sequence Loop button • " + (loopEnabled ? "ON" : "OFF"));
+        loop.setTextColor(loopEnabled ? BG : TEXT);
+        loop.setBackground(strokeBackground(
+                loopEnabled ? ACCENT : SURFACE_2,
+                loopEnabled ? ACCENT : LINE,
+                MPC_FLAT_RADIUS_DP));
         final int loopStartBar = nativeStateReady
                 ? nativeSequenceGetLoopStartBar() : 1;
         final int loopEndBar = nativeStateReady
