@@ -733,7 +733,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactPadPanLabel.setContentDescription(
                 "MPC Main Mixer Strip pad pan");
         compactPadPanLabel.setBackground(strokeBackground(
-                SURFACE_2, LINE, 2));
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         padMixValues.addView(compactPadPanLabel,
                 new LinearLayout.LayoutParams(0, dp(24), 1));
 
@@ -743,7 +743,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactPadTuneLabel.setContentDescription(
                 "MPC Main Mixer Strip pad tuning");
         compactPadTuneLabel.setBackground(strokeBackground(
-                SURFACE_2, LINE, 2));
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         padMixValues.addView(compactPadTuneLabel,
                 new LinearLayout.LayoutParams(0, dp(24), 1));
 
@@ -856,7 +856,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         field.setBackground(strokeBackground(
                 SURFACE_2,
                 LINE,
-                6));
+                MPC_FLAT_RADIUS_DP));
         if (listener != null) {
             field.setOnClickListener(listener);
             field.setFocusable(true);
@@ -971,7 +971,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactMixerToggle.setBackground(strokeBackground(
                 visible ? ACCENT : SURFACE_2,
                 visible ? ACCENT : LINE,
-                5));
+                MPC_FLAT_RADIUS_DP));
     }
 
     private void refreshMpcCompactContext() {
@@ -1723,7 +1723,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             tabView.setBackground(strokeBackground(
                     active ? DANGER : BG,
                     active ? DANGER : Color.TRANSPARENT,
-                    2));
+                    MPC_FLAT_RADIUS_DP));
             tabView.setContentDescription(
                     "MPC Mixer Strip " + tab
                             + (active ? " active" : " unavailable"));
@@ -1796,7 +1796,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             button.setBackground(strokeBackground(
                     selected ? SURFACE_2 : BG,
                     selected ? DANGER : LINE,
-                    8));
+                    MPC_FLAT_RADIUS_DP));
         }
     }
 
@@ -2039,6 +2039,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactMixerStripModeToggle.setContentDescription(
                 "MPC condensed Mixer Strip Track or Pad selector");
         compactMixerStripModeToggle.setGravity(Gravity.CENTER);
+        compactMixerStripModeToggle.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         trackDetailRow.addView(compactMixerStripModeToggle,
                 new LinearLayout.LayoutParams(dp(46), dp(40)));
 
