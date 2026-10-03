@@ -997,8 +997,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         field.setBackground(strokeBackground(
                 MPC_PANEL,
                 MPC_PANEL_BORDER,
-                MPC_FLAT_RADIUS_DP));
-        if (listener != null) {
+                MPC_FLAT_RADIUS_DP));        if (listener != null) {
             field.setOnClickListener(listener);
             field.setFocusable(true);
             field.setClickable(true);
@@ -1997,8 +1996,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Time Signature")
                 .setView(root)
-                .setNegativeButton("CANCEL", null)
-                .setPositiveButton("DO IT", (d, which) -> {
+                .setNegativeButton("CANCEL", null)                .setPositiveButton("DO IT", (d, which) -> {
                     setBottomStatus(
                             nativeSequenceSetTimeSignature(
                                     numeratorState[0], denominatorState[0]));
@@ -2396,7 +2394,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         setBottomStatus(
                                 "PROGRAM SELECT • TRACK TYPE IS NOT DRUM");
                     }
-                });        programField.setContentDescription("Main Mode selected program");
+                });
+        programField.setContentDescription("Main Mode selected program");
         programField.setGravity(Gravity.CENTER_VERTICAL);
         programField.setTypeface(Typeface.DEFAULT_BOLD);
         programField.setTextSize(11);
@@ -2997,8 +2996,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     selectedPad, selectedLayer);
             final long end = nativeAudioGetPadSampleRegionEnd(
                     selectedPad, selectedLayer);
-            mainTrackWaveform.setSelection(
-                    start / (float) frames,
+            mainTrackWaveform.setSelection(                    start / (float) frames,
                     end / (float) frames);
             mainTrackWaveform.setDurationMs(
                     sampleRate > 0
@@ -3711,21 +3709,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final LinearLayout strip = row();
         strip.setGravity(Gravity.CENTER_VERTICAL);
 
-        final String[] glyphs = {"▦", "♫", "▤", "CV"};
+        // MPC's Main Track region exposes six Program Type choices:
+        // Drum, Keygroup, Plugin, MIDI, Clip and CV. Only Drum has a
+        // truthful backend in this build; the remaining choices stay visible
+        // but unavailable so the screen retains the reference hierarchy
+        // without pretending unsupported semantics exist.
+        final String[] glyphs = {"▦", "⌨", "✦", "M", "▤", "CV"};
         final String[] descriptions = {
                 "Drum Track type",
+                "Keygroup Track type reserved",
                 "Plugin Track type reserved",
                 "MIDI Track type reserved",
+                "Clip Track type reserved",
                 "CV Track type reserved"
         };
 
         for (int i = 0; i < glyphs.length; i++) {
             final Button icon = mainActionButton(glyphs[i], null);
-            icon.setTextSize(i == 3 ? 8 : 13);
+            icon.setTextSize(i == 5 ? 7 : 12);
             icon.setTypeface(Typeface.DEFAULT_BOLD);
             icon.setEnabled(i == 0);
-            icon.setAlpha(i == 0 ? 1.0f : 0.38f);
+            icon.setAlpha(i == 0 ? 1.0f : 0.36f);
             icon.setContentDescription(descriptions[i]);
+            icon.setGravity(Gravity.CENTER);
+            icon.setPadding(0, 0, 0, 0);
             icon.setBackground(strokeBackground(
                     i == 0 ? MPC_SELECTED : MPC_PANEL_DARK,
                     i == 0 ? MPC_SELECTED : MPC_PANEL_BORDER,
@@ -3997,7 +4004,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
         }
     }
-
     private View buildPadGrid() {
         LinearLayout grid = column();
         for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
@@ -4997,8 +5003,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
         navigationController.setActionAvailable(true);
-        pageTitle.setText("TRACK VIEW");
-        content.removeAllViews();
+        pageTitle.setText("TRACK VIEW");        content.removeAllViews();
 
         LinearLayout page = page();
         page.setContentDescription("MPC Track View workspace");
@@ -5997,8 +6002,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 selectedSequenceStep =
                         sequenceStepPage * SEQUENCE_GRID_PAGE_STEPS + step;
                 navigationController.setDataDialFocus(
-                        MpcUiState.DataDialFocus.STEP);
-                setBottomStatus(
+                        MpcUiState.DataDialFocus.STEP);                setBottomStatus(
                         "STEP " + (selectedSequenceStep + 1) + " SELECTED");
                 refreshSequenceStepPage();
                 return true;
@@ -6997,8 +7001,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private String sequenceGridLabel(int ticks) {
         switch (ticks) {
-            case 60: return "Q 1/64";
-            case 120: return "Q 1/32";
+            case 60: return "Q 1/64";            case 120: return "Q 1/32";
             case 240: return "Q 1/16";
             case 480: return "Q 1/8";
             case 960: return "Q 1/4";
@@ -7997,8 +8000,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final long end = nativeAudioGetPadSampleRegionEnd(
                 selectedPad, selectedLayer);
         sampleWaveform.setSelection(
-                start / (float) frames,
-                end / (float) frames);
+                start / (float) frames,                end / (float) frames);
         sampleWaveform.setDurationMs(
                 sampleRate > 0
                         ? frames * 1000.0f / sampleRate
@@ -8997,8 +8999,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         View trackViewWorkspace = findViewWithContentDescription(
-                getWindow().getDecorView(), "MPC Track View workspace");
-        if (trackViewWorkspace == null
+                getWindow().getDecorView(), "MPC Track View workspace");        if (trackViewWorkspace == null
                 || trackViewWorkspace.getHeight() <= dp(180)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View workspace");
             return;
