@@ -492,3 +492,13 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Flattened the sibling Main Track / Arrangement headers to remove the Android-card appearance.
 - Active header now uses the MPC red focus accent; inactive header remains subdued.
 - Kept the existing shared-workspace switch and Track/Arrangement semantic routing unchanged.
+
+
+### 2026-10-03 Track View structural fidelity increment
+
+- Reworked Track View from compact list cards into stacked horizontal MPC-style track strips.
+- Added focused Track header field/dropdown treatment and preserved global Toolbar Time Counter ownership.
+- Added documented per-strip I/O, note-range, monitor, level, pan, REC, MUTE, SOLO and MIDI-filter vocabulary.
+- Kept unsupported strip functions explicitly unavailable; REC and MUTE are now directly actionable against truthful existing backend semantics.
+- Shared Function Bar remains the stable high-frequency Track operation surface.
+- Physical MkII verification remains required.
