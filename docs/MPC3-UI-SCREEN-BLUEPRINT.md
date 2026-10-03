@@ -190,7 +190,7 @@ Touch:
 ### Main Track quick-sample context
 
 - The default Main Track view pairs the performance pad surface with a compact sample waveform for the selected Pad/Layer.
-- A compact MPC-style track-state row sits directly above the canvas with **Monitor / Length / Velocity / Layer** vocabulary.
+- A compact MPC-style track-state row sits directly below the performance canvas with **Monitor / Length / Velocity / Layer** vocabulary.
 - Only truthful backend state is surfaced: Monitor is currently unavailable, Length is sequence-scoped, Velocity has no track-level semantic in the current backend, and Layer is the actual selected Drum sample layer.
 - Start/End handles use the existing sample-region semantic command; this is a quick-edit surface, not a replacement for full Sample Edit.
 - Layer −/+ changes only the selected sample layer and keeps the current Track/Pad context.
@@ -223,6 +223,7 @@ open Grid/appropriate editor.
 - Track View keeps the performance pad/sample surface; Track Edit now provides a bounded truthful editor for the currently implemented Drum pad semantics.
 - The Track section exposes a compact pencil affordance for Track Edit, matching the MPC entry point. The same semantic destination is also opened by double-tapping the Main Track sample/waveform area.
 - The Track section's compact pencil affordance and a double-tap on the Main Track sample/waveform area are the same semantic Track Edit entry gesture.
+- The Track/Pad selector remains at the lower-right edge of the Track/Arrangement section; in the current implementation it is the rightmost control of the compact state row below the performance canvas.
 - Double-tap on the Main Arrangement overview opens Grid for a Drum Track; unsupported Track Types remain explicitly unavailable rather than being routed into a mismatched editor.
 
 ## 2.5 Main function bar
