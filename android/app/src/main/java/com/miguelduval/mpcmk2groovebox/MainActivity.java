@@ -2641,18 +2641,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         "Main Track View record sample");
             } else {
                 // Once loaded, the waveform becomes the primary surface;
-                // keep Audition first and Browser available as a secondary path.
+                // keep Audition first and expose the semantic Sample Edit action.
                 mainTrackSamplePrimaryButton.setText("AUDITION");
                 mainTrackSamplePrimaryButton.setOnClickListener(
                         v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
                 mainTrackSamplePrimaryButton.setContentDescription(
                         "Main Track View sample primary action");
 
-                mainTrackSampleActionButton.setText("BROWSE");
+                mainTrackSampleActionButton.setText("SAMPLE EDIT");
                 mainTrackSampleActionButton.setOnClickListener(
-                        v -> showBrowserPage());
+                        v -> showSamplePage());
                 mainTrackSampleActionButton.setContentDescription(
-                        "Main Track View browse samples");
+                        "Main Track View sample edit");
             }
         }
 
@@ -4004,9 +4004,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         footer.addView(actionButton(
                 "BACK MAIN",
                 v -> showMainPage()), weight());
-        footer.addView(actionButton(
-                "SEQUENCE EDIT",
-                v -> showSequencePage()), weight());
         page.addView(footer, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
@@ -4128,9 +4125,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         footer.addView(actionButton(
                 "BACK MAIN",
                 v -> showMainPage()), weight());
-        footer.addView(actionButton(
-                "TRACK VIEW",
-                v -> showTrackViewPage()), weight());
         page.addView(footer, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 

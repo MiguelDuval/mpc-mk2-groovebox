@@ -272,6 +272,16 @@ if ! grep -Fq -- 'Main Sequence Select list' "$MAIN_ACTIVITY_SOURCE" ||    ! gre
   echo "ERROR: Main Sequence Select must return to Main with Sequence Data Dial focus"
   exit 1
 fi
+if ! grep -Fq -- 'mainTrackSampleActionButton.setText("SAMPLE EDIT");' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'v -> showSamplePage());' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: loaded Main Track sample must expose SAMPLE EDIT"
+  exit 1
+fi
+if grep -Fq -- '"SEQUENCE EDIT"' "$MAIN_ACTIVITY_SOURCE" || \
+   grep -Fq -- '"TRACK VIEW"' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main selector contexts must not duplicate navigation actions inside their local footer"
+  exit 1
+fi
 
 if ! grep -Fq -- 'program.setContentDescription("Main Mode selected program")' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'program.setOnClickListener(v -> {' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'mainProgramField = program;' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Program field must remain a touch-selectable field inside the Track context"
