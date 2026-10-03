@@ -1219,3 +1219,8 @@ The Track View workspace now follows the documented standalone hierarchy more cl
 
 Source: MPC Standalone OS User Guide v3.9, Track View section.
 https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf
+
+
+## 2026-10-03 Track View selection identity refinement
+
+Track View horizontal strips now own track selection by direct strip interaction; the focused Track field remains the explicit Data Dial owner. Display labels strip transport metadata such as event count/record-arm state so implementation details do not leak into Track names.
