@@ -3976,7 +3976,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Button button = actionButton(summary, v -> {
                     setBottomStatus(nativeSequenceSelect(index));
                     navigationController.setSelectedSequence(index);
-                    showSequenceSelectPage();
+                    showMainPage();
+                    navigationController.setSubcontext(
+                            MpcUiState.Subcontext.SEQUENCE_SELECT);
+                    navigationController.setDataDialFocus(
+                            MpcUiState.DataDialFocus.SEQUENCE);
+                    navigationController.setActionAvailable(true);
+                    refreshMainDataDialFocusVisuals();
                 });
                 button.setGravity(Gravity.CENTER_VERTICAL);
                 button.setPadding(dp(10), 0, dp(10), 0);

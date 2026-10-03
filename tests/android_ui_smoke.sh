@@ -267,6 +267,11 @@ if ! grep -Fq -- 'trackName.setOnClickListener(v -> focusMainTrackField())' "$MA
   exit 1
 fi
 
+if ! grep -Fq -- 'Main Sequence Select list' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'nativeSequenceSelect(index)' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'showMainPage();' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'MpcUiState.DataDialFocus.SEQUENCE' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Sequence Select must return to Main with Sequence Data Dial focus"
+  exit 1
+fi
+
 if ! grep -Fq -- 'program.setContentDescription("Main Mode selected program")' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'program.setOnClickListener(v -> {' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'mainProgramField = program;' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Program field must remain a touch-selectable field inside the Track context"
   exit 1
