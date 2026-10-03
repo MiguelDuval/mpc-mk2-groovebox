@@ -257,7 +257,7 @@ The persistent Program field and Main Program Select context are enabled only fo
 
 ### Track View shell authority
 
-Track View uses the persistent shell Function Bar as the single mutation surface for the selected Track. Track rows expose status and selection, while REC ARM, Track −, Track +, Mute and Solo remain contextual shell actions. Changing Track from Main must not navigate away from Main merely to reveal the new selection.
+Track View uses the persistent shell Function Bar for high-frequency selected-Track actions, while each horizontal Track strip also exposes the documented per-track status/control vocabulary. REC and MUTE are directly actionable where the current backend can support them; I/O, note range, monitor, level, pan, Solo and MIDI Filter stay visibly reserved/unavailable until truthful backend semantics exist. Track selection remains owned by the focused Track field and selectable strips. Changing Track from Main must not navigate away from Main merely to reveal the new selection.
 
 ## 2026-10-03 Main compact-context direct-entry increment — superseded
 
@@ -1211,3 +1211,11 @@ The Main Sequence header retains the documented right-edge Sequence Edit/Copy pe
 ## 2026-10-03 Track/Arrangement header fidelity increment
 
 Main's Track / Arrangement switch is treated as a contextual header pair rather than generic rounded action cards. The active context remains the only visual state change, using the MPC red focus accent while preserving the shared workspace and all existing semantic navigation behavior.
+
+
+## 2026-10-03 Track View structural fidelity increment
+
+The Track View workspace now follows the documented standalone hierarchy more closely: a focused Track field at the workspace header, then stacked horizontal Track strips with identity and control rows. Supported REC-arm and MUTE semantics are actionable per strip; unsupported I/O, range, monitor, level, pan, Solo and MIDI Filter controls remain explicitly reserved instead of being fabricated. The shared Function Bar remains the stable high-frequency action surface.
+
+Source: MPC Standalone OS User Guide v3.9, Track View section.
+https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf
