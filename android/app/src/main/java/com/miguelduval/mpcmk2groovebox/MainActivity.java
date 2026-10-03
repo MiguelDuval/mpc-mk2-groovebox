@@ -1320,9 +1320,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final MpcUiState.Mode mode = navigationController.state().mode();
         if (mode == MpcUiState.Mode.MAIN) {
+            /*
+             * Track −/+ is a high-frequency Main action, not a navigation
+             * command. Preserve the user's local Track/Arrangement presentation
+             * while making the newly selected Track the active Data Dial focus.
+             */
+            final boolean arrangementSelected =
+                    mainArrangementViewButton != null
+                            && mainArrangementViewButton.getText() != null
+                            && mainArrangementViewButton.getText().toString().equals(
+                                    "ARRANGEMENT");
             showMainPage();
+            setMainTrackArrangementView(arrangementSelected);
+            hardwareFocus = 2;
+            navigationController.setSubcontext(
+                    MpcUiState.Subcontext.TRACK_SELECT);
+            navigationController.setDataDialFocus(
+                    MpcUiState.DataDialFocus.TRACK);
+            navigationController.setActionAvailable(true);
+            refreshMainDataDialFocusVisuals();
         } else if (mode == MpcUiState.Mode.TRACK_VIEW) {
             showTrackViewPage();
+            hardwareFocus = 2;
+            navigationController.setSubcontext(
+                    MpcUiState.Subcontext.TRACK_SELECT);
+            navigationController.setDataDialFocus(
+                    MpcUiState.DataDialFocus.TRACK);
         } else {
             showMainPage();
         }
