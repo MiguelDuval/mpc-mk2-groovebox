@@ -4422,16 +4422,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 : 1;
 
         String headerIdentity = startupComplete
-                ? nativeSequenceTrackStatus(headerTrack)
+                ? cleanTrackDisplayName(nativeSequenceTrackStatus(headerTrack))
                 : "Track 01";
-        final int typeSeparator = headerIdentity.indexOf("  ");
-        if (typeSeparator >= 0) {
-            headerIdentity = headerIdentity.substring(typeSeparator + 2);
-        }
-        final int metadataSeparator = headerIdentity.indexOf("  |");
-        if (metadataSeparator >= 0) {
-            headerIdentity = headerIdentity.substring(0, metadataSeparator);
-        }
 
         TextView selectedTrackContext = label("", 13, TEXT);
         selectedTrackContext.setTypeface(Typeface.DEFAULT_BOLD);
@@ -4515,17 +4507,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
                 String trackIdentityStatus =
                         nativeSequenceTrackStatus(trackIndex);
-                final int trackTypeSeparator = trackIdentityStatus.indexOf("  ");
-                String trackDisplayName = trackTypeSeparator >= 0
-                        ? trackIdentityStatus.substring(
-                                trackTypeSeparator + 2)
-                        : trackIdentityStatus;
-                final int trackMetadataSeparator =
-                        trackDisplayName.indexOf("  |");
-                if (trackMetadataSeparator >= 0) {
-                    trackDisplayName = trackDisplayName.substring(
-                            0, trackMetadataSeparator);
-                }
+                String trackDisplayName =
+                        cleanTrackDisplayName(trackIdentityStatus);
 
                 TextView name = label(
                         String.format(
@@ -9343,7 +9326,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus(nativeSequenceSelectTrack(next));
             navigationController.setSelectedTrack(next);
             if (navigationController.state().mode() == MpcUiState.Mode.MAIN) {
-                showTrackSelectPage();
+                final boolean arrangementSelected =
+                        mainTrackArrangementHost != null
+                                && mainTrackArrangementHost.getChildCount() > 1
+                                && mainTrackArrangementHost.getChildAt(1).getVisibility()
+                                        == View.VISIBLE;
+                showMainPage();
+                setMainTrackArrangementView(arrangementSelected);
+                hardwareFocus = 2;
+                navigationController.setSubcontext(
+                        MpcUiState.Subcontext.TRACK_SELECT);
+                navigationController.setDataDialFocus(
+                        MpcUiState.DataDialFocus.TRACK);
+                navigationController.setActionAvailable(true);
+                refreshMainDataDialFocusVisuals();
             } else if (navigationController.state().mode() == MpcUiState.Mode.TRACK_VIEW) {
                 showTrackViewPage();
             } else {
