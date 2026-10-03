@@ -197,7 +197,12 @@ final class MpcNavigationController {
         state = state.withActionAvailable(available);
         notifyListener();
     }
-\n    void setCompactMixerState(boolean visible, boolean padMode) {\n        state = state.withCompactMixerState(visible, padMode);\n        notifyListener();\n    }\n
+
+    void setCompactMixerState(boolean visible, boolean padMode) {
+        state = state.withCompactMixerState(visible, padMode);
+        notifyListener();
+    }
+
     private boolean isPromotable(MpcUiState.Mode mode) {
         for (MpcModeRegistry.Entry entry : MpcModeRegistry.menuEntries()) {
             if (entry.mode == mode) {
