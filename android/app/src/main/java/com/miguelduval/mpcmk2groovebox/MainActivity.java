@@ -1039,6 +1039,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return "TRACK TYPE";
             case PAD:
                 return "PAD";
+            case PAD_MIXER_LEVEL:
+                return "MIX LEVEL";
+            case PAD_MIXER_PAN:
+                return "MIX PAN";
+            case PAD_MIXER_TUNE:
+                return "MIX TUNE";
             case SAMPLE_LAYER:
                 return "LAYER";
             default:
