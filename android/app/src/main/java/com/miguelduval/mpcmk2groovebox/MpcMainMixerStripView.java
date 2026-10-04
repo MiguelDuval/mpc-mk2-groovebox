@@ -125,8 +125,10 @@ final class MpcMainMixerStripView extends LinearLayout {
         strips.removeAllViews();
 
         if (padMode) {
-            // In Drum Pad view, the first XL strip becomes the selected Pad;
-            // the second remains the project Main Output.
+            // In Drum Pad view, the first XL strip is the selected Pad;
+            // the second is the corresponding selected Track. Main Output is
+            // shown only when the Track strip occupies the left position,
+            // matching the MPC 3.9 channel-strip relationship.
             strips.addView(buildPadStrip(
                     getContext(),
                     selectedPad,
@@ -134,8 +136,14 @@ final class MpcMainMixerStripView extends LinearLayout {
                     padPan,
                     padSampleName),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
-            strips.addView(buildOutputStrip(
-                    getContext()),
+            strips.addView(buildTrackStrip(
+                    getContext(),
+                    selectedTrack,
+                    trackType,
+                    trackName,
+                    programName,
+                    trackMuted,
+                    ready),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
         } else {
             // In Track view, the first XL strip is the selected Track; the
@@ -164,7 +172,7 @@ final class MpcMainMixerStripView extends LinearLayout {
             boolean muted,
             boolean ready) {
         LinearLayout strip = baseStrip(context);
-        addStripHeader(strip, "TRACK " + (track + 1), trackName);
+        addStripHeader(strip, "TRACK ", track + 1, trackName);
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
         strip.addView(info(
                 context,
@@ -340,6 +348,14 @@ final class MpcMainMixerStripView extends LinearLayout {
         strip.setPadding(dp(context, 2), dp(context, 2), dp(context, 2), dp(context, 2));
         strip.setBackground(stroke(PANEL, LINE));
         return strip;
+    }
+
+    private void addStripHeader(
+            LinearLayout strip,
+            String titlePrefix,
+            int titleNumber,
+            String subtitle) {
+        addStripHeader(strip, titlePrefix + titleNumber, subtitle);
     }
 
     private void addStripHeader(LinearLayout strip, String title, String subtitle) {
