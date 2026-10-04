@@ -23,6 +23,12 @@ import java.util.Locale;
  * remains owned by MainActivity/native audio, exposed through Listener.
  */
 final class MpcPadMixerView extends LinearLayout {
+    enum ControlFocus {
+        LEVEL,
+        PAN,
+        TUNE
+    }
+
     interface Listener {
         int selectedPad();
         float padLevel(int pad);
@@ -31,6 +37,7 @@ final class MpcPadMixerView extends LinearLayout {
         String padSampleName(int pad);
 
         void onPadSelected(int pad);
+        void onControlFocus(int pad, ControlFocus focus);
         void onPadLevelSet(int pad, float value);
         void onPadPanDelta(int pad, float delta);
         void onPadTuningDelta(int pad, float delta);
@@ -49,6 +56,7 @@ final class MpcPadMixerView extends LinearLayout {
 
     private final Listener listener;
     private final LinearLayout stripRow;
+    private ControlFocus controlFocus = ControlFocus.LEVEL;
     private final Strip[] strips = new Strip[16];
     private TextView trackHeader;
     private TextView focusHeader;
@@ -93,10 +101,37 @@ final class MpcPadMixerView extends LinearLayout {
                 programLabel == null || programLabel.isEmpty() ? "PROGRAM —" : programLabel));
         focusHeader.setText(String.format(
                 Locale.ROOT,
-                "PAD %02d • DATA DIAL / SELECT",
-                selectedPad + 1));
+                "PAD %02d • %s • DATA DIAL",
+                selectedPad + 1,
+                controlFocusLabel()));
         for (Strip strip : strips) {
             strip.refresh();
+        }
+    }
+
+    void setControlFocus(ControlFocus focus) {
+        controlFocus = focus == null ? ControlFocus.LEVEL : focus;
+        focusHeader.setText(String.format(
+                Locale.ROOT,
+                "PAD %02d • %s • DATA DIAL",
+                listener.selectedPad() + 1,
+                controlFocusLabel()));
+        refreshAll();
+    }
+
+    ControlFocus controlFocus() {
+        return controlFocus;
+    }
+
+    private String controlFocusLabel() {
+        switch (controlFocus) {
+            case PAN:
+                return "PAN";
+            case TUNE:
+                return "TUNE";
+            case LEVEL:
+            default:
+                return "LEVEL";
         }
     }
 
@@ -160,8 +195,9 @@ final class MpcPadMixerView extends LinearLayout {
             fader = new Fader(context);
             fader.setContentDescription("PAD " + (pad + 1) + " vertical fader");
             fader.setOnValueChanged(value -> {
+                listener.onControlFocus(pad, ControlFocus.LEVEL);
                 listener.onPadLevelSet(pad, value);
-                refresh();
+                refreshAll();
             });
             addView(fader, new LayoutParams(
                     LayoutParams.MATCH_PARENT, dp(context, 142)));
@@ -172,24 +208,40 @@ final class MpcPadMixerView extends LinearLayout {
                     LayoutParams.MATCH_PARENT, dp(context, 24)));
 
             panValue = controlField(context, "PAN", "0.00");
+            panValue.setOnClickListener(v ->
+                    listener.onControlFocus(pad, ControlFocus.PAN));
             addView(panValue, new LayoutParams(
                     LayoutParams.MATCH_PARENT, dp(context, 28)));
 
             LinearLayout panButtons = compactButtons(context,
                     "−", "＋",
-                    () -> listener.onPadPanDelta(pad, -0.05f),
-                    () -> listener.onPadPanDelta(pad, 0.05f));
+                    () -> {
+                        listener.onControlFocus(pad, ControlFocus.PAN);
+                        listener.onPadPanDelta(pad, -0.05f);
+                    },
+                    () -> {
+                        listener.onControlFocus(pad, ControlFocus.PAN);
+                        listener.onPadPanDelta(pad, 0.05f);
+                    });
             addView(panButtons, new LayoutParams(
                     LayoutParams.MATCH_PARENT, dp(context, 27)));
 
             tuneValue = controlField(context, "TUNE", "0.0");
+            tuneValue.setOnClickListener(v ->
+                    listener.onControlFocus(pad, ControlFocus.TUNE));
             addView(tuneValue, new LayoutParams(
                     LayoutParams.MATCH_PARENT, dp(context, 28)));
 
             LinearLayout tuneButtons = compactButtons(context,
                     "−", "＋",
-                    () -> listener.onPadTuningDelta(pad, -1.0f),
-                    () -> listener.onPadTuningDelta(pad, 1.0f));
+                    () -> {
+                        listener.onControlFocus(pad, ControlFocus.TUNE);
+                        listener.onPadTuningDelta(pad, -1.0f);
+                    },
+                    () -> {
+                        listener.onControlFocus(pad, ControlFocus.TUNE);
+                        listener.onPadTuningDelta(pad, 1.0f);
+                    });
             addView(tuneButtons, new LayoutParams(
                     LayoutParams.MATCH_PARENT, dp(context, 27)));
 
@@ -208,6 +260,18 @@ final class MpcPadMixerView extends LinearLayout {
             levelValue.setText(String.format(
                     Locale.ROOT, "LVL %3d%%",
                     Math.round(clamp(listener.padLevel(pad), 0f, 1f) * 100f)));
+            panValue.setBackground(frame(
+                    PANEL,
+                    selected && controlFocus == ControlFocus.PAN ? WHITE : BORDER,
+                    0));
+            tuneValue.setBackground(frame(
+                    PANEL,
+                    selected && controlFocus == ControlFocus.TUNE ? WHITE : BORDER,
+                    0));
+            levelValue.setBackground(frame(
+                    selected && controlFocus == ControlFocus.LEVEL ? RED : PANEL,
+                    selected && controlFocus == ControlFocus.LEVEL ? WHITE : BORDER,
+                    0));
             panValue.setText(String.format(
                     Locale.ROOT, "PAN %+.2f",
                     clamp(listener.padPan(pad), -1f, 1f)));
