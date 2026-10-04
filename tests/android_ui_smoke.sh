@@ -101,12 +101,9 @@ for required in \
   "Main Mode program ownership status" \
   "buildMainTrackTypeIconStrip" \
   "Main Mode selected Track Type" \
-  '"Drum Track type"' \
-  '"Keygroup Track type reserved"' \
-  '"Plugin Track type reserved"' \
-  '"MIDI Track type reserved"' \
-  '"Clip Track type reserved"' \
-  '"CV Track type reserved"' \
+  '"Main Track Type icon cluster"' \
+  '"Main Mode selected Track Type"' \
+  '"TRACK TYPE • DRUM is the only implemented Main Track type"' \
   "buildMpcMenuTile" \
   "styleMpcMenuFooterButton" \
   "Main Mode BPM" \
