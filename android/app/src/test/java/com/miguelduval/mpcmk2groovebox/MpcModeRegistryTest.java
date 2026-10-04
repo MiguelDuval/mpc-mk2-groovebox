@@ -16,6 +16,19 @@ public final class MpcModeRegistryTest {
     }
 
     @Test
+    public void shortcutCatalogContainsCanonicalMpcDestinations() {
+        MpcModeRegistry.Entry[] entries = MpcModeRegistry.shortcutEntries();
+        assertEquals(MpcUiState.Mode.BROWSER, entries[0].mode);
+        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, entries[1].mode);
+        assertEquals(MpcUiState.Mode.PAD_MIXER, entries[2].mode);
+        assertEquals(MpcUiState.Mode.SOUNDS, entries[3].mode);
+        assertEquals(MpcUiState.Mode.XYFX, entries[4].mode);
+        assertFalse(entries[1].available);
+        assertFalse(entries[3].available);
+        assertFalse(entries[4].available);
+    }
+
+    @Test
     public void unavailableModesAreExplicitlyReserved() {
         assertTrue(MpcModeRegistry.menuEntry(5).available);
         assertEquals(MpcUiState.Mode.TRACK_EDIT, MpcModeRegistry.menuEntry(5).mode);
