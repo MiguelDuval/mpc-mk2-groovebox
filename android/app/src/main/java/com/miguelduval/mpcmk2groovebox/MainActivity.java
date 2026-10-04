@@ -2695,6 +2695,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
         mainTrackWaveform = new WaveformView(this);
+        mainTrackWaveform.setLayerIndicator(selectedLayer);
         mainTrackWaveform.setContentDescription(
                 "Main Track View quick sample waveform");
         mainTrackWaveform.setEditable(true);
@@ -3169,6 +3170,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void refreshMainTrackQuickSample() {
         if (mainTrackWaveform == null || !startupComplete) return;
+
+        mainTrackWaveform.setLayerIndicator(selectedLayer);
 
         final long frames = nativeAudioGetPadSampleFrameCount(
                 selectedPad, selectedLayer);

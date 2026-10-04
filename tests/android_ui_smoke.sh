@@ -80,6 +80,7 @@ for required in \
   "BAR %03d  BEAT %d  TICK %03d" \
   'sequenceType.setText("SEQ")' \
   "Main Track View quick sample waveform" \
+  "Main Sequence transpose state" \
   "Main Track View monitor state" \
   "Main Track View length mode" \
   "Main Track View velocity state" \
@@ -635,6 +636,14 @@ if grep -Fq -- 'LinearLayout layerControls = row();' "$MAIN_ACTIVITY_SOURCE" || 
 fi
 if ! grep -Fq -- 'layerDetail.setOnClickListener' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main LAYER field must own the shared Data Dial focus entry"
+  exit 1
+fi
+
+echo "Running Main waveform layer-indicator preflight..."
+if ! grep -Fq -- 'public void setLayerIndicator(int layer)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/WaveformView.java" || \
+   ! grep -Fq -- 'drawLayerIndicator(canvas, left, right, top);' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/WaveformView.java" || \
+   ! grep -Fq -- 'mainTrackWaveform.setLayerIndicator(selectedLayer);' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main waveform eight-layer indicator contract is missing"
   exit 1
 fi
 
