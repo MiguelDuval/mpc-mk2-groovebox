@@ -124,6 +124,8 @@ final class MpcMainMixerStripView extends LinearLayout {
         strips.removeAllViews();
 
         if (padMode) {
+            // MPC's XL region keeps the current Pad, Track context and Main
+            // Output visible as separate narrow channel surfaces.
             strips.addView(buildPadStrip(
                     getContext(),
                     selectedPad,
@@ -140,6 +142,9 @@ final class MpcMainMixerStripView extends LinearLayout {
                     trackMuted,
                     "TRACK"),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
+            strips.addView(buildOutputStrip(
+                    getContext()),
+                    new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
         } else {
             strips.addView(buildTrackStrip(
                     getContext(),
@@ -149,6 +154,13 @@ final class MpcMainMixerStripView extends LinearLayout {
                     programName,
                     trackMuted,
                     ready),
+                    new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
+            strips.addView(buildPadStrip(
+                    getContext(),
+                    selectedPad,
+                    padLevel,
+                    padPan,
+                    padSampleName),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
             strips.addView(buildOutputStrip(
                     getContext()),
@@ -178,8 +190,13 @@ final class MpcMainMixerStripView extends LinearLayout {
                 MUTED),
                 new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 44)));
 
+        MpcVerticalMeter meter = new MpcVerticalMeter(context);
+        meter.setValue(0.0f);
+        meter.setContentDescription("MPC Main selected track level meter reserved");
+        meter.setAlpha(0.55f);
+        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 54)));
         TextView level = info(context, "LEVEL\nRESERVED", MUTED);
-        strip.addView(level, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 46)));
+        strip.addView(level, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 38)));
 
         TextView pan = info(context, "PAN\nRESERVED", MUTED);
         strip.addView(pan, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 46)));
@@ -224,12 +241,10 @@ final class MpcMainMixerStripView extends LinearLayout {
 
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
 
-        ProgressBar meter = new ProgressBar(
-                context, null, android.R.attr.progressBarStyleHorizontal);
-        meter.setMax(100);
-        meter.setProgress(Math.max(0, Math.min(100, Math.round(levelValue * 100.0f))));
+        MpcVerticalMeter meter = new MpcVerticalMeter(context);
+        meter.setValue(levelValue);
         meter.setContentDescription("MPC Main selected pad level meter");
-        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 18)));
+        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 54)));
 
         TextView level = info(
                 context,
@@ -314,11 +329,16 @@ final class MpcMainMixerStripView extends LinearLayout {
         LinearLayout strip = baseStrip(context);
         addStripHeader(strip, "OUTPUT 1/2", "MAIN OUT");
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
+        MpcVerticalMeter meter = new MpcVerticalMeter(context);
+        meter.setValue(0.0f);
+        meter.setContentDescription("MPC Main output level meter reserved");
+        meter.setAlpha(0.55f);
+        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 54)));
         strip.addView(info(
                 context,
                 "LEVEL\nRESERVED",
                 MUTED),
-                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 56)));
+                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 42)));
         strip.addView(info(
                 context,
                 "PAN\nRESERVED",
@@ -340,6 +360,35 @@ final class MpcMainMixerStripView extends LinearLayout {
                 MUTED),
                 new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
         return strip;
+    }
+
+    private static final class MpcVerticalMeter extends View {
+        private final Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint trackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float value;
+
+        MpcVerticalMeter(Context context) {
+            super(context);
+            fillPaint.setColor(Color.rgb(71, 214, 195));
+            trackPaint.setColor(Color.rgb(18, 21, 24));
+            setWillNotDraw(false);
+        }
+
+        void setValue(float value) {
+            this.value = Math.max(0.0f, Math.min(1.0f, value));
+            invalidate();
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            final float w = getWidth();
+            final float h = getHeight();
+            final float left = w * 0.38f;
+            final float right = w * 0.62f;
+            canvas.drawRect(left, 2, right, h - 2, trackPaint);
+            final float filled = (h - 4) * value;
+            canvas.drawRect(left, h - 2 - filled, right, h - 2, fillPaint);
+        }
     }
 
     private LinearLayout baseStrip(Context context) {
