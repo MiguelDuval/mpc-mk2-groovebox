@@ -1109,3 +1109,12 @@ The Pad Mixer now follows the persistent MPC workspace model instead of the lega
 - Channel Mixer remains RESERVED until truthful track-strip mixer semantics exist.
 
 Browser chrome now also uses the same flat MPC selection language as the migrated shell: rectangular surfaces, red selected state, and zero-radius framing.
+
+
+## 2026-10-04 Toolbar / Browser / Menu fidelity checkpoint
+
+- Toolbar chrome is graphite/status-oriented; red is reserved for semantic selection/accent surfaces.
+- Browser uses the MPC hierarchy `Places / Content / Expansions`, official file-type filter vocabulary, and keeps Sample Assign/Audition/Load on the shell Function Bar.
+- Browser target Pad/Layer and current sample are compact read-only context state; the workspace no longer reserves a duplicate 190dp target command panel.
+- Menu remains a 4×4 launcher. System commands are exposed through the shell Function Bar rather than a nested second footer.
+- Pad Mixer is a 16-pad workspace with eight visible compact strips and explicit Data Dial Level/Pan/Tune focus.
