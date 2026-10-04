@@ -466,6 +466,14 @@ final class MpcMainMixerStripView extends LinearLayout {
         return strip;
     }
 
+    private TextView text(Context context, String value, int size, int color) {
+        TextView view = new TextView(context);
+        view.setText(value);
+        view.setTextColor(color);
+        view.setTextSize(size);
+        return view;
+    }
+
     private TextView valueLabel(Context context, String value, int color) {
         TextView view = text(context, value, 8, color);
         view.setGravity(Gravity.CENTER_VERTICAL);
