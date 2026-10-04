@@ -1428,10 +1428,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         switch (mode) {
             case BROWSER:
+                // MPC Browser's primary bottom controls are Sample Assign,
+                // Audition and Open/Load. Keep the remaining Function Bar
+                // slots contextual rather than inventing Browser operations.
+                addFunction("SAMPLE ASSIGN", false, null);
+                addFunction("AUDITION", true,
+                        v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
                 addFunction("LOAD", true, v -> openWavPicker());
                 addFunction("UP", true, v -> showBrowserPage());
-                addFunction("FAV", false, null);
-                addFunction("SEARCH", false, null);
                 addFunction("BACK", true, v -> navigateBackFromShell());
                 break;
             case ARRANGE:
