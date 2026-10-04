@@ -83,7 +83,7 @@ for required in \
   "Main Track View monitor state" \
   "Main Track View length mode" \
   "Main Track View velocity state" \
-  "Main Track View transpose state" \
+  "Main Sequence transpose state" \
   'TRANSPOSE\n—' \
   "Main Track View selected layer" \
   "Main Mode sequence tempo source • SEQ • Global unavailable" \
@@ -647,6 +647,11 @@ fi
 echo "Running Main Track/Pad selector placement preflight..."
 if grep -Fq -- 'trackDetailRow.addView(compactMixerStripModeToggle' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track/Pad selector must not live inside the MONITOR/LENGTH/VELOCITY/LAYER state row"
+  exit 1
+fi
+
+if ! grep -Fq -- 'mainSequenceTransposeField = transpose;' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main TRANSPOSE ownership must remain in the Sequence section"
   exit 1
 fi
 
