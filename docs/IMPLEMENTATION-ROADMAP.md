@@ -476,3 +476,16 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **Browser:** three MPC context tabs (`Places / Content / Expansions`), official file-type filter vocabulary, single-workspace composition, and Function Bar actions for Sample Assign / Audition / Load.
 - **Menu:** 4×4 mode launcher remains intact; system actions moved to the single shell Function Bar to avoid nested command bars.
 - **Pad Mixer:** dedicated 16-pad workspace, eight visible strips, real Level/Pan/Tune operations, and Data Dial focus cycle.
+
+
+### 2026-10-04 Main fidelity checkpoint — XL Mixer Strips
+
+The highest-priority Main-shell correction is complete at the presentation layer: the visible 210dp context column now hosts a dedicated `MpcMainMixerStripView` with Track/Pad/Output strip hierarchy. Legacy persistent context widgets remain mounted but hidden during migration.
+
+Acceptance focus for the next run:
+- Main launches with Mixer Strips visible.
+- Track mode shows Track + Main Output.
+- Drum Pad mode shows Pad + selected Track.
+- Track/Pad switching remains only in the Main Track/Arrangement control.
+- Toolbar remains the documented red Main surface.
+- Existing audio, sequencer, MIDI and controller semantics remain untouched.
