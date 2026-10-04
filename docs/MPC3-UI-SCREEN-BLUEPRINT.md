@@ -1095,3 +1095,17 @@ This is presentation-only. MpcUiState, MpcNavigationController, native sequencin
 - Main interactive controls now use a dedicated flat Main action helper; the global Android-style rounded button default is no longer inherited by Main controls.
 
 - Main Toolbar fidelity checkpoint: fixed Menu/Project zones, a flexible BAR/BEAT/TICK transport cluster, fixed TC/METRO/AUTO controls and fixed MIDI In/Out status cells keep the MPC3 hierarchy stable across screen widths.
+
+
+## 2026-10-04 Pad Mixer fidelity checkpoint
+
+The Pad Mixer now follows the persistent MPC workspace model instead of the legacy four-strip diagnostic layout:
+
+- 16 Drum Pad strips are represented in one horizontally scrollable mixer workspace, with eight compact strips visible at the target density.
+- Each strip keeps Pad selection, sample identity, Level, Pan and Tune in one local context.
+- Level uses a vertical fader surface; Pad selection is the primary red semantic selection.
+- Data Dial focus is explicit and visible: LEVEL -> PAN -> TUNE, with Data Dial press cycling the three focused controls.
+- Data Dial deltas dispatch to the existing native pad Level/Pan/Tuning setters; no realtime callback, sampler, sequencer or MIDI decoder code is involved.
+- Channel Mixer remains RESERVED until truthful track-strip mixer semantics exist.
+
+Browser chrome now also uses the same flat MPC selection language as the migrated shell: rectangular surfaces, red selected state, and zero-radius framing.
