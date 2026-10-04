@@ -362,6 +362,18 @@ for required in \
   fi
 done
 
+echo "Running MPC shortcut pictography preflight..."
+for required in   'MpcShortcutIconDrawable'   'setForeground(new MpcShortcutIconDrawable(mode))'   'button.setSelected(selected)'   'setSelected(selected)'   'case BROWSER:'   'case GRID:'   'case STEP:'   'case TRACK_VIEW:'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutIconDrawable.java"; then
+    echo "ERROR: deterministic MPC shortcut icon contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'button.setTextColor(selected ? TEXT : MUTED)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: shortcut selection must not rely on Unicode glyph color alone"
+  exit 1
+fi
+
 echo "Running MPC One Main geometry preflight..."
 for required in \
   'MPC_MAIN_CONTENT_GUTTER_DP = 4' \
