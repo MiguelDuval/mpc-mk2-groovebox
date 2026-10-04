@@ -1132,3 +1132,20 @@ The bounded Main visual-fidelity slice is now implemented against the existing a
 - no changes were made to MpcUiState, navigation semantics, realtime audio/MIDI ownership or native sequencing behavior.
 
 Verification boundary: source-level contracts and GitHub readback pass; no Android/Gradle build or physical MPC Studio MkII verification is available in the current environment, and GitHub Actions/status is not reporting a runnable result for the current branch updates.
+
+
+## 2026-10-04 Exact Main shell fidelity supersession
+
+The visible Main-mode left-side shell now follows the documented MPC 3.9 Mixer Strip hierarchy:
+five shortcut icons -> XL Mixer Strip region -> Main workspace -> Function Bar.
+
+The former persistent Sequence / Track / Program / Pad / Data Dial context rail is retained only as a hidden migration layer while its semantic refresh code is retired safely. It is not the canonical visible Main layout.
+
+Main Mixer Strip semantics follow the documented MPC pattern:
+- Track mode: selected Track strip on the left, Main Output on the right.
+- Pad mode: selected Pad strip on the left, selected Track context on the right.
+- Strip visibility is controlled from the strip's top visibility affordance.
+- Track/Pad selection is owned by the lower-right Track/Arrangement toggle, not duplicated in the strip header.
+- Main-mode Toolbar uses the red MPC presentation, while the outer shell host remains graphite.
+
+This supersedes any earlier wording in this document that describes the old persistent context rail as the visible Main navigation surface.
