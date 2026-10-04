@@ -623,12 +623,24 @@ for required in   'trackDetailRow.addView(monitorDetail, weight());'   'trackDet
     exit 1
   fi
 done
+main_track_state_line=$(grep -n -m1 'trackWorkspace.addView(trackDetailRow' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_track_canvas_line=$(grep -n -m1 'trackWorkspace.addView(quickTrack' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_track_state_line" || -z "$main_track_canvas_line" || "$main_track_state_line" -le "$main_track_canvas_line" ]]; then
+  echo "ERROR: Main Track-state row must be rendered below the Track waveform/canvas"
+  exit 1
+fi
 if grep -Fq -- 'LinearLayout layerControls = row();' "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- 'layerControls.addView(layerDownButton' "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- 'layerControls.addView(layerUpButton' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main LAYER must remain one field, not a nested +/- control group"
   exit 1
 fi
 if ! grep -Fq -- 'layerDetail.setOnClickListener' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main LAYER field must own the shared Data Dial focus entry"
+  exit 1
+fi
+
+echo "Running Main Track/Pad selector placement preflight..."
+if grep -Fq -- 'mixerSelectorLp.bottomMargin = dp(4)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track/Pad selector must reserve the Track-state row below the canvas"
   exit 1
 fi
 

@@ -2742,17 +2742,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         0, ViewGroup.LayoutParams.MATCH_PARENT, 0.64f));
 
         /*
-         * MPC Main places the compact Track-state controls immediately above
-         * the Track canvas. Layer +/- stays inside this same row so Layer is
-         * one coherent high-frequency semantic control.
+         * MPC Main keeps the waveform/canvas as the visual center of the Track
+         * section. The compact Track-state fields live directly below it:
+         * MONITOR / LENGTH / VELOCITY / LAYER.
          */
-        trackWorkspace.addView(trackDetailRow,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
-
         trackWorkspace.addView(quickTrack,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, MPC_MAIN_WORKSPACE_WEIGHT));
+
+        trackWorkspace.addView(trackDetailRow,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
 
         LinearLayout arrangement = column();
         arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
@@ -2813,9 +2813,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         FrameLayout.LayoutParams mixerSelectorLp = new FrameLayout.LayoutParams(
                 dp(46), dp(32), Gravity.RIGHT | Gravity.BOTTOM);
         mixerSelectorLp.rightMargin = dp(4);
-        // Sit inside the actual lower-right corner of the Track/Arrangement
-        // section, immediately above the shell Function Bar boundary.
-        mixerSelectorLp.bottomMargin = dp(4);
+        // Keep the selector in the lower-right of the waveform/canvas area,
+        // above the dedicated Track-state row and shell Function Bar.
+        mixerSelectorLp.bottomMargin = dp(44);
         mainTrackArrangementHost.addView(compactMixerStripModeToggle, mixerSelectorLp);
 
         trackProgramSection.addView(mainTrackArrangementHost,
