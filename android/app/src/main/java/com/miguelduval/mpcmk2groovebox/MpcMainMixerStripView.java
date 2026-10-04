@@ -124,8 +124,8 @@ final class MpcMainMixerStripView extends LinearLayout {
         strips.removeAllViews();
 
         if (padMode) {
-            // MPC's XL region keeps the current Pad, Track context and Main
-            // Output visible as separate narrow channel surfaces.
+            // In Drum Pad view, the first XL strip becomes the selected Pad;
+            // the second remains the project Main Output.
             strips.addView(buildPadStrip(
                     getContext(),
                     selectedPad,
@@ -133,19 +133,12 @@ final class MpcMainMixerStripView extends LinearLayout {
                     padPan,
                     padSampleName),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
-            strips.addView(buildTrackSummaryStrip(
-                    getContext(),
-                    selectedTrack,
-                    trackType,
-                    trackName,
-                    programName,
-                    trackMuted,
-                    "TRACK"),
-                    new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
             strips.addView(buildOutputStrip(
                     getContext()),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
         } else {
+            // In Track view, the first XL strip is the selected Track; the
+            // second is the project Main Output.
             strips.addView(buildTrackStrip(
                     getContext(),
                     selectedTrack,
@@ -154,13 +147,6 @@ final class MpcMainMixerStripView extends LinearLayout {
                     programName,
                     trackMuted,
                     ready),
-                    new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
-            strips.addView(buildPadStrip(
-                    getContext(),
-                    selectedPad,
-                    padLevel,
-                    padPan,
-                    padSampleName),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
             strips.addView(buildOutputStrip(
                     getContext()),
