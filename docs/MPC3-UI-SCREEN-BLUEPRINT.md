@@ -187,8 +187,8 @@ Touch:
 ### Main Track quick-sample context
 
 - The default Main Track view pairs the performance pad surface with a compact sample waveform for the selected Pad/Layer.
-- A compact MPC-style track-state row sits directly above the canvas with **Monitor / Length / Velocity / Layer** vocabulary.
-- Only truthful backend state is surfaced: Monitor is currently unavailable, Length is sequence-scoped, Velocity has no track-level semantic in the current backend, and Layer is the actual selected Drum sample layer.
+- A compact MPC-style track-state row sits directly above the canvas with **Monitor / Length / Velocity / Transpose / Layer** vocabulary.
+- Only truthful backend state is surfaced: Monitor is currently unavailable, Length is sequence-scoped, Velocity has no track-level semantic in the current backend, Transpose is currently unavailable, and Layer is the actual selected Drum sample layer.
 - Start/End handles use the existing sample-region semantic command; this is a quick-edit surface, not a replacement for full Sample Edit.
 - Layer −/+ changes only the selected sample layer and keeps the current Track/Pad context.
 - AUDITION triggers the currently selected Pad; SAMPLE EDIT opens the dedicated sample editor without changing the selected Track/Sequence.
@@ -1065,7 +1065,7 @@ The selected parameter continues to use the red focus outline; section framing i
 
 ## 2026-10-04 Main Toolbar project-entry fidelity increment
 
-The persistent Toolbar keeps project identity and a compact adjacent Browser/project affordance, matching the documented MPC workflow where project context and browsing remain one glance away. The affordance opens the existing Browser semantic context; it does not introduce a second navigation model.
+The persistent Toolbar keeps project identity, a compact adjacent Browser/project affordance, BAR/BEAT/TICK position, Timing Correct, metronome/automation state and MIDI In/Out status. The In/Out cells are status/monitor affordances; transport remains hardware-first. The Browser affordance opens the existing Browser semantic context and does not introduce a second navigation model.
 
 ## 2026-10-04 Main Track type affordance fidelity checkpoint
 
@@ -1094,4 +1094,4 @@ This is presentation-only. MpcUiState, MpcNavigationController, native sequencin
 
 - Main interactive controls now use a dedicated flat Main action helper; the global Android-style rounded button default is no longer inherited by Main controls.
 
-- Main Toolbar fidelity checkpoint: fixed Menu/Project zones, a flexible BAR/BEAT/TICK transport cluster, and fixed right-side TC/METRO/AUTO/PLAY/STOP hit-targets keep the MPC3 hierarchy stable across screen widths.
+- Main Toolbar fidelity checkpoint: fixed Menu/Project zones, a flexible BAR/BEAT/TICK transport cluster, fixed TC/METRO/AUTO controls and fixed MIDI In/Out status cells keep the MPC3 hierarchy stable across screen widths.
