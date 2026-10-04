@@ -8672,7 +8672,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void updateTopMidiStatus(TextView view, boolean connected) {
         if (view == null) return;
-        view.setText(connected ? "●" : "—");
+        view.setText("IN".equals(view.getTag()) ? "IN" : "OUT");
         view.setTextColor(connected ? MPC_TOOLBAR_TEXT : Color.rgb(205, 154, 164));
         view.setContentDescription(
                 "MPC Toolbar MIDI "
