@@ -24,18 +24,9 @@ import java.util.Locale;
 final class MpcMainMixerStripView extends LinearLayout {
     interface Listener {
         boolean isStartupReady();
-        int selectedTrack();
-        String selectedTrackType();
-        String selectedTrackName();
-        String selectedProgramName();
-        int selectedPad();
-        float padLevel(int pad);
-        float padPan(int pad);
-        String padSampleName(int pad);
-        boolean trackMuted();
+        boolean mixerStripVisible();
         void toggleTrackMute();
         void onMixerStripVisibilityChanged(boolean visible);
-        void onPadModeChanged(boolean padMode);
     }
 
     private static final int BG = Color.rgb(23, 25, 28);
@@ -53,8 +44,6 @@ final class MpcMainMixerStripView extends LinearLayout {
     private final TextView modeLabel;
     private final TextView focusLabel;
     private final LinearLayout strips;
-    private final Button trackModeButton;
-    private final Button padModeButton;
 
     MpcMainMixerStripView(Context context, Listener listener) {
         super(context);
@@ -75,23 +64,18 @@ final class MpcMainMixerStripView extends LinearLayout {
         Button visibility = button(context, "◉", 10);
         visibility.setContentDescription("MPC Main mixer strips show or hide");
         visibility.setOnClickListener(v -> {
-            if (listener != null) listener.onMixerStripVisibilityChanged(false);
+            if (listener != null) {
+                listener.onMixerStripVisibilityChanged(
+                        !listener.mixerStripVisible());
+            }
         });
         header.addView(visibility, new LayoutParams(dp(context, 28), dp(context, 22)));
 
-        trackModeButton = button(context, "□", 9);
-        trackModeButton.setContentDescription("MPC Main mixer track strip");
-        trackModeButton.setOnClickListener(v -> {
-            if (listener != null) listener.onPadModeChanged(false);
-        });
-        header.addView(trackModeButton, new LayoutParams(dp(context, 28), dp(context, 22)));
+        // Track/Pad selection is deliberately not duplicated here.
+        // MPC places the Track/Pad mixer toggle in the lower-right corner
+        // of the Main Track/Arrangement section. The top control is only
+        // the strip visibility affordance.
 
-        padModeButton = button(context, "▦", 9);
-        padModeButton.setContentDescription("MPC Main mixer pad strip");
-        padModeButton.setOnClickListener(v -> {
-            if (listener != null) listener.onPadModeChanged(true);
-        });
-        header.addView(padModeButton, new LayoutParams(dp(context, 28), dp(context, 22)));
 
         addView(header, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 26)));
 
@@ -128,16 +112,6 @@ final class MpcMainMixerStripView extends LinearLayout {
                 padMode ? "PAD STRIP / MAIN OUT" : "TRACK STRIP / MAIN OUT");
         focusLabel.setText(
                 "DIAL • " + (dialFocus == null ? "NONE" : dialFocus));
-
-        trackModeButton.setBackground(stroke(
-                !padMode ? RED : PANEL_DARK,
-                !padMode ? RED : LINE));
-        trackModeButton.setTextColor(!padMode ? WHITE : MUTED);
-
-        padModeButton.setBackground(stroke(
-                padMode ? RED : PANEL_DARK,
-                padMode ? RED : LINE));
-        padModeButton.setTextColor(padMode ? WHITE : MUTED);
 
         strips.removeAllViews();
 
