@@ -260,6 +260,25 @@ if ! grep -Fq -- 'buildMainTrackTypeIconStrip()' "$MAIN_ACTIVITY_SOURCE" || \
   echo "ERROR: Main Track type icon cluster contract is missing"
   exit 1
 fi
+echo "Running MPC Main Track Type six-icon presentation preflight..."
+for required in \
+  'MpcTrackTypeIconDrawable' \
+  '"DRUM", "KEYGROUP", "PLUGIN", "MIDI", "CLIP", "CV"' \
+  'MpcTrackTypeIconDrawable.Type.DRUM' \
+  'MpcTrackTypeIconDrawable.Type.KEYGROUP' \
+  'MpcTrackTypeIconDrawable.Type.PLUGIN' \
+  'MpcTrackTypeIconDrawable.Type.MIDI' \
+  'MpcTrackTypeIconDrawable.Type.CLIP' \
+  'MpcTrackTypeIconDrawable.Type.CV' \
+  'setForeground(icon)' \
+  'Main Track Type DRUM available' \
+  'Main Track Type KEYGROUP reserved'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" && \
+     ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackTypeIconDrawable.java"; then
+    echo "ERROR: MPC Main Track Type six-icon presentation contract missing: $required"
+    exit 1
+  fi
+done
 if grep -Fq -- 'findViewWithContentDescription(\n                content, "Main Mode track type selector")' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track Type must not retain a second selector lookup after unified field migration"
   exit 1
