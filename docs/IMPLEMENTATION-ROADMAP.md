@@ -498,3 +498,31 @@ Acceptance focus for the next run:
 - The Track/Pad selector remains in the lower-right Track/Arrangement context and is not duplicated in the strip header.
 - Vertical meter rendering is presentation-only; unsupported track/output gain semantics remain explicitly reserved.
 - Shortcut icons are rendered by an original deterministic Drawable rather than platform-dependent Unicode glyphs.
+
+
+## 2026-10-04 XL Channel Strip fidelity checkpoint
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The Main XL Channel Strip has been tightened against the documented MPC 3.9 Mixer Strips composition. The presentation now uses:
+
+- two adjacent full-height channel strips after the five shortcut icons;
+- Track mode: selected Track on the left, Main Output on the right;
+- Drum Pad mode: selected Pad on the left, its selected Track on the right;
+- flat LVL / FX / SEND / I/O header vocabulary with LVL as the currently implemented view;
+- dense level meter + white-line fader geometry and dedicated pan slider;
+- strip-local Track/Pad identity and program/sample context;
+- Track Mute / Solo / Automation / Record surfaces with truthful availability;
+- no standalone duplicate Data Dial row inside the XL strip.
+
+The right-hand strip remains context-aware by model, but FX/SEND/I/O content is not fabricated until corresponding mixer backend semantics exist.
+
+Primary source: MPC Standalone OS User Guide v3.9, Mixer Strips section (pp. 135-136 in the indexed manual). Akai's MPC3 FAQ also identifies the XL Channel Strip and One-to-One Track Workflow as MPC3 features.
+
+No realtime audio callback, sampler scheduler, sequencer clock, raw MkII decoder, or hardware SysEx protocol was changed.
+
+Verification target:
+- Android compile/unit tests;
+- Android emulator smoke;
+- UI visual evidence artifact;
+- physical MPC Studio MkII verification remains separate.
