@@ -257,8 +257,13 @@ if ! grep -Fq -- 'pageTitle.setVisibility(View.GONE);' "$MAIN_ACTIVITY_SOURCE"; 
   echo "ERROR: legacy duplicate Main page title must remain hidden in the MPC toolbar"
   exit 1
 fi
-if ! grep -Fq -- 'buildMainTrackTypeIconStrip()' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'buildMainTrackTypeIconStrip()' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'refreshMainTrackTypeVisuals()' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track type icon cluster contract is missing"
+  exit 1
+fi
+if grep -Fq -- 'findViewWithContentDescription(\n                content, "Main Mode track type selector")' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track Type must not retain a second selector lookup after unified field migration"
   exit 1
 fi
 if ! grep -Fq -- 'Main Mode selected program' "$MAIN_ACTIVITY_SOURCE"; then
