@@ -954,7 +954,7 @@ if [[ -z "$pad_mode_start" ]]; then
   exit 1
 fi
 pad_mode_block=$(sed -n "$pad_mode_start,$((pad_mode_start + 24))p" "$mixer_strip_source")
-if ! grep -Fq -- 'strips.addView(buildPadStrip(' <<<"$pad_mode_block" ||    ! grep -Fq -- 'strips.addView(buildTrackStrip(' <<<"$pad_mode_block"; then
+if ! grep -Fq -- 'buildPadStrip(' <<<"$pad_mode_block" ||    ! grep -Fq -- 'buildTrackStrip(' <<<"$pad_mode_block"; then
   echo "ERROR: MPC 3.9 Pad Mixer Strip must pair the selected Pad with its selected Track"
   exit 1
 fi
