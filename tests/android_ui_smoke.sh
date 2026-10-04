@@ -665,6 +665,25 @@ fi
 # (see the positive ordering assertion above). Do not assert the inverse here.
 
 echo "Running MPC Pad Mixer presentation preflight..."
+echo "Running MPC Pad Mixer Function Bar preflight..."
+if ! grep -Fq -- 'case PAD_MIXER:' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Pad Mixer Function Bar context is missing"
+  exit 1
+fi
+pad_mixer_function_start=\$(grep -n -m1 'case PAD_MIXER:' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+pad_mixer_function_end=\$(grep -n -m1 'case SAMPLE_EDIT:' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$pad_mixer_function_end" || "$pad_mixer_function_end" -le "$pad_mixer_function_start" ]]; then
+  echo "ERROR: Pad Mixer Function Bar source boundary is missing"
+  exit 1
+fi
+pad_mixer_function_block=\$(sed -n "${pad_mixer_function_start},\$((pad_mixer_function_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+for required in   'PAD −'   'PAD +'   'TRACK EDIT'   'MAIN'   'BROWSER'   'navigationController.setSelectedPad(selectedPad)'; do
+  if ! grep -Fq -- "$required" <<<"$pad_mixer_function_block"; then
+    echo "ERROR: Pad Mixer Function Bar contract missing: $required"
+    exit 1
+  fi
+done
+
 mix_start=\$(grep -n -m1 'private void showMixPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 mix_midi=\$(grep -n -m1 'private void showMidiPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 if [[ -z "$mix_start" || -z "$mix_midi" || "$mix_midi" -le "$mix_start" ]]; then
