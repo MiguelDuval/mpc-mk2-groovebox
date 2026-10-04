@@ -120,6 +120,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40;
     private static final int MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36;
     private static final int MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP = 38;
+    private static final int MPC_SHORTCUT_SELECTION_WIDTH_DP = 3;
     private static final int MPC_MAIN_PROGRAM_HEIGHT_DP = 32;
     private static final float MPC_MAIN_WORKSPACE_WEIGHT = 1.0f;
     private static final int MPC_MAIN_RADIUS_DP = 0;
@@ -2206,7 +2207,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         b.setMinimumHeight(0);
         b.setPadding(dp(2), 0, dp(2), 0);
         b.setGravity(Gravity.CENTER);
-        b.setForeground(new MpcShortcutIconDrawable(mode));
+        b.setForeground(new MpcShortcutIconDrawable(
+                mode, dp(MPC_SHORTCUT_SELECTION_WIDTH_DP)));
         b.setBackground(strokeBackground(
                 BG,
                 Color.TRANSPARENT,
@@ -2301,9 +2303,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final boolean selected = tag == active;
             button.setTextColor(Color.TRANSPARENT);
             button.setSelected(selected);
+            // MPC Main keeps the shortcut surface dark; selection is a thin
+            // red edge indicator carried by the deterministic icon drawable.
             button.setBackground(strokeBackground(
-                    selected ? MPC_SELECTED : BG,
-                    selected ? MPC_SELECTED : Color.TRANSPARENT,
+                    BG,
+                    Color.TRANSPARENT,
                     MPC_FLAT_RADIUS_DP));
             if (button.getForeground() instanceof MpcShortcutIconDrawable) {
                 ((MpcShortcutIconDrawable) button.getForeground()).setSelected(selected);

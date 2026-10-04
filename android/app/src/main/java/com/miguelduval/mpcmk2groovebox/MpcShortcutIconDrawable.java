@@ -20,8 +20,11 @@ final class MpcShortcutIconDrawable extends Drawable {
     private final MpcUiState.Mode mode;
     private boolean selected;
 
-    MpcShortcutIconDrawable(MpcUiState.Mode mode) {
+    private final float selectionWidthPx;
+
+    MpcShortcutIconDrawable(MpcUiState.Mode mode, float selectionWidthPx) {
         this.mode = mode;
+        this.selectionWidthPx = Math.max(1.0f, selectionWidthPx);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeCap(Paint.Cap.SQUARE);
         paint.setStrokeJoin(Paint.Join.MITER);
@@ -41,6 +44,19 @@ final class MpcShortcutIconDrawable extends Drawable {
         final float w = b.width();
         final float h = b.height();
         final float s = Math.min(w, h) * 0.32f;
+        if (selected) {
+            // Match the standalone MPC shortcut rail: the selected shortcut
+            // stays on the graphite surface and receives a narrow red edge.
+            final Paint selectionPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            selectionPaint.setStyle(Paint.Style.FILL);
+            selectionPaint.setColor(Color.rgb(224, 30, 61));
+            canvas.drawRect(
+                    b.left,
+                    b.top,
+                    b.left + selectionWidthPx,
+                    b.bottom,
+                    selectionPaint);
+        }
         paint.setColor(selected ? ACTIVE : INACTIVE);
 
         switch (mode == null ? MpcUiState.Mode.RESERVED : mode) {

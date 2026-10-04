@@ -1179,3 +1179,9 @@ The Track identity band now places the single Track Type icon immediately before
 ## 2026-10-04 Main Track controller-first layout correction
 
 Canonical Main Track composition is now controller-first: no on-screen 4x4 pad matrix is rendered inside Main. Pads are selected on the MPC Studio MkII, and the phone display uses the resulting selected Pad/Layer state in the waveform surface. This keeps the Main screen structurally faithful to MPC 3.x instead of adding Android-specific performance controls.
+
+
+## 2026-10-04 Shortcut Rail selection indicator fidelity
+
+The five shortcut cells remain dark graphite in both selected and unselected states. The selected shortcut is identified by a narrow red edge indicator rendered by the same deterministic icon drawable used for the rail pictogram. This is presentation-only and does not change navigation or hardware routing.
+

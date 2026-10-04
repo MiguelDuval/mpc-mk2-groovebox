@@ -446,7 +446,7 @@ for required in \
 done
 
 echo "Running MPC shortcut pictography preflight..."
-for required in   'MpcShortcutIconDrawable'   'setForeground(new MpcShortcutIconDrawable(mode))'   'button.setSelected(selected)'   'setSelected(selected)'   'case BROWSER:'   'case GRID:'   'case STEP:'   'case TRACK_VIEW:'; do
+for required in   'MpcShortcutIconDrawable'   'new MpcShortcutIconDrawable('   'dp(MPC_SHORTCUT_SELECTION_WIDTH_DP)'   'button.setSelected(selected)'   'setSelected(selected)'   'case BROWSER:'   'case GRID:'   'case STEP:'   'case TRACK_VIEW:'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutIconDrawable.java"; then
     echo "ERROR: deterministic MPC shortcut icon contract missing: $required"
     exit 1
@@ -456,6 +456,17 @@ if grep -Fq -- 'button.setTextColor(selected ? TEXT : MUTED)' "$MAIN_ACTIVITY_SO
   echo "ERROR: shortcut selection must not rely on Unicode glyph color alone"
   exit 1
 fi
+if grep -Fq -- 'selected ? MPC_SELECTED : BG' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: shortcut rail must not use a full-width red selected tile"
+  exit 1
+fi
+for required in 'MPC_SHORTCUT_SELECTION_WIDTH_DP = 3' 'canvas.drawRect(' 'Color.rgb(224, 30, 61)' 'graphite surface' ; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutIconDrawable.java" && \
+     ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC shortcut selection-rail visual contract missing: $required"
+    exit 1
+  fi
+done
 
 echo "Running MPC One Main geometry preflight..."
 for required in \

@@ -559,3 +559,11 @@ The canonical Main Track/Arrangement workspace no longer embeds the Android 4x4 
 - **IMPLEMENTED —** an empty selected Drum pad presents large in-canvas BROWSE / RECORD actions, matching the documented MPC Main empty-sample workflow.
 - **IMPLEMENTED —** a loaded sample keeps the waveform dominant and reduces audition to one compact play control; permanent SAMPLE EDIT duplication was removed from the Main canvas.
 - **PRESERVED —** waveform selection editing and double-tap to Track Edit semantics; no audio, sampler, sequencer, MIDI or controller transport changes.
+
+
+## 2026-10-04 Shortcut Rail selection indicator fidelity
+
+- **IMPLEMENTED —** active Main shortcut selection now remains on the graphite shortcut surface and uses a thin red edge indicator instead of a full red tile.
+- **PRESERVED —** five-shortcut navigation, deterministic icon rendering and controller semantics are unchanged.
+- **RATIONALE —** the MPC Main shortcut rail communicates selection with a compact edge accent, keeping the rail visually subordinate to the central workspace.
+
