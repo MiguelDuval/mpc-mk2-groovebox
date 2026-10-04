@@ -214,14 +214,12 @@ final class MpcMainMixerStripView extends LinearLayout {
         solo.setContentDescription("MPC Main selected track solo reserved");
         controls.addView(solo, new LayoutParams(0, dp(context, 30), 1));
 
-        Button automation = controlButton(context, "AUTO", false);
-        automation.setContentDescription("MPC Main selected track automation reserved");
-        controls.addView(automation, new LayoutParams(0, dp(context, 30), 1));
-
-        Button record = controlButton(context, "REC", false);
-        record.setContentDescription("MPC Main selected track record arm reserved");
-        controls.addView(record, new LayoutParams(0, dp(context, 30), 1));
-
+        /*
+         * Mixer-strip controls stay limited to channel-local functions.
+         * REC ARM and high-frequency Track operations belong to the shell
+         * Function Bar; duplicating them here breaks MPC hierarchy and touch
+         * efficiency.
+         */
         strip.addView(controls, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 32)));
 
         TextView output = flatLabel(
