@@ -325,7 +325,7 @@ for required in \
   'Main Mode selected program' \
   'Main Track visual hierarchy' \
   'MPC_MAIN_WORKSPACE_WEIGHT' \
-  'MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36' \\
+  'MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36' \
   'new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP), 1.0f)'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MPC One Main visual hierarchy contract missing: $required"
