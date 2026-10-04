@@ -1,5 +1,6 @@
 package com.miguelduval.mpcmk2groovebox;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -59,6 +60,34 @@ final class MpcModeRegistry {
 
     static Entry[] menuEntries() {
         return Arrays.copyOf(MENU_GRID, MENU_GRID.length);
+    }
+
+    static Entry[] shortcutEntries() {
+        final Entry[] promoted = {
+                new Entry(MpcUiState.Mode.BROWSER, "BROWSER", true),
+                new Entry(MpcUiState.Mode.CHANNEL_MIXER, "CHANNEL MIXER", false),
+                new Entry(MpcUiState.Mode.PAD_MIXER, "PAD MIXER", true),
+                new Entry(MpcUiState.Mode.SOUNDS, "SOUNDS", false),
+                new Entry(MpcUiState.Mode.XYFX, "XY", false)
+        };
+
+        final ArrayList<Entry> result = new ArrayList<>();
+        for (Entry entry : promoted) {
+            result.add(entry);
+        }
+        for (Entry entry : MENU_GRID) {
+            boolean alreadyPresent = false;
+            for (Entry selected : result) {
+                if (selected.mode == entry.mode) {
+                    alreadyPresent = true;
+                    break;
+                }
+            }
+            if (!alreadyPresent) {
+                result.add(entry);
+            }
+        }
+        return result.toArray(new Entry[0]);
     }
 
     static MpcUiState.Mode[] defaultShortcuts() {
