@@ -329,6 +329,8 @@ for required in \
   'Main Track Arrangement segmented control' \
   'Main Mode Track workspace' \
   'Main Mode selected program' \
+  'Main Program create button reserved' \
+  'programCreateButton' \
   'Main Track visual hierarchy' \
   'MPC_MAIN_WORKSPACE_WEIGHT' \
   'MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36' \
