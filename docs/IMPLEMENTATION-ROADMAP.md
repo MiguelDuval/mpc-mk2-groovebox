@@ -456,3 +456,15 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **IMPLEMENTED —** replaced the oversized page-title/context stack with the documented TRACK/PAD header and Edit All Layers affordance.
 - **IMPLEMENTED —** aligned visible tab labels to MPC terminology: GLOBAL, SAMPLES, AMP ENV, LFO, MODS, EFFECTS.
 - **PRESERVED —** existing semantic/backend coverage and explicit RESERVED states.
+
+
+### Pad Mixer Data Dial checkpoint — 2026-10-04
+
+**IMPLEMENTED on feature/mpc-one-ui-fidelity**
+
+- Replaced the obsolete four-strip Pad Mixer diagnostic view with a dedicated 16-pad MPC-style workspace.
+- Eight compact strips are sized for simultaneous visibility, with horizontal access to all 16 pads.
+- Level uses a custom vertical fader; Pan and Tune remain directly editable through existing native pad operations.
+- Data Dial semantics are explicit: selected Pad + focused Level/Pan/Tune field. Dial press cycles the focus; Dial delta edits only the focused parameter.
+- Channel Mixer remains explicitly RESERVED because track-strip mixer backend semantics are not yet implemented.
+- Browser chrome was brought onto the same zero-radius, red-selection shell language.
