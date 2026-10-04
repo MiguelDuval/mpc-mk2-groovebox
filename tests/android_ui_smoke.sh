@@ -102,7 +102,7 @@ for required in \
   "Main Mode program ownership status" \
   "buildMainTrackTypeIconStrip" \
   "Main Mode selected Track Type icon" \
-  '"TRACK TYPE • DRUM is the only implemented Main Track type"' \
+  '"TRACK TYPE • DRUM is the only implemented Track Type"' \
   "buildMpcMenuTile" \
   "styleMpcMenuFooterButton" \
   "Main Mode BPM" \
