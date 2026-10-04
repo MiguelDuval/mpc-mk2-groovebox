@@ -3829,6 +3829,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceName.setText(String.format(
                 Locale.ROOT, "%d  Sequence %02d",
                 sequenceIndex + 1, sequenceIndex + 1));
+        sequenceName.setBackground(strokeBackground(
+                SURFACE_2,
+                DANGER,
+                MPC_MAIN_RADIUS_DP));
+        sequenceName.setContentDescription(
+                "Main Mode selected sequence • MPC selected field");
         sequenceType.setText("SEQ");
         transpose.setText("TRANSPOSE\n—");
         final double tempo = nativeStateReady
