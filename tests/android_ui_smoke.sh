@@ -238,6 +238,13 @@ if ! grep -Fq -- 'mainArrangementViewButton = mainSectionToggle(' "$MAIN_ACTIVIT
   exit 1
 fi
 
+main_track_type_line=$(grep -n -m1 'trackContextHeader.addView(mainTrackTypeField,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_track_name_line=$(grep -n -m1 'trackContextHeader.addView(trackName,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_track_type_line" || -z "$main_track_name_line" || "$main_track_type_line" -ge "$main_track_name_line" ]]; then
+  echo "ERROR: Main Track Type icon must remain beside the Track identity before the Track name"
+  exit 1
+fi
+
 if ! grep -Fq -- 'Main Sequence Edit/Copy RESERVED until semantic backend exists' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Sequence pencil affordance must remain visible as truthful reserved UI"
   exit 1
