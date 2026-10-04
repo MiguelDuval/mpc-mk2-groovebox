@@ -101,7 +101,6 @@ for required in \
   "Main Mode program ownership status" \
   "buildMainTrackTypeIconStrip" \
   "Main Mode selected Track Type" \
-  '"Main Track Type icon cluster"' \
   '"Main Mode selected Track Type"' \
   '"TRACK TYPE • DRUM is the only implemented Main Track type"' \
   "buildMpcMenuTile" \
