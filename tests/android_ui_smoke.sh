@@ -733,6 +733,25 @@ for required in   'MPC_FLAT_RADIUS_DP = 0'   'MPC_BROWSER_SELECTED'   'MPC Brows
   fi
 done
 
+echo "Running MPC Menu Function Bar ownership preflight..."
+menu_start=$(grep -n -m1 'private void showMenuPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+shortcut_start=$(grep -n -m1 'private void showShortcutConfigPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$menu_start" || -z "$shortcut_start" || "$shortcut_start" -le "$menu_start" ]]; then
+  echo "ERROR: Menu source boundary is missing"
+  exit 1
+fi
+menu_block=$(sed -n "${menu_start},$((shortcut_start - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'LinearLayout system = row();' <<<"$menu_block"; then
+  echo "ERROR: Menu must not render a second internal bottom command bar"
+  exit 1
+fi
+for required in   'case MENU:'   'NEW PROJECT'   'SAVE'   'PREFERENCES'   'MIDI / CONTROL'   'EDIT SHORTCUTS'   'BACK'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Menu contextual Function Bar contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC Pad Mixer presentation preflight..."
 echo "Running MPC Pad Mixer Function Bar preflight..."
 echo "Running MPC Pad Mixer Data Dial preflight..."
