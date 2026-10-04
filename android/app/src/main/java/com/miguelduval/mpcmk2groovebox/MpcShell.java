@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
@@ -33,6 +34,7 @@ final class MpcShell {
     private final LinearLayout shortcutRail;
     private final LinearLayout contextArea;
     private final FrameLayout workspace;
+    private final Button channelStripRestoreButton;
     private final LinearLayout functionBar;
 
     MpcShell(Context context) {
@@ -87,6 +89,23 @@ final class MpcShell {
 
         workspace = new FrameLayout(context);
         workspace.setBackgroundColor(BG);
+
+        channelStripRestoreButton = new Button(context);
+        channelStripRestoreButton.setText("›");
+        channelStripRestoreButton.setTextColor(Color.WHITE);
+        channelStripRestoreButton.setTextSize(16);
+        channelStripRestoreButton.setMinHeight(0);
+        channelStripRestoreButton.setMinimumHeight(0);
+        channelStripRestoreButton.setPadding(0, 0, 0, 0);
+        channelStripRestoreButton.setGravity(android.view.Gravity.CENTER);
+        channelStripRestoreButton.setBackgroundColor(SURFACE);
+        channelStripRestoreButton.setContentDescription(
+                "MPC XL Channel Strip restore");
+        channelStripRestoreButton.setVisibility(View.GONE);
+        workspace.addView(channelStripRestoreButton, new FrameLayout.LayoutParams(
+                dp(context, 20), dp(context, 30),
+                android.view.Gravity.LEFT | android.view.Gravity.TOP));
+
         // mainColumn is vertical: weight distributes height, so workspace must
         // remain MATCH_PARENT horizontally or the Main workspace collapses to 0px.
         mainColumn.addView(workspace, new LinearLayout.LayoutParams(
@@ -132,6 +151,26 @@ final class MpcShell {
 
     LinearLayout functionBar() {
         return functionBar;
+    }
+
+    void setChannelStripRestoreListener(View.OnClickListener listener) {
+        channelStripRestoreButton.setOnClickListener(listener);
+    }
+
+    void setChannelStripVisible(boolean visible) {
+        LinearLayout.LayoutParams contextParams =
+                (LinearLayout.LayoutParams) contextArea.getLayoutParams();
+        contextParams.width = visible
+                ? dp(contextArea.getContext(), CHANNEL_STRIP_WIDTH_DP)
+                : 0;
+        contextParams.weight = 0.0f;
+        contextArea.setLayoutParams(contextParams);
+        channelStripRestoreButton.setVisibility(
+                visible ? View.GONE : View.VISIBLE);
+        channelStripRestoreButton.setContentDescription(
+                visible
+                        ? "MPC XL Channel Strip visible"
+                        : "MPC XL Channel Strip restore");
     }
 
     private static int dp(Context context, int value) {
