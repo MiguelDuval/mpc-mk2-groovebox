@@ -665,6 +665,18 @@ fi
 # The Track state row is intentionally rendered immediately above the performance canvas
 # (see the positive ordering assertion above). Do not assert the inverse here.
 
+echo "Running MPC Pad Mixer Java nesting preflight..."
+for required in   'interface FaderCallback'   'private final class Fader'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+    echo "ERROR: Pad Mixer Fader nesting contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'interface Callback {' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+  echo "ERROR: Pad Mixer Fader must not declare a static member interface inside an inner class"
+  exit 1
+fi
+
 echo "Running MPC Pad Mixer format-string safety preflight..."
 if grep -Fq -- 'PAN %+0.2f' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java" ||    grep -Fq -- 'TUNE %+0.1f' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
   echo "ERROR: Pad Mixer must not use Java Formatter +0 flag without an explicit width"
@@ -678,7 +690,7 @@ for required in 'PAN %+.2f' 'TUNE %+.1f'; do
 done
 
 echo "Running MPC Browser flat-chrome preflight..."
-for required in   'MPC_FLAT_RADIUS_DP = 0'   'MPC_BROWSER_SELECTED'   'MPC Browser'   'setCornerRadius(dp(context, MPC_FLAT_RADIUS_DP))'   'selected ? MPC_BROWSER_SELECTED : SURFACE_2'; do
+for required in   'MPC_FLAT_RADIUS_DP = 0'   'MPC_BROWSER_SELECTED'   'MPC Browser'   'setCornerRadius(dp(getContext(), MPC_FLAT_RADIUS_DP))'   'selected ? MPC_BROWSER_SELECTED : SURFACE_2'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser flat-chrome contract missing: $required"
     exit 1
