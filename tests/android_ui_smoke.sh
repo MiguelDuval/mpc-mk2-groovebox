@@ -100,6 +100,7 @@ for required in \
   "Main Mode selected program" \
   "Main Mode program ownership status" \
   "buildMainTrackTypeIconStrip" \
+  "Main Mode selected Track Type" \
   '"Drum Track type"' \
   '"Keygroup Track type reserved"' \
   '"Plugin Track type reserved"' \
