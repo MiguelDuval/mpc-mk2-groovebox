@@ -317,23 +317,27 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
 fi
 
 echo "Running MPC Toolbar chrome preflight..."
-for required in   'private static final int MPC_TOOLBAR_BG = Color.rgb(224, 30, 61);'   'bar.setBackgroundColor(MPC_TOOLBAR_BG)'   'private static final int MPC_TOOLBAR_TEXT = Color.WHITE;'   'MPC Toolbar Menu'   'MPC Project Browser'; do
+for required in   'private static final int MPC_TOOLBAR_BG = Color.rgb(17, 19, 22);'   'bar.setBackgroundColor(MPC_TOOLBAR_BG)'   'private static final int MPC_SELECTION_RED = Color.rgb(224, 30, 61);'   'MPC Toolbar Menu'   'MPC Project Browser'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
-    echo "ERROR: MPC3 Main red Toolbar contract missing: $required"
+    echo "ERROR: MPC3 graphite Toolbar contract missing: $required"
     exit 1
   fi
 done
 for required in   'private static final int BG = Color.rgb(17, 19, 22);'   'toolbar.setBackgroundColor(BG)'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"; then
-    echo "ERROR: outer MPC shell Toolbar host must retain graphite fallback chrome: $required"
+    echo "ERROR: outer MPC shell graphite Toolbar host contract missing: $required"
     exit 1
   fi
 done
-if grep -Fq -- 'toolbar.setBackgroundColor(Color.rgb(224, 30, 61))' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"; then
-  echo "ERROR: shell host must not own the Main red Toolbar implementation"
+if grep -Fq -- 'bar.setBackgroundColor(Color.rgb(224, 30, 61))' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MPC3 Main Toolbar must not be hard-coded red"
   exit 1
 fi
-
+if ! grep -Fq -- 'compactTrackContext.setBackground(strokeBackground(
+                MPC_SELECTION_RED,' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MPC3 red selection accent contract is missing"
+  exit 1
+fi
 
 echo "Running MPC3 Toolbar geometry preflight..."
 for required in \
