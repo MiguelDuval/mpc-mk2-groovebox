@@ -333,7 +333,8 @@ for required in \
   'MPC Toolbar MIDI OUT' \
   'midiInTopStatus' \
   'midiOutTopStatus' \
-  'MPC Toolbar is status-oriented; transport remains hardware-driven' \
+  'MPC 3.9 keeps the Toolbar status-oriented' \
+  'Transport remains a hardware-first operation' \
   'view.setText("IN".equals(view.getTag()) ? "IN" : "OUT")'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MPC3 Toolbar geometry/content contract missing: $required"
