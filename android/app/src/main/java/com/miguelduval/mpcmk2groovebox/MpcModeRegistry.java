@@ -44,12 +44,17 @@ final class MpcModeRegistry {
             new Entry(MpcUiState.Mode.PROJECT, "PROJECT", false)
     };
 
+    /*
+     * Defaults must always be truthful. Unimplemented destinations stay
+     * discoverable in Menu/shortcut configuration, but never occupy a
+     * factory/default shortcut slot.
+     */
     private static final MpcUiState.Mode[] DEFAULT_SHORTCUTS = {
             MpcUiState.Mode.BROWSER,
-            MpcUiState.Mode.CHANNEL_MIXER,
-            MpcUiState.Mode.PAD_MIXER,
-            MpcUiState.Mode.SOUNDS,
-            MpcUiState.Mode.XYFX
+            MpcUiState.Mode.TRACK_VIEW,
+            MpcUiState.Mode.GRID,
+            MpcUiState.Mode.STEP,
+            MpcUiState.Mode.PAD_MIXER
     };
 
     private MpcModeRegistry() {}
