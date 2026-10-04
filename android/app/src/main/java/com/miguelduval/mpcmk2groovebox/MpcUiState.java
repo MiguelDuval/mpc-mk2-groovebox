@@ -29,6 +29,7 @@ final class MpcUiState {
         MIDI_CONTROL("MIDI / CONTROL"),
         LOOPER("LOOPER"),
         XYFX("XYFX"),
+        SOUNDS("SOUNDS"),
         RESERVED("RESERVED");
 
         private final String label;
