@@ -719,7 +719,7 @@ if grep -Fq -- 'targetPanel' "android/app/src/main/java/com/miguelduval/mpcmk2gr
   exit 1
 fi
 
-for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'FILTER Buttons'   'OPEN STORAGE…'   'PLAY CURRENT'; do
+for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'FILTER Buttons'   'OPEN STORAGE…'   'CURRENT SAMPLE'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser information-architecture contract missing: $required"
     exit 1
