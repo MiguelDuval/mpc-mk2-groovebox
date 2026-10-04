@@ -362,13 +362,21 @@ final class MpcMainMixerStripView extends LinearLayout {
         identity.setGravity(Gravity.CENTER_VERTICAL);
         identity.setPadding(dp(context, 2), 0, dp(context, 2), 0);
 
-        ImageView icon = new ImageView(context);
-        MpcTrackTypeIconDrawable drawable = trackTypeIcon(trackType);
-        drawable.setSelected("DRUM".equalsIgnoreCase(trackType));
-        drawable.setEnabledState("MAIN".equalsIgnoreCase(trackType) || !"".equals(trackType));
-        icon.setImageDrawable(drawable);
-        icon.setContentDescription("MPC XL track type " + clean(trackType, "reserved"));
-        identity.addView(icon, new LayoutParams(dp(context, 24), dp(context, 26)));
+        if ("MAIN".equalsIgnoreCase(trackType)) {
+            TextView mainGlyph = text(context, "M", 9, MUTED);
+            mainGlyph.setTypeface(Typeface.DEFAULT_BOLD);
+            mainGlyph.setGravity(Gravity.CENTER);
+            mainGlyph.setContentDescription("MPC XL main output strip");
+            identity.addView(mainGlyph, new LayoutParams(dp(context, 24), dp(context, 26)));
+        } else {
+            ImageView icon = new ImageView(context);
+            MpcTrackTypeIconDrawable drawable = trackTypeIcon(trackType);
+            drawable.setSelected("DRUM".equalsIgnoreCase(trackType));
+            drawable.setEnabledState(!"".equals(trackType));
+            icon.setImageDrawable(drawable);
+            icon.setContentDescription("MPC XL track type " + clean(trackType, "reserved"));
+            identity.addView(icon, new LayoutParams(dp(context, 24), dp(context, 26)));
+        }
 
         LinearLayout labels = new LinearLayout(context);
         labels.setOrientation(VERTICAL);
