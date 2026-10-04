@@ -272,9 +272,9 @@ Verification target:
 - source smoke checks lock the hierarchy helper, compact field heights and focus projection;
 - GitHub Actions and physical MkII verification remain separate acceptance gates.
 
-### 2026-10-04 Main Track type fidelity increment
+### 2026-10-04 Main Track type fidelity correction
 
-The Main Track header now presents all six documented Program Type affordances (Drum / Keygroup / Plugin / MIDI / Clip / CV) as a compact visual cluster. Unsupported types are disabled rather than removed, preserving the reference information hierarchy while keeping backend truthfulness. No audio, MIDI, scheduler, or native realtime path changed.
+The Main Track header presents **one** Track Type icon beside the Track identity. The six documented Track Types (Drum / Keygroup / Plugin / MIDI / Clip / CV) are selector choices inside the Track Type context, not six persistent header controls. Unsupported types may remain unavailable in the selector, while the Main header always shows only the currently selected type. No audio, MIDI, scheduler, or native realtime path changed.
 
 ### 2026-10-04 Toolbar project-entry increment
 
