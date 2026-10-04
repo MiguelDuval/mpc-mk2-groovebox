@@ -116,6 +116,7 @@ for required in \
   "Main Arrangement View header" \
   "Main Track View record sample" \
   "Main Track View browse samples" \
+  "Main Track View quick sample editor • controller-first selected Pad" \
   'mainTrackTypeField = buildMainTrackTypeIconStrip();' \
   "Main Track Edit" \
   "trackContextHeader.addView(trackEditHeader," \
@@ -753,15 +754,12 @@ if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_detail_line"
 fi
 
 echo "Running Main Track/Arrangement horizontal canvas preflight..."
-main_pad_split=$(grep -n -m1 '0, ViewGroup.LayoutParams.MATCH_PARENT, 0.36f' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-main_wave_split=$(grep -n -m1 '0, ViewGroup.LayoutParams.MATCH_PARENT, 0.64f' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-if [[ -z "$main_pad_split" || -z "$main_wave_split" || "$main_pad_split" -ge "$main_wave_split" ]]; then
-  echo "ERROR: Main Track touch-pad / waveform split is missing or reversed"
+if grep -Fq -- 'buildMiniMainPadGrid()' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main canonical Track/Arrangement workspace must not embed the Android 4x4 pad grid"
   exit 1
 fi
-main_track_workspace_block=$(sed -n "$track_detail_line,$((track_canvas_line + 80))p" "$MAIN_ACTIVITY_SOURCE")
-if grep -Fq -- '0.52f' <<<"$main_track_workspace_block" || grep -Fq -- '0.48f' <<<"$main_track_workspace_block"; then
-  echo "ERROR: obsolete near-equal Main Track pad/waveform split remains"
+if grep -Fq -- '0.36f' "$MAIN_ACTIVITY_SOURCE" || grep -Fq -- '0.64f' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: obsolete Main Track pad/waveform proportional split remains"
   exit 1
 fi
 # The Track state row is intentionally rendered immediately above the performance canvas
