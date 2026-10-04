@@ -35,7 +35,7 @@ final class MpcShortcutIconDrawable extends Drawable {
     }
 
     @Override public void draw(Canvas canvas) {
-        final RectF b = getBounds();
+        final RectF b = new RectF(getBounds());
         final float cx = b.centerX();
         final float cy = b.centerY();
         final float w = b.width();
