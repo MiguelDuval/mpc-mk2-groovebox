@@ -118,7 +118,7 @@ final class MpcMainMixerStripView extends LinearLayout {
 
         final boolean ready = listener != null && listener.isStartupReady();
         modeLabel.setText(
-                padMode ? "PAD STRIP / MAIN OUT" : "TRACK STRIP / MAIN OUT");
+                padMode ? "PAD STRIP / TRACK" : "TRACK STRIP / MAIN OUT");
         focusLabel.setText(
                 "DIAL • " + (dialFocus == null ? "NONE" : dialFocus));
 
