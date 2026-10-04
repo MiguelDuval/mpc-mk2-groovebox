@@ -371,8 +371,9 @@ if ! grep -Fq -- 'MPC_TIME_SIGNATURE_HIGHLIGHT' "$MAIN_ACTIVITY_SOURCE"; then
   exit 1
 fi
 
-if ! grep -Fq -- 'mainActionButton("−", v -> adjustMainLayer(-1))' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'mainActionButton("+", v -> adjustMainLayer(1))' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main LAYER must expose compact previous/next layer controls"
+if ! grep -Fq -- 'TextView layerDetail = mainMetric("LAYER");' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'layerDetail.setOnClickListener' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main LAYER must remain a single focused field, not a duplicated +/- control group"
   exit 1
 fi
 if ! grep -Fq -- 'MpcUiState.DataDialFocus.SAMPLE_LAYER' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'LAYER • DATA DIAL / +/-' "$MAIN_ACTIVITY_SOURCE"; then
