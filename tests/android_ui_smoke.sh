@@ -999,7 +999,14 @@ if ! grep -Fq -- 'case PAD_MIXER:' "$MAIN_ACTIVITY_SOURCE"; then
   exit 1
 fi
 pad_mixer_function_start=$(grep -n -m1 'case PAD_MIXER:' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-pad_mixer_function_end=$(grep -n -m1 'case SAMPLE_EDIT:' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+pad_mixer_function_end=$(
+  tail -n +$((pad_mixer_function_start + 1)) "$MAIN_ACTIVITY_SOURCE" |
+    grep -n -m1 'case SAMPLE_EDIT:' |
+    cut -d: -f1
+)
+if [[ -n "$pad_mixer_function_end" ]]; then
+  pad_mixer_function_end=$((pad_mixer_function_start + pad_mixer_function_end))
+fi
 if [[ -z "$pad_mixer_function_end" || "$pad_mixer_function_end" -le "$pad_mixer_function_start" ]]; then
   echo "ERROR: Pad Mixer Function Bar source boundary is missing"
   exit 1
