@@ -935,6 +935,17 @@ for required in   'MpcMainMixerStripView'   'MPC Main XL Mixer Strips'   'MPC XL
     exit 1
   fi
 done
+if grep -Fq -- 'modeLabel' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: XL Mixer Strip must not reserve a textual MIXER header"
+  exit 1
+fi
+for required in 'visibilityButton = button(context, "◉", 10);' 'MPC Main mixer strips show or hide' 'header.addView(' 'dp(context, 26), dp(context, 20)'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+    echo "ERROR: XL Mixer Strip compact top visibility control contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC 3.9 Main XL mixer strip semantic preflight..."
 mixer_strip_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
 pad_mode_start=$(grep -n -m1 'if (padMode)' "$mixer_strip_source" | cut -d: -f1)

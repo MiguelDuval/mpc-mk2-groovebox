@@ -1181,6 +1181,10 @@ The Track identity band now places the single Track Type icon immediately before
 Canonical Main Track composition is now controller-first: no on-screen 4x4 pad matrix is rendered inside Main. Pads are selected on the MPC Studio MkII, and the phone display uses the resulting selected Pad/Layer state in the waveform surface. This keeps the Main screen structurally faithful to MPC 3.x instead of adding Android-specific performance controls.
 
 
+## 2026-10-04 XL Channel Strip top-control fidelity
+
+The visible XL Channel Strip region keeps its show/hide control compact and icon-only. A textual "MIXER" header is not part of the strip identity and must not consume the strip's vertical workspace budget. The top control remains the single visibility affordance for the XL strip region.
+
 ## 2026-10-04 Shortcut Rail selection indicator fidelity
 
 The five shortcut cells remain dark graphite in both selected and unselected states. The selected shortcut is identified by a narrow red edge indicator rendered by the same deterministic icon drawable used for the rail pictogram. This is presentation-only and does not change navigation or hardware routing.

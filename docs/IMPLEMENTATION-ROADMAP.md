@@ -494,7 +494,7 @@ Acceptance focus for the next run:
 ### 2026-10-04 Main XL Strip visual confirmation
 
 - Official MPC3 references were used to validate the left-side Main composition.
-- Main XL strips stay compact: in Track context, selected Track + Main Output; in Drum Pad context, selected Pad + Main Output.
+- Main XL strips stay compact: in Track context, selected Track + Main Output; in Drum Pad context, selected Pad + selected Track.
 - The Track/Pad selector remains in the lower-right Track/Arrangement context and is not duplicated in the strip header.
 - Vertical meter rendering is presentation-only; unsupported track/output gain semantics remain explicitly reserved.
 - Shortcut icons are rendered by an original deterministic Drawable rather than platform-dependent Unicode glyphs.
@@ -510,6 +510,7 @@ The Main XL Channel Strip has been tightened against the documented MPC 3.9 Mixe
 - Track mode: selected Track on the left, Main Output on the right;
 - Drum Pad mode: selected Pad on the left, its selected Track on the right;
 - flat LVL / FX / SEND / I/O header vocabulary with LVL as the currently implemented view;
+- compact icon-only top visibility control rather than a redundant textual MIXER header;
 - dense level meter + white-line fader geometry and dedicated pan slider;
 - strip-local Track/Pad identity and program/sample context;
 - Track Mute / Solo / Automation / Record surfaces with truthful availability;

@@ -47,7 +47,7 @@ final class MpcMainMixerStripView extends LinearLayout {
     private static final int FLAT_RADIUS_DP = 0;
 
     private final Listener listener;
-    private final TextView modeLabel;
+    private final Button visibilityButton;
     private final LinearLayout strips;
 
     MpcMainMixerStripView(Context context, Listener listener) {
@@ -62,21 +62,23 @@ final class MpcMainMixerStripView extends LinearLayout {
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(dp(context, 3), 0, dp(context, 2), 0);
 
-        modeLabel = text(context, "MIXER", 8, TEXT);
-        modeLabel.setTypeface(Typeface.DEFAULT_BOLD);
-        modeLabel.setGravity(Gravity.CENTER_VERTICAL);
-        modeLabel.setContentDescription("MPC Main XL mixer Data Dial focus context");
-        header.addView(modeLabel, new LayoutParams(0, dp(context, 22), 1));
-
-        Button visibility = button(context, "◉", 10);
-        visibility.setContentDescription("MPC Main mixer strips show or hide");
-        visibility.setOnClickListener(v -> {
+        /*
+         * MPC3 uses a compact top-of-strip icon for showing/hiding the XL
+         * Channel Strip region. Do not consume strip height with a textual
+         * "MIXER" title; the surrounding shell already establishes the mixer context.
+         */
+        visibilityButton = button(context, "◉", 10);
+        visibilityButton.setContentDescription("MPC Main mixer strips show or hide");
+        visibilityButton.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onMixerStripVisibilityChanged(!listener.mixerStripVisible());
             }
         });
-        header.addView(visibility, new LayoutParams(dp(context, 28), dp(context, 22)));
-        addView(header, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 22)));
+        header.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        header.addView(
+                visibilityButton,
+                new LayoutParams(dp(context, 26), dp(context, 20)));
+        addView(header, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 20)));
 
         strips = new LinearLayout(context);
         strips.setOrientation(HORIZONTAL);
@@ -100,14 +102,13 @@ final class MpcMainMixerStripView extends LinearLayout {
         setVisibility(View.VISIBLE);
         strips.setVisibility(visible ? View.VISIBLE : View.GONE);
 
+        visibilityButton.setContentDescription(
+                "MPC Main mixer strips " + (visible ? "shown" : "hidden"));
+        visibilityButton.setAlpha(visible ? 1.0f : 0.65f);
         if (!visible) {
-            modeLabel.setText("MIXER • HIDDEN");
-            modeLabel.setContentDescription("MPC Main XL mixer hidden • DIAL " + safe(dialFocus));
             return;
         }
 
-        modeLabel.setText("MIXER");
-        modeLabel.setContentDescription("MPC Main XL mixer • DIAL " + safe(dialFocus));
         strips.removeAllViews();
 
         if (padMode) {
