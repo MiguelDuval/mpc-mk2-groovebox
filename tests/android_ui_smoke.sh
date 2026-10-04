@@ -1078,6 +1078,33 @@ for required in \
   fi
 done
 
+echo "Running MPC XL channel-strip collapse/focus regression preflight..."
+for required in   'void setChannelStripVisible(boolean visible)'   'LayoutParams contextParams = contextArea.getLayoutParams()'   'contextParams.width = visible ? dp(context, CHANNEL_STRIP_WIDTH_DP) : 0'   'channelStripRestoreButton'   'channelStripRestoreButton.setVisibility(visible ? View.GONE : View.VISIBLE)'; do
+  if ! grep -Fq -- "$required" "$SHELL_SOURCE"; then
+    echo "ERROR: XL Channel Strip must collapse its full 210dp shell column while preserving a restore affordance: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'mpcShell.setChannelStripVisible(visible)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main shell visibility state must drive XL Channel Strip column geometry"
+  exit 1
+fi
+if ! grep -Fq -- 'setChannelStripRestoreListener' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: hidden XL Channel Strip must retain a shell-level restore path"
+  exit 1
+fi
+
+for required in   'final boolean levelFocus = "MIX LEVEL".equals(dialFocus)'   'final boolean panFocus = "MIX PAN".equals(dialFocus)'   'final boolean tuneFocus = "MIX TUNE".equals(dialFocus)'   'meter.setDialFocus(levelFocus)'   'pan.setDialFocus(panFocus)'   'MPC Main selected pad tuning'   'tuneValue.setBackground(stroke('   'tuneValue.setContentDescription("MPC Main selected pad tuning")'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+    echo "ERROR: XL Channel Strip Data Dial focus must be visibly projected into Level/Pan/Tune controls: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'void setDialFocus(boolean focused)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: XL Channel Strip custom controls must expose an explicit Data Dial focus state"
+  exit 1
+fi
+
 echo "Running native JNI bridge source preflight..."
 for required in \
   "Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetLauncherContext" \
