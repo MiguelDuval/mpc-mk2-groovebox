@@ -1014,6 +1014,7 @@ for required in   'PAD −'   'PAD +'   'TRACK EDIT'   'MAIN'   'BROWSER'   'nav
   fi
 done
 
+echo "Running MPC Pad Mixer ownership/presentation preflight..."
 mix_start=$(grep -n -m1 'private void showMixPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 mix_midi=$(grep -n -m1 'private void showMidiPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 if [[ -z "$mix_start" || -z "$mix_midi" || "$mix_midi" -le "$mix_start" ]]; then
@@ -1021,9 +1022,10 @@ if [[ -z "$mix_start" || -z "$mix_midi" || "$mix_midi" -le "$mix_start" ]]; then
   exit 1
 fi
 mix_block=$(sed -n "${mix_start},$((mix_midi - 1))p" "$MAIN_ACTIVITY_SOURCE")
+
+# MainActivity owns semantic wiring; MpcPadMixerView owns Pad Mixer presentation.
 for required in \
-  'MpcPadMixerView' \
-  'MPC Pad Mixer' \
+  'new MpcPadMixerView(this,' \
   'MpcPadMixerView.ControlFocus.LEVEL' \
   'MpcUiState.DataDialFocus.PAD_MIXER_LEVEL' \
   'nativeAudioSetPadLevel(' \
@@ -1035,24 +1037,33 @@ for required in \
   'selectedPad' \
   'PAD %02d'; do
   if ! grep -Fq -- "$required" <<<"$mix_block"; then
+    echo "ERROR: MPC Pad Mixer MainActivity semantic contract missing: $required"
+    exit 1
+  fi
+done
+
+pad_mixer_view_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"
+for required in \
+  'setContentDescription("MPC Pad Mixer")' \
+  'TextView title = text(context, "PAD MIXER"' \
+  'private static final int VISIBLE_STRIPS = 8;' \
+  'vertical fader' \
+  'interface Listener {' \
+  'enum ControlFocus' \
+  'onControlFocus' \
+  'setControlFocus' \
+  'LEVEL' \
+  'PAN' \
+  'TUNE'; do
+  if ! grep -Fq -- "$required" "$pad_mixer_view_source"; then
     echo "ERROR: MPC Pad Mixer presentation contract missing: $required"
     exit 1
   fi
 done
-if grep -Fq -- 'for (int pad = 0; pad < 4; pad++)' <<<"$mix_block"; then
+if grep -Fq -- 'for (int pad = 0; pad < 4; pad++)' "$pad_mixer_view_source"; then
   echo "ERROR: Pad Mixer must not regress to the obsolete four-strip diagnostic layout"
   exit 1
 fi
-for required in \
-  'private static final int VISIBLE_STRIPS = 8;' \
-  'PAD MIXER • 16 PADS' \
-  'vertical fader' \
-  'MpcPadMixerView.Listener'; do
-  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
-    echo "ERROR: MPC Pad Mixer view contract missing: $required"
-    exit 1
-  fi
-done
 
 echo "Running MPC shell geometry preflight..."
 for required in \
