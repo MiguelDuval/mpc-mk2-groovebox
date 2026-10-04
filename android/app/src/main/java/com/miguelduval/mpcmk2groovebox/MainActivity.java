@@ -119,6 +119,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int MPC_MAIN_METRIC_HEIGHT_DP = 36;
     private static final int MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40;
     private static final int MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36;
+    private static final int MPC_MAIN_TRACK_TYPE_CLUSTER_WIDTH_DP = 132;
     private static final int MPC_MAIN_PROGRAM_HEIGHT_DP = 32;
     private static final float MPC_MAIN_WORKSPACE_WEIGHT = 1.0f;
     private static final int MPC_MAIN_RADIUS_DP = 0;
@@ -1446,7 +1447,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 compactDialFocusLabel(navigationController.state().dataDialFocus()),
                 track,
                 trackType,
-                "TRACK " + String.format(Locale.ROOT, "%02d", track + 1),
+                cleanTrackDisplayName(
+                        ready ? nativeSequenceTrackStatus(track) : "Track"),
                 program,
                 pad,
                 level,
@@ -2502,7 +2504,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         trackContextHeader.addView(
                 mainTrackTypeField,
-                new LinearLayout.LayoutParams(dp(66), dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
+                new LinearLayout.LayoutParams(
+                        dp(MPC_MAIN_TRACK_TYPE_CLUSTER_WIDTH_DP),
+                        dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
         Button trackEditHeader = mainActionButton("✎", v -> openMainTrackEditContext());
         trackEditHeader.setTextSize(15);
@@ -3748,9 +3752,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setMainFieldFocus(mainTrackField, focus == 2);
         setMainFieldFocus(mainTrackLayerField, focus == 10);
         if (mainTrackTypeField != null) {
-            mainTrackTypeField.setBackground(strokeBackground(
-                    MPC_PANEL_DARK, focus == 5 ? DANGER : MPC_PANEL_BORDER,
-                    MPC_FLAT_RADIUS_DP));
+            refreshMainTrackTypeVisuals();
         }
     }
 
