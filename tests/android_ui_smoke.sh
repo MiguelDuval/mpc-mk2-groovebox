@@ -271,8 +271,8 @@ for required in \
   'MpcTrackTypeIconDrawable.Type.CLIP' \
   'MpcTrackTypeIconDrawable.Type.CV' \
   'setForeground(icon)' \
-  'Main Track Type DRUM available' \
-  'Main Track Type KEYGROUP reserved'; do
+  'Main Track Type " + trackType' \
+  '("DRUM".equals(trackType) ? " available" : " reserved")'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" && \
      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackTypeIconDrawable.java"; then
     echo "ERROR: MPC Main Track Type six-icon presentation contract missing: $required"
