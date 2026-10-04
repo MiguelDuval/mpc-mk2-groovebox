@@ -2395,13 +2395,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         programContextRow.setContentDescription("Main Mode Track Program context");
         programContextRow.setPadding(dp(4), dp(2), dp(4), dp(2));
 
+        Button programCreateButton = mainActionButton("+", null);
+        programCreateButton.setTextSize(14);
+        programCreateButton.setTypeface(Typeface.DEFAULT_BOLD);
+        programCreateButton.setEnabled(false);
+        programCreateButton.setAlpha(0.42f);
+        programCreateButton.setContentDescription("Main Program create button reserved");
+        programCreateButton.setBackground(strokeBackground(
+                MPC_PANEL_DARK, MPC_PANEL_BORDER, MPC_FLAT_RADIUS_DP));
+        programCreateButton.setGravity(Gravity.CENTER);
+        programContextRow.addView(
+                programCreateButton,
+                new LinearLayout.LayoutParams(dp(28), dp(MPC_MAIN_PROGRAM_HEIGHT_DP)));
+
         TextView programCaption = label("DRUM PROGRAM", 9, MUTED);
         programCaption.setTypeface(Typeface.DEFAULT_BOLD);
         programCaption.setGravity(Gravity.CENTER_VERTICAL);
         programCaption.setPadding(dp(4), 0, dp(8), 0);
         programContextRow.addView(
                 programCaption,
-                new LinearLayout.LayoutParams(dp(90), dp(MPC_MAIN_PROGRAM_HEIGHT_DP)));
+                new LinearLayout.LayoutParams(dp(62), dp(MPC_MAIN_PROGRAM_HEIGHT_DP)));
 
         Button programField = mainActionButton(
                 "—",
