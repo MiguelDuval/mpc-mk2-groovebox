@@ -4,6 +4,7 @@ set -euo pipefail
 APK="android/app/build/outputs/apk/debug/app-debug.apk"
 PACKAGE="com.miguelduval.mpcmk2groovebox.debug"
 ACTIVITY="$PACKAGE/com.miguelduval.mpcmk2groovebox.MainActivity"
+DEVICE_DUMP="/sdcard/mpc-groovebox-ui.xml"
 DUMP="/tmp/mpc-groovebox-ui.xml"
 SMOKE_MODE_EXTRA="mpc.groovebox.smoke.mode"
 MAIN_ACTIVITY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java"
@@ -1239,12 +1240,16 @@ adb exec-out screencap -p > /tmp/mpc-groovebox-startup.png || {
 }
 
 echo "Dumping startup UI..."
-adb shell uiautomator dump "$DUMP" >/tmp/mpc-groovebox-uiautomator.txt 2>&1 || {
+adb shell uiautomator dump "$DEVICE_DUMP" >/tmp/mpc-groovebox-uiautomator.txt 2>&1 || {
   cat /tmp/mpc-groovebox-uiautomator.txt || true
   echo "ERROR: uiautomator dump failed after startup"
   exit 1
 }
-adb pull "$DUMP" "$DUMP" >/dev/null 2>&1 || true
+if ! adb pull "$DEVICE_DUMP" "$DUMP" >/dev/null 2>&1; then
+  echo "ERROR: startup UI dump pull failed"
+  cat /tmp/mpc-groovebox-uiautomator.txt || true
+  exit 1
+fi
 
 if [ ! -s "$DUMP" ]; then
   echo "ERROR: startup UI dump is empty"
