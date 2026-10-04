@@ -834,8 +834,8 @@ fi
 
 track_detail_line=$(grep -n -m1 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 track_canvas_line=$(grep -n -m1 'trackWorkspace.addView(quickTrack,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_detail_line" -ge "$track_canvas_line" ]]; then
-  echo "ERROR: Main Track state row must remain directly above the performance canvas"
+if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_canvas_line" -ge "$track_detail_line" ]]; then
+  echo "ERROR: Main Track state row must remain directly below the performance canvas"
   exit 1
 fi
 
