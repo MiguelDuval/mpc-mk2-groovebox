@@ -1172,3 +1172,8 @@ This supersedes the earlier six-icon-cluster description.
 ## 2026-10-04 Main Track identity geometry correction
 
 The Track identity band now places the single Track Type icon immediately before the Track number/name block, keeping the icon spatially attached to Track identity as described by the MPC 3.9 workflow. The Track Type icon is the only persistent type affordance; its selection surface opens the Track Type context. This replaces the earlier six-icon header interpretation.
+
+
+## 2026-10-04 Main Track controller-first layout correction
+
+Canonical Main Track composition is now controller-first: no on-screen 4x4 pad matrix is rendered inside Main. Pads are selected on the MPC Studio MkII, and the phone display uses the resulting selected Pad/Layer state in the waveform surface. This keeps the Main screen structurally faithful to MPC 3.x instead of adding Android-specific performance controls.
