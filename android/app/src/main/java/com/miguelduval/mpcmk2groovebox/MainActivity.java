@@ -102,7 +102,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int MPC_TOOLBAR_CONTROL_HEIGHT_DP = 34;
     private static final int MPC_TOOLBAR_GAP_DP = 2;
     private static final int MPC_TOOLBAR_MENU_WIDTH_DP = 38;
-    private static final int MPC_TOOLBAR_PROJECT_WIDTH_DP = 132;
+    private static final int MPC_TOOLBAR_PROJECT_IDENTITY_WIDTH_DP = 106;
+    private static final int MPC_TOOLBAR_PROJECT_BROWSER_WIDTH_DP = 26;
     private static final int MPC_TOOLBAR_TIMING_WIDTH_DP = 60;
     private static final int MPC_TOOLBAR_METRO_WIDTH_DP = 58;
     private static final int MPC_TOOLBAR_AUTO_WIDTH_DP = 48;
@@ -1717,7 +1718,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         projectState.setPadding(dp(6), 0, dp(2), 0);
         projectState.setContentDescription("MPC Project");
         bar.addView(projectState, new LinearLayout.LayoutParams(
-                dp(106),
+                dp(MPC_TOOLBAR_PROJECT_IDENTITY_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
 
         // MPC One keeps a direct project/browser affordance next to project
@@ -1728,7 +1729,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         projectBrowser.setForeground(new MpcFolderIconDrawable());
         projectBrowser.setOnClickListener(v -> showBrowserPage());
         bar.addView(projectBrowser, new LinearLayout.LayoutParams(
-                dp(26),
+                dp(MPC_TOOLBAR_PROJECT_BROWSER_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
 
         // showMainPage() is part of shell construction, so the current-page
