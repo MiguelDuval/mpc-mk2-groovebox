@@ -97,6 +97,7 @@ final class MpcMainMixerStripView extends LinearLayout {
             int selectedPad,
             float padLevel,
             float padPan,
+            float padTuning,
             String padSampleName,
             boolean trackMuted) {
         setVisibility(View.VISIBLE);
@@ -110,6 +111,10 @@ final class MpcMainMixerStripView extends LinearLayout {
         }
 
         strips.removeAllViews();
+
+        final boolean levelFocus = "MIX LEVEL".equals(dialFocus);
+        final boolean panFocus = "MIX PAN".equals(dialFocus);
+        final boolean tuneFocus = "MIX TUNE".equals(dialFocus);
 
         if (padMode) {
             // MPC 3: Drum Pad view pairs the selected Pad with its selected
@@ -244,7 +249,11 @@ final class MpcMainMixerStripView extends LinearLayout {
             int pad,
             float levelValue,
             float panValue,
-            String sampleName) {
+            float tuningValue,
+            String sampleName,
+            boolean levelFocus,
+            boolean panFocus,
+            boolean tuneFocus) {
         LinearLayout strip = baseStrip(context);
         addIdentityHeader(
                 strip,
@@ -292,7 +301,7 @@ final class MpcMainMixerStripView extends LinearLayout {
 
         TextView tuneValue = valueLabel(
                 context,
-                String.format(Locale.ROOT, "TUNE\n%+.1f", padTuning),
+                String.format(Locale.ROOT, "TUNE\n%+.1f", tuningValue),
                 tuneFocus ? TEXT : MUTED);
         tuneValue.setContentDescription("MPC Main selected pad tuning");
         tuneValue.setBackground(stroke(
