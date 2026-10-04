@@ -292,6 +292,10 @@ final class MpcPadMixerView extends LinearLayout {
         }
     }
 
+    interface FaderCallback {
+        void onValueChanged(float value);
+    }
+
     private TextView controlField(
             Context context,
             String name,
@@ -375,14 +379,10 @@ final class MpcPadMixerView extends LinearLayout {
     }
 
     private final class Fader extends View {
-        interface Callback {
-            void onValueChanged(float value);
-        }
-
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint handle = new Paint(Paint.ANTI_ALIAS_FLAG);
         private float value = 0.8f;
-        private Callback callback;
+        private FaderCallback callback;
 
         Fader(Context context) {
             super(context);
@@ -390,7 +390,7 @@ final class MpcPadMixerView extends LinearLayout {
             setWillNotDraw(false);
         }
 
-        void setOnValueChanged(Callback callback) {
+        void setOnValueChanged(FaderCallback callback) {
             this.callback = callback;
         }
 
