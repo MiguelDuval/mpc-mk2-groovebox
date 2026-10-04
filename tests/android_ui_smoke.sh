@@ -616,8 +616,8 @@ for required in   'MPC_FLAT_RADIUS_DP));'   'group.setBackground(strokeBackgroun
 done
 
 echo "Running Main Mixer default-state preflight..."
-if ! grep -Fq -- 'true,\n                true,\n                false);' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"; then
-  echo "ERROR: Main mixer strips must default to visible in MPC Main"
+if ! grep -Fq -- 'assertTrue(state.compactMixerVisible());' "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcUiStateTest.java"; then
+  echo "ERROR: Main mixer strips default-visibility regression test is missing"
   exit 1
 fi
 
