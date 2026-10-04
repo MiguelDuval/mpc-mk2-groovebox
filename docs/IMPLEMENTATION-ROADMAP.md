@@ -487,7 +487,7 @@ Acceptance focus for the next run:
 - Track mode shows Track + Main Output.
 - Drum Pad mode shows Pad + selected Track.
 - Track/Pad switching remains only in the Main Track/Arrangement control.
-- Toolbar remains the documented red Main surface.
+- Toolbar uses the documented graphite Main surface; red is reserved for semantic selection/accent surfaces.
 - Existing audio, sequencer, MIDI and controller semantics remain untouched.
 
 

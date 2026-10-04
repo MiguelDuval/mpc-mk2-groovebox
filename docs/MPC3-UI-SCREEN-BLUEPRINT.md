@@ -205,11 +205,11 @@ Touch:
 
 The Main surface should visually read as an MPC One / MPC3 instrument screen before any implementation detail is considered:
 
-- Toolbar uses the vivid MPC red status-band treatment and carries project identity, compact time-counter state, Timing Correct, metronome/automation state and transport.
+- Toolbar uses the graphite/status-oriented treatment and carries project identity, compact time-counter state, Timing Correct, metronome/automation state and MIDI In/Out status; transport remains hardware-first.
 - The visible page title is not a separate Android-style title chip; the selected shortcut and active Main sections provide the context.
 - Track identity remains one coherent header band.
 - The selected Track's Program is visible directly beneath that header as a Track-owned field.
-- Track-type affordances are represented as a compact icon cluster; unsupported types remain explicitly unavailable.
+- Track-type presentation uses one persistent icon attached to Track identity; tapping it opens the Track Type selection context, where unsupported types remain explicitly unavailable.
 - Shortcut and Function Bar controls use flat rectangular surfaces with clear focus/selection state rather than generic rounded Android cards.
 
 ## 2.4 Arrangement preview
@@ -1126,7 +1126,7 @@ Browser chrome now also uses the same flat MPC selection language as the migrate
 
 The Main screen is now being aligned to the actual MPC 3.9 composition rather than a generic “MPC-like” shell. The visible left region is the five-shortcut rail followed by XL Mixer Strips; the old persistent Sequence/Track/Program/Data Dial rail is hidden migration scaffolding only.
 
-The Track/Pad strip choice remains in the lower-right of the Main Track/Arrangement section, matching the documented MPC interaction placement. Main Toolbar presentation is red in the active Main context; graphite remains the surrounding shell chrome.
+The Track/Pad strip choice remains in the lower-right of the Main Track/Arrangement section, matching the documented MPC interaction placement. Main Toolbar presentation remains graphite in Main; red is reserved for semantic selection/accent surfaces.
 
 
 ## 2026-10-04 XL Channel Strip fidelity checkpoint
