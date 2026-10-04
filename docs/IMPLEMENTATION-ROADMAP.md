@@ -399,7 +399,7 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 
 - **MPC-style Main Track surface implemented:** the default Main Track view now pairs 4×4 performance pads with a selected Pad/Layer quick waveform context.
 - **Quick sample editing reuses existing backend semantics:** waveform Start/End edits call the existing sample-region command; no new realtime/audio engine boundary was added.
-- **Layer context is explicit:** Layer −/+ remains inside Main and does not leave the selected Track/Sequence context.
+- **Layer context is explicit:** Main exposes Layer as one Track-state field; tapping it enters the shared SAMPLE_LAYER Data Dial focus while the standard hardware +/- path changes the value without leaving the selected Track/Sequence context.
 - **Full Sample Edit remains separate:** Main offers AUDITION and SAMPLE EDIT rather than duplicating the full editor's controls.
 
 ## 2026-10-02 Main Track state-row parity increment

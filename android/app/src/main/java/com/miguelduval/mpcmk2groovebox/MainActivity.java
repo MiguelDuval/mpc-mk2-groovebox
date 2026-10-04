@@ -2650,15 +2650,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          * MONITOR / LENGTH / VELOCITY / LAYER.
          * TRANSPOSE belongs to the Sequence section, not this Track row.
          */
-        LinearLayout layerControls = row();
-        Button layerDownButton = mainActionButton("−", v -> adjustMainLayer(-1));
-        layerDownButton.setTextSize(13);
-        layerDownButton.setContentDescription("Main Track View previous sample layer");
-        layerControls.addView(layerDownButton,
-                new LinearLayout.LayoutParams(dp(24), dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
-
         TextView layerDetail = mainMetric("LAYER");
-        layerDetail.setContentDescription("Main Track View selected layer • tap to focus Layer");
+        layerDetail.setContentDescription(
+                "Main Track View selected layer • tap to focus Layer");
         layerDetail.setOnClickListener(v -> {
             navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_SELECT);
             navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_LAYER);
@@ -2670,35 +2664,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Locale.ROOT,
                 "LAYER\n%d/8",
                 selectedLayer + 1));
-        layerControls.addView(layerDetail,
-                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
-
-        Button layerUpButton = mainActionButton("+", v -> adjustMainLayer(1));
-        layerUpButton.setTextSize(13);
-        layerUpButton.setContentDescription("Main Track View next sample layer");
-        layerControls.addView(layerUpButton,
-                new LinearLayout.LayoutParams(dp(24), dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
-        trackDetailRow.addView(layerControls,
-                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
-
-        compactMixerStripModeToggle = mainActionButton("□  ▦", v -> {
-            final MpcUiState state = navigationController.state();
-            if (!compactMixerStripModeAvailable()) {
-                setBottomStatus("TRACK/PAD CONTEXT • DRUM TRACK REQUIRED");
-                return;
-            }
-            navigationController.setCompactMixerState(
-                    state.compactMixerVisible(),
-                    !state.compactMixerPadMode());
-        });
-        compactMixerStripModeToggle.setTextSize(11);
-        compactMixerStripModeToggle.setContentDescription(
-                "MPC condensed Mixer Strip Track or Pad selector");
-        compactMixerStripModeToggle.setGravity(Gravity.CENTER);
-        compactMixerStripModeToggle.setBackground(strokeBackground(
-                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
-        trackDetailRow.addView(compactMixerStripModeToggle,
-                new LinearLayout.LayoutParams(dp(46), dp(40)));
+        trackDetailRow.addView(
+                layerDetail,
+                new LinearLayout.LayoutParams(
+                        0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
 
         LinearLayout quickTrack = row();
 
@@ -2773,17 +2742,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         0, ViewGroup.LayoutParams.MATCH_PARENT, 0.64f));
 
         /*
-         * MPC Main places the compact Track-state controls immediately above
-         * the Track canvas. Layer +/- stays inside this same row so Layer is
-         * one coherent high-frequency semantic control.
+         * MPC Main keeps the waveform/canvas as the visual center of the Track
+         * section. The compact Track-state fields live directly below it:
+         * MONITOR / LENGTH / VELOCITY / LAYER.
          */
-        trackWorkspace.addView(trackDetailRow,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
-
         trackWorkspace.addView(quickTrack,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, MPC_MAIN_WORKSPACE_WEIGHT));
+
+        trackWorkspace.addView(trackDetailRow,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
 
         LinearLayout arrangement = column();
         arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
@@ -2817,6 +2786,38 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT));
+
+        /*
+         * MPC 3.9 places the Track/Pad channel-strip selector in the
+         * lower-right corner of the Track/Arrangement section. It is a
+         * context switch for the adjacent XL/channel-strip surface, not
+         * another Track-state field. Keep one shared selector over both
+         * sibling views so the intent has one stable physical/touch location.
+         */
+        compactMixerStripModeToggle = mainActionButton("□  ▦", v -> {
+            final MpcUiState state = navigationController.state();
+            if (!compactMixerStripModeAvailable()) {
+                setBottomStatus("TRACK/PAD CONTEXT • DRUM TRACK REQUIRED");
+                return;
+            }
+            navigationController.setCompactMixerState(
+                    state.compactMixerVisible(),
+                    !state.compactMixerPadMode());
+        });
+        compactMixerStripModeToggle.setTextSize(11);
+        compactMixerStripModeToggle.setContentDescription(
+                "MPC condensed Mixer Strip Track or Pad selector");
+        compactMixerStripModeToggle.setGravity(Gravity.CENTER);
+        compactMixerStripModeToggle.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        FrameLayout.LayoutParams mixerSelectorLp = new FrameLayout.LayoutParams(
+                dp(46), dp(32), Gravity.RIGHT | Gravity.BOTTOM);
+        mixerSelectorLp.rightMargin = dp(4);
+        // Keep the selector in the lower-right of the waveform/canvas area,
+        // above the dedicated Track-state row and shell Function Bar.
+        mixerSelectorLp.bottomMargin = dp(44);
+        mainTrackArrangementHost.addView(compactMixerStripModeToggle, mixerSelectorLp);
+
         trackProgramSection.addView(mainTrackArrangementHost,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, MPC_MAIN_WORKSPACE_WEIGHT));
