@@ -2189,20 +2189,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private Button mpcShortcutButton(String text, MpcUiState.Mode mode) {
-        Button b = button(text);
-        b.setTextSize(18);
-        b.setTextColor(MUTED);
-        b.setTypeface(Typeface.DEFAULT_BOLD);
+        // The label argument remains as an accessibility/fallback vocabulary
+        // anchor, but the visible rail uses a deterministic vector drawable
+        // so Android font substitution cannot change MPC-style pictography.
+        Button b = button("");
+        b.setText("");
+        b.setTextColor(Color.TRANSPARENT);
         b.setMinHeight(0);
         b.setMinimumHeight(0);
         b.setPadding(dp(2), 0, dp(2), 0);
         b.setGravity(Gravity.CENTER);
+        b.setForeground(new MpcShortcutIconDrawable(mode));
         b.setBackground(strokeBackground(
                 BG,
                 Color.TRANSPARENT,
                 MPC_FLAT_RADIUS_DP));
         b.setTag(mode);
-        b.setContentDescription("MPC shortcut " + (mode == null ? "unknown" : mode.label()));
+        b.setContentDescription(
+                "MPC shortcut " + (mode == null ? "unknown" : mode.label()));
         b.setOnClickListener(v -> navigateToMode(mode));
         return b;
     }
@@ -2288,11 +2292,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             final Object tag = button.getTag();
             final boolean selected = tag == active;
-            button.setTextColor(selected ? TEXT : MUTED);
+            button.setTextColor(Color.TRANSPARENT);
+            button.setSelected(selected);
             button.setBackground(strokeBackground(
                     selected ? MPC_SELECTED : BG,
                     selected ? MPC_SELECTED : Color.TRANSPARENT,
                     MPC_FLAT_RADIUS_DP));
+            if (button.getForeground() instanceof MpcShortcutIconDrawable) {
+                ((MpcShortcutIconDrawable) button.getForeground()).setSelected(selected);
+            }
         }
     }
 
