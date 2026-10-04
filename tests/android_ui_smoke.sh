@@ -315,6 +315,18 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
   exit 1
 fi
 
+echo "Running MPC Toolbar chrome preflight..."
+for required in   'private static final int BG = Color.rgb(17, 19, 22);'   'toolbar.setBackgroundColor(BG)'   'selected ? MPC_SELECTED : BG'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java" &&      ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC Toolbar graphite chrome contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'toolbar.setBackgroundColor(Color.rgb(224, 30, 61))' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"; then
+  echo "ERROR: persistent MPC Toolbar must not use full-width red chrome"
+  exit 1
+fi
+
 echo "Running MPC3 Toolbar geometry preflight..."
 for required in \
   'MPC_TOOLBAR_INSET_DP = 6' \
