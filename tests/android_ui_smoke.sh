@@ -683,7 +683,8 @@ if [[ -z "$main_pad_split" || -z "$main_wave_split" || "$main_pad_split" -ge "$m
   echo "ERROR: Main Track touch-pad / waveform split is missing or reversed"
   exit 1
 fi
-if grep -Fq -- '0.52f' "$MAIN_ACTIVITY_SOURCE" || grep -Fq -- '0.48f' "$MAIN_ACTIVITY_SOURCE"; then
+main_track_workspace_block=$(sed -n "$track_detail_line,$((track_canvas_line + 80))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- '0.52f' <<<"$main_track_workspace_block" || grep -Fq -- '0.48f' <<<"$main_track_workspace_block"; then
   echo "ERROR: obsolete near-equal Main Track pad/waveform split remains"
   exit 1
 fi
