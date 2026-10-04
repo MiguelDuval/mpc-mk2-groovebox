@@ -316,16 +316,23 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
 fi
 
 echo "Running MPC Toolbar chrome preflight..."
-for required in   'private static final int BG = Color.rgb(17, 19, 22);'   'toolbar.setBackgroundColor(BG)'   'selected ? MPC_SELECTED : BG'; do
-  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java" &&      ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
-    echo "ERROR: MPC Toolbar graphite chrome contract missing: $required"
+for required in   'private static final int MPC_TOOLBAR_BG = Color.rgb(224, 30, 61);'   'bar.setBackgroundColor(MPC_TOOLBAR_BG)'   'private static final int MPC_TOOLBAR_TEXT = Color.WHITE;'   'MPC Toolbar Menu'   'MPC Project Browser'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC3 Main red Toolbar contract missing: $required"
+    exit 1
+  fi
+done
+for required in   'private static final int BG = Color.rgb(17, 19, 22);'   'toolbar.setBackgroundColor(BG)'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"; then
+    echo "ERROR: outer MPC shell Toolbar host must retain graphite fallback chrome: $required"
     exit 1
   fi
 done
 if grep -Fq -- 'toolbar.setBackgroundColor(Color.rgb(224, 30, 61))' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"; then
-  echo "ERROR: persistent MPC Toolbar must not use full-width red chrome"
+  echo "ERROR: shell host must not own the Main red Toolbar implementation"
   exit 1
 fi
+
 
 echo "Running MPC3 Toolbar geometry preflight..."
 for required in \
@@ -608,6 +615,12 @@ for required in   'MPC_FLAT_RADIUS_DP));'   'group.setBackground(strokeBackgroun
   fi
 done
 
+echo "Running Main Mixer default-state preflight..."
+if ! grep -Fq -- 'true,\n                true,\n                false);' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"; then
+  echo "ERROR: Main mixer strips must default to visible in MPC Main"
+  exit 1
+fi
+
 echo "Running compact context sizing preflight..."
 if grep -Fq -- 'ViewGroup.LayoutParams.MATCH_PARENT, dp(304)' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: persistent MPC context rail must not reserve the obsolete fixed 304dp height"
@@ -754,6 +767,22 @@ done
 
 echo "Running MPC Pad Mixer presentation preflight..."
 echo "Running MPC Pad Mixer Function Bar preflight..."
+echo "Running MPC Main XL Mixer Strip preflight..."
+for required in   'MpcMainMixerStripView'   'MPC Main XL Mixer Strips'   'TRACK STRIP / MAIN OUT'   'PAD STRIP / MAIN OUT'   'OUTPUT 1/2'   'MIXER STRIPS'   'DIAL • '   'mixerStripVisible()'   'onMixerStripVisibilityChanged'   'MPC Main mixer strips show or hide'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+    echo "ERROR: Main XL Mixer Strip architecture contract missing: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'new MpcMainMixerStripView(this,' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main XL Mixer Strip must be composed by the application shell"
+  exit 1
+fi
+if ! grep -Fq -- 'assertTrue(state.compactMixerVisible())' "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcUiStateTest.java"; then
+  echo "ERROR: Main Mixer default visibility regression test is missing"
+  exit 1
+fi
+
 echo "Running MPC Pad Mixer Data Dial preflight..."
 echo "Running MPC Pad Mixer hardware handler preflight..."
 for required in   'MpcUiState.Mode.PAD_MIXER'   'MpcUiState.DataDialFocus.PAD_MIXER_LEVEL'   'MpcUiState.DataDialFocus.PAD_MIXER_PAN'   'MpcUiState.DataDialFocus.PAD_MIXER_TUNE'   'cyclePadMixerDialFocus()'   'MpcPadMixerView.ControlFocus.LEVEL'   'MpcPadMixerView.ControlFocus.PAN'   'MpcPadMixerView.ControlFocus.TUNE'   'onControlFocus'; do
@@ -869,24 +898,20 @@ for required in \
   fi
 done
 
-echo "Running persistent MPC context hierarchy preflight..."
-for required in \
-  'compactContextCaption("SEQUENCE")' \
-  'compactContextCaption("PROGRAM")' \
-  'compactContextCaption("DATA DIAL")' \
-  'private TextView compactContextField(' \
-  'private void setCompactContextFocus(' \
-  'private String compactDialFocusLabel(' \
-  'dp(14)' \
-  'dp(36)' \
-  'dp(34)' \
-  'active ? DANGER : LINE' \
-  '"DIAL\n" + compactDialFocusLabel(dialFocus)'; do
+echo "Running MPC Main visible mixer hierarchy preflight..."
+for required in   'compactContextPanel.setVisibility(View.GONE)'   'compactMixerPanel.setVisibility(View.GONE)'   'area.addView(mainMixerStripView,'   'refreshMpcMainMixerStripView()'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
-    echo "ERROR: persistent MPC context hierarchy contract missing: $required"
+    echo "ERROR: legacy context rail must be hidden behind the visible Main Mixer Strip migration layer: $required"
     exit 1
   fi
 done
+for required in   'compactContextCaption("SEQUENCE")'   'compactContextCaption("PROGRAM")'   'compactContextCaption("DATA DIAL")'   'private TextView compactContextField('   'private void setCompactContextFocus('   'private String compactDialFocusLabel('   '"DIAL\n" + compactDialFocusLabel(dialFocus)'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: semantic context refresh dependencies are missing: $required"
+    exit 1
+  fi
+done
+
 
 echo "Running persistent MPC context rail source preflight..."
 for required in \
