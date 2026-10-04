@@ -691,7 +691,7 @@ if grep -Fq -- 'trackDetailRow.addView(compactMixerStripModeToggle' "$MAIN_ACTIV
   exit 1
 fi
 
-for required in   'compactMixerStripModeToggle = mainActionButton("□  ▦"'   'Gravity.RIGHT | Gravity.BOTTOM'   'FrameLayout.LayoutParams mixerSelectorLp = new FrameLayout.LayoutParams('   'mixerSelectorLp.rightMargin = dp(4)'   'mixerSelectorLp.bottomMargin = dp(4)'   'mainTrackArrangementHost.addView(compactMixerStripModeToggle, mixerSelectorLp)'   'MPC 3.9 places the Track/Pad channel-strip selector in the'   'lower-right corner of the Track/Arrangement section'; do
+for required in   'compactMixerStripModeToggle = mainActionButton("□  ▦"'   'Gravity.RIGHT | Gravity.BOTTOM'   'FrameLayout.LayoutParams mixerSelectorLp = new FrameLayout.LayoutParams('   'mixerSelectorLp.rightMargin = dp(4)'   'mixerSelectorLp.bottomMargin = dp(44)'   'mainTrackArrangementHost.addView(compactMixerStripModeToggle, mixerSelectorLp)'   'MPC 3.9 places the Track/Pad channel-strip selector in the'   'lower-right corner of the Track/Arrangement section'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MPC Track/Pad selector lower-right placement contract missing: $required"
     exit 1
