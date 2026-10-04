@@ -381,7 +381,7 @@ if ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(0)' <<<"$main_view_switch_
   echo "ERROR: Track/Arrangement switch must operate on one shared workspace host"
   exit 1
 fi
-if ! grep -Fq -- 'MPC presents the selected Track and its Track / Arrangement context' <<<"$main_view_switch_block"; then
+if ! grep -Fq -- 'MPC presents Track / Arrangement as a compact segmented context' <<<"$main_view_switch_block"; then
   echo "ERROR: Main Track/Arrangement header fidelity contract is missing"
   exit 1
 fi
