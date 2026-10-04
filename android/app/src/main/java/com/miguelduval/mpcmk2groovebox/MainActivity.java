@@ -2106,6 +2106,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case PAD_MIXER: return "▤";
             case LEVELS_16: return "16";
             case PAD_PERFORM: return "✣";
+            case SOUNDS: return "♫";
             case NEXT_SEQUENCE: return "▶";
             case ARRANGE: return "╬";
             case LIST_EDIT: return "☰";
