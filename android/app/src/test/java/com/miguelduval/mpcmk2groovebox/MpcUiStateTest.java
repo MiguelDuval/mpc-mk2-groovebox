@@ -11,6 +11,5 @@ public final class MpcUiStateTest {
         MpcUiState state = new MpcUiState();
         assertTrue(state.compactMixerVisible());
         assertFalse(state.compactMixerPadMode());
-        assertFalse(state.compactMixerPadMode());
     }
 }
