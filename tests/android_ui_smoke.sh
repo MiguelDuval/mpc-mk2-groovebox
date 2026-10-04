@@ -278,6 +278,15 @@ if ! grep -Fq -- 'PAD • SELECTED' "android/app/src/main/java/com/miguelduval/m
   echo "ERROR: Main Pad-mode XL strip selected-Pad presentation contract is missing"
   exit 1
 fi
+if grep -Fq -- 'focusLabel' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java" || \
+   grep -Fq -- 'DIAL •' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: XL Mixer Strip must not reintroduce the obsolete standalone Data Dial row"
+  exit 1
+fi
+if ! grep -Fq -- 'indicator.setBackgroundColor("LVL".equals(tabName) ? RED' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: MPC XL mixer tabs must use a flat active LVL underline"
+  exit 1
+fi
 for required in \
   'MpcTrackTypeIconDrawable' \
   '"DRUM", "KEYGROUP", "PLUGIN", "MIDI", "CLIP", "CV"' \
