@@ -489,3 +489,12 @@ Acceptance focus for the next run:
 - Track/Pad switching remains only in the Main Track/Arrangement control.
 - Toolbar remains the documented red Main surface.
 - Existing audio, sequencer, MIDI and controller semantics remain untouched.
+
+
+### 2026-10-04 Main XL Strip visual confirmation
+
+- Official MPC3 references were used to validate the left-side Main composition.
+- Main XL strips stay compact: in Track context, selected Track + Main Output; in Drum Pad context, selected Pad + Main Output.
+- The Track/Pad selector remains in the lower-right Track/Arrangement context and is not duplicated in the strip header.
+- Vertical meter rendering is presentation-only; unsupported track/output gain semantics remain explicitly reserved.
+- Shortcut icons are rendered by an original deterministic Drawable rather than platform-dependent Unicode glyphs.
