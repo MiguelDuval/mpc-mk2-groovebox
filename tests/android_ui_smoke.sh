@@ -270,8 +270,12 @@ for required in \
     exit 1
   fi
 done
-if ! grep -Fq -- 'PAD STRIP / TRACK' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
-  echo "ERROR: Main Pad-mode XL strip must identify the selected Track, not Main Output"
+if ! grep -Fq -- 'buildTrackStrip(' <<<"$pad_mode_block"; then
+  echo "ERROR: Main Pad-mode XL strip must pair the selected Pad with its selected Track"
+  exit 1
+fi
+if ! grep -Fq -- 'PAD • SELECTED' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: Main Pad-mode XL strip selected-Pad presentation contract is missing"
   exit 1
 fi
 for required in \
@@ -821,7 +825,7 @@ done
 echo "Running MPC Pad Mixer presentation preflight..."
 echo "Running MPC Pad Mixer Function Bar preflight..."
 echo "Running MPC Main XL Mixer Strip preflight..."
-for required in   'MpcMainMixerStripView'   'MPC Main XL Mixer Strips'   'TRACK STRIP / MAIN OUT'   'PAD STRIP / TRACK'   'OUTPUT 1/2'   'MIXER STRIPS'   'MpcVerticalMeter'   'addStripHeader(strip, "TRACK ",'   'addStripHeader('   'PAD '   'DIAL • '   'mixerStripVisible()'   'onMixerStripVisibilityChanged'   'MPC Main mixer strips show or hide'; do
+for required in   'MpcMainMixerStripView'   'MPC Main XL Mixer Strips'   'MPC XL'   'TRACK • SELECTED'   'PAD • SELECTED'   'OUTPUT 1/2'   'MpcVerticalMeter'   'MpcPanSlider'   'addIdentityHeader('   'addProgramBand('   'MPC XL level meter and white-line fader'   'MPC XL selected track pan slider reserved'   'mixerStripVisible()'   'onMixerStripVisibilityChanged'   'MPC Main mixer strips show or hide'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
     echo "ERROR: Main XL Mixer Strip architecture contract missing: $required"
     exit 1
