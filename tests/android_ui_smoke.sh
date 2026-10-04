@@ -13,6 +13,14 @@ NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
 TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackEditView.java"
 SHELL_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"
 
+echo "Running MPC default shortcut fidelity preflight..."
+for required in   'DEFAULT_SHORTCUTS'   'MpcUiState.Mode.BROWSER'   'MpcUiState.Mode.CHANNEL_MIXER'   'MpcUiState.Mode.PAD_MIXER'   'MpcUiState.Mode.SOUNDS'   'MpcUiState.Mode.XYFX'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcModeRegistry.java" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"; then
+    echo "ERROR: MPC default shortcut fidelity contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC Main UI source preflight..."
 for required in \
   "MPC shell mixer strips" \
