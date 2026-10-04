@@ -687,6 +687,20 @@ done
 
 echo "Running MPC Pad Mixer presentation preflight..."
 echo "Running MPC Pad Mixer Function Bar preflight..."
+echo "Running MPC Pad Mixer Data Dial preflight..."
+for required in   'PAD_MIXER_LEVEL'   'PAD_MIXER_PAN'   'PAD_MIXER_TUNE'   'case PAD_MIXER:'   'cyclePadMixerDialFocus()'   'nativeAudioSetPadLevel(selectedPad'   'nativeAudioSetPadPan(selectedPad'   'nativeAudioSetPadTuning(selectedPad'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"; then
+    echo "ERROR: Pad Mixer Data Dial semantic contract missing: $required"
+    exit 1
+  fi
+done
+for required in   'enum ControlFocus'   'onControlFocus'   'setControlFocus'   'LEVEL'   'PAN'   'TUNE'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+    echo "ERROR: Pad Mixer control-focus UI contract missing: $required"
+    exit 1
+  fi
+done
+
 if ! grep -Fq -- 'case PAD_MIXER:' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Pad Mixer Function Bar context is missing"
   exit 1
