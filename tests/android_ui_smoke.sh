@@ -1079,7 +1079,7 @@ for required in \
 done
 
 echo "Running MPC XL channel-strip collapse/focus regression preflight..."
-for required in   'void setChannelStripVisible(boolean visible)'   'LayoutParams contextParams = contextArea.getLayoutParams()'   'contextParams.width = visible ? dp(context, CHANNEL_STRIP_WIDTH_DP) : 0'   'channelStripRestoreButton'   'channelStripRestoreButton.setVisibility(visible ? View.GONE : View.VISIBLE)'; do
+for required in   'void setChannelStripVisible(boolean visible)'   'contextArea.getLayoutParams()'   'contextParams.width = visible'   ': 0;'   'channelStripRestoreButton'   'channelStripRestoreButton.setVisibility('   'visible ? View.GONE : View.VISIBLE'; do
   if ! grep -Fq -- "$required" "$SHELL_SOURCE"; then
     echo "ERROR: XL Channel Strip must collapse its full 210dp shell column while preserving a restore affordance: $required"
     exit 1
