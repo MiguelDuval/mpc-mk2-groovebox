@@ -665,6 +665,18 @@ fi
 # The Track state row is intentionally rendered immediately above the performance canvas
 # (see the positive ordering assertion above). Do not assert the inverse here.
 
+echo "Running MPC Pad Mixer format-string safety preflight..."
+if grep -Fq -- 'PAN %+0.2f' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java" ||    grep -Fq -- 'TUNE %+0.1f' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+  echo "ERROR: Pad Mixer must not use Java Formatter +0 flag without an explicit width"
+  exit 1
+fi
+for required in 'PAN %+.2f' 'TUNE %+.1f'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+    echo "ERROR: Pad Mixer safe signed format contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC Browser flat-chrome preflight..."
 for required in   'MPC_FLAT_RADIUS_DP = 0'   'MPC_BROWSER_SELECTED'   'MPC Browser'   'setCornerRadius(dp(context, MPC_FLAT_RADIUS_DP))'   'selected ? MPC_BROWSER_SELECTED : SURFACE_2'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
