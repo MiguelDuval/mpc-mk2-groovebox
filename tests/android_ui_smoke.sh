@@ -616,13 +616,29 @@ if ! grep -Fq -- 'Track identity is intentionally compact' "$MAIN_ACTIVITY_SOURC
   exit 1
 fi
 
+echo "Running Main Track-state row fidelity preflight..."
+for required in   'trackDetailRow.addView(monitorDetail, weight());'   'trackDetailRow.addView(lengthDetail, weight());'   'trackDetailRow.addView(velocityDetail, weight());'   'trackDetailRow.addView(layerDetail,'   'selectedLayer + 1'   'setBottomStatus("LAYER • DATA DIAL / +/-")'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC Main Track-state row field contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'LinearLayout layerControls = row();' "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- 'layerControls.addView(layerDownButton' "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- 'layerControls.addView(layerUpButton' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main LAYER must remain one field, not a nested +/- control group"
+  exit 1
+fi
+if ! grep -Fq -- 'layerDetail.setOnClickListener' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main LAYER field must own the shared Data Dial focus entry"
+  exit 1
+fi
+
 echo "Running Main Track/Pad selector placement preflight..."
 if grep -Fq -- 'trackDetailRow.addView(compactMixerStripModeToggle' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track/Pad selector must not live inside the MONITOR/LENGTH/VELOCITY/LAYER state row"
   exit 1
 fi
 
-for required in   'compactMixerStripModeToggle = mainActionButton("□  ▦"'   'Gravity.RIGHT | Gravity.BOTTOM'   'FrameLayout.LayoutParams mixerSelectorLp = new FrameLayout.LayoutParams('   'mixerSelectorLp.rightMargin = dp(4)'   'mixerSelectorLp.bottomMargin = dp(40)'   'mainTrackArrangementHost.addView(compactMixerStripModeToggle, mixerSelectorLp)'   'MPC 3.9 places the Track/Pad channel-strip selector in the'   'lower-right corner of the Track/Arrangement section'; do
+for required in   'compactMixerStripModeToggle = mainActionButton("□  ▦"'   'Gravity.RIGHT | Gravity.BOTTOM'   'FrameLayout.LayoutParams mixerSelectorLp = new FrameLayout.LayoutParams('   'mixerSelectorLp.rightMargin = dp(4)'   'mixerSelectorLp.bottomMargin = dp(4)'   'mainTrackArrangementHost.addView(compactMixerStripModeToggle, mixerSelectorLp)'   'MPC 3.9 places the Track/Pad channel-strip selector in the'   'lower-right corner of the Track/Arrangement section'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MPC Track/Pad selector lower-right placement contract missing: $required"
     exit 1

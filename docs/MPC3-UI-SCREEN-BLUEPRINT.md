@@ -190,7 +190,7 @@ Touch:
 - A compact MPC-style track-state row sits directly above the canvas with **MONITOR / LENGTH / VELOCITY / LAYER** vocabulary.
 - Only truthful backend state is surfaced: Monitor is currently unavailable, Length is sequence-scoped, Velocity has no track-level semantic in the current backend, and Layer is the actual selected Drum sample layer.
 - Start/End handles use the existing sample-region semantic command; this is a quick-edit surface, not a replacement for full Sample Edit.
-- Layer −/+ changes only the selected sample layer and keeps the current Track/Pad context.
+- The Layer field selects the current sample layer; tapping it establishes shared SAMPLE_LAYER Data Dial focus, and the standard +/- hardware adjustment path changes the value without leaving Main.
 - AUDITION triggers the currently selected Pad; SAMPLE EDIT opens the dedicated sample editor without changing the selected Track/Sequence.
 
 ### Main Sequence field hierarchy

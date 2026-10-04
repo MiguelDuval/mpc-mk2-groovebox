@@ -2650,15 +2650,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          * MONITOR / LENGTH / VELOCITY / LAYER.
          * TRANSPOSE belongs to the Sequence section, not this Track row.
          */
-        LinearLayout layerControls = row();
-        Button layerDownButton = mainActionButton("−", v -> adjustMainLayer(-1));
-        layerDownButton.setTextSize(13);
-        layerDownButton.setContentDescription("Main Track View previous sample layer");
-        layerControls.addView(layerDownButton,
-                new LinearLayout.LayoutParams(dp(24), dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
-
         TextView layerDetail = mainMetric("LAYER");
-        layerDetail.setContentDescription("Main Track View selected layer • tap to focus Layer");
+        layerDetail.setContentDescription(
+                "Main Track View selected layer • tap to focus Layer");
         layerDetail.setOnClickListener(v -> {
             navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_SELECT);
             navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_LAYER);
@@ -2670,16 +2664,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Locale.ROOT,
                 "LAYER\n%d/8",
                 selectedLayer + 1));
-        layerControls.addView(layerDetail,
-                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
-
-        Button layerUpButton = mainActionButton("+", v -> adjustMainLayer(1));
-        layerUpButton.setTextSize(13);
-        layerUpButton.setContentDescription("Main Track View next sample layer");
-        layerControls.addView(layerUpButton,
-                new LinearLayout.LayoutParams(dp(24), dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
-        trackDetailRow.addView(layerControls,
-                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
+        trackDetailRow.addView(
+                layerDetail,
+                new LinearLayout.LayoutParams(
+                        0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
 
         LinearLayout quickTrack = row();
 
@@ -2825,8 +2813,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         FrameLayout.LayoutParams mixerSelectorLp = new FrameLayout.LayoutParams(
                 dp(46), dp(32), Gravity.RIGHT | Gravity.BOTTOM);
         mixerSelectorLp.rightMargin = dp(4);
-        // Keep the selector clear of the Track canvas's own bottom action row.
-        mixerSelectorLp.bottomMargin = dp(40);
+        // Sit inside the actual lower-right corner of the Track/Arrangement
+        // section, immediately above the shell Function Bar boundary.
+        mixerSelectorLp.bottomMargin = dp(4);
         mainTrackArrangementHost.addView(compactMixerStripModeToggle, mixerSelectorLp);
 
         trackProgramSection.addView(mainTrackArrangementHost,
