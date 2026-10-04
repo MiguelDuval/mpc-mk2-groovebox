@@ -228,8 +228,8 @@ if grep -Fq -- 'mainProgramField' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: obsolete Main Program field presentation pointer remains"
   exit 1
 fi
-if ! grep -Fq -- 'mainTrackTypeField = buildMainTrackTypeSelector();' <<<"$main_identity_block"; then
-  echo "ERROR: unified Main Track identity ownership contract is missing"
+if ! grep -Fq -- 'mainTrackTypeField = buildMainTrackTypeIconStrip();' <<<"$main_identity_block" ||    ! grep -Fq -- 'trackContextHeader.addView(mainTrackTypeField,' <<<"$main_identity_block"; then
+  echo "ERROR: unified Main Track Type icon cluster ownership contract is missing"
   exit 1
 fi
 
