@@ -2491,6 +2491,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Main Track visual hierarchy • Track / Program / workspace header");
         trackContextHeader.setPadding(dp(4), dp(1), dp(4), dp(1));
 
+        mainTrackTypeField = buildMainTrackTypeIconStrip();
+        trackContextHeader.addView(
+                mainTrackTypeField,
+                new LinearLayout.LayoutParams(
+                        dp(MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP),
+                        dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
+
         TextView trackName = mainField("TRACK");
         trackName.setTypeface(Typeface.DEFAULT_BOLD);
         trackName.setTextSize(13);
@@ -2500,13 +2507,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP), 1.0f));
 
         mainTrackField = trackName;
-        mainTrackTypeField = buildMainTrackTypeIconStrip();
-
-        trackContextHeader.addView(
-                mainTrackTypeField,
-                new LinearLayout.LayoutParams(
-                        dp(MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP),
-                        dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
         Button trackEditHeader = mainActionButton("✎", v -> openMainTrackEditContext());
         trackEditHeader.setTextSize(15);
