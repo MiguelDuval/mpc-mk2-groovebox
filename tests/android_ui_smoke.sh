@@ -616,6 +616,19 @@ if ! grep -Fq -- 'Track identity is intentionally compact' "$MAIN_ACTIVITY_SOURC
   exit 1
 fi
 
+echo "Running Main Track/Pad selector placement preflight..."
+if grep -Fq -- 'trackDetailRow.addView(compactMixerStripModeToggle' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track/Pad selector must not live inside the MONITOR/LENGTH/VELOCITY/LAYER state row"
+  exit 1
+fi
+
+for required in   'compactMixerStripModeToggle = mainActionButton("□  ▦"'   'Gravity.RIGHT | Gravity.BOTTOM'   'FrameLayout.LayoutParams mixerSelectorLp = new FrameLayout.LayoutParams('   'mixerSelectorLp.rightMargin = dp(4)'   'mixerSelectorLp.bottomMargin = dp(40)'   'mainTrackArrangementHost.addView(compactMixerStripModeToggle, mixerSelectorLp)'   'MPC 3.9 places the Track/Pad channel-strip selector in the'   'lower-right corner of the Track/Arrangement section'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC Track/Pad selector lower-right placement contract missing: $required"
+    exit 1
+  fi
+done
+
 if ! grep -Fq -- 'compactMixerStripModeToggle = mainActionButton("□  ▦",' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track lower-right selector must expose the single-pad / four-squares pair"
   exit 1

@@ -2681,25 +2681,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackDetailRow.addView(layerControls,
                 new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
 
-        compactMixerStripModeToggle = mainActionButton("□  ▦", v -> {
-            final MpcUiState state = navigationController.state();
-            if (!compactMixerStripModeAvailable()) {
-                setBottomStatus("TRACK/PAD CONTEXT • DRUM TRACK REQUIRED");
-                return;
-            }
-            navigationController.setCompactMixerState(
-                    state.compactMixerVisible(),
-                    !state.compactMixerPadMode());
-        });
-        compactMixerStripModeToggle.setTextSize(11);
-        compactMixerStripModeToggle.setContentDescription(
-                "MPC condensed Mixer Strip Track or Pad selector");
-        compactMixerStripModeToggle.setGravity(Gravity.CENTER);
-        compactMixerStripModeToggle.setBackground(strokeBackground(
-                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
-        trackDetailRow.addView(compactMixerStripModeToggle,
-                new LinearLayout.LayoutParams(dp(46), dp(40)));
-
         LinearLayout quickTrack = row();
 
         /*
@@ -2817,6 +2798,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT));
+
+        /*
+         * MPC 3.9 places the Track/Pad channel-strip selector in the
+         * lower-right corner of the Track/Arrangement section. It is a
+         * context switch for the adjacent XL/channel-strip surface, not
+         * another Track-state field. Keep one shared selector over both
+         * sibling views so the intent has one stable physical/touch location.
+         */
+        compactMixerStripModeToggle = mainActionButton("□  ▦", v -> {
+            final MpcUiState state = navigationController.state();
+            if (!compactMixerStripModeAvailable()) {
+                setBottomStatus("TRACK/PAD CONTEXT • DRUM TRACK REQUIRED");
+                return;
+            }
+            navigationController.setCompactMixerState(
+                    state.compactMixerVisible(),
+                    !state.compactMixerPadMode());
+        });
+        compactMixerStripModeToggle.setTextSize(11);
+        compactMixerStripModeToggle.setContentDescription(
+                "MPC condensed Mixer Strip Track or Pad selector");
+        compactMixerStripModeToggle.setGravity(Gravity.CENTER);
+        compactMixerStripModeToggle.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        FrameLayout.LayoutParams mixerSelectorLp = new FrameLayout.LayoutParams(
+                dp(46), dp(32), Gravity.RIGHT | Gravity.BOTTOM);
+        mixerSelectorLp.rightMargin = dp(4);
+        // Keep the selector clear of the Track canvas's own bottom action row.
+        mixerSelectorLp.bottomMargin = dp(40);
+        mainTrackArrangementHost.addView(compactMixerStripModeToggle, mixerSelectorLp);
+
         trackProgramSection.addView(mainTrackArrangementHost,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, MPC_MAIN_WORKSPACE_WEIGHT));
