@@ -1118,3 +1118,10 @@ Browser chrome now also uses the same flat MPC selection language as the migrate
 - Browser target Pad/Layer and current sample are compact read-only context state; the workspace no longer reserves a duplicate 190dp target command panel.
 - Menu remains a 4×4 launcher. System commands are exposed through the shell Function Bar rather than a nested second footer.
 - Pad Mixer is a 16-pad workspace with eight visible compact strips and explicit Data Dial Level/Pan/Tune focus.
+
+
+### 2026-10-04 Main shell fidelity correction
+
+The Main screen is now being aligned to the actual MPC 3.9 composition rather than a generic “MPC-like” shell. The visible left region is the five-shortcut rail followed by XL Mixer Strips; the old persistent Sequence/Track/Program/Data Dial rail is hidden migration scaffolding only.
+
+The Track/Pad strip choice remains in the lower-right of the Main Track/Arrangement section, matching the documented MPC interaction placement. Main Toolbar presentation is red in the active Main context; graphite remains the surrounding shell chrome.
