@@ -7242,51 +7242,104 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "PAD_MIXER";
         navigationController.navigate(MpcUiState.Mode.PAD_MIXER);
+        navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
+        navigationController.setActionAvailable(true);
         pageTitle.setText("PAD MIXER");
         content.removeAllViews();
 
-        LinearLayout page = page();
-        page.addView(sectionLabel("PAD / LAYER MIX"));
+        final MpcPadMixerView mixer = new MpcPadMixerView(
+                this,
+                new MpcPadMixerView.Listener() {
+                    @Override public int selectedPad() {
+                        return selectedPadIndexForUi();
+                    }
 
-        LinearLayout strips = row();
-        for (int pad = 0; pad < 4; pad++) {
-            final int p = pad;
-            LinearLayout strip = panel();
-            TextView title = label("PAD " + (p + 1), 12, TEXT);
-            title.setTypeface(Typeface.DEFAULT_BOLD);
-            strip.addView(title);
+                    @Override public float padLevel(int pad) {
+                        return nativeAudioGetPadLevel(pad);
+                    }
 
-            SeekBar level = new SeekBar(this);
-            level.setMax(100);
-            level.setProgress(Math.round(nativeAudioGetPadLevel(p) * 100));
-            level.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
-                    if (fromUser) {
-                        nativeAudioSetPadLevel(p, progress / 100.0f);
+                    @Override public float padPan(int pad) {
+                        return nativeAudioGetPadPan(pad);
+                    }
+
+                    @Override public float padTuning(int pad) {
+                        return nativeAudioGetPadTuning(pad);
+                    }
+
+                    @Override public String padSampleName(int pad) {
+                        final String value = nativeAudioGetPadSampleName(
+                                pad, selectedLayer);
+                        return value == null ? "" : value;
+                    }
+
+                    @Override public void onPadSelected(int pad) {
+                        selectedPad = Math.max(0, Math.min(15, pad));
+                        navigationController.setSelectedPad(selectedPad);
+                        navigationController.setSubcontext(
+                                MpcUiState.Subcontext.PERFORMANCE);
+                        navigationController.setDataDialFocus(
+                                MpcUiState.DataDialFocus.PAD);
+                        navigationController.setActionAvailable(true);
+                        setBottomStatus(String.format(
+                                Locale.ROOT,
+                                "PAD MIXER • PAD %02d • DATA DIAL",
+                                selectedPad + 1));
+                        mixer.refresh(
+                                String.format(
+                                        Locale.ROOT,
+                                        "%02d",
+                                        nativeSequenceGetSelectedTrack() + 1),
+                                normalizeProgramLabel(
+                                        nativeSequenceGetTrackProgram(
+                                                nativeSequenceGetSelectedTrack())),
+                                selectedPad);
+                        refreshMpcCompactContext();
+                        syncHardwareControllerFeedback();
+                    }
+
+                    @Override public void onPadLevelSet(int pad, float value) {
+                        final float next = Math.max(0.0f, Math.min(1.0f, value));
+                        setBottomStatus(nativeAudioSetPadLevel(pad, next));
                         refreshMpcCompactContext();
                     }
-                }
-                @Override public void onStartTrackingTouch(SeekBar bar) {}
-                @Override public void onStopTrackingTouch(SeekBar bar) {}
-            });
-            strip.addView(level, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
-            strip.addView(actionButton("SELECT", v -> {
-                selectedPad = p;
-                navigationController.setSelectedPad(p);
-                refreshPadSelectionVisuals();
-                showMainPage();
-            }), new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
-            strips.addView(strip, new LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
-        }
+                    @Override public void onPadPanDelta(int pad, float delta) {
+                        final float next = Math.max(
+                                -1.0f,
+                                Math.min(1.0f,
+                                        nativeAudioGetPadPan(pad) + delta));
+                        setBottomStatus(nativeAudioSetPadPan(pad, next));
+                        refreshMpcCompactContext();
+                    }
 
-        page.addView(strips, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-        content.addView(page);
+                    @Override public void onPadTuningDelta(int pad, float delta) {
+                        final float next =
+                                nativeAudioGetPadTuning(pad) + delta;
+                        setBottomStatus(nativeAudioSetPadTuning(pad, next));
+                        refreshMpcCompactContext();
+                    }
+                });
+
+        content.addView(mixer,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+
+        final int trackIndex = startupComplete
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        final String trackLabel = String.format(
+                Locale.ROOT, "%02d", trackIndex + 1);
+        final String programLabel = startupComplete
+                ? normalizeProgramLabel(nativeSequenceGetTrackProgram(trackIndex))
+                : "PROGRAM —";
+        mixer.refresh(trackLabel, programLabel, selectedPadIndexForUi());
+
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
     }
+
     private void showMidiPage() {
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
