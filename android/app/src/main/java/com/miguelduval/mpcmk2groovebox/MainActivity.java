@@ -2889,6 +2889,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             showTimeSignatureDialog();
         });
+        transpose.setContentDescription("Main Sequence transpose state");
         transpose.setOnClickListener(v -> setBottomStatus(
                 "TRANSPOSE • unavailable in current Sequence backend"));
 

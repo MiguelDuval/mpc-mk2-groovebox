@@ -639,7 +639,7 @@ if ! grep -Fq -- 'layerDetail.setOnClickListener' "$MAIN_ACTIVITY_SOURCE"; then
 fi
 
 echo "Running Main Track/Pad selector placement preflight..."
-if grep -Fq -- 'mixerSelectorLp.bottomMargin = dp(4)' "$MAIN_ACTIVITY_SOURCE"; then
+if grep -Fq -- 'mixerSelectorLp.bottomMargin = dp(44)' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track/Pad selector must reserve the Track-state row below the canvas"
   exit 1
 fi
@@ -647,11 +647,6 @@ if ! grep -Fq -- 'mainSequenceTransposeField = transpose;' "$MAIN_ACTIVITY_SOURC
   echo "ERROR: Main TRANSPOSE ownership must remain in the Sequence section"
   exit 1
 fi
-if grep -Fq -- 'mixerSelectorLp.bottomMargin = dp(44)' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Track/Pad selector must reserve the Track-state row below the canvas"
-  exit 1
-fi
-
 echo "Running Main Track/Pad selector placement preflight..."
 if grep -Fq -- 'trackDetailRow.addView(compactMixerStripModeToggle' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track/Pad selector must not live inside the MONITOR/LENGTH/VELOCITY/LAYER state row"
