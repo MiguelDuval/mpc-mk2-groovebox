@@ -9,18 +9,21 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.Locale;
 
 /**
- * MPC 3.9 Main Mode mixer-strip region.
+ * MPC 3 Main Mode XL mixer-strip region.
  *
- * The official MPC Main layout places XL channel strips immediately beside
- * the five mode shortcuts. This view is intentionally presentation-first:
- * it exposes the track/pad/main-output mixer hierarchy while delegating every
- * mutation to MainActivity/native state.
+ * The physical MPC presentation is intentionally dense: two adjacent channel
+ * strips, a compact identity header, LVL/FX/SEND/I/O tabs, level/pan controls,
+ * and only the controls that are truthful for the selected strip type.
+ *
+ * This view remains presentation-first. Realtime mixer mutations still belong
+ * to MainActivity/native state.
  */
 final class MpcMainMixerStripView extends LinearLayout {
     interface Listener {
@@ -30,20 +33,21 @@ final class MpcMainMixerStripView extends LinearLayout {
         void onMixerStripVisibilityChanged(boolean visible);
     }
 
-    private static final int BG = Color.rgb(23, 25, 28);
-    private static final int PANEL = Color.rgb(31, 35, 39);
-    private static final int PANEL_DARK = Color.rgb(25, 28, 31);
-    private static final int LINE = Color.rgb(71, 78, 85);
-    private static final int TEXT = Color.rgb(235, 239, 242);
-    private static final int MUTED = Color.rgb(156, 166, 174);
+    private static final int BG = Color.rgb(20, 22, 25);
+    private static final int PANEL = Color.rgb(28, 31, 35);
+    private static final int PANEL_DARK = Color.rgb(20, 23, 26);
+    private static final int LINE = Color.rgb(69, 76, 83);
+    private static final int TEXT = Color.rgb(238, 241, 244);
+    private static final int MUTED = Color.rgb(145, 155, 164);
     private static final int RED = Color.rgb(224, 30, 61);
+    private static final int METER = Color.rgb(69, 205, 191);
+    private static final int DISABLED = Color.rgb(84, 92, 99);
     private static final int WHITE = Color.WHITE;
     private static final int ACTIVE = Color.rgb(63, 207, 117);
     private static final int FLAT_RADIUS_DP = 0;
 
     private final Listener listener;
     private final TextView modeLabel;
-    private final TextView focusLabel;
     private final LinearLayout strips;
 
     MpcMainMixerStripView(Context context, Listener listener) {
@@ -56,35 +60,23 @@ final class MpcMainMixerStripView extends LinearLayout {
         LinearLayout header = new LinearLayout(context);
         header.setOrientation(HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(context, 2), dp(context, 2), dp(context, 2), dp(context, 2));
+        header.setPadding(dp(context, 3), 0, dp(context, 2), 0);
 
-        modeLabel = text(context, "MIXER STRIPS", 8, TEXT);
+        modeLabel = text(context, "MIXER", 8, TEXT);
         modeLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        modeLabel.setGravity(Gravity.CENTER_VERTICAL);
+        modeLabel.setContentDescription("MPC Main XL mixer Data Dial focus context");
         header.addView(modeLabel, new LayoutParams(0, dp(context, 22), 1));
 
         Button visibility = button(context, "◉", 10);
         visibility.setContentDescription("MPC Main mixer strips show or hide");
         visibility.setOnClickListener(v -> {
             if (listener != null) {
-                listener.onMixerStripVisibilityChanged(
-                        !listener.mixerStripVisible());
+                listener.onMixerStripVisibilityChanged(!listener.mixerStripVisible());
             }
         });
         header.addView(visibility, new LayoutParams(dp(context, 28), dp(context, 22)));
-
-        // Track/Pad selection is deliberately not duplicated here.
-        // MPC places the Track/Pad mixer toggle in the lower-right corner
-        // of the Main Track/Arrangement section. The top control is only
-        // the strip visibility affordance.
-
-
-        addView(header, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 26)));
-
-        focusLabel = text(context, "DIAL • NONE", 7, MUTED);
-        focusLabel.setGravity(Gravity.CENTER_VERTICAL);
-        focusLabel.setPadding(dp(context, 4), 0, dp(context, 4), 0);
-        focusLabel.setContentDescription("MPC Main mixer Data Dial focus");
-        addView(focusLabel, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 20)));
+        addView(header, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 22)));
 
         strips = new LinearLayout(context);
         strips.setOrientation(HORIZONTAL);
@@ -105,60 +97,54 @@ final class MpcMainMixerStripView extends LinearLayout {
             float padPan,
             String padSampleName,
             boolean trackMuted) {
-        // Keep the top control row mounted even when the XL strips are
-        // collapsed, matching MPC's “tap the top icon to show/hide strips”
-        // interaction. Only the expanded strip bodies are collapsed.
         setVisibility(View.VISIBLE);
         strips.setVisibility(visible ? View.VISIBLE : View.GONE);
+
         if (!visible) {
-            modeLabel.setText("MIXER STRIPS • HIDDEN");
-            focusLabel.setText("TAP ◉ TO SHOW");
+            modeLabel.setText("MIXER • HIDDEN");
+            modeLabel.setContentDescription("MPC Main XL mixer hidden • DIAL " + safe(dialFocus));
             return;
         }
 
-        final boolean ready = listener != null && listener.isStartupReady();
-        modeLabel.setText(
-                padMode ? "PAD STRIP / TRACK" : "TRACK STRIP / MAIN OUT");
-        focusLabel.setText(
-                "DIAL • " + (dialFocus == null ? "NONE" : dialFocus));
-
+        modeLabel.setText("MIXER");
+        modeLabel.setContentDescription("MPC Main XL mixer • DIAL " + safe(dialFocus));
         strips.removeAllViews();
 
         if (padMode) {
-            // In Drum Pad view, the first XL strip is the selected Pad;
-            // the second is the corresponding selected Track. Main Output is
-            // shown only when the Track strip occupies the left position,
-            // matching the MPC 3.9 channel-strip relationship.
-            strips.addView(buildPadStrip(
-                    getContext(),
-                    selectedPad,
-                    padLevel,
-                    padPan,
-                    padSampleName),
+            // MPC 3: Drum Pad view pairs the selected Pad with its selected
+            // Track; Main Output belongs to Track view.
+            strips.addView(
+                    buildPadStrip(
+                            getContext(),
+                            selectedPad,
+                            padLevel,
+                            padPan,
+                            padSampleName),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
-            strips.addView(buildTrackStrip(
-                    getContext(),
-                    selectedTrack,
-                    trackType,
-                    trackName,
-                    programName,
-                    trackMuted,
-                    ready),
+            strips.addView(
+                    buildTrackStrip(
+                            getContext(),
+                            selectedTrack,
+                            trackType,
+                            trackName,
+                            programName,
+                            trackMuted,
+                            listener != null && listener.isStartupReady()),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
         } else {
-            // In Track view, the first XL strip is the selected Track; the
-            // second is the project Main Output.
-            strips.addView(buildTrackStrip(
-                    getContext(),
-                    selectedTrack,
-                    trackType,
-                    trackName,
-                    programName,
-                    trackMuted,
-                    ready),
+            // MPC 3: Track view pairs the selected Track with Main Output.
+            strips.addView(
+                    buildTrackStrip(
+                            getContext(),
+                            selectedTrack,
+                            trackType,
+                            trackName,
+                            programName,
+                            trackMuted,
+                            listener != null && listener.isStartupReady()),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
-            strips.addView(buildOutputStrip(
-                    getContext()),
+            strips.addView(
+                    buildOutputStrip(getContext()),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
         }
     }
@@ -172,52 +158,78 @@ final class MpcMainMixerStripView extends LinearLayout {
             boolean muted,
             boolean ready) {
         LinearLayout strip = baseStrip(context);
-        addStripHeader(strip, "TRACK ", track + 1, trackName);
+        addIdentityHeader(
+                strip,
+                context,
+                String.format(Locale.ROOT, "%02d", track + 1),
+                clean(trackName, "Track " + (track + 1)),
+                trackType);
+
+        addProgramBand(
+                strip,
+                context,
+                clean(programName, "PROGRAM RESERVED"),
+                "PROGRAM");
+
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
-        strip.addView(info(
-                context,
-                "TYPE\n" + safe(trackType),
-                TEXT),
-                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 38)));
-        strip.addView(info(
-                context,
-                "PROGRAM\n" + safe(programName),
-                MUTED),
-                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 44)));
 
         MpcVerticalMeter meter = new MpcVerticalMeter(context);
-        meter.setValue(0.0f);
-        meter.setContentDescription("MPC Main selected track level meter reserved");
-        meter.setAlpha(0.55f);
-        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 54)));
-        TextView level = info(context, "LEVEL\nRESERVED", MUTED);
-        strip.addView(level, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 38)));
+        meter.setValue(0.5f);
+        meter.setEnabledState(false);
+        meter.setContentDescription("MPC XL selected track level meter and fader reserved");
+        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 104)));
 
-        TextView pan = info(context, "PAN\nRESERVED", MUTED);
-        strip.addView(pan, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 46)));
+        TextView level = valueLabel(
+                context,
+                "LEVEL\nRESERVED",
+                MUTED);
+        strip.addView(level, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 30)));
 
-        LinearLayout ms = row(context);
-        Button mute = button(context, muted ? "M" : "M", 9);
-        mute.setContentDescription("MPC Main selected track mute");
-        mute.setTextColor(muted ? BG : MUTED);
-        mute.setBackground(stroke(
+        MpcPanSlider pan = new MpcPanSlider(context);
+        pan.setValue(0.0f);
+        pan.setEnabledState(false);
+        pan.setContentDescription("MPC XL selected track pan slider reserved");
+        strip.addView(pan, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 42)));
+
+        TextView panValue = valueLabel(context, "PAN\nC • RESERVED", MUTED);
+        strip.addView(panValue, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 28)));
+
+        LinearLayout controls = row(context);
+        Button muteButton = controlButton(context, "MUTE", !muted);
+        muteButton.setContentDescription("MPC Main selected track mute");
+        muteButton.setEnabled(ready);
+        muteButton.setAlpha(ready ? 1.0f : 0.55f);
+        muteButton.setBackground(stroke(
                 muted ? ACTIVE : PANEL_DARK,
                 muted ? ACTIVE : LINE));
-        mute.setEnabled(ready);
-        mute.setAlpha(ready ? 1.0f : 0.5f);
-        mute.setOnClickListener(v -> {
+        muteButton.setTextColor(muted ? BG : TEXT);
+        muteButton.setOnClickListener(v -> {
             if (listener != null) listener.toggleTrackMute();
         });
-        ms.addView(mute, new LayoutParams(0, dp(context, 34), 1));
+        controls.addView(muteButton, new LayoutParams(0, dp(context, 30), 1));
 
-        Button solo = button(context, "S", 9);
-        solo.setEnabled(false);
-        solo.setAlpha(0.42f);
+        Button solo = controlButton(context, "SOLO", false);
         solo.setContentDescription("MPC Main selected track solo reserved");
-        ms.addView(solo, new LayoutParams(0, dp(context, 34), 1));
-        strip.addView(ms, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 36)));
+        controls.addView(solo, new LayoutParams(0, dp(context, 30), 1));
 
-        TextView footer = info(context, "MIX\nTRACK", MUTED);
+        Button automation = controlButton(context, "AUTO", false);
+        automation.setContentDescription("MPC Main selected track automation reserved");
+        controls.addView(automation, new LayoutParams(0, dp(context, 30), 1));
+
+        Button record = controlButton(context, "REC", false);
+        record.setContentDescription("MPC Main selected track record arm reserved");
+        controls.addView(record, new LayoutParams(0, dp(context, 30), 1));
+
+        strip.addView(controls, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 32)));
+
+        TextView output = flatLabel(
+                context,
+                "OUT 1/2",
+                TEXT);
+        output.setContentDescription("MPC XL selected track output 1/2");
+        strip.addView(output, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 24)));
+
+        TextView footer = flatLabel(context, "TRACK • SELECTED", MUTED);
         strip.addView(footer, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
         return strip;
     }
@@ -229,48 +241,66 @@ final class MpcMainMixerStripView extends LinearLayout {
             float panValue,
             String sampleName) {
         LinearLayout strip = baseStrip(context);
-        addStripHeader(
+        addIdentityHeader(
                 strip,
+                context,
+                "A" + (pad + 1),
                 "PAD " + String.format(Locale.ROOT, "%02d", pad + 1),
-                sampleName == null || sampleName.isEmpty() ? "NO SAMPLE" : sampleName);
+                "DRUM");
+
+        addProgramBand(
+                strip,
+                context,
+                clean(sampleName, "NO SAMPLE"),
+                "SAMPLE");
 
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
 
         MpcVerticalMeter meter = new MpcVerticalMeter(context);
         meter.setValue(levelValue);
-        meter.setContentDescription("MPC Main selected pad level meter");
-        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 54)));
+        meter.setEnabledState(true);
+        meter.setContentDescription("MPC Main selected pad level meter and fader");
+        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 104)));
 
-        TextView level = info(
+        TextView level = valueLabel(
                 context,
-                String.format(Locale.ROOT, "LEVEL\n%3d%%",
-                        Math.round(levelValue * 100.0f)),
+                String.format(
+                        Locale.ROOT,
+                        "LEVEL\n%3d%%",
+                        Math.round(clamp01(levelValue) * 100.0f)),
                 TEXT);
-        strip.addView(level, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 44)));
+        strip.addView(level, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 30)));
 
-        TextView pan = info(
+        MpcPanSlider pan = new MpcPanSlider(context);
+        pan.setValue(panValue);
+        pan.setEnabledState(true);
+        pan.setContentDescription("MPC Main selected pad pan slider");
+        strip.addView(pan, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 42)));
+
+        TextView panValueLabel = valueLabel(
                 context,
                 "PAN\n" + panText(panValue),
                 TEXT);
-        strip.addView(pan, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 44)));
+        strip.addView(panValueLabel, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 28)));
 
-        LinearLayout ms = row(context);
-        Button mute = button(context, "M", 9);
-        mute.setEnabled(false);
-        mute.setAlpha(0.42f);
+        LinearLayout controls = row(context);
+        Button mute = controlButton(context, "MUTE", false);
         mute.setContentDescription("MPC Main pad mute reserved");
-        ms.addView(mute, new LayoutParams(0, dp(context, 34), 1));
+        controls.addView(mute, new LayoutParams(0, dp(context, 30), 1));
 
-        Button solo = button(context, "S", 9);
-        solo.setEnabled(false);
-        solo.setAlpha(0.42f);
+        Button solo = controlButton(context, "SOLO", false);
         solo.setContentDescription("MPC Main pad solo reserved");
-        ms.addView(solo, new LayoutParams(0, dp(context, 34), 1));
-        strip.addView(ms, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 36)));
+        controls.addView(solo, new LayoutParams(0, dp(context, 30), 1));
 
-        TextView footer = info(
+        strip.addView(controls, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 32)));
+
+        TextView route = flatLabel(context, "PROGRAM", TEXT);
+        route.setContentDescription("MPC XL selected pad routing to Program");
+        strip.addView(route, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 24)));
+
+        TextView footer = flatLabel(
                 context,
-                "PAD MIX\nA" + (pad + 1),
+                "PAD • SELECTED",
                 MUTED);
         strip.addView(footer, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
         return strip;
@@ -278,134 +308,176 @@ final class MpcMainMixerStripView extends LinearLayout {
 
     private View buildOutputStrip(Context context) {
         LinearLayout strip = baseStrip(context);
-        addStripHeader(strip, "OUTPUT 1/2", "MAIN OUT");
+        addIdentityHeader(
+                strip,
+                context,
+                "1/2",
+                "OUTPUT 1/2",
+                "MAIN");
+
+        addProgramBand(strip, context, "MAIN OUTPUT", "OUTPUT");
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
+
         MpcVerticalMeter meter = new MpcVerticalMeter(context);
         meter.setValue(0.0f);
-        meter.setContentDescription("MPC Main output level meter reserved");
-        meter.setAlpha(0.55f);
-        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 54)));
-        strip.addView(info(
-                context,
-                "LEVEL\nRESERVED",
-                MUTED),
-                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 42)));
-        strip.addView(info(
-                context,
-                "PAN\nRESERVED",
-                MUTED),
-                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 56)));
-        strip.addView(info(
-                context,
-                "OUTPUT\n1/2",
-                TEXT),
-                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 46)));
-        strip.addView(info(
-                context,
-                "FX\nRESERVED",
-                MUTED),
-                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 46)));
-        strip.addView(info(
-                context,
-                "I/O\nRESERVED",
-                MUTED),
-                new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
+        meter.setEnabledState(false);
+        meter.setContentDescription("MPC Main output level meter and fader reserved");
+        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 104)));
+
+        strip.addView(
+                valueLabel(context, "LEVEL\nRESERVED", MUTED),
+                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 30)));
+
+        MpcPanSlider pan = new MpcPanSlider(context);
+        pan.setValue(0.0f);
+        pan.setEnabledState(false);
+        pan.setContentDescription("MPC Main output pan slider reserved");
+        strip.addView(pan, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 42)));
+
+        strip.addView(
+                valueLabel(context, "PAN\nC • RESERVED", MUTED),
+                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 28)));
+
+        Button mute = controlButton(context, "MUTE", false);
+        mute.setContentDescription("MPC Main output mute reserved");
+        LinearLayout muteRow = row(context);
+        muteRow.addView(mute, new LayoutParams(0, dp(context, 30), 1));
+        strip.addView(muteRow, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 32)));
+
+        TextView fx = flatLabel(context, "FX INSERTS • RESERVED", MUTED);
+        strip.addView(fx, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 24)));
+
+        TextView footer = flatLabel(context, "MAIN OUTPUT", MUTED);
+        strip.addView(footer, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
         return strip;
     }
 
-    private static final class MpcVerticalMeter extends View {
-        private final Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint trackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private float value;
-
-        MpcVerticalMeter(Context context) {
-            super(context);
-            fillPaint.setColor(Color.rgb(71, 214, 195));
-            trackPaint.setColor(Color.rgb(18, 21, 24));
-            setWillNotDraw(false);
-        }
-
-        void setValue(float value) {
-            this.value = Math.max(0.0f, Math.min(1.0f, value));
-            invalidate();
-        }
-
-        @Override protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            final float w = getWidth();
-            final float h = getHeight();
-            final float left = w * 0.38f;
-            final float right = w * 0.62f;
-            canvas.drawRect(left, 2, right, h - 2, trackPaint);
-            final float filled = (h - 4) * value;
-            canvas.drawRect(left, h - 2 - filled, right, h - 2, fillPaint);
-        }
-    }
-
-    private LinearLayout baseStrip(Context context) {
-        LinearLayout strip = new LinearLayout(context);
-        strip.setOrientation(VERTICAL);
-        strip.setPadding(dp(context, 2), dp(context, 2), dp(context, 2), dp(context, 2));
-        strip.setBackground(stroke(PANEL, LINE));
-        return strip;
-    }
-
-    private void addStripHeader(
+    private void addIdentityHeader(
             LinearLayout strip,
-            String titlePrefix,
-            int titleNumber,
-            String subtitle) {
-        addStripHeader(strip, titlePrefix + titleNumber, subtitle);
+            Context context,
+            String number,
+            String title,
+            String trackType) {
+        LinearLayout identity = row(context);
+        identity.setGravity(Gravity.CENTER_VERTICAL);
+        identity.setPadding(dp(context, 2), 0, dp(context, 2), 0);
+
+        ImageView icon = new ImageView(context);
+        MpcTrackTypeIconDrawable drawable = trackTypeIcon(trackType);
+        drawable.setSelected("DRUM".equalsIgnoreCase(trackType));
+        drawable.setEnabledState("MAIN".equalsIgnoreCase(trackType) || !"".equals(trackType));
+        icon.setImageDrawable(drawable);
+        icon.setContentDescription("MPC XL track type " + clean(trackType, "reserved"));
+        identity.addView(icon, new LayoutParams(dp(context, 24), dp(context, 26)));
+
+        LinearLayout labels = new LinearLayout(context);
+        labels.setOrientation(VERTICAL);
+        labels.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView name = text(
+                context,
+                number + "  " + clean(title, "—"),
+                9,
+                TEXT);
+        name.setTypeface(Typeface.DEFAULT_BOLD);
+        labels.addView(name, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 22)));
+
+        TextView type = text(
+                context,
+                clean(trackType, "TYPE RESERVED"),
+                7,
+                MUTED);
+        labels.addView(type, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 14)));
+
+        identity.addView(labels, new LayoutParams(0, dp(context, 38), 1));
+        strip.addView(identity, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 40)));
     }
 
-    private void addStripHeader(LinearLayout strip, String title, String subtitle) {
-        TextView titleView = text(getContext(), title, 8, TEXT);
-        titleView.setTypeface(Typeface.DEFAULT_BOLD);
-        titleView.setGravity(Gravity.CENTER_VERTICAL);
-        strip.addView(titleView, new LayoutParams(LayoutParams.MATCH_PARENT, dp(getContext(), 26)));
+    private void addProgramBand(
+            LinearLayout strip,
+            Context context,
+            String value,
+            String caption) {
+        LinearLayout band = row(context);
+        band.setPadding(dp(context, 4), 0, dp(context, 3), 0);
+        TextView left = text(context, caption, 7, MUTED);
+        left.setTypeface(Typeface.DEFAULT_BOLD);
+        band.addView(left, new LayoutParams(dp(context, 46), dp(context, 28)));
 
-        TextView subtitleView = text(getContext(), safe(subtitle), 7, MUTED);
-        subtitleView.setGravity(Gravity.CENTER_VERTICAL);
-        strip.addView(subtitleView, new LayoutParams(LayoutParams.MATCH_PARENT, dp(getContext(), 34)));
+        TextView right = text(context, value, 8, TEXT);
+        right.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        band.addView(right, new LayoutParams(0, dp(context, 28), 1));
+        band.setBackgroundColor(PANEL_DARK);
+        strip.addView(band, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 28)));
     }
 
     private void addTabs(LinearLayout strip, String[] tabs) {
         LinearLayout tabsRow = new LinearLayout(getContext());
         tabsRow.setOrientation(HORIZONTAL);
-        for (int i = 0; i < tabs.length; i++) {
-            final boolean active = i == 0;
-            TextView tab = text(
-                    getContext(),
-                    tabs[i],
-                    7,
-                    active ? BG : MUTED);
+        tabsRow.setGravity(Gravity.CENTER_VERTICAL);
+        tabsRow.setBackgroundColor(PANEL);
+
+        for (String tabName : tabs) {
+            LinearLayout tab = new LinearLayout(getContext());
+            tab.setOrientation(VERTICAL);
             tab.setGravity(Gravity.CENTER);
-            tab.setTypeface(Typeface.DEFAULT_BOLD);
-            tab.setBackground(stroke(
-                    active ? WHITE : PANEL_DARK,
-                    active ? WHITE : LINE));
             tab.setContentDescription(
-                    "MPC Main mixer tab " + tabs[i]
-                            + (active ? " active" : " unavailable"));
-            if (!active) tab.setAlpha(0.5f);
-            tabsRow.addView(tab, new LayoutParams(0, dp(getContext(), 22), 1));
+                    "MPC XL " + tabName + " mixer tab"
+                            + ("LVL".equals(tabName) ? " active" : " unavailable"));
+            tab.setEnabled("LVL".equals(tabName));
+
+            TextView label = text(
+                    getContext(),
+                    tabName,
+                    7,
+                    "LVL".equals(tabName) ? TEXT : MUTED);
+            label.setGravity(Gravity.CENTER);
+            label.setTypeface(Typeface.DEFAULT_BOLD);
+            if (!"LVL".equals(tabName)) label.setAlpha(0.60f);
+            tab.addView(label, new LayoutParams(LayoutParams.MATCH_PARENT, dp(getContext(), 18)));
+
+            View indicator = new View(getContext());
+            indicator.setBackgroundColor("LVL".equals(tabName) ? RED : Color.TRANSPARENT);
+            tab.addView(indicator, new LayoutParams(LayoutParams.MATCH_PARENT, dp(getContext(), 2)));
+
+            tabsRow.addView(
+                    tab,
+                    new LayoutParams(0, dp(getContext(), 20), 1));
         }
-        strip.addView(tabsRow, new LayoutParams(LayoutParams.MATCH_PARENT, dp(getContext(), 24)));
+
+        strip.addView(
+                tabsRow,
+                new LayoutParams(LayoutParams.MATCH_PARENT, dp(getContext(), 22)));
     }
 
-    private TextView info(Context context, String value, int color) {
+    private LinearLayout baseStrip(Context context) {
+        LinearLayout strip = new LinearLayout(context);
+        strip.setOrientation(VERTICAL);
+        strip.setPadding(dp(context, 1), dp(context, 1), dp(context, 1), dp(context, 1));
+        strip.setBackground(stroke(PANEL, LINE));
+        return strip;
+    }
+
+    private TextView valueLabel(Context context, String value, int color) {
         TextView view = text(context, value, 8, color);
         view.setGravity(Gravity.CENTER_VERTICAL);
         view.setPadding(dp(context, 4), 0, dp(context, 4), 0);
-        view.setBackground(stroke(PANEL_DARK, LINE));
+        view.setTypeface(Typeface.DEFAULT_BOLD);
         return view;
     }
 
-    private TextView text(Context context, String value, int size, int color) {
-        TextView view = new TextView(context);
-        view.setText(value);
-        view.setTextColor(color);
-        view.setTextSize(size);
+    private TextView flatLabel(Context context, String value, int color) {
+        TextView view = text(context, value, 7, color);
+        view.setGravity(Gravity.CENTER_VERTICAL);
+        view.setPadding(dp(context, 4), 0, dp(context, 4), 0);
+        return view;
+    }
+
+    private Button controlButton(Context context, String value, boolean active) {
+        Button view = button(context, value, 7);
+        view.setTextColor(active ? TEXT : MUTED);
+        view.setBackground(stroke(active ? PANEL_DARK : PANEL_DARK, LINE));
+        view.setAlpha(active ? 1.0f : 0.58f);
         return view;
     }
 
@@ -430,8 +502,42 @@ final class MpcMainMixerStripView extends LinearLayout {
         return row;
     }
 
+    private MpcTrackTypeIconDrawable trackTypeIcon(String trackType) {
+        String value = clean(trackType, "DRUM").toUpperCase(Locale.ROOT);
+        MpcTrackTypeIconDrawable.Type type;
+        switch (value) {
+            case "KEYGROUP":
+                type = MpcTrackTypeIconDrawable.Type.KEYGROUP;
+                break;
+            case "PLUGIN":
+                type = MpcTrackTypeIconDrawable.Type.PLUGIN;
+                break;
+            case "MIDI":
+                type = MpcTrackTypeIconDrawable.Type.MIDI;
+                break;
+            case "CLIP":
+                type = MpcTrackTypeIconDrawable.Type.CLIP;
+                break;
+            case "CV":
+                type = MpcTrackTypeIconDrawable.Type.CV;
+                break;
+            default:
+                type = MpcTrackTypeIconDrawable.Type.DRUM;
+                break;
+        }
+        return new MpcTrackTypeIconDrawable(type);
+    }
+
+    private String clean(String value, String fallback) {
+        return value == null || value.trim().isEmpty() ? fallback : value.trim();
+    }
+
     private String safe(String value) {
-        return value == null || value.trim().isEmpty() ? "—" : value.trim();
+        return value == null || value.trim().isEmpty() ? "NONE" : value.trim();
+    }
+
+    private float clamp01(float value) {
+        return Math.max(0.0f, Math.min(1.0f, value));
     }
 
     private String panText(float pan) {
@@ -453,5 +559,120 @@ final class MpcMainMixerStripView extends LinearLayout {
 
     private int dp(Context context, int value) {
         return Math.round(value * context.getResources().getDisplayMetrics().density);
+    }
+
+    private static final class MpcVerticalMeter extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float value;
+        private boolean enabledState = true;
+
+        MpcVerticalMeter(Context context) {
+            super(context);
+            setWillNotDraw(false);
+            setContentDescription("MPC XL level meter and white-line fader");
+        }
+
+        void setValue(float value) {
+            this.value = Math.max(0.0f, Math.min(1.0f, value));
+            invalidate();
+        }
+
+        void setEnabledState(boolean enabled) {
+            enabledState = enabled;
+            invalidate();
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+
+            final float w = getWidth();
+            final float h = getHeight();
+            final float meterLeft = w * 0.43f;
+            final float meterRight = w * 0.53f;
+            final float top = 8;
+            final float bottom = h - 8;
+
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(PANEL_DARK);
+            canvas.drawRect(meterLeft, top, meterRight, bottom, paint);
+
+            paint.setColor(enabledState ? METER : DISABLED);
+            final float filled = (bottom - top) * value;
+            canvas.drawRect(
+                    meterLeft,
+                    bottom - filled,
+                    meterRight,
+                    bottom,
+                    paint);
+
+            paint.setColor(LINE);
+            paint.setStrokeWidth(1);
+            for (int i = 0; i <= 8; i++) {
+                final float y = top + (bottom - top) * (i / 8.0f);
+                canvas.drawLine(w * 0.34f, y, w * 0.41f, y, paint);
+                canvas.drawLine(w * 0.55f, y, w * 0.62f, y, paint);
+            }
+
+            // MPC-style white level line. It is intentionally dimmed while
+            // the track/output backend is not yet writable.
+            final float faderX = w * 0.72f;
+            paint.setColor(enabledState ? WHITE : DISABLED);
+            paint.setStrokeWidth(enabledState ? 3 : 2);
+            final float faderY = bottom - (bottom - top) * value;
+            canvas.drawLine(faderX - 15, faderY, faderX + 9, faderY, paint);
+            canvas.drawLine(faderX, top, faderX, bottom, paint);
+
+            paint.setStrokeWidth(1);
+            paint.setColor(MUTED);
+            paint.setTextSize(Math.max(7, getResources().getDisplayMetrics().scaledDensity * 7));
+            canvas.drawText("0", w * 0.13f, bottom + 1, paint);
+            canvas.drawText("-∞", w * 0.13f, top + 8, paint);
+        }
+    }
+
+    private static final class MpcPanSlider extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float value;
+        private boolean enabledState = true;
+
+        MpcPanSlider(Context context) {
+            super(context);
+            setWillNotDraw(false);
+        }
+
+        void setValue(float value) {
+            this.value = Math.max(-1.0f, Math.min(1.0f, value));
+            invalidate();
+        }
+
+        void setEnabledState(boolean enabled) {
+            enabledState = enabled;
+            invalidate();
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            final float w = getWidth();
+            final float y = getHeight() * 0.52f;
+            final float left = w * 0.16f;
+            final float right = w * 0.84f;
+            final float center = (left + right) * 0.5f;
+            final float knobX = center + (right - left) * 0.5f * value;
+
+            paint.setColor(enabledState ? MUTED : DISABLED);
+            paint.setStrokeWidth(2);
+            canvas.drawLine(left, y, right, y, paint);
+            paint.setStrokeWidth(1);
+            canvas.drawLine(center, y - 6, center, y + 6, paint);
+
+            paint.setColor(enabledState ? WHITE : DISABLED);
+            canvas.drawCircle(knobX, y, 4.0f, paint);
+
+            paint.setTextSize(Math.max(7, getResources().getDisplayMetrics().scaledDensity * 7));
+            paint.setColor(MUTED);
+            canvas.drawText("L", left, y - 7, paint);
+            canvas.drawText("C", center - 3, y - 7, paint);
+            canvas.drawText("R", right - 6, y - 7, paint);
+        }
     }
 }
