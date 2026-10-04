@@ -468,3 +468,11 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - Data Dial semantics are explicit: selected Pad + focused Level/Pan/Tune field. Dial press cycles the focus; Dial delta edits only the focused parameter.
 - Channel Mixer remains explicitly RESERVED because track-strip mixer backend semantics are not yet implemented.
 - Browser chrome was brought onto the same zero-radius, red-selection shell language.
+
+
+### 2026-10-04 UI fidelity checkpoint — Toolbar / Browser / Menu
+
+- **Toolbar:** graphite persistent chrome; red reserved for selection/accent semantics.
+- **Browser:** three MPC context tabs (`Places / Content / Expansions`), official file-type filter vocabulary, single-workspace composition, and Function Bar actions for Sample Assign / Audition / Load.
+- **Menu:** 4×4 mode launcher remains intact; system actions moved to the single shell Function Bar to avoid nested command bars.
+- **Pad Mixer:** dedicated 16-pad workspace, eight visible strips, real Level/Pan/Tune operations, and Data Dial focus cycle.
