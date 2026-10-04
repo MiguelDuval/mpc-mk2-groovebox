@@ -218,7 +218,7 @@ if [[ -z "$main_identity_start" || -z "$main_identity_type" || -z "$main_identit
   echo "ERROR: Main Track identity band source boundary is missing"
   exit 1
 fi
-main_identity_block=$(sed -n "$main_identity_type,$((main_identity_view - 1))p" "$MAIN_ACTIVITY_SOURCE")
+main_identity_block=$(sed -n "$main_identity_start,$((main_identity_view - 1))p" "$MAIN_ACTIVITY_SOURCE")
 if grep -Fq -- 'mainField("PROGRAM")' <<<"$main_identity_block" || grep -Fq -- 'Main Mode selected program' <<<"$main_identity_block"; then
   echo "ERROR: MPC3 Main Track identity band must not expose a duplicate Program field"
   exit 1
