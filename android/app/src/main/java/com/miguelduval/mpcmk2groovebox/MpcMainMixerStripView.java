@@ -104,8 +104,16 @@ final class MpcMainMixerStripView extends LinearLayout {
             float padPan,
             String padSampleName,
             boolean trackMuted) {
-        setVisibility(visible ? View.VISIBLE : View.GONE);
-        if (!visible) return;
+        // Keep the top control row mounted even when the XL strips are
+        // collapsed, matching MPC's “tap the top icon to show/hide strips”
+        // interaction. Only the expanded strip bodies are collapsed.
+        setVisibility(View.VISIBLE);
+        strips.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (!visible) {
+            modeLabel.setText("MIXER STRIPS • HIDDEN");
+            focusLabel.setText("TAP ◉ TO SHOW");
+            return;
+        }
 
         final boolean ready = listener != null && listener.isStartupReady();
         modeLabel.setText(
