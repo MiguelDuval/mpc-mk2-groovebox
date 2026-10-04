@@ -2500,7 +2500,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         trackContextHeader.addView(
                 buildMainTrackTypeIconStrip(),
-                new LinearLayout.LayoutParams(dp(104), dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
+                new LinearLayout.LayoutParams(dp(66), dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
         Button trackEditHeader = mainActionButton("✎", v -> openMainTrackEditContext());
         trackEditHeader.setTextSize(15);
@@ -3905,60 +3905,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return "EVENTS • " + status.substring(start, end);
     }
 
-    private LinearLayout buildMainTrackTypeIconStrip() {
-        final LinearLayout strip = row();
-        strip.setGravity(Gravity.CENTER_VERTICAL);
-
-        // MPC's Main Track region exposes six Program Type choices:
-        // Drum, Keygroup, Plugin, MIDI, Clip and CV. Only Drum has a
-        // truthful backend in this build; the remaining choices stay visible
-        // but unavailable so the screen retains the reference hierarchy
-        // without pretending unsupported semantics exist.
-        final String[] glyphs = {"▦", "⌨", "✦", "M", "▤", "CV"};
-        final String[] descriptions = {
-                "Drum Track type",
-                "Keygroup Track type reserved",
-                "Plugin Track type reserved",
-                "MIDI Track type reserved",
-                "Clip Track type reserved",
-                "CV Track type reserved"
-        };
-
-        for (int i = 0; i < glyphs.length; i++) {
-            final Button icon = mainActionButton(glyphs[i], null);
-            icon.setTextSize(i == 5 ? 7 : 12);
-            icon.setTypeface(Typeface.DEFAULT_BOLD);
-            icon.setEnabled(i == 0);
-            icon.setAlpha(i == 0 ? 1.0f : 0.36f);
-            icon.setContentDescription(descriptions[i]);
-            icon.setGravity(Gravity.CENTER);
-            icon.setPadding(0, 0, 0, 0);
-            icon.setBackground(strokeBackground(
-                    i == 0 ? MPC_SELECTED : MPC_PANEL_DARK,
-                    i == 0 ? MPC_SELECTED : MPC_PANEL_BORDER,
-                    MPC_FLAT_RADIUS_DP));
-            strip.addView(
-                    icon,
-                    new LinearLayout.LayoutParams(0, dp(32), 1));
-        }
-        return strip;
-    }
-
-    private Button buildMainTrackTypeSelector() {
-        final Button typeField = mainInfoButton(
-                "DRUM • TYPE",
-                "TRACKTYPE_DRUM");
-        typeField.setContentDescription("Main Mode track type selector");
-        typeField.setOnClickListener(v -> {
-            navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK_TYPE);
-            setBottomStatus(
-                    "TRACK TYPE • DRUM is the only implemented Main Track type");
+    private Button buildMainTrackTypeIconStrip() {
+        final Button badge = mainInfoButton("DRUM", "TRACKTYPE_DRUM");
+        badge.setTextSize(8);
+        badge.setContentDescription("Main Mode selected Track Type");
+        badge.setOnClickListener(v -> {
             navigationController.setSubcontext(
                     MpcUiState.Subcontext.TRACK_TYPE_SELECT);
             navigationController.setDataDialFocus(
                     MpcUiState.DataDialFocus.TRACK_TYPE);
+            navigationController.setActionAvailable(true);
+            setBottomStatus(
+                    "TRACK TYPE • DRUM is the only implemented Main Track type");
+            refreshMainDataDialFocusVisuals();
         });
-        return typeField;
+        return badge;
     }
 
     private Button mainInfoButton(String text, String tag) {
@@ -4003,51 +3964,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         final Button button = (Button) selector;
-        final Object tag = button.getTag();
-        final String type = tag instanceof String
-                ? ((String) tag).replace("TRACKTYPE_", "") : "";
-        final boolean selected = type.equals(active);
         final boolean editable = "DRUM".equalsIgnoreCase(active);
         button.setText(active + (editable ? "" : " • RESERVED"));
         button.setEnabled(editable);
         button.setAlpha(editable ? 1.0f : 0.45f);
-        button.setTextColor(selected && editable ? BG : TEXT);
-        final boolean focused = editable && hardwareFocusId() == 5;
+        button.setTextColor(editable ? BG : MUTED);
+        final boolean focused =
+                navigationController != null
+                        && navigationController.state().dataDialFocus()
+                                == MpcUiState.DataDialFocus.TRACK_TYPE;
         button.setBackground(strokeBackground(
-                editable ? MPC_PANEL_DARK : BG,
-                focused ? DANGER : LINE,
+                editable ? MPC_SELECTED : MPC_PANEL_DARK,
+                focused ? DANGER : (editable ? MPC_SELECTED : MPC_PANEL_BORDER),
                 MPC_FLAT_RADIUS_DP));
 
-        final String[] descriptions = {
-                "Drum Track type",
-                "Keygroup Track type reserved",
-                "Plugin Track type reserved",
-                "MIDI Track type reserved",
-                "Clip Track type reserved",
-                "CV Track type reserved"
-        };
-        final String[] types = {
-                "DRUM", "KEYGROUP", "PLUGIN", "MIDI", "CLIP", "CV"
-        };
-        for (int i = 0; i < descriptions.length; i++) {
-            final View iconView = findViewWithContentDescription(
-                    content, descriptions[i]);
-            if (!(iconView instanceof Button)) continue;
-
-            final Button icon = (Button) iconView;
-            final boolean iconSelected = types[i].equals(active);
-            final boolean iconEditable = "DRUM".equals(types[i]);
-            final boolean iconFocused = hardwareFocusId() == 5 && iconSelected;
-            icon.setEnabled(iconEditable);
-            icon.setAlpha(iconSelected ? 1.0f : 0.36f);
-            icon.setTextColor(iconSelected && iconEditable ? BG : MUTED);
-            icon.setBackground(strokeBackground(
-                    iconSelected && iconEditable
-                            ? MPC_SELECTED : MPC_PANEL_DARK,
-                    iconFocused
-                            ? DANGER
-                            : (iconSelected && iconEditable
-                                    ? MPC_SELECTED : MPC_PANEL_BORDER),
+        final View visibleType = findViewWithContentDescription(
+                content, "Main Mode selected Track Type");
+        if (visibleType instanceof Button) {
+            final Button badge = (Button) visibleType;
+            badge.setText(active);
+            badge.setEnabled(editable);
+            badge.setAlpha(editable ? 1.0f : 0.45f);
+            badge.setTextColor(editable ? BG : MUTED);
+            badge.setBackground(strokeBackground(
+                    editable ? MPC_SELECTED : MPC_PANEL_DARK,
+                    focused ? DANGER
+                            : (editable ? MPC_SELECTED : MPC_PANEL_BORDER),
                     MPC_FLAT_RADIUS_DP));
         }
     }
