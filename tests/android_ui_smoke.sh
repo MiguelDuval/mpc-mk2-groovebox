@@ -14,12 +14,13 @@ TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/Mpc
 SHELL_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"
 
 echo "Running reserved shortcut state ownership preflight..."
-reserved_nav_start=$(grep -n -m1 'default:' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-if [[ -z "$reserved_nav_start" ]]; then
-  echo "ERROR: reserved shortcut navigation boundary is missing"
+reserved_nav_start=$(grep -n -m1 'private void navigateToMode(MpcUiState.Mode mode)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+reserved_nav_end=$(grep -n -m1 'private void updateMpcShellState()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$reserved_nav_start" || -z "$reserved_nav_end" || "$reserved_nav_end" -le "$reserved_nav_start" ]]; then
+  echo "ERROR: reserved shortcut navigation method boundary is missing"
   exit 1
 fi
-reserved_nav_block=$(sed -n "${reserved_nav_start},$((reserved_nav_start + 8))p" "$MAIN_ACTIVITY_SOURCE")
+reserved_nav_block=$(sed -n "${reserved_nav_start},$((reserved_nav_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
 if ! grep -Fq -- 'navigationController.navigate(mode);' <<<"$reserved_nav_block"; then
   echo "ERROR: reserved shortcut activation must preserve its semantic mode"
   exit 1
