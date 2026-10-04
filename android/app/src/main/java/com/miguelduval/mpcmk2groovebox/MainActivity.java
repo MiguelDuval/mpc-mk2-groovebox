@@ -119,7 +119,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int MPC_MAIN_METRIC_HEIGHT_DP = 36;
     private static final int MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40;
     private static final int MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36;
-    private static final int MPC_MAIN_TRACK_TYPE_CLUSTER_WIDTH_DP = 132;
+    private static final int MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP = 38;
     private static final int MPC_MAIN_PROGRAM_HEIGHT_DP = 32;
     private static final float MPC_MAIN_WORKSPACE_WEIGHT = 1.0f;
     private static final int MPC_MAIN_RADIUS_DP = 0;
@@ -2505,7 +2505,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackContextHeader.addView(
                 mainTrackTypeField,
                 new LinearLayout.LayoutParams(
-                        dp(MPC_MAIN_TRACK_TYPE_CLUSTER_WIDTH_DP),
+                        dp(MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP),
                         dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
         Button trackEditHeader = mainActionButton("✎", v -> openMainTrackEditContext());
@@ -3919,60 +3919,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final LinearLayout strip = row();
         strip.setGravity(Gravity.CENTER);
         strip.setPadding(dp(1), dp(1), dp(1), dp(1));
-        strip.setContentDescription("Main Mode selected Track Type");
+        strip.setContentDescription("Main Mode selected Track Type icon");
 
-        final String[] types = {
-                "DRUM", "KEYGROUP", "PLUGIN", "MIDI", "CLIP", "CV"
-        };
-        final MpcTrackTypeIconDrawable.Type[] iconTypes = {
-                MpcTrackTypeIconDrawable.Type.DRUM,
-                MpcTrackTypeIconDrawable.Type.KEYGROUP,
-                MpcTrackTypeIconDrawable.Type.PLUGIN,
-                MpcTrackTypeIconDrawable.Type.MIDI,
-                MpcTrackTypeIconDrawable.Type.CLIP,
-                MpcTrackTypeIconDrawable.Type.CV
-        };
-
-        for (int i = 0; i < types.length; i++) {
-            final String trackType = types[i];
-            final Button iconButton = new Button(this);
-            iconButton.setTag("TRACKTYPE_" + trackType);
-            iconButton.setText("");
-            iconButton.setGravity(Gravity.CENTER);
-            iconButton.setMinWidth(0);
-            iconButton.setMinimumWidth(0);
-            iconButton.setMinHeight(0);
-            iconButton.setMinimumHeight(0);
-            iconButton.setPadding(0, 0, 0, 0);
-            iconButton.setBackground(strokeBackground(
-                    MPC_PANEL_DARK, MPC_PANEL_BORDER, MPC_FLAT_RADIUS_DP));
-
-            final MpcTrackTypeIconDrawable icon =
-                    new MpcTrackTypeIconDrawable(iconTypes[i]);
-            iconButton.setForeground(icon);
-            iconButton.setContentDescription(
-                    "Main Track Type " + trackType
-                            + ("DRUM".equals(trackType) ? " available" : " reserved"));
-            final boolean implemented = "DRUM".equals(trackType);
-            iconButton.setEnabled(implemented);
-            iconButton.setAlpha(implemented ? 1.0f : 0.42f);
-
-            if (implemented) {
-                iconButton.setOnClickListener(v -> {
-                    navigationController.setSubcontext(
-                            MpcUiState.Subcontext.TRACK_TYPE_SELECT);
-                    navigationController.setDataDialFocus(
-                            MpcUiState.DataDialFocus.TRACK_TYPE);
-                    navigationController.setActionAvailable(true);
-                    setBottomStatus(
-                            "TRACK TYPE • DRUM is the only implemented Main Track type");
-                    refreshMainDataDialFocusVisuals();
-                });
-            }
-
-            strip.addView(iconButton,
-                    new LinearLayout.LayoutParams(0, dp(34), 1.0f));
-        }
+        final Button iconButton = new Button(this);
+        iconButton.setTag("TRACKTYPE_ICON");
+        iconButton.setText("");
+        iconButton.setGravity(Gravity.CENTER);
+        iconButton.setMinWidth(0);
+        iconButton.setMinimumWidth(0);
+        iconButton.setMinHeight(0);
+        iconButton.setMinimumHeight(0);
+        iconButton.setPadding(0, 0, 0, 0);
+        iconButton.setBackground(strokeBackground(
+                MPC_PANEL_DARK, MPC_PANEL_BORDER, MPC_FLAT_RADIUS_DP));
+        iconButton.setOnClickListener(v -> {
+            navigationController.setSubcontext(
+                    MpcUiState.Subcontext.TRACK_TYPE_SELECT);
+            navigationController.setDataDialFocus(
+                    MpcUiState.DataDialFocus.TRACK_TYPE);
+            navigationController.setActionAvailable(true);
+            setBottomStatus(
+                    "TRACK TYPE SELECT • DATA DIAL / +/-");
+            refreshMainDataDialFocusVisuals();
+        });
+        strip.addView(
+                iconButton,
+                new LinearLayout.LayoutParams(dp(34), dp(34)));
         return strip;
     }
 
@@ -4019,47 +3991,65 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController != null
                         && navigationController.state().dataDialFocus()
                                 == MpcUiState.DataDialFocus.TRACK_TYPE;
+
         strip.setContentDescription(
-                "Main Mode selected Track Type " + active
+                "Main Mode selected Track Type icon • " + active
                         + (focused ? " • DATA DIAL" : ""));
         strip.setBackground(strokeBackground(
                 SURFACE_2,
                 focused ? MPC_SELECTION_RED : MPC_PANEL_BORDER,
                 MPC_FLAT_RADIUS_DP));
 
-        for (int i = 0; i < strip.getChildCount(); i++) {
-            final View child = strip.getChildAt(i);
-            if (!(child instanceof Button) || !(child.getTag() instanceof String)) {
-                continue;
-            }
-
-            final String tag = (String) child.getTag();
-            if (!tag.startsWith("TRACKTYPE_")) continue;
-            final String trackType = tag.substring("TRACKTYPE_".length());
-            final boolean selected = trackType.equalsIgnoreCase(active);
-            final boolean implemented = "DRUM".equalsIgnoreCase(trackType);
-
-            child.setEnabled(implemented);
-            child.setAlpha(selected ? 1.0f : (implemented ? 0.95f : 0.42f));
-            child.setContentDescription(
-                    "Main Track Type " + trackType
-                            + (selected ? " selected" : "")
-                            + (implemented ? " available" : " reserved"));
-            child.setBackground(strokeBackground(
-                    selected ? MPC_SELECTED : MPC_PANEL_DARK,
-                    selected || (focused && implemented)
-                            ? MPC_SELECTION_RED
-                            : MPC_PANEL_BORDER,
-                    MPC_FLAT_RADIUS_DP));
-
-            final android.graphics.drawable.Drawable foreground = child.getForeground();
-            if (foreground instanceof MpcTrackTypeIconDrawable) {
-                final MpcTrackTypeIconDrawable icon =
-                        (MpcTrackTypeIconDrawable) foreground;
-                icon.setSelected(selected);
-                icon.setEnabledState(implemented);
-            }
+        if (strip.getChildCount() == 0
+                || !(strip.getChildAt(0) instanceof Button)) {
+            return;
         }
+
+        final Button iconButton = (Button) strip.getChildAt(0);
+        final boolean supported = "DRUM".equalsIgnoreCase(active);
+        final MpcTrackTypeIconDrawable icon =
+                trackTypeIconDrawable(active);
+        icon.setSelected(true);
+        icon.setEnabledState(supported);
+
+        iconButton.setForeground(icon);
+        iconButton.setEnabled(supported);
+        iconButton.setAlpha(supported ? 1.0f : 0.58f);
+        iconButton.setContentDescription(
+                "Main Track Type " + active
+                        + (supported ? " available" : " reserved")
+                        + " • tap to select");
+        iconButton.setBackground(strokeBackground(
+                focused ? MPC_SELECTED : MPC_PANEL_DARK,
+                focused ? MPC_SELECTION_RED : MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));
+    }
+
+    private MpcTrackTypeIconDrawable trackTypeIconDrawable(String active) {
+        final String value =
+                active == null ? "DRUM" : active.trim().toUpperCase(Locale.ROOT);
+        final MpcTrackTypeIconDrawable.Type type;
+        switch (value) {
+            case "KEYGROUP":
+                type = MpcTrackTypeIconDrawable.Type.KEYGROUP;
+                break;
+            case "PLUGIN":
+                type = MpcTrackTypeIconDrawable.Type.PLUGIN;
+                break;
+            case "MIDI":
+                type = MpcTrackTypeIconDrawable.Type.MIDI;
+                break;
+            case "CLIP":
+                type = MpcTrackTypeIconDrawable.Type.CLIP;
+                break;
+            case "CV":
+                type = MpcTrackTypeIconDrawable.Type.CV;
+                break;
+            default:
+                type = MpcTrackTypeIconDrawable.Type.DRUM;
+                break;
+        }
+        return new MpcTrackTypeIconDrawable(type);
     }
 
     private String normalizeProgramLabel(String status) {
