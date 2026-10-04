@@ -1025,7 +1025,7 @@ mix_block=$(sed -n "${mix_start},$((mix_midi - 1))p" "$MAIN_ACTIVITY_SOURCE")
 
 # MainActivity owns semantic wiring; MpcPadMixerView owns Pad Mixer presentation.
 for required in \
-  'new MpcPadMixerView(this,' \
+  'new MpcPadMixerView(' \
   'MpcPadMixerView.ControlFocus.LEVEL' \
   'MpcUiState.DataDialFocus.PAD_MIXER_LEVEL' \
   'nativeAudioSetPadLevel(' \
