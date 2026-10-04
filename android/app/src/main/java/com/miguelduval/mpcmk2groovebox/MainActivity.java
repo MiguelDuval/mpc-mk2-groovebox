@@ -7532,7 +7532,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         Locale.ROOT,
                                         "SHORTCUT %d • %s",
                                         slot + 1,
-                                        availableModes.get(positionIndex).label));
+                                        entry.label));
                             }
                         }
 
