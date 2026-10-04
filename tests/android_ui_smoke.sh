@@ -691,6 +691,22 @@ done
 
 echo "Running MPC Browser flat-chrome preflight..."
 echo "Running MPC Browser information-architecture preflight..."
+echo "Running MPC Browser workspace composition preflight..."
+for required in   'body.addView(center, paramsMatch(context, 0, 1))'   'TARGET • PAD'   'Target context is state-only; actions live in the Function Bar'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
+    echo "ERROR: MPC Browser workspace composition contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'paramsWidth(context, 190)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
+  echo "ERROR: Browser must not reserve the legacy 190dp duplicate target card"
+  exit 1
+fi
+if grep -Fq -- 'targetPanel' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
+  echo "ERROR: Browser must not keep a separate Android-style target panel"
+  exit 1
+fi
+
 for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'FILTER Buttons'   'OPEN STORAGE…'   'PLAY CURRENT'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser information-architecture contract missing: $required"
