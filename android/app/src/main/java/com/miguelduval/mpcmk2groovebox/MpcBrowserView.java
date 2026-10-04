@@ -35,7 +35,8 @@ final class MpcBrowserView extends LinearLayout {
     private static final int LINE = Color.rgb(64, 72, 80);
     private static final int TEXT = Color.rgb(235, 239, 242);
     private static final int MUTED = Color.rgb(156, 166, 174);
-    private static final int ACCENT = Color.rgb(69, 211, 255);
+    private static final int MPC_BROWSER_SELECTED = Color.rgb(224, 30, 61);
+    private static final int MPC_FLAT_RADIUS_DP = 0;
 
     private final LinearLayout places;
     private final LinearLayout filters;
@@ -52,6 +53,7 @@ final class MpcBrowserView extends LinearLayout {
         super(context);
         setOrientation(VERTICAL);
         setBackgroundColor(BG);
+        setContentDescription("MPC Browser");
 
         LinearLayout sections = row(context);
         for (String section : new String[]{
@@ -262,11 +264,12 @@ final class MpcBrowserView extends LinearLayout {
             View child = container.getChildAt(i);
             if (!(child instanceof Button)) continue;
             Button button = (Button) child;
-            boolean active = label.equals(button.getText().toString());
-            button.setTextColor(active ? Color.rgb(14, 16, 18) : TEXT);
+            final boolean selected =
+                    label.equals(button.getText().toString());
+            button.setTextColor(selected ? Color.rgb(14, 16, 18) : TEXT);
             button.setBackground(stroke(
-                    active ? ACCENT : SURFACE_2,
-                    active ? ACCENT : LINE));
+                    selected ? MPC_BROWSER_SELECTED : SURFACE_2,
+                    selected ? MPC_BROWSER_SELECTED : LINE));
         }
     }
 
@@ -332,7 +335,7 @@ final class MpcBrowserView extends LinearLayout {
         android.graphics.drawable.GradientDrawable drawable =
                 new android.graphics.drawable.GradientDrawable();
         drawable.setColor(fill);
-        drawable.setCornerRadius(6);
+        drawable.setCornerRadius(dp(context, MPC_FLAT_RADIUS_DP));
         drawable.setStroke(1, line);
         return drawable;
     }
