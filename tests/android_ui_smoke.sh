@@ -677,7 +677,7 @@ if ! grep -Fq -- 'public void setLayerIndicator(int layer)' "android/app/src/mai
 fi
 
 echo "Running Main Track/Pad selector placement preflight..."
-if grep -Fq -- 'mixerSelectorLp.bottomMargin = dp(44)' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'mixerSelectorLp.bottomMargin = dp(44)' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track/Pad selector must reserve the Track-state row below the canvas"
   exit 1
 fi
