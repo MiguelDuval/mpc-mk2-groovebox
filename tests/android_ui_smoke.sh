@@ -41,11 +41,25 @@ if grep -Fq -- 'availableModes' <<<"$shortcut_config_block"; then
   exit 1
 fi
 echo "Running MPC default shortcut fidelity preflight..."
-for required in   'DEFAULT_SHORTCUTS'   'MpcUiState.Mode.BROWSER'   'MpcUiState.Mode.CHANNEL_MIXER'   'MpcUiState.Mode.PAD_MIXER'   'MpcUiState.Mode.SOUNDS'   'MpcUiState.Mode.XYFX' \
-  'case SOUNDS:' \
-  'case XYFX:'; do
-  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcModeRegistry.java" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"; then
+for required in \
+  'DEFAULT_SHORTCUTS' \
+  'MpcUiState.Mode.BROWSER' \
+  'MpcUiState.Mode.CHANNEL_MIXER' \
+  'MpcUiState.Mode.PAD_MIXER' \
+  'MpcUiState.Mode.SOUNDS' \
+  'MpcUiState.Mode.XYFX'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcModeRegistry.java" && \
+     ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"; then
     echo "ERROR: MPC default shortcut fidelity contract missing: $required"
+    exit 1
+  fi
+done
+
+for required in \
+  'case SOUNDS: return "♫";' \
+  'case XYFX: return "✣";'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC shortcut glyph contract missing: $required"
     exit 1
   fi
 done
