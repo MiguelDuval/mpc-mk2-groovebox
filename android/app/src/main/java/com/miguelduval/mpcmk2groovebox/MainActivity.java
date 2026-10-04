@@ -2496,6 +2496,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         velocityDetail.setText("VELOCITY\n—");
         trackDetailRow.addView(velocityDetail, weight());
 
+        TextView transposeDetail = mainMetric("TRANSPOSE");
+        transposeDetail.setContentDescription("Main Track View transpose state");
+        transposeDetail.setText("TRANSPOSE\n—");
+        trackDetailRow.addView(transposeDetail, weight());
+
         LinearLayout layerControls = row();
         Button layerDownButton = mainActionButton("−", v -> adjustMainLayer(-1));
         layerDownButton.setTextSize(13);
