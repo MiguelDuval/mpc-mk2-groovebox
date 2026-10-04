@@ -116,7 +116,7 @@ for required in \
   "Main Arrangement View header" \
   "Main Track View record sample" \
   "Main Track View browse samples" \
-  'mainInfoButton("DRUM", "TRACKTYPE_DRUM")' \
+  'mainTrackTypeField = buildMainTrackTypeIconStrip();' \
   "Main Track Edit" \
   "trackContextHeader.addView(trackEditHeader," \
   "MPC Function Bar REC ARM" \
