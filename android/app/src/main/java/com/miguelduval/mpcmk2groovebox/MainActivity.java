@@ -3281,8 +3281,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 mainTrackSampleAuditionButton.setContentDescription(
                         "Main Track View audition selected Pad");
             }
-
-
+        }
 
         final TextView info = findTextByContentDescription(
                 content,
