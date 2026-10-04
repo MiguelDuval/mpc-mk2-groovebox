@@ -128,53 +128,39 @@ final class MpcBrowserView extends LinearLayout {
         location = info(context, "PLACE • INTERNAL");
         center.addView(location, paramsMatch(context, 34));
 
+        LinearLayout targetContext = row(context);
+        targetContext.setContentDescription(
+                "Browser target context • state only");
+        destination = info(context, "TARGET • PAD 01 / LAYER 01");
+        currentSample = info(context, "SAMPLE • NONE");
+        targetContext.addView(destination,
+                new LayoutParams(0, dp(context, 34), 1.0f));
+        targetContext.addView(currentSample,
+                new LayoutParams(0, dp(context, 34), 1.25f));
+        center.addView(targetContext,
+                paramsMatch(context, 34));
+
+        providerState = info(context,
+                "PROVIDER • ANDROID DOCUMENTS • LOAD BELOW");
+        providerState.setTextSize(8);
+        center.addView(providerState,
+                paramsMatch(context, 28));
+
         ScrollView scroll = new ScrollView(context);
         results = new LinearLayout(context);
         results.setOrientation(VERTICAL);
         results.setPadding(0, dp(context, 3), 0, dp(context, 3));
         addResult(context,
                 "OPEN STORAGE…",
-                "Android Document Provider • storage backend",
+                "ANDROID DOCUMENTS • USE LOAD BELOW",
                 true);
         addResult(context,
                 "CURRENT SAMPLE",
-                "Loaded sample for selected pad/layer",
+                "SELECTED PAD/LAYER • USE AUDITION BELOW",
                 false);
         scroll.addView(results);
         center.addView(scroll, new LayoutParams(0, 0, 1));
         body.addView(center, new LayoutParams(0, -1, 1));
-
-        LinearLayout targetPanel = new LinearLayout(context);
-        targetPanel.setOrientation(VERTICAL);
-        targetPanel.setPadding(dp(context, 6), dp(context, 4), dp(context, 4), dp(context, 4));
-        targetPanel.setBackgroundColor(SURFACE);
-
-        destination = info(context, "LOAD TO • PAD 01 / LAYER 01");
-        targetPanel.addView(sectionText(context, "DESTINATION"));
-        targetPanel.addView(destination, paramsMatch(context, 46));
-
-        currentSample = info(context, "SAMPLE • NONE");
-        targetPanel.addView(sectionText(context, "CURRENT"));
-        targetPanel.addView(currentSample, paramsMatch(context, 64));
-
-        providerState = info(context,
-                "PROVIDER • ANDROID DOCUMENTS");
-        providerState.setTextSize(9);
-        targetPanel.addView(providerState, paramsMatch(context, 58));
-
-        Button load = button(context, "LOAD");
-        load.setOnClickListener(v -> {
-            if (listener != null) listener.onOpenStorage();
-        });
-        targetPanel.addView(load, paramsMatch(context, 46));
-
-        Button audition = button(context, "PLAY CURRENT");
-        audition.setOnClickListener(v -> {
-            if (listener != null) listener.onPlayCurrent();
-        });
-        targetPanel.addView(audition, paramsMatch(context, 46));
-
-        body.addView(targetPanel, paramsWidth(context, 190));
         addView(body, new LayoutParams(-1, 0, 1));
 
         setActiveButton(sections, "PLACES");
@@ -188,10 +174,11 @@ final class MpcBrowserView extends LinearLayout {
     void setTarget(int pad, int layer) {
         destination.setText(String.format(
                 Locale.ROOT,
-                "LOAD TO • PAD %02d / LAYER %02d",
+                "TARGET • PAD %02d / LAYER %02d",
                 pad + 1,
                 layer + 1));
-        currentSample.setText("SAMPLE • " + currentSampleName());
+        currentSample.setText(
+                "SAMPLE • " + currentSampleName());
     }
 
     void setCurrentSampleName(String name) {
@@ -239,24 +226,11 @@ final class MpcBrowserView extends LinearLayout {
         row.setPadding(dp(context, 6), dp(context, 2), dp(context, 6), dp(context, 2));
         TextView main = info(context, title);
         main.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        row.addView(main, new LayoutParams(0, dp(context, 48), 1));
+        row.addView(main, new LayoutParams(0, dp(context, 44), 1));
         TextView sub = info(context, subtitle);
         sub.setTextSize(8);
-        row.addView(sub, new LayoutParams(0, dp(context, 48), 1.7f));
-        if (action) {
-            Button open = button(context, "OPEN");
-            open.setOnClickListener(v -> {
-                if (listener != null) listener.onOpenStorage();
-            });
-            row.addView(open, paramsWidth(context, 64));
-        } else {
-            Button audition = button(context, "PLAY");
-            audition.setOnClickListener(v -> {
-                if (listener != null) listener.onPlayCurrent();
-            });
-            row.addView(audition, paramsWidth(context, 64));
-        }
-        results.addView(row, paramsMatch(context, 54));
+        row.addView(sub, new LayoutParams(0, dp(context, 44), 1.7f));
+        results.addView(row, paramsMatch(context, 50));
     }
 
     private void setActiveButton(LinearLayout container, String label) {
