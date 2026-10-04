@@ -2702,21 +2702,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout quickTrack = row();
 
-        LinearLayout padColumn = column();
-        padColumn.setContentDescription("Main Track View performance pad surface");
-        padColumn.addView(buildMiniMainPadGrid(),
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-        /* The touch pad fallback stays compact so the waveform remains the
-         * dominant Main Track canvas, while four rows of pads retain usable
-         * near-square hit targets on the MPC One-sized landscape display. */
-        quickTrack.addView(padColumn,
-                new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.36f));
-
+        /*
+         * MPC 3.9 Main is controller-first here: the selected Pad is chosen
+         * on the physical MPC surface, while the phone Main workspace is the
+         * Track/Arrangement waveform surface. Do not embed an Android 4x4 pad
+         * grid into the canonical Main composition.
+         */
         LinearLayout sampleColumn = column();
-        sampleColumn.setPadding(dp(6), 0, 0, 0);
-        sampleColumn.setContentDescription("Main Track View quick sample editor");
+        sampleColumn.setPadding(0, 0, 0, 0);
+        sampleColumn.setContentDescription("Main Track View quick sample editor • controller-first selected Pad");
 
         LinearLayout sampleHeader = row();
         TextView sampleTitle = label("", 10, TEXT);
