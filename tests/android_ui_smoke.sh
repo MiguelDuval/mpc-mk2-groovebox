@@ -117,6 +117,12 @@ for required in \
   "Main Track View record sample" \
   "Main Track View browse samples" \
   "Main Track View quick sample editor • controller-first selected Pad" \
+  'mainTrackSampleEmptyActions = row();' \
+  'mainTrackSampleAuditionButton = mainActionButton(' \
+  'FrameLayout sampleSurface = new FrameLayout(this);' \
+  'Gravity.CENTER' \
+  'Gravity.RIGHT | Gravity.CENTER_VERTICAL' \
+  'quickTrack.addView(sampleColumn,' \
   'mainTrackTypeField = buildMainTrackTypeIconStrip();' \
   "Main Track Edit" \
   "trackContextHeader.addView(trackEditHeader," \
@@ -682,11 +688,15 @@ if ! grep -Fq -- 'Main Sequence Select list' "$MAIN_ACTIVITY_SOURCE" ||    ! gre
   echo "ERROR: Main Sequence Select must return to Main with Sequence Data Dial focus"
   exit 1
 fi
-if ! grep -Fq -- 'mainTrackSampleActionButton.setText("SAMPLE EDIT");' "$MAIN_ACTIVITY_SOURCE" || \
-   ! grep -Fq -- 'v -> showSamplePage());' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: loaded Main Track sample must expose SAMPLE EDIT"
+if grep -Fq -- 'mainTrackSampleActionButton.setText("SAMPLE EDIT");' "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- 'Main Track View sample edit' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track canvas must not carry a permanent SAMPLE EDIT duplicate"
   exit 1
 fi
+if ! grep -Fq -- 'this::openMainTrackEditContext' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track sample must retain waveform double-tap Track Edit entry"
+  exit 1
+fi
+
 sequence_select_start=$(grep -n -m1 'private void showSequenceSelectPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 track_select_start=$(grep -n -m1 'private void showTrackSelectPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 program_select_start=$(grep -n -m1 'private void showProgramSelectPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)

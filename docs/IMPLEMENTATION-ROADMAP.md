@@ -552,3 +552,10 @@ The selected Track Type icon is positioned directly beside the Track identity an
 ## 2026-10-04 Main Track controller-first layout correction
 
 The canonical Main Track/Arrangement workspace no longer embeds the Android 4x4 performance pad grid. MPC 3.9 selects Pads from the physical MPC surface; the Main display prioritizes the selected Pad/Layer waveform and its Track-state controls. The existing pad-grid renderer remains reusable only outside the canonical Main composition until a separate touch-first surface is intentionally designed.
+
+## 2026-10-04 Main Track sample-area fidelity correction
+
+- **IMPLEMENTED —** the Track sample canvas now uses the full available Main workspace width instead of the obsolete 64% split.
+- **IMPLEMENTED —** an empty selected Drum pad presents large in-canvas BROWSE / RECORD actions, matching the documented MPC Main empty-sample workflow.
+- **IMPLEMENTED —** a loaded sample keeps the waveform dominant and reduces audition to one compact play control; permanent SAMPLE EDIT duplication was removed from the Main canvas.
+- **PRESERVED —** waveform selection editing and double-tap to Track Edit semantics; no audio, sampler, sequencer, MIDI or controller transport changes.

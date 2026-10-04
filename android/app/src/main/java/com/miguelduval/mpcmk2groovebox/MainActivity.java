@@ -208,6 +208,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private WaveformView mainTrackWaveform;
     private Button mainTrackSamplePrimaryButton;
     private Button mainTrackSampleActionButton;
+    private Button mainTrackSampleAuditionButton;
+    private LinearLayout mainTrackSampleEmptyActions;
     private MpcTrackEditView mainTrackEditView;
     private MpcPadMixerView padMixerView;
     private MpcMainMixerStripView mainMixerStripView;
@@ -2705,42 +2707,84 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         startNormalized, endNormalized));
         mainTrackWaveform.setOnDoubleTapListener(
                 this::openMainTrackEditContext);
-        sampleColumn.addView(mainTrackWaveform,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        /*
+         * MPC Main uses the Track/Arrangement canvas itself for the sample
+         * interaction. Empty pads expose two large, centered loading choices;
+         * loaded samples keep one compact audition control on the canvas.
+         */
+        FrameLayout sampleSurface = new FrameLayout(this);
+        sampleSurface.setBackgroundColor(BG);
+        sampleSurface.addView(mainTrackWaveform,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+
+        mainTrackSampleEmptyActions = row();
+        mainTrackSampleEmptyActions.setGravity(Gravity.CENTER);
+        mainTrackSampleEmptyActions.setContentDescription(
+                "Main Track View empty sample actions");
+
+        mainTrackSamplePrimaryButton = mainActionButton(
+                "BROWSE",
+                v -> showBrowserPage());
+        mainTrackSamplePrimaryButton.setContentDescription(
+                "Main Track View browse samples");
+        mainTrackSamplePrimaryButton.setTextSize(12);
+        mainTrackSamplePrimaryButton.setTypeface(Typeface.DEFAULT_BOLD);
+        mainTrackSampleEmptyActions.addView(
+                mainTrackSamplePrimaryButton,
+                new LinearLayout.LayoutParams(dp(122), dp(44)));
+
+        mainTrackSampleActionButton = mainActionButton(
+                "RECORD",
+                v -> showRecordPage());
+        mainTrackSampleActionButton.setContentDescription(
+                "Main Track View record sample");
+        mainTrackSampleActionButton.setTextSize(12);
+        mainTrackSampleActionButton.setTypeface(Typeface.DEFAULT_BOLD);
+        mainTrackSampleEmptyActions.addView(
+                mainTrackSampleActionButton,
+                new LinearLayout.LayoutParams(dp(122), dp(44)));
+
+        sampleSurface.addView(
+                mainTrackSampleEmptyActions,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        dp(44),
+                        Gravity.CENTER));
+
+        mainTrackSampleAuditionButton = mainActionButton(
+                "▶",
+                v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
+        mainTrackSampleAuditionButton.setContentDescription(
+                "Main Track View audition selected Pad");
+        mainTrackSampleAuditionButton.setTextSize(14);
+        mainTrackSampleAuditionButton.setTypeface(Typeface.DEFAULT_BOLD);
+        mainTrackSampleAuditionButton.setVisibility(View.GONE);
+        FrameLayout.LayoutParams auditionLp = new FrameLayout.LayoutParams(
+                dp(40), dp(34),
+                Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        auditionLp.rightMargin = dp(6);
+        sampleSurface.addView(mainTrackSampleAuditionButton, auditionLp);
 
         TextView quickSampleInfo = label("", 9, MUTED);
         quickSampleInfo.setContentDescription(
                 "Main Track View quick sample info");
         quickSampleInfo.setGravity(Gravity.CENTER_VERTICAL);
+        quickSampleInfo.setVisibility(View.GONE);
         sampleColumn.addView(quickSampleInfo,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+        sampleHeader.setVisibility(View.GONE);
 
-        LinearLayout sampleActions = row();
-        mainTrackSamplePrimaryButton = mainActionButton(
-                "AUDITION",
-                v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
-        mainTrackSamplePrimaryButton.setContentDescription(
-                "Main Track View sample primary action");
-        sampleActions.addView(
-                mainTrackSamplePrimaryButton,
-                new LinearLayout.LayoutParams(0, dp(34), 1));
-
-        mainTrackSampleActionButton = mainActionButton(
-                "BROWSE",
-                v -> showBrowserPage());
-        mainTrackSampleActionButton.setContentDescription(
-                "Main Track View sample secondary action");
-        sampleActions.addView(mainTrackSampleActionButton,
-                new LinearLayout.LayoutParams(0, dp(34), 1));
-        sampleColumn.addView(sampleActions,
+        sampleColumn.addView(sampleSurface,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         quickTrack.addView(sampleColumn,
                 new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.64f));
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
 
         /*
          * MPC Main keeps the waveform/canvas as the visual center of the Track
@@ -3208,35 +3252,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (mainTrackSamplePrimaryButton != null
                 && mainTrackSampleActionButton != null) {
             if (frames <= 0) {
-                // MPC Main's empty-pad state exposes the two loading paths:
-                // Browse an existing sample or Record a new one.
+                // MPC Main empty state: two large loading choices inside the
+                // sample canvas itself.
+                mainTrackSampleEmptyActions.setVisibility(View.VISIBLE);
+                mainTrackSamplePrimaryButton.setVisibility(View.VISIBLE);
                 mainTrackSamplePrimaryButton.setText("BROWSE");
                 mainTrackSamplePrimaryButton.setOnClickListener(
                         v -> showBrowserPage());
                 mainTrackSamplePrimaryButton.setContentDescription(
                         "Main Track View browse samples");
 
+                mainTrackSampleActionButton.setVisibility(View.VISIBLE);
                 mainTrackSampleActionButton.setText("RECORD");
                 mainTrackSampleActionButton.setOnClickListener(
                         v -> showRecordPage());
                 mainTrackSampleActionButton.setContentDescription(
                         "Main Track View record sample");
-            } else {
-                // Once loaded, the waveform becomes the primary surface;
-                // keep Audition first and expose the semantic Sample Edit action.
-                mainTrackSamplePrimaryButton.setText("AUDITION");
-                mainTrackSamplePrimaryButton.setOnClickListener(
-                        v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
-                mainTrackSamplePrimaryButton.setContentDescription(
-                        "Main Track View sample primary action");
 
-                mainTrackSampleActionButton.setText("SAMPLE EDIT");
-                mainTrackSampleActionButton.setOnClickListener(
-                        v -> showSamplePage());
-                mainTrackSampleActionButton.setContentDescription(
-                        "Main Track View sample edit");
+                mainTrackSampleAuditionButton.setVisibility(View.GONE);
+            } else {
+                // Loaded state: keep waveform dominant and expose one compact
+                // audition/play control. Track Edit remains the waveform
+                // double-tap destination.
+                mainTrackSampleEmptyActions.setVisibility(View.GONE);
+                mainTrackSampleAuditionButton.setVisibility(View.VISIBLE);
+                mainTrackSampleAuditionButton.setOnClickListener(
+                        v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
+                mainTrackSampleAuditionButton.setContentDescription(
+                        "Main Track View audition selected Pad");
             }
-        }
+
+
 
         final TextView info = findTextByContentDescription(
                 content,
