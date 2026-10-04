@@ -89,8 +89,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     // MPC One / MPC3 visual language: vivid transport header over graphite UI.
     // These are presentation constants only; semantic state continues to use
     // the existing domain/UI-state model.
-    private static final int MPC_TOOLBAR_BG = Color.rgb(224, 30, 61);
+    // MPC3 Toolbar is dark graphite; red is a selection/accent, not the
+    // persistent full-width Toolbar background.
+    private static final int MPC_TOOLBAR_BG = Color.rgb(17, 19, 22);
     private static final int MPC_TOOLBAR_TEXT = Color.WHITE;
+    private static final int MPC_SELECTION_RED = Color.rgb(224, 30, 61);
     private static final int MPC_PANEL = Color.rgb(39, 43, 47);
     private static final int MPC_PANEL_DARK = Color.rgb(28, 31, 34);
     private static final int MPC_PANEL_BORDER = Color.rgb(75, 82, 88);
@@ -1284,7 +1287,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // retaining a white focus border when Data Dial is on Track.
         compactTrackContext.setTextColor(MPC_TOOLBAR_TEXT);
         compactTrackContext.setBackground(strokeBackground(
-                MPC_TOOLBAR_BG,
+                MPC_SELECTION_RED,
                 trackFocus ? Color.WHITE : Color.rgb(183, 35, 57),
                 MPC_FLAT_RADIUS_DP));
 
