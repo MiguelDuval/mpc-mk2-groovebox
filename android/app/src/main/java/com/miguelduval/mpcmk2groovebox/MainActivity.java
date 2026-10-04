@@ -205,6 +205,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Button mainTrackSamplePrimaryButton;
     private Button mainTrackSampleActionButton;
     private MpcTrackEditView mainTrackEditView;
+    private MpcPadMixerView padMixerView;
     private WaveformView recordingWaveform;
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
@@ -7272,12 +7273,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         currentPage = "PAD_MIXER";
         navigationController.navigate(MpcUiState.Mode.PAD_MIXER);
         navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
-        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
+        navigationController.setDataDialFocus(
+                MpcUiState.DataDialFocus.PAD_MIXER_LEVEL);
         navigationController.setActionAvailable(true);
         pageTitle.setText("PAD MIXER");
         content.removeAllViews();
 
-        final MpcPadMixerView mixer = new MpcPadMixerView(
+        padMixerView = new MpcPadMixerView(
                 this,
                 new MpcPadMixerView.Listener() {
                     @Override public int selectedPad() {
@@ -7308,21 +7310,49 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         navigationController.setSubcontext(
                                 MpcUiState.Subcontext.PERFORMANCE);
                         navigationController.setDataDialFocus(
-                                MpcUiState.DataDialFocus.PAD);
+                                MpcUiState.DataDialFocus.PAD_MIXER_LEVEL);
                         navigationController.setActionAvailable(true);
+                        padMixerView.setControlFocus(
+                                MpcPadMixerView.ControlFocus.LEVEL);
                         setBottomStatus(String.format(
                                 Locale.ROOT,
-                                "PAD MIXER • PAD %02d • DATA DIAL",
+                                "PAD MIXER • PAD %02d • LEVEL • DATA DIAL",
                                 selectedPad + 1));
-                        mixer.refresh(
-                                String.format(
-                                        Locale.ROOT,
-                                        "%02d",
-                                        nativeSequenceGetSelectedTrack() + 1),
-                                normalizeProgramLabel(
-                                        nativeSequenceGetTrackProgram(
-                                                nativeSequenceGetSelectedTrack())),
-                                selectedPad);
+                        refreshMpcCompactContext();
+                        syncHardwareControllerFeedback();
+                    }
+
+                    @Override public void onControlFocus(
+                            int pad,
+                            MpcPadMixerView.ControlFocus focus) {
+                        selectedPad = Math.max(0, Math.min(15, pad));
+                        navigationController.setSelectedPad(selectedPad);
+                        navigationController.setSubcontext(
+                                MpcUiState.Subcontext.PERFORMANCE);
+                        navigationController.setActionAvailable(true);
+                        final MpcUiState.DataDialFocus dialFocus;
+                        switch (focus) {
+                            case PAN:
+                                dialFocus = MpcUiState.DataDialFocus.PAD_MIXER_PAN;
+                                break;
+                            case TUNE:
+                                dialFocus = MpcUiState.DataDialFocus.PAD_MIXER_TUNE;
+                                break;
+                            case LEVEL:
+                            default:
+                                dialFocus = MpcUiState.DataDialFocus.PAD_MIXER_LEVEL;
+                                break;
+                        }
+                        navigationController.setDataDialFocus(dialFocus);
+                        setBottomStatus(String.format(
+                                Locale.ROOT,
+                                "PAD MIXER • PAD %02d • %s • DATA DIAL",
+                                selectedPad + 1,
+                                focus == MpcPadMixerView.ControlFocus.PAN
+                                        ? "PAN"
+                                        : focus == MpcPadMixerView.ControlFocus.TUNE
+                                                ? "TUNE"
+                                                : "LEVEL"));
                         refreshMpcCompactContext();
                         syncHardwareControllerFeedback();
                     }
@@ -7350,11 +7380,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     }
                 });
 
-        content.addView(mixer,
+        content.addView(padMixerView,
                 new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT));
+        refreshPadMixerView();
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+    }
 
+    private void refreshPadMixerView() {
+        if (padMixerView == null) {
+            return;
+        }
         final int trackIndex = startupComplete
                 ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
         final String trackLabel = String.format(
@@ -7362,11 +7401,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String programLabel = startupComplete
                 ? normalizeProgramLabel(nativeSequenceGetTrackProgram(trackIndex))
                 : "PROGRAM —";
-        mixer.refresh(trackLabel, programLabel, selectedPadIndexForUi());
-
-        refreshMpcCompactContext();
-        refreshMpcFunctionBar();
-        updateModeRailSelection();
+        padMixerView.refresh(
+                trackLabel,
+                programLabel,
+                selectedPadIndexForUi());
     }
 
     private void showMidiPage() {
@@ -9699,6 +9737,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 handleHardwareDialDelta(value0, value1 != 0);
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_PRESS:
+                if (navigationController.state().mode()
+                        == MpcUiState.Mode.PAD_MIXER
+                        && padMixerView != null) {
+                    cyclePadMixerDialFocus();
+                    return;
+                }
                 if (hardwareLocateActive) {
                     setBottomStatus(
                             "LOCATE • DATA DIAL = ±1 BEAT • SHIFT = ±1 TICK");
@@ -10139,6 +10183,49 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private void cyclePadMixerDialFocus() {
+        final MpcUiState.DataDialFocus current =
+                navigationController.state().dataDialFocus();
+        final MpcUiState.DataDialFocus next;
+        switch (current) {
+            case PAD_MIXER_PAN:
+                next = MpcUiState.DataDialFocus.PAD_MIXER_TUNE;
+                break;
+            case PAD_MIXER_TUNE:
+                next = MpcUiState.DataDialFocus.PAD_MIXER_LEVEL;
+                break;
+            case PAD_MIXER_LEVEL:
+            case PAD:
+            default:
+                next = MpcUiState.DataDialFocus.PAD_MIXER_PAN;
+                break;
+        }
+
+        navigationController.setDataDialFocus(next);
+        navigationController.setSubcontext(
+                MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setActionAvailable(true);
+
+        if (padMixerView != null) {
+            final MpcPadMixerView.ControlFocus focus =
+                    next == MpcUiState.DataDialFocus.PAD_MIXER_PAN
+                            ? MpcPadMixerView.ControlFocus.PAN
+                            : next == MpcUiState.DataDialFocus.PAD_MIXER_TUNE
+                                    ? MpcPadMixerView.ControlFocus.TUNE
+                                    : MpcPadMixerView.ControlFocus.LEVEL;
+            padMixerView.setControlFocus(focus);
+        }
+
+        setBottomStatus(
+                "PAD MIXER • "
+                        + (next == MpcUiState.DataDialFocus.PAD_MIXER_PAN
+                                ? "PAN"
+                                : next == MpcUiState.DataDialFocus.PAD_MIXER_TUNE
+                                        ? "TUNE"
+                                        : "LEVEL")
+                        + " • DATA DIAL");
+    }
+
     private void handleHardwareDialDelta(int delta, boolean fine) {
         if (delta == 0) return;
         if (hardwareLocateActive) {
@@ -10154,6 +10241,51 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
             adjustSelectedStepParameter(delta, fine);
+            return;
+        }
+        if (navigationController.state().mode()
+                == MpcUiState.Mode.PAD_MIXER
+                && padMixerView != null) {
+            final MpcUiState.DataDialFocus focus =
+                    navigationController.state().dataDialFocus();
+            switch (focus) {
+                case PAD_MIXER_PAN: {
+                    final float increment = fine ? 0.01f : 0.05f;
+                    final float next = Math.max(
+                            -1.0f,
+                            Math.min(
+                                    1.0f,
+                                    nativeAudioGetPadPan(selectedPad)
+                                            + delta * increment));
+                    setBottomStatus(
+                            nativeAudioSetPadPan(selectedPad, next));
+                    break;
+                }
+                case PAD_MIXER_TUNE: {
+                    final float increment = fine ? 0.1f : 1.0f;
+                    final float next =
+                            nativeAudioGetPadTuning(selectedPad)
+                                    + delta * increment;
+                    setBottomStatus(
+                            nativeAudioSetPadTuning(selectedPad, next));
+                    break;
+                }
+                case PAD_MIXER_LEVEL:
+                default: {
+                    final float increment = fine ? 0.001f : 0.01f;
+                    final float next = Math.max(
+                            0.0f,
+                            Math.min(
+                                    1.0f,
+                                    nativeAudioGetPadLevel(selectedPad)
+                                            + delta * increment));
+                    setBottomStatus(
+                            nativeAudioSetPadLevel(selectedPad, next));
+                    break;
+                }
+            }
+            refreshPadMixerView();
+            refreshMpcCompactContext();
             return;
         }
         if (hardwareFocusId() == HARDWARE_FOCUS_SEQUENCE_BPM) {
