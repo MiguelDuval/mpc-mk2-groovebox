@@ -664,6 +664,47 @@ fi
 # The Track state row is intentionally rendered immediately above the performance canvas
 # (see the positive ordering assertion above). Do not assert the inverse here.
 
+echo "Running MPC Pad Mixer presentation preflight..."
+mix_start=\$(grep -n -m1 'private void showMixPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+mix_midi=\$(grep -n -m1 'private void showMidiPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$mix_start" || -z "$mix_midi" || "$mix_midi" -le "$mix_start" ]]; then
+  echo "ERROR: Pad Mixer source boundary is missing"
+  exit 1
+fi
+mix_block=\$(sed -n "${mix_start},\$((mix_midi - 1))p" "$MAIN_ACTIVITY_SOURCE")
+for required in \
+  'MpcPadMixerView' \
+  'MPC Pad Mixer' \
+  'PAD MIXER • TRACK / PAD PERFORMANCE' \
+  'MpcUiState.DataDialFocus.PAD' \
+  'nativeAudioSetPadLevel(' \
+  'nativeAudioSetPadPan(' \
+  'nativeAudioSetPadTuning(' \
+  'nativeAudioGetPadLevel(' \
+  'nativeAudioGetPadPan(' \
+  'nativeAudioGetPadTuning(' \
+  'selectedPad' \
+  'PAD 01'; do
+  if ! grep -Fq -- "$required" <<<"$mix_block"; then
+    echo "ERROR: MPC Pad Mixer presentation contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'for (int pad = 0; pad < 4; pad++)' <<<"$mix_block"; then
+  echo "ERROR: Pad Mixer must not regress to the obsolete four-strip diagnostic layout"
+  exit 1
+fi
+for required in \
+  'private static final int VISIBLE_STRIPS = 8;' \
+  'PAD MIXER • 16 PADS' \
+  'vertical fader' \
+  'MpcPadMixerView.Listener'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+    echo "ERROR: MPC Pad Mixer view contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC shell geometry preflight..."
 for required in \
   "TOOLBAR_HEIGHT_DP = 44" \
