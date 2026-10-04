@@ -795,6 +795,23 @@ for required in   'MpcMainMixerStripView'   'MPC Main XL Mixer Strips'   'TRACK 
     exit 1
   fi
 done
+echo "Running MPC 3.9 Main XL mixer strip semantic preflight..."
+mixer_strip_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
+pad_mode_start=$(grep -n -m1 'if (padMode)' "$mixer_strip_source" | cut -d: -f1)
+if [[ -z "$pad_mode_start" ]]; then
+  echo "ERROR: Main XL mixer pad-mode branch is missing"
+  exit 1
+fi
+pad_mode_block=$(sed -n "$pad_mode_start,$((pad_mode_start + 24))p" "$mixer_strip_source")
+if ! grep -Fq -- 'strips.addView(buildPadStrip(' <<<"$pad_mode_block" ||    ! grep -Fq -- 'strips.addView(buildTrackStrip(' <<<"$pad_mode_block"; then
+  echo "ERROR: MPC 3.9 Pad Mixer Strip must pair the selected Pad with its selected Track"
+  exit 1
+fi
+if grep -Fq -- 'strips.addView(buildOutputStrip(' <<<"$pad_mode_block"; then
+  echo "ERROR: MPC 3.9 Pad Mixer Strip must not show Main Output as the right strip"
+  exit 1
+fi
+
 if ! grep -Fq -- 'new MpcMainMixerStripView(this,' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main XL Mixer Strip must be composed by the application shell"
   exit 1
