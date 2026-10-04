@@ -206,6 +206,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Button mainTrackSampleActionButton;
     private MpcTrackEditView mainTrackEditView;
     private MpcPadMixerView padMixerView;
+    private MpcMainMixerStripView mainMixerStripView;
     private WaveformView recordingWaveform;
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
@@ -925,8 +926,50 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
+        /*
+         * Fidelity correction: the visible Main left workspace is the MPC
+         * XL Mixer Strip region, not a persistent Android-style sequence /
+         * track / program / dial context card. The legacy views stay mounted
+         * but hidden during migration so their semantic refresh dependencies
+         * can be retired safely in a later cleanup pass.
+         */
+        header.setVisibility(View.GONE);
+        compactContextPanel.setVisibility(View.GONE);
+        compactMixerPanel.setVisibility(View.GONE);
+
+        mainMixerStripView = new MpcMainMixerStripView(this,
+                new MpcMainMixerStripView.Listener() {
+                    @Override
+                    public boolean isStartupReady() {
+                        return startupComplete;
+                    }
+
+                    @Override
+                    public boolean mixerStripVisible() {
+                        return navigationController != null
+                                && navigationController.state().compactMixerVisible();
+                    }
+
+                    @Override
+                    public void toggleTrackMute() {
+                        toggleSelectedTrackMute();
+                    }
+
+                    @Override
+                    public void onMixerStripVisibilityChanged(boolean visible) {
+                        final boolean padMode =
+                                navigationController != null
+                                        && navigationController.state().compactMixerPadMode();
+                        navigationController.setCompactMixerState(visible, padMode);
+                    }
+                });
+        area.addView(mainMixerStripView,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
         applyCompactMixerVisibility();
         applyCompactMixerStripMode();
+        refreshMpcMainMixerStripView();
     }
 
     private boolean compactMixerStripModeAvailable() {
@@ -1366,6 +1409,47 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             compactOutputLevelLabel.setText("LEVEL —  •  RESERVED");
         }
         applyCompactMixerStripMode();
+        refreshMpcMainMixerStripView();
+    }
+
+    private void refreshMpcMainMixerStripView() {
+        if (mainMixerStripView == null || navigationController == null) {
+            return;
+        }
+
+        final boolean ready = startupComplete;
+        final int track = ready
+                ? Math.max(0, nativeSequenceGetSelectedTrack())
+                : 0;
+        final String trackType = ready
+                ? nativeSequenceGetTrackType(track)
+                : "DRUM";
+        final String program = ready
+                ? nativeSequenceGetTrackProgram(track)
+                : "—";
+        final boolean padMode = navigationController.state().compactMixerPadMode()
+                && "DRUM".equalsIgnoreCase(trackType);
+        final int pad = selectedPadIndexForUi();
+        final float level = ready ? nativeAudioGetPadLevel(pad) : 1.0f;
+        final float pan = ready ? nativeAudioGetPadPan(pad) : 0.0f;
+        final String sample = ready
+                ? nativeAudioGetPadSampleName(pad, selectedLayer)
+                : "NO SAMPLE";
+        final boolean muted = ready && nativeSequenceIsTrackMuted(track);
+
+        mainMixerStripView.setState(
+                navigationController.state().compactMixerVisible(),
+                padMode,
+                compactDialFocusLabel(navigationController.state().dataDialFocus()),
+                track,
+                trackType,
+                "TRACK " + String.format(Locale.ROOT, "%02d", track + 1),
+                program,
+                pad,
+                level,
+                pan,
+                sample,
+                muted);
     }
 
     private void refreshMpcFunctionBar() {
