@@ -174,6 +174,18 @@ for required in \
   fi
 done
 
+# Main Track Type fidelity also needs the Pad-mode strip source window.
+# Keep this extraction before the first Pad-mode assertion; this script runs
+# with set -u, so referencing it earlier makes the CI fail before the real UI
+# preflight can execute.
+mixer_strip_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
+pad_mode_start=$(grep -n -m1 'if (padMode)' "$mixer_strip_source" | cut -d: -f1)
+if [[ -z "$pad_mode_start" ]]; then
+  echo "ERROR: Main XL mixer pad-mode branch is missing"
+  exit 1
+fi
+pad_mode_block=$(sed -n "$pad_mode_start,$((pad_mode_start + 24))p" "$mixer_strip_source")
+
 if grep -Eq -- 'private int hardwareFocus([[:space:]]|=)' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Data Dial focus must not have an independent MainActivity hardwareFocus field"
   exit 1
