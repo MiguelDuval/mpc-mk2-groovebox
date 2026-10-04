@@ -7456,13 +7456,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         pageTitle.setText("SHORTCUTS");
         content.removeAllViews();
 
-        final MpcModeRegistry.Entry[] allModes = MpcModeRegistry.menuEntries();
-        final ArrayList<MpcModeRegistry.Entry> availableModes = new ArrayList<>();
-        for (MpcModeRegistry.Entry entry : allModes) {
-            if (entry.available) {
-                availableModes.add(entry);
-            }
-        }
+        final MpcModeRegistry.Entry[] shortcutModes =
+                MpcModeRegistry.shortcutEntries();
 
         LinearLayout page = page();
         page.setPadding(dp(8), dp(6), dp(8), dp(2));
@@ -7475,7 +7470,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
         TextView hint = label(
-                "Each slot can promote any implemented context. RESERVED modes stay in Menu.",
+                "Each slot mirrors the canonical MPC shortcut set. RESERVED destinations stay visible.",
                 10, MUTED);
         page.addView(hint, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
@@ -7499,9 +7494,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             android.widget.Spinner spinner = new android.widget.Spinner(this);
             ArrayList<String> labels = new ArrayList<>();
             int selectedIndex = 0;
-            for (int j = 0; j < availableModes.size(); j++) {
-                MpcModeRegistry.Entry entry = availableModes.get(j);
-                labels.add(entry.label);
+            for (int j = 0; j < shortcutModes.length; j++) {
+                MpcModeRegistry.Entry entry = shortcutModes[j];
+                labels.add(entry.available
+                        ? entry.label
+                        : entry.label + " • RESERVED");
                 if (entry.mode == current[i]) {
                     selectedIndex = j;
                 }
@@ -7525,10 +7522,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 int positionIndex,
                                 long id) {
                             if (positionIndex >= 0
-                                    && positionIndex < availableModes.size()) {
+                                    && positionIndex < shortcutModes.length) {
+                                final MpcModeRegistry.Entry entry =
+                                        shortcutModes[positionIndex];
                                 navigationController.setShortcut(
                                         slot,
-                                        availableModes.get(positionIndex).mode);
+                                        entry.mode);
                                 setBottomStatus(String.format(
                                         Locale.ROOT,
                                         "SHORTCUT %d • %s",
