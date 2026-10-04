@@ -13,6 +13,17 @@ NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
 TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackEditView.java"
 SHELL_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"
 
+echo "Running reserved shortcut state ownership preflight..."
+reserved_nav_start=$(grep -n -m1 'default:' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$reserved_nav_start" ]]; then
+  echo "ERROR: reserved shortcut navigation boundary is missing"
+  exit 1
+fi
+reserved_nav_block=$(sed -n "${reserved_nav_start},$((reserved_nav_start + 8))p" "$MAIN_ACTIVITY_SOURCE")
+if ! grep -Fq -- 'navigationController.navigate(mode);' <<<"$reserved_nav_block"; then
+  echo "ERROR: reserved shortcut activation must preserve its semantic mode"
+  exit 1
+fi
 echo "Running MPC shortcut config source hygiene preflight..."
 shortcut_config_start=$(grep -n -m1 'private void showShortcutConfigPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 if [[ -z "$shortcut_config_start" ]]; then
