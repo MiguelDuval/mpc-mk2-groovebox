@@ -1,7 +1,9 @@
 package com.miguelduval.mpcmk2groovebox;
 
 import android.content.Context;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
@@ -36,6 +38,7 @@ final class MpcMainMixerStripView extends LinearLayout {
     private static final int MUTED = Color.rgb(156, 166, 174);
     private static final int RED = Color.rgb(224, 30, 61);
     private static final int WHITE = Color.WHITE;
+    private static final int ACTIVE = Color.rgb(63, 207, 117);
     private static final int FLAT_RADIUS_DP = 0;
 
     private final Listener listener;
