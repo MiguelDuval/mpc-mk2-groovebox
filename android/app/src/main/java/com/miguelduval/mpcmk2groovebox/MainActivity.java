@@ -1477,6 +1477,34 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 break;
             }
 
+            case PAD_MIXER: {
+                final int currentPad = selectedPadIndexForUi();
+                addFunction("PAD −", currentPad > 0, v -> {
+                    selectedPad = Math.max(0, selectedPad - 1);
+                    navigationController.setSelectedPad(selectedPad);
+                    navigationController.setDataDialFocus(
+                            MpcUiState.DataDialFocus.PAD);
+                    showMixPage();
+                });
+                addFunction("PAD +", currentPad < 15, v -> {
+                    selectedPad = Math.min(15, selectedPad + 1);
+                    navigationController.setSelectedPad(selectedPad);
+                    navigationController.setDataDialFocus(
+                            MpcUiState.DataDialFocus.PAD);
+                    showMixPage();
+                });
+                addFunction("TRACK EDIT",
+                        startupComplete
+                                && "DRUM".equalsIgnoreCase(
+                                        nativeSequenceGetTrackType(
+                                                Math.max(0, nativeSequenceGetSelectedTrack()))),
+                        v -> openMainTrackEditContext());
+                addFunction("MAIN", true, v -> showMainPage());
+                addFunction("BROWSER", true, v -> showBrowserPage());
+                addFunction("BACK", true, v -> navigateBackFromShell());
+                break;
+            }
+
             case SAMPLE_EDIT:
             case SAMPLER:
                 addFunction("AUDITION", true,
