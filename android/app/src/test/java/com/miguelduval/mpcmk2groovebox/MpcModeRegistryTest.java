@@ -30,10 +30,10 @@ public final class MpcModeRegistryTest {
     public void defaultShortcutsAreFivePromotedContexts() {
         MpcUiState.Mode[] shortcuts = MpcModeRegistry.defaultShortcuts();
         assertEquals(5, shortcuts.length);
-        assertEquals(MpcUiState.Mode.MAIN, shortcuts[0]);
-        assertEquals(MpcUiState.Mode.BROWSER, shortcuts[1]);
-        assertEquals(MpcUiState.Mode.GRID, shortcuts[2]);
-        assertEquals(MpcUiState.Mode.SAMPLER, shortcuts[3]);
-        assertEquals(MpcUiState.Mode.PAD_MIXER, shortcuts[4]);
+        assertEquals(MpcUiState.Mode.BROWSER, shortcuts[0]);
+        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, shortcuts[1]);
+        assertEquals(MpcUiState.Mode.PAD_MIXER, shortcuts[2]);
+        assertEquals(MpcUiState.Mode.SOUNDS, shortcuts[3]);
+        assertEquals(MpcUiState.Mode.XYFX, shortcuts[4]);
     }
 }
