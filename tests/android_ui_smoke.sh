@@ -260,10 +260,14 @@ if ! grep -Fq -- 'buildMainTrackTypeIconStrip()' "$MAIN_ACTIVITY_SOURCE" || \
   echo "ERROR: Main Track type icon cluster contract is missing"
   exit 1
 fi
-echo "Running MPC Main Track Type six-icon presentation preflight..."
+echo "Running MPC Main Track Type single-icon fidelity preflight..."
 for required in \
-  'MPC_MAIN_TRACK_TYPE_CLUSTER_WIDTH_DP = 132' \
+  'MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP = 38' \
   'refreshMainTrackTypeVisuals();' \
+  'buildMainTrackTypeIconStrip()' \
+  'trackTypeIconDrawable(' \
+  'TRACKTYPE_ICON' \
+  'TRACK_TYPE_SELECT' \
   'cleanTrackDisplayName(' ; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Main Track Type fidelity presentation contract missing: $required"
@@ -289,7 +293,6 @@ if ! grep -Fq -- 'indicator.setBackgroundColor("LVL".equals(tabName) ? RED' "and
 fi
 for required in \
   'MpcTrackTypeIconDrawable' \
-  '"DRUM", "KEYGROUP", "PLUGIN", "MIDI", "CLIP", "CV"' \
   'MpcTrackTypeIconDrawable.Type.DRUM' \
   'MpcTrackTypeIconDrawable.Type.KEYGROUP' \
   'MpcTrackTypeIconDrawable.Type.PLUGIN' \
@@ -297,8 +300,9 @@ for required in \
   'MpcTrackTypeIconDrawable.Type.CLIP' \
   'MpcTrackTypeIconDrawable.Type.CV' \
   'setForeground(icon)' \
-  'Main Track Type " + trackType' \
-  '("DRUM".equals(trackType) ? " available" : " reserved")'; do
+  'Main Track Type ' \
+  'setContentDescription("Main Mode selected Track Type icon' \
+  'TRACKTYPE_ICON'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" && \
      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackTypeIconDrawable.java"; then
     echo "ERROR: MPC Main Track Type six-icon presentation contract missing: $required"
