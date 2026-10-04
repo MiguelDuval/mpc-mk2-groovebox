@@ -2498,11 +2498,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP), 1.0f));
 
         mainTrackField = trackName;
-        mainTrackTypeField = buildMainTrackTypeSelector();
-        mainTrackTypeField.setVisibility(View.GONE);
+        mainTrackTypeField = buildMainTrackTypeIconStrip();
 
         trackContextHeader.addView(
-                buildMainTrackTypeIconStrip(),
+                mainTrackTypeField,
                 new LinearLayout.LayoutParams(dp(66), dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
         Button trackEditHeader = mainActionButton("✎", v -> openMainTrackEditContext());
