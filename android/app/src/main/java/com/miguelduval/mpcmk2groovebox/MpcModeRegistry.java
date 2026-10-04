@@ -44,11 +44,11 @@ final class MpcModeRegistry {
     };
 
     private static final MpcUiState.Mode[] DEFAULT_SHORTCUTS = {
-            MpcUiState.Mode.MAIN,
             MpcUiState.Mode.BROWSER,
-            MpcUiState.Mode.GRID,
-            MpcUiState.Mode.SAMPLER,
-            MpcUiState.Mode.PAD_MIXER
+            MpcUiState.Mode.CHANNEL_MIXER,
+            MpcUiState.Mode.PAD_MIXER,
+            MpcUiState.Mode.SOUNDS,
+            MpcUiState.Mode.XYFX
     };
 
     private MpcModeRegistry() {}
