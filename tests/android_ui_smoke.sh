@@ -83,6 +83,8 @@ for required in \
   "Main Track View monitor state" \
   "Main Track View length mode" \
   "Main Track View velocity state" \
+  "Main Track View transpose state" \
+  'TRANSPOSE\\n—' \
   "Main Track View selected layer" \
   "Main Mode sequence tempo source • SEQ • Global unavailable" \
   "Main Track visual hierarchy • Track / Program / workspace header" \
