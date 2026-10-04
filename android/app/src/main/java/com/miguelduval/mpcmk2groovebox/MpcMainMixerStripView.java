@@ -8,7 +8,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.util.Locale;
@@ -36,7 +35,6 @@ final class MpcMainMixerStripView extends LinearLayout {
     private static final int TEXT = Color.rgb(235, 239, 242);
     private static final int MUTED = Color.rgb(156, 166, 174);
     private static final int RED = Color.rgb(224, 30, 61);
-    private static final int ACTIVE = Color.rgb(64, 201, 112);
     private static final int WHITE = Color.WHITE;
     private static final int FLAT_RADIUS_DP = 0;
 
@@ -264,50 +262,6 @@ final class MpcMainMixerStripView extends LinearLayout {
                 "PAD MIX\nA" + (pad + 1),
                 MUTED);
         strip.addView(footer, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
-        return strip;
-    }
-
-    private View buildTrackSummaryStrip(
-            Context context,
-            int track,
-            String trackType,
-            String trackName,
-            String programName,
-            boolean muted,
-            String title) {
-        LinearLayout strip = baseStrip(context);
-        addStripHeader(
-                strip,
-                title,
-                trackName == null || trackName.isEmpty()
-                        ? "TRACK " + (track + 1)
-                        : trackName);
-        addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
-        strip.addView(info(
-                context,
-                "TYPE\n" + safe(trackType),
-                TEXT),
-                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 42)));
-        strip.addView(info(
-                context,
-                "PROGRAM\n" + safe(programName),
-                MUTED),
-                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 46)));
-        strip.addView(info(
-                context,
-                "LEVEL\nRESERVED\nPAN RESERVED",
-                MUTED),
-                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 78)));
-        strip.addView(info(
-                context,
-                "MUTE " + (muted ? "ON" : "OFF") + "\nSOLO —",
-                MUTED),
-                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 48)));
-        strip.addView(info(
-                context,
-                "ROUTING\nRESERVED",
-                MUTED),
-                new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1));
         return strip;
     }
 
