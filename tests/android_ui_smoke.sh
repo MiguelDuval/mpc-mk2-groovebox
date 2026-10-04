@@ -754,12 +754,12 @@ if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_detail_line"
 fi
 
 echo "Running Main Track/Arrangement horizontal canvas preflight..."
-if grep -Fq -- 'buildMiniMainPadGrid()' "$MAIN_ACTIVITY_SOURCE"; then
+if grep -Fq -- 'padColumn.addView(buildMiniMainPadGrid()' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main canonical Track/Arrangement workspace must not embed the Android 4x4 pad grid"
   exit 1
 fi
-if grep -Fq -- '0.36f' "$MAIN_ACTIVITY_SOURCE" || grep -Fq -- '0.64f' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: obsolete Main Track pad/waveform proportional split remains"
+if grep -Fq -- 'quickTrack.addView(padColumn' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main canonical Track/Arrangement workspace must not allocate a software pad column"
   exit 1
 fi
 # The Track state row is intentionally rendered immediately above the performance canvas
