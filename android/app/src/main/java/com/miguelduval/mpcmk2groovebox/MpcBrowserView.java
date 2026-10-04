@@ -57,7 +57,7 @@ final class MpcBrowserView extends LinearLayout {
 
         LinearLayout sections = row(context);
         for (String section : new String[]{
-                "PLACES", "CONTENT", "EXPANSIONS", "SAMPLE ASSIGN"}) {
+                "PLACES", "CONTENT", "EXPANSIONS"}) {
             Button button = button(context, section);
             button.setOnClickListener(v -> {
                 if (listener != null) listener.onSectionSelected(section);
@@ -114,7 +114,7 @@ final class MpcBrowserView extends LinearLayout {
 
         filters = row(context);
         for (String filter : new String[]{
-                "PROJECT", "PATTERN", "KIT", "PRESET", "SAMPLE", "ALL"}) {
+                "DRUMS", "INSTRUMENTS", "SAMPLES", "DEMOS", "MY FILES", "ALL"}) {
             Button button = button(context, filter);
             button.setTextSize(8);
             button.setOnClickListener(v -> {
