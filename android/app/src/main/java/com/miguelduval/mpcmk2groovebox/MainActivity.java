@@ -3957,10 +3957,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void refreshMainTrackTypeVisuals() {
-        if (content == null) return;
-        final View selector = findViewWithContentDescription(
-                content, "Main Mode track type selector");
-        if (!(selector instanceof Button)) return;
+        if (!(mainTrackTypeField instanceof Button)) return;
 
         String active = "DRUM";
         if (startupComplete) {
@@ -3971,9 +3968,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
         }
 
-        final Button button = (Button) selector;
+        final Button button = (Button) mainTrackTypeField;
         final boolean editable = "DRUM".equalsIgnoreCase(active);
-        button.setText(active + (editable ? "" : " • RESERVED"));
+        button.setText(active);
         button.setEnabled(editable);
         button.setAlpha(editable ? 1.0f : 0.45f);
         button.setTextColor(editable ? BG : MUTED);
@@ -3983,23 +3980,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 == MpcUiState.DataDialFocus.TRACK_TYPE;
         button.setBackground(strokeBackground(
                 editable ? MPC_SELECTED : MPC_PANEL_DARK,
-                focused ? DANGER : (editable ? MPC_SELECTED : MPC_PANEL_BORDER),
+                focused ? DANGER
+                        : (editable ? MPC_SELECTED : MPC_PANEL_BORDER),
                 MPC_FLAT_RADIUS_DP));
-
-        final View visibleType = findViewWithContentDescription(
-                content, "Main Mode selected Track Type");
-        if (visibleType instanceof Button) {
-            final Button badge = (Button) visibleType;
-            badge.setText(active);
-            badge.setEnabled(editable);
-            badge.setAlpha(editable ? 1.0f : 0.45f);
-            badge.setTextColor(editable ? BG : MUTED);
-            badge.setBackground(strokeBackground(
-                    editable ? MPC_SELECTED : MPC_PANEL_DARK,
-                    focused ? DANGER
-                            : (editable ? MPC_SELECTED : MPC_PANEL_BORDER),
-                    MPC_FLAT_RADIUS_DP));
-        }
     }
 
     private String normalizeProgramLabel(String status) {
