@@ -262,6 +262,19 @@ if ! grep -Fq -- 'buildMainTrackTypeIconStrip()' "$MAIN_ACTIVITY_SOURCE" || \
 fi
 echo "Running MPC Main Track Type six-icon presentation preflight..."
 for required in \
+  'MPC_MAIN_TRACK_TYPE_CLUSTER_WIDTH_DP = 132' \
+  'refreshMainTrackTypeVisuals();' \
+  'cleanTrackDisplayName(' ; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Main Track Type fidelity presentation contract missing: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'PAD STRIP / TRACK' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: Main Pad-mode XL strip must identify the selected Track, not Main Output"
+  exit 1
+fi
+for required in \
   'MpcTrackTypeIconDrawable' \
   '"DRUM", "KEYGROUP", "PLUGIN", "MIDI", "CLIP", "CV"' \
   'MpcTrackTypeIconDrawable.Type.DRUM' \
