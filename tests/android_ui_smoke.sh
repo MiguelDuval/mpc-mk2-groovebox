@@ -13,6 +13,21 @@ NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
 TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackEditView.java"
 SHELL_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"
 
+echo "Running MPC shortcut config source hygiene preflight..."
+shortcut_config_start=$(grep -n -m1 'private void showShortcutConfigPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$shortcut_config_start" ]]; then
+  echo "ERROR: Shortcut config source boundary is missing"
+  exit 1
+fi
+shortcut_config_end=$(grep -n -m1 'private void navigateBackFromShell()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$shortcut_config_end" || "$shortcut_config_end" -le "$shortcut_config_start" ]]; then
+  shortcut_config_end=$((shortcut_config_start + 240))
+fi
+shortcut_config_block=$(sed -n "${shortcut_config_start},$((shortcut_config_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'availableModes' <<<"$shortcut_config_block"; then
+  echo "ERROR: Shortcut config must use the canonical shortcut catalog, not the obsolete availableModes list"
+  exit 1
+fi
 echo "Running MPC default shortcut fidelity preflight..."
 for required in   'DEFAULT_SHORTCUTS'   'MpcUiState.Mode.BROWSER'   'MpcUiState.Mode.CHANNEL_MIXER'   'MpcUiState.Mode.PAD_MIXER'   'MpcUiState.Mode.SOUNDS'   'MpcUiState.Mode.XYFX' \
   'case SOUNDS:' \
