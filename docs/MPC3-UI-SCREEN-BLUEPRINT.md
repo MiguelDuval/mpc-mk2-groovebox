@@ -1154,3 +1154,16 @@ Remaining fidelity gap:
 - SEND knob surface;
 - I/O surface;
 - final physical MkII verification.
+
+
+## 2026-10-04 Main Track Type UI correction
+
+Fidelity correction: the Main Track header now renders one Track Type icon, matching the documented MPC workflow. The previous six-icon cluster has been removed from the persistent header. Six Track Types remain available conceptually through Track Type selection, but only the currently selected type is shown in the Main header.
+
+Interaction contract:
+- tap Track Type icon -> Track Type Select context;
+- Data Dial focus -> TRACK_TYPE;
+- current type is shown by the icon;
+- unsupported backend types remain unavailable rather than being visually presented as independently selectable Main buttons.
+
+This supersedes the earlier six-icon-cluster description.
