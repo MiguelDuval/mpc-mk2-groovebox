@@ -106,7 +106,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int MPC_TOOLBAR_TIMING_WIDTH_DP = 60;
     private static final int MPC_TOOLBAR_METRO_WIDTH_DP = 58;
     private static final int MPC_TOOLBAR_AUTO_WIDTH_DP = 48;
-    private static final int MPC_TOOLBAR_TRANSPORT_WIDTH_DP = 40;
+    private static final int MPC_TOOLBAR_IO_WIDTH_DP = 40;
 
     // MPC One Main geometry: dense, edge-tight, and independent of legacy page spacing.
     private static final int MPC_MAIN_CONTENT_GUTTER_DP = 4;
@@ -178,6 +178,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Button timingCorrectTopButton;
     private Button metronomeTopButton;
     private Button automationTopButton;
+    private TextView midiInTopStatus;
+    private TextView midiOutTopStatus;
     private final Button[] shortcutButtons =
             new Button[MpcNavigationController.SHORTCUT_COUNT];
     private TextView pageTitle;
@@ -1130,6 +1132,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (automationTopButton != null) {
             automationTopButton.setText("AUTO");
         }
+
+        final boolean midiReady = midiBridge != null;
+        updateTopMidiStatus(midiInTopStatus, midiReady);
+        updateTopMidiStatus(midiOutTopStatus, midiReady);
     }
 
     private void applyCompactMixerVisibility() {
@@ -1754,34 +1760,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         autoLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
         bar.addView(automationTopButton, autoLp);
 
-        Button play = topButton("▶");
-        play.setContentDescription("Play");
-        play.setTextSize(12);
-        play.setOnClickListener(v -> {
-            final String result = nativeSequenceStart();
-            setAudioStateFromResult(result);
-            setBottomStatus(result);
-        });
-        LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams(
-                dp(MPC_TOOLBAR_TRANSPORT_WIDTH_DP),
+        /*
+         * MPC 3.9 keeps the Toolbar status-oriented. Transport remains a
+         * hardware-first operation, while the final cells show MIDI In/Out
+         * status and open the MIDI monitor/context when tapped.
+         */
+        midiInTopStatus = topStatusCell("IN");
+        midiInTopStatus.setTag("IN");
+        midiInTopStatus.setContentDescription("MPC Toolbar MIDI IN");
+        midiInTopStatus.setOnClickListener(v -> showMidiPage());
+        LinearLayout.LayoutParams midiInLp = new LinearLayout.LayoutParams(
+                dp(MPC_TOOLBAR_IO_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP));
-        playLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
-        bar.addView(play, playLp);
+        midiInLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
+        bar.addView(midiInTopStatus, midiInLp);
 
-        Button stop = topButton("■");
-        stop.setContentDescription("Stop");
-        stop.setTextSize(12);
-        stop.setOnClickListener(v -> {
-            final String sequenceResult = nativeSequenceStop();
-            final String audioResult = nativeAudioStop();
-            setAudioStateFromResult(audioResult);
-            setBottomStatus(sequenceResult + " | " + audioResult);
-        });
-        LinearLayout.LayoutParams stopLp = new LinearLayout.LayoutParams(
-                dp(MPC_TOOLBAR_TRANSPORT_WIDTH_DP),
+        midiOutTopStatus = topStatusCell("OUT");
+        midiOutTopStatus.setTag("OUT");
+        midiOutTopStatus.setContentDescription("MPC Toolbar MIDI OUT");
+        midiOutTopStatus.setOnClickListener(v -> showMidiPage());
+        LinearLayout.LayoutParams midiOutLp = new LinearLayout.LayoutParams(
+                dp(MPC_TOOLBAR_IO_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP));
-        stopLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
-        bar.addView(stop, stopLp);
+        midiOutLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
+        bar.addView(midiOutTopStatus, midiOutLp);
 
         // Keep diagnostic state objects alive for existing refresh logic, but do
         // not duplicate them in the MPC-facing toolbar.
@@ -8656,6 +8658,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return view;
     }
 
+    private TextView topStatusCell(String text) {
+        TextView v = label(text, 8, MPC_TOOLBAR_TEXT);
+        v.setGravity(Gravity.CENTER);
+        v.setTypeface(Typeface.DEFAULT_BOLD);
+        v.setPadding(dp(2), 0, dp(2), 0);
+        v.setBackground(strokeBackground(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
+                MPC_FLAT_RADIUS_DP));
+        return v;
+    }
+
+    private void updateTopMidiStatus(TextView view, boolean connected) {
+        if (view == null) return;
+        view.setText(connected ? "●" : "—");
+        view.setTextColor(connected ? MPC_TOOLBAR_TEXT : Color.rgb(205, 154, 164));
+        view.setContentDescription(
+                "MPC Toolbar MIDI "
+                        + ("IN".equals(view.getTag()) ? "IN" : "OUT")
+                        + (connected ? " ready" : " unavailable"));
+    }
     private Button topButton(String text) {
         Button b = button(text);
         b.setTextSize(10);
@@ -10528,6 +10551,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     && description.startsWith("Connected:");
             midiState.setText(connected ? "MIDI ON" : "MIDI —");
             midiState.setTextColor(connected ? ACTIVE : MUTED);
+            updateTopMidiStatus(midiInTopStatus, connected);
+            updateTopMidiStatus(midiOutTopStatus, connected);
             if (connected) {
                 Arrays.fill(hardwareButtonLedStateCache, -1);
                 lastTouchStripLedSignature = "";
