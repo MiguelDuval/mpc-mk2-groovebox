@@ -1412,6 +1412,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        if (mode == MpcUiState.Mode.MENU) {
+            // Keep all Menu system commands on the global shell Function Bar.
+            addFunction("NEW PROJECT", false, null);
+            addFunction("SAVE", false, null);
+            addFunction("PREFERENCES", true, v -> showAudioSettingsPage());
+            addFunction("MIDI / CONTROL", true, v -> showMidiPage());
+            addFunction("EDIT SHORTCUTS", true, v -> showShortcutConfigPage());
+            addFunction("BACK", true, v -> navigateBackFromShell());
+            return;
+        }
+
         if (mode == MpcUiState.Mode.TRACK_EDIT) {
             final boolean drumTrack = startupComplete
                     && "DRUM".equalsIgnoreCase(
