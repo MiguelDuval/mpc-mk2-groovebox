@@ -738,7 +738,7 @@ done
 echo "Running MPC Browser flat-chrome preflight..."
 echo "Running MPC Browser information-architecture preflight..."
 echo "Running MPC Browser workspace composition preflight..."
-for required in   'body.addView(center, paramsMatch(context, 0, 1))'   'TARGET • PAD'   'Browser target context • state only'; do
+for required in   'body.addView(center, new LayoutParams(0, -1, 1))'   'TARGET • PAD'   'Browser target context • state only'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser workspace composition contract missing: $required"
     exit 1
