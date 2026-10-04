@@ -547,3 +547,8 @@ Primary source: MPC Standalone OS User Guide v3.9, Main Mode Track section; the 
 ## 2026-10-04 Main Track identity geometry correction
 
 The selected Track Type icon is positioned directly beside the Track identity and before the Track name, matching the documented Main Track workflow where the Track Type icon sits next to the track number. The icon remains a single selector affordance; six Track Types remain choices inside Track Type Select rather than persistent header controls.
+
+
+## 2026-10-04 Main Track controller-first layout correction
+
+The canonical Main Track/Arrangement workspace no longer embeds the Android 4x4 performance pad grid. MPC 3.9 selects Pads from the physical MPC surface; the Main display prioritizes the selected Pad/Layer waveform and its Track-state controls. The existing pad-grid renderer remains reusable only outside the canonical Main composition until a separate touch-first surface is intentionally designed.
