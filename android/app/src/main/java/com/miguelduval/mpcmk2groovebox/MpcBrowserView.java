@@ -335,7 +335,7 @@ final class MpcBrowserView extends LinearLayout {
         android.graphics.drawable.GradientDrawable drawable =
                 new android.graphics.drawable.GradientDrawable();
         drawable.setColor(fill);
-        drawable.setCornerRadius(dp(context, MPC_FLAT_RADIUS_DP));
+        drawable.setCornerRadius(dp(getContext(), MPC_FLAT_RADIUS_DP));
         drawable.setStroke(1, line);
         return drawable;
     }
