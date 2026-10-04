@@ -7502,32 +7502,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(grid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        LinearLayout system = row();
-        Button preferences = actionButton(
-                "PREFERENCES", v -> showAudioSettingsPage());
-        Button midiControl = actionButton(
-                "MIDI / CONTROL", v -> showMidiPage());
-        system.addView(styleMpcMenuFooterButton(preferences), weight());
-        system.addView(styleMpcMenuFooterButton(midiControl), weight());
-        Button saveProject = actionButton(
-                "SAVE / PROJECT",
-                null);
-        saveProject.setEnabled(false);
-        saveProject.setAlpha(0.45f);
-        saveProject.setContentDescription(
-                "Save and Project reserved");
-        system.addView(styleMpcMenuFooterButton(saveProject), weight());
-
-        Button editShortcuts = actionButton(
-                "EDIT SHORTCUTS",
-                v -> showShortcutConfigPage());
-        Button back = actionButton(
-                "BACK", v -> navigateBackFromShell());
-        system.addView(styleMpcMenuFooterButton(editShortcuts), weight());
-        system.addView(styleMpcMenuFooterButton(back), weight());
-        page.addView(system, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
-
+        // Menu owns the 4x4 launcher only. System actions are rendered
+        // once by the shell Function Bar so there is no nested command footer.
         content.addView(page);
         updateModeRailSelection();
     }
