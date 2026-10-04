@@ -120,7 +120,11 @@ final class MpcMainMixerStripView extends LinearLayout {
                             selectedPad,
                             padLevel,
                             padPan,
-                            padSampleName),
+                            padTuning,
+                            padSampleName,
+                            levelFocus,
+                            panFocus,
+                            tuneFocus),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
             strips.addView(
                     buildTrackStrip(
@@ -260,6 +264,7 @@ final class MpcMainMixerStripView extends LinearLayout {
         MpcVerticalMeter meter = new MpcVerticalMeter(context);
         meter.setValue(levelValue);
         meter.setEnabledState(true);
+        meter.setDialFocus(levelFocus);
         meter.setContentDescription("MPC Main selected pad level meter and fader");
         strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 104)));
 
@@ -275,6 +280,7 @@ final class MpcMainMixerStripView extends LinearLayout {
         MpcPanSlider pan = new MpcPanSlider(context);
         pan.setValue(panValue);
         pan.setEnabledState(true);
+        pan.setDialFocus(panFocus);
         pan.setContentDescription("MPC Main selected pad pan slider");
         strip.addView(pan, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 42)));
 
@@ -283,6 +289,18 @@ final class MpcMainMixerStripView extends LinearLayout {
                 "PAN\n" + panText(panValue),
                 TEXT);
         strip.addView(panValueLabel, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 28)));
+
+        TextView tuneValue = valueLabel(
+                context,
+                String.format(Locale.ROOT, "TUNE\n%+.1f", padTuning),
+                tuneFocus ? TEXT : MUTED);
+        tuneValue.setContentDescription("MPC Main selected pad tuning");
+        tuneValue.setBackground(stroke(
+                tuneFocus ? RED : PANEL_DARK,
+                tuneFocus ? WHITE : LINE));
+        strip.addView(
+                tuneValue,
+                new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 30)));
 
         LinearLayout controls = row(context);
         Button mute = controlButton(context, "MUTE", false);
@@ -582,6 +600,7 @@ final class MpcMainMixerStripView extends LinearLayout {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private float value;
         private boolean enabledState = true;
+        private boolean dialFocus;
 
         MpcVerticalMeter(Context context) {
             super(context);
@@ -596,6 +615,11 @@ final class MpcMainMixerStripView extends LinearLayout {
 
         void setEnabledState(boolean enabled) {
             enabledState = enabled;
+            invalidate();
+        }
+
+        void setDialFocus(boolean focused) {
+            dialFocus = focused;
             invalidate();
         }
 
@@ -644,6 +668,14 @@ final class MpcMainMixerStripView extends LinearLayout {
             paint.setTextSize(Math.max(7, getResources().getDisplayMetrics().scaledDensity * 7));
             canvas.drawText("0", w * 0.13f, bottom + 1, paint);
             canvas.drawText("-∞", w * 0.13f, top + 8, paint);
+
+            if (dialFocus) {
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(RED);
+                paint.setStrokeWidth(2);
+                canvas.drawRect(1, 1, w - 1, h - 1, paint);
+                paint.setStyle(Paint.Style.FILL);
+            }
         }
     }
 
@@ -651,6 +683,7 @@ final class MpcMainMixerStripView extends LinearLayout {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private float value;
         private boolean enabledState = true;
+        private boolean dialFocus;
 
         MpcPanSlider(Context context) {
             super(context);
@@ -664,6 +697,11 @@ final class MpcMainMixerStripView extends LinearLayout {
 
         void setEnabledState(boolean enabled) {
             enabledState = enabled;
+            invalidate();
+        }
+
+        void setDialFocus(boolean focused) {
+            dialFocus = focused;
             invalidate();
         }
 
@@ -690,6 +728,14 @@ final class MpcMainMixerStripView extends LinearLayout {
             canvas.drawText("L", left, y - 7, paint);
             canvas.drawText("C", center - 3, y - 7, paint);
             canvas.drawText("R", right - 6, y - 7, paint);
+
+            if (dialFocus) {
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(RED);
+                paint.setStrokeWidth(2);
+                canvas.drawRect(1, 1, w - 1, getHeight() - 1, paint);
+                paint.setStyle(Paint.Style.FILL);
+            }
         }
     }
 }
