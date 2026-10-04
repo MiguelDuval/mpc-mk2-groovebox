@@ -209,10 +209,10 @@ final class MpcPadMixerView extends LinearLayout {
                     Locale.ROOT, "LVL %3d%%",
                     Math.round(clamp(listener.padLevel(pad), 0f, 1f) * 100f)));
             panValue.setText(String.format(
-                    Locale.ROOT, "PAN %+0.2f",
+                    Locale.ROOT, "PAN %+.2f",
                     clamp(listener.padPan(pad), -1f, 1f)));
             tuneValue.setText(String.format(
-                    Locale.ROOT, "TUNE %+0.1f",
+                    Locale.ROOT, "TUNE %+.1f",
                     listener.padTuning(pad)));
         }
 
