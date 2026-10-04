@@ -174,7 +174,9 @@ final class MpcMainMixerStripView extends LinearLayout {
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
 
         MpcVerticalMeter meter = new MpcVerticalMeter(context);
-        meter.setValue(0.5f);
+        // Track level is not yet backed by a writable mixer value. Do not
+        // fabricate a half-scale meter; reserved state must remain visually empty.
+        meter.setValue(0.0f);
         meter.setEnabledState(false);
         meter.setContentDescription("MPC XL selected track level meter and fader reserved");
         strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 104)));
