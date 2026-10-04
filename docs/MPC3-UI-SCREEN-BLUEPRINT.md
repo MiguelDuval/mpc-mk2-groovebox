@@ -1125,3 +1125,32 @@ Browser chrome now also uses the same flat MPC selection language as the migrate
 The Main screen is now being aligned to the actual MPC 3.9 composition rather than a generic “MPC-like” shell. The visible left region is the five-shortcut rail followed by XL Mixer Strips; the old persistent Sequence/Track/Program/Data Dial rail is hidden migration scaffolding only.
 
 The Track/Pad strip choice remains in the lower-right of the Main Track/Arrangement section, matching the documented MPC interaction placement. Main Toolbar presentation is red in the active Main context; graphite remains the surrounding shell chrome.
+
+
+## 2026-10-04 XL Channel Strip fidelity checkpoint
+
+Main's visible left-side composition is now treated as a real MPC 3.9 XL Channel Strip rather than a generic Android mixer card:
+
+`five shortcuts -> XL Channel Strips -> Main workspace -> Function Bar`.
+
+The strip layout follows the documented relationship:
+- selected Track -> Main Output on the right;
+- selected Drum Pad -> corresponding Track on the right;
+- top visibility affordance controls expanded/collapsed strip detail;
+- LVL remains the implemented strip view while FX/SEND/I/O are reserved;
+- Track strips expose Mute/Solo/Automation/Record according to documented availability;
+- Pad strips do not invent Track-only controls;
+- the strip uses a dense vertical meter/fader and pan control rather than large Android-style value cards.
+
+The strip is presentation-first. Semantic ownership remains in `MpcUiState`, `MpcNavigationController`, MainActivity/native state, and the protected audio/MIDI layers.
+
+Source references:
+- MPC Standalone OS User Guide v3.9, Mixer Strips section, pp. 135-136.
+- Akai Professional, MPC3 FAQ: XL Channel Strip / Full-Color Track and Pad Mixer / One-to-One Track Workflow.
+
+Remaining fidelity gap:
+- dynamic right-strip switching for SEND/return context;
+- FX insert surface;
+- SEND knob surface;
+- I/O surface;
+- final physical MkII verification.
