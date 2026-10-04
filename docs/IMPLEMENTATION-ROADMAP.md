@@ -526,3 +526,19 @@ Verification target:
 - Android emulator smoke;
 - UI visual evidence artifact;
 - physical MPC Studio MkII verification remains separate.
+
+
+## 2026-10-04 Main Track Type UI correction
+
+The earlier six-icon Track Type presentation was identified as an interpretation error during a direct re-check of the MPC 3.9 User Guide. The documented Main Track workflow uses a single Track Type icon beside the Track identity; tapping it opens Track Type selection. The six types (Drum, Keygroup, Plugin, MIDI, Clip, CV) are selector choices, not six persistent Main-header controls.
+
+The implementation has therefore been corrected:
+- one deterministic Track Type icon is visible in the Main Track header;
+- its icon changes with the selected Track Type;
+- tap and Data Dial focus enter the existing Track Type Select subcontext;
+- unsupported Track Types remain truthful/unavailable in the current backend;
+- the six-type vocabulary remains in the selector/domain mapping.
+
+This correction takes precedence over the earlier 2026-10-04 Main Track type affordance fidelity checkpoint wording that described a persistent six-icon cluster.
+
+Primary source: MPC Standalone OS User Guide v3.9, Main Mode Track section; the manual explicitly describes tapping the Track Type icon next to the track number to change type.
