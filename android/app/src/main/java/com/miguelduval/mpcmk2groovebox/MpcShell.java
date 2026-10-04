@@ -87,8 +87,10 @@ final class MpcShell {
 
         workspace = new FrameLayout(context);
         workspace.setBackgroundColor(BG);
+        // mainColumn is vertical: weight distributes height, so workspace must
+        // remain MATCH_PARENT horizontally or the Main workspace collapses to 0px.
         mainColumn.addView(workspace, new LinearLayout.LayoutParams(
-                0, 0, 1));
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         functionBar = new LinearLayout(context);
         functionBar.setOrientation(LinearLayout.HORIZONTAL);
