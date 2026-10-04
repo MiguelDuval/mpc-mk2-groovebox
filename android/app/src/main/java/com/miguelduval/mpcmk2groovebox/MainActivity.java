@@ -624,6 +624,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         buildShortcutRail(mpcShell.shortcuts());
         buildCompactContext(mpcShell.contextArea());
+        mpcShell.setChannelStripRestoreListener(v -> {
+            final MpcUiState state = navigationController.state();
+            navigationController.setCompactMixerState(
+                    true,
+                    state.compactMixerPadMode());
+        });
 
         content = mpcShell.workspace();
         functionBar = mpcShell.functionBar();
@@ -1206,6 +1212,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 && navigationController.state().compactMixerVisible();
         compactMixerPanel.setVisibility(
                 visible ? View.VISIBLE : View.GONE);
+        if (mpcShell != null) {
+            mpcShell.setChannelStripVisible(visible);
+        }
         compactMixerToggle.setText(
                 visible ? "◉" : "○");
         compactMixerToggle.setTextSize(12);
@@ -1424,6 +1433,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        final boolean visible =
+                navigationController.state().compactMixerVisible();
+        if (mpcShell != null) {
+            mpcShell.setChannelStripVisible(visible);
+        }
+
         final boolean ready = startupComplete;
         final int track = ready
                 ? Math.max(0, nativeSequenceGetSelectedTrack())
@@ -1439,6 +1454,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int pad = selectedPadIndexForUi();
         final float level = ready ? nativeAudioGetPadLevel(pad) : 1.0f;
         final float pan = ready ? nativeAudioGetPadPan(pad) : 0.0f;
+        final float tuning = ready ? nativeAudioGetPadTuning(pad) : 0.0f;
         final String sample = ready
                 ? nativeAudioGetPadSampleName(pad, selectedLayer)
                 : "NO SAMPLE";
@@ -1456,6 +1472,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 pad,
                 level,
                 pan,
+                tuning,
                 sample,
                 muted);
     }
