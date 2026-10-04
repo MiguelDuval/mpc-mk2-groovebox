@@ -1094,6 +1094,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showAudioSettingsPage();
                 break;
             default:
+                navigationController.navigate(mode);
                 navigationController.setActionAvailable(false);
                 setBottomStatus(
                         mode.label() + " • RESERVED / UNAVAILABLE");
