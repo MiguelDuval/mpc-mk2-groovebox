@@ -665,6 +665,14 @@ fi
 # The Track state row is intentionally rendered immediately above the performance canvas
 # (see the positive ordering assertion above). Do not assert the inverse here.
 
+echo "Running MPC Browser flat-chrome preflight..."
+for required in   'MPC_FLAT_RADIUS_DP = 0'   'MPC_BROWSER_SELECTED'   'MPC Browser'   'setCornerRadius(dp(context, MPC_FLAT_RADIUS_DP))'   'selected ? MPC_BROWSER_SELECTED : SURFACE_2'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
+    echo "ERROR: MPC Browser flat-chrome contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC Pad Mixer presentation preflight..."
 echo "Running MPC Pad Mixer Function Bar preflight..."
 if ! grep -Fq -- 'case PAD_MIXER:' "$MAIN_ACTIVITY_SOURCE"; then
