@@ -75,6 +75,18 @@ if grep -Fq -- 'navigationController.setShortcuts(' "$MAIN_ACTIVITY_SOURCE" &&  
   exit 1
 fi
 
+echo "Running MPC Pull-Down Menu preflight..."
+for required in   "MpcPullDownPanelView"   "buildPullDownOverlay(root)"   "installPullDownGesture()"   "showPullDown()"   "hidePullDown()"   "CURRENT CONTROL"   "MPC Pull-Down Menu"   "sequenceTransportView.setContentDescription("   "swipe down for MPC Pull-Down Menu"; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java"; then
+    echo "ERROR: MPC Pull-Down Menu shell contract missing: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'setPage(1)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java" ||    ! grep -Fq -- 'setPage(0)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java"; then
+  echo "ERROR: MPC Pull-Down must expose both Control and Q-Link pages"
+  exit 1
+fi
+
 echo "Running MPC Main UI source preflight..."
 for required in \
   "MPC shell mixer strips" \
