@@ -1189,3 +1189,15 @@ The visible XL Channel Strip region keeps its show/hide control compact and icon
 
 The five shortcut cells remain dark graphite in both selected and unselected states. The selected shortcut is identified by a narrow red edge indicator rendered by the same deterministic icon drawable used for the rail pictogram. This is presentation-only and does not change navigation or hardware routing.
 
+
+
+## Pull-Down Menu
+
+The shell now exposes an MPC-style Pull-Down Menu surface from the Main transport-position area. The first page is a compact Control/status surface; the second page is the Q-Link context. Both are shell overlays rather than independent navigation modes.
+
+Interaction contract:
+- swipe down from the Main transport/position area opens Pull-Down;
+- swipe up inside the panel closes it;
+- the close affordance and outside scrim also dismiss it;
+- page 2 exposes the documented Q-Link vocabulary while unavailable editing operations remain clearly RESERVED;
+- underlying Main selection and transport state remain unchanged.
