@@ -4771,7 +4771,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout page = page();
         // Keep the recording surface compact so the waveform retains its full
         // MPC-style minimum presentation height on high-density displays.
-        page.setPadding(dp(10), dp(2), dp(10), 0);
+        page.setPadding(dp(10), dp(0), dp(10), 0);
 
         LinearLayout sampleHeader = row();
         sampleHeader.addView(sectionLabelView(
@@ -4800,7 +4800,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingTelemetry = label("No recorded audio", 11, MUTED);
         recordingTelemetry.setGravity(Gravity.CENTER_VERTICAL);
         page.addView(recordingTelemetry, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
         LinearLayout controls1 = row();
         Button record = actionButton("RECORD", v -> {
