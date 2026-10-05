@@ -4776,18 +4776,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout sampleHeader = row();
         sampleHeader.addView(sectionLabelView(
                 "SAMPLE WORKSPACE  •  RECORD / MONITOR",
-                new LinearLayout.LayoutParams(0, dp(30), 1)));
+                new LinearLayout.LayoutParams(0, dp(28), 1)));
         sampleHeader.addView(actionButton("EDIT", v -> showSamplePage()),
-                new LinearLayout.LayoutParams(dp(62), dp(30)));
+                new LinearLayout.LayoutParams(dp(62), dp(28)));
         sampleHeader.addView(actionButton("BROWSER", v -> showBrowserPage()),
-                new LinearLayout.LayoutParams(dp(82), dp(30)));
+                new LinearLayout.LayoutParams(dp(82), dp(28)));
         page.addView(sampleHeader);
 
         recordingInfo = label("", 13, TEXT);
         recordingInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
         recordingInfo.setPadding(dp(12), 0, dp(12), 0);
         page.addView(recordingInfo, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
         recordingWaveform = new WaveformView(this);
         recordingWaveform.setContentDescription("Recording waveform monitor");
@@ -4800,7 +4800,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingTelemetry = label("No recorded audio", 11, MUTED);
         recordingTelemetry.setGravity(Gravity.CENTER_VERTICAL);
         page.addView(recordingTelemetry, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(20)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(16)));
 
         LinearLayout controls1 = row();
         Button record = actionButton("RECORD", v -> {
@@ -4835,7 +4835,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
         }), weight());
         page.addView(controls1, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
         LinearLayout controls2 = row();
         controls2.addView(actionButton("MONITOR ON", v -> startMonitor()), weight());
@@ -4857,7 +4857,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 });
         controls2.addView(threshold, weight());
         page.addView(controls2, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
         content.addView(page);
         refreshRecordingInfo();
