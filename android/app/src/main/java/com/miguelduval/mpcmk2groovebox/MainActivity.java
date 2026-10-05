@@ -7877,8 +7877,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout footer = row();
         footer.addView(actionButton("RESET DEFAULTS", v -> {
-            navigationController.setShortcuts(
-                    MpcModeRegistry.defaultShortcuts());
+            navigationController.resetDefaultShortcuts();
             showShortcutConfigPage();
         }), weight());
         footer.addView(actionButton("BACK TO MENU", v -> showMenuPage()), weight());
