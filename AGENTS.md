@@ -36,6 +36,12 @@ Use these documents together:
 - `docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md` — protected lower-layer and UI migration safety rules.
 - `docs/PHYSICAL-TEST-CHECKLIST.md` — hardware acceptance tests.
 - `docs/INTERNAL-DSP-LIBRARY-RESEARCH.md` — internal synth/FX engine and commercial-license triage.
+- `docs/INTERNAL-DSP-LIBRARY-ARCHITECTURE.md` — internal audio-node and third-party adapter boundary.
+- `docs/INTERNAL-PLUGIN-UX-CONTRACT.md` — product/UI/hardware contract for built-in instruments and effects.
+- `docs/ADR-0010-INTERNAL-DSP-AND-COMMERCIAL-LICENSING.md` — accepted internal-DSP licensing architecture decision.
+- `docs/DSP-INTEGRATION-GATE.md` — mandatory gate for integrating any DSP engine.
+- `docs/THIRD-PARTY-SBOM-POLICY.md` — release/provenance policy.
+- `docs/THIRD-PARTY-SBOM.md` — current dependency and candidate inventory.
 - `THIRD_PARTY_NOTICES.md` — dependency/license record.
 
 When these documents conflict with the current code, investigate and update the documentation rather than silently ignoring the discrepancy.
