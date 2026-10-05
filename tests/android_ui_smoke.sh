@@ -381,7 +381,7 @@ if ! grep -Fq -- 'MpcUiState.DataDialFocus.SAMPLE_LAYER' "$MAIN_ACTIVITY_SOURCE"
   echo "ERROR: Main LAYER field must retain semantic Data Dial focus entry"
   exit 1
 fi
-if ! grep -Fq -- 'Button loop = mainActionButton("↻"' "$MAIN_ACTIVITY_SOURCE" ||
+if ! grep -Fq -- 'Button loop = mainActionButton("",' "$MAIN_ACTIVITY_SOURCE" ||
    ! grep -Fq -- 'nativeSequenceSetLoopEnabled(' "$MAIN_ACTIVITY_SOURCE" ||
    ! grep -Fq -- 'loop.setContentDescription(' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Sequence Loop must be a dedicated semantic toggle button"
