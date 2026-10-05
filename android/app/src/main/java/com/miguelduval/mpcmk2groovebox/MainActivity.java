@@ -25,6 +25,7 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -604,7 +605,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             Log.i(TAG, "STARTUP_COMPLETE");
 
                             if (uiAuditSmokeMode) {
-                                runUiAudit();
+                                scheduleUiAuditAfterFirstLayout();
                             }
                         } catch (Throwable error) {
                             Log.e(TAG, "UI_STARTUP_FINALIZATION_FAILED", error);
@@ -9253,6 +9254,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return Math.round(value) + "Hz";
     }
 
+    private void scheduleUiAuditAfterFirstLayout() {
+        final View decor = getWindow().getDecorView();
+        final ViewTreeObserver observer = decor.getViewTreeObserver();
+        final ViewTreeObserver.OnPreDrawListener listener =
+                new ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        if (decor.getViewTreeObserver().isAlive()) {
+                            decor.getViewTreeObserver().removeOnPreDrawListener(this);
+                        }
+                        decor.post(() -> runUiAudit());
+                        return true;
+                    }
+                };
+        observer.addOnPreDrawListener(listener);
+    }
+
     private void runUiAudit() {
         Log.i(TAG, "UI_HIERARCHY_BEGIN");
         String[] mainShellExpectedDescriptions = {
@@ -9264,7 +9282,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "MPC shortcut SOUNDS",
                 "MPC shortcut XY",
                 "Main Mode Sequence section",
-                "Main Track visual hierarchy • Track / Program / workspace section",
+                "Main Track visual hierarchy • Track / Program / workspace header",
                 "Main Track and Arrangement workspace",
                 "MPC Main XL Mixer Strips",
                 "MPC Main mixer strips shown",
