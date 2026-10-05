@@ -172,11 +172,12 @@ final class MpcMainIconDrawable extends Drawable {
             float scale,
             boolean next) {
         final float arm = scale * 0.23f;
-        final float side = next ? 1.0f : -1.0f;
+        final float tipX = cx + (next ? arm * 0.80f : -arm * 0.80f);
+        final float backX = cx - (next ? arm * 0.35f : -arm * 0.35f);
         path.reset();
-        path.moveTo(cx + side * arm * 0.80f, cy - arm);
-        path.lineTo(cx - side * arm * 0.20f, cy);
-        path.lineTo(cx + side * arm * 0.80f, cy + arm);
+        path.moveTo(backX, cy - arm);
+        path.lineTo(tipX, cy);
+        path.lineTo(backX, cy + arm);
         canvas.drawPath(path, paint);
     }
 
