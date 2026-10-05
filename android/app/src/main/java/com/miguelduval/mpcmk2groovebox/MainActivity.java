@@ -9410,7 +9410,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "MPC Main XL Mixer Strips");
         View xlMixerToggle = findViewWithContentDescription(
                 getWindow().getDecorView(),
-                "MPC Main mixer strips shown or hidden");
+                "MPC Main mixer strips shown");
         View selectedTrackMeter = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "MPC XL selected track level meter and fader reserved");
@@ -9445,15 +9445,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Main REC ARM disable");
             return;
         }
-        final int mixerBeforeToggleVisibility = xlMixerStrip.getVisibility();
-        if (!xlMixerToggle.performClick()
-                || xlMixerStrip.getVisibility() != mixerBeforeToggleVisibility) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip toggle state");
+        if (!xlMixerToggle.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip hide action");
             return;
         }
-        if (!xlMixerToggle.performClick()
-                || xlMixerStrip.getVisibility() != mixerBeforeToggleVisibility) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip toggle restore");
+        View xlMixerHidden = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main mixer strips hidden");
+        if (xlMixerHidden == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip hidden state");
+            return;
+        }
+        if (!xlMixerHidden.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip show action");
+            return;
+        }
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main mixer strips shown") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip restore state");
             return;
         }
 
