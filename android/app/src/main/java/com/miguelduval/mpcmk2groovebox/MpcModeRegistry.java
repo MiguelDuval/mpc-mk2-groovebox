@@ -49,12 +49,17 @@ final class MpcModeRegistry {
      * discoverable in Menu/shortcut configuration, but never occupy a
      * factory/default shortcut slot.
      */
+    /*
+     * MPC 3.x factory shortcut order. Channel Mixer, Sounds, and XY remain
+     * discoverable even while their backends are reserved; the Main Rail must
+     * still reproduce the canonical hardware-facing visual order.
+     */
     private static final MpcUiState.Mode[] DEFAULT_SHORTCUTS = {
             MpcUiState.Mode.BROWSER,
-            MpcUiState.Mode.TRACK_VIEW,
-            MpcUiState.Mode.GRID,
-            MpcUiState.Mode.STEP,
-            MpcUiState.Mode.PAD_MIXER
+            MpcUiState.Mode.CHANNEL_MIXER,
+            MpcUiState.Mode.PAD_MIXER,
+            MpcUiState.Mode.SOUNDS,
+            MpcUiState.Mode.XYFX
     };
 
     private MpcModeRegistry() {}
