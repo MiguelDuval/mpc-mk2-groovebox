@@ -9693,214 +9693,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 dp(180),
                 "Track View workspace",
                 this::runUiAuditAfterTrackView);
-    private String describeAuditView(View view) {
-        if (view == null) return "null";
-        return "w=" + view.getWidth()
-                + ",h=" + view.getHeight()
-                + ",vis=" + view.getVisibility()
-                + ",a=" + view.getAlpha();
-    }
 
-    private boolean clickMpcToolbarMenuForAudit() {
-        final View menu = findViewWithContentDescription(
-                getWindow().getDecorView(), "MPC Toolbar Menu");
-        return menu != null && menu.performClick();
-    }
-
-    private View findViewWithContentDescription(
-            View view, String expectedDescription) {
-        if (view == null || expectedDescription == null) return null;
-
-        final CharSequence actual = view.getContentDescription();
-        if (actual != null && expectedDescription.contentEquals(actual)) {
-            return view;
-        }
-
-        if (view instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                View match = findViewWithContentDescription(
-                        group.getChildAt(i), expectedDescription);
-                if (match != null) return match;
-            }
-        }
-        return null;
-    }
-
-    private View findViewWithExactText(View view, String expectedText) {
-        if (view == null || expectedText == null) return null;
-
-        if (view instanceof TextView) {
-            final CharSequence actual = ((TextView) view).getText();
-            if (actual != null && expectedText.contentEquals(actual)) {
-                return view;
-            }
-        }
-        if (view instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) view;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                View match = findViewWithExactText(group.getChildAt(i), expectedText);
-                if (match != null) return match;
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String[] permissions,
-                                           int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (grantResults.length == 0
-                || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-            setBottomStatus("Microphone permission denied");
-            return;
-        }
-
-        if (requestCode == REQUEST_RECORD_AUDIO) {
-            final String result = nativeAudioStartRecording();
-            setBottomStatus(result);
-            refreshRecordingInfo();
-            return;
-        }
-
-        if (requestCode == REQUEST_MONITOR_AUDIO) {
-            final String result = nativeAudioStartMonitor();
-            setBottomStatus(result);
-            refreshRecordingInfo();
-            setAudioStateFromResult(result);
-        }
-    }
-
-    @Override
-    public void onSequenceLauncherPad(int padIndex) {
-        if (!"SEQ".equals(currentPage)
-                || sequenceLauncherView == null
-                || padIndex < 0 || padIndex >= 16) {
-            return;
-        }
-
-        setBottomStatus(nativeSequenceLaunchPad(
-                launcherBank, padIndex));
-        refreshSequenceLauncher();
-        refreshSequenceControls();
-    }
-
-    @Override
-    public void onDevicesChanged(String description) {
-        if (midiState != null) {
-            runOnUiThread(() -> {
-                if (midiState != null) {
-                    midiState.setText(description.contains("MPC Studio")
-                            ? "MIDI READY" : "MIDI —");
-                }
-            });
-        }
-    }
-
-    @Override
-    public void onHardwareAction(int actionType, int value0, int value1, int value2) {
-        applyHardwareAction(actionType, value0, value1, value2);
-    }
-
-    private void setHardwareButtonLed(int cc, boolean on) {
-        setHardwareButtonLedState(
-                cc,
-                on
-                        ? MpcHardwareFeedbackPolicy.buttonLedOnState(cc)
-                        : MpcHardwareFeedbackPolicy.LED_OFF);
-    }
-
-    private void setHardwareButtonLedState(int cc, int state) {
-        if (cc < 0 || cc >= hardwareButtonLedStateCache.length) return;
-        final int clamped = Math.max(
-                MpcHardwareFeedbackPolicy.LED_OFF,
-                Math.min(MpcHardwareFeedbackPolicy.LED_COLOR_2_FULL, state));
-        if (hardwareButtonLedStateCache[cc] == clamped) return;
-        hardwareButtonLedStateCache[cc] = clamped;
-        if (midiBridge != null) {
-            midiBridge.send(
-                    MpcStudioMk2MidiMessages.buttonLed(
-                            cc,
-                            clamped));
-        }
-    }
-
-    private void setHardwarePadRgb(int pad, int red, int green, int blue) {
-        if (midiBridge == null || pad < 0 || pad >= 16) return;
-        final byte[] message = MpcStudioMk2MidiMessages.padRgb(
-                pad, red, green, blue);
-        if (message != null) {
-            midiBridge.send(message);
-        }
-    }
-
-    private void clearHardwareCopyDeletePadLeds() {
-        for (int pad = 0; pad < 16; pad++) {
-            setHardwarePadRgb(pad, 0, 0, 0);
-        }
-    }
-
-    private void syncHardwareLevelModeLeds() {
-        final int levelState = hardwareHalfLevelActive
-                ? MpcHardwareFeedbackPolicy.LED_COLOR_2_FULL
-                : hardwareFullLevelActive
-                        ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
-                        : MpcHardwareFeedbackPolicy.LED_OFF;
-        setHardwareButtonLedState(39, levelState);
-        setHardwareButtonLedState(
-                40,
-                hardwareSixteenLevelActive
-                        ? MpcHardwareFeedbackPolicy.buttonLedOnState(40)
-                        : MpcHardwareFeedbackPolicy.LED_OFF);
-    }
-
-    private void syncHardwareMuteModeLed() {
-        setHardwareButtonLedState(
-                4,
-                MpcHardwareFeedbackPolicy.dualColor(
-                        hardwarePadMuteModeActive || hardwareTrackMuteModeActive,
-                        hardwareTrackMuteModeActive));
-    }
-
-    private void syncHardwareTransportLeds() {
-        if (midiBridge == null) return;
-
-        final boolean playing = nativeSequenceIsPlaying();
-        final boolean armed = nativeSequenceIsSelectedTrackArmed();
-        final boolean overdub = nativeSequenceGetRecordMode() == 1;
-
-        setHardwareButtonLed(82, playing);
-        setHardwareButtonLed(73, armed && !overdub);
-        setHardwareButtonLed(80, armed && overdub);
-    }
-
-    private boolean isHardwareLocateExitAction(int actionType) {
-        switch (actionType) {
-            case MpcStudioMk2SemanticActions.NAVIGATE_MAIN:
-            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_VIEW:
-            case MpcStudioMk2SemanticActions.NAVIGATE_GRID:
-            case MpcStudioMk2SemanticActions.NAVIGATE_WAVEFORM:
-            case MpcStudioMk2SemanticActions.NAVIGATE_SAMPLE_EDIT:
-            case MpcStudioMk2SemanticActions.NAVIGATE_PAD_MIXER:
-            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_MIXER:
-            case MpcStudioMk2SemanticActions.NAVIGATE_SEQUENCE_LAUNCHER:
-            case MpcStudioMk2SemanticActions.NAVIGATE_BROWSE:
-            case MpcStudioMk2SemanticActions.NAVIGATE_SAMPLER:
-            case MpcStudioMk2SemanticActions.NAVIGATE_STEP:
-            case MpcStudioMk2SemanticActions.BROWSER_UP:
-            case MpcStudioMk2SemanticActions.TRACK_SELECTION_CONTEXT:
-            case MpcStudioMk2SemanticActions.SEQUENCE_SELECTION_CONTEXT:
-            case MpcStudioMk2SemanticActions.PROGRAM_SELECTION_CONTEXT:
-            case MpcStudioMk2SemanticActions.TRACK_TYPE_SELECTION_CONTEXT:
-            case MpcStudioMk2SemanticActions.SAMPLE_SELECT_CONTEXT:
-            case MpcStudioMk2SemanticActions.SAMPLE_START_CONTEXT:
-            case MpcStudioMk2SemanticActions.SAMPLE_END_CONTEXT:
-            case MpcStudioMk2SemanticActions.TUNE_CONTEXT:
-            case MpcStudioMk2SemanticActions.QUANTIZE:
-            case MpcStudioMk2SemanticActions.TIMING_CORRECT_STATE:
-           private void waitForMeasuredAuditView(
+    private void waitForMeasuredAuditView(
             View view,
             int minimumHeight,
             String label,
@@ -10168,7 +9962,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         waitForMeasuredAuditView(
                 waveform,
-                dp(0),
+                0,
                 "sample waveform editor",
                 this::runUiAuditAfterSampleEdit);
     }
@@ -10222,7 +10016,214 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Log.i(TAG, "UI_INTERACTION_COMPLETE");
     }
 
-     case MpcStudioMk2SemanticActions.ZOOM_CONTEXT:
+    private String describeAuditView(View view) {
+        if (view == null) return "null";
+        return "w=" + view.getWidth()
+                + ",h=" + view.getHeight()
+                + ",vis=" + view.getVisibility()
+                + ",a=" + view.getAlpha();
+    }
+
+    private boolean clickMpcToolbarMenuForAudit() {
+        final View menu = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Toolbar Menu");
+        return menu != null && menu.performClick();
+    }
+
+    private View findViewWithContentDescription(
+            View view, String expectedDescription) {
+        if (view == null || expectedDescription == null) return null;
+
+        final CharSequence actual = view.getContentDescription();
+        if (actual != null && expectedDescription.contentEquals(actual)) {
+            return view;
+        }
+
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View match = findViewWithContentDescription(
+                        group.getChildAt(i), expectedDescription);
+                if (match != null) return match;
+            }
+        }
+        return null;
+    }
+
+    private View findViewWithExactText(View view, String expectedText) {
+        if (view == null || expectedText == null) return null;
+
+        if (view instanceof TextView) {
+            final CharSequence actual = ((TextView) view).getText();
+            if (actual != null && expectedText.contentEquals(actual)) {
+                return view;
+            }
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View match = findViewWithExactText(group.getChildAt(i), expectedText);
+                if (match != null) return match;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String[] permissions,
+                                           int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (grantResults.length == 0
+                || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+            setBottomStatus("Microphone permission denied");
+            return;
+        }
+
+        if (requestCode == REQUEST_RECORD_AUDIO) {
+            final String result = nativeAudioStartRecording();
+            setBottomStatus(result);
+            refreshRecordingInfo();
+            return;
+        }
+
+        if (requestCode == REQUEST_MONITOR_AUDIO) {
+            final String result = nativeAudioStartMonitor();
+            setBottomStatus(result);
+            refreshRecordingInfo();
+            setAudioStateFromResult(result);
+        }
+    }
+
+    @Override
+    public void onSequenceLauncherPad(int padIndex) {
+        if (!"SEQ".equals(currentPage)
+                || sequenceLauncherView == null
+                || padIndex < 0 || padIndex >= 16) {
+            return;
+        }
+
+        setBottomStatus(nativeSequenceLaunchPad(
+                launcherBank, padIndex));
+        refreshSequenceLauncher();
+        refreshSequenceControls();
+    }
+
+    @Override
+    public void onDevicesChanged(String description) {
+        if (midiState != null) {
+            runOnUiThread(() -> {
+                if (midiState != null) {
+                    midiState.setText(description.contains("MPC Studio")
+                            ? "MIDI READY" : "MIDI —");
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onHardwareAction(int actionType, int value0, int value1, int value2) {
+        applyHardwareAction(actionType, value0, value1, value2);
+    }
+
+    private void setHardwareButtonLed(int cc, boolean on) {
+        setHardwareButtonLedState(
+                cc,
+                on
+                        ? MpcHardwareFeedbackPolicy.buttonLedOnState(cc)
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+    }
+
+    private void setHardwareButtonLedState(int cc, int state) {
+        if (cc < 0 || cc >= hardwareButtonLedStateCache.length) return;
+        final int clamped = Math.max(
+                MpcHardwareFeedbackPolicy.LED_OFF,
+                Math.min(MpcHardwareFeedbackPolicy.LED_COLOR_2_FULL, state));
+        if (hardwareButtonLedStateCache[cc] == clamped) return;
+        hardwareButtonLedStateCache[cc] = clamped;
+        if (midiBridge != null) {
+            midiBridge.send(
+                    MpcStudioMk2MidiMessages.buttonLed(
+                            cc,
+                            clamped));
+        }
+    }
+
+    private void setHardwarePadRgb(int pad, int red, int green, int blue) {
+        if (midiBridge == null || pad < 0 || pad >= 16) return;
+        final byte[] message = MpcStudioMk2MidiMessages.padRgb(
+                pad, red, green, blue);
+        if (message != null) {
+            midiBridge.send(message);
+        }
+    }
+
+    private void clearHardwareCopyDeletePadLeds() {
+        for (int pad = 0; pad < 16; pad++) {
+            setHardwarePadRgb(pad, 0, 0, 0);
+        }
+    }
+
+    private void syncHardwareLevelModeLeds() {
+        final int levelState = hardwareHalfLevelActive
+                ? MpcHardwareFeedbackPolicy.LED_COLOR_2_FULL
+                : hardwareFullLevelActive
+                        ? MpcHardwareFeedbackPolicy.LED_COLOR_1_FULL
+                        : MpcHardwareFeedbackPolicy.LED_OFF;
+        setHardwareButtonLedState(39, levelState);
+        setHardwareButtonLedState(
+                40,
+                hardwareSixteenLevelActive
+                        ? MpcHardwareFeedbackPolicy.buttonLedOnState(40)
+                        : MpcHardwareFeedbackPolicy.LED_OFF);
+    }
+
+    private void syncHardwareMuteModeLed() {
+        setHardwareButtonLedState(
+                4,
+                MpcHardwareFeedbackPolicy.dualColor(
+                        hardwarePadMuteModeActive || hardwareTrackMuteModeActive,
+                        hardwareTrackMuteModeActive));
+    }
+
+    private void syncHardwareTransportLeds() {
+        if (midiBridge == null) return;
+
+        final boolean playing = nativeSequenceIsPlaying();
+        final boolean armed = nativeSequenceIsSelectedTrackArmed();
+        final boolean overdub = nativeSequenceGetRecordMode() == 1;
+
+        setHardwareButtonLed(82, playing);
+        setHardwareButtonLed(73, armed && !overdub);
+        setHardwareButtonLed(80, armed && overdub);
+    }
+
+    private boolean isHardwareLocateExitAction(int actionType) {
+        switch (actionType) {
+            case MpcStudioMk2SemanticActions.NAVIGATE_MAIN:
+            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_VIEW:
+            case MpcStudioMk2SemanticActions.NAVIGATE_GRID:
+            case MpcStudioMk2SemanticActions.NAVIGATE_WAVEFORM:
+            case MpcStudioMk2SemanticActions.NAVIGATE_SAMPLE_EDIT:
+            case MpcStudioMk2SemanticActions.NAVIGATE_PAD_MIXER:
+            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_MIXER:
+            case MpcStudioMk2SemanticActions.NAVIGATE_SEQUENCE_LAUNCHER:
+            case MpcStudioMk2SemanticActions.NAVIGATE_BROWSE:
+            case MpcStudioMk2SemanticActions.NAVIGATE_SAMPLER:
+            case MpcStudioMk2SemanticActions.NAVIGATE_STEP:
+            case MpcStudioMk2SemanticActions.BROWSER_UP:
+            case MpcStudioMk2SemanticActions.TRACK_SELECTION_CONTEXT:
+            case MpcStudioMk2SemanticActions.SEQUENCE_SELECTION_CONTEXT:
+            case MpcStudioMk2SemanticActions.PROGRAM_SELECTION_CONTEXT:
+            case MpcStudioMk2SemanticActions.TRACK_TYPE_SELECTION_CONTEXT:
+            case MpcStudioMk2SemanticActions.SAMPLE_SELECT_CONTEXT:
+            case MpcStudioMk2SemanticActions.SAMPLE_START_CONTEXT:
+            case MpcStudioMk2SemanticActions.SAMPLE_END_CONTEXT:
+            case MpcStudioMk2SemanticActions.TUNE_CONTEXT:
+            case MpcStudioMk2SemanticActions.QUANTIZE:
+            case MpcStudioMk2SemanticActions.TIMING_CORRECT_STATE:
+            case MpcStudioMk2SemanticActions.ZOOM_CONTEXT:
             case MpcStudioMk2SemanticActions.COPY_CONTEXT:
             case MpcStudioMk2SemanticActions.UNDO:
             case MpcStudioMk2SemanticActions.AUTOMATION_CONTEXT:
