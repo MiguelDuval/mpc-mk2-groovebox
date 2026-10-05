@@ -9616,12 +9616,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View seqSelect = findViewWithExactText(
-                getWindow().getDecorView(), "SEQ SELECT");
-        if (seqSelect == null || !seqSelect.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main SEQ SELECT");
-            return;
-        }
+        /*
+         * Sequence Select is a Main subcontext, not a duplicate visible
+         * toolbar/function button. Enter it through the same semantic command
+         * path used by the MPC Studio MkII Sequence Select control.
+         */
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.SEQUENCE_SELECTION_CONTEXT,
+                0, 0, 0);
         if (findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Sequence Select list") == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Sequence Select list");
