@@ -588,3 +588,10 @@ The canonical Main Track/Arrangement workspace no longer embeds the Android 4x4 
 - Main 4×4 Menu tiles now use the deterministic MPC shortcut vector vocabulary instead of visible Unicode glyphs.
 - KVM-enabled emulator smoke is now stable enough to exercise the real application runtime instead of failing during AVD boot.
 - Physical MPC Studio MkII verification is still pending; this acceptance does not claim hardware validation.
+
+## 2026-10-05 Pull-Down chrome fidelity correction
+
+- **IMPLEMENTED —** Pull-Down close/previous/next controls now use deterministic original vector iconography rather than Unicode glyphs.
+- **PRESERVED —** two-page Control/Q-Link overlay, truthful RESERVED actions, and existing shell/state ownership.
+- **LOWER LAYERS —** none touched; audio callback, sampler/sequencer timing, MIDI transport, raw MkII decoder and hardware SysEx are unchanged.
+- **Verification target —** source/unit preflight, Android emulator smoke, visual evidence, then physical MPC Studio MkII verification.
