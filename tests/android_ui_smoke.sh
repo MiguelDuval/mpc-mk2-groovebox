@@ -82,7 +82,7 @@ for required in   "MpcPullDownPanelView"   "buildPullDownOverlay(root)"   "insta
     exit 1
   fi
 done
-if ! grep -Fq -- 'setPage(1)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java" ||    ! grep -Fq -- 'setPage(0)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java"; then
+if ! grep -Fq -- 'pageIndex == 0' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java" ||    ! grep -Fq -- 'setPage(pageIndex + 1)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java" ||    ! grep -Fq -- 'setPage(0)' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: MPC Pull-Down must expose both Control and Q-Link pages"
   exit 1
 fi
