@@ -9257,6 +9257,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Log.i(TAG, "UI_HIERARCHY_COMPLETE");
         Log.i(TAG, "UI_INTERACTION_BEGIN");
 
+        showPullDown();
+        if (pullDownPanel == null
+                || pullDownPanel.getVisibility() != View.VISIBLE
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Pull-Down Menu") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pull-Down open");
+            return;
+        }
+        pullDownPanel.setPage(1);
+        if (findViewWithExactText(
+                getWindow().getDecorView(), "Q-LINK") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pull-Down Q-Link page");
+            hidePullDown();
+            return;
+        }
+        hidePullDown();
+        if (pullDownPanel.getVisibility() != View.GONE) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pull-Down close");
+            return;
+        }
+
         View browserShortcut = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC shortcut BROWSER");
         if (browserShortcut == null || !browserShortcut.performClick()) {
