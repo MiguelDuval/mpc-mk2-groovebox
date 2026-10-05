@@ -45,10 +45,12 @@ public class MpcNavigationControllerTest {
                 navigation.state().dataDialFocus());
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void reservedModeCannotBePromotedToShortcut() {
+    @Test
+    public void reservedModeCanBeAssignedToShortcutCatalogSlot() {
         MpcNavigationController navigation = new MpcNavigationController();
         navigation.setShortcut(0, MpcUiState.Mode.CHANNEL_MIXER);
+
+        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, navigation.shortcut(0));
     }
 
     @Test
