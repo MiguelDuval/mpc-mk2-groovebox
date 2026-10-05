@@ -65,6 +65,16 @@ for required in \
   fi
 done
 
+echo "Running MPC factory shortcut reset preflight..."
+if ! grep -Fq -- 'void resetDefaultShortcuts()' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcNavigationController.java" ||    ! grep -Fq -- 'navigationController.resetDefaultShortcuts();' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: factory shortcut reset must use the dedicated default-reset contract"
+  exit 1
+fi
+if grep -Fq -- 'navigationController.setShortcuts(' "$MAIN_ACTIVITY_SOURCE" &&    grep -Fq -- 'MpcModeRegistry.defaultShortcuts()' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main shortcut reset must not call strict setShortcuts(defaultShortcuts())"
+  exit 1
+fi
+
 echo "Running MPC Main UI source preflight..."
 for required in \
   "MPC shell mixer strips" \
