@@ -641,3 +641,8 @@ The audit now requires a minimum 200dp content height plus the existing width an
 Runtime evidence showed the Main UI was visually laid out correctly in the captured screenshot while the application audit could observe a still-unmeasured WaveformView when invoked directly from startup finalization. The audit is now scheduled from the decor root's first `OnPreDraw` callback.
 
 This keeps geometry assertions tied to the actual rendered MPC shell lifecycle instead of adding sleeps or weakening the checks.
+
+
+## 2026-10-05 Exact accessibility target correction
+
+The Main LAYER audit now uses the field's complete accessibility description (`Main Track View selected layer • tap to focus Layer`). The view search helper intentionally uses exact semantic labels, so the previous shortened lookup could not find an otherwise functional controller-first Layer focus control.
