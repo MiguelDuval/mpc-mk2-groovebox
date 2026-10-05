@@ -9405,34 +9405,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View compactContext = findViewWithContentDescription(
+        View xlMixerStrip = findViewWithContentDescription(
                 getWindow().getDecorView(),
-                "MPC shell compact track program context");
-        View compactTrack = findViewWithContentDescription(
+                "MPC Main XL Mixer Strips");
+        View xlMixerToggle = findViewWithContentDescription(
                 getWindow().getDecorView(),
-                "MPC shell track context");
-        View compactProgram = findViewWithContentDescription(
+                "MPC Main mixer strips shown or hidden");
+        View selectedTrackMeter = findViewWithContentDescription(
                 getWindow().getDecorView(),
-                "MPC shell program context");
-        if (compactContext == null
-                || compactContext.getWidth() < dp(160)
-                || compactContext.getHeight() <= dp(200)
-                || compactTrack == null
-                || compactProgram == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: persistent compact track/program context");
-            return;
-        }
-
-        View compactMixerToggleAudit = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC condensed Mixer Strip show or hide");
-        View compactMixerPanelAudit = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC condensed Mixer Strip");
-        if (compactMixerToggleAudit == null
-                || compactMixerPanelAudit == null
-                || compactMixerPanelAudit.getVisibility() != View.VISIBLE) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: persistent Main Mixer Strip");
+                "MPC XL selected track level meter and fader reserved");
+        if (xlMixerStrip == null
+                || xlMixerStrip.getWidth() < dp(180)
+                || xlMixerStrip.getHeight() <= dp(160)
+                || xlMixerToggle == null
+                || selectedTrackMeter == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: visible Main XL Channel Strip");
             return;
         }
 
@@ -9458,14 +9445,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Main REC ARM disable");
             return;
         }
-        if (!compactMixerToggleAudit.performClick()
-                || compactMixerPanelAudit.getVisibility() != View.GONE) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Mixer Strip hide");
+        final int mixerBeforeToggleVisibility = xlMixerStrip.getVisibility();
+        if (!xlMixerToggle.performClick()
+                || xlMixerStrip.getVisibility() != mixerBeforeToggleVisibility) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip toggle state");
             return;
         }
-        if (!compactMixerToggleAudit.performClick()
-                || compactMixerPanelAudit.getVisibility() != View.VISIBLE) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Mixer Strip show");
+        if (!xlMixerToggle.performClick()
+                || xlMixerStrip.getVisibility() != mixerBeforeToggleVisibility) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip toggle restore");
             return;
         }
 
