@@ -9416,7 +9416,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "MPC shell program context");
         if (compactContext == null
                 || compactContext.getWidth() < dp(160)
-                || compactContext.getHeight() <= dp(300)
+                || compactContext.getHeight() <= dp(200)
                 || compactTrack == null
                 || compactProgram == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: persistent compact track/program context");
