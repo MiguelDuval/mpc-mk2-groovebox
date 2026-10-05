@@ -620,3 +620,10 @@ The runtime audit was aligned with the canonical MPC Main composition after Run 
 Navigation checks now use the real shell hierarchy: Browser returns to Main through its Function Bar, and secondary modes are entered from the Toolbar Menu. The audit verifies controller-first Pad state through semantic selection/focus rather than fabricating an on-screen pad grid.
 
 No product UI compatibility elements were reintroduced and no protected audio/MIDI/sequencer layers were changed.
+
+
+## 2026-10-05 Factory Shortcut accessibility vocabulary correction
+
+The factory fifth Shortcut Rail destination remains the `XY` user-facing destination while the internal navigation enum is `XYFX`. The shell now exposes the canonical `XY` label in the accessibility/semantic surface without changing the underlying mode identity or routing.
+
+This is a presentation/accessibility vocabulary correction only; no audio, MIDI, decoder, SysEx or sequencer layer was touched.
