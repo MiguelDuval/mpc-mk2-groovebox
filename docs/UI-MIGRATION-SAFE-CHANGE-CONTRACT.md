@@ -458,3 +458,8 @@ Required runtime sequence:
 5. keep the existing non-empty XML + MPC-content assertions.
 
 This is a test-harness synchronization correction only. It does not weaken the runtime gate and does not change audio, MIDI, sequencer, sampler, decoder or SysEx layers.
+
+
+## 2026-10-05 UI-audit hierarchy authority
+
+The application-side UI audit is part of the runtime acceptance contract and must describe the current canonical shell, not historical legacy-page controls. Main is controller-first and must not be made to expose a hidden/duplicate 4×4 pad grid merely to satisfy tests. Audit navigation must follow actual shell affordances (Shortcut Rail, Function Bar and Toolbar Menu) and assert semantic state where the companion surface intentionally has no touch control.
