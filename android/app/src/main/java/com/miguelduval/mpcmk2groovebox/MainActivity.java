@@ -588,7 +588,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             if ("MAIN".equals(currentPage)) {
                                 refreshMainTrackQuickSample();
                             }
-                            startSequenceUiUpdater();
+                            if (!uiAuditSmokeMode) {
+                                startSequenceUiUpdater();
+                            }
                             refreshSequenceOverview();
 
                             Log.i(TAG, "MIDI_BRIDGE_BEGIN");
