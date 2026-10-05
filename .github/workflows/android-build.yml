@@ -28,6 +28,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
           if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
             ls -l /dev/kvm
             test -r /dev/kvm
             test -w /dev/kvm
