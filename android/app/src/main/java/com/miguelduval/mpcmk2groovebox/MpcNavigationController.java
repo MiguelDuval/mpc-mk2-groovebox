@@ -53,9 +53,9 @@ final class MpcNavigationController {
         }
         final MpcUiState.Mode value = Objects.requireNonNull(
                 mode, "mode");
-        if (!isPromotable(value)) {
+        if (!isShortcutMode(value)) {
             throw new IllegalArgumentException(
-                    "Shortcut mode is not implemented: " + value);
+                    "Shortcut mode is not part of the MPC shortcut catalog: " + value);
         }
         shortcuts[slot] = value;
         notifyListener();
