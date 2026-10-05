@@ -9267,6 +9267,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             final View shellRoot = mpcShell == null ? null : mpcShell.root();
             final View mainWorkspace = mainTrackArrangementHost;
+            final View trackSelector = mainTrackViewButton;
+            final View arrangementSelector = mainArrangementViewButton;
             final boolean decorMeasured =
                     decor.getWidth() > 0 && decor.getHeight() > 0;
             final boolean shellMeasured =
@@ -9275,15 +9277,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             && shellRoot.getHeight() > 0;
             /*
              * showMainPage() can rebuild the Main subtree after the shell itself
-             * is already measured. Gate on the newly-created Main workspace so
-             * its Track/Arrangement children have completed their first layout.
+             * is already measured. A weighted FrameLayout parent can acquire its
+             * bounds before its descendants are measured, so the barrier targets
+             * the actual controls that the audit will exercise.
              */
             final boolean mainWorkspaceMeasured =
                     mainWorkspace != null
                             && mainWorkspace.getWidth() > 0
                             && mainWorkspace.getHeight() > 0;
+            final boolean mainControlsMeasured =
+                    trackSelector != null
+                            && trackSelector.getWidth() > 0
+                            && trackSelector.getHeight() > 0
+                            && arrangementSelector != null
+                            && arrangementSelector.getWidth() > 0
+                            && arrangementSelector.getHeight() > 0;
 
-            if (decorMeasured && shellMeasured && mainWorkspaceMeasured) {
+            if (decorMeasured && shellMeasured
+                    && mainWorkspaceMeasured && mainControlsMeasured) {
                 /*
                  * One additional animation turn keeps the audit behind the
                  * layout pass that produced these dimensions. This matters on
