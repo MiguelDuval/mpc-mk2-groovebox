@@ -9326,7 +9326,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         View mainTrackProgram = findViewWithContentDescription(
-                getWindow().getDecorView(), "Main Mode Track Program section");
+                getWindow().getDecorView(),
+                "Main Track visual hierarchy • Track / Program / workspace section");
         if (mainTrackProgram == null || mainTrackProgram.getHeight() <= dp(160)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Program composition");
             return;
