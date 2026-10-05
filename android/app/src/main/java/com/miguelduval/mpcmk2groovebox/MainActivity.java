@@ -4857,7 +4857,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 });
         controls2.addView(threshold, weight());
         page.addView(controls2, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
 
         content.addView(page);
         refreshRecordingInfo();
