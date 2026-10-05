@@ -595,3 +595,19 @@ The canonical Main Track/Arrangement workspace no longer embeds the Android 4x4 
 - **PRESERVED —** two-page Control/Q-Link overlay, truthful RESERVED actions, and existing shell/state ownership.
 - **LOWER LAYERS —** none touched; audio callback, sampler/sequencer timing, MIDI transport, raw MkII decoder and hardware SysEx are unchanged.
 - **Verification target —** source/unit preflight, Android emulator smoke, visual evidence, then physical MPC Studio MkII verification.
+
+
+## 2026-10-05 Android runtime smoke synchronization checkpoint
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The Android emulator smoke gate now waits for the application-side `runUiAudit()` to report `UI_INTERACTION_COMPLETE` before requesting the external `uiautomator dump`. The previous fixed 5-second delay could race the long UI-thread audit: the app was alive and had produced a screenshot, but `uiautomator dump` could still report an idle-state failure while MainActivity was actively rebuilding contexts.
+
+The gate now:
+- fails immediately on an application-side `UI_HIERARCHY_FAILED` / `UI_INTERACTION_FAILED` / startup-finalization failure;
+- bounds the application-audit wait to 120 seconds;
+- bounds the accessibility dump itself to 30 seconds;
+- preserves the real hierarchy/content assertion and therefore does not mask a runtime failure.
+
+Lower layers touched: none.
+Physical MPC Studio MkII verification: pending.
