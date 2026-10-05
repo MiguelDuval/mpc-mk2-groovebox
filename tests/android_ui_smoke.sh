@@ -944,6 +944,24 @@ for required in   'MPC_FLAT_RADIUS_DP = 0'   'MPC_BROWSER_SELECTED'   'MPC Brows
   fi
 done
 
+echo "Running MPC 4x4 Menu iconography preflight..."
+menu_tile_source_start=$(grep -n -m1 'private Button buildMpcMenuTile' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+menu_footer_start=$(grep -n -m1 'private Button styleMpcMenuFooterButton' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$menu_tile_source_start" || -z "$menu_footer_start" || "$menu_footer_start" -le "$menu_tile_source_start" ]]; then
+  echo "ERROR: MPC Menu tile source boundary is missing"
+  exit 1
+fi
+menu_tile_block=$(sed -n "${menu_tile_source_start},$((menu_footer_start - 1))p" "$MAIN_ACTIVITY_SOURCE")
+for required in 'MpcShortcutIconDrawable(entry.mode, 0.0f)' 'setCompoundDrawablesWithIntrinsicBounds(' 'setCompoundDrawablePadding('; do
+  if ! grep -Fq -- "$required" <<<"$menu_tile_block"; then
+    echo "ERROR: MPC 4x4 Menu tile vector icon contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'glyph + "\n" + title' <<<"$menu_tile_block"; then
+  echo "ERROR: MPC 4x4 Menu must not compose visible tiles from Unicode glyph text"
+  exit 1
+fi
 echo "Running MPC Menu Function Bar ownership preflight..."
 menu_start=$(grep -n -m1 'private void showMenuPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 shortcut_start=$(grep -n -m1 'private void showShortcutConfigPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
