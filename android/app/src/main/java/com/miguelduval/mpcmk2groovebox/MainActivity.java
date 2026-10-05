@@ -9266,14 +9266,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
 
             final View shellRoot = mpcShell == null ? null : mpcShell.root();
+            final View mainWorkspace = mainTrackArrangementHost;
             final boolean decorMeasured =
                     decor.getWidth() > 0 && decor.getHeight() > 0;
             final boolean shellMeasured =
                     shellRoot != null
                             && shellRoot.getWidth() > 0
                             && shellRoot.getHeight() > 0;
+            /*
+             * showMainPage() can rebuild the Main subtree after the shell itself
+             * is already measured. Gate on the newly-created Main workspace so
+             * its Track/Arrangement children have completed their first layout.
+             */
+            final boolean mainWorkspaceMeasured =
+                    mainWorkspace != null
+                            && mainWorkspace.getWidth() > 0
+                            && mainWorkspace.getHeight() > 0;
 
-            if (decorMeasured && shellMeasured) {
+            if (decorMeasured && shellMeasured && mainWorkspaceMeasured) {
                 /*
                  * One additional animation turn keeps the audit behind the
                  * layout pass that produced these dimensions. This matters on
@@ -9287,7 +9297,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (++attempts[0] >= 60) {
                 Log.e(TAG, "UI_HIERARCHY_FAILED: measured MPC shell timeout"
                         + " | decor=" + describeAuditView(decor)
-                        + " | shell=" + describeAuditView(shellRoot));
+                        + " | shell=" + describeAuditView(shellRoot)
+                        + " | mainWorkspace=" + describeAuditView(mainWorkspace));
                 return;
             }
 
