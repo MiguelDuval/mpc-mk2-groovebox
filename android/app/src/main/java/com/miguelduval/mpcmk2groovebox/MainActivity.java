@@ -5003,6 +5003,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         scroll.setContentDescription("Main Track Select 4x4 grid");
         LinearLayout grid = column();
         grid.setPadding(0, dp(2), 0, dp(2));
+        grid.setContentDescription("Main Track Select list");
 
         if (count == 0) {
             grid.addView(label("NO TRACKS", 12, MUTED));
