@@ -611,3 +611,12 @@ The gate now:
 
 Lower layers touched: none.
 Physical MPC Studio MkII verification: pending.
+
+
+## 2026-10-05 UI-audit hierarchy correction
+
+The runtime audit was aligned with the canonical MPC Main composition after Run #2323 exposed a stale test assumption. Main no longer exposes the legacy 4×4 pad grid or an always-visible Main shortcut, so the audit now validates the persistent Toolbar, exactly five factory shortcut destinations, Sequence/Track workspace, compact context rail, Mixer Strip control and Main Function Bar directly.
+
+Navigation checks now use the real shell hierarchy: Browser returns to Main through its Function Bar, and secondary modes are entered from the Toolbar Menu. The audit verifies controller-first Pad state through semantic selection/focus rather than fabricating an on-screen pad grid.
+
+No product UI compatibility elements were reintroduced and no protected audio/MIDI/sequencer layers were changed.
