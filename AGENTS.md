@@ -35,6 +35,7 @@ Use these documents together:
 - `docs/MPC3-REFERENCE-INDEX.md` — searchable MPC 3.9 research/source index.
 - `docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md` — protected lower-layer and UI migration safety rules.
 - `docs/PHYSICAL-TEST-CHECKLIST.md` — hardware acceptance tests.
+- `docs/INTERNAL-DSP-LIBRARY-RESEARCH.md` — internal synth/FX engine and commercial-license triage.
 - `THIRD_PARTY_NOTICES.md` — dependency/license record.
 
 When these documents conflict with the current code, investigate and update the documentation rather than silently ignoring the discrepancy.
