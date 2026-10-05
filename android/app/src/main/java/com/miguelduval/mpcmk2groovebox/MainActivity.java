@@ -4794,8 +4794,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingWaveform.setEditable(false);
         recordingWaveform.setRecording(false);
         recordingWaveform.setMinimumHeight(dp(144));
+        // Keep the sampler waveform independently measurable; the surrounding
+        // recording controls can scroll on compact/high-density screens.
         page.addView(recordingWaveform, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(148)));
 
         recordingTelemetry = label("No recorded audio", 11, MUTED);
         recordingTelemetry.setGravity(Gravity.CENTER_VERTICAL);
@@ -4859,7 +4861,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(controls2, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
-        content.addView(page);
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(false);
+        scroll.setContentDescription("MPC Sampler recording workspace");
+        scroll.addView(page, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        content.addView(scroll, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
         refreshRecordingInfo();
         startRecordingWaveformUpdates();
     }
