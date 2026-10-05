@@ -1321,7 +1321,7 @@ done
 
 echo "Running Android runtime startup smoke..."
 echo "Running MPC Main UI audit contract preflight..."
-forbidden in   'shortcut.setContentDescription("MPC shortcut " + mode.label())'; do
+for forbidden in   'shortcut.setContentDescription("MPC shortcut " + mode.label())'; do
   if grep -Fq -- "$forbidden" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: stale factory shortcut accessibility override detected: $forbidden"
     exit 1
