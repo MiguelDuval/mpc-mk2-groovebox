@@ -1321,6 +1321,12 @@ done
 
 echo "Running Android runtime startup smoke..."
 echo "Running MPC Main UI audit contract preflight..."
+forbidden in   'shortcut.setContentDescription("MPC shortcut " + mode.label())'; do
+  if grep -Fq -- "$forbidden" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: stale factory shortcut accessibility override detected: $forbidden"
+    exit 1
+  fi
+done
 for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC shell compact track program context'   'Main Track visual hierarchy • Track / Program / workspace section'   'clickMpcToolbarMenuForAudit()'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: current MPC Main UI audit contract missing: $required"
