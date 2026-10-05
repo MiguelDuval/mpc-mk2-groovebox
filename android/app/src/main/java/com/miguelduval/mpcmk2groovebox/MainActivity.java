@@ -9249,15 +9249,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void runUiAudit() {
         Log.i(TAG, "UI_HIERARCHY_BEGIN");
-        String[] expected = {
-                "GRID", "SAMPLER", "PAD MIXER",
-                "MENU", "PLAY", "STOP", "MIDI", "01", "16", "LOAD"
+        String[] mainShellExpectedDescriptions = {
+                "MPC One Main Toolbar",
+                "MPC Toolbar Menu",
+                "MPC shortcut BROWSER",
+                "MPC shortcut CHANNEL MIXER",
+                "MPC shortcut PAD MIXER",
+                "MPC shortcut SOUNDS",
+                "MPC shortcut XY",
+                "Main Mode Sequence section",
+                "Main Track visual hierarchy • Track / Program / workspace section",
+                "Main Track and Arrangement workspace",
+                "MPC shell compact track program context",
+                "MPC condensed Mixer Strip show or hide",
+                "MPC Main sequence REC ARM"
         };
 
-        for (String text : expected) {
-            View view = findViewWithExactText(getWindow().getDecorView(), text);
+        for (String description : mainShellExpectedDescriptions) {
+            View view = findViewWithContentDescription(
+                    getWindow().getDecorView(), description);
             if (view == null || view.getWidth() <= 0 || view.getHeight() <= 0) {
-                Log.e(TAG, "UI_HIERARCHY_FAILED: " + text);
+                Log.e(TAG, "UI_HIERARCHY_FAILED: " + description);
                 return;
             }
         }
@@ -9293,20 +9305,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View mainShortcut = findViewWithContentDescription(
-                getWindow().getDecorView(), "MPC shortcut MAIN");
-        if (mainShortcut == null || !mainShortcut.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: MAIN shortcut return");
+        View browserBack = findViewWithExactText(
+                getWindow().getDecorView(), "BACK");
+        if (browserBack == null || !browserBack.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: BROWSER back to Main");
             return;
         }
 
-        View pad1 = findViewWithExactText(getWindow().getDecorView(), "01");
-        if (pad1 == null || !pad1.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: pad 01");
-            return;
-        }
-        if (selectedPad != 0) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: selection did not stick");
+        if (selectedPad != 0
+                || navigationController.state().selectedPad() != 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: default controller-first Pad selection");
             return;
         }
 
@@ -9362,27 +9370,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View quickSamplePrimary = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View sample primary action");
         View quickSampleBrowse = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "Main Track View browse samples");
-        if (quickSamplePrimary == null || quickSampleBrowse == null) {
+        View quickSampleRecord = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View record sample");
+        if (quickSampleBrowse == null || quickSampleRecord == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main sample action state");
             return;
         }
 
-        View layerUp = findViewWithContentDescription(
+        View layerFieldAudit = findViewWithContentDescription(
                 getWindow().getDecorView(),
-                "Main Track View next sample layer");
-        View layerDown = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View previous sample layer");
-        if (layerUp == null || layerDown == null
-                || !layerUp.performClick()
-                || !layerDown.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main sample layer controls");
+                "Main Track View selected layer");
+        if (layerFieldAudit == null
+                || !layerFieldAudit.performClick()
+                || navigationController.state().dataDialFocus()
+                        != MpcUiState.DataDialFocus.SAMPLE_LAYER) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main controller-first sample layer focus");
             return;
         }
 
@@ -9458,13 +9464,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         View mainViewSwitcher = findViewWithContentDescription(
-                getWindow().getDecorView(), "Main Track / Arrangement view switcher");
+                getWindow().getDecorView(), "Main Track Arrangement segmented control");
         View mainTrackSelector = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Track View header");
         View mainArrangementSelector = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Arrangement View header");
         View mainTrackWorkspace = findViewWithContentDescription(
-                getWindow().getDecorView(), "Main Mode Track View workspace");
+                getWindow().getDecorView(), "Main Mode Track workspace");
         View mainArrangementWorkspace = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Mode arrangement preview");
         if (mainViewSwitcher == null
@@ -9540,6 +9546,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        if (!clickMpcToolbarMenuForAudit()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU before TRACK VIEW");
+            return;
+        }
         View trackView = findViewWithExactText(
                 getWindow().getDecorView(), "TRACK VIEW");
         if (trackView == null || !trackView.performClick()) {
@@ -9559,6 +9569,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        if (!clickMpcToolbarMenuForAudit()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU before ARRANGE");
+            return;
+        }
         View arrangeFromTrackView = findViewWithExactText(
                 getWindow().getDecorView(), "ARRANGE");
         if (arrangeFromTrackView == null
@@ -9575,9 +9589,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View menuAfterArrange = findViewWithExactText(
-                getWindow().getDecorView(), "MENU");
-        if (menuAfterArrange == null || !menuAfterArrange.performClick()) {
+        if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU after ARRANGE");
             return;
         }
@@ -9703,9 +9715,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         onHardwareAction(
                 MpcStudioMk2SemanticActions.LOCATE_STATE, 0, 0, 0);
 
-        View menuAfterStep = findViewWithExactText(
-                getWindow().getDecorView(), "MENU");
-        if (menuAfterStep == null || !menuAfterStep.performClick()) {
+        if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU after STEP");
             return;
         }
@@ -9724,9 +9734,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View menuAfterLauncher = findViewWithExactText(
-                getWindow().getDecorView(), "MENU");
-        if (menuAfterLauncher == null || !menuAfterLauncher.performClick()) {
+        if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU after launcher");
             return;
         }
@@ -9746,9 +9754,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View menuAfterSample = findViewWithExactText(
-                getWindow().getDecorView(), "MENU");
-        if (menuAfterSample == null || !menuAfterSample.performClick()) {
+        if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU after SAMPLE EDIT");
             return;
         }
@@ -9769,6 +9775,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         Log.i(TAG, "UI_INTERACTION_COMPLETE");
+    }
+
+    private boolean clickMpcToolbarMenuForAudit() {
+        final View menu = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Toolbar Menu");
+        return menu != null && menu.performClick();
     }
 
     private View findViewWithContentDescription(
