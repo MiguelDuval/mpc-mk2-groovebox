@@ -9677,226 +9677,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         View trackViewWorkspace = findViewWithContentDescription(
-                getWindow().getDecorView(), "MPC Track View workspace");        if (trackViewWorkspace == null
-                || trackViewWorkspace.getHeight() <= dp(180)) {
+                getWindow().getDecorView(), "MPC Track View workspace");
+        if (trackViewWorkspace == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View workspace");
             return;
         }
 
-        if (findViewWithContentDescription(
-                getWindow().getDecorView(), "Track View track 1") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Track View track strips");
-            return;
-        }
-
-        if (!clickMpcToolbarMenuForAudit()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: MENU before ARRANGE");
-            return;
-        }
-        View arrangeFromTrackView = findViewWithExactText(
-                getWindow().getDecorView(), "ARRANGE");
-        if (arrangeFromTrackView == null
-                || !arrangeFromTrackView.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: ARRANGE from Track View");
-            return;
-        }
-
-        View arrangementSurface = findViewWithContentDescription(
-                getWindow().getDecorView(), "MPC linear arrangement editor");
-        if (arrangementSurface == null
-                || arrangementSurface.getHeight() <= dp(160)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement surface");
-            return;
-        }
-
-        if (!clickMpcToolbarMenuForAudit()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after ARRANGE");
-            return;
-        }
-
-        View grid = findViewWithExactText(getWindow().getDecorView(), "GRID");
-        if (grid == null || !grid.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: GRID editor");
-            return;
-        }
-
-        View gridView = findViewWithContentDescription(
-                getWindow().getDecorView(), "MPC Grid View drum event grid");
-        if (gridView == null || gridView.getHeight() <= dp(120)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: sequence grid editor");
-            return;
-        }
-        if (!drumGridAvailable()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: audit track is not Drum");
-            return;
-        }
-        if (findViewWithContentDescription(
-                getWindow().getDecorView(), "Grid Draw tool") == null
-                || findViewWithContentDescription(
-                        getWindow().getDecorView(), "Grid Erase tool") == null
-                || findViewWithContentDescription(
-                        getWindow().getDecorView(), "Grid Select tool") == null
-                || findViewWithContentDescription(
-                        getWindow().getDecorView(), "Grid Navigation tool") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Grid tool palette");
-            return;
-        }
-
-        View step = findViewWithExactText(
-                getWindow().getDecorView(), "STEP");
-        if (step == null || !step.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: STEP editor");
-            return;
-        }
-
-        if (!"DRUM".equalsIgnoreCase(
-                nativeSequenceGetTrackType(nativeSequenceGetSelectedTrack()))) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Step audit track is not Drum");
-            return;
-        }
-        View stepCell = findViewWithContentDescription(
-                getWindow().getDecorView(), "Pad 1 step 1 off");
-        if (stepCell == null || stepCell.getWidth() <= 0
-                || stepCell.getHeight() <= dp(40)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: step editor cells");
-            return;
-        }
-
-        if (!stepCell.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: step toggle");
-            return;
-        }
-        if (findViewWithContentDescription(
-                getWindow().getDecorView(), "Pad 1 step 1 on") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: step did not turn on");
-            return;
-        }
-
-        onHardwareAction(
-                MpcStudioMk2SemanticActions.STEP_EDIT_PAD_SELECTED,
-                0, 0, 0);
-        if (selectedSequenceStep != 0) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: hardware step selection");
-            return;
-        }
-
-        final String eventBeforeHardwareEdit =
-                sequenceStepEventInfo.getText().toString();
-        onHardwareAction(
-                MpcStudioMk2SemanticActions.DATA_DIAL_PRESS,
-                0, 0, 0);
-        onHardwareAction(
-                MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
-                1, 0, 0);
-        final String eventAfterHardwareEdit =
-                sequenceStepEventInfo.getText().toString();
-        if (eventBeforeHardwareEdit.equals(eventAfterHardwareEdit)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: hardware Step Edit adjustment");
-            return;
-        }
-
-        View paramButton = findViewWithExactText(
-                getWindow().getDecorView(), "PARAM");
-        View plusButton = findViewWithExactText(
-                getWindow().getDecorView(), "+");
-        if (paramButton == null || plusButton == null
-                || !paramButton.performClick()
-                || !plusButton.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: step shell controls");
-            return;
-        }
-        View stepEventView = findViewWithContentDescription(
-                getWindow().getDecorView(), "Step Edit event information");
-        if (stepEventView == null
-                || !(stepEventView instanceof TextView)
-                || !((TextView) stepEventView).getText().toString()
-                        .contains("STEP 01")) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: step event parameters");
-            return;
-        }
-
-        onHardwareAction(
-                MpcStudioMk2SemanticActions.LOCATE_STATE, 1, 0, 0);
-        onHardwareAction(
-                MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA, -1, 1, 0);
-        onHardwareAction(
-                MpcStudioMk2SemanticActions.LOCATE_PAD, 0, 1, 0);
-        final long locator = nativeSequenceGetLocator(0);
-        if (locator < 0) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: locator set");
-            return;
-        }
-        onHardwareAction(
-                MpcStudioMk2SemanticActions.LOCATE_PAD, 0, 0, 0);
-        if (nativeSequencePositionTicks() != locator) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: locator jump");
-            return;
-        }
-        onHardwareAction(
-                MpcStudioMk2SemanticActions.LOCATE_STATE, 0, 0, 0);
-
-        if (!clickMpcToolbarMenuForAudit()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after STEP");
-            return;
-        }
-
-        View launch = findViewWithExactText(
-                getWindow().getDecorView(), "NEXT SEQUENCE");
-        if (launch == null || !launch.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: NEXT SEQUENCE");
-            return;
-        }
-
-        View launcher = findViewWithContentDescription(
-                getWindow().getDecorView(), "Sequence live launcher");
-        if (launcher == null || launcher.getHeight() <= dp(120)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: sequence launcher");
-            return;
-        }
-
-        if (!clickMpcToolbarMenuForAudit()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after launcher");
-            return;
-        }
-
-        View sample = findViewWithExactText(
-                getWindow().getDecorView(), "SAMPLE EDIT");
-        if (sample == null || !sample.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLE EDIT");
-            return;
-        }
-
-        if (findViewWithExactText(getWindow().getDecorView(), "ENV") == null
-                || findViewWithExactText(getWindow().getDecorView(), "FILTER") == null
-                || findViewWithContentDescription(
-                        getWindow().getDecorView(), "Sample waveform editor") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: sample waveform editor");
-            return;
-        }
-
-        if (!clickMpcToolbarMenuForAudit()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after SAMPLE EDIT");
-            return;
-        }
-
-        View rec = findViewWithExactText(
-                getWindow().getDecorView(), "SAMPLER");
-        if (rec == null || !rec.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLER mode");
-            return;
-        }
-
-        View recordingWaveformView = findViewWithContentDescription(
-                getWindow().getDecorView(), "Recording waveform monitor");
-        if (recordingWaveformView == null
-                || recordingWaveformView.getHeight() < dp(144)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: recording waveform height");
-            return;
-        }
-
-        Log.i(TAG, "UI_INTERACTION_COMPLETE");
-    }
-
+        /*
+         * Page transitions rebuild weighted Android children synchronously, but
+         * measurement happens on the following traversal. Wait for the actual
+         * workspace before reading geometry or driving the next navigation.
+         */
+        waitForMeasuredAuditView(
+                trackViewWorkspace,
+                dp(180),
+                "Track View workspace",
+                this::runUiAuditAfterTrackView);
     private String describeAuditView(View view) {
         if (view == null) return "null";
         return "w=" + view.getWidth()
@@ -10104,7 +9900,329 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MpcStudioMk2SemanticActions.TUNE_CONTEXT:
             case MpcStudioMk2SemanticActions.QUANTIZE:
             case MpcStudioMk2SemanticActions.TIMING_CORRECT_STATE:
-            case MpcStudioMk2SemanticActions.ZOOM_CONTEXT:
+           private void waitForMeasuredAuditView(
+            View view,
+            int minimumHeight,
+            String label,
+            Runnable continuation) {
+        final View decor = getWindow().getDecorView();
+        final Handler handler = new Handler(Looper.getMainLooper());
+        final int[] attempts = {0};
+        final Runnable[] wait = new Runnable[1];
+        wait[0] = () -> {
+            if (destroyed) {
+                return;
+            }
+            if (view != null
+                    && view.getWidth() > 0
+                    && view.getHeight() > minimumHeight) {
+                continuation.run();
+                return;
+            }
+            if (++attempts[0] >= 60) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: " + label
+                        + " measured timeout"
+                        + " | view=" + describeAuditView(view));
+                return;
+            }
+            decor.postOnAnimation(() -> handler.postDelayed(wait[0], 16L));
+        };
+        wait[0].run();
+    }
+
+    private void runUiAuditAfterTrackView() {
+        if (destroyed) return;
+
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "Track View track 1") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track View track strips");
+            return;
+        }
+
+        if (!clickMpcToolbarMenuForAudit()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU before ARRANGE");
+            return;
+        }
+        View arrangeFromTrackView = findViewWithExactText(
+                getWindow().getDecorView(), "ARRANGE");
+        if (arrangeFromTrackView == null
+                || !arrangeFromTrackView.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: ARRANGE from Track View");
+            return;
+        }
+
+        final View arrangementSurface = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC linear arrangement editor");
+        if (arrangementSurface == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement surface");
+            return;
+        }
+        waitForMeasuredAuditView(
+                arrangementSurface,
+                dp(160),
+                "Arrangement surface",
+                this::runUiAuditAfterArrangement);
+    }
+
+    private void runUiAuditAfterArrangement() {
+        if (destroyed) return;
+
+        if (!clickMpcToolbarMenuForAudit()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after ARRANGE");
+            return;
+        }
+
+        View grid = findViewWithExactText(getWindow().getDecorView(), "GRID");
+        if (grid == null || !grid.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: GRID editor");
+            return;
+        }
+
+        final View gridView = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Grid View drum event grid");
+        if (gridView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: sequence grid editor");
+            return;
+        }
+        waitForMeasuredAuditView(
+                gridView,
+                dp(120),
+                "sequence grid editor",
+                this::runUiAuditAfterGrid);
+    }
+
+    private void runUiAuditAfterGrid() {
+        if (destroyed) return;
+
+        if (!drumGridAvailable()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: audit track is not Drum");
+            return;
+        }
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "Grid Draw tool") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Grid Erase tool") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Grid Select tool") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Grid Navigation tool") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Grid tool palette");
+            return;
+        }
+
+        View step = findViewWithExactText(
+                getWindow().getDecorView(), "STEP");
+        if (step == null || !step.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: STEP editor");
+            return;
+        }
+
+        if (!"DRUM".equalsIgnoreCase(
+                nativeSequenceGetTrackType(nativeSequenceGetSelectedTrack()))) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step audit track is not Drum");
+            return;
+        }
+        final View stepCell = findViewWithContentDescription(
+                getWindow().getDecorView(), "Pad 1 step 1 off");
+        if (stepCell == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step editor cells");
+            return;
+        }
+        waitForMeasuredAuditView(
+                stepCell,
+                dp(40),
+                "step editor cells",
+                this::runUiAuditAfterStep);
+    }
+
+    private void runUiAuditAfterStep() {
+        if (destroyed) return;
+
+        View stepCell = findViewWithContentDescription(
+                getWindow().getDecorView(), "Pad 1 step 1 off");
+        if (stepCell == null
+                || stepCell.getWidth() <= 0
+                || stepCell.getHeight() <= dp(40)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step editor cells");
+            return;
+        }
+
+        if (!stepCell.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step toggle");
+            return;
+        }
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "Pad 1 step 1 on") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step did not turn on");
+            return;
+        }
+
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.STEP_EDIT_PAD_SELECTED,
+                0, 0, 0);
+        if (selectedSequenceStep != 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: hardware step selection");
+            return;
+        }
+
+        final String eventBeforeHardwareEdit =
+                sequenceStepEventInfo.getText().toString();
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.DATA_DIAL_PRESS,
+                0, 0, 0);
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
+                1, 0, 0);
+        final String eventAfterHardwareEdit =
+                sequenceStepEventInfo.getText().toString();
+        if (eventBeforeHardwareEdit.equals(eventAfterHardwareEdit)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: hardware Step Edit adjustment");
+            return;
+        }
+
+        View paramButton = findViewWithExactText(
+                getWindow().getDecorView(), "PARAM");
+        View plusButton = findViewWithExactText(
+                getWindow().getDecorView(), "+");
+        if (paramButton == null || plusButton == null
+                || !paramButton.performClick()
+                || !plusButton.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step shell controls");
+            return;
+        }
+        View stepEventView = findViewWithContentDescription(
+                getWindow().getDecorView(), "Step Edit event information");
+        if (stepEventView == null
+                || !(stepEventView instanceof TextView)
+                || !((TextView) stepEventView).getText().toString()
+                        .contains("STEP 01")) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step event parameters");
+            return;
+        }
+
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.LOCATE_STATE, 1, 0, 0);
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA, -1, 1, 0);
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.LOCATE_PAD, 0, 1, 0);
+        final long locator = nativeSequenceGetLocator(0);
+        if (locator < 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: locator set");
+            return;
+        }
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.LOCATE_PAD, 0, 0, 0);
+        if (nativeSequencePositionTicks() != locator) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: locator jump");
+            return;
+        }
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.LOCATE_STATE, 0, 0, 0);
+
+        if (!clickMpcToolbarMenuForAudit()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after STEP");
+            return;
+        }
+
+        View launch = findViewWithExactText(
+                getWindow().getDecorView(), "NEXT SEQUENCE");
+        if (launch == null || !launch.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: NEXT SEQUENCE");
+            return;
+        }
+
+        final View launcher = findViewWithContentDescription(
+                getWindow().getDecorView(), "Sequence live launcher");
+        if (launcher == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: sequence launcher");
+            return;
+        }
+        waitForMeasuredAuditView(
+                launcher,
+                dp(120),
+                "sequence launcher",
+                this::runUiAuditAfterLauncher);
+    }
+
+    private void runUiAuditAfterLauncher() {
+        if (destroyed) return;
+
+        if (!clickMpcToolbarMenuForAudit()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after launcher");
+            return;
+        }
+
+        View sample = findViewWithExactText(
+                getWindow().getDecorView(), "SAMPLE EDIT");
+        if (sample == null || !sample.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLE EDIT");
+            return;
+        }
+
+        final View waveform = findViewWithContentDescription(
+                getWindow().getDecorView(), "Sample waveform editor");
+        if (waveform == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: sample waveform editor");
+            return;
+        }
+        waitForMeasuredAuditView(
+                waveform,
+                dp(0),
+                "sample waveform editor",
+                this::runUiAuditAfterSampleEdit);
+    }
+
+    private void runUiAuditAfterSampleEdit() {
+        if (destroyed) return;
+
+        if (findViewWithExactText(getWindow().getDecorView(), "ENV") == null
+                || findViewWithExactText(getWindow().getDecorView(), "FILTER") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Sample waveform editor") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: sample waveform editor");
+            return;
+        }
+
+        if (!clickMpcToolbarMenuForAudit()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after SAMPLE EDIT");
+            return;
+        }
+
+        View rec = findViewWithExactText(
+                getWindow().getDecorView(), "SAMPLER");
+        if (rec == null || !rec.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: SAMPLER mode");
+            return;
+        }
+
+        final View recordingWaveformView = findViewWithContentDescription(
+                getWindow().getDecorView(), "Recording waveform monitor");
+        if (recordingWaveformView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: recording waveform height");
+            return;
+        }
+        waitForMeasuredAuditView(
+                recordingWaveformView,
+                dp(144),
+                "recording waveform height",
+                this::finishUiAudit);
+    }
+
+    private void finishUiAudit() {
+        if (destroyed) return;
+
+        final View recordingWaveformView = findViewWithContentDescription(
+                getWindow().getDecorView(), "Recording waveform monitor");
+        if (recordingWaveformView == null
+                || recordingWaveformView.getHeight() < dp(144)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: recording waveform height");
+            return;
+        }
+        Log.i(TAG, "UI_INTERACTION_COMPLETE");
+    }
+
+     case MpcStudioMk2SemanticActions.ZOOM_CONTEXT:
             case MpcStudioMk2SemanticActions.COPY_CONTEXT:
             case MpcStudioMk2SemanticActions.UNDO:
             case MpcStudioMk2SemanticActions.AUTOMATION_CONTEXT:
