@@ -67,7 +67,11 @@ final class MpcMainMixerStripView extends LinearLayout {
          * Channel Strip region. Do not consume strip height with a textual
          * "MIXER" title; the surrounding shell already establishes the mixer context.
          */
-        visibilityButton = button(context, "◉", 10);
+        visibilityButton = button(context, "", 10);
+        visibilityButton.setText("");
+        visibilityButton.setForeground(new MpcMixerStripIconDrawable(
+                MpcMixerStripIconDrawable.Mode.PERSONAL_CHANNEL_STRIP, true));
+        visibilityButton.setBackgroundColor(Color.TRANSPARENT);
         visibilityButton.setContentDescription("MPC Main mixer strips show or hide");
         visibilityButton.setOnClickListener(v -> {
             if (listener != null) {
@@ -105,6 +109,8 @@ final class MpcMainMixerStripView extends LinearLayout {
 
         visibilityButton.setContentDescription(
                 "MPC Main mixer strips " + (visible ? "shown" : "hidden"));
+        visibilityButton.setForeground(new MpcMixerStripIconDrawable(
+                MpcMixerStripIconDrawable.Mode.PERSONAL_CHANNEL_STRIP, visible));
         visibilityButton.setAlpha(visible ? 1.0f : 0.65f);
         if (!visible) {
             return;
