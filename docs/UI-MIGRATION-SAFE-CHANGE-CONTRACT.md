@@ -441,3 +441,20 @@ Actions:
 
 Physical verification:
 - Pending on MPC Studio MkII.
+
+
+## 2026-10-05 Runtime smoke gate synchronization
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The Android UI smoke acceptance gate must synchronize with the app-owned audit before asking Android `uiautomator` for the accessibility hierarchy. `runUiAudit()` performs many synchronous UI context rebuilds on the main thread; a fixed sleep is not valid evidence of UI idleness.
+
+Required runtime sequence:
+
+1. launch MainActivity in `ui-audit` mode;
+2. wait for `UI_INTERACTION_COMPLETE` while failing on explicit application-side UI/startup errors;
+3. request `uiautomator dump` only after the application-side audit has completed;
+4. enforce a bounded dump timeout and fail on timeout/error;
+5. keep the existing non-empty XML + MPC-content assertions.
+
+This is a test-harness synchronization correction only. It does not weaken the runtime gate and does not change audio, MIDI, sequencer, sampler, decoder or SysEx layers.
