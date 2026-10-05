@@ -1007,7 +1007,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         final boolean padMode = compactMixerPadModeForDisplay();
-        compactMixerStripModeToggle.setText(padMode ? "□  ▦" : "■  ▦");
+        compactMixerStripModeToggle.setText("");
+        compactMixerStripModeToggle.setForeground(new MpcMixerStripIconDrawable(
+                MpcMixerStripIconDrawable.Mode.TRACK_PAD_SELECTOR, padMode));
         compactMixerStripModeToggle.setContentDescription(
                 padMode
                         ? "MPC condensed Mixer Strip showing Pad"
@@ -2860,7 +2862,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          * another Track-state field. Keep one shared selector over both
          * sibling views so the intent has one stable physical/touch location.
          */
-        compactMixerStripModeToggle = mainActionButton("□  ▦", v -> {
+        compactMixerStripModeToggle = mainActionButton("", v -> {
             final MpcUiState state = navigationController.state();
             if (!compactMixerStripModeAvailable()) {
                 setBottomStatus("TRACK/PAD CONTEXT • DRUM TRACK REQUIRED");
@@ -2870,7 +2872,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     state.compactMixerVisible(),
                     !state.compactMixerPadMode());
         });
+        compactMixerStripModeToggle.setText("");
         compactMixerStripModeToggle.setTextSize(11);
+        compactMixerStripModeToggle.setForeground(new MpcMixerStripIconDrawable(
+                MpcMixerStripIconDrawable.Mode.TRACK_PAD_SELECTOR, false));
         compactMixerStripModeToggle.setContentDescription(
                 "MPC condensed Mixer Strip Track or Pad selector");
         compactMixerStripModeToggle.setGravity(Gravity.CENTER);
