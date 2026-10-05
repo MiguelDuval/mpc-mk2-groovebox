@@ -403,7 +403,8 @@ for required in   'MpcMainIconDrawable'   'Mode.PENCIL'   'Mode.LOOP'   'Mode.PL
     exit 1
   fi
 done
-if ! grep -Fq -- 'Mode.LOOP' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java"; then
+if ! grep -Fq -- 'case LOOP:' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java" || \
+   ! grep -Fq -- 'drawLoop(' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java"; then
   echo "ERROR: Main Loop icon is missing"
   exit 1
 fi
