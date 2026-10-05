@@ -399,3 +399,13 @@ Remaining gaps:
 - Q-Link page preserves documented field vocabulary but marks unsupported operations RESERVED.
 - Lower layers touched: none.
 - Required acceptance: source/unit gates + GitHub Actions Android emulator smoke + physical MkII verification.
+
+
+### 2026-10-05 MPC Pull-Down + Menu acceptance checkpoint
+
+- Android Build #2299 (`83790e38d20d74687102bcd2f60e4d8b796ed912`) completed successfully.
+- Full source/unit preflight, Debug APK assembly, emulator startup and `runUiAudit()` passed.
+- Pull-Down now exposes the two-page Control/Q-Link shell; Q-Link operations remain explicitly RESERVED until backend semantics exist.
+- Main 4×4 Menu tiles now use the deterministic MPC shortcut vector vocabulary instead of visible Unicode glyphs.
+- KVM-enabled emulator smoke is now stable enough to exercise the real application runtime instead of failing during AVD boot.
+- Physical MPC Studio MkII verification is still pending; this acceptance does not claim hardware validation.
