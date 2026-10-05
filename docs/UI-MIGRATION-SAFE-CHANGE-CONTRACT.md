@@ -375,3 +375,17 @@ Physical verification:
 Remaining gaps:
 - Complete Android emulator smoke without System UI ANR interference.
 - Perform physical MkII workflow verification.
+
+
+## Migration checkpoint — 2026-10-05 MPC 3.x factory Shortcut Rail order
+
+- Date: 2026-10-05
+- Branch: `feature/mpc-one-ui-fidelity`
+- Previous context: truthful-only implemented default shortcuts (Browser / Track View / Grid / Step / Pad Mixer).
+- New context: canonical MPC 3.x factory Shortcut Rail order (Browser / Channel Mixer / Pad Mixer / Sounds / XY).
+- Source: MPC Standalone OS v3.5 User Guide, which documents five default Main shortcuts as Browser, Channel Mixer, Pad Mixer, Sounds, and XY. The current application keeps Channel Mixer / Sounds / XY behavior reserved until their backends exist, while preserving the hardware-facing visual order.
+- Files changed: `MpcModeRegistry.java`, `MpcNavigationControllerTest.java`.
+- Lower-layer files: none.
+- Tests: focused navigation defaults test updated; full Android Actions gate required before acceptance.
+- Physical verification: pending on MPC Studio MkII.
+- Remaining gap: implement the three reserved destination backends rather than changing the factory Shortcut Rail order.
