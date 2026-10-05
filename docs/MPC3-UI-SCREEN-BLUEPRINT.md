@@ -1201,3 +1201,9 @@ Interaction contract:
 - the close affordance and outside scrim also dismiss it;
 - page 2 exposes the documented Q-Link vocabulary while unavailable editing operations remain clearly RESERVED;
 - underlying Main selection and transport state remain unchanged.
+
+### 2026-10-05 Pull-Down chrome iconography fidelity
+
+The Pull-Down Menu's close and page-navigation affordances use the same deterministic original vector icon system as the rest of the MPC-facing shell. Visible Unicode glyphs are not used for close/previous/next controls, avoiding Android font substitution and keeping small controller-oriented touch targets visually stable.
+
+The Pull-Down remains a shell overlay: iconography changes presentation only and does not add navigation, audio, MIDI or Q-Link semantics.
