@@ -813,7 +813,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final MpcUiState.Mode mode = modes[i];
             Button shortcut = mpcShortcutButton(
                     mpcShortcutLabel(mode), mode);
-            shortcut.setContentDescription("MPC shortcut " + mode.label());
+            shortcut.setContentDescription(
+                    "MPC shortcut " + mpcShortcutAccessibleLabel(mode));
             shortcut.setTextSize(18);
             shortcut.setTypeface(Typeface.DEFAULT_BOLD);
             shortcutButtons[i] = shortcut;
@@ -2354,12 +2355,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Color.TRANSPARENT,
                 MPC_FLAT_RADIUS_DP));
         b.setTag(mode);
-        final String accessibilityLabel = mode == null
-                ? "unknown"
-                : mode == MpcUiState.Mode.XYFX
-                        ? "XY"
-                        : mode.label();
-        b.setContentDescription("MPC shortcut " + accessibilityLabel);
+        b.setContentDescription(
+                "MPC shortcut " + mpcShortcutAccessibleLabel(mode));
         b.setOnClickListener(v -> navigateToMode(mode));
         return b;
     }
@@ -2382,6 +2379,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     new LinearLayout.LayoutParams(0, dp(22), 1));
         }
         return tabs;
+    }
+
+    private String mpcShortcutAccessibleLabel(MpcUiState.Mode mode) {
+        if (mode == null) return "unknown";
+        return mode == MpcUiState.Mode.XYFX ? "XY" : mode.label();
     }
 
     private String mpcShortcutLabel(MpcUiState.Mode mode) {
