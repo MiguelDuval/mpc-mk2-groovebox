@@ -4,7 +4,7 @@ set -euo pipefail
 APK="android/app/build/outputs/apk/debug/app-debug.apk"
 PACKAGE="com.miguelduval.mpcmk2groovebox.debug"
 ACTIVITY="$PACKAGE/com.miguelduval.mpcmk2groovebox.MainActivity"
-DEVICE_DUMP="/sdcard/mpc-groovebox-ui.xml"
+DEVICE_DUMP="/data/local/tmp/mpc-groovebox-ui.xml"
 DUMP="/tmp/mpc-groovebox-ui.xml"
 SMOKE_MODE_EXTRA="mpc.groovebox.smoke.mode"
 MAIN_ACTIVITY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java"
@@ -1413,8 +1413,8 @@ if ! timeout 30s adb shell uiautomator dump "$DEVICE_DUMP" >/tmp/mpc-groovebox-u
   echo "ERROR: post-audit uiautomator dump failed"
   exit 1
 fi
-if ! adb pull "$DEVICE_DUMP" "$DUMP" >/dev/null 2>&1; then
-  echo "ERROR: post-audit UI dump pull failed"
+if ! adb exec-out cat "$DEVICE_DUMP" >"$DUMP"; then
+  echo "ERROR: post-audit UI dump read failed"
   cat /tmp/mpc-groovebox-uiautomator.txt || true
   exit 1
 fi
