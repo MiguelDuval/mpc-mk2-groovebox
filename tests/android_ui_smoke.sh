@@ -976,7 +976,7 @@ if grep -Fq -- 'modeLabel' "android/app/src/main/java/com/miguelduval/mpcmk2groo
   echo "ERROR: XL Mixer Strip must not reserve a textual MIXER header"
   exit 1
 fi
-for required in 'visibilityButton = button(context, "◉", 10);' 'MPC Main mixer strips show or hide' 'header.addView(' 'dp(context, 26), dp(context, 20)'; do
+for required in 'visibilityButton = button(context, "", 10);' 'MpcMixerStripIconDrawable.Mode.PERSONAL_CHANNEL_STRIP' 'MPC Main mixer strips show or hide' 'header.addView(' 'dp(context, 26), dp(context, 20)'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
     echo "ERROR: XL Mixer Strip compact top visibility control contract missing: $required"
     exit 1
