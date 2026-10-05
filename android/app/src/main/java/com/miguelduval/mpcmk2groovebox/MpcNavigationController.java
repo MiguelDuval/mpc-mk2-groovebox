@@ -79,6 +79,12 @@ final class MpcNavigationController {
         notifyListener();
     }
 
+    void resetDefaultShortcuts() {
+        final MpcUiState.Mode[] defaults = MpcModeRegistry.defaultShortcuts();
+        System.arraycopy(defaults, 0, shortcuts, 0, SHORTCUT_COUNT);
+        notifyListener();
+    }
+
     void setShortcuts(MpcUiState.Mode... modes) {
         if (modes == null || modes.length != SHORTCUT_COUNT) {
             throw new IllegalArgumentException("Exactly five shortcuts are required");
