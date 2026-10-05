@@ -568,3 +568,13 @@ The canonical Main Track/Arrangement workspace no longer embeds the Android 4x4 
 - **PRESERVED —** five-shortcut navigation, deterministic icon rendering and controller semantics are unchanged.
 - **RATIONALE —** the MPC Main shortcut rail communicates selection with a compact edge accent, keeping the rail visually subordinate to the central workspace.
 
+
+
+### 2026-10-05 MPC Pull-Down Menu fidelity checkpoint
+
+- **IMPLEMENTED —** added a persistent shell-owned Pull-Down surface with two visual pages: MPC Control and Q-Link.
+- **IMPLEMENTED —** Main transport/position area accepts a downward swipe to open the panel; tapping outside or the panel close button dismisses it; upward swipe closes from the panel.
+- **IMPLEMENTED —** current Sequence/BPM and MIDI/Audio readiness are projected into the Control page from existing UI/native state.
+- **TRUTHFUL RESERVED —** Q-Link Learn / Momentary / Go To Min / Go To Previous remain explicitly unavailable until semantic Q-Link backend contracts exist.
+- **PRESERVED —** transport, audio engine, sequencer, raw MkII decoder and hardware SysEx layers are untouched.
+- **Verification target —** Android source/unit tests, emulator smoke, visual evidence, then physical MPC Studio MkII interaction review.
