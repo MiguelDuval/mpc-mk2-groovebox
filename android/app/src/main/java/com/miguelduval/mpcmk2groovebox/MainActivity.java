@@ -186,6 +186,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Button automationTopButton;
     private TextView midiInTopStatus;
     private TextView midiOutTopStatus;
+    private MpcPullDownPanelView pullDownPanel;
+    private View pullDownScrim;
     private final Button[] shortcutButtons =
             new Button[MpcNavigationController.SHORTCUT_COUNT];
     private TextView pageTitle;
@@ -681,11 +683,125 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Gravity.BOTTOM);
         root.addView(bottomStatus, statusLp);
 
+        buildPullDownOverlay(root);
+        installPullDownGesture();
+
         refreshMpcFunctionBar();
         showMainPage();
         syncHardwareControllerFeedback();
         updateModeRailSelection();
         return root;
+    }
+
+    private void buildPullDownOverlay(FrameLayout root) {
+        pullDownScrim = new View(this);
+        pullDownScrim.setBackgroundColor(Color.argb(150, 0, 0, 0));
+        pullDownScrim.setContentDescription("MPC Pull-Down Menu dismiss");
+        pullDownScrim.setVisibility(View.GONE);
+        pullDownScrim.setOnClickListener(v -> hidePullDown());
+        root.addView(pullDownScrim, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+
+        pullDownPanel = new MpcPullDownPanelView(this);
+        pullDownPanel.setListener(new MpcPullDownPanelView.Listener() {
+            @Override
+            public void onClose() {
+                hidePullDown();
+            }
+
+            @Override
+            public void onReservedAction(String label) {
+                setBottomStatus(label);
+            }
+        });
+        pullDownPanel.setVisibility(View.GONE);
+        root.addView(pullDownPanel, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(236),
+                Gravity.TOP));
+    }
+
+    private void refreshPullDownContext() {
+        if (pullDownPanel == null) {
+            return;
+        }
+        final int sequence = navigationController == null
+                ? 1
+                : navigationController.state().selectedSequence() + 1;
+        final double tempo = startupComplete
+                ? nativeSequenceGetTempo()
+                : 120.0;
+        final boolean midiReady = midiBridge != null;
+        final boolean audioReady = startupComplete && NATIVE_LIBRARY_LOADED;
+        pullDownPanel.setContext(
+                "UNTITLED",
+                sequence,
+                tempo,
+                midiReady,
+                audioReady);
+    }
+
+    private void showPullDown() {
+        if (pullDownPanel == null || pullDownScrim == null) {
+            return;
+        }
+        refreshPullDownContext();
+        pullDownPanel.setPage(0);
+        pullDownScrim.setVisibility(View.VISIBLE);
+        pullDownPanel.setVisibility(View.VISIBLE);
+        pullDownScrim.bringToFront();
+        pullDownPanel.bringToFront();
+    }
+
+    private void hidePullDown() {
+        if (pullDownPanel == null || pullDownScrim == null) {
+            return;
+        }
+        pullDownPanel.setVisibility(View.GONE);
+        pullDownScrim.setVisibility(View.GONE);
+    }
+
+    private void installPullDownGesture() {
+        if (sequenceTransportView == null) {
+            return;
+        }
+        sequenceTransportView.setContentDescription(
+                "Sequence position and tempo • swipe down for MPC Pull-Down Menu");
+        final GestureDetector detector = new GestureDetector(
+                this,
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onDown(MotionEvent event) {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onFling(
+                            MotionEvent e1,
+                            MotionEvent e2,
+                            float velocityX,
+                            float velocityY) {
+                        if (e1 == null || e2 == null) {
+                            return false;
+                        }
+                        final float deltaY = e2.getY() - e1.getY();
+                        if (deltaY > dp(48)
+                                && velocityY > dp(100)) {
+                            showPullDown();
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+        sequenceTransportView.setOnTouchListener((v, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                detector.onTouchEvent(event);
+                return false;
+            }
+            detector.onTouchEvent(event);
+            return false;
+        });
     }
 
     private void buildShortcutRail(LinearLayout rail) {
