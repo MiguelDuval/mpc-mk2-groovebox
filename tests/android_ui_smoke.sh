@@ -1412,7 +1412,7 @@ if ! timeout 30s adb shell uiautomator dump "$DEVICE_DUMP" >/tmp/mpc-groovebox-u
   cat /tmp/mpc-groovebox-uiautomator.txt || true
   echo "ERROR: post-audit uiautomator dump failed"
   exit 1
-}
+fi
 if ! adb pull "$DEVICE_DUMP" "$DUMP" >/dev/null 2>&1; then
   echo "ERROR: post-audit UI dump pull failed"
   cat /tmp/mpc-groovebox-uiautomator.txt || true
