@@ -409,3 +409,35 @@ Remaining gaps:
 - Main 4×4 Menu tiles now use the deterministic MPC shortcut vector vocabulary instead of visible Unicode glyphs.
 - KVM-enabled emulator smoke is now stable enough to exercise the real application runtime instead of failing during AVD boot.
 - Physical MPC Studio MkII verification is still pending; this acceptance does not claim hardware validation.
+
+## 2026-10-05 Pull-Down deterministic iconography checkpoint
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+Old context:
+- Pull-Down close and page navigation used visible Unicode `×/‹/›` glyphs.
+
+New context:
+- Pull-Down close/previous/next use deterministic original vector modes `CLOSE/PREVIOUS/NEXT` from `MpcMainIconDrawable`.
+- The panel remains a presentation-only shell overlay; no Q-Link backend or lower-layer ownership was introduced.
+
+Source reference:
+- Akai Professional, MPC3 FAQ and Output Routing Basics for the surrounding MPC3 Main/XL Channel Strip hierarchy: https://support.akaipro.com/en/support/solutions/articles/69000857771-mpc3-faq and https://support.akaipro.com/en/support/solutions/articles/69000868280-akai-pro-mpc-series-output-routing-basics
+
+Files changed:
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java`
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java`
+- `tests/android_ui_smoke.sh`
+- canonical migration documentation files
+
+Lower-layer files touched:
+- None.
+
+Tests:
+- Added source-level regression gate requiring deterministic Pull-Down icon modes and rejecting visible Unicode close/chevron glyphs.
+
+Actions:
+- Required Android Build + emulator smoke must pass on the new commit before acceptance.
+
+Physical verification:
+- Pending on MPC Studio MkII.
