@@ -7819,10 +7819,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String title = entry.available
                 ? entry.label
                 : entry.label + "\nRESERVED";
-        final String glyph = mpcShortcutLabel(entry.mode);
 
         final Button b = actionButton(
-                glyph + "\n" + title,
+                title,
                 v -> {
                     if (!entry.available) {
                         navigationController.navigate(MpcUiState.Mode.RESERVED);
@@ -7838,6 +7837,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         b.setGravity(Gravity.CENTER);
         b.setTextSize(10);
         b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setCompoundDrawablesWithIntrinsicBounds(
+                null,
+                new MpcShortcutIconDrawable(entry.mode, 0.0f),
+                null,
+                null);
+        b.setCompoundDrawablePadding(dp(5));
         b.setMinHeight(0);
         b.setMinimumHeight(0);
         b.setPadding(dp(4), dp(6), dp(4), dp(4));
