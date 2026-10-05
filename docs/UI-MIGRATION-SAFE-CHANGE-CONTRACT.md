@@ -475,3 +475,8 @@ The audit remains fail-fast and unchanged in semantic scope. No fixed sleep or r
 ## 2026-10-05 Sample surface audit ordering
 
 The Main waveform geometry assertion must execute while the startup Main workspace is fully laid out and before audit-driven Browser navigation causes a synchronous Main rebuild. The assertion remains a real measured height check; only its position in the audit sequence is corrected.
+
+
+## 2026-10-05 Canonical Layer semantic identifier
+
+Main's LAYER field uses the full semantic description `Main Track View selected layer • tap to focus Layer`. Runtime audit lookups must use that exact identifier because the harness intentionally performs exact ContentDescription matching.
