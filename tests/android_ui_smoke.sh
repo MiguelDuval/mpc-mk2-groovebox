@@ -1078,6 +1078,18 @@ for required in \
   fi
 done
 
+echo "Running MPC One mixer iconography regression preflight..."
+for required in   'MpcMixerStripIconDrawable'   'Mode.PERSONAL_CHANNEL_STRIP'   'Mode.TRACK_PAD_SELECTOR'   'visibilityButton.setText("")'   'visibilityButton.setForeground(new MpcMixerStripIconDrawable'   'compactMixerStripModeToggle.setText("")'   'compactMixerStripModeToggle.setForeground(new MpcMixerStripIconDrawable'; do
+  if ! grep -Fq -- "$required" "$SHELL_SOURCE" &&      ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMixerStripIconDrawable.java"; then
+    echo "ERROR: MPC One mixer controls must use deterministic iconography instead of Unicode/Android text glyphs: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'TRACK_PAD_SELECTOR' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMixerStripIconDrawable.java"; then
+  echo "ERROR: Track/Pad selector icon drawable is missing"
+  exit 1
+fi
+
 echo "Running MPC XL channel-strip collapse/focus regression preflight..."
 for required in   'void setChannelStripVisible(boolean visible)'   'contextArea.getLayoutParams()'   'contextParams.width = visible'   ': 0;'   'channelStripRestoreButton'   'channelStripRestoreButton.setVisibility('   'visible ? View.GONE : View.VISIBLE'; do
   if ! grep -Fq -- "$required" "$SHELL_SOURCE"; then
