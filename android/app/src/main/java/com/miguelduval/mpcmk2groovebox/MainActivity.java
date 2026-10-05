@@ -4771,23 +4771,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout page = page();
         // Keep the recording surface compact so the waveform retains its full
         // MPC-style minimum presentation height on high-density displays.
-        page.setPadding(dp(10), dp(4), dp(10), 0);
+        page.setPadding(dp(10), dp(2), dp(10), 0);
 
         LinearLayout sampleHeader = row();
         sampleHeader.addView(sectionLabelView(
                 "SAMPLE WORKSPACE  •  RECORD / MONITOR",
-                new LinearLayout.LayoutParams(0, dp(34), 1)));
+                new LinearLayout.LayoutParams(0, dp(32), 1)));
         sampleHeader.addView(actionButton("EDIT", v -> showSamplePage()),
-                new LinearLayout.LayoutParams(dp(62), dp(34)));
+                new LinearLayout.LayoutParams(dp(62), dp(32)));
         sampleHeader.addView(actionButton("BROWSER", v -> showBrowserPage()),
-                new LinearLayout.LayoutParams(dp(82), dp(34)));
+                new LinearLayout.LayoutParams(dp(82), dp(32)));
         page.addView(sampleHeader);
 
         recordingInfo = label("", 13, TEXT);
         recordingInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
         recordingInfo.setPadding(dp(12), 0, dp(12), 0);
         page.addView(recordingInfo, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
 
         recordingWaveform = new WaveformView(this);
         recordingWaveform.setContentDescription("Recording waveform monitor");
@@ -4800,7 +4800,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingTelemetry = label("No recorded audio", 11, MUTED);
         recordingTelemetry.setGravity(Gravity.CENTER_VERTICAL);
         page.addView(recordingTelemetry, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
 
         LinearLayout controls1 = row();
         Button record = actionButton("RECORD", v -> {
