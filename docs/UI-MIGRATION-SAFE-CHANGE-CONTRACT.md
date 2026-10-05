@@ -480,3 +480,8 @@ The Main waveform geometry assertion must execute while the startup Main workspa
 ## 2026-10-05 Canonical Layer semantic identifier
 
 Main's LAYER field uses the full semantic description `Main Track View selected layer • tap to focus Layer`. Runtime audit lookups must use that exact identifier because the harness intentionally performs exact ContentDescription matching.
+
+
+## 2026-10-05 Main geometry-before-state contract
+
+Geometry assertions for the canonical Main sample/Track/XL-Mixer surfaces run before audit-driven state mutations. This avoids measuring transient Android layout between synchronous controller-state changes while keeping the actual rendered dimensions under test.
