@@ -9325,6 +9325,34 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View mainTrackProgram = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode Track Program section");
+        if (mainTrackProgram == null || mainTrackProgram.getHeight() <= dp(160)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Program composition");
+            return;
+        }
+
+        View xlMixerStrip = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main XL Mixer Strips");
+        View xlMixerToggle = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main mixer strips shown");
+        View selectedTrackMeter = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC XL selected track level meter and fader reserved");
+        if (xlMixerStrip == null
+                || xlMixerStrip.getWidth() < dp(180)
+                || xlMixerStrip.getHeight() <= dp(160)
+                || xlMixerToggle == null
+                || selectedTrackMeter == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: visible Main XL Channel Strip"
+                    + " | strip=" + describeAuditView(xlMixerStrip)
+                    + " | toggle=" + describeAuditView(xlMixerToggle)
+                    + " | meter=" + describeAuditView(selectedTrackMeter));
+            return;
+        }
+
         showPullDown();
         if (pullDownPanel == null
                 || pullDownPanel.getVisibility() != View.VISIBLE
@@ -9418,33 +9446,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View mainTrackProgram = findViewWithContentDescription(
-                getWindow().getDecorView(), "Main Mode Track Program section");
-        if (mainTrackProgram == null || mainTrackProgram.getHeight() <= dp(160)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Program composition");
-            return;
-        }
-
         View xlMixerStrip = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "MPC Main XL Mixer Strips");
         View xlMixerToggle = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "MPC Main mixer strips shown");
-        View selectedTrackMeter = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC XL selected track level meter and fader reserved");
-        if (xlMixerStrip == null
-                || xlMixerStrip.getWidth() < dp(180)
-                || xlMixerStrip.getHeight() <= dp(160)
-                || xlMixerToggle == null
-                || selectedTrackMeter == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: visible Main XL Channel Strip"
-                    + " | strip=" + describeAuditView(xlMixerStrip)
-                    + " | toggle=" + describeAuditView(xlMixerToggle)
-                    + " | meter=" + describeAuditView(selectedTrackMeter));
-            return;
-        }
 
         View recArmAudit = findViewWithContentDescription(
                 getWindow().getDecorView(),
