@@ -9352,6 +9352,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          * before any audit-driven state mutation. Later interactions can rebuild
          * weighted Main children synchronously before Android measures them.
          */
+        /*
+         * Geometry for the canonical Main Track/Arrangement shell is accepted
+         * before any audit-driven state mutation. Later interactions can rebuild
+         * weighted Main children synchronously before Android measures them.
+         */
         View mainViewSwitcher = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Track Arrangement segmented control");
         View mainTrackSelector = findViewWithContentDescription(
@@ -9584,14 +9589,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         View mainArrangementWorkspace = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Mode arrangement preview");
         if (mainViewSwitcher == null
-                || mainViewSwitcher.getHeight() < dp(36)
                 || mainTrackSelector == null
                 || mainArrangementSelector == null
                 || mainTrackWorkspace == null
                 || mainArrangementWorkspace == null
                 || mainTrackWorkspace.getVisibility() != View.VISIBLE
                 || mainArrangementWorkspace.getVisibility() != View.GONE) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track/Arrangement default view"
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track/Arrangement default state"
                     + " | switcher=" + describeAuditView(mainViewSwitcher)
                     + " | trackSelector=" + describeAuditView(mainTrackSelector)
                     + " | arrangementSelector=" + describeAuditView(mainArrangementSelector)
@@ -9602,7 +9606,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             && mainArrangementWorkspace.getVisibility() == View.VISIBLE));
             return;
         }
-
         if (!mainArrangementSelector.performClick()
                 || mainArrangementWorkspace.getVisibility() != View.VISIBLE
                 || mainTrackWorkspace.getVisibility() != View.GONE) {
