@@ -389,3 +389,13 @@ Remaining gaps:
 - Tests: focused navigation defaults test updated; full Android Actions gate required before acceptance.
 - Physical verification: pending on MPC Studio MkII.
 - Remaining gap: implement the three reserved destination backends rather than changing the factory Shortcut Rail order.
+
+
+## 2026-10-05 MPC Pull-Down Menu checkpoint
+
+- Added `MpcPullDownPanelView` as a presentation-only shell overlay.
+- Wired it from Main transport-position gesture and dismissal scrim; no navigation/audio ownership was moved into the panel.
+- Control page reads current project/Sequence/BPM/MIDI/Audio state through MainActivity's existing state path.
+- Q-Link page preserves documented field vocabulary but marks unsupported operations RESERVED.
+- Lower layers touched: none.
+- Required acceptance: source/unit gates + GitHub Actions Android emulator smoke + physical MkII verification.
