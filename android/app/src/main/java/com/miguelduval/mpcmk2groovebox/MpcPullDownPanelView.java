@@ -37,6 +37,11 @@ final class MpcPullDownPanelView extends FrameLayout {
     private Listener listener;
     private int pageIndex;
     private float downY;
+    private String projectName = "UNTITLED";
+    private int sequenceNumber = 1;
+    private double tempo = 120.0;
+    private boolean midiReady;
+    private boolean audioReady;
 
     MpcPullDownPanelView(Context context) {
         super(context);
@@ -59,6 +64,21 @@ final class MpcPullDownPanelView extends FrameLayout {
 
     int page() {
         return pageIndex;
+    }
+
+    void setContext(
+            String projectName,
+            int sequenceNumber,
+            double tempo,
+            boolean midiReady,
+            boolean audioReady) {
+        this.projectName = projectName == null || projectName.trim().isEmpty()
+                ? "UNTITLED" : projectName.trim();
+        this.sequenceNumber = Math.max(1, sequenceNumber);
+        this.tempo = Double.isFinite(tempo) ? tempo : 120.0;
+        this.midiReady = midiReady;
+        this.audioReady = audioReady;
+        renderPage();
     }
 
     @Override
@@ -173,17 +193,17 @@ final class MpcPullDownPanelView extends FrameLayout {
         LinearLayout rowOne = row();
         rowOne.addView(field(
                 "PROJECT",
-                "UNTITLED",
+                projectName,
                 false,
                 "MPC Pull-Down Project status"), weight());
         rowOne.addView(field(
                 "SEQUENCE",
-                "01",
+                String.format(java.util.Locale.ROOT, "%02d", sequenceNumber),
                 false,
                 "MPC Pull-Down Sequence status"), weight());
         rowOne.addView(field(
                 "TEMPO",
-                "120.0 BPM",
+                String.format(java.util.Locale.ROOT, "%.1f BPM", tempo),
                 false,
                 "MPC Pull-Down Tempo status"), weight());
         panel.addView(rowOne, new LinearLayout.LayoutParams(
@@ -192,13 +212,13 @@ final class MpcPullDownPanelView extends FrameLayout {
         LinearLayout rowTwo = row();
         rowTwo.addView(field(
                 "MIDI",
-                "IN / OUT",
-                false,
+                midiReady ? "IN / OUT" : "NO DEVICE",
+                midiReady,
                 "MPC Pull-Down MIDI status"), weight());
         rowTwo.addView(field(
                 "AUDIO",
-                "READY",
-                true,
+                audioReady ? "READY" : "NOT READY",
+                audioReady,
                 "MPC Pull-Down Audio status"), weight());
 
         rowTwo.addView(action(
