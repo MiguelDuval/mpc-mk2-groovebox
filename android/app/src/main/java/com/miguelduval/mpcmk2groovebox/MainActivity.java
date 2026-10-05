@@ -1838,7 +1838,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bar.setBackgroundColor(MPC_TOOLBAR_BG);
         bar.setContentDescription("MPC One Main Toolbar");
 
-        Button menu = topButton("▦");
+        Button menu = topButton("");
+        menu.setText("");
+        menu.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.MENU, false));
         menu.setContentDescription("MPC Toolbar Menu");
         menu.setOnClickListener(v -> showMenuPage());
         bar.addView(menu, new LinearLayout.LayoutParams(
@@ -2450,7 +2453,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceHeader.addView(timeSig,
                 new LinearLayout.LayoutParams(dp(56), dp(MPC_MAIN_METRIC_HEIGHT_DP)));
 
-        Button sequenceEdit = mainActionButton("✎", null);
+        Button sequenceEdit = mainActionButton("", null);
+        sequenceEdit.setText("");
+        sequenceEdit.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.PENCIL, false));
         sequenceEdit.setEnabled(false);
         sequenceEdit.setAlpha(0.42f);
         sequenceEdit.setBackground(strokeBackground(
@@ -2469,7 +2475,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         TextView start = mainMetric("START");
         TextView end = mainMetric("END");
         TextView transpose = mainMetric("TRANSPOSE");
-        Button loop = mainActionButton("↻", v -> {
+        Button loop = mainActionButton("", v -> {
             if (!startupComplete) {
                 setBottomStatus("LOOP • waiting for sequencer");
                 return;
@@ -2478,6 +2484,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     !nativeSequenceIsLoopEnabled()));
             refreshMainModeFields();
         });
+        loop.setText("");
+        loop.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.LOOP, true));
         loop.setTextSize(15);
         loop.setTypeface(Typeface.DEFAULT_BOLD);
         loop.setContentDescription("Main Sequence Loop button");
@@ -2533,7 +2542,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         mainTrackField = trackName;
 
-        Button trackEditHeader = mainActionButton("✎", v -> openMainTrackEditContext());
+        Button trackEditHeader = mainActionButton("", v -> openMainTrackEditContext());
+        trackEditHeader.setText("");
+        trackEditHeader.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.PENCIL, false));
         trackEditHeader.setTextSize(15);
         trackEditHeader.setContentDescription("Main Track Edit");
         trackEditHeader.setBackground(strokeBackground(
@@ -2778,8 +2790,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         Gravity.CENTER));
 
         mainTrackSampleAuditionButton = mainActionButton(
-                "▶",
+                "",
                 v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
+        mainTrackSampleAuditionButton.setText("");
+        mainTrackSampleAuditionButton.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.PLAY, false));
         mainTrackSampleAuditionButton.setContentDescription(
                 "Main Track View audition selected Pad");
         mainTrackSampleAuditionButton.setTextSize(14);
