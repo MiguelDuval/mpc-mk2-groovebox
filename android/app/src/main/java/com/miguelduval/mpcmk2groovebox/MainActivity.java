@@ -9366,26 +9366,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         View quickSampleWaveform = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "Main Track View quick sample waveform");
-        View quickSampleInfo = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View quick sample info");
-        if (quickSampleWaveform == null
-                || quickSampleWaveform.getHeight() <= dp(70)
-                || quickSampleInfo == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main quick sample context");
-            return;
-        }
-
         View quickSampleBrowse = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "Main Track View browse samples");
         View quickSampleRecord = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "Main Track View record sample");
-        if (quickSampleBrowse == null || quickSampleRecord == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main sample action state");
+        if (quickSampleWaveform == null
+                || quickSampleWaveform.getHeight() <= dp(70)
+                || quickSampleBrowse == null
+                || quickSampleRecord == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main empty sample surface");
             return;
         }
+
 
         View layerFieldAudit = findViewWithContentDescription(
                 getWindow().getDecorView(),
