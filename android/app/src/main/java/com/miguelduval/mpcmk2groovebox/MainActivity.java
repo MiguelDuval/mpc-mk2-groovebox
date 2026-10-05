@@ -9347,6 +9347,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
         }
         Log.i(TAG, "UI_HIERARCHY_COMPLETE");
+        /*
+         * Geometry for the canonical Main Track/Arrangement shell is accepted
+         * before any audit-driven state mutation. Later interactions can rebuild
+         * weighted Main children synchronously before Android measures them.
+         */
+        View mainViewSwitcher = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track Arrangement segmented control");
+        View mainTrackSelector = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track View header");
+        View mainArrangementSelector = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Arrangement View header");
+        View mainTrackWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode Track workspace");
+        View mainArrangementWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode arrangement preview");
+        if (mainViewSwitcher == null
+                || mainTrackSelector == null
+                || mainArrangementSelector == null
+                || mainTrackWorkspace == null
+                || mainArrangementWorkspace == null
+                || mainTrackWorkspace.getVisibility() != View.VISIBLE
+                || mainArrangementWorkspace.getVisibility() != View.GONE) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track/Arrangement default state"
+                    + " | switcher=" + describeAuditView(mainViewSwitcher)
+                    + " | trackSelector=" + describeAuditView(mainTrackSelector)
+                    + " | arrangementSelector=" + describeAuditView(mainArrangementSelector)
+                    + " | trackWorkspace=" + describeAuditView(mainTrackWorkspace)
+                    + " | arrangementWorkspace=" + describeAuditView(mainArrangementWorkspace)
+                    + " | arrangementVisible="
+                    + (mainArrangementWorkspace != null
+                            && mainArrangementWorkspace.getVisibility() == View.VISIBLE));
+            return;
+        }
         Log.i(TAG, "UI_INTERACTION_BEGIN");
 
         View quickSampleWaveform = findViewWithContentDescription(
