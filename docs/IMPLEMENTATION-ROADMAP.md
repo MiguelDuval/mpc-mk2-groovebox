@@ -568,3 +568,60 @@ The canonical Main Track/Arrangement workspace no longer embeds the Android 4x4 
 - **PRESERVED —** five-shortcut navigation, deterministic icon rendering and controller semantics are unchanged.
 - **RATIONALE —** the MPC Main shortcut rail communicates selection with a compact edge accent, keeping the rail visually subordinate to the central workspace.
 
+
+
+## 2026-10-05 Internal DSP / Instrument Library program
+
+The project now has a dedicated internal DSP workstream. External AAP/VST/CLAP/LV2 hosting is explicitly deferred.
+
+Canonical documents:
+
+- docs/INTERNAL-DSP-LIBRARY-RESEARCH.md
+- docs/INTERNAL-DSP-LIBRARY-ARCHITECTURE.md
+- docs/ADR-0010-INTERNAL-DSP-AND-COMMERCIAL-LICENSING.md
+- docs/DSP-INTEGRATION-GATE.md
+- docs/THIRD-PARTY-SBOM-POLICY.md
+- docs/THIRD-PARTY-SBOM.md
+
+### Product decision
+
+Internal instruments/effects are implemented through an application-owned MpcAudioNode / MpcInstrumentNode / MpcEffectNode boundary. Third-party DSP is implementation detail only; product UI, parameter IDs, state schema, automation, MIDI semantics and hardware UX remain project-owned.
+
+### Initial source priorities
+
+P0:
+- Airwindows for creative/character FX.
+- DaisySP MIT core for synth/DSP building blocks.
+- Signalsmith DSP/Basics for reusable high-quality DSP.
+- MSFA for FM synthesis.
+
+P1:
+- DSPFilters.
+- DSPark.
+- sndkit.
+- Gamma.
+- CMSIS-DSP / KISS FFT / libsamplerate where performance measurements justify them.
+
+P2:
+- STK for selected physical models.
+- sfizz for SFZ after additional lifecycle/dependency review.
+- ymfm for specific FM/chip-synthesis needs.
+
+### Implementation sequence
+
+1. Define and test the application-owned audio-node contract.
+2. Integrate one small Green effect.
+3. Integrate one DaisySP-based poly synth.
+4. Integrate MSFA FM.
+5. Expand the Airwindows/Signalsmith effect catalogue.
+6. Add performance primitives only when measured useful.
+7. Evaluate sfizz and other Yellow candidates separately.
+8. Keep GPL/AGPL/proprietary engines out of the commercial internal path unless the product licensing strategy is explicitly changed and reviewed.
+
+### Release rule
+
+A source is not considered shippable merely because the research matrix labels it GREEN. It must pass the DSP Integration Gate and move to APPROVED in the SBOM.
+
+### Commercial prerequisite
+
+The internal DSP workstream does not clear the existing JUCE, Tracktion Engine or Ableton Link licensing. Those dependencies remain a separate release-blocking commercial-license workstream.
