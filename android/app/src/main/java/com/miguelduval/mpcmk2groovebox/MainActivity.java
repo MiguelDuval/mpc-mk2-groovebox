@@ -9256,19 +9256,45 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void scheduleUiAuditAfterFirstLayout() {
         final View decor = getWindow().getDecorView();
-        final ViewTreeObserver observer = decor.getViewTreeObserver();
-        final ViewTreeObserver.OnPreDrawListener listener =
-                new ViewTreeObserver.OnPreDrawListener() {
-                    @Override
-                    public boolean onPreDraw() {
-                        if (decor.getViewTreeObserver().isAlive()) {
-                            decor.getViewTreeObserver().removeOnPreDrawListener(this);
-                        }
-                        decor.post(() -> runUiAudit());
-                        return true;
-                    }
-                };
-        observer.addOnPreDrawListener(listener);
+        final Handler auditHandler = new Handler(Looper.getMainLooper());
+        final int[] attempts = {0};
+        final Runnable[] waitForMeasuredShell = new Runnable[1];
+
+        waitForMeasuredShell[0] = () -> {
+            if (destroyed) {
+                return;
+            }
+
+            final View shellRoot = mpcShell == null ? null : mpcShell.root();
+            final boolean decorMeasured =
+                    decor.getWidth() > 0 && decor.getHeight() > 0;
+            final boolean shellMeasured =
+                    shellRoot != null
+                            && shellRoot.getWidth() > 0
+                            && shellRoot.getHeight() > 0;
+
+            if (decorMeasured && shellMeasured) {
+                /*
+                 * One additional animation turn keeps the audit behind the
+                 * layout pass that produced these dimensions. This matters on
+                 * immersive Android emulator startup where insets can trigger
+                 * a second traversal after the first visible frame.
+                 */
+                decor.postOnAnimation(() -> decor.post(this::runUiAudit));
+                return;
+            }
+
+            if (++attempts[0] >= 60) {
+                Log.e(TAG, "UI_HIERARCHY_FAILED: measured MPC shell timeout"
+                        + " | decor=" + describeAuditView(decor)
+                        + " | shell=" + describeAuditView(shellRoot));
+                return;
+            }
+
+            auditHandler.postDelayed(waitForMeasuredShell[0], 16L);
+        };
+
+        waitForMeasuredShell[0].run();
     }
 
     private void runUiAudit() {
