@@ -2354,8 +2354,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Color.TRANSPARENT,
                 MPC_FLAT_RADIUS_DP));
         b.setTag(mode);
-        b.setContentDescription(
-                "MPC shortcut " + (mode == null ? "unknown" : mode.label()));
+        final String accessibilityLabel = mode == null
+                ? "unknown"
+                : mode == MpcUiState.Mode.XYFX
+                        ? "XY"
+                        : mode.label();
+        b.setContentDescription("MPC shortcut " + accessibilityLabel);
         b.setOnClickListener(v -> navigateToMode(mode));
         return b;
     }
