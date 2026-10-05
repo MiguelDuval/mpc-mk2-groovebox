@@ -17,7 +17,10 @@ final class MpcMainIconDrawable extends Drawable {
         PENCIL,
         LOOP,
         PLAY,
-        MENU
+        MENU,
+        CLOSE,
+        PREVIOUS,
+        NEXT
     }
 
     private static final int WHITE = Color.WHITE;
@@ -73,6 +76,15 @@ final class MpcMainIconDrawable extends Drawable {
                 break;
             case MENU:
                 drawMenu(canvas, cx, cy, scale);
+                break;
+            case CLOSE:
+                drawClose(canvas, cx, cy, scale);
+                break;
+            case PREVIOUS:
+                drawChevron(canvas, cx, cy, scale, false);
+                break;
+            case NEXT:
+                drawChevron(canvas, cx, cy, scale, true);
                 break;
         }
     }
@@ -144,6 +156,28 @@ final class MpcMainIconDrawable extends Drawable {
                 canvas.drawRect(x, y, x + unit, y + unit, paint);
             }
         }
+    }
+
+    private void drawClose(Canvas canvas, float cx, float cy, float scale) {
+        final float arm = scale * 0.27f;
+        paint.setStrokeCap(Paint.Cap.SQUARE);
+        canvas.drawLine(cx - arm, cy - arm, cx + arm, cy + arm, paint);
+        canvas.drawLine(cx + arm, cy - arm, cx - arm, cy + arm, paint);
+    }
+
+    private void drawChevron(
+            Canvas canvas,
+            float cx,
+            float cy,
+            float scale,
+            boolean next) {
+        final float arm = scale * 0.23f;
+        final float side = next ? 1.0f : -1.0f;
+        path.reset();
+        path.moveTo(cx + side * arm * 0.80f, cy - arm);
+        path.lineTo(cx - side * arm * 0.20f, cy);
+        path.lineTo(cx + side * arm * 0.80f, cy + arm);
+        canvas.drawPath(path, paint);
     }
 
     @Override
