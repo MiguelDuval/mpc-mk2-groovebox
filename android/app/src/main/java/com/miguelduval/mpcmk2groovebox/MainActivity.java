@@ -9865,9 +9865,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         onHardwareAction(
                 MpcStudioMk2SemanticActions.DATA_DIAL_PRESS,
                 0, 0, 0);
+        // DATA DIAL ENTER cycles VEL -> PROB; a new step defaults to 127.
+        // Use -1 so the audit performs a real bounded parameter mutation.
         onHardwareAction(
                 MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
-                1, 0, 0);
+                -1, 0, 0);
         final String eventAfterHardwareEdit =
                 sequenceStepEventInfo.getText().toString();
         if (eventBeforeHardwareEdit.equals(eventAfterHardwareEdit)) {
