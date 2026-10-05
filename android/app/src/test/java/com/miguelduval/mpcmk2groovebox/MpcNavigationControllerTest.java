@@ -66,8 +66,8 @@ public class MpcNavigationControllerTest {
         navigation.moveShortcut(4, 1);
 
         assertEquals(5, navigation.shortcuts().length);
-        assertEquals(MpcUiState.Mode.PAD_MIXER, navigation.shortcut(1));
-        assertEquals(MpcUiState.Mode.BROWSER, navigation.shortcut(2));
+        assertEquals(MpcUiState.Mode.XYFX, navigation.shortcut(1));
+        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, navigation.shortcut(2));
     }
 
     @Test
