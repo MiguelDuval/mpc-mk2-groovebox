@@ -92,9 +92,9 @@ final class MpcNavigationController {
         for (int i = 0; i < SHORTCUT_COUNT; i++) {
             final MpcUiState.Mode value = Objects.requireNonNull(
                     modes[i], "shortcut[" + i + "]");
-            if (!isPromotable(value)) {
+            if (!isShortcutMode(value)) {
                 throw new IllegalArgumentException(
-                        "Shortcut mode is not implemented: " + value);
+                        "Shortcut mode is not part of the MPC shortcut catalog: " + value);
             }
             shortcuts[i] = value;
         }
@@ -209,10 +209,10 @@ final class MpcNavigationController {
         notifyListener();
     }
 
-    private boolean isPromotable(MpcUiState.Mode mode) {
+    private boolean isShortcutMode(MpcUiState.Mode mode) {
         for (MpcModeRegistry.Entry entry : MpcModeRegistry.menuEntries()) {
             if (entry.mode == mode) {
-                return entry.available;
+                return true;
             }
         }
         return false;
