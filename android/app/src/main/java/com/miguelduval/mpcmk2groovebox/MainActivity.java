@@ -9266,8 +9266,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Main Mode Sequence section",
                 "Main Track visual hierarchy • Track / Program / workspace section",
                 "Main Track and Arrangement workspace",
-                "MPC shell compact track program context",
-                "MPC condensed Mixer Strip show or hide",
+                "MPC Main XL Mixer Strips",
+                "MPC Main mixer strips shown",
                 "MPC Main sequence REC ARM"
         };
 
