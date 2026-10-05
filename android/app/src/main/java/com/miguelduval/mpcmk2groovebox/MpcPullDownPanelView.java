@@ -126,9 +126,9 @@ final class MpcPullDownPanelView extends FrameLayout {
         header.addView(page, new LinearLayout.LayoutParams(
                 dp(44), dp(32)));
 
-        Button close = button("×");
-        close.setContentDescription("Close MPC Pull-Down Menu");
-        close.setTextSize(18);
+        Button close = iconButton(
+                MpcMainIconDrawable.Mode.CLOSE,
+                "Close MPC Pull-Down Menu");
         close.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onClose();
@@ -147,10 +147,11 @@ final class MpcPullDownPanelView extends FrameLayout {
         }
 
         LinearLayout footer = row();
-        Button previous = button("‹");
+        Button previous = iconButton(
+                MpcMainIconDrawable.Mode.PREVIOUS,
+                "MPC Pull-Down previous page");
         previous.setEnabled(pageIndex > 0);
         previous.setAlpha(pageIndex > 0 ? 1.0f : 0.35f);
-        previous.setContentDescription("MPC Pull-Down previous page");
         previous.setOnClickListener(v -> {
             if (pageIndex > 0) {
                 setPage(pageIndex - 1);
@@ -161,7 +162,7 @@ final class MpcPullDownPanelView extends FrameLayout {
 
         TextView hint = label(
                 pageIndex == 0
-                        ? "Swipe up to close • use › for Q-LINK"
+                        ? "Swipe up to close • next page"
                         : "Swipe up to close • Q-Link controls are backend-reserved",
                 8,
                 MUTED);
@@ -169,10 +170,11 @@ final class MpcPullDownPanelView extends FrameLayout {
         footer.addView(hint, new LinearLayout.LayoutParams(
                 0, dp(32), 1));
 
-        Button next = button("›");
+        Button next = iconButton(
+                MpcMainIconDrawable.Mode.NEXT,
+                "MPC Pull-Down next page");
         next.setEnabled(pageIndex < 1);
         next.setAlpha(pageIndex < 1 ? 1.0f : 0.35f);
-        next.setContentDescription("MPC Pull-Down next page");
         next.setOnClickListener(v -> {
             if (pageIndex < 1) {
                 setPage(pageIndex + 1);
@@ -301,6 +303,16 @@ final class MpcPullDownPanelView extends FrameLayout {
         box.addView(state, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
         return box;
+    }
+
+    private Button iconButton(
+            MpcMainIconDrawable.Mode mode,
+            String description) {
+        Button b = button("");
+        b.setText("");
+        b.setForeground(new MpcMainIconDrawable(mode, false));
+        b.setContentDescription(description);
+        return b;
     }
 
     private Button button(String text) {
