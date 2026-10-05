@@ -1320,6 +1320,13 @@ for required in \
 done
 
 echo "Running Android runtime startup smoke..."
+echo "Running MPC Main UI audit contract preflight..."
+for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC shell compact track program context'   'Main Track visual hierarchy • Track / Program / workspace section'   'clickMpcToolbarMenuForAudit()'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: current MPC Main UI audit contract missing: $required"
+    exit 1
+  fi
+done
 for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'timeout 30s adb shell uiautomator dump'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
@@ -1358,6 +1365,12 @@ if grep -Eq 'AndroidRuntime: FATAL EXCEPTION|Fatal signal [0-9]+|FATAL EXCEPTION
   exit 1
 fi
 
+echo "Capturing startup UI screenshot..."
+adb exec-out screencap -p > /tmp/mpc-groovebox-startup.png || {
+  echo "ERROR: startup screenshot capture failed"
+  exit 1
+}
+
 echo "Waiting for application-side UI audit to complete..."
 UI_AUDIT_TIMEOUT_SECONDS=120
 ui_audit_complete=0
@@ -1388,31 +1401,25 @@ fi
 
 echo "Application-side UI audit completed; requesting the accessibility hierarchy now."
 
-echo "Capturing startup UI screenshot..."
-adb exec-out screencap -p > /tmp/mpc-groovebox-startup.png || {
-  echo "ERROR: startup screenshot capture failed"
-  exit 1
-}
-
-echo "Dumping startup UI..."
+echo "Dumping post-audit UI hierarchy..."
 if ! timeout 30s adb shell uiautomator dump "$DEVICE_DUMP" >/tmp/mpc-groovebox-uiautomator.txt 2>&1; then
   cat /tmp/mpc-groovebox-uiautomator.txt || true
-  echo "ERROR: uiautomator dump failed after startup"
+  echo "ERROR: post-audit uiautomator dump failed"
   exit 1
 }
 if ! adb pull "$DEVICE_DUMP" "$DUMP" >/dev/null 2>&1; then
-  echo "ERROR: startup UI dump pull failed"
+  echo "ERROR: post-audit UI dump pull failed"
   cat /tmp/mpc-groovebox-uiautomator.txt || true
   exit 1
 fi
 
 if [ ! -s "$DUMP" ]; then
-  echo "ERROR: startup UI dump is empty"
+  echo "ERROR: post-audit UI dump is empty"
   exit 1
 fi
 
 if ! grep -Fq 'MPC' "$DUMP"; then
-  echo "ERROR: startup UI dump does not contain MPC shell content"
+  echo "ERROR: post-audit UI dump does not contain MPC shell content"
   cat "$DUMP"
   exit 1
 fi
