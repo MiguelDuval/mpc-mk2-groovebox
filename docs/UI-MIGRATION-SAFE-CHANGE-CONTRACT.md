@@ -470,3 +470,8 @@ The application-side UI audit is part of the runtime acceptance contract and mus
 The application-side UI audit is now scheduled from the root decor view's first `OnPreDraw` callback after startup finalization. This is the correct lifecycle boundary for geometry-dependent assertions such as the Main waveform/XL Channel Strip sizes; the previous direct invocation raced Android measurement/layout completion.
 
 The audit remains fail-fast and unchanged in semantic scope. No fixed sleep or relaxed geometry threshold was introduced.
+
+
+## 2026-10-05 Sample surface audit ordering
+
+The Main waveform geometry assertion must execute while the startup Main workspace is fully laid out and before audit-driven Browser navigation causes a synchronous Main rebuild. The assertion remains a real measured height check; only its position in the audit sequence is corrected.
