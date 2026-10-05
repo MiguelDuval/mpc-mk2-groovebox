@@ -9446,13 +9446,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View xlMixerStrip = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC Main XL Mixer Strips");
-        View xlMixerToggle = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC Main mixer strips shown");
-
         View recArmAudit = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "MPC Main sequence REC ARM");
