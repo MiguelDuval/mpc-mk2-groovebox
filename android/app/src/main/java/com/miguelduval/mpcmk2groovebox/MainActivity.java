@@ -9372,11 +9372,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         View quickSampleRecord = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "Main Track View record sample");
+        View quickSampleAudition = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View audition selected Pad");
         if (quickSampleWaveform == null
-                || quickSampleWaveform.getHeight() <= dp(70)
-                || quickSampleBrowse == null
-                || quickSampleRecord == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main empty sample surface");
+                || quickSampleWaveform.getHeight() <= dp(70)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main quick sample waveform");
+            return;
+        }
+        final boolean emptySampleState =
+                quickSampleBrowse != null && quickSampleRecord != null;
+        final boolean loadedSampleState = quickSampleAudition != null;
+        if (!emptySampleState && !loadedSampleState) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main sample state has no valid action surface");
             return;
         }
 
