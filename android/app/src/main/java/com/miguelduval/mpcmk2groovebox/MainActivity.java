@@ -9693,6 +9693,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 dp(180),
                 "Track View workspace",
                 this::runUiAuditAfterTrackView);
+    }
 
     private void waitForMeasuredAuditView(
             View view,
