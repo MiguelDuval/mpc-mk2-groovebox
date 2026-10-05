@@ -9301,7 +9301,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                  * immersive Android emulator startup where insets can trigger
                  * a second traversal after the first visible frame.
                  */
-                decor.postOnAnimation(() -> decor.post(this::runUiAudit));
+                decor.postOnAnimation(() -> decor.postDelayed(
+                        this::runUiAudit, 250L));
                 return;
             }
 
