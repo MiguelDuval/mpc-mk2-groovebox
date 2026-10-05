@@ -3940,7 +3940,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         timeSig.setText(String.format(
                 Locale.ROOT, "%d/%d",
                 numerator, denominator));
-        loop.setText("↻");
+        loop.setText("");
+        loop.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.LOOP, loopEnabled));
         loop.setContentDescription(
                 "Main Sequence Loop button • " + (loopEnabled ? "ON" : "OFF"));
         loop.setTextColor(loopEnabled ? BG : TEXT);
