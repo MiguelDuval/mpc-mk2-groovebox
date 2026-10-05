@@ -1132,6 +1132,31 @@ for required in \
   fi
 done
 
+echo "Running MPC Pull-Down deterministic iconography preflight..."
+pull_down_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java"
+main_icon_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java"
+for required in \
+  'MpcMainIconDrawable.Mode.CLOSE' \
+  'MpcMainIconDrawable.Mode.PREVIOUS' \
+  'MpcMainIconDrawable.Mode.NEXT' \
+  'private Button iconButton(' \
+  'Swipe up to close • next page'; do
+  if ! grep -Fq -- "$required" "$pull_down_source"; then
+    echo "ERROR: MPC Pull-Down deterministic iconography contract missing: $required"
+    exit 1
+  fi
+done
+for required in 'CLOSE' 'PREVIOUS' 'NEXT' 'drawClose(' 'drawChevron(' ; do
+  if ! grep -Fq -- "$required" "$main_icon_source"; then
+    echo "ERROR: MPC Main deterministic icon drawable mode missing: $required"
+    exit 1
+  fi
+done
+if grep -Eq '[×‹›]' "$pull_down_source"; then
+  echo "ERROR: MPC Pull-Down must not use Unicode close/chevron glyphs in visible chrome"
+  exit 1
+fi
+
 echo "Running MPC One mixer iconography regression preflight..."
 mixer_main_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
 for required in   'MpcMixerStripIconDrawable'   'Mode.PERSONAL_CHANNEL_STRIP'   'Mode.TRACK_PAD_SELECTOR'   'visibilityButton = button(context, "", 10);'   'visibilityButton.setForeground(new MpcMixerStripIconDrawable'   'compactMixerStripModeToggle.setText("")'   'compactMixerStripModeToggle.setForeground(new MpcMixerStripIconDrawable'; do
