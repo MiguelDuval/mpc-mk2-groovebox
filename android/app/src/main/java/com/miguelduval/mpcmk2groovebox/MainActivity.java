@@ -9574,44 +9574,44 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View mainViewSwitcher = findViewWithContentDescription(
+        View mainViewSwitcherAfterMixer = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Track Arrangement segmented control");
-        View mainTrackSelector = findViewWithContentDescription(
+        View mainTrackSelectorAfterMixer = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Track View header");
-        View mainArrangementSelector = findViewWithContentDescription(
+        View mainArrangementSelectorAfterMixer = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Arrangement View header");
-        View mainTrackWorkspace = findViewWithContentDescription(
+        View mainTrackWorkspaceAfterMixer = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Mode Track workspace");
-        View mainArrangementWorkspace = findViewWithContentDescription(
+        View mainArrangementWorkspaceAfterMixer = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Mode arrangement preview");
-        if (mainViewSwitcher == null
-                || mainTrackSelector == null
-                || mainArrangementSelector == null
-                || mainTrackWorkspace == null
-                || mainArrangementWorkspace == null
-                || mainTrackWorkspace.getVisibility() != View.VISIBLE
-                || mainArrangementWorkspace.getVisibility() != View.GONE) {
+        if (mainViewSwitcherAfterMixer == null
+                || mainTrackSelectorAfterMixer == null
+                || mainArrangementSelectorAfterMixer == null
+                || mainTrackWorkspaceAfterMixer == null
+                || mainArrangementWorkspaceAfterMixer == null
+                || mainTrackWorkspaceAfterMixer.getVisibility() != View.VISIBLE
+                || mainArrangementWorkspaceAfterMixer.getVisibility() != View.GONE) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Track/Arrangement default state"
-                    + " | switcher=" + describeAuditView(mainViewSwitcher)
-                    + " | trackSelector=" + describeAuditView(mainTrackSelector)
-                    + " | arrangementSelector=" + describeAuditView(mainArrangementSelector)
-                    + " | trackWorkspace=" + describeAuditView(mainTrackWorkspace)
-                    + " | arrangementWorkspace=" + describeAuditView(mainArrangementWorkspace)
+                    + " | switcher=" + describeAuditView(mainViewSwitcherAfterMixer)
+                    + " | trackSelector=" + describeAuditView(mainTrackSelectorAfterMixer)
+                    + " | arrangementSelector=" + describeAuditView(mainArrangementSelectorAfterMixer)
+                    + " | trackWorkspace=" + describeAuditView(mainTrackWorkspaceAfterMixer)
+                    + " | arrangementWorkspace=" + describeAuditView(mainArrangementWorkspaceAfterMixer)
                     + " | arrangementVisible="
-                    + (mainArrangementWorkspace != null
-                            && mainArrangementWorkspace.getVisibility() == View.VISIBLE));
+                    + (mainArrangementWorkspaceAfterMixer != null
+                            && mainArrangementWorkspaceAfterMixer.getVisibility() == View.VISIBLE));
             return;
         }
-        if (!mainArrangementSelector.performClick()
-                || mainArrangementWorkspace.getVisibility() != View.VISIBLE
-                || mainTrackWorkspace.getVisibility() != View.GONE) {
+        if (!mainArrangementSelectorAfterMixer.performClick()
+                || mainArrangementWorkspaceAfterMixer.getVisibility() != View.VISIBLE
+                || mainTrackWorkspaceAfterMixer.getVisibility() != View.GONE) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Arrangement switch");
             return;
         }
 
-        if (!mainTrackSelector.performClick()
-                || mainTrackWorkspace.getVisibility() != View.VISIBLE
-                || mainArrangementWorkspace.getVisibility() != View.GONE) {
+        if (!mainTrackSelectorAfterMixer.performClick()
+                || mainTrackWorkspaceAfterMixer.getVisibility() != View.VISIBLE
+                || mainArrangementWorkspaceAfterMixer.getVisibility() != View.GONE) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Track switch");
             return;
         }
