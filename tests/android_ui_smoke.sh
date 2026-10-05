@@ -4,7 +4,7 @@ set -euo pipefail
 APK="android/app/build/outputs/apk/debug/app-debug.apk"
 PACKAGE="com.miguelduval.mpcmk2groovebox.debug"
 ACTIVITY="$PACKAGE/com.miguelduval.mpcmk2groovebox.MainActivity"
-DEVICE_DUMP="/sdcard/mpc-groovebox-ui.xml"
+DEVICE_DUMP="/sdcard/window_dump.xml"
 DUMP="/tmp/mpc-groovebox-ui.xml"
 SMOKE_MODE_EXTRA="mpc.groovebox.smoke.mode"
 MAIN_ACTIVITY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java"
@@ -1408,22 +1408,9 @@ fi
 echo "Application-side UI audit completed; requesting the accessibility hierarchy now."
 
 echo "Dumping post-audit UI hierarchy..."
-if ! uiautomator_dump_output="$(timeout 30s adb shell uiautomator dump 2>&1)"; then
-  printf '%s\n' "$uiautomator_dump_output" > /tmp/mpc-groovebox-uiautomator.txt
+if ! timeout 30s adb shell uiautomator dump >/tmp/mpc-groovebox-uiautomator.txt 2>&1; then
   cat /tmp/mpc-groovebox-uiautomator.txt || true
   echo "ERROR: post-audit uiautomator dump failed"
-  exit 1
-fi
-printf '%s\n' "$uiautomator_dump_output" > /tmp/mpc-groovebox-uiautomator.txt
-DEVICE_DUMP="$(
-  printf '%s\n' "$uiautomator_dump_output" |
-    sed -nE 's/.*dumped to:[[:space:]]*(\/.*\.xml).*/\1/p' |
-    tail -n 1 |
-    tr -d '\r'
-)"
-if [[ -z "$DEVICE_DUMP" ]]; then
-  echo "ERROR: post-audit uiautomator dump did not report an XML path"
-  cat /tmp/mpc-groovebox-uiautomator.txt || true
   exit 1
 fi
 if ! adb shell test -s "$DEVICE_DUMP"; then
@@ -1436,4 +1423,5 @@ if ! adb exec-out cat "$DEVICE_DUMP" >"$DUMP"; then
   cat /tmp/mpc-groovebox-uiautomator.txt || true
   exit 1
 fi
+
 echo "Android runtime startup smoke passed."
