@@ -4769,6 +4769,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
+        // Keep the recording surface compact so the waveform retains its full
+        // MPC-style minimum presentation height on high-density displays.
+        page.setPadding(dp(10), dp(4), dp(10), 0);
 
         LinearLayout sampleHeader = row();
         sampleHeader.addView(sectionLabelView(
