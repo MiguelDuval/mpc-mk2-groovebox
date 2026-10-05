@@ -1149,3 +1149,7 @@ Main Mixer Strip semantics follow the documented MPC pattern:
 - Main-mode Toolbar uses the red MPC presentation, while the outer shell host remains graphite.
 
 This supersedes any earlier wording in this document that describes the old persistent context rail as the visible Main navigation surface.
+
+## 2026-10-05 Pull-Down deterministic chrome checkpoint
+
+The Pull-Down Menu now uses deterministic vector close/previous/next affordances from the shared Main icon drawable. Its visible chrome no longer depends on Unicode glyph rendering. This is a presentation-only correction; Control/Q-Link state ownership, reserved semantics and shell overlay behavior remain unchanged.
