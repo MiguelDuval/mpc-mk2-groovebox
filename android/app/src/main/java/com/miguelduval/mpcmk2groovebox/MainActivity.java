@@ -9409,7 +9409,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         View layerFieldAudit = findViewWithContentDescription(
                 getWindow().getDecorView(),
-                "Main Track View selected layer");
+                "Main Track View selected layer • tap to focus Layer");
         if (layerFieldAudit == null
                 || !layerFieldAudit.performClick()
                 || navigationController.state().dataDialFocus()
