@@ -3486,7 +3486,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final TextView layerDetail = findTextByContentDescription(
                 content,
-                "Main Track View selected layer");
+                "Main Track View selected layer • tap to focus Layer");
         if (layerDetail != null) {
             final String trackType = startupComplete
                     ? nativeSequenceGetTrackType(
