@@ -634,3 +634,10 @@ This is a presentation/accessibility vocabulary correction only; no audio, MIDI,
 The runtime audit previously required the persistent compact Track/Program context to exceed 300dp height. The implementation intentionally uses `WRAP_CONTENT` for this rail, with a compact stack of Sequence/Track/Program/Pad/Data Dial/overview fields, so the 300dp threshold was not a valid fidelity invariant.
 
 The audit now requires a minimum 200dp content height plus the existing width and child-presence checks. This keeps the test anchored to a meaningful persistent context surface without forcing artificial empty space into the MPC shell.
+
+
+## 2026-10-05 Main runtime audit lifecycle correction
+
+Runtime evidence showed the Main UI was visually laid out correctly in the captured screenshot while the application audit could observe a still-unmeasured WaveformView when invoked directly from startup finalization. The audit is now scheduled from the decor root's first `OnPreDraw` callback.
+
+This keeps geometry assertions tied to the actual rendered MPC shell lifecycle instead of adding sleeps or weakening the checks.
