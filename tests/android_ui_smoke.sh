@@ -1320,6 +1320,12 @@ for required in \
 done
 
 echo "Running Android runtime startup smoke..."
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'timeout 30s adb shell uiautomator dump'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: runtime smoke synchronization contract missing: $required"
+    exit 1
+  fi
+done
 echo "Installing debug APK..."
 adb install -r "$APK"
 
@@ -1352,6 +1358,36 @@ if grep -Eq 'AndroidRuntime: FATAL EXCEPTION|Fatal signal [0-9]+|FATAL EXCEPTION
   exit 1
 fi
 
+echo "Waiting for application-side UI audit to complete..."
+UI_AUDIT_TIMEOUT_SECONDS=120
+ui_audit_complete=0
+for ((second=0; second<UI_AUDIT_TIMEOUT_SECONDS; second++)); do
+  log_snapshot="$(adb logcat -d -v brief 2>/dev/null || true)"
+  if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
+    ui_audit_complete=1
+    break
+  fi
+  if grep -Eq 'UI_HIERARCHY_FAILED:|UI_INTERACTION_FAILED:|UI_STARTUP_FINALIZATION_FAILED|STARTUP_NATIVE_FAILED' <<<"$log_snapshot"; then
+    echo "ERROR: application-side UI audit reported failure before external UI dump"
+    grep -E -A 8 -B 3 'UI_HIERARCHY_FAILED:|UI_INTERACTION_FAILED:|UI_STARTUP_FINALIZATION_FAILED|STARTUP_NATIVE_FAILED' <<<"$log_snapshot" | tail -n 120 || true
+    exit 1
+  fi
+  if ! adb shell pidof "$PACKAGE" | tr -d '\r' | grep -Eq '[0-9]'; then
+    echo "ERROR: MPC Groovebox process exited while waiting for UI audit completion"
+    exit 1
+  fi
+  sleep 1
+done
+
+if [ "$ui_audit_complete" -ne 1 ]; then
+  echo "ERROR: application-side UI audit did not reach UI_INTERACTION_COMPLETE within ${UI_AUDIT_TIMEOUT_SECONDS}s"
+  adb logcat -d -v threadtime > /tmp/mpc-groovebox-logcat.txt || true
+  tail -n 350 /tmp/mpc-groovebox-logcat.txt || true
+  exit 1
+fi
+
+echo "Application-side UI audit completed; requesting the accessibility hierarchy now."
+
 echo "Capturing startup UI screenshot..."
 adb exec-out screencap -p > /tmp/mpc-groovebox-startup.png || {
   echo "ERROR: startup screenshot capture failed"
@@ -1359,7 +1395,7 @@ adb exec-out screencap -p > /tmp/mpc-groovebox-startup.png || {
 }
 
 echo "Dumping startup UI..."
-adb shell uiautomator dump "$DEVICE_DUMP" >/tmp/mpc-groovebox-uiautomator.txt 2>&1 || {
+if ! timeout 30s adb shell uiautomator dump "$DEVICE_DUMP" >/tmp/mpc-groovebox-uiautomator.txt 2>&1; then
   cat /tmp/mpc-groovebox-uiautomator.txt || true
   echo "ERROR: uiautomator dump failed after startup"
   exit 1
