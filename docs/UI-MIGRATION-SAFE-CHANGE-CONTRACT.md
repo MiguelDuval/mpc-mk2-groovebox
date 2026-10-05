@@ -463,3 +463,10 @@ This is a test-harness synchronization correction only. It does not weaken the r
 ## 2026-10-05 UI-audit hierarchy authority
 
 The application-side UI audit is part of the runtime acceptance contract and must describe the current canonical shell, not historical legacy-page controls. Main is controller-first and must not be made to expose a hidden/duplicate 4×4 pad grid merely to satisfy tests. Audit navigation must follow actual shell affordances (Shortcut Rail, Function Bar and Toolbar Menu) and assert semantic state where the companion surface intentionally has no touch control.
+
+
+## 2026-10-05 Post-layout runtime audit timing
+
+The application-side UI audit is now scheduled from the root decor view's first `OnPreDraw` callback after startup finalization. This is the correct lifecycle boundary for geometry-dependent assertions such as the Main waveform/XL Channel Strip sizes; the previous direct invocation raced Android measurement/layout completion.
+
+The audit remains fail-fast and unchanged in semantic scope. No fixed sleep or relaxed geometry threshold was introduced.
