@@ -9419,7 +9419,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 || xlMixerStrip.getHeight() <= dp(160)
                 || xlMixerToggle == null
                 || selectedTrackMeter == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: visible Main XL Channel Strip");
+            Log.e(TAG, "UI_INTERACTION_FAILED: visible Main XL Channel Strip"
+                    + " | strip=" + describeAuditView(xlMixerStrip)
+                    + " | toggle=" + describeAuditView(xlMixerToggle)
+                    + " | meter=" + describeAuditView(selectedTrackMeter));
             return;
         }
 
@@ -9779,6 +9782,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         Log.i(TAG, "UI_INTERACTION_COMPLETE");
+    }
+
+    private String describeAuditView(View view) {
+        if (view == null) return "null";
+        return "w=" + view.getWidth()
+                + ",h=" + view.getHeight()
+                + ",vis=" + view.getVisibility()
+                + ",a=" + view.getAlpha();
     }
 
     private boolean clickMpcToolbarMenuForAudit() {
