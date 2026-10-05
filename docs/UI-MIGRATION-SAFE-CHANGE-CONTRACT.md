@@ -335,3 +335,43 @@ Verification remains source-level because no Android build/physical MkII run is 
 - The Main-specific action helper prevents legacy rounded button styling from leaking into the MPC Main surface; legacy pages remain unchanged.
 
 - Main Toolbar remains presentation-only: the latest pass stabilizes geometry and touch targets without adding new domain ownership or transport semantics.
+
+
+## 2026-10-05 MPC One mixer affordance iconography checkpoint
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+Old context:
+- Main XL Channel Strip visibility and Track/Pad selection used Unicode glyphs on Android Buttons.
+
+New context:
+- XL Channel Strip visibility uses deterministic original vector iconography with an eye/show-hide semantic.
+- Main Track/Arrangement Track/Pad selector uses deterministic single-pad / four-squares iconography.
+- Icon state remains derived from existing `MpcUiState` mixer visibility/pad-mode state; no second state model was introduced.
+
+Source reference:
+- Akai Professional, “Output Routing Basics” — documents the XL Channel Strips, the top icon used to show/hide them, and the bottom-right single-pad/four-squares Track/Pad selector.
+
+Files changed:
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMixerStripIconDrawable.java`
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java`
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java`
+- `tests/android_ui_smoke.sh`
+
+Lower-layer files touched:
+- None.
+
+Tests:
+- Added source-level regression gate requiring deterministic mixer icon integration.
+- Existing XL Channel Strip collapse and Data Dial focus gates remain enabled.
+- Source contract verification passes against the feature branch.
+
+Actions:
+- Android Build was initiated for the updated branch; final runtime/emulator result pending at this checkpoint.
+
+Physical verification:
+- MPC Studio MkII verification remains pending.
+
+Remaining gaps:
+- Complete Android emulator smoke without System UI ANR interference.
+- Perform physical MkII workflow verification.
