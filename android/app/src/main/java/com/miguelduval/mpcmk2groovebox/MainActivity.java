@@ -9300,6 +9300,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Log.i(TAG, "UI_HIERARCHY_COMPLETE");
         Log.i(TAG, "UI_INTERACTION_BEGIN");
 
+        View quickSampleWaveform = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View quick sample waveform");
+        View quickSampleBrowse = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View browse samples");
+        View quickSampleRecord = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View record sample");
+        View quickSampleAudition = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View audition selected Pad");
+        if (quickSampleWaveform == null
+                || quickSampleWaveform.getHeight() <= dp(70)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main quick sample waveform");
+            return;
+        }
+        final boolean emptySampleState =
+                quickSampleBrowse != null && quickSampleRecord != null;
+        final boolean loadedSampleState = quickSampleAudition != null;
+        if (!emptySampleState && !loadedSampleState) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main sample state has no valid action surface");
+            return;
+        }
+
         showPullDown();
         if (pullDownPanel == null
                 || pullDownPanel.getVisibility() != View.VISIBLE
@@ -9380,31 +9405,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         activeMpcParameterDialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
-
-        View quickSampleWaveform = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View quick sample waveform");
-        View quickSampleBrowse = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View browse samples");
-        View quickSampleRecord = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View record sample");
-        View quickSampleAudition = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View audition selected Pad");
-        if (quickSampleWaveform == null
-                || quickSampleWaveform.getHeight() <= dp(70)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main quick sample waveform");
-            return;
-        }
-        final boolean emptySampleState =
-                quickSampleBrowse != null && quickSampleRecord != null;
-        final boolean loadedSampleState = quickSampleAudition != null;
-        if (!emptySampleState && !loadedSampleState) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main sample state has no valid action surface");
-            return;
-        }
 
 
         View layerFieldAudit = findViewWithContentDescription(
