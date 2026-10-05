@@ -4776,18 +4776,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout sampleHeader = row();
         sampleHeader.addView(sectionLabelView(
                 "SAMPLE WORKSPACE  •  RECORD / MONITOR",
-                new LinearLayout.LayoutParams(0, dp(32), 1)));
+                new LinearLayout.LayoutParams(0, dp(30), 1)));
         sampleHeader.addView(actionButton("EDIT", v -> showSamplePage()),
-                new LinearLayout.LayoutParams(dp(62), dp(32)));
+                new LinearLayout.LayoutParams(dp(62), dp(30)));
         sampleHeader.addView(actionButton("BROWSER", v -> showBrowserPage()),
-                new LinearLayout.LayoutParams(dp(82), dp(32)));
+                new LinearLayout.LayoutParams(dp(82), dp(30)));
         page.addView(sampleHeader);
 
         recordingInfo = label("", 13, TEXT);
         recordingInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
         recordingInfo.setPadding(dp(12), 0, dp(12), 0);
         page.addView(recordingInfo, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
 
         recordingWaveform = new WaveformView(this);
         recordingWaveform.setContentDescription("Recording waveform monitor");
@@ -4800,7 +4800,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         recordingTelemetry = label("No recorded audio", 11, MUTED);
         recordingTelemetry.setGravity(Gravity.CENTER_VERTICAL);
         page.addView(recordingTelemetry, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(20)));
 
         LinearLayout controls1 = row();
         Button record = actionButton("RECORD", v -> {
@@ -4857,7 +4857,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 });
         controls2.addView(threshold, weight());
         page.addView(controls2, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
 
         content.addView(page);
         refreshRecordingInfo();
