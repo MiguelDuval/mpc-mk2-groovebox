@@ -9509,7 +9509,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 || mainArrangementWorkspace == null
                 || mainTrackWorkspace.getVisibility() != View.VISIBLE
                 || mainArrangementWorkspace.getVisibility() != View.GONE) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track/Arrangement default view");
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track/Arrangement default view"
+                    + " | switcher=" + describeAuditView(mainViewSwitcher)
+                    + " | trackSelector=" + describeAuditView(mainTrackSelector)
+                    + " | arrangementSelector=" + describeAuditView(mainArrangementSelector)
+                    + " | trackWorkspace=" + describeAuditView(mainTrackWorkspace)
+                    + " | arrangementWorkspace=" + describeAuditView(mainArrangementWorkspace)
+                    + " | arrangementVisible="
+                    + (mainArrangementWorkspace != null
+                            && mainArrangementWorkspace.getVisibility() == View.VISIBLE));
             return;
         }
 
