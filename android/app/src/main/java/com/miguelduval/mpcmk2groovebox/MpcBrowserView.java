@@ -23,6 +23,7 @@ import java.util.Locale;
 final class MpcBrowserView extends LinearLayout {
     interface Listener {
         void onSectionSelected(String section);
+        void onNavigationItemSelected(String section, String item);
         void onFilterSelected(String filter);
         void onOpenStorage();
         void onPlayCurrent();
@@ -38,6 +39,7 @@ final class MpcBrowserView extends LinearLayout {
     private static final int MPC_BROWSER_SELECTED = Color.rgb(224, 30, 61);
     private static final int MPC_FLAT_RADIUS_DP = 0;
 
+    private final LinearLayout sections;
     private final LinearLayout places;
     private final LinearLayout filters;
     private final LinearLayout results;
@@ -48,6 +50,7 @@ final class MpcBrowserView extends LinearLayout {
     private final EditText search;
 
     private Listener listener;
+    private String activeSection = "PLACES";
 
     MpcBrowserView(Context context) {
         super(context);
@@ -55,13 +58,13 @@ final class MpcBrowserView extends LinearLayout {
         setBackgroundColor(BG);
         setContentDescription("MPC Browser");
 
-        LinearLayout sections = row(context);
+        sections = row(context);
         for (String section : new String[]{
                 "PLACES", "CONTENT", "EXPANSIONS"}) {
             Button button = button(context, section);
             button.setOnClickListener(v -> {
+                setSection(section);
                 if (listener != null) listener.onSectionSelected(section);
-                setActiveButton(sections, section);
             });
             sections.addView(button, weight());
         }
@@ -74,17 +77,9 @@ final class MpcBrowserView extends LinearLayout {
         places.setOrientation(VERTICAL);
         places.setPadding(dp(context, 4), dp(context, 4), dp(context, 4), dp(context, 4));
 
-        for (String place : new String[]{
-                "INTERNAL", "DOCUMENTS", "MUSIC", "SAMPLES", "FAVORITES"}) {
-            Button button = button(context, place);
-            button.setTextSize(9);
-            button.setOnClickListener(v -> {
-                if (listener != null) listener.onSectionSelected(place);
-                location.setText("PLACE • " + place);
-            });
-            places.addView(button, paramsMatch(context, 42));
-        }
-        body.addView(places, paramsWidth(context, 116));
+        ScrollView sideScroll = new ScrollView(context);
+        sideScroll.addView(places);
+        body.addView(sideScroll, paramsWidth(context, 116));
 
         LinearLayout center = new LinearLayout(context);
         center.setOrientation(VERTICAL);
@@ -164,7 +159,7 @@ final class MpcBrowserView extends LinearLayout {
         body.addView(center, new LayoutParams(0, -1, 1));
         addView(body, new LayoutParams(-1, 0, 1));
 
-        setActiveButton(sections, "PLACES");
+        setSection("PLACES");
         setActiveButton(filters, "ALL");
     }
 
@@ -187,9 +182,91 @@ final class MpcBrowserView extends LinearLayout {
                 "SAMPLE • " + (name == null || name.isEmpty() ? "NONE" : name));
     }
 
+    void setSection(String section) {
+        activeSection = isKnownSection(section) ? section : "PLACES";
+        setActiveButton(sections, activeSection);
+        rebuildSideNavigation();
+    }
+
     void setLocation(String value) {
-        location.setText("PLACE • " + (
-                value == null || value.isEmpty() ? "INTERNAL" : value));
+        final String raw = value == null ? "" : value;
+        final int separator = raw.indexOf('/');
+        if (separator > 0) {
+            final String section = raw.substring(0, separator);
+            final String item = raw.substring(separator + 1);
+            if (isKnownSection(section)) {
+                activeSection = section;
+                setActiveButton(sections, activeSection);
+                rebuildSideNavigation();
+                location.setText(locationLabel(section, item));
+                return;
+            }
+        }
+        activeSection = "PLACES";
+        setActiveButton(sections, activeSection);
+        rebuildSideNavigation();
+        location.setText("PLACE • " + (raw.isEmpty() ? "INTERNAL" : raw));
+    }
+
+    private boolean isKnownSection(String section) {
+        return "PLACES".equals(section)
+                || "CONTENT".equals(section)
+                || "EXPANSIONS".equals(section);
+    }
+
+    private String locationLabel(String section, String item) {
+        if ("CONTENT".equals(section)) {
+            return "CONTENT • " + item;
+        }
+        if ("EXPANSIONS".equals(section)) {
+            return "EXPANSIONS • " + item;
+        }
+        return "PLACE • " + item;
+    }
+
+    private void rebuildSideNavigation() {
+        places.removeAllViews();
+        final String[] items;
+        if ("CONTENT".equals(activeSection)) {
+            items = new String[]{
+                    "DRUMS", "INSTRUMENTS", "SAMPLES",
+                    "DEMOS", "MY FILES", "SPLICE"};
+        } else if ("EXPANSIONS".equals(activeSection)) {
+            items = new String[]{
+                    "EXPANSIONS", "USER CONTENT"};
+        } else {
+            items = new String[]{
+                    "INTERNAL", "MPC DOCUMENTS", "CONNECTED STORAGE",
+                    "FAVORITE 1", "FAVORITE 2", "FAVORITE 3",
+                    "FAVORITE 4", "FAVORITE 5"};
+        }
+
+        for (String item : items) {
+            final String section = activeSection;
+            Button button = button(getContext(), item);
+            button.setTextSize(9);
+            button.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onNavigationItemSelected(section, item);
+                }
+                location.setText(locationLabel(section, item));
+                setActiveNavigationItem(item);
+            });
+            places.addView(button, paramsMatch(getContext(), 42));
+        }
+    }
+
+    private void setActiveNavigationItem(String item) {
+        for (int i = 0; i < places.getChildCount(); i++) {
+            final View child = places.getChildAt(i);
+            if (!(child instanceof Button)) continue;
+            final Button button = (Button) child;
+            final boolean selected = item.equals(button.getText().toString());
+            button.setTextColor(selected ? Color.rgb(14, 16, 18) : TEXT);
+            button.setBackground(stroke(
+                    selected ? MPC_BROWSER_SELECTED : SURFACE_2,
+                    selected ? MPC_BROWSER_SELECTED : LINE));
+        }
     }
 
     void setFilter(String value) {
