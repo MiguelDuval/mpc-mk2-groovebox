@@ -1031,10 +1031,10 @@ Program Edit remains reserved until the backend can truthfully edit Program cont
 ## 2026-10-03 Main shell persistent-context checkpoint
 
 - The shell left edge is explicitly split into two persistent functional layers: five shortcuts and a compact XL Channel Strip region followed by the workspace.
-- The migration-only compact context rail carries Sequence + BPM, selected Track identity/state, selected Track Program where truthful, selected Pad, semantic Data Dial focus/subcontext, and a thin sequence movement overview.
-- Mixer Strip detail visibility affects only mixer-detail controls; it must not hide or reset persistent Sequence/Track/Program/Pad/Dial context or sequence state.
-- Sequence, Track and Program entries are direct semantic entry points into the existing Main selection contexts. Non-Drum Program selection remains explicitly unavailable.
-- The shell geometry implementation contract is 44dp Toolbar, 48dp shortcut rail, 210dp context/channel rail and 40dp Function Bar. These are implementation geometry baselines, not claims of pixel-equivalent Akai hardware dimensions.
+- The migration state model still carries Sequence/Track/Program/Pad/Data Dial focus internally, but this is not a visible dashboard.
+- XL Channel Strip visibility affects only mixer-strip presentation; it must not mutate or reset persistent musical selection/transport state.
+- Sequence, Track and Program entries remain direct semantic entry points in the central Main workspace. Non-Drum Program selection remains explicitly unavailable.
+- The shell geometry implementation contract is 44dp Toolbar, 48dp shortcut rail, 210dp XL Channel Strip host and 40dp Function Bar. These are implementation geometry baselines, not claims of pixel-equivalent Akai hardware dimensions.
 - The Toolbar remains reduced to the MPC information hierarchy and does not expose diagnostic AUDIO/MIDI chips as primary product controls.
 
 
@@ -1050,7 +1050,7 @@ Shortcut slots remain five configurable MPC-style mode shortcuts. The visual til
 
 ## 2026-10-03 Persistent context hierarchy fidelity checkpoint
 
-The persistent context rail is intentionally denser than a general Android dashboard:
+The historical compact-context implementation checkpoint is intentionally retained below for provenance only. It is not a canonical visible Main region:
 
 - each context group has a small uppercase section caption;
 - value fields remain flat rectangular surfaces with compact typography;
