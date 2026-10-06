@@ -57,13 +57,20 @@ for required in \
 done
 
 for required in \
-  'case SOUNDS: return "♫";' \
-  'case XYFX: return "✣";'; do
+  'case BROWSER: return "BROWSER";' \
+  'case CHANNEL_MIXER: return "CH MIX";' \
+  'case PAD_MIXER: return "PAD MIX";' \
+  'case SOUNDS: return "SOUNDS";' \
+  'case XYFX: return "XY";'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
-    echo "ERROR: MPC shortcut glyph contract missing: $required"
+    echo "ERROR: MPC Shortcut Rail visible-label contract missing: $required"
     exit 1
   fi
 done
+if grep -Eq -- 'case (BROWSER|CHANNEL_MIXER|PAD_MIXER|SOUNDS|XYFX): return "[^"]*[⌂☷⌕▦▥✎∿●≡▤✣♫▶╬☰]"' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: canonical MPC Shortcut Rail must not use Unicode glyphs as visible labels"
+  exit 1
+fi
 
 echo "Running MPC factory shortcut reset preflight..."
 if ! grep -Fq -- 'void resetDefaultShortcuts()' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcNavigationController.java" ||    ! grep -Fq -- 'navigationController.resetDefaultShortcuts();' "$MAIN_ACTIVITY_SOURCE"; then
