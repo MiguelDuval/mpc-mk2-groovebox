@@ -719,6 +719,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             public void onReservedAction(String label) {
                 setBottomStatus(label);
             }
+
+            @Override
+            public void onTimeCounter() {
+                showPullDownLocateDialog();
+            }
+
+            @Override
+            public void onTempo() {
+                showPullDownTempoDialog();
+            }
         });
         pullDownPanel.setVisibility(View.GONE);
         root.addView(pullDownPanel, new FrameLayout.LayoutParams(
@@ -745,6 +755,124 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 tempo,
                 midiReady,
                 audioReady);
+    }
+
+    private void showPullDownLocateDialog() {
+        if (!startupComplete) {
+            setBottomStatus("LOCATE • waiting for sequencer");
+            return;
+        }
+
+        final long position = nativeSequencePositionTicks();
+        final EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        input.setText(formatMpcToolbarPosition(position)
+                .replace("BAR ", "")
+                .replace("  BEAT ", ":")
+                .replace("  TICK ", ":"));
+        input.setSelectAllOnFocus(true);
+        input.setContentDescription("Pull-Down Locate position");
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("LOCATE")
+                .setMessage("Enter BAR:BEAT:TICK")
+                .setView(input)
+                .setNegativeButton("CANCEL", null)
+                .setPositiveButton("DO IT", null)
+                .create();
+
+        dialog.setOnShowListener(v -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(button -> {
+                    final String raw = input.getText() == null
+                            ? ""
+                            : input.getText().toString().trim();
+                    final String[] parts = raw.split(":");
+                    if (parts.length != 3) {
+                        input.setError("Use BAR:BEAT:TICK");
+                        return;
+                    }
+
+                    try {
+                        final long bar = Long.parseLong(parts[0].trim());
+                        final long beat = Long.parseLong(parts[1].trim());
+                        final long tick = Long.parseLong(parts[2].trim());
+                        final long ticksPerBeat =
+                                Math.max(1L, Math.round(getSequenceTicksPerBeat()));
+                        final long ticksPerBar =
+                                Math.max(ticksPerBeat, Math.round(getSequenceTicksPerBar()));
+
+                        if (bar < 1
+                                || beat < 1
+                                || beat > Math.max(1, nativeSequenceGetNumerator())
+                                || tick < 0
+                                || tick >= ticksPerBeat) {
+                            input.setError("Position is outside the active time signature");
+                            return;
+                        }
+
+                        final long target =
+                                Math.max(0L, (bar - 1L) * ticksPerBar
+                                        + (beat - 1L) * ticksPerBeat + tick);
+                        final long current = nativeSequencePositionTicks();
+                        final long delta = target - current;
+                        setBottomStatus(nativeSequenceLocateMoveTicks(delta));
+                        refreshSequenceControls();
+                        refreshMpcToolbarState();
+                        refreshMpcCompactContext();
+                        dialog.dismiss();
+                    } catch (NumberFormatException error) {
+                        input.setError("Use numeric BAR:BEAT:TICK");
+                    }
+                });
+        dialog.show();
+    }
+
+    private void showPullDownTempoDialog() {
+        if (!startupComplete) {
+            setBottomStatus("TEMPO • waiting for sequencer");
+            return;
+        }
+
+        final EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(
+                android.text.InputType.TYPE_CLASS_NUMBER
+                        | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setText(String.format(
+                Locale.ROOT, "%.1f", nativeSequenceGetTempo()));
+        input.setSelectAllOnFocus(true);
+        input.setContentDescription("Pull-Down Tempo value");
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("TEMPO")
+                .setMessage("20–300 BPM")
+                .setView(input)
+                .setNegativeButton("CANCEL", null)
+                .setPositiveButton("DO IT", null)
+                .create();
+
+        dialog.setOnShowListener(v -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(button -> {
+                    try {
+                        final double bpm = Double.parseDouble(
+                                input.getText() == null
+                                        ? ""
+                                        : input.getText().toString().trim());
+                        if (!Double.isFinite(bpm) || bpm < 20.0 || bpm > 300.0) {
+                            input.setError("Tempo must be 20–300 BPM");
+                            return;
+                        }
+                        setBottomStatus(nativeSequenceSetTempo(bpm));
+                        refreshSequenceControls();
+                        refreshMpcToolbarState();
+                        refreshMpcCompactContext();
+                        dialog.dismiss();
+                    } catch (NumberFormatException error) {
+                        input.setError("Enter a valid BPM");
+                    }
+                });
+        dialog.show();
     }
 
     private void showPullDown() {
