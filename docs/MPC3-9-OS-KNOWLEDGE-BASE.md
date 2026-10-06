@@ -437,3 +437,15 @@ Implementation correction: aligned `MpcModeRegistryTest` with this contract and 
 Result: no audio/MIDI/domain rewrite; the semantic route for reserved shortcuts remains explicit RESERVED/UNAVAILABLE.
 Confidence: HIGH for the repository contract; exact factory ordering is retained from the project brief and documented as an implementation target until independently captured from the v3.9 manual image.
 Checked: 2026-10-06.
+
+
+## 27. Functional routing log — Pull-Down time/tempo
+
+R-07 — 2026-10-06.
+Official v3.9 behavior: the Pull-Down is available from MPC3 modes; its time counter opens Locate and its BPM field opens Tempo. The panel has two pages. citeturn495906search2
+Finding in project: Pull-Down originally rendered project/sequence/tempo as read-only fields and Metro as reserved.
+Correction: Time and Tempo are now actionable through semantic listeners. Time uses existing `nativeSequenceLocateMoveTicks` so absolute BAR:BEAT:TICK input preserves playing state; Tempo uses existing `nativeSequenceSetTempo`. No realtime engine changes.
+Test contract: smoke now asserts the Pull-Down listener/action methods and native commands exist.
+Status: IMPLEMENTED for Time/Tempo; Metro remains a documented backend gap.
+Confidence: HIGH.
+Checked: 2026-10-06.
