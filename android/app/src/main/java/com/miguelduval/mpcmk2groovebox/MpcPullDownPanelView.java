@@ -24,6 +24,8 @@ final class MpcPullDownPanelView extends FrameLayout {
     interface Listener {
         void onClose();
         void onReservedAction(String label);
+        void onTimeCounter();
+        void onTempo();
     }
 
     private static final int BG = Color.rgb(17, 19, 22);
@@ -198,16 +200,14 @@ final class MpcPullDownPanelView extends FrameLayout {
                 projectName,
                 false,
                 "MPC Pull-Down Project status"), weight());
-        rowOne.addView(field(
-                "SEQUENCE",
-                String.format(java.util.Locale.ROOT, "%02d", sequenceNumber),
-                false,
-                "MPC Pull-Down Sequence status"), weight());
-        rowOne.addView(field(
+        rowOne.addView(actionField(
+                "TIME",
+                String.format(java.util.Locale.ROOT, "SEQ %02d", sequenceNumber),
+                "MPC Pull-Down Time Counter • tap for Locate"), weight());
+        rowOne.addView(actionField(
                 "TEMPO",
                 String.format(java.util.Locale.ROOT, "%.1f BPM", tempo),
-                false,
-                "MPC Pull-Down Tempo status"), weight());
+                "MPC Pull-Down Tempo • tap for Tempo"), weight());
         panel.addView(rowOne, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(58)));
 
@@ -276,6 +276,31 @@ final class MpcPullDownPanelView extends FrameLayout {
             }
         });
         return button;
+    }
+
+    private View actionField(
+            String title,
+            String value,
+            String description) {
+        Button box = button("");
+        box.setText(title + "\n" + value);
+        box.setTextColor(TEXT);
+        box.setTextSize(10);
+        box.setTypeface(Typeface.DEFAULT_BOLD);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(dp(6), dp(3), dp(6), dp(3));
+        box.setBackground(background(FIELD, LINE, 0));
+        box.setContentDescription(description);
+        box.setOnClickListener(v -> {
+            if (listener != null) {
+                if (title.equals("TIME")) {
+                    listener.onTimeCounter();
+                } else if (title.equals("TEMPO")) {
+                    listener.onTempo();
+                }
+            }
+        });
+        return box;
     }
 
     private View field(
