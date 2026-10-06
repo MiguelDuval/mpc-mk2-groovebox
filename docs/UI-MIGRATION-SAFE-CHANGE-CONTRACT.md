@@ -87,7 +87,7 @@ Old contexts can temporarily render inside the new shell.
 
 ### Main checkpoint
 
-New Main Mode can replace the old MAIN page without changing sampler/sequencer behavior.
+New Main Mode can replace the old MAIN page without changing sampler/sequencer behavior; the visible shell must follow the canonical five-shortcut + XL Channel Strip composition.
 
 ### Grid checkpoint
 
@@ -363,7 +363,7 @@ Lower-layer files touched:
 
 Tests:
 - Added source-level regression gate requiring deterministic mixer icon integration.
-- Existing XL Channel Strip collapse and Data Dial focus gates remain enabled.
+- Existing XL Channel Strip collapse and Data Dial focus gates remain enabled; Data Dial focus is semantic state and must not become a separate visible dashboard.
 - Source contract verification passes against the feature branch.
 
 Actions:
