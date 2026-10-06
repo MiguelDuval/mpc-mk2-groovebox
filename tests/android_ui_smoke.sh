@@ -953,17 +953,17 @@ if grep -Fq -- 'targetPanel' "android/app/src/main/java/com/miguelduval/mpcmk2gr
   exit 1
 fi
 
+if ! grep -Fq -- '"PROJECTS", "PATTERNS", "KITS", "PLUGIN PRESETS", "SAMPLES", "ALL"' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
+  echo "ERROR: MPC Browser six file-type filters are not aligned with the canonical filter taxonomy"
+  exit 1
+fi
+
 for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'FILTER Buttons'   'OPEN STORAGE…'   'CURRENT SAMPLE'; do
-  if ! grep -Fq -- '"PROJECTS", "PATTERNS", "KITS", "PLUGIN PRESETS", "SAMPLES", "ALL"' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
-    echo "ERROR: MPC Browser six file-type filters are not aligned with the canonical filter taxonomy"
-    exit 1
-  fi
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser information-architecture contract missing: $required"
     exit 1
   fi
 done
-
 for required in   'MPC_FLAT_RADIUS_DP = 0'   'MPC_BROWSER_SELECTED'   'MPC Browser'   'setCornerRadius(dp(getContext(), MPC_FLAT_RADIUS_DP))'   'selected ? MPC_BROWSER_SELECTED : SURFACE_2'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser flat-chrome contract missing: $required"
