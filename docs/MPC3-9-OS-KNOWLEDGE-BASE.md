@@ -298,3 +298,133 @@ R-02 Browser: S3. Browser has Sample Assign, Places/Content/Expansions, six filt
 R-03 Metronome: S5. Metro is a real MPC3 feature. Decision: current disabled control is a backend gap. Confidence HIGH.
 R-04 Track/Program: S2. One-to-One Track Workflow and unified Track container are architectural. Decision: selected Track is authoritative. Confidence HIGH.
 R-05 CI: current HEAD 10d1f6b. Android Build #2482 success. Decision: use #2482 as current baseline, not historical runs.
+## 22. Screen / context contract
+
+The following contract is the implementation checklist for every significant MPC3 context. It separates documented MPC behavior from our current backend capability.
+
+| Context | Canonical purpose | Visible regions / controls | Entry | Exit | Data Dial / +/- | Touch | Hardware-equivalent | State / editable data | Destructive actions | Backend dependency | Current status | Confidence | Test |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Main | operational hub | Toolbar; five Shortcuts; XL Strip; Sequence; Track/Arrangement; Function Bar | boot/Main/Menu/shortcut | contextual/back | Seq/Track/Program/BPM/Bars/loop/layer | field select, view toggle, waveform | Main/Track/Sequence selection, pads | sequence/track/program/pad/layer, tempo, bars, loop | none current subset | sequence + track/program + sample semantics | IMPLEMENTED/PARTIAL | HIGH | startup/focus/state/screenshot |
+| Menu | OS launcher | 4x4 mode grid + Function Bar | Toolbar/Menu | Back/Main | mode selection | tap tile | Menu control | selected mode/reserved | none | navigation catalog | IMPLEMENTED/PARTIAL | HIGH | every tile |
+| Browser | content discovery/load | Places, Content, Expansions, search, filters, results, target | shortcut/Toolbar/Main | Back/context return | Browser item | tap/select/search | Browser/MkII navigation | location/filter/search/target | load/assignment | semantic storage + import | PARTIAL | HIGH | search/filter/load/audition |
+| Track View | sequence track overview | track header + track strips + Function Bar | Menu/shortcut/Main | Main/Back | Track | row selection | Track Select/Track +/- | selected Track, arm/mute | none current | sequence track state | PARTIAL | HIGH | select/arm/mute |
+| Arrange | linear arrangement | lanes, timeline, playhead, loop brace, zoom | Main/Menu | Grid/Track/Main | Timeline/zoom | loop/track/event gestures | zoom/navigation | events, loop, focus | Cut/Copy/Paste/Duplicate later | arrangement event model | PARTIAL | HIGH | loop/drill-down |
+| Grid | detailed event editor | time grid, pad/piano-roll, playhead, tools, zoom | Arrange/Menu/shortcut | Main/Track/Step | cursor/zoom/tool | draw/erase/select/pinch | Grid navigation/pads | events, selected pad/time, zoom | erase/edit event | sequencer event model | PARTIAL | HIGH | Drum grid/state |
+| Step | fast 16-step editor | 16 steps, event info, parameters | Menu/Grid/shortcut | Grid/Main/Back | Step/event params | step select/edit | physical pads | velocity/probability/ratchet/nudge/duration | erase step | step-edit API | PARTIAL | HIGH | 16-step/dial |
+| Track Edit | selected track/pad/layer editor | TRACK/PAD context, workspace, tabs | Main waveform/pencil/Menu | Main/Back | layer/parameter | waveform/fields | pads/Data Dial/+/- | layers, gain/tune/pan, velocity, amp/filter | region/crop where invoked | audio/sample control-thread APIs | PARTIAL | HIGH | layer preservation |
+| Sample Edit | waveform/process | sample identity, waveform, S/E, process controls, tabs | Main waveform/Browser/Sampler | Main/Track | layer/start/end | region/zoom | Data Dial/+/- where mapped | sample region/layer | crop/chop | audio/sample region semantics | PARTIAL | HIGH | region/crop/chop |
+| Sampler | record/monitor/assign | waveform, Record/Stop, Monitor, Threshold, Assign | Main Record/Menu | Sample/Main | contextual | record controls | Record/transport | recording state, threshold, destination | recording/capture | recorder/native sampler | PARTIAL | HIGH | record→assign |
+| Channel Mixer | full track/return/output mixing | strips, level/pan, sends, inserts, I/O, returns | Menu/shortcut/XL | previous/back | mixer field | direct mixer controls | mixer navigation | routing/mixer params | routing changes only when semantic | mixer backend | RESERVED | HIGH | reserved honesty |
+| Pad Mixer | pad channel mixer | level/pan/tune, routing/FX if supported | Menu/shortcut | Main/Back | level/pan/tune | direct control | Data Dial | pad audio params | none current subset | pad audio APIs | PARTIAL | HIGH | native setter parity |
+| 16 Levels | fixed velocity performance | 16 pad mapping + source pad | Menu/shortcut | Main/Back | performance/source | pad performance | 16 pads | velocity mapping | none | performance model | RESERVED | MEDIUM | reserved |
+| Pad Perform | alternate pad interpretation | notes/chords/scales/other map | Menu/shortcut | Main/Back | note/scale/performance | pad mapping | pads | pad interpretation | none | performance model | RESERVED | HIGH | reserved |
+| Next Sequence | live sequence launcher | slots, current/queued, pad bank | Menu/shortcut | Main/Back | sequence/launcher | pad launch | pads + Pad Bank | current/queued | launch state | launcher semantics | PARTIAL | HIGH | bank/launch |
+| List Edit | event list editor | event rows/fields | Menu | Main/Back | event field | select/edit | Data Dial | event values | delete/edit | list-editor backend | RESERVED | MEDIUM | reserved |
+| Project | project lifecycle | browser, New/Open/Save/Save As | Menu/Toolbar | Main/back | project item | file/actions | project/menu | project identity/persistence | save/replace | project serializer | RESERVED | HIGH | no fake save |
+| Preferences | system/project settings | settings tabs | Menu | back | setting item | selectors/tabs | settings controls | device/audio/MIDI/sequencer defaults | settings apply | platform/device prefs | PARTIAL | HIGH | subset+reserved |
+| MIDI / Control | MIDI/controller setup | routing/control configuration | Toolbar I/O/Menu | back | contextual | selectors | MIDI controls | ports/routes/learn | none current subset | Android MIDI + semantic controller | PARTIAL | HIGH | connection/route |
+| Looper | loop performance | loop transport/content | Menu/taxonomy | Main/back | performance | pad/touch | performance controls | loop state | clear/replace later | looper backend | RESERVED | LOW | reserved |
+| XYFX / XY | XY performance/control | XY surface/parameters | Menu/taxonomy | Main/back | XY macro | touch XY | touch strip/controller | effect macro state | effect params | FX/automation backend | RESERVED | MEDIUM | reserved |
+| Sounds | sound/expansion audition | categories/previews | Menu/shortcut | Browser/Main | Browser item | browse/audition | pads/navigation | sound/preset identity | load/apply | content provider | RESERVED | MEDIUM | reserved |
+
+### Per-context route invariants
+
+1. Every entry path converges on one semantic mode/context. Touch and hardware never maintain parallel musical state.
+2. Every mutable field has a real setter or is visibly reserved.
+3. Back preserves transport, sequence, track, pad and layer state unless the documented workflow requires otherwise.
+4. Data Dial focus is explicit state, not merely a toast/status message.
+5. Hardware feedback is only marked verified after a physical MkII test.
+
+## 23. Expanded function-routing matrix
+
+Required route form: SOURCE CONTROL → EXPECTED MPC BEHAVIOR → CURRENT ROUTE → REQUIRED ROUTE → BACKEND COMMAND → STATE CHANGE → SCREEN CHANGE → HARDWARE FEEDBACK → STATUS.
+
+| Source control | Expected MPC behavior | Current route | Required route | Backend command | State change | Screen change | Hardware feedback | Status |
+|---|---|---|---|---|---|---|---|---|
+| Toolbar Menu | open Menu | showMenuPage() | same | navigation MENU | mode | Menu | mode indication | AVAILABLE |
+| Toolbar Browser | open Browser | showBrowserPage() | same | Browser state | browser context | Browser | browse context | PARTIAL |
+| Timing Correct | edit quantize/TC | dialog + native setters | same | quantize/swing/TC | TC state | dialog/Main | TC indication | AVAILABLE |
+| Metro | open metronome settings | disabled | Metro settings + Pull-Down | metronome backend | metro/count-in/rate/etc. | settings | Metro state | GAP |
+| Automation | expose automation | disabled | contextual automation | automation backend | automation state | contextual view | automation indication | GAP |
+| MIDI IN/OUT | MIDI context | showMidiPage() | same + semantic routing | Android MIDI/control | ports/routes | MIDI | MIDI state | PARTIAL |
+| Shortcut slot | rapid context access | navigateToMode() | same; reserved explicit | mode state | mode | target | mode state | AVAILABLE/RESERVED |
+| Main Sequence | choose sequence | showSequenceSelectPage() | same | nativeSequenceSelect | selected sequence | Main | selection | AVAILABLE |
+| Main BPM | edit tempo | dial focus | same | native tempo setter | BPM | Main refresh | dial state | AVAILABLE |
+| Main BARS | edit length | dial focus | same | native bars setter | bars | Main refresh | dial state | AVAILABLE |
+| Main START/END | edit loop bounds | dial focus | same | native loop setter | loop | Main refresh | dial state | AVAILABLE |
+| Main LOOP | toggle loop | tap | same | native loop enable | loop state | Main | loop LED | AVAILABLE |
+| Main Track | select Track | Track Select | same | nativeSequenceSelectTrack | selected Track | Main | selection | AVAILABLE |
+| Main Program | select Track-owned Drum Program | Program Select | same for supported Track Types | nativeSequenceSetTrackProgram | program/container | Main | selection | PARTIAL |
+| Main Track Type | choose type | focus/status only | real type selector after semantic setter | track type command needed | type | Main | type state | RESERVED |
+| Main Layer | select layer | focus/layer state | same | layer state APIs | selected layer | Main/Track Edit | layer indication | PARTIAL |
+| Main waveform | open deeper editor | Track Edit | same | sample-region semantics | editor context | Track Edit | mode | PARTIAL |
+| Main Browse | load sample | Browser → storage picker | Browser result selection → Load | sample import/assignment | sample/layer | Browser/Main | load state | PARTIAL |
+| Main Record | record sample | Sampler | same | nativeAudioStartRecording | recording | Sampler | Record state | PARTIAL |
+| Function New Track | create Track | addSequenceTrack() | same | sequence command | track list | Main/Track View | track state | AVAILABLE |
+| Function Rec Arm | toggle arm | native selected arm | same | native arm | rec-arm | shell refresh | Rec LED | AVAILABLE |
+| Function Track +/- | adjacent Track | native select | same | nativeSequenceSelectTrack | selected Track | Main/Track View | selection | AVAILABLE |
+| Function Mute | toggle selected Track | native mute | same | nativeSequenceToggleTrackMute | mute | refresh | Mute LED | AVAILABLE |
+| Function Solo | solo Track | disabled/reserved | semantic solo only when backend exists | none now | none | none | no false feedback | RESERVED |
+| Browser Places | location navigation | setBrowser() | semantic Place provider | storage query | location | results | focus | PARTIAL |
+| Browser Content | content category | setBrowser() | semantic content provider | browser query | category | results | focus | PARTIAL |
+| Browser Expansions | expansion content | setBrowser() | semantic expansion provider | content query | location/category | results | focus | PARTIAL |
+| Browser Search | filter results | browserSearch state | same + result provider | browser query | query | results | browser focus | PARTIAL |
+| Browser Filters | filter file types | browserFilter state | same + typed result model | browser query | filter | results | browser focus | PARTIAL |
+| Browser Audition | preview sample | selectAndTriggerPad | selected Browser item preview | audition backend later | audition | Browser | play state | PARTIAL |
+| Browser LOAD | load selected file | openWavPicker() | semantic Browser selection → Load | sample import | sample/container | Main/Sample | load indication | PARTIAL |
+| Sample Assign | project sample pool/pad assignment | disabled | semantic pool/pad assignment | sample-pool backend | pool/target | Browser/Sample Assign | pad assignment | RESERVED |
+| XL Strip show/hide | show/hide strips | compactMixerVisible | same | UI state | visible | shell | strip indication | AVAILABLE |
+| XL Strip selector | change track/pad context | existing selector | semantic channel context | selector + resolved channel | strip target | shell | strip indication | PARTIAL |
+| Pad Mixer Level | edit gain | native setter | same | nativeAudioSetPadLevel | level | Pad Mixer/Main | dial/strip | AVAILABLE |
+| Pad Mixer Pan | edit pan | native setter | same | nativeAudioSetPadPan | pan | Pad Mixer/Main | dial/strip | AVAILABLE |
+| Pad Mixer Tune | edit tune | native setter | same | nativeAudioSetPadTuning | tune | Pad Mixer/Main | dial/strip | AVAILABLE |
+| Track View select | select Track | row listener | same | nativeSequenceSelectTrack | selected Track | Track View | Track state | AVAILABLE |
+| Track View Rec Arm | arm Track | Function Bar | same | native arm | rec-arm | Track View | Rec LED | AVAILABLE |
+| Track View Mute | mute Track | native mute | same | native mute | mute | Track View | Mute LED | AVAILABLE |
+| Track View Solo | solo Track | reserved | semantic solo only when backend exists | none now | none | none | none | RESERVED |
+| Arrange loop brace | edit loop region | onLoopCommitted | same | nativeSequenceSetLoopBars | loop range | Arrange | loop state | AVAILABLE |
+| Arrange CUT/COPY/PASTE/DUP | edit loop selection | reserved | semantic arrangement commands | arranger API | events | Arrange | edit indication | RESERVED |
+| Arrange double-tap event | open Grid | showSequenceGridPage() | same + preserve event focus | grid/event state | event selection | Grid | Grid state | PARTIAL |
+| Grid Draw | add/modify event | grid listener | same | sequence event API | event | Grid | pad/event | PARTIAL |
+| Grid Erase | remove event | grid listener | same | erase API | event removed | Grid | pad/event | PARTIAL |
+| Grid Select | select pad/event/time | grid listener | same | semantic selection | focus | Grid | pad state | AVAILABLE/PARTIAL |
+| Grid Magnify | zoom/navigation | view policy | same | view-only zoom | zoom | Grid | zoom state | PARTIAL |
+| Step parameter | edit event | handleHardwareDialDelta | same | native Step Edit | event field | Step | dial state | PARTIAL |
+| Track Edit layer gain | edit gain | listener/native audio | same | native layer gain | gain | Track Edit | dial | AVAILABLE |
+| Track Edit layer tune | edit tune | listener/native audio | same | native layer tuning | tune | Track Edit | dial | AVAILABLE |
+| Track Edit layer pan | edit pan | listener/native audio | same | native layer pan | pan | Track Edit | dial | AVAILABLE |
+| Track Edit velocity range | edit velocity range | listener/native audio | same | native velocity min/max | layer range | Track Edit | dial | AVAILABLE |
+| Track Edit amp envelope | edit envelope | listener/native audio | same | native envelope | envelope | Track Edit | dial | AVAILABLE |
+| Track Edit filter | edit cutoff | listener/native audio | same | native filter cutoff | cutoff | Track Edit | dial | AVAILABLE |
+| Sample FULL | restore full region | resetRegion() | same | sample-region command | region | Sample Edit | feedback | AVAILABLE |
+| Sample CROP | crop region | cropRegion() | same | crop command | sample data | Sample Edit | operation | AVAILABLE |
+| Sample CHOP | split region | chop() | same | chop command | pad/sample assignment | Sample Edit | pad state | AVAILABLE |
+| Sampler RECORD | capture input | nativeAudioStartRecording | same | recorder | recording | Sampler | Record LED | AVAILABLE |
+| Sampler STOP | stop capture | nativeAudioStopRecording | same | recorder | stopped | Sampler | transport | AVAILABLE |
+| Sampler MONITOR | monitor input | native monitor | same | monitor backend | monitor | Sampler | monitor state | AVAILABLE |
+| Sampler THRESHOLD | set threshold | native threshold | same | native threshold | threshold | Sampler | dial/state | AVAILABLE |
+| Sampler ASSIGN | assign recording | nativeAudioAssignRecordingToPadLayer | same | native assign | layer sample | Sample/Main | pad/sample | AVAILABLE |
+| Next Sequence pad | queue/launch sequence | launcher view | same + full quantization state later | launcher backend | current/queued | launcher | pad LEDs | PARTIAL |
+| Menu reserved tile | report unsupported capability | explicit reserved | same | none | availability | reserved state | no false feedback | REQUIRED |
+| Project New/Save | project lifecycle | no route | serializer first | project persistence | project files | Project/Main | project state | RESERVED |
+
+## 24. Versioned behavior register
+
+| Area | 3.4-era evidence | 3.7-era evidence | 3.9 canonical evidence | Repository rule |
+|---|---|---|---|---|
+| Main | older Main assumptions | supporting only | Main Mode overview with Toolbar/Sequence/Shortcuts/Track-Arrangement/Mixer/Function Buttons | 3.9 wins |
+| Track/program | older shared-program model | transitional import | unified Track/Program container | selected Track/container authoritative |
+| Browser | legacy browser | supporting | current Browser taxonomy incl. Sample Assign, favourites, filters, audition | picker underneath semantic Browser |
+| Time Signature | legacy sequence assumptions | transitional | current 3.9 time-signature fields | never copy MPC2 behavior unverified |
+| Track Edit | program-centric legacy | supporting layer evidence | current 3.9 Track Edit | label supporting version |
+| Arrange | not equivalent | supporting | 3.9 Linear Arranger | Standalone evidence wins |
+| Desktop | MPC2 desktop | Desktop beta may differ | not canonical | compatibility/controller evidence only |
+
+## 25. Research provenance / confidence rule
+
+For every new UI fact record: Source, Section/page, Checked, Confidence, Repository decision, Test.
+
+The official v3.9 manual explicitly presents Main as Toolbar + Sequence + Shortcuts + Track/Arrangement Views + Mixer Strips + Function Buttons. It also describes double-tapping the Main waveform to open Track Edit and double-tapping Arrangement to open Grid View.
+
+Checked: 2026-10-06.
+Confidence: HIGH.
