@@ -1170,6 +1170,22 @@ if ! grep -Fq -- 'TRACK_PAD_SELECTOR' "android/app/src/main/java/com/miguelduval
   exit 1
 fi
 
+echo "Running MPC XL channel-strip restore affordance preflight..."
+for required in \
+  'channelStripRestoreButton.setText("")' \
+  'channelStripRestoreButton.setForeground(new MpcMixerStripIconDrawable(' \
+  'MpcMixerStripIconDrawable.Mode.PERSONAL_CHANNEL_STRIP' \
+  'channelStripRestoreButton.setContentDescription("MPC XL Channel Strip show")'; do
+  if ! grep -Fq -- "$required" "$SHELL_SOURCE"; then
+    echo "ERROR: collapsed XL Channel Strip restore affordance contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'channelStripRestoreButton.setText("›")' "$SHELL_SOURCE"; then
+  echo "ERROR: collapsed XL Channel Strip must not use a visible Unicode chevron restore glyph"
+  exit 1
+fi
+
 echo "Running MPC XL channel-strip collapse/focus regression preflight..."
 for required in   'void setChannelStripVisible(boolean visible)'   'contextArea.getLayoutParams()'   'contextParams.width = visible'   ': 0;'   'channelStripRestoreButton'   'channelStripRestoreButton.setVisibility('   'visible ? View.GONE : View.VISIBLE'; do
   if ! grep -Fq -- "$required" "$SHELL_SOURCE"; then
