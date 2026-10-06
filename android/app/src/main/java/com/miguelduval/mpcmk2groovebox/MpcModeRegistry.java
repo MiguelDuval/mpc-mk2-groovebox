@@ -45,14 +45,13 @@ final class MpcModeRegistry {
     };
 
     /*
-     * Defaults must always be truthful. Unimplemented destinations stay
-     * discoverable in Menu/shortcut configuration, but never occupy a
-     * factory/default shortcut slot.
-     */
-    /*
-     * MPC 3.x factory shortcut order. Channel Mixer, Sounds, and XY remain
-     * discoverable even while their backends are reserved; the Main Rail must
-     * still reproduce the canonical hardware-facing visual order.
+     * MPC 3.x factory shortcut order is a product-level shell contract:
+     * Browser / Channel Mixer / Pad Mixer / Sounds / XY.
+     *
+     * Availability is independent from shortcut identity. A factory shortcut
+     * may currently resolve to a truthful RESERVED/UNAVAILABLE context when
+     * our backend is not ready; it must never be silently replaced by a
+     * different mode just to make the slot executable.
      */
     private static final MpcUiState.Mode[] DEFAULT_SHORTCUTS = {
             MpcUiState.Mode.BROWSER,
