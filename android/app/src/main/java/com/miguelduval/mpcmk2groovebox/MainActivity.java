@@ -824,7 +824,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     } catch (NumberFormatException error) {
                         input.setError("Use numeric BAR:BEAT:TICK");
                     }
-                });
+                }));
         dialog.show();
     }
 
@@ -871,7 +871,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     } catch (NumberFormatException error) {
                         input.setError("Enter a valid BPM");
                     }
-                });
+                }));
         dialog.show();
     }
 
