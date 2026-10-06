@@ -91,7 +91,10 @@ final class MpcShell {
         workspace.setBackgroundColor(BG);
 
         channelStripRestoreButton = new Button(context);
-        channelStripRestoreButton.setText("›");
+        channelStripRestoreButton.setText("");
+        channelStripRestoreButton.setTextColor(Color.TRANSPARENT);
+        channelStripRestoreButton.setForeground(new MpcMixerStripIconDrawable(
+                MpcMixerStripIconDrawable.Mode.PERSONAL_CHANNEL_STRIP, false));
         channelStripRestoreButton.setTextColor(Color.WHITE);
         channelStripRestoreButton.setTextSize(16);
         channelStripRestoreButton.setMinHeight(0);
@@ -100,7 +103,7 @@ final class MpcShell {
         channelStripRestoreButton.setGravity(android.view.Gravity.CENTER);
         channelStripRestoreButton.setBackgroundColor(SURFACE);
         channelStripRestoreButton.setContentDescription(
-                "MPC XL Channel Strip restore");
+                "MPC XL Channel Strip show");
         channelStripRestoreButton.setVisibility(View.GONE);
         workspace.addView(channelStripRestoreButton, new FrameLayout.LayoutParams(
                 dp(context, 20), dp(context, 30),
