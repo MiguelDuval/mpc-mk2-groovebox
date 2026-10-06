@@ -1181,6 +1181,11 @@ for required in \
     exit 1
   fi
 done
+if ! grep -Fq -- 'MPC XL Channel Strip show' "$SHELL_SOURCE"; then
+  echo "ERROR: collapsed XL Channel Strip restore affordance must describe the actual show action"
+  exit 1
+fi
+
 if grep -Fq -- 'channelStripRestoreButton.setText("›")' "$SHELL_SOURCE"; then
   echo "ERROR: collapsed XL Channel Strip must not use a visible Unicode chevron restore glyph"
   exit 1
