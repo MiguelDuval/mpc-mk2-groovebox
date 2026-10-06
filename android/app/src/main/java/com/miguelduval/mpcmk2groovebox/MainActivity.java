@@ -125,6 +125,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int MPC_MAIN_PROGRAM_HEIGHT_DP = 32;
     private static final float MPC_MAIN_WORKSPACE_WEIGHT = 1.0f;
     private static final int MPC_MAIN_RADIUS_DP = 0;
+    // Thin MPC-style red boundary between the Sequence and Track zones.
+    private static final int MPC_MAIN_SECTION_DIVIDER_DP = 2;
 
 
     static {
@@ -2500,7 +2502,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceCard.setContentDescription("Main Mode Sequence section");
         sequenceCard.setPadding(dp(4), dp(4), dp(4), dp(MPC_MAIN_SECTION_GAP_DP));
         sequenceCard.setBackground(strokeBackground(
-                MPC_PANEL, MPC_PANEL_BORDER, MPC_MAIN_RADIUS_DP));
+                MPC_PANEL_DARK, Color.TRANSPARENT, MPC_MAIN_RADIUS_DP));
 
         LinearLayout sequenceHeader = row();
         sequenceHeader.setContentDescription("Main Mode sequence header");
@@ -2587,7 +2589,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout trackProgramSection = mainSection();
         trackProgramSection.setContentDescription("Main Mode Track Program section");
         trackProgramSection.setBackground(strokeBackground(
-                MPC_PANEL, MPC_PANEL_BORDER, MPC_MAIN_RADIUS_DP));
+                MPC_PANEL_DARK, Color.TRANSPARENT, MPC_MAIN_RADIUS_DP));
         trackProgramSection.setPadding(
                 dp(4), dp(MPC_MAIN_SECTION_GAP_DP), dp(4), 0);
 
@@ -3005,6 +3007,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(sequenceCard, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // MPC Main uses a thin red zone boundary rather than a heavy outer
+        // card frame between Sequence and Track/Arrangement.
+        View mainSectionDivider = new View(this);
+        mainSectionDivider.setBackgroundColor(MPC_SELECTION_RED);
+        mainSectionDivider.setContentDescription(
+                "MPC Main Sequence / Track section divider");
+        page.addView(mainSectionDivider, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(MPC_MAIN_SECTION_DIVIDER_DP)));
+
         page.addView(trackProgramSection, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 

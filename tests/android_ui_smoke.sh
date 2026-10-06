@@ -1165,6 +1165,22 @@ if grep -Fq -- 'private final Button[] shortcutButtons' "$SHORTCUT_MAIN_SOURCE";
   exit 1
 fi
 
+echo "Running MPC Main section framing fidelity preflight..."
+for required in   "MPC_MAIN_SECTION_DIVIDER_DP = 2"   "mainSectionDivider.setBackgroundColor(MPC_SELECTION_RED)"   "MPC Main Sequence / Track section divider"; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC Main Sequence/Track divider contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- "sequenceCard.setBackground(strokeBackground(`" "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: malformed Main sequence card contract marker detected"
+  exit 1
+fi
+if grep -Fq -- "MPC_PANEL, MPC_PANEL_BORDER, MPC_MAIN_RADIUS_DP" "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Sequence/Track zones must not regress to heavy outer card framing"
+  exit 1
+fi
+
 echo "Running MPC shell geometry preflight..."
 for required in \
   "TOOLBAR_HEIGHT_DP = 44" \

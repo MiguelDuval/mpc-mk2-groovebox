@@ -146,6 +146,17 @@ No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry 
 - Pad Perform.
 - Q-Link.
 
+## 2026-10-06 Main geometry fidelity increment
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+- Main Sequence and Track/Arrangement zones now use dense rectangular surfaces with a thin MPC-red boundary between them rather than heavy outer card framing.
+- Field-level borders remain available for active/editable controls.
+- No semantic/backend ownership changed; this is presentation-only Main geometry fidelity.
+- Source regression contract added to `tests/android_ui_smoke.sh`.
+- Fresh Android Build + emulator smoke + UI visual evidence remain mandatory before acceptance.
+- Physical MPC Studio MkII verification remains pending.
+
 ## Stage 8 — Ableton Link
 - tempo.
 - beat phase.

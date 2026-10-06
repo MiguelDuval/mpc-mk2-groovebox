@@ -212,6 +212,12 @@ The Main surface should visually read as an MPC One / MPC3 instrument screen bef
 - Track-type presentation uses one persistent icon attached to Track identity; tapping it opens the Track Type selection context, where unsupported types remain explicitly unavailable.
 - Shortcut and Function Bar controls use flat rectangular surfaces with clear focus/selection state rather than generic rounded Android cards.
 
+### 2026-10-06 Main Sequence/Track framing fidelity checkpoint
+
+The Main Sequence and Track/Arrangement zones use a thin MPC-red boundary instead of heavy outer card framing. The zones remain rectangular and dense, while field-level focus/selection borders stay available for interactive state.
+
+The divider is presentation-only. It does not create a navigation or semantic focus state and does not touch audio, sampler, sequencer-clock, MIDI, decoder, or SysEx layers.
+
 ## 2.4 Arrangement preview
 
 Show:
