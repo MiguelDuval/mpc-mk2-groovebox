@@ -199,13 +199,21 @@ final class MpcBrowserView extends LinearLayout {
                 setActiveButton(sections, activeSection);
                 rebuildSideNavigation();
                 location.setText(locationLabel(section, item));
+                setActiveNavigationItem(item);
                 return;
             }
         }
-        activeSection = "PLACES";
-        setActiveButton(sections, activeSection);
-        rebuildSideNavigation();
+        if (isKnownSection(raw)) {
+            setSection(raw);
+            location.setText(
+                    "PLACES".equals(raw)
+                            ? "PLACE • INTERNAL"
+                            : raw);
+            return;
+        }
+        setSection("PLACES");
         location.setText("PLACE • " + (raw.isEmpty() ? "INTERNAL" : raw));
+        setActiveNavigationItem(raw.isEmpty() ? "INTERNAL" : raw);
     }
 
     private boolean isKnownSection(String section) {
