@@ -5344,6 +5344,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
 
             @Override
+            public void onNavigateUp() {
+                final String currentLocation =
+                        navigationController.state().browserLocation();
+                final int separator = currentLocation.lastIndexOf('/');
+                final String parent;
+                if (separator > 0) {
+                    parent = currentLocation.substring(0, separator);
+                } else if (!currentLocation.isEmpty()
+                        && !"PLACES".equals(currentLocation)) {
+                    parent = "PLACES";
+                } else {
+                    parent = "PLACES";
+                }
+                navigationController.setBrowser(
+                        parent,
+                        navigationController.state().browserFilter(),
+                        navigationController.state().browserSearch());
+                navigationController.setDataDialFocus(
+                        MpcUiState.DataDialFocus.BROWSER_ITEM);
+                browserView.setLocation(parent);
+                setBottomStatus("BROWSER • UP • " + parent);
+            }
+
+            @Override
             public void onFilterSelected(String filter) {
                 navigationController.setBrowser(
                         navigationController.state().browserLocation(),
