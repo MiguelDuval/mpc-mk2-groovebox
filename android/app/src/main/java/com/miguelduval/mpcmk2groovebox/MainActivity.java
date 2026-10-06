@@ -1803,7 +1803,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 addFunction("AUDITION", true,
                         v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
                 addFunction("LOAD", true, v -> openWavPicker());
-                addFunction("UP", true, v -> showBrowserPage());
+                final String browserLocation =
+                        navigationController.state().browserLocation();
+                final boolean browserHasParent =
+                        !browserLocation.isEmpty()
+                                && !"PLACES".equals(browserLocation);
+                addFunction("UP", browserHasParent,
+                        v -> {
+                            if (browserView != null) {
+                                browserView.setVisibility(View.VISIBLE);
+                            }
+                            final String currentLocation =
+                                    navigationController.state().browserLocation();
+                            final int separator =
+                                    currentLocation.lastIndexOf('/');
+                            final String parent;
+                            if (separator > 0) {
+                                parent = currentLocation.substring(0, separator);
+                            } else {
+                                parent = "PLACES";
+                            }
+                            navigationController.setBrowser(
+                                    parent,
+                                    navigationController.state().browserFilter(),
+                                    navigationController.state().browserSearch());
+                            navigationController.setDataDialFocus(
+                                    MpcUiState.DataDialFocus.BROWSER_ITEM);
+                            if (browserView != null) {
+                                browserView.setLocation(parent);
+                            }
+                            setBottomStatus("BROWSER • UP • " + parent);
+                        });
                 addFunction("BACK", true, v -> navigateBackFromShell());
                 break;
             case ARRANGE:
