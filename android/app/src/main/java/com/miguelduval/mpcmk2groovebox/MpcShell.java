@@ -173,7 +173,7 @@ final class MpcShell {
         channelStripRestoreButton.setContentDescription(
                 visible
                         ? "MPC XL Channel Strip visible"
-                        : "MPC XL Channel Strip restore");
+                        : "MPC XL Channel Strip show");
     }
 
     private static int dp(Context context, int value) {
