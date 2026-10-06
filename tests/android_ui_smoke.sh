@@ -1166,6 +1166,10 @@ if grep -Fq -- 'private final Button[] shortcutButtons' "$SHORTCUT_MAIN_SOURCE";
 fi
 
 echo "Running MPC Main section framing fidelity preflight..."
+if ! grep -Fq -- "MPC_MAIN_SECTION_DIVIDER_DP = 2" "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MPC Main section divider geometry constant missing"
+  exit 1
+fi
 main_page_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 main_numeric_start=$(grep -n -m1 'private void installMainNumericEntry' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 if [[ -z "$main_page_start" || -z "$main_numeric_start" || "$main_numeric_start" -le "$main_page_start" ]]; then
@@ -1173,7 +1177,7 @@ if [[ -z "$main_page_start" || -z "$main_numeric_start" || "$main_numeric_start"
   exit 1
 fi
 main_page_block=$(sed -n "${main_page_start},$((main_numeric_start - 1))p" "$MAIN_ACTIVITY_SOURCE")
-for required in   "MPC_MAIN_SECTION_DIVIDER_DP = 2"   "sequenceCard.setBackground(strokeBackground("   "trackProgramSection.setBackground(strokeBackground("   "MPC_PANEL_DARK, Color.TRANSPARENT, MPC_MAIN_RADIUS_DP"   "mainSectionDivider.setBackgroundColor(MPC_SELECTION_RED)"   "MPC Main Sequence / Track section divider"; do
+for required in   "sequenceCard.setBackground(strokeBackground("   "trackProgramSection.setBackground(strokeBackground("   "MPC_PANEL_DARK, Color.TRANSPARENT, MPC_MAIN_RADIUS_DP"   "mainSectionDivider.setBackgroundColor(MPC_SELECTION_RED)"   "MPC Main Sequence / Track section divider"; do
   if ! grep -Fq -- "$required" <<<"$main_page_block"; then
     echo "ERROR: MPC Main Sequence/Track framing contract missing: $required"
     exit 1
