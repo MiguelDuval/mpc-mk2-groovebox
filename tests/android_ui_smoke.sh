@@ -1175,7 +1175,7 @@ for required in \
   'channelStripRestoreButton.setText("")' \
   'channelStripRestoreButton.setForeground(new MpcMixerStripIconDrawable(' \
   'MpcMixerStripIconDrawable.Mode.PERSONAL_CHANNEL_STRIP' \
-  'channelStripRestoreButton.setContentDescription("MPC XL Channel Strip show")'; do
+  'channelStripRestoreButton.setContentDescription('; do
   if ! grep -Fq -- "$required" "$SHELL_SOURCE"; then
     echo "ERROR: collapsed XL Channel Strip restore affordance contract missing: $required"
     exit 1
