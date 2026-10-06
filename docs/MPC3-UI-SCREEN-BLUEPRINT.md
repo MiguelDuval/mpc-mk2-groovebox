@@ -2,6 +2,9 @@
 
 ## Purpose
 
+> **2026-10-06 reconciliation:** This blueprint is subordinate to `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md` and `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`. The canonical visible Main shell is **Toolbar → five Shortcuts → XL Channel Strip region → Workspace → Function Bar**. Historical references below to a persistent Sequence/Track/Program/Data Dial rail describe migration state only and must not drive current layout decisions.
+
+
 This is the implementation blueprint beneath MPC3-UI-MIGRATION-MASTER-SPEC.md.
 
 Each screen is specified by:
@@ -96,18 +99,18 @@ The bar must:
 
 ---
 
-## 1.1 Persistent left context strip
+## 1.1 XL Channel Strip region (canonical)
 
-The shell's left edge is deliberately split into two persistent functional columns:
+The shell's left edge is the documented MPC3 combination of:
 
 - **Shortcut rail:** exactly five configurable high-frequency destinations.
-- **Compact context/channel rail:** persistent Sequence, Track, Program, Pad and Data Dial context.
+- **XL Channel Strip region:** contextual mixer information for the current track/pad/main output.
 
-The compact context rail remains visible while the workspace changes. It is a glanceable status surface and a direct-entry surface for Sequence Select, Track Select and Program Select; it is not a second workspace.
+The former Android Sequence/Track/Program/Data Dial rail is migration-only and must remain hidden from the canonical visible Main composition. Sequence, Track, Program, Pad and Data Dial state still exists in semantic/UI state, but it belongs to the central workspace and contextual focus model.
 
-## 1.2 Compact context semantics
+## 1.2 Legacy compact-context semantics — migration only
 
-The persistent context strip exposes state, not duplicate editing controls:
+The retired migration-only context state previously exposed the following semantic values. These remain valid state concepts but are not a visible standalone dashboard:
 
 - **Sequence:** current sequence and tempo; opens Main Sequence Select.
 - **Track:** current track, type, REC-arm and mute state; opens Main Track Select.
@@ -127,7 +130,7 @@ Top:
 Toolbar.
 
 Left:
-Five shortcuts + compact mixer strip.
+Five shortcuts + XL Channel Strip region.
 
 Center:
 Sequence section.
@@ -1027,8 +1030,8 @@ Program Edit remains reserved until the backend can truthfully edit Program cont
 
 ## 2026-10-03 Main shell persistent-context checkpoint
 
-- The shell left edge is explicitly split into two persistent functional layers: five shortcuts and a compact context rail followed by the workspace.
-- The persistent context rail carries Sequence + BPM, selected Track identity/state, selected Track Program where truthful, selected Pad, semantic Data Dial focus/subcontext, and a thin sequence movement overview.
+- The shell left edge is explicitly split into two persistent functional layers: five shortcuts and a compact XL Channel Strip region followed by the workspace.
+- The migration-only compact context rail carries Sequence + BPM, selected Track identity/state, selected Track Program where truthful, selected Pad, semantic Data Dial focus/subcontext, and a thin sequence movement overview.
 - Mixer Strip detail visibility affects only mixer-detail controls; it must not hide or reset persistent Sequence/Track/Program/Pad/Dial context or sequence state.
 - Sequence, Track and Program entries are direct semantic entry points into the existing Main selection contexts. Non-Drum Program selection remains explicitly unavailable.
 - The shell geometry implementation contract is 44dp Toolbar, 48dp shortcut rail, 210dp context/channel rail and 40dp Function Bar. These are implementation geometry baselines, not claims of pixel-equivalent Akai hardware dimensions.
