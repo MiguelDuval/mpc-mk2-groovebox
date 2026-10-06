@@ -1428,6 +1428,13 @@ for required in \
   fi
 done
 
+echo "Running startup visual evidence ordering preflight..."
+startup_capture_line=$(grep -n -m1 'echo "Capturing startup UI screenshot..."' "$0" | cut -d: -f1)
+startup_settle_line=$(grep -n -m1 'echo "Allowing startup path to settle..."' "$0" | cut -d: -f1)
+if [[ -z "$startup_capture_line" || -z "$startup_settle_line" || "$startup_capture_line" -ge "$startup_settle_line" ]]; then
+  echo "ERROR: startup Main screenshot must be captured before post-launch settling can let the UI audit navigate away from Main"
+  exit 1
+fi
 echo "Running Android runtime startup smoke..."
 echo "Running MPC Main UI audit contract preflight..."
 for forbidden in   'shortcut.setContentDescription("MPC shortcut " + mode.label())'; do
