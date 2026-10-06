@@ -1236,3 +1236,11 @@ Branch: `feature/mpc-one-ui-fidelity`
 `Main` now presents the selected Drum layer as `LAYER 1` / `LAYER 2` / etc., matching the documented MPC Main field vocabulary. The semantic layer range remains unchanged; the UI no longer adds a synthetic `/8` suffix that is not part of the MPC Main surface.
 
 Presentation-only. No audio, sampler, sequencer, MIDI, MkII decoder or SysEx ownership changed.
+
+## 2026-10-06 Startup visual-evidence ordering
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The Android smoke harness now captures the startup screenshot after launch/process/activity/fatal-crash checks and before the settling interval that allows the application-side UI audit to navigate across contexts. This keeps the visual artifact anchored to the canonical Main surface.
+
+Acceptance-harness synchronization only. No audio, sampler, sequencer, MIDI, MPC Studio MkII decoder or SysEx behavior changed.

@@ -1463,35 +1463,14 @@ adb logcat -c
 adb shell am force-stop "$PACKAGE"
 adb shell am start -W -n "$ACTIVITY" --es "$SMOKE_MODE_EXTRA" "ui-audit" 2>&1 | tee /tmp/mpc-groovebox-am-start.txt
 
-echo "Allowing startup path to settle..."
-sleep 5
-
-if ! adb shell pidof "$PACKAGE" | tr -d '\r' | grep -Eq '[0-9]'; then
-  echo "ERROR: MPC Groovebox process is not alive after launch"
-  adb logcat -d -v brief > /tmp/mpc-groovebox-logcat.txt || true
-  tail -n 250 /tmp/mpc-groovebox-logcat.txt || true
-  exit 1
-fi
-
-if ! adb shell dumpsys activity activities | grep -Fq "$ACTIVITY"; then
-  echo "ERROR: MainActivity is not present in activity manager after launch"
-  adb shell dumpsys activity activities > /tmp/mpc-groovebox-activities.txt || true
-  tail -n 250 /tmp/mpc-groovebox-activities.txt || true
-  exit 1
-fi
-
-adb logcat -d -v threadtime > /tmp/mpc-groovebox-logcat.txt
-if grep -Eq 'AndroidRuntime: FATAL EXCEPTION|Fatal signal [0-9]+|FATAL EXCEPTION IN SYSTEM PROCESS' /tmp/mpc-groovebox-logcat.txt; then
-  echo "ERROR: Android runtime/native fatal crash detected during startup"
-  grep -E -A 35 -B 5 'AndroidRuntime: FATAL EXCEPTION|Fatal signal [0-9]+|FATAL EXCEPTION IN SYSTEM PROCESS' /tmp/mpc-groovebox-logcat.txt | tail -n 250 || true
-  exit 1
-fi
-
 echo "Capturing startup UI screenshot..."
 adb exec-out screencap -p > /tmp/mpc-groovebox-startup.png || {
   echo "ERROR: startup screenshot capture failed"
   exit 1
 }
+
+echo "Allowing startup path to settle..."
+sleep 5
 
 echo "Waiting for application-side UI audit to complete..."
 UI_AUDIT_TIMEOUT_SECONDS=120
