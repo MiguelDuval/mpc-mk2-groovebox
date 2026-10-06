@@ -425,6 +425,21 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
   exit 1
 fi
 
+main_layer_start=$(grep -n -m1 'TextView layerDetail = mainMetric("LAYER");' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_layer_start" ]]; then
+  echo "ERROR: Main LAYER field source boundary is missing"
+  exit 1
+fi
+main_layer_block=$(sed -n "${main_layer_start},$((main_layer_start + 38))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'LAYER\n%d/8' <<<"$main_layer_block"; then
+  echo "ERROR: Main LAYER presentation must match MPC vocabulary and show the current layer index without a synthetic /8 suffix"
+  exit 1
+fi
+if ! grep -Fq -- '"LAYER\n%d"' <<<"$main_layer_block"; then
+  echo "ERROR: Main LAYER presentation contract must render the selected layer as the MPC-style single index"
+  exit 1
+fi
+
 echo "Running MPC Main iconography regression preflight..."
 for required in   'MpcMainIconDrawable'   'Mode.PENCIL'   'Mode.LOOP'   'Mode.PLAY'   'Mode.MENU'   'trackEditHeader.setForeground(new MpcMainIconDrawable'   'loop.setForeground(new MpcMainIconDrawable'   'mainTrackSampleAuditionButton.setForeground(new MpcMainIconDrawable'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java"; then
