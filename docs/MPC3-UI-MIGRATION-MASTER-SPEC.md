@@ -230,6 +230,21 @@ On the Main screen these six semantic actions occupy five visual MPC-style slots
 
 ---
 
+## 2026-10-06 Canonical shell reconciliation
+
+The official v3.9 Main Mode overview and current Akai XL Channel Strip documentation establish the visible shell relationship as **Toolbar → five Shortcuts/mode icons → XL Channel Strips → workspace → Function Buttons**. The earlier migration note below is retained for historical provenance, but its persistent Android-style Sequence/Track/Program/Data Dial card is **not** a canonical visible region.
+
+Current repository rule:
+- five Shortcuts remain the persistent mode-entry layer;
+- the 210dp shell column is the XL Channel Strip host;
+- the old compact Sequence/Track/Program/Data Dial panel is an internal migration layer only and stays hidden in canonical Main;
+- Sequence/Track/Program state belongs to the central Main workspace;
+- no permanent 4×4 Android pad matrix is reintroduced.
+
+Source: official MPC Standalone OS User Guide v3.9 (Main Mode Overview, p15) and Akai Output Routing Basics.
+Checked: 2026-10-06
+Confidence: HIGH
+
 ## 2026-10-02 Main shell context/channel refinement
 
 The canonical shell now treats the left edge as two distinct persistent layers:
