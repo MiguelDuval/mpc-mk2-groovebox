@@ -1435,6 +1435,13 @@ if [[ -z "$startup_capture_line" || -z "$startup_settle_line" || "$startup_captu
   echo "ERROR: startup Main screenshot must be captured before post-launch settling can let the UI audit navigate away from Main"
   exit 1
 fi
+echo "Running Pull-Down semantic routing preflight..."
+for required in   'void onTimeCounter();'   'void onTempo();'   'listener.onTimeCounter();'   'listener.onTempo();'   'showPullDownLocateDialog();'   'showPullDownTempoDialog();'   'nativeSequenceLocateMoveTicks(delta)'   'nativeSequenceSetTempo(bpm)'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java"; then
+    echo "ERROR: Pull-Down semantic routing contract missing: $required"
+    exit 1
+  fi
+done
 echo "Running Android runtime startup smoke..."
 echo "Running canonical Main shell visibility preflight..."
 for required in   'compactContextPanel.setVisibility(View.GONE);'   'compactMixerPanel.setVisibility(View.GONE);'   'header.setVisibility(View.GONE);'   'mainMixerStripView = new MpcMainMixerStripView'; do
