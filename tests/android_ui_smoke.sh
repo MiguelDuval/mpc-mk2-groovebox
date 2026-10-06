@@ -1166,17 +1166,20 @@ if grep -Fq -- 'private final Button[] shortcutButtons' "$SHORTCUT_MAIN_SOURCE";
 fi
 
 echo "Running MPC Main section framing fidelity preflight..."
-for required in   "MPC_MAIN_SECTION_DIVIDER_DP = 2"   "mainSectionDivider.setBackgroundColor(MPC_SELECTION_RED)"   "MPC Main Sequence / Track section divider"; do
-  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
-    echo "ERROR: MPC Main Sequence/Track divider contract missing: $required"
+main_page_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_numeric_start=$(grep -n -m1 'private void installMainNumericEntry' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_page_start" || -z "$main_numeric_start" || "$main_numeric_start" -le "$main_page_start" ]]; then
+  echo "ERROR: Main page source boundary is missing"
+  exit 1
+fi
+main_page_block=$(sed -n "${main_page_start},$((main_numeric_start - 1))p" "$MAIN_ACTIVITY_SOURCE")
+for required in   "MPC_MAIN_SECTION_DIVIDER_DP = 2"   "sequenceCard.setBackground(strokeBackground("   "trackProgramSection.setBackground(strokeBackground("   "MPC_PANEL_DARK, Color.TRANSPARENT, MPC_MAIN_RADIUS_DP"   "mainSectionDivider.setBackgroundColor(MPC_SELECTION_RED)"   "MPC Main Sequence / Track section divider"; do
+  if ! grep -Fq -- "$required" <<<"$main_page_block"; then
+    echo "ERROR: MPC Main Sequence/Track framing contract missing: $required"
     exit 1
   fi
 done
-if grep -Fq -- "sequenceCard.setBackground(strokeBackground(`" "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: malformed Main sequence card contract marker detected"
-  exit 1
-fi
-if grep -Fq -- "MPC_PANEL, MPC_PANEL_BORDER, MPC_MAIN_RADIUS_DP" "$MAIN_ACTIVITY_SOURCE"; then
+if grep -Fq -- "MPC_PANEL, MPC_PANEL_BORDER, MPC_MAIN_RADIUS_DP" <<<"$main_page_block"; then
   echo "ERROR: Main Sequence/Track zones must not regress to heavy outer card framing"
   exit 1
 fi
