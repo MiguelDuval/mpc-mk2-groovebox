@@ -1436,6 +1436,18 @@ if [[ -z "$startup_capture_line" || -z "$startup_settle_line" || "$startup_captu
   exit 1
 fi
 echo "Running Android runtime startup smoke..."
+echo "Running canonical Main shell visibility preflight..."
+for required in   'compactContextPanel.setVisibility(View.GONE);'   'compactMixerPanel.setVisibility(View.GONE);'   'header.setVisibility(View.GONE);'   'mainMixerStripView = new MpcMainMixerStripView'; do
+  if !grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: canonical Main shell visibility contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- '"MPC shell compact track program context"' "$MAIN_ACTIVITY_SOURCE"     && grep -Fq -- 'compactContextPanel.setVisibility(View.VISIBLE)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: legacy Main context dashboard must stay hidden"
+  exit 1
+fi
+echo "Running Android runtime startup smoke..."
 echo "Running MPC Main UI audit contract preflight..."
 for forbidden in   'shortcut.setContentDescription("MPC shortcut " + mode.label())'; do
   if grep -Fq -- "$forbidden" "$MAIN_ACTIVITY_SOURCE"; then
@@ -1443,7 +1455,7 @@ for forbidden in   'shortcut.setContentDescription("MPC shortcut " + mode.label(
     exit 1
   fi
 done
-for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC shell compact track program context'   'Main Track visual hierarchy • Track / Program / workspace section'   'clickMpcToolbarMenuForAudit()'; do
+for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC Main XL Mixer Strips'   'Main Track visual hierarchy • Track / Program / workspace section'   'clickMpcToolbarMenuForAudit()'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: current MPC Main UI audit contract missing: $required"
     exit 1
