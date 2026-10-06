@@ -10029,6 +10029,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: recording waveform height");
             return;
         }
+        if (uiAuditSmokeMode && recordingWaveformUpdater != null) {
+            waveformUiHandler.removeCallbacks(recordingWaveformUpdater);
+            recordingWaveformUpdater = null;
+        }
         Log.i(TAG, "UI_INTERACTION_COMPLETE");
     }
 
