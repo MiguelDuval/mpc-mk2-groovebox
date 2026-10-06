@@ -5332,6 +5332,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
 
             @Override
+            public void onNavigationItemSelected(String section, String item) {
+                final String locationKey = section + "/" + item;
+                navigationController.setBrowser(
+                        locationKey,
+                        navigationController.state().browserFilter(),
+                        navigationController.state().browserSearch());
+                navigationController.setDataDialFocus(
+                        MpcUiState.DataDialFocus.BROWSER_ITEM);
+                setBottomStatus("BROWSER • " + locationKey);
+            }
+
+            @Override
             public void onFilterSelected(String filter) {
                 navigationController.setBrowser(
                         navigationController.state().browserLocation(),
