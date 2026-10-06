@@ -1120,6 +1120,42 @@ if grep -Fq -- 'for (int pad = 0; pad < 4; pad++)' "$pad_mixer_view_source"; the
   exit 1
 fi
 
+echo "Running MPC Shortcut Rail fidelity preflight..."
+SHORTCUT_MAIN_SOURCE="$MAIN_ACTIVITY_SOURCE"
+SHORTCUT_ITEM_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutRailItemView.java"
+for required in \
+  'private final MpcUiState.Mode mode' \
+  'MpcShortcutIconDrawable' \
+  'TextView labelView' \
+  'setSelectedState(boolean selected)' \
+  'selectionIndicator' \
+  'setContentDescription("MPC shortcut " + accessibleLabel)' \
+  'setOnClickListener' \
+  'setFocusable(true)'; do
+  if ! grep -Fq -- "$required" "$SHORTCUT_ITEM_SOURCE"; then
+    echo "ERROR: MPC Shortcut Rail item contract missing: $required"
+    exit 1
+  fi
+done
+for required in \
+  'private final MpcShortcutRailItemView[] shortcutButtons' \
+  'BROWSER' \
+  'CHANNEL MIXER' \
+  'PAD MIXER' \
+  'SOUNDS' \
+  'XY' \
+  'new MpcShortcutRailItemView(' \
+  'setSelectedState(selected)'; do
+  if ! grep -Fq -- "$required" "$SHORTCUT_MAIN_SOURCE"; then
+    echo "ERROR: MPC Shortcut Rail icon+label integration contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'private final Button[] shortcutButtons' "$SHORTCUT_MAIN_SOURCE"; then
+  echo "ERROR: MPC Shortcut Rail must not use generic Android Button-only presentation"
+  exit 1
+fi
+
 echo "Running MPC shell geometry preflight..."
 for required in \
   "TOOLBAR_HEIGHT_DP = 44" \
