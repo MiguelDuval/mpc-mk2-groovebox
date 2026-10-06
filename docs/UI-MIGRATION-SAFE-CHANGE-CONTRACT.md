@@ -193,7 +193,7 @@ The presentation migration now has its first executable boundary:
 
 - `MpcUiState` is the UI/navigation snapshot and does not own audio or realtime objects.
 - `MpcNavigationController` owns mode, subcontext, focus, history and exactly five configurable shortcuts.
-- `MpcShell` owns the Toolbar / Shortcuts / compact context / Workspace / Function Bar composition.
+- `MpcShell` owns the Toolbar / five Shortcuts / XL Channel Strip region / Workspace / Function Bar composition.
 - `MainActivity` keeps legacy workspace implementations as temporary render adapters while the shell becomes the canonical composition.
 - MPC Studio MkII Main and Track View semantic navigation now enter different contexts; the previous routing of both actions to the Main workspace is removed.
 - Browser, Grid, Sampler and Channel Mixer are exposed through the five initial shortcut slots.
@@ -230,8 +230,8 @@ The recovered full project tree was preserved while the next UI slice was harden
 - corrected the Main smoke-test assertion so the documented Track-state row remains immediately above the performance canvas;
 - aligned `MpcShell` to the current implementation geometry contract: 44dp Toolbar, 48dp shortcut rail, 210dp context/channel rail, 40dp Function Bar;
 - restored four missing `MainActivity` JNI bridge entry points for launcher/step-edit context compatibility and the existing step-edit parameter policy;
-- added the persistent Main context rail for Sequence + BPM, Track, Program, Pad, semantic Data Dial focus/subcontext and sequence overview;
-- separated persistent context from Mixer Strip detail visibility so hiding the mixer does not hide the canonical context state;
+- retained the Main Sequence/Track/Program/Pad/Data Dial state model as an internal migration layer while moving the visible left region to the canonical XL Channel Strip composition;
+- made XL Channel Strip visibility independent from musical selection state;
 - kept all changes on a normal fast-forward commit chain from recovery HEAD; no files were deleted or replaced by a repository-wide tree rewrite.
 
 Files changed in this slice:
@@ -259,14 +259,14 @@ Remaining gaps:
 
 ## 2026-10-03 Persistent context hierarchy checkpoint
 
-The compact persistent context rail may receive presentation-only refinements that:
+The XL Channel Strip region may receive presentation-only refinements that:
 
 - preserve the fixed shell width and persistent visibility;
 - use small section captions and compact value fields to establish Sequence → Track → Program → Pad → Data Dial hierarchy;
 - project semantic Main Data Dial focus onto the corresponding context field without adding a second focus state;
 - keep mixer-detail visibility separate from the persistent context layer.
 
-Forbidden regressions remain: no domain ownership in the shell, no hiding of canonical context when Mixer Strip details are toggled, no duplicate transport controls, and no realtime/audio-thread coupling.
+Forbidden regressions remain: no domain ownership in the shell, no mutation or loss of canonical musical state when XL Channel Strips are shown/hidden, no duplicate transport controls, and no realtime/audio-thread coupling.
 
 Verification target:
 - source smoke checks lock the hierarchy helper, compact field heights and focus projection;
@@ -292,7 +292,7 @@ The next Main/shell presentation slice moves the implementation closer to the ph
 - Function Bar controls use flat graphite surfaces with stable left-to-right semantic ordering;
 - Main Track now exposes the selected Track's Program directly below the Track identity band, matching the documented MPC Main information hierarchy;
 - the Main Track header now has a compact Track-type icon cluster; unsupported types remain explicitly unavailable;
-- the persistent left context rail remains the canonical glance/entry surface and shares the same Track/Program state.
+- the old persistent left context rail is a migration-layer state surface only; the visible canonical left region is the XL Channel Strip area and shares the same Track/Program state.
 
 This is a presentation/navigation slice. No realtime audio callback, sampler scheduler, sequencer clock, raw MIDI decoder, or native audio ownership changed.
 
@@ -428,7 +428,7 @@ Files changed:
 - `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java`
 - `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java`
 - `tests/android_ui_smoke.sh`
-- canonical migration documentation files
+- canonical migration documentation files and the 2026-10-06 shell reconciliation map
 
 Lower-layer files touched:
 - None.
