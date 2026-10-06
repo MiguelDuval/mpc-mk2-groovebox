@@ -1145,7 +1145,8 @@ for required in \
   'SOUNDS' \
   'XY' \
   'new MpcShortcutRailItemView(' \
-  'setSelectedState(selected)'; do
+  'setSelectedState(' \
+  'item.mode() == active'; do
   if ! grep -Fq -- "$required" "$SHORTCUT_MAIN_SOURCE"; then
     echo "ERROR: MPC Shortcut Rail icon+label integration contract missing: $required"
     exit 1
