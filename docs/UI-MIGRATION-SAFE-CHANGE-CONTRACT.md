@@ -485,3 +485,11 @@ Main's LAYER field uses the full semantic description `Main Track View selected 
 ## 2026-10-05 Main geometry-before-state contract
 
 Geometry assertions for the canonical Main sample/Track/XL-Mixer surfaces run before audit-driven state mutations. This avoids measuring transient Android layout between synchronous controller-state changes while keeping the actual rendered dimensions under test.
+
+## 2026-10-06 Main LAYER vocabulary fidelity
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+`Main` now presents the selected Drum layer as `LAYER 1` / `LAYER 2` / etc., matching the documented MPC Main field vocabulary. The semantic layer range remains unchanged; the UI no longer adds a synthetic `/8` suffix that is not part of the MPC Main surface.
+
+Presentation-only. No audio, sampler, sequencer, MIDI, MkII decoder or SysEx ownership changed.

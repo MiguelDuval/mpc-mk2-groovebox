@@ -2785,7 +2785,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         });
         layerDetail.setText(String.format(
                 Locale.ROOT,
-                "LAYER\n%d/8",
+                "LAYER\n%d",
                 selectedLayer + 1));
         trackDetailRow.addView(
                 layerDetail,
@@ -3469,7 +3469,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     drum
                             ? String.format(
                                     Locale.ROOT,
-                                    "LAYER\n%d/8",
+                                    "LAYER\n%d",
                                     selectedLayer + 1)
                             : "LAYER\n—");
         }

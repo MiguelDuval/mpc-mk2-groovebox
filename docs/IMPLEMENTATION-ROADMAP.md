@@ -657,3 +657,11 @@ This keeps geometry assertions tied to the actual rendered MPC shell lifecycle i
 ## 2026-10-05 Exact accessibility target correction
 
 The Main LAYER audit now uses the field's complete accessibility description (`Main Track View selected layer • tap to focus Layer`). The view search helper intentionally uses exact semantic labels, so the previous shortened lookup could not find an otherwise functional controller-first Layer focus control.
+
+## 2026-10-06 Main LAYER vocabulary fidelity
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+`Main` now presents the selected Drum layer as `LAYER 1` / `LAYER 2` / etc., matching the documented MPC Main field vocabulary. The semantic layer range remains unchanged; the UI no longer adds a synthetic `/8` suffix that is not part of the MPC Main surface.
+
+Presentation-only. No audio, sampler, sequencer, MIDI, MkII decoder or SysEx ownership changed.

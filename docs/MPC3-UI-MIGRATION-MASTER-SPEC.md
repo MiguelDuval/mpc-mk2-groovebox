@@ -1153,3 +1153,11 @@ This supersedes any earlier wording in this document that describes the old pers
 ## 2026-10-05 Pull-Down deterministic chrome checkpoint
 
 The Pull-Down Menu now uses deterministic vector close/previous/next affordances from the shared Main icon drawable. Its visible chrome no longer depends on Unicode glyph rendering. This is a presentation-only correction; Control/Q-Link state ownership, reserved semantics and shell overlay behavior remain unchanged.
+
+## 2026-10-06 Main LAYER vocabulary fidelity
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+`Main` now presents the selected Drum layer as `LAYER 1` / `LAYER 2` / etc., matching the documented MPC Main field vocabulary. The semantic layer range remains unchanged; the UI no longer adds a synthetic `/8` suffix that is not part of the MPC Main surface.
+
+Presentation-only. No audio, sampler, sequencer, MIDI, MkII decoder or SysEx ownership changed.
