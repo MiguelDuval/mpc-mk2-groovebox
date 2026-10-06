@@ -449,3 +449,20 @@ Test contract: smoke now asserts the Pull-Down listener/action methods and nativ
 Status: IMPLEMENTED for Time/Tempo; Metro remains a documented backend gap.
 Confidence: HIGH.
 Checked: 2026-10-06.
+
+
+## 2026-10-06 Browser taxonomy and navigation checkpoint
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The Browser presentation was corrected to keep two different MPC concepts distinct:
+
+- top-level Browser sections remain **Places / Content / Expansions**;
+- file-type filters remain **Projects / Patterns / Kits / Plugin Presets / Samples / All**;
+- selecting a Browser section now rebuilds its side navigation rather than leaving a stale Places list visible;
+- Places exposes Internal, MPC Documents, Connected Storage and five Favorite slots;
+- Content exposes Drums, Instruments, Samples, Demos, My Files and Splice;
+- the selected Browser node is stored through the existing UI-state `browserLocation` string using a section/item key;
+- Android Document Provider remains the storage primitive underneath the product Browser.
+
+This is a bounded presentation/state-routing slice. It does not claim a full semantic file-result provider, Browser Options, audition Auto/Sync/Warp state, or real Sample Assign backend. Those remain explicit Browser gaps.
