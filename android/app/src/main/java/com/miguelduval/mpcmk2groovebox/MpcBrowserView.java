@@ -25,6 +25,7 @@ final class MpcBrowserView extends LinearLayout {
         void onSectionSelected(String section);
         void onNavigationItemSelected(String section, String item);
         void onFilterSelected(String filter);
+        void onNavigateUp();
         void onOpenStorage();
         void onPlayCurrent();
         void onSearchChanged(String query);
