@@ -1207,3 +1207,18 @@ Interaction contract:
 The Pull-Down Menu's close and page-navigation affordances use the same deterministic original vector icon system as the rest of the MPC-facing shell. Visible Unicode glyphs are not used for close/previous/next controls, avoiding Android font substitution and keeping small controller-oriented touch targets visually stable.
 
 The Pull-Down remains a shell overlay: iconography changes presentation only and does not add navigation, audio, MIDI or Q-Link semantics.
+
+### 2026-10-06 Shortcut Rail icon + label fidelity checkpoint
+
+The canonical five-slot Shortcut Rail now uses a dedicated presentation item instead of generic Android Button-only chrome. Every slot renders a deterministic vector icon, a compact visible label and a thin MPC-style selection indicator; accessibility remains semantic (MPC shortcut <destination>).
+
+The factory order is unchanged and remains: Browser / Channel Mixer / Pad Mixer / Sounds / XY. Reserved destinations stay visually present because the rail reproduces the documented MPC high-frequency layout even when a backend destination is unavailable.
+
+Presentation ownership is split cleanly:
+- MpcShortcutRailItemView owns icon/label/selection rendering;
+- MainActivity keeps the existing semantic navigation callback and projects the selected mode;
+- MpcNavigationController remains the source of shortcut order/state.
+
+No realtime audio callback, sampler, sequencer scheduler/clock, MIDI transport, raw MkII decoder or SysEx layer is changed by this slice.
+
+Acceptance target: source regression green, followed by fresh Android Build + emulator smoke and separate physical MPC Studio MkII verification.
