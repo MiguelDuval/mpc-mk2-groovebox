@@ -115,7 +115,7 @@ final class MpcBrowserView extends LinearLayout {
         filters = row(context);
         filters.setContentDescription("MPC Browser FILTER Buttons");
         for (String filter : new String[]{
-                "DRUMS", "INSTRUMENTS", "SAMPLES", "DEMOS", "MY FILES", "ALL"}) {
+                "PROJECTS", "PATTERNS", "KITS", "PLUGIN PRESETS", "SAMPLES", "ALL"}) {
             Button button = button(context, filter);
             button.setTextSize(8);
             button.setOnClickListener(v -> {
