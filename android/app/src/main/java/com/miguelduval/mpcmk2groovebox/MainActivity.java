@@ -189,8 +189,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView midiOutTopStatus;
     private MpcPullDownPanelView pullDownPanel;
     private View pullDownScrim;
-    private final Button[] shortcutButtons =
-            new Button[MpcNavigationController.SHORTCUT_COUNT];
+    private final MpcShortcutRailItemView[] shortcutButtons =
+            new MpcShortcutRailItemView[MpcNavigationController.SHORTCUT_COUNT];
     private TextView pageTitle;
     private TextView audioState;
     private TextView midiState;
@@ -812,12 +812,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         MpcUiState.Mode[] modes = navigationController.shortcuts();
         for (int i = 0; i < modes.length; i++) {
             final MpcUiState.Mode mode = modes[i];
-            Button shortcut = mpcShortcutButton(
+            MpcShortcutRailItemView shortcut = mpcShortcutButton(
                     mpcShortcutLabel(mode), mode);
-            shortcut.setContentDescription(
-                    "MPC shortcut " + mpcShortcutAccessibleLabel(mode));
-            shortcut.setTextSize(18);
-            shortcut.setTypeface(Typeface.DEFAULT_BOLD);
             shortcutButtons[i] = shortcut;
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
@@ -2338,28 +2334,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return rail;
     }
 
-    private Button mpcShortcutButton(String text, MpcUiState.Mode mode) {
-        // The label argument remains as an accessibility/fallback vocabulary
-        // anchor, but the visible rail uses a deterministic vector drawable
-        // so Android font substitution cannot change MPC-style pictography.
-        Button b = button("");
-        b.setText("");
-        b.setTextColor(Color.TRANSPARENT);
-        b.setMinHeight(0);
-        b.setMinimumHeight(0);
-        b.setPadding(dp(2), 0, dp(2), 0);
-        b.setGravity(Gravity.CENTER);
-        b.setForeground(new MpcShortcutIconDrawable(
-                mode, dp(MPC_SHORTCUT_SELECTION_WIDTH_DP)));
-        b.setBackground(strokeBackground(
-                BG,
-                Color.TRANSPARENT,
-                MPC_FLAT_RADIUS_DP));
-        b.setTag(mode);
-        b.setContentDescription(
-                "MPC shortcut " + mpcShortcutAccessibleLabel(mode));
-        b.setOnClickListener(v -> navigateToMode(mode));
-        return b;
+    private MpcShortcutRailItemView mpcShortcutButton(
+            String text,
+            MpcUiState.Mode mode) {
+        MpcShortcutRailItemView item = new MpcShortcutRailItemView(
+                this,
+                mode,
+                text,
+                mpcShortcutAccessibleLabel(mode),
+                dp(MPC_SHORTCUT_SELECTION_WIDTH_DP));
+        item.setRailClickListener(v -> navigateToMode(mode));
+        return item;
     }
 
     private LinearLayout buildCompactMixerTabs() {
@@ -2388,28 +2373,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private String mpcShortcutLabel(MpcUiState.Mode mode) {
-        if (mode == null) return "□";
+        if (mode == null) return "";
         switch (mode) {
-            case MAIN: return "⌂";
-            case TRACK_VIEW: return "☷";
-            case BROWSER: return "⌕";
-            case GRID: return "▦";
-            case STEP: return "▥";
-            case TRACK_EDIT: return "✎";
-            case SAMPLE_EDIT: return "∿";
-            case SAMPLER: return "●";
-            case CHANNEL_MIXER: return "≡";
-            case PAD_MIXER: return "▤";
-            case LEVELS_16: return "16";
-            case PAD_PERFORM: return "✣";
-            case SOUNDS: return "♫";
-            case XYFX: return "✣";
-            case NEXT_SEQUENCE: return "▶";
-            case ARRANGE: return "╬";
-            case LIST_EDIT: return "☰";
-            case PROJECT: return "P";
-            case MENU: return "▦";
-            default: return "□";
+            case BROWSER: return "BROWSER";
+            case CHANNEL_MIXER: return "CH MIX";
+            case PAD_MIXER: return "PAD MIX";
+            case SOUNDS: return "SOUNDS";
+            case XYFX: return "XY";
+            default: return mode.label();
         }
     }
 
@@ -2442,23 +2413,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         final MpcUiState.Mode active = navigationController.state().mode();
-        for (Button button : shortcutButtons) {
-            if (button == null) {
+        for (MpcShortcutRailItemView item : shortcutButtons) {
+            if (item == null) {
                 continue;
             }
-            final Object tag = button.getTag();
-            final boolean selected = tag == active;
-            button.setTextColor(Color.TRANSPARENT);
-            button.setSelected(selected);
-            // MPC Main keeps the shortcut surface dark; selection is a thin
-            // red edge indicator carried by the deterministic icon drawable.
-            button.setBackground(strokeBackground(
-                    BG,
-                    Color.TRANSPARENT,
-                    MPC_FLAT_RADIUS_DP));
-            if (button.getForeground() instanceof MpcShortcutIconDrawable) {
-                ((MpcShortcutIconDrawable) button.getForeground()).setSelected(selected);
-            }
+            item.setSelectedState(item.mode() == active);
         }
     }
 
