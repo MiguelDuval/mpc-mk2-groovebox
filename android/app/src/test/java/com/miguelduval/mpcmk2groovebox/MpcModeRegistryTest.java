@@ -40,24 +40,19 @@ public final class MpcModeRegistryTest {
     }
 
     @Test
-    public void defaultShortcutsAreFiveUsableContexts() {
+    public void defaultShortcutsMatchFactoryOrderAndCanBeReserved() {
         MpcUiState.Mode[] shortcuts = MpcModeRegistry.defaultShortcuts();
         assertEquals(5, shortcuts.length);
         assertEquals(MpcUiState.Mode.BROWSER, shortcuts[0]);
-        assertEquals(MpcUiState.Mode.TRACK_VIEW, shortcuts[1]);
-        assertEquals(MpcUiState.Mode.GRID, shortcuts[2]);
-        assertEquals(MpcUiState.Mode.STEP, shortcuts[3]);
-        assertEquals(MpcUiState.Mode.PAD_MIXER, shortcuts[4]);
+        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, shortcuts[1]);
+        assertEquals(MpcUiState.Mode.PAD_MIXER, shortcuts[2]);
+        assertEquals(MpcUiState.Mode.SOUNDS, shortcuts[3]);
+        assertEquals(MpcUiState.Mode.XYFX, shortcuts[4]);
 
-        for (MpcUiState.Mode shortcut : shortcuts) {
-            boolean available = false;
-            for (MpcModeRegistry.Entry entry : MpcModeRegistry.menuEntries()) {
-                if (entry.mode == shortcut) {
-                    available = entry.available;
-                    break;
-                }
-            }
-            assertTrue("default shortcut must be available: " + shortcut, available);
-        }
+        assertTrue(MpcModeRegistry.shortcutEntries()[0].available);
+        assertFalse(MpcModeRegistry.shortcutEntries()[1].available);
+        assertTrue(MpcModeRegistry.shortcutEntries()[2].available);
+        assertFalse(MpcModeRegistry.shortcutEntries()[3].available);
+        assertFalse(MpcModeRegistry.shortcutEntries()[4].available);
     }
 }
