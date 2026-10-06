@@ -466,3 +466,16 @@ The Browser presentation was corrected to keep two different MPC concepts distin
 - Android Document Provider remains the storage primitive underneath the product Browser.
 
 This is a bounded presentation/state-routing slice. It does not claim a full semantic file-result provider, Browser Options, audition Auto/Sync/Warp state, or real Sample Assign backend. Those remain explicit Browser gaps.
+
+
+## 2026-10-06 Browser hierarchy navigation checkpoint
+
+The Browser Function Bar `UP` action now follows the semantic Browser location hierarchy rather than rebuilding the Browser at its current root:
+
+- `PLACES/MPC DOCUMENTS` → `PLACES`;
+- `CONTENT/DRUMS` → `CONTENT`;
+- `EXPANSIONS/USER CONTENT` → `EXPANSIONS`;
+- a top-level Browser section returns to `PLACES`;
+- `UP` is disabled at the Browser root.
+
+This keeps navigation state in `MpcUiState.browserLocation` and leaves Android Document Provider as the underlying storage primitive.
