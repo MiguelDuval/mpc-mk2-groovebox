@@ -133,7 +133,7 @@ Lower-layer edits are allowed only for truthful semantic prerequisites such as T
 No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry path, semantic state, backend command and controller feedback are documented first.
 
 ## Stage 7 — MPC 3.9 standalone UI migration
-- UI shell. **MPC 3.9 MIGRATION FOUNDATION IMPLEMENTED — `MpcShell` owns the persistent Toolbar / five configurable shortcuts / compact channel context / Workspace / contextual Function Bar. Legacy seven-page rail is no longer the canonical shell; legacy workspace pages remain temporary adapters.**
+- UI shell. **MPC 3.9 MIGRATION FOUNDATION IMPLEMENTED — `MpcShell` owns the persistent Toolbar / five configurable shortcuts / XL Channel Strip region / Workspace / contextual Function Bar. Legacy seven-page rail is no longer the canonical shell; legacy workspace pages remain temporary adapters.**
 - Main. **UI FOUNDATION + MPC MAIN CONTEXT REFINEMENT IMPLEMENTED — controller-first selected-pad context, quick sample waveform with Start/End editing, layer selection, direct audition trigger, persistent Main Pad Mixer Strip level/pan/tuning readout, real imported sample-name display, and MPC-style BAR/BEAT/TICK toolbar position display. The canonical Main composition no longer embeds an Android 4x4 pad grid, matching the hardware-first MPC workflow. Full Track Edit and full Channel Mixer remain separately gated by backend support.**
 - Browser. **UI FOUNDATION IMPLEMENTED — dedicated Browser mode with explicit WAV load target; full indexed/searchable browser is a later slice.**
 - Sampler. **UI FOUNDATION + WAVEFORM IMPLEMENTED — dedicated sample editor context with a shared editable waveform, region/edit, envelope, filter and layer tabs.**
@@ -642,7 +642,7 @@ This is a presentation/accessibility vocabulary correction only; no audio, MIDI,
 
 ## 2026-10-05 Compact context geometry correction
 
-The runtime audit previously required the persistent compact Track/Program context to exceed 300dp height. The implementation intentionally uses `WRAP_CONTENT` for this rail, with a compact stack of Sequence/Track/Program/Pad/Data Dial/overview fields, so the 300dp threshold was not a valid fidelity invariant.
+The runtime audit previously required the retired compact Track/Program context to exceed 300dp height. The implementation intentionally uses `WRAP_CONTENT` for this rail, with a compact stack of Sequence/Track/Program/Pad/Data Dial/overview fields, so the 300dp threshold was not a valid fidelity invariant.
 
 The audit now requires a minimum 200dp content height plus the existing width and child-presence checks. This keeps the test anchored to a meaningful persistent context surface without forcing artificial empty space into the MPC shell.
 
@@ -673,3 +673,11 @@ Branch: `feature/mpc-one-ui-fidelity`
 The Android smoke harness now captures the startup screenshot after launch/process/activity/fatal-crash checks and before the settling interval that allows the application-side UI audit to navigate across contexts. This keeps the visual artifact anchored to the canonical Main surface.
 
 Acceptance-harness synchronization only. No audio, sampler, sequencer, MIDI, MPC Studio MkII decoder or SysEx behavior changed.
+
+## 2026-10-06 MPC3 shell reconciliation
+
+This roadmap is subordinate to `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md` and `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`. The canonical visible shell is **Toolbar → five Shortcuts → XL Channel Strip region → Main workspace → Function Bar**. Any historical references to a persistent Android Sequence/Track/Program/Data Dial context rail are migration-only and must not be reintroduced into the visible Main UI.
+
+Source: official MPC Standalone OS User Guide v3.9 Main Mode Overview (p15) and Akai Output Routing Basics.
+Checked: 2026-10-06.
+Confidence: HIGH.
