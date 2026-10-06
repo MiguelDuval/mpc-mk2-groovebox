@@ -428,3 +428,12 @@ The official v3.9 manual explicitly presents Main as Toolbar + Sequence + Shortc
 
 Checked: 2026-10-06.
 Confidence: HIGH.
+
+## 26. Research log — factory shortcut truthfulness
+
+R-06 — 2026-10-06.
+Finding: current MPC shell factory shortcut identity is Browser / Channel Mixer / Pad Mixer / Sounds / XY. Our backend does not yet implement Channel Mixer, Sounds or XYFX, so those three must remain visible as reserved destinations rather than being silently replaced by Track View/Grid/Step.
+Implementation correction: aligned `MpcModeRegistryTest` with this contract and corrected the registry comment so availability is independent from factory identity.
+Result: no audio/MIDI/domain rewrite; the semantic route for reserved shortcuts remains explicit RESERVED/UNAVAILABLE.
+Confidence: HIGH for the repository contract; exact factory ordering is retained from the project brief and documented as an implementation target until independently captured from the v3.9 manual image.
+Checked: 2026-10-06.
