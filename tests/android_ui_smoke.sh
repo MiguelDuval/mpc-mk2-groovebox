@@ -1186,6 +1186,11 @@ if ! grep -Fq -- 'MPC XL Channel Strip show' "$SHELL_SOURCE"; then
   exit 1
 fi
 
+if grep -Fq -- '"MPC XL Channel Strip restore"' "$SHELL_SOURCE"; then
+  echo "ERROR: hidden XL Channel Strip restore control must expose the actual show action to accessibility"
+  exit 1
+fi
+
 if grep -Fq -- 'channelStripRestoreButton.setText("›")' "$SHELL_SOURCE"; then
   echo "ERROR: collapsed XL Channel Strip must not use a visible Unicode chevron restore glyph"
   exit 1
