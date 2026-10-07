@@ -1455,6 +1455,13 @@ for required in   'MpcBrowserFilterIconDrawable'   'MPC Browser filter PROJECTS'
     exit 1
   fi
 done
+echo "Running MPC Preferences taxonomy preflight..."
+for required in   'buildPreferencesCategoryBar("AUDIO")'   'MPC Preferences AUDIO'   'MPC Preferences MIDI / SYNC'   'MPC Preferences SEQUENCER'   'showPreferencesReservedPage'   'RESERVED / UNAVAILABLE'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC Preferences taxonomy contract missing: $required"
+    exit 1
+  fi
+done
 echo "Running Android runtime startup smoke..."
 echo "Running canonical Main shell visibility preflight..."
 for required in   'compactContextPanel.setVisibility(View.GONE);'   'compactMixerPanel.setVisibility(View.GONE);'   'header.setVisibility(View.GONE);'   'mainMixerStripView = new MpcMainMixerStripView'; do

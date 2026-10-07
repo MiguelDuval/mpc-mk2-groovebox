@@ -97,7 +97,7 @@ MpcShell.java still names the 210dp host contextArea; it is now interpreted as t
 | Next Sequence | Menu/shortcut | Main/Back | sequence/launcher | PARTIAL | polish/depth |
 | List Edit | Menu | Main/Back | event | RESERVED | editor backend |
 | Project | Menu | Back | project item | RESERVED | persistence |
-| Preferences | Menu | Back | settings | PARTIAL | full taxonomy |
+| Preferences | Menu | Back | settings | PARTIAL | Audio implemented; MIDI/Sync + Sequencer taxonomy shell reserved |
 | MIDI / Control | Toolbar/Menu | Back | contextual | PARTIAL | deeper management |
 | Looper | taxonomy | — | performance | RESERVED | backend |
 | XYFX | taxonomy | — | performance | RESERVED | backend |
@@ -479,3 +479,9 @@ The Browser Function Bar `UP` action now follows the semantic Browser location h
 - `UP` is disabled at the Browser root.
 
 This keeps navigation state in `MpcUiState.browserLocation` and leaves Android Document Provider as the underlying storage primitive.
+
+
+## 2026-10-07 Preferences taxonomy checkpoint
+
+Preferences now has an in-shell three-category taxonomy: **Audio / MIDI-Sync / Sequencer**.
+Audio retains the real Android/Oboe settings implementation. MIDI-Sync and Sequencer are explicit RESERVED/UNAVAILABLE workspaces; no fabricated settings or setters were added. Runtime audit coverage now enters Preferences, switches into a reserved category, returns to Audio, and exits.

@@ -8208,6 +8208,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
+        page.addView(buildPreferencesCategoryBar("AUDIO"),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
         LinearLayout columns = row();
 
@@ -8330,6 +8333,75 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setupAudioSettingSpinners();
         refreshAudioDevicesFromSystem();
         refreshAudioRoutingDiagnostics();
+        updateModeRailSelection();
+    }
+
+
+    private LinearLayout buildPreferencesCategoryBar(String selected) {
+        LinearLayout tabs = row();
+        tabs.setContentDescription("MPC Preferences category navigation");
+        final String[] categories = {"AUDIO", "MIDI / SYNC", "SEQUENCER"};
+        for (String category : categories) {
+            final Button tab = actionButton(category, v -> {
+                if ("AUDIO".equals(category)) {
+                    showAudioSettingsPage();
+                } else {
+                    showPreferencesReservedPage(category);
+                }
+            });
+            tab.setTextSize(9);
+            tab.setTypeface(Typeface.DEFAULT_BOLD);
+            tab.setContentDescription("MPC Preferences " + category);
+            tab.setBackground(strokeBackground(
+                    category.equals(selected) ? MPC_SELECTION_RED : MPC_PANEL_DARK,
+                    category.equals(selected) ? MPC_SELECTION_RED : MPC_PANEL_BORDER,
+                    MPC_FLAT_RADIUS_DP));
+            tab.setTextColor(category.equals(selected) ? Color.WHITE : TEXT);
+            tabs.addView(tab, weight());
+        }
+        return tabs;
+    }
+
+    private void showPreferencesReservedPage(String category) {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "PREFERENCES";
+        navigationController.navigate(MpcUiState.Mode.PREFERENCES);
+        navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
+        pageTitle.setText("PREFERENCES");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.addView(buildPreferencesCategoryBar(category),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        LinearLayout body = panel();
+        body.setContentDescription(
+                "MPC Preferences " + category + " reserved workspace");
+        body.addView(sectionLabel(category));
+
+        TextView state = label("RESERVED / UNAVAILABLE", 18, MUTED);
+        state.setTypeface(Typeface.DEFAULT_BOLD);
+        state.setGravity(Gravity.CENTER);
+        body.addView(state, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(72)));
+
+        TextView detail = label(
+                "This Preferences category is present in the MPC 3.9 navigation model, "
+                        + "but this project does not expose a truthful semantic backend "
+                        + "for these settings yet. No fake values or setters are shown.",
+                11, MUTED);
+        detail.setGravity(Gravity.CENTER);
+        detail.setPadding(dp(18), dp(12), dp(18), dp(12));
+        body.addView(detail, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        page.addView(body, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        content.addView(page);
         updateModeRailSelection();
     }
 
@@ -9649,6 +9721,50 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getWindow().getDecorView(), "BACK");
         if (browserBack == null || !browserBack.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: BROWSER back to Main");
+            return;
+        }
+
+        if (!clickMpcToolbarMenuForAudit()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU before PREFERENCES");
+            return;
+        }
+        View preferences = findViewWithExactText(
+                getWindow().getDecorView(), "PREFERENCES");
+        if (preferences == null || !preferences.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: PREFERENCES");
+            return;
+        }
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Preferences category navigation") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "MPC Preferences AUDIO") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "MPC Preferences MIDI / SYNC") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "MPC Preferences SEQUENCER") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Preferences category navigation");
+            return;
+        }
+        View midiSync = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Preferences MIDI / SYNC");
+        if (midiSync == null || !midiSync.performClick()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Preferences MIDI / SYNC reserved workspace") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Preferences reserved MIDI / SYNC");
+            return;
+        }
+        View audioTab = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Preferences AUDIO");
+        if (audioTab == null || !audioTab.performClick()
+                || outputDeviceSpinner == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Preferences AUDIO return");
+            return;
+        }
+        View preferencesBack = findViewWithExactText(
+                getWindow().getDecorView(), "BACK");
+        if (preferencesBack == null || !preferencesBack.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: PREFERENCES back");
             return;
         }
 
