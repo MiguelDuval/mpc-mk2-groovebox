@@ -1800,8 +1800,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 // Audition and Open/Load. Keep the remaining Function Bar
                 // slots contextual rather than inventing Browser operations.
                 addFunction("SAMPLE ASSIGN", false, null);
-                addFunction("AUDITION", true,
-                        v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
+                addFunction("AUDITION", false, null);
                 addFunction("LOAD", true, v -> openWavPicker());
                 final String browserLocation =
                         navigationController.state().browserLocation();

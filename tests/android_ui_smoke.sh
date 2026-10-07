@@ -1446,6 +1446,13 @@ for required in   'void onTimeCounter();'   'void onTempo();'   'listener.onTime
     exit 1
   fi
 done
+echo "Running MPC Browser visual/runtime contract preflight..."
+for required in   'MpcBrowserFilterIconDrawable'   'MPC Browser filter PROJECTS'   'MPC Browser current location: PLACE • INTERNAL'   'addFunction("AUDITION", false, null)'   'Browser CONTENT tab'   'Browser UP from CONTENT/DRUMS'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "$BROWSER_SOURCE"       && ! grep -Fq -- "$0"; then
+    echo "ERROR: Browser visual/runtime contract missing: $required"
+    exit 1
+  fi
+done
 echo "Running Android runtime startup smoke..."
 echo "Running canonical Main shell visibility preflight..."
 for required in   'compactContextPanel.setVisibility(View.GONE);'   'compactMixerPanel.setVisibility(View.GONE);'   'header.setVisibility(View.GONE);'   'mainMixerStripView = new MpcMainMixerStripView'; do

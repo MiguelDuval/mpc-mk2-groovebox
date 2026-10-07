@@ -112,8 +112,18 @@ final class MpcBrowserView extends LinearLayout {
         filters.setContentDescription("MPC Browser FILTER Buttons");
         for (String filter : new String[]{
                 "PROJECTS", "PATTERNS", "KITS", "PLUGIN PRESETS", "SAMPLES", "ALL"}) {
-            Button button = button(context, filter);
+            Button button = button(context, "");
             button.setTextSize(8);
+            button.setGravity(Gravity.CENTER);
+            button.setContentDescription("MPC Browser filter " + filter);
+            final MpcBrowserFilterIconDrawable icon =
+                    new MpcBrowserFilterIconDrawable(
+                            MpcBrowserFilterIconDrawable.Filter.fromLabel(filter),
+                            dp(context, 20));
+            icon.setBounds(0, 0, dp(context, 20), dp(context, 20));
+            button.setTag(icon);
+            button.setCompoundDrawables(icon, null, null, null);
+            button.setCompoundDrawablePadding(0);
             button.setOnClickListener(v -> {
                 if (listener != null) listener.onFilterSelected(filter);
                 setActiveButton(filters, filter);
@@ -123,6 +133,8 @@ final class MpcBrowserView extends LinearLayout {
         center.addView(filters, paramsMatch(context, 38));
 
         location = info(context, "PLACE • INTERNAL");
+        location.setContentDescription(
+                "MPC Browser current location: PLACE • INTERNAL");
         center.addView(location, paramsMatch(context, 34));
 
         LinearLayout targetContext = row(context);
@@ -199,21 +211,31 @@ final class MpcBrowserView extends LinearLayout {
                 activeSection = section;
                 setActiveButton(sections, activeSection);
                 rebuildSideNavigation();
-                location.setText(locationLabel(section, item));
+                final String label = locationLabel(section, item);
+                location.setText(label);
+                location.setContentDescription(
+                        "MPC Browser current location: " + label);
                 setActiveNavigationItem(item);
                 return;
             }
         }
         if (isKnownSection(raw)) {
             setSection(raw);
-            location.setText(
+            final String label =
                     "PLACES".equals(raw)
                             ? "PLACE • INTERNAL"
-                            : raw);
+                            : raw;
+            location.setText(label);
+            location.setContentDescription(
+                    "MPC Browser current location: " + label);
             return;
         }
         setSection("PLACES");
-        location.setText("PLACE • " + (raw.isEmpty() ? "INTERNAL" : raw));
+        final String label =
+                "PLACE • " + (raw.isEmpty() ? "INTERNAL" : raw);
+        location.setText(label);
+        location.setContentDescription(
+                "MPC Browser current location: " + label);
         setActiveNavigationItem(raw.isEmpty() ? "INTERNAL" : raw);
     }
 
@@ -275,6 +297,10 @@ final class MpcBrowserView extends LinearLayout {
             button.setBackground(stroke(
                     selected ? MPC_BROWSER_SELECTED : SURFACE_2,
                     selected ? MPC_BROWSER_SELECTED : LINE));
+            final Object tag = button.getTag();
+            if (tag instanceof MpcBrowserFilterIconDrawable) {
+                ((MpcBrowserFilterIconDrawable) tag).setSelected(selected);
+            }
         }
     }
 
