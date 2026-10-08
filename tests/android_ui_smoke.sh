@@ -229,8 +229,8 @@ for required in   'private int hardwareFocusId()'   'navigationController.state(
   fi
 done
 
-if ! grep -Fq -- "uiAuditSmokeMode ? View.VISIBLE : View.GONE" "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: normal Main must not expose diagnostic footer as permanent UI"
+if ! grep -Fq -- "hardwareFeedbackView.setVisibility(View.GONE);" "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- "bottomStatus.setVisibility(View.GONE);" "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: ui-audit mode must keep diagnostic footer out of the visual evidence surface"
   exit 1
 fi
 
