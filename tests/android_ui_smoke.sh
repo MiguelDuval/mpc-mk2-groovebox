@@ -1455,6 +1455,13 @@ for required in   'MpcBrowserFilterIconDrawable'   'MPC Browser filter PROJECTS'
     exit 1
   fi
 done
+echo "Running MPC Browser Options preflight..."
+for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "$BROWSER_SOURCE"; then
+    echo "ERROR: MPC Browser Options contract missing: $required"
+    exit 1
+  fi
+done
 echo "Running MPC Preferences taxonomy preflight..."
 for required in   'buildPreferencesCategoryBar("AUDIO")'   'MPC Preferences AUDIO'   'MPC Preferences MIDI / SYNC'   'MPC Preferences SEQUENCER'   'showPreferencesReservedPage'   'RESERVED / UNAVAILABLE'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then

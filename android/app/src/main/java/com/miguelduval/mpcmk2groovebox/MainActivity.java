@@ -5428,6 +5428,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController.setDataDialFocus(
                         MpcUiState.DataDialFocus.BROWSER_ITEM);
             }
+            @Override
+            public void onOptionsRequested() {
+                showBrowserOptionsDialog();
+            }
+
         });
 
         LinearLayout page = page();
@@ -5462,6 +5467,53 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         content.addView(page);
         updateModeRailSelection();
+    }
+
+    private void showBrowserOptionsDialog() {
+        final String[] labels = {
+                "Show file size",
+                "Show modified date",
+                "Show created date",
+                "Search includes subfolders",
+                "Hide system folders",
+                "Clear unused samples on load"
+        };
+
+        LinearLayout body = column();
+        body.setPadding(dp(16), dp(4), dp(16), dp(2));
+        body.setContentDescription("MPC Browser Options");
+
+        TextView notice = label(
+                "FILE PROVIDER: PARTIAL • options are exposed as MPC taxonomy only; "
+                        + "unsupported provider behaviors remain inactive.",
+                10, MUTED);
+        notice.setPadding(0, 0, 0, dp(10));
+        body.addView(notice);
+
+        for (String labelText : labels) {
+            android.widget.CheckBox check = new android.widget.CheckBox(this);
+            check.setText(labelText);
+            check.setTextColor(TEXT);
+            check.setTextSize(11);
+            check.setContentDescription("MPC Browser Option " + labelText);
+            check.setEnabled(false);
+            check.setAlpha(0.55f);
+            body.addView(check, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+        }
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Browser Options")
+                .setView(body)
+                .setNegativeButton("CLOSE", null)
+                .create();
+        dialog.setOnShowListener(d -> {
+            if (dialog.getButton(AlertDialog.BUTTON_NEGATIVE) != null) {
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setContentDescription(
+                        "MPC Browser Options close");
+            }
+        });
+        dialog.show();
     }
 
     private void showArrangePage() {
@@ -9714,6 +9766,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getWindow().getDecorView(), "MPC shortcut BROWSER");
         if (browserShortcut == null || !browserShortcut.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: BROWSER shortcut");
+            return;
+        }
+
+        View browserOptions = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser Options");
+        if (browserOptions == null || !browserOptions.performClick()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Browser Option Show file size") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options");
+            return;
+        }
+        View browserOptionsClose = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser Options close");
+        if (browserOptionsClose == null || !browserOptionsClose.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options close");
             return;
         }
 

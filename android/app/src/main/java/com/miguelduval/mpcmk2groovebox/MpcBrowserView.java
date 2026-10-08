@@ -29,6 +29,7 @@ final class MpcBrowserView extends LinearLayout {
         void onOpenStorage();
         void onPlayCurrent();
         void onSearchChanged(String query);
+        void onOptionsRequested();
     }
 
     private static final int BG = Color.rgb(14, 16, 18);
@@ -130,6 +131,20 @@ final class MpcBrowserView extends LinearLayout {
             });
             filters.addView(button, weight());
         }
+        Button options = button(context, "");
+        options.setGravity(Gravity.CENTER);
+        options.setContentDescription("MPC Browser Options");
+        final MpcBrowserChromeIconDrawable optionsIcon =
+                new MpcBrowserChromeIconDrawable(
+                        MpcBrowserChromeIconDrawable.Mode.OPTIONS,
+                        dp(context, 20));
+        optionsIcon.setBounds(0, 0, dp(context, 20), dp(context, 20));
+        options.setCompoundDrawables(optionsIcon, null, null, null);
+        options.setCompoundDrawablePadding(0);
+        options.setOnClickListener(v -> {
+            if (listener != null) listener.onOptionsRequested();
+        });
+        filters.addView(options, paramsWidth(context, 38));
         center.addView(filters, paramsMatch(context, 38));
 
         location = info(context, "PLACE • INTERNAL");

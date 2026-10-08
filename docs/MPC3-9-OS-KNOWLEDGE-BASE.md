@@ -485,3 +485,10 @@ This keeps navigation state in `MpcUiState.browserLocation` and leaves Android D
 
 Preferences now has an in-shell three-category taxonomy: **Audio / MIDI-Sync / Sequencer**.
 Audio retains the real Android/Oboe settings implementation. MIDI-Sync and Sequencer are explicit RESERVED/UNAVAILABLE workspaces; no fabricated settings or setters were added. Runtime audit coverage now enters Preferences, switches into a reserved category, returns to Audio, and exits.
+
+
+## 2026-10-08 Browser Options checkpoint
+
+The Browser now exposes the MPC Browser Options gear and the documented six-option taxonomy. Because the semantic file-result provider is still partial, these options are intentionally visible but disabled rather than pretending to change provider behavior.
+
+The icon-only Browser filters also now propagate selected state into their drawable, restoring truthful visual focus on the active filter.
