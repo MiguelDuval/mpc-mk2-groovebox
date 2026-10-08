@@ -193,7 +193,6 @@ for required in \
   "MpcTrackEditView" \
   "hardwareFeedbackView.setVisibility" \
   "bottomStatus.setVisibility" \
-  "uiAuditSmokeMode ? View.VISIBLE : View.GONE" \
   "mpcShortcutLabel" \
   "mpcShortcutButton" \
   "buttonLedOnState" \
