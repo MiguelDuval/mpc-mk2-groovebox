@@ -492,3 +492,8 @@ Audio retains the real Android/Oboe settings implementation. MIDI-Sync and Seque
 The Browser now exposes the MPC Browser Options gear and the documented six-option taxonomy. Because the semantic file-result provider is still partial, these options are intentionally visible but disabled rather than pretending to change provider behavior.
 
 The icon-only Browser filters also now propagate selected state into their drawable, restoring truthful visual focus on the active filter.
+
+
+## 2026-10-08 Clean visual-evidence checkpoint
+
+UI-audit mode no longer renders hardware/status diagnostics over the application surface. Runtime audit assertions remain in logcat, while the captured startup image is now a clean Main surface suitable for visual comparison with MPC.

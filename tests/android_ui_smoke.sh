@@ -1455,6 +1455,13 @@ for required in   'MpcBrowserFilterIconDrawable'   'MPC Browser filter PROJECTS'
     exit 1
   fi
 done
+echo "Running clean visual-evidence audit preflight..."
+for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStatus.setVisibility(View.GONE);'   'truthful Main screenshot'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: clean visual evidence contract missing: $required"
+    exit 1
+  fi
+done
 echo "Running MPC Browser Options preflight..."
 for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "$BROWSER_SOURCE"; then

@@ -670,23 +670,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          * Keep them available only to UI-audit runs and pin them to the bottom
          * as an overlay so they cannot participate in shell measurement.
          */
-        hardwareFeedbackView.setVisibility(
-                uiAuditSmokeMode ? View.VISIBLE : View.GONE);
-        bottomStatus.setVisibility(
-                uiAuditSmokeMode ? View.VISIBLE : View.GONE);
+        /*
+         * Audit diagnostics are intentionally not part of the visual surface.
+         * Runtime assertions are emitted to logcat, while the startup capture
+         * must remain a truthful Main screenshot.
+         */
+        hardwareFeedbackView.setVisibility(View.GONE);
+        bottomStatus.setVisibility(View.GONE);
 
         FrameLayout.LayoutParams feedbackLp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                uiAuditSmokeMode ? dp(24) : 0,
-                Gravity.BOTTOM);
-        feedbackLp.bottomMargin = uiAuditSmokeMode ? dp(28) : 0;
-        root.addView(hardwareFeedbackView, feedbackLp);
-
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.BOTTOM);
         FrameLayout.LayoutParams statusLp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                uiAuditSmokeMode ? dp(28) : 0,
-                Gravity.BOTTOM);
-        root.addView(bottomStatus, statusLp);
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.BOTTOM);
 
         buildPullDownOverlay(root);
         installPullDownGesture();
