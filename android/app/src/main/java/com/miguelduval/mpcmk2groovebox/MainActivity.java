@@ -9808,35 +9808,106 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         View browserContentTab = findViewWithContentDescription(
                 getWindow().getDecorView(), "Browser CONTENT tab");
-        if (browserContentTab == null || !browserContentTab.performClick()
-                || !browserContentTab.isSelected()
-                || findViewWithContentDescription(
-                        getWindow().getDecorView(),
-                        "MPC Browser current location: CONTENT") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CONTENT tab");
+        if (browserContentTab == null || !browserContentTab.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CONTENT tab click");
             return;
         }
 
+        View browserDrumsAfterContent = findViewWithExactText(
+                getWindow().getDecorView(), "DRUMS");
+        if (browserDrumsAfterContent == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CONTENT sidebar item missing");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserDrumsAfterContent,
+                dp(20),
+                "Browser CONTENT sidebar item",
+                this::runUiAuditAfterBrowserContentLayout);
+    }
+
+    private void runUiAuditAfterBrowserContentLayout() {
+        if (destroyed) return;
+
+        View browserContentTab = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser CONTENT tab");
         View browserDrums = findViewWithExactText(
                 getWindow().getDecorView(), "DRUMS");
-        if (browserDrums == null || !browserDrums.performClick()
+        if (browserContentTab == null || !browserContentTab.isSelected()
                 || findViewWithContentDescription(
                         getWindow().getDecorView(),
-                        "MPC Browser current location: CONTENT • DRUMS") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CONTENT/DRUMS");
+                        "MPC Browser current location: CONTENT") == null
+                || browserDrums == null || !browserDrums.isShown()
+                || browserDrums.getWidth() <= dp(80)
+                || browserDrums.getHeight() <= dp(20)
+                || !browserDrums.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CONTENT/DRUMS layout or selection"
+                    + " | drums=" + describeAuditView(browserDrums));
             return;
         }
 
         View browserUpFromDrums = findViewWithContentDescription(
                 getWindow().getDecorView(), "Browser UP from CONTENT/DRUMS");
-        if (browserUpFromDrums == null || !browserUpFromDrums.isEnabled()
-                || !browserUpFromDrums.performClick()
-                || findViewWithContentDescription(
-                        getWindow().getDecorView(),
-                        "MPC Browser current location: CONTENT") == null
-                || findViewWithContentDescription(
-                        getWindow().getDecorView(), "Browser UP from CONTENT") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser UP from CONTENT/DRUMS");
+        if (browserUpFromDrums == null || !browserUpFromDrums.isEnabled()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser UP from CONTENT/DRUMS missing");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserUpFromDrums,
+                dp(20),
+                "Browser UP from CONTENT/DRUMS",
+                this::runUiAuditAfterBrowserDrumsLayout);
+    }
+
+    private void runUiAuditAfterBrowserDrumsLayout() {
+        if (destroyed) return;
+
+        View browserUpFromDrums = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser UP from CONTENT/DRUMS");
+        if (findViewWithContentDescription(
+                    getWindow().getDecorView(),
+                    "MPC Browser current location: CONTENT • DRUMS") == null
+                || browserUpFromDrums == null || !browserUpFromDrums.isShown()
+                || browserUpFromDrums.getWidth() <= dp(40)
+                || browserUpFromDrums.getHeight() <= dp(20)
+                || !browserUpFromDrums.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser UP from CONTENT/DRUMS"
+                    + " | up=" + describeAuditView(browserUpFromDrums));
+            return;
+        }
+
+        View browserDrumsAfterUp = findViewWithExactText(
+                getWindow().getDecorView(), "DRUMS");
+        if (browserDrumsAfterUp == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser sidebar after UP missing");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserDrumsAfterUp,
+                dp(20),
+                "Browser sidebar after UP",
+                this::runUiAuditAfterBrowserUpLayout);
+    }
+
+    private void runUiAuditAfterBrowserUpLayout() {
+        if (destroyed) return;
+
+        View browserDrumsAfterUp = findViewWithExactText(
+                getWindow().getDecorView(), "DRUMS");
+        View browserUpFromContent = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser UP from CONTENT");
+        if (findViewWithContentDescription(
+                    getWindow().getDecorView(),
+                    "MPC Browser current location: CONTENT") == null
+                || browserDrumsAfterUp == null || !browserDrumsAfterUp.isShown()
+                || browserDrumsAfterUp.getWidth() <= dp(80)
+                || browserDrumsAfterUp.getHeight() <= dp(20)
+                || browserUpFromContent == null || !browserUpFromContent.isShown()
+                || browserUpFromContent.getWidth() <= dp(40)
+                || browserUpFromContent.getHeight() <= dp(20)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser UP restored visible CONTENT"
+                    + " | drums=" + describeAuditView(browserDrumsAfterUp)
+                    + " | up=" + describeAuditView(browserUpFromContent));
             return;
         }
 
@@ -9845,9 +9916,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         View browserSamplesFilter = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Browser filter SAMPLES");
         if (browserAllFilter == null || !browserAllFilter.isSelected()
-                || browserSamplesFilter == null || !browserSamplesFilter.performClick()
+                || browserSamplesFilter == null || !browserSamplesFilter.isShown()
+                || browserSamplesFilter.getWidth() <= dp(20)
+                || browserSamplesFilter.getHeight() <= dp(20)
+                || !browserSamplesFilter.performClick()
                 || !browserSamplesFilter.isSelected() || browserAllFilter.isSelected()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-type filter selection");
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-type filter selection"
+                    + " | all=" + describeAuditView(browserAllFilter)
+                    + " | samples=" + describeAuditView(browserSamplesFilter));
             return;
         }
 
@@ -9935,6 +10011,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getWindow().getDecorView(), "BACK");
         if (preferencesBack == null || !preferencesBack.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: PREFERENCES back");
+            return;
+        }
+        if (navigationController.state().mode() != MpcUiState.Mode.MENU) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Preferences Back did not restore Menu"
+                    + " | mode=" + navigationController.state().mode());
+            return;
+        }
+
+        View menuBackToMain = findViewWithExactText(
+                getWindow().getDecorView(), "BACK");
+        if (menuBackToMain == null || !menuBackToMain.isShown()
+                || !menuBackToMain.performClick()
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Menu Back did not restore Main"
+                    + " | mode=" + navigationController.state().mode());
             return;
         }
 
