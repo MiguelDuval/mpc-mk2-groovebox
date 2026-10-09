@@ -500,7 +500,7 @@ jobs:
           emulator-boot-timeout: 1200
           disable-linux-hw-accel: false
           disable-animations: true
-          script: timeout --foreground --signal=TERM --kill-after=10s 15m bash tests/android_ui_smoke.sh
+          script: timeout --signal=TERM --kill-after=10s 15m bash tests/android_ui_smoke.sh
 
       - name: Upload MPC UI visual evidence
         if: always()

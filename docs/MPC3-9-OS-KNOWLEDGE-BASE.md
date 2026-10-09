@@ -502,3 +502,8 @@ UI-audit mode no longer renders hardware/status diagnostics over the application
 ## 2026-10-09 Runtime smoke timeout hardening
 
 The Android emulator was reaching the boot-completed state, after which an unbounded adb command in `tests/android_ui_smoke.sh` could hold the job indefinitely. The smoke script now bounds adb install/start/screenshot/logcat/process-check/UI-dump calls individually, uses a wall-clock deadline for UI-audit polling, and the emulator script plus whole job have hard time limits. This is test-infrastructure hardening only; it does not alter audio, MIDI, or product runtime code.
+
+
+## 2026-10-09 Emulator timeout process-tree correction
+
+The first hard-timeout pass still left the smoke step running beyond its 15-minute guard because GNU `timeout --foreground` does not manage the command's process group. The guard now uses normal process-group timeout behavior, including for ADB calls and the enclosing smoke command, so stuck children can be terminated instead of keeping the runner alive.

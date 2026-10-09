@@ -1501,7 +1501,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --foreground --signal=TERM --kill-after=3s'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -1510,7 +1510,7 @@ done
 adb_bounded() {
   local seconds="$1"
   shift
-  timeout --foreground --signal=TERM --kill-after=3s "${seconds}s" adb "$@"
+  timeout --signal=TERM --kill-after=3s "${seconds}s" adb "$@"
 }
 
 echo "Installing debug APK (hard limit 120s)..."
@@ -1583,7 +1583,7 @@ fi
 echo "Application-side UI audit completed; requesting the accessibility hierarchy now."
 
 echo "Dumping post-audit UI hierarchy..."
-if ! timeout --foreground --signal=TERM --kill-after=3s 30s adb shell uiautomator dump > /tmp/mpc-groovebox-uiautomator.txt 2>&1; then
+if ! timeout --signal=TERM --kill-after=3s 30s adb shell uiautomator dump > /tmp/mpc-groovebox-uiautomator.txt 2>&1; then
   cat /tmp/mpc-groovebox-uiautomator.txt || true
   echo "ERROR: post-audit uiautomator dump failed or timed out after 30s"
   exit 1
