@@ -1447,13 +1447,24 @@ for required in   'void onTimeCounter();'   'void onTempo();'   'listener.onTime
     exit 1
   fi
 done
-echo "Running MPC Browser visual/runtime contract preflight..."
-for required in   'MpcBrowserFilterIconDrawable'   'MPC Browser filter PROJECTS'   'MPC Browser current location: PLACE • INTERNAL'   'addFunction("AUDITION", false, null)'   'Browser CONTENT tab'   'Browser UP from CONTENT/DRUMS'; do
-  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "$BROWSER_SOURCE"       && ! grep -Fq -- "$0"; then
-    echo "ERROR: Browser visual/runtime contract missing: $required"
+require_source_contains() {
+  local source="$1"
+  local required="$2"
+  echo "Checking source contract: $required"
+  if ! timeout --signal=TERM --kill-after=1s 5s grep -Fq -- "$required" "$source"; then
+    echo "ERROR: source contract missing or grep timed out: $required ($source)"
     exit 1
   fi
-done
+}
+
+echo "Running MPC Browser visual/runtime contract preflight..."
+require_source_contains "$BROWSER_SOURCE" 'MpcBrowserFilterIconDrawable'
+require_source_contains "$BROWSER_SOURCE" 'MPC Browser filter PROJECTS'
+require_source_contains "$BROWSER_SOURCE" 'MPC Browser current location: PLACE • INTERNAL'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'addFunction("AUDITION", false, null)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser CONTENT tab'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser UP from CONTENT/DRUMS'
+
 echo "Running clean visual-evidence audit preflight..."
 for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStatus.setVisibility(View.GONE);'   'truthful Main screenshot'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then

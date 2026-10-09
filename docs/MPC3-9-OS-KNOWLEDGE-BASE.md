@@ -507,3 +507,8 @@ The Android emulator was reaching the boot-completed state, after which an unbou
 ## 2026-10-09 Emulator timeout process-tree correction
 
 The first hard-timeout pass still left the smoke step running beyond its 15-minute guard because GNU `timeout --foreground` does not manage the command's process group. The guard now uses normal process-group timeout behavior, including for ADB calls and the enclosing smoke command, so stuck children can be terminated instead of keeping the runner alive.
+
+
+## 2026-10-09 Browser preflight and CI de-duplication
+
+The Android smoke had stalled during one compound Browser grep preflight before reaching ADB. That check is now split into named, individually bounded source assertions, so the log identifies the exact contract on failure. Feature branches with an open PR now use the pull-request workflow rather than starting a duplicate push workflow; emulator boot has a ten-minute ceiling while the full job remains capped.
