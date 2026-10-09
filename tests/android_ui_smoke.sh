@@ -1489,7 +1489,7 @@ done
 echo "Running Android runtime startup smoke..."
 echo "Running canonical Main shell visibility preflight..."
 for required in   'compactContextPanel.setVisibility(View.GONE);'   'compactMixerPanel.setVisibility(View.GONE);'   'header.setVisibility(View.GONE);'   'mainMixerStripView = new MpcMainMixerStripView'; do
-  if !grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: canonical Main shell visibility contract missing: $required"
     exit 1
   fi
@@ -1591,7 +1591,20 @@ if [ "$ui_audit_complete" -ne 1 ]; then
   exit 1
 fi
 
-echo "Application-side UI audit completed; requesting the accessibility hierarchy now."
+echo "Application-side UI audit completed; collecting Browser runtime evidence."
+
+if ! adb_bounded 10 exec-out run-as "$PACKAGE" cat cache/mpc-groovebox-browser-render.png > /tmp/mpc-groovebox-browser.png; then
+  echo "ERROR: Browser runtime render screenshot could not be retrieved from the debug app"
+  exit 1
+fi
+if ! adb_bounded 10 exec-out run-as "$PACKAGE" cat cache/mpc-groovebox-browser-hierarchy.txt > /tmp/mpc-groovebox-browser-hierarchy.txt; then
+  echo "ERROR: Browser runtime accessibility hierarchy could not be retrieved from the debug app"
+  exit 1
+fi
+if ! test -s /tmp/mpc-groovebox-browser.png || ! test -s /tmp/mpc-groovebox-browser-hierarchy.txt; then
+  echo "ERROR: Browser runtime evidence files are empty"
+  exit 1
+fi
 
 echo "Dumping post-audit UI hierarchy..."
 if ! timeout --signal=TERM --kill-after=3s 30s adb shell uiautomator dump > /tmp/mpc-groovebox-uiautomator.txt 2>&1; then

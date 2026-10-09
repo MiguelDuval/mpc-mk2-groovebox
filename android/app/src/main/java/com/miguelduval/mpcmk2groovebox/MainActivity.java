@@ -225,6 +225,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceTimelineView mainArrangementPreview;
     private MpcArrangeView arrangementView;
     private MpcBrowserView browserView;
+    private AlertDialog browserOptionsDialog;
     private final ArrayList<MpcArrangeView.Lane> arrangementLanes = new ArrayList<>();
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
@@ -5503,18 +5504,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
         }
 
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Browser Options")
                 .setView(body)
                 .setNegativeButton("CLOSE", null)
                 .create();
+        browserOptionsDialog = dialog;
         dialog.setOnShowListener(d -> {
             if (dialog.getButton(AlertDialog.BUTTON_NEGATIVE) != null) {
                 dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setContentDescription(
                         "MPC Browser Options close");
             }
         });
+        dialog.setOnDismissListener(d -> {
+            if (browserOptionsDialog == dialog) browserOptionsDialog = null;
+        });
         dialog.show();
+        final Button closeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+        if (closeButton != null) {
+            closeButton.setContentDescription("MPC Browser Options close");
+        }
     }
 
     private void showArrangePage() {
@@ -9815,17 +9824,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View browserOptions = findViewWithContentDescription(
-                getWindow().getDecorView(), "MPC Browser Options");
-        if (browserOptions == null || !browserOptions.performClick()
-                || findViewWithContentDescription(
-                        getWindow().getDecorView(),
-                        "MPC Browser Option Show file size") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options");
+        if (!captureBrowserAuditEvidence()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser runtime evidence capture");
             return;
         }
+
+        View browserOptions = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser Options");
+        if (browserOptions == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options button missing");
+            return;
+        }
+        if (!browserOptions.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options button did not click");
+            return;
+        }
+
+        final AlertDialog optionsDialog = browserOptionsDialog;
+        if (optionsDialog == null || !optionsDialog.isShowing()
+                || optionsDialog.getWindow() == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options dialog did not open");
+            return;
+        }
+        final View optionsDialogRoot = optionsDialog.getWindow().getDecorView();
+        if (findViewWithContentDescription(
+                optionsDialogRoot, "MPC Browser Option Show file size") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options dialog hierarchy");
+            return;
+        }
+
         View browserOptionsClose = findViewWithContentDescription(
-                getWindow().getDecorView(), "MPC Browser Options close");
+                optionsDialogRoot, "MPC Browser Options close");
         if (browserOptionsClose == null || !browserOptionsClose.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options close");
             return;
@@ -10429,6 +10458,91 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             recordingWaveformUpdater = null;
         }
         Log.i(TAG, "UI_INTERACTION_COMPLETE");
+    }
+
+    private boolean captureBrowserAuditEvidence() {
+        final View decor = getWindow() == null ? null : getWindow().getDecorView();
+        if (browserView == null || decor == null
+                || decor.getWidth() <= 0 || decor.getHeight() <= 0) {
+            Log.e(TAG, "UI_BROWSER_EVIDENCE_FAILED: Browser root has no measured geometry");
+            return false;
+        }
+
+        android.graphics.Bitmap bitmap = null;
+        try {
+            bitmap = android.graphics.Bitmap.createBitmap(
+                    decor.getWidth(), decor.getHeight(),
+                    android.graphics.Bitmap.Config.ARGB_8888);
+            decor.draw(new android.graphics.Canvas(bitmap));
+            final java.io.File screenshotFile = new java.io.File(
+                    getCacheDir(), "mpc-groovebox-browser-render.png");
+            try (java.io.FileOutputStream output =
+                         new java.io.FileOutputStream(screenshotFile)) {
+                if (!bitmap.compress(
+                        android.graphics.Bitmap.CompressFormat.PNG, 100, output)) {
+                    throw new IOException("Browser Bitmap compression returned false");
+                }
+            }
+
+            final StringBuilder hierarchy = new StringBuilder(8192);
+            appendBrowserAuditHierarchy(browserView, hierarchy, 0);
+            final java.io.File hierarchyFile = new java.io.File(
+                    getCacheDir(), "mpc-groovebox-browser-hierarchy.txt");
+            try (java.io.FileOutputStream output =
+                         new java.io.FileOutputStream(hierarchyFile)) {
+                output.write(hierarchy.toString().getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (IOException | RuntimeException error) {
+            Log.e(TAG, "UI_BROWSER_EVIDENCE_FAILED: could not persist Browser screenshot/tree", error);
+            return false;
+        } finally {
+            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+        }
+
+        Log.i(TAG, "UI_BROWSER_EVIDENCE_CAPTURED: Browser CONTENT + SAMPLES filter");
+        return true;
+    }
+
+    private void appendBrowserAuditHierarchy(View view, StringBuilder output, int depth) {
+        if (view == null) return;
+        for (int i = 0; i < depth; i++) output.append("  ");
+
+        final int[] screenPosition = new int[2];
+        view.getLocationOnScreen(screenPosition);
+        output.append(view.getClass().getSimpleName())
+                .append(" bounds=[")
+                .append(screenPosition[0]).append(',').append(screenPosition[1]).append(',')
+                .append(screenPosition[0] + view.getWidth()).append(',')
+                .append(screenPosition[1] + view.getHeight()).append(']')
+                .append(" visibility=").append(view.getVisibility())
+                .append(" selected=").append(view.isSelected())
+                .append(" enabled=").append(view.isEnabled())
+                .append(" clickable=").append(view.isClickable())
+                .append(" focusable=").append(view.isFocusable());
+        if (view instanceof TextView) {
+            output.append(" text=\"")
+                    .append(escapeBrowserAuditValue(((TextView) view).getText()))
+                    .append('"');
+        }
+        output.append(" contentDescription=\"")
+                .append(escapeBrowserAuditValue(view.getContentDescription()))
+                .append("\"\n");
+
+        if (view instanceof ViewGroup) {
+            final ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                appendBrowserAuditHierarchy(group.getChildAt(i), output, depth + 1);
+            }
+        }
+    }
+
+    private String escapeBrowserAuditValue(CharSequence value) {
+        if (value == null) return "";
+        return value.toString()
+                .replace("\\", "\\\\")
+                .replace("\r", "\\r")
+                .replace("\n", "\\n")
+                .replace("\"", "\\\"");
     }
 
     private String describeAuditView(View view) {
