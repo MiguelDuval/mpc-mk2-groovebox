@@ -64,6 +64,7 @@ final class MpcBrowserView extends LinearLayout {
         for (String section : new String[]{
                 "PLACES", "CONTENT", "EXPANSIONS"}) {
             Button button = button(context, section);
+            button.setContentDescription("Browser " + section + " tab");
             button.setOnClickListener(v -> {
                 setSection(section);
                 if (listener != null) listener.onSectionSelected(section);
@@ -214,6 +215,11 @@ final class MpcBrowserView extends LinearLayout {
         activeSection = isKnownSection(section) ? section : "PLACES";
         setActiveButton(sections, activeSection);
         rebuildSideNavigation();
+        final String label = "PLACES".equals(activeSection)
+                ? "PLACE • INTERNAL"
+                : activeSection;
+        location.setText(label);
+        location.setContentDescription("MPC Browser current location: " + label);
     }
 
     void setLocation(String value) {
@@ -295,7 +301,9 @@ final class MpcBrowserView extends LinearLayout {
                 if (listener != null) {
                     listener.onNavigationItemSelected(section, item);
                 }
-                location.setText(locationLabel(section, item));
+                final String label = locationLabel(section, item);
+                location.setText(label);
+                location.setContentDescription("MPC Browser current location: " + label);
                 setActiveNavigationItem(item);
             });
             places.addView(button, paramsMatch(getContext(), 42));
@@ -308,6 +316,7 @@ final class MpcBrowserView extends LinearLayout {
             if (!(child instanceof Button)) continue;
             final Button button = (Button) child;
             final boolean selected = item.equals(button.getText().toString());
+            button.setSelected(selected);
             button.setTextColor(selected ? Color.rgb(14, 16, 18) : TEXT);
             button.setBackground(stroke(
                     selected ? MPC_BROWSER_SELECTED : SURFACE_2,
@@ -366,12 +375,21 @@ final class MpcBrowserView extends LinearLayout {
             View child = container.getChildAt(i);
             if (!(child instanceof Button)) continue;
             Button button = (Button) child;
-            final boolean selected =
-                    label.equals(button.getText().toString());
+            final CharSequence description = button.getContentDescription();
+            final String accessibleLabel = description == null
+                    ? "" : description.toString();
+            final boolean selected = label.equals(button.getText().toString())
+                    || accessibleLabel.equals("MPC Browser filter " + label)
+                    || accessibleLabel.equals("Browser " + label + " tab");
+            button.setSelected(selected);
             button.setTextColor(selected ? Color.rgb(14, 16, 18) : TEXT);
             button.setBackground(stroke(
                     selected ? MPC_BROWSER_SELECTED : SURFACE_2,
                     selected ? MPC_BROWSER_SELECTED : LINE));
+            final Object tag = button.getTag();
+            if (tag instanceof MpcBrowserFilterIconDrawable) {
+                ((MpcBrowserFilterIconDrawable) tag).setSelected(selected);
+            }
         }
     }
 

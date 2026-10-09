@@ -1462,8 +1462,8 @@ require_source_contains "$BROWSER_SOURCE" 'MpcBrowserFilterIconDrawable'
 require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("MPC Browser filter " + filter)'
 require_source_contains "$BROWSER_SOURCE" 'MPC Browser current location: PLACE • INTERNAL'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'addFunction("AUDITION", false, null)'
-require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser CONTENT tab'
-require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser UP from CONTENT/DRUMS'
+require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("Browser " + section + " tab")'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'up.setContentDescription("Browser UP from " + browserLocation)'
 
 echo "Running clean visual-evidence audit preflight..."
 for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStatus.setVisibility(View.GONE);'   'truthful Main screenshot'; do

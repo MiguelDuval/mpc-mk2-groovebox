@@ -1802,7 +1802,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final boolean browserHasParent =
                         !browserLocation.isEmpty()
                                 && !"PLACES".equals(browserLocation);
-                addFunction("UP", browserHasParent,
+                Button up = addFunction("UP", browserHasParent,
                         v -> {
                             if (browserView != null) {
                                 browserView.setVisibility(View.VISIBLE);
@@ -1827,7 +1827,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 browserView.setLocation(parent);
                             }
                             setBottomStatus("BROWSER • UP • " + parent);
+                            refreshMpcFunctionBar();
                         });
+                up.setContentDescription("Browser UP from " + browserLocation);
                 addFunction("BACK", true, v -> navigateBackFromShell());
                 break;
             case ARRANGE:
@@ -2005,7 +2007,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
     }
 
-    private void addFunction(String text, boolean enabled, View.OnClickListener listener) {
+    private Button addFunction(String text, boolean enabled, View.OnClickListener listener) {
         Button b = actionButton(text, listener);
         b.setEnabled(enabled);
         b.setAlpha(enabled ? 1.0f : 0.45f);
@@ -2018,6 +2020,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         b.setTypeface(Typeface.DEFAULT_BOLD);
         functionBar.addView(b, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        return b;
     }
 
     private void navigateBackFromShell() {
@@ -5353,6 +5356,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController.setDataDialFocus(
                         MpcUiState.DataDialFocus.BROWSER_ITEM);
                 setBottomStatus("BROWSER • " + section);
+                refreshMpcFunctionBar();
             }
 
             @Override
@@ -5365,6 +5369,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController.setDataDialFocus(
                         MpcUiState.DataDialFocus.BROWSER_ITEM);
                 setBottomStatus("BROWSER • " + locationKey);
+                refreshMpcFunctionBar();
             }
 
             @Override
@@ -5389,6 +5394,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         MpcUiState.DataDialFocus.BROWSER_ITEM);
                 browserView.setLocation(parent);
                 setBottomStatus("BROWSER • UP • " + parent);
+                refreshMpcFunctionBar();
             }
 
             @Override
@@ -9761,6 +9767,51 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getWindow().getDecorView(), "MPC shortcut BROWSER");
         if (browserShortcut == null || !browserShortcut.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: BROWSER shortcut");
+            return;
+        }
+
+        View browserContentTab = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser CONTENT tab");
+        if (browserContentTab == null || !browserContentTab.performClick()
+                || !browserContentTab.isSelected()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Browser current location: CONTENT") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CONTENT tab");
+            return;
+        }
+
+        View browserDrums = findViewWithExactText(
+                getWindow().getDecorView(), "DRUMS");
+        if (browserDrums == null || !browserDrums.performClick()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Browser current location: CONTENT • DRUMS") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CONTENT/DRUMS");
+            return;
+        }
+
+        View browserUpFromDrums = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser UP from CONTENT/DRUMS");
+        if (browserUpFromDrums == null || !browserUpFromDrums.isEnabled()
+                || !browserUpFromDrums.performClick()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Browser current location: CONTENT") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Browser UP from CONTENT") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser UP from CONTENT/DRUMS");
+            return;
+        }
+
+        View browserAllFilter = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser filter ALL");
+        View browserSamplesFilter = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser filter SAMPLES");
+        if (browserAllFilter == null || !browserAllFilter.isSelected()
+                || browserSamplesFilter == null || !browserSamplesFilter.performClick()
+                || !browserSamplesFilter.isSelected() || browserAllFilter.isSelected()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-type filter selection");
             return;
         }
 
