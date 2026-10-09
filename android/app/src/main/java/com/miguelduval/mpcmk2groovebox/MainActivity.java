@@ -5442,7 +5442,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout page = page();
         page.setPadding(dp(5), dp(4), dp(5), dp(2));
-        page.addView(browserView, new LinearLayout.LayoutParams(                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        page.addView(browserView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         final String location = navigationController.state().browserLocation();
         final String filter = navigationController.state().browserFilter();
@@ -5470,7 +5471,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         browserView.setTarget(selectedPad, selectedLayer);
 
-        content.addView(page);
+        content.addView(page, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
         updateModeRailSelection();
     }
 
@@ -9782,6 +9785,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        if (browserView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser root missing after route");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserView,
+                dp(180),
+                "Browser workspace",
+                this::runUiAuditAfterBrowserLayout);
+    }
+
+    private void runUiAuditAfterBrowserLayout() {
+        if (destroyed) return;
+        if (browserView == null || !browserView.isShown()
+                || browserView.getWidth() <= dp(200)
+                || browserView.getHeight() <= dp(180)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser workspace geometry"
+                    + " | browser=" + describeAuditView(browserView));
+            return;
+        }
+
         View browserContentTab = findViewWithContentDescription(
                 getWindow().getDecorView(), "Browser CONTENT tab");
         if (browserContentTab == null || !browserContentTab.performClick()
@@ -9993,7 +10017,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Main REC ARM disable");
             return;
         }
-        if (!xlMixerToggle.performClick()) {
+        View xlMixerToggleAfterBrowser = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Main mixer strips shown");
+        if (xlMixerToggleAfterBrowser == null
+                || !xlMixerToggleAfterBrowser.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip hide action");
             return;
         }
@@ -10133,6 +10160,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 dp(180),
                 "Track View workspace",
                 this::runUiAuditAfterTrackView);
+
     }
 
     private void waitForMeasuredAuditView(
@@ -10466,8 +10494,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private boolean captureBrowserAuditEvidence() {
         final View decor = getWindow() == null ? null : getWindow().getDecorView();
         if (browserView == null || decor == null
-                || decor.getWidth() <= 0 || decor.getHeight() <= 0) {
-            Log.e(TAG, "UI_BROWSER_EVIDENCE_FAILED: Browser root has no measured geometry");
+                || decor.getWidth() <= 0 || decor.getHeight() <= 0
+                || !browserView.isShown()
+                || browserView.getWidth() <= dp(200)
+                || browserView.getHeight() <= dp(180)) {
+            Log.e(TAG, "UI_BROWSER_EVIDENCE_FAILED: Browser root has no visible viewport"
+                    + " | browser=" + describeAuditView(browserView)
+                    + " | decor=" + describeAuditView(decor));
             return false;
         }
 
