@@ -137,7 +137,10 @@ for required in \
   '"TRACK TYPE • DRUM is the only implemented Track Type"' \
   "buildMpcMenuTile" \
   "styleMpcMenuFooterButton" \
-  "Main Mode BPM" \
+  "MPC Main BPM field • double-tap for numeric entry" \
+  "MPC Main BARS field • double-tap for numeric entry" \
+  "MPC Main LOOP START field • double-tap for numeric entry" \
+  "MPC Main LOOP END field • double-tap for numeric entry" \
   "Main Time Signature field • tap for editor" \
   "MPC_TIME_SIGNATURE_HIGHLIGHT" \
   "Timing Correct" \
@@ -1567,6 +1570,10 @@ while (( SECONDS < audit_deadline )); do
   fi
   if grep -Eq 'UI_HIERARCHY_FAILED:|UI_INTERACTION_FAILED:|UI_STARTUP_FINALIZATION_FAILED|STARTUP_NATIVE_FAILED' <<<"$log_snapshot"; then
     echo "ERROR: application-side UI audit reported failure before external UI dump"
+    # Earlier audit stages may already have rendered the Browser screenshot and
+    # accessibility tree. Preserve them even when a later check fails.
+    adb_bounded 10 exec-out run-as "$PACKAGE" cat cache/mpc-groovebox-browser-render.png > /tmp/mpc-groovebox-browser.png 2>/dev/null || true
+    adb_bounded 10 exec-out run-as "$PACKAGE" cat cache/mpc-groovebox-browser-hierarchy.txt > /tmp/mpc-groovebox-browser-hierarchy.txt 2>/dev/null || true
     grep -E -A 8 -B 3 'UI_HIERARCHY_FAILED:|UI_INTERACTION_FAILED:|UI_STARTUP_FINALIZATION_FAILED|STARTUP_NATIVE_FAILED' <<<"$log_snapshot" | tail -n 120 || true
     exit 1
   fi

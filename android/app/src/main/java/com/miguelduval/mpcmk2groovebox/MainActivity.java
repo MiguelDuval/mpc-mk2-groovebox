@@ -2676,7 +2676,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(0, dp(MPC_MAIN_FIELD_HEIGHT_DP), 1));
 
         TextView bpm = mainHeaderMetric("BPM");
-        bpm.setContentDescription("Main Mode BPM");
+        bpm.setContentDescription("MPC Main BPM field • double-tap for numeric entry");
         sequenceHeader.addView(bpm,
                 new LinearLayout.LayoutParams(dp(82), dp(MPC_MAIN_METRIC_HEIGHT_DP)));
 
@@ -2714,8 +2714,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout sequenceFields = row();
         TextView bars = mainMetric("BARS");
+        bars.setContentDescription("MPC Main BARS field • double-tap for numeric entry");
         TextView start = mainMetric("START");
+        start.setContentDescription("MPC Main LOOP START field • double-tap for numeric entry");
         TextView end = mainMetric("END");
+        end.setContentDescription("MPC Main LOOP END field • double-tap for numeric entry");
         TextView transpose = mainMetric("TRANSPOSE");
         Button loop = mainActionButton("", v -> {
             if (!startupComplete) {
