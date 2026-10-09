@@ -1501,25 +1501,44 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'timeout 30s adb shell uiautomator dump'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --foreground --signal=TERM --kill-after=3s'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
   fi
 done
-echo "Installing debug APK..."
-adb install -r "$APK"
+adb_bounded() {
+  local seconds="$1"
+  shift
+  timeout --foreground --signal=TERM --kill-after=3s "${seconds}s" adb "$@"
+}
+
+echo "Installing debug APK (hard limit 120s)..."
+if ! adb_bounded 120 install -r "$APK"; then
+  echo "ERROR: adb install failed or timed out after 120s"
+  exit 1
+fi
 
 echo "Clearing logcat and launching MainActivity..."
-adb logcat -c
-adb shell am force-stop "$PACKAGE"
-adb shell am start -W -n "$ACTIVITY" --es "$SMOKE_MODE_EXTRA" "ui-audit" 2>&1 | tee /tmp/mpc-groovebox-am-start.txt
+if ! adb_bounded 10 logcat -c; then
+  echo "ERROR: adb logcat clear failed or timed out"
+  exit 1
+fi
+if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
+  echo "ERROR: adb force-stop failed or timed out"
+  exit 1
+fi
+if ! adb_bounded 60 shell am start -W -n "$ACTIVITY" --es "$SMOKE_MODE_EXTRA" "ui-audit" \
+    2>&1 | tee /tmp/mpc-groovebox-am-start.txt; then
+  echo "ERROR: MainActivity launch failed or timed out after 60s"
+  exit 1
+fi
 
 echo "Capturing startup UI screenshot..."
-adb exec-out screencap -p > /tmp/mpc-groovebox-startup.png || {
-  echo "ERROR: startup screenshot capture failed"
+if ! adb_bounded 15 exec-out screencap -p > /tmp/mpc-groovebox-startup.png; then
+  echo "ERROR: startup screenshot capture failed or timed out after 15s"
   exit 1
-}
+fi
 
 echo "Allowing startup path to settle..."
 sleep 5
@@ -1527,8 +1546,10 @@ sleep 5
 echo "Waiting for application-side UI audit to complete..."
 UI_AUDIT_TIMEOUT_SECONDS=120
 ui_audit_complete=0
-for ((second=0; second<UI_AUDIT_TIMEOUT_SECONDS; second++)); do
-  log_snapshot="$(adb logcat -d -v brief 2>/dev/null || true)"
+audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
+audit_poll=0
+while (( SECONDS < audit_deadline )); do
+  log_snapshot="$(adb_bounded 5 logcat -d -v brief 2>/dev/null || true)"
   if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
     ui_audit_complete=1
     break
@@ -1538,16 +1559,23 @@ for ((second=0; second<UI_AUDIT_TIMEOUT_SECONDS; second++)); do
     grep -E -A 8 -B 3 'UI_HIERARCHY_FAILED:|UI_INTERACTION_FAILED:|UI_STARTUP_FINALIZATION_FAILED|STARTUP_NATIVE_FAILED' <<<"$log_snapshot" | tail -n 120 || true
     exit 1
   fi
-  if ! adb shell pidof "$PACKAGE" | tr -d '\r' | grep -Eq '[0-9]'; then
-    echo "ERROR: MPC Groovebox process exited while waiting for UI audit completion"
-    exit 1
+
+  # Poll process liveness every ten iterations so one slow adb call cannot
+  # stretch the audit timeout into minutes or hours.
+  if (( audit_poll % 10 == 0 )); then
+    pid_output="$(adb_bounded 5 shell pidof "$PACKAGE" 2>/dev/null || true)"
+    if ! grep -Eq '[0-9]' <<<"$(tr -d '\r' <<<"$pid_output")"; then
+      echo "ERROR: MPC Groovebox process exited or ADB became unresponsive during UI audit"
+      exit 1
+    fi
   fi
+  audit_poll=$((audit_poll + 1))
   sleep 1
 done
 
 if [ "$ui_audit_complete" -ne 1 ]; then
-  echo "ERROR: application-side UI audit did not reach UI_INTERACTION_COMPLETE within ${UI_AUDIT_TIMEOUT_SECONDS}s"
-  adb logcat -d -v threadtime > /tmp/mpc-groovebox-logcat.txt || true
+  echo "ERROR: application-side UI audit did not reach UI_INTERACTION_COMPLETE within ${UI_AUDIT_TIMEOUT_SECONDS}s wall-clock deadline"
+  adb_bounded 10 logcat -d -v threadtime > /tmp/mpc-groovebox-logcat.txt || true
   tail -n 350 /tmp/mpc-groovebox-logcat.txt || true
   exit 1
 fi
@@ -1555,18 +1583,18 @@ fi
 echo "Application-side UI audit completed; requesting the accessibility hierarchy now."
 
 echo "Dumping post-audit UI hierarchy..."
-if ! timeout 30s adb shell uiautomator dump >/tmp/mpc-groovebox-uiautomator.txt 2>&1; then
+if ! timeout --foreground --signal=TERM --kill-after=3s 30s adb shell uiautomator dump > /tmp/mpc-groovebox-uiautomator.txt 2>&1; then
   cat /tmp/mpc-groovebox-uiautomator.txt || true
-  echo "ERROR: post-audit uiautomator dump failed"
+  echo "ERROR: post-audit uiautomator dump failed or timed out after 30s"
   exit 1
 fi
-if ! adb shell test -s "$DEVICE_DUMP"; then
+if ! adb_bounded 10 shell test -s "$DEVICE_DUMP"; then
   echo "ERROR: post-audit UI dump file was not created: $DEVICE_DUMP"
   cat /tmp/mpc-groovebox-uiautomator.txt || true
   exit 1
 fi
-if ! adb exec-out cat "$DEVICE_DUMP" >"$DUMP"; then
-  echo "ERROR: post-audit UI dump read failed: $DEVICE_DUMP"
+if ! adb_bounded 10 exec-out cat "$DEVICE_DUMP" >"$DUMP"; then
+  echo "ERROR: post-audit UI dump read failed or timed out: $DEVICE_DUMP"
   cat /tmp/mpc-groovebox-uiautomator.txt || true
   exit 1
 fi
