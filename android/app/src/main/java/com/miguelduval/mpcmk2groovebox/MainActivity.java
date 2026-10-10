@@ -10139,6 +10139,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
         }
 
+        final View browserDestination = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser target Pad and Layer");
+        final View browserCurrentSample = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser current sample");
+        final View browserStorageTitle = findViewWithExactText(
+                getWindow().getDecorView(), "OPEN STORAGE…");
+        final View browserStorageDetail = findViewWithExactText(
+                getWindow().getDecorView(), "ANDROID DOCUMENTS • USE LOAD BELOW");
+        final View browserSampleTitle = findViewWithExactText(
+                getWindow().getDecorView(), "CURRENT SAMPLE");
+        final View browserSampleDetail = findViewWithExactText(
+                getWindow().getDecorView(), "PAD/LAYER • AUDITION");
+        final View[] browserSingleLineTargets = {
+                browserDestination, browserCurrentSample, browserStorageTitle,
+                browserStorageDetail, browserSampleTitle, browserSampleDetail
+        };
+        final String[] browserSingleLineLabels = {
+                "destination context", "current sample metadata", "storage result title",
+                "storage result details", "current sample result title", "current sample result details"
+        };
+        for (int i = 0; i < browserSingleLineTargets.length; i++) {
+            final View target = browserSingleLineTargets[i];
+            if (!(target instanceof TextView)
+                    || ((TextView) target).getLineCount() != 1) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Browser text wrapped after layout: "
+                        + browserSingleLineLabels[i]
+                        + " | target=" + describeAuditView(target)
+                        + " | lines=" + (target instanceof TextView
+                                ? ((TextView) target).getLineCount() : -1));
+                return;
+            }
+        }
+
         final View browserSearchTarget = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Browser search files");
         final View browserClearSearch = findViewWithContentDescription(

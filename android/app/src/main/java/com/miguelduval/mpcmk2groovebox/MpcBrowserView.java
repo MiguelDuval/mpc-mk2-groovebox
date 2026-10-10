@@ -3,6 +3,7 @@ package com.miguelduval.mpcmk2groovebox;
 import android.content.Context;
 import android.graphics.Color;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
@@ -165,8 +166,14 @@ final class MpcBrowserView extends LinearLayout {
         targetContext.setContentDescription(
                 "Browser target context • state only");
         destination = info(context, "TARGET • PAD 01 / LAYER 01");
+        destination.setTextSize(9);
+        destination.setSingleLine(true);
+        destination.setEllipsize(TextUtils.TruncateAt.END);
         destination.setContentDescription("MPC Browser target Pad and Layer");
         currentSample = info(context, "SAMPLE • NONE");
+        currentSample.setTextSize(9);
+        currentSample.setSingleLine(true);
+        currentSample.setEllipsize(TextUtils.TruncateAt.END);
         currentSample.setContentDescription("MPC Browser current sample");
         targetContext.addView(destination,
                 new LayoutParams(0, dp(context, 34), 1.0f));
@@ -193,7 +200,7 @@ final class MpcBrowserView extends LinearLayout {
                 true);
         addResult(context,
                 "CURRENT SAMPLE",
-                "SELECTED PAD/LAYER • USE AUDITION BELOW",
+                "PAD/LAYER • AUDITION",
                 false);
         scroll.addView(results);
         center.addView(scroll, new LayoutParams(
@@ -389,9 +396,13 @@ final class MpcBrowserView extends LinearLayout {
         row.setPadding(dp(context, 6), dp(context, 2), dp(context, 6), dp(context, 2));
         TextView main = info(context, title);
         main.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        main.setSingleLine(true);
+        main.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(main, new LayoutParams(0, dp(context, 44), 1));
         TextView sub = info(context, subtitle);
         sub.setTextSize(8);
+        sub.setSingleLine(true);
+        sub.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(sub, new LayoutParams(0, dp(context, 44), 1.7f));
         results.addView(row, paramsMatch(context, 50));
     }

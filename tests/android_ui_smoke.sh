@@ -1485,6 +1485,14 @@ for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStat
     exit 1
   fi
 done
+echo "Running MPC Browser text overflow preflight..."
+require_source_contains "$BROWSER_SOURCE" 'destination.setSingleLine(true)'
+require_source_contains "$BROWSER_SOURCE" 'currentSample.setSingleLine(true)'
+require_source_contains "$BROWSER_SOURCE" 'main.setSingleLine(true)'
+require_source_contains "$BROWSER_SOURCE" 'sub.setSingleLine(true)'
+require_source_contains "$BROWSER_SOURCE" 'TextUtils.TruncateAt.END'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser text wrapped after layout'
+
 echo "Running MPC Browser geometry regression preflight..."
 require_source_contains "$BROWSER_SOURCE" 'filterBar.addView(filters, new LayoutParams(0, -1, 1))'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'functionBar.setWeightSum(visibleChildren)'
