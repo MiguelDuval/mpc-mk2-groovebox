@@ -90,6 +90,7 @@ final class MpcBrowserView extends LinearLayout {
 
         LinearLayout searchRow = row(context);
         search = new EditText(context);
+        search.setContentDescription("MPC Browser search files");
         search.setSingleLine(true);
         search.setHint("Search files");
         search.setTextColor(TEXT);
@@ -106,6 +107,7 @@ final class MpcBrowserView extends LinearLayout {
         });
         searchRow.addView(search, new LayoutParams(0, dp(context, 42), 1));
         Button clear = button(context, "CLEAR");
+        clear.setContentDescription("MPC Browser clear search");
         clear.setOnClickListener(v -> search.setText(""));
         searchRow.addView(clear, paramsWidth(context, 62));
         center.addView(searchRow);
@@ -157,7 +159,9 @@ final class MpcBrowserView extends LinearLayout {
         targetContext.setContentDescription(
                 "Browser target context • state only");
         destination = info(context, "TARGET • PAD 01 / LAYER 01");
+        destination.setContentDescription("MPC Browser target Pad and Layer");
         currentSample = info(context, "SAMPLE • NONE");
+        currentSample.setContentDescription("MPC Browser current sample");
         targetContext.addView(destination,
                 new LayoutParams(0, dp(context, 34), 1.0f));
         targetContext.addView(currentSample,
@@ -298,6 +302,8 @@ final class MpcBrowserView extends LinearLayout {
         for (String item : items) {
             final String section = activeSection;
             Button button = button(getContext(), item);
+            button.setContentDescription(
+                    "MPC Browser navigation " + section + " " + item);
             button.setTextSize(9);
             button.setOnClickListener(v -> {
                 if (listener != null) {

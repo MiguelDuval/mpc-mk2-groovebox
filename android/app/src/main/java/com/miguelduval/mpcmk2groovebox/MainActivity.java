@@ -9847,6 +9847,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        if (!browserDrums.isSelected()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Browser navigation CONTENT DRUMS") != browserDrums) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser sidebar DRUMS selected state");
+            return;
+        }
+
         View browserUpFromDrums = findViewWithContentDescription(
                 getWindow().getDecorView(), "Browser UP from CONTENT/DRUMS");
         if (browserUpFromDrums == null || !browserUpFromDrums.isEnabled()) {
@@ -9897,10 +9905,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getWindow().getDecorView(), "DRUMS");
         View browserUpFromContent = findViewWithContentDescription(
                 getWindow().getDecorView(), "Browser UP from CONTENT");
+        View browserDrumsSemanticAfterUp = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser navigation CONTENT DRUMS");
         if (findViewWithContentDescription(
                     getWindow().getDecorView(),
                     "MPC Browser current location: CONTENT") == null
                 || browserDrumsAfterUp == null || !browserDrumsAfterUp.isShown()
+                || browserDrumsAfterUp.isSelected()
+                || browserDrumsSemanticAfterUp != browserDrumsAfterUp
                 || browserDrumsAfterUp.getWidth() <= dp(80)
                 || browserDrumsAfterUp.getHeight() <= dp(20)
                 || browserUpFromContent == null || !browserUpFromContent.isShown()
@@ -9974,6 +9986,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar action "
                         + browserFunctionLabels[i]
                         + " | action=" + describeAuditView(action));
+                return;
+            }
+        }
+
+        final String[] browserContextDescriptions = {
+                "MPC Browser search files",
+                "MPC Browser clear search",
+                "MPC Browser target Pad and Layer",
+                "MPC Browser current sample"
+        };
+        for (String description : browserContextDescriptions) {
+            View contextView = findViewWithContentDescription(
+                    getWindow().getDecorView(), description);
+            if (contextView == null || !contextView.isShown()
+                    || contextView.getWidth() <= dp(40)
+                    || contextView.getHeight() <= dp(20)) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Browser accessibility target "
+                        + description + " | view=" + describeAuditView(contextView));
                 return;
             }
         }
