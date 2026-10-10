@@ -2037,7 +2037,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         b.setTypeface(Typeface.DEFAULT_BOLD);
         functionBar.addView(b, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        normalizeMpcFunctionBarLayout();
         return b;
+    }
+
+    /**
+     * Reassert equal contextual slots after rebuilding the Function Bar.
+     * Explicit weights prevent a context transition from leaving a narrow slot.
+     */
+    private void normalizeMpcFunctionBarLayout() {
+        if (functionBar == null) return;
+
+        int visibleChildren = 0;
+        for (int i = 0; i < functionBar.getChildCount(); i++) {
+            if (functionBar.getChildAt(i).getVisibility() != View.GONE) {
+                visibleChildren++;
+            }
+        }
+        if (visibleChildren == 0) return;
+
+        functionBar.setMeasureWithLargestChildEnabled(false);
+        functionBar.setWeightSum(visibleChildren);
+        for (int i = 0; i < functionBar.getChildCount(); i++) {
+            final View child = functionBar.getChildAt(i);
+            if (child.getVisibility() == View.GONE) continue;
+            final ViewGroup.LayoutParams existing = child.getLayoutParams();
+            final LinearLayout.LayoutParams params =
+                    existing instanceof LinearLayout.LayoutParams
+                            ? (LinearLayout.LayoutParams) existing
+                            : new LinearLayout.LayoutParams(
+                                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
+            params.width = 0;
+            params.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            params.weight = 1.0f;
+            child.setLayoutParams(params);
+        }
+        functionBar.requestLayout();
     }
 
     private void navigateBackFromShell() {
@@ -9993,6 +10028,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final boolean expectedAuditionEnabled = startupComplete
                 && nativeAudioGetPadSampleFrameCount(
                         Math.max(0, selectedPad), Math.max(0, selectedLayer)) > 0;
+        int minBrowserActionWidth = Integer.MAX_VALUE;
+        int maxBrowserActionWidth = 0;
         for (int i = 0; i < browserFunctionLabels.length; i++) {
             final View action = functionBar.getChildAt(i);
             final boolean shouldBeEnabled = i == 0 ? false
@@ -10009,6 +10046,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         + " | action=" + describeAuditView(action));
                 return;
             }
+            minBrowserActionWidth = Math.min(minBrowserActionWidth, action.getWidth());
+            maxBrowserActionWidth = Math.max(maxBrowserActionWidth, action.getWidth());
+        }
+        if (maxBrowserActionWidth - minBrowserActionWidth > dp(4)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar unequal action widths"
+                    + " | min=" + minBrowserActionWidth
+                    + " | max=" + maxBrowserActionWidth);
+            return;
         }
         final String[] expectedBrowserActionDescriptions = {
                 "MPC Browser Sample Assign unavailable: no source item selected",
@@ -10157,8 +10202,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         View browserOptions = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Browser Options");
-        if (browserOptions == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options button missing");
+        if (browserOptions == null || !browserOptions.isShown()
+                || browserOptions.getWidth() < dp(32)
+                || browserOptions.getHeight() < dp(20)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options button has no hittable bounds"
+                    + " | options=" + describeAuditView(browserOptions));
             return;
         }
         if (!browserOptions.performClick()) {

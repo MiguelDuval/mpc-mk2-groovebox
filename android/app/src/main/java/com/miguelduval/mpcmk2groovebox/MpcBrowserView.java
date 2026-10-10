@@ -112,6 +112,9 @@ final class MpcBrowserView extends LinearLayout {
         searchRow.addView(clear, paramsWidth(context, 62));
         center.addView(searchRow);
 
+        // Keep the fixed-width Options target outside the weighted filter group.
+        // This prevents the six filters from squeezing Options to zero hit bounds.
+        LinearLayout filterBar = row(context);
         filters = row(context);
         filters.setContentDescription("MPC Browser FILTER Buttons");
         for (String filter : new String[]{
@@ -136,6 +139,8 @@ final class MpcBrowserView extends LinearLayout {
         }
         Button options = button(context, "");
         options.setGravity(Gravity.CENTER);
+        options.setMinWidth(0);
+        options.setMinimumWidth(0);
         options.setContentDescription("MPC Browser Options");
         final MpcBrowserChromeIconDrawable optionsIcon =
                 new MpcBrowserChromeIconDrawable(
@@ -147,8 +152,9 @@ final class MpcBrowserView extends LinearLayout {
         options.setOnClickListener(v -> {
             if (listener != null) listener.onOptionsRequested();
         });
-        filters.addView(options, paramsWidth(context, 38));
-        center.addView(filters, paramsMatch(context, 38));
+        filterBar.addView(filters, new LayoutParams(0, -1, 1));
+        filterBar.addView(options, paramsWidth(context, 38));
+        center.addView(filterBar, paramsMatch(context, 38));
 
         location = info(context, "PLACE • INTERNAL");
         location.setContentDescription(
