@@ -1566,7 +1566,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -1612,6 +1612,7 @@ echo "Waiting for application-side UI audit to complete..."
 UI_AUDIT_TIMEOUT_SECONDS=120
 ui_audit_complete=0
 browser_runtime_capture_done=0
+storage_picker_capture_done=0
 audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
 audit_poll=0
 while (( SECONDS < audit_deadline )); do
@@ -1718,6 +1719,70 @@ PY
     browser_runtime_capture_done=1
   fi
 
+  if [ "$storage_picker_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_STORAGE_PICKER_LAUNCH_REQUESTED" <<<"$log_snapshot"; then
+    echo "Verifying actual Android Document Picker launch and capturing evidence..."
+    picker_activity=""
+    for picker_attempt in 1 2 3 4 5 6 7 8 9 10; do
+      picker_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+        | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+      if [[ -n "$picker_activity" ]] && ! grep -Fq -- "$PACKAGE" <<<"$picker_activity"; then
+        break
+      fi
+      sleep 1
+    done
+    if [[ -z "$picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$picker_activity"; then
+      echo "ERROR: Android Document Picker did not become the resumed activity"
+      printf '%s\n' "$picker_activity"
+      exit 1
+    fi
+    printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-storage-picker-activity.txt
+    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-storage-picker.png; then
+      echo "ERROR: Android Document Picker screenshot capture failed"
+      exit 1
+    fi
+    if ! timeout --signal=TERM --kill-after=3s 30s \
+        adb shell uiautomator dump /sdcard/mpc-groovebox-storage-picker-uiautomator.xml \
+        > /tmp/mpc-groovebox-storage-picker-uiautomator.log 2>&1; then
+      cat /tmp/mpc-groovebox-storage-picker-uiautomator.log || true
+      echo "ERROR: Android Document Picker accessibility dump failed"
+      exit 1
+    fi
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-storage-picker-uiautomator.xml \
+        > /tmp/mpc-groovebox-storage-picker-uiautomator.xml; then
+      echo "ERROR: Android Document Picker hierarchy retrieval failed"
+      exit 1
+    fi
+    if ! test -s /tmp/mpc-groovebox-storage-picker.png \
+        || ! test -s /tmp/mpc-groovebox-storage-picker-uiautomator.xml; then
+      echo "ERROR: Android Document Picker screenshot or hierarchy is empty"
+      exit 1
+    fi
+    if ! python3 - /tmp/mpc-groovebox-storage-picker-uiautomator.xml <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+if not nodes:
+    raise AssertionError("Android Document Picker hierarchy contains no accessibility nodes")
+print("Android Document Picker accessibility nodes:", len(nodes))
+PY
+    then
+      echo "ERROR: Android Document Picker hierarchy is not valid accessibility XML"
+      exit 1
+    fi
+    if ! adb_bounded 5 shell input keyevent KEYCODE_BACK; then
+      echo "ERROR: could not dismiss Android Document Picker with Back"
+      exit 1
+    fi
+    storage_picker_capture_done=1
+  fi
+
+  if grep -Fq -- "UI_STORAGE_PICKER_RETURNED" <<<"$log_snapshot" \
+      && [ "$storage_picker_capture_done" -ne 1 ]; then
+    echo "ERROR: app reported return from picker without captured picker evidence"
+    exit 1
+  fi
   if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
     ui_audit_complete=1
     break
@@ -1754,6 +1819,13 @@ fi
 
 echo "Application-side UI audit completed; collecting app-side Browser layout evidence."
 
+if [ "$storage_picker_capture_done" -ne 1 \
+    || ! test -s /tmp/mpc-groovebox-storage-picker.png \
+    || ! test -s /tmp/mpc-groovebox-storage-picker-uiautomator.xml \
+    || ! test -s /tmp/mpc-groovebox-storage-picker-activity.txt; then
+  echo "ERROR: storage-picker round trip lacks captured UI/activity evidence"
+  exit 1
+fi
 if [ "$browser_runtime_capture_done" -ne 1 ] \
     || ! test -s /tmp/mpc-groovebox-browser-device.png \
     || ! test -s /tmp/mpc-groovebox-browser-uiautomator.xml; then

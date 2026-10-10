@@ -512,5 +512,8 @@ jobs:
             /tmp/mpc-groovebox-browser.png
             /tmp/mpc-groovebox-browser-hierarchy.txt
             /tmp/mpc-groovebox-browser-uiautomator.xml
+            /tmp/mpc-groovebox-storage-picker.png
+            /tmp/mpc-groovebox-storage-picker-uiautomator.xml
+            /tmp/mpc-groovebox-storage-picker-activity.txt
           if-no-files-found: warn
           archive: true

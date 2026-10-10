@@ -183,7 +183,7 @@ final class MpcBrowserView extends LinearLayout {
                 paramsMatch(context, 34));
 
         providerState = info(context,
-                "PROVIDER • ANDROID DOCUMENTS • LOAD BELOW");
+                "PROVIDER • ANDROID DOCUMENTS • OPEN PICKER BELOW");
         providerState.setContentDescription("MPC Browser provider status");
         providerState.setTextSize(8);
         center.addView(providerState,
@@ -222,7 +222,7 @@ final class MpcBrowserView extends LinearLayout {
 
     void setProviderStatus(String status) {
         final String value = status == null || status.trim().isEmpty()
-                ? "PROVIDER • ANDROID DOCUMENTS • LOAD BELOW"
+                ? "PROVIDER • ANDROID DOCUMENTS • OPEN PICKER BELOW"
                 : status;
         providerState.setText(value);
     }

@@ -328,6 +328,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private volatile boolean startupComplete;
     private boolean uiOnlySmokeMode;
     private boolean uiAuditSmokeMode;
+    private boolean uiAuditAwaitingBrowserStoragePickerResult;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
     private static native String nativeEngineInfo();
@@ -9144,6 +9145,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_OPEN_WAV
+                && uiAuditAwaitingBrowserStoragePickerResult) {
+            uiAuditAwaitingBrowserStoragePickerResult = false;
+            if (resultCode != RESULT_CANCELED) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: storage picker audit expected Back/cancel"
+                        + " | resultCode=" + resultCode);
+                return;
+            }
+            continueUiAuditAfterBrowserStoragePicker(true);
+            return;
+        }
         if (requestCode != REQUEST_OPEN_WAV || resultCode != RESULT_OK || data == null) {
             return;
         }
@@ -10337,7 +10349,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser Data Dial press did not expose provider limitation");
             return;
         }
-        browserView.setProviderStatus("PROVIDER • ANDROID DOCUMENTS • LOAD BELOW");
+        browserView.setProviderStatus("PROVIDER • ANDROID DOCUMENTS • OPEN PICKER BELOW");
 
         View browserOptions = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Browser Options");
@@ -10371,6 +10383,51 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (browserOptionsClose == null || !browserOptionsClose.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options close");
             return;
+        }
+
+        final View browserStorageAction = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Browser open Android Documents storage picker");
+        if (browserStorageAction == null || !browserStorageAction.isShown()
+                || !browserStorageAction.isClickable()
+                || browserStorageAction.getWidth() <= dp(200)
+                || browserStorageAction.getHeight() <= dp(40)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action not hittable"
+                    + " | action=" + describeAuditView(browserStorageAction));
+            return;
+        }
+        if (uiAuditSmokeMode) {
+            uiAuditAwaitingBrowserStoragePickerResult = true;
+            Log.i(TAG, "UI_STORAGE_PICKER_LAUNCH_REQUESTED");
+            if (!browserStorageAction.performClick()) {
+                uiAuditAwaitingBrowserStoragePickerResult = false;
+                Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action click");
+            }
+            return;
+        }
+        continueUiAuditAfterBrowserStoragePicker(false);
+    }
+
+    private void continueUiAuditAfterBrowserStoragePicker(boolean pickerReturned) {
+        if (destroyed) return;
+        final MpcUiState browserState = navigationController == null
+                ? null : navigationController.state();
+        if (browserState == null
+                || browserView == null
+                || !browserView.isShown()
+                || browserState.mode() != MpcUiState.Mode.BROWSER
+                || !"CONTENT".equals(browserState.browserLocation())
+                || !"SAMPLES".equals(browserState.browserFilter())
+                || !browserView.searchQuery().isEmpty()
+                || !browserState.browserSearch().isEmpty()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser context changed during storage picker round trip"
+                    + " | state=" + browserState
+                    + " | browser=" + describeAuditView(browserView)
+                    + " | visibleSearch=" + (browserView == null ? "missing" : browserView.searchQuery()));
+            return;
+        }
+        if (pickerReturned) {
+            Log.i(TAG, "UI_STORAGE_PICKER_RETURNED");
         }
 
         View browserBack = findViewWithExactText(
