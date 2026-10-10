@@ -681,3 +681,26 @@ This roadmap is subordinate to `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md` and `docs
 Source: official MPC Standalone OS User Guide v3.9 Main Mode Overview (p15) and Akai Output Routing Basics.
 Checked: 2026-10-06.
 Confidence: HIGH.
+
+
+## Current execution directive — local-first product / 2026-10-10
+
+This directive updates the order of work; it does not authorize backend rewrites or replace the detailed stage history above. Consult `docs/SESSION-STATE.md` and `docs/DEVELOPMENT-OPERATING-PROTOCOL.md` before choosing the next task.
+
+### Product-scope decision
+
+MPC Standalone OS 3.9 remains the UI/interaction reference, but reproducing Akai's commercial ecosystem is explicitly out of scope. Do not implement Splice, marketplaces, paid-expansion promotion, partner advertising, upsells or unnecessary vendor-specific cloud/account dependencies. Generic local file access, Android Document Provider, available USB storage, local user content, and real sample loading remain in scope. In reference documents, label factory commercial items as reference-only/intentionally excluded rather than erasing the historical research.
+
+### Ordered implementation priorities
+
+1. Remove Splice from the actual Browser navigation and audit the implemented product UI for other excluded commercial, cloud or dead-end entries. Keep only real local-content paths.
+2. Finish the semantic local Browser in bounded slices: real result model/list, working location/category and search/filter behavior, selected item metadata and destination Pad/Layer. Persist favourites only when backed by a tested storage/provider implementation.
+3. Complete the local sample vertical slice: choose a real local WAV, audition through a genuine supported path, load and assign to the intended Pad/Layer, preserve context through picker navigation, then verify the resulting sample state and audio playback. Explicitly label any missing backend contract.
+4. Improve Track, Arrange, Grid and Step based on high-frequency musical scenarios, then deepen mixer/project persistence where supported by existing semantics.
+5. Continue checking hardware ergonomics separately; emulator success is not physical MkII verification.
+
+### Definition of done for a roadmap item
+
+A UI item is not done because its button is drawn or an audit assertion passes. Record the real semantic action/state change, relevant tests, current-SHA Actions result, APK identity, inspected screenshots/UI hierarchy, and physical hardware status if relevant. Confirm that expected evidence files are actually present in the downloadable artifact.
+
+Do not let repeated geometry-only smoke hardening displace feature delivery once a screen's key safety/interaction contracts pass. Fix real regressions promptly, then return to the highest-value incomplete workflow.
