@@ -121,3 +121,17 @@ The final check must not be skipped to save time. Use fast targeted checks durin
 - Live status tool output returned PR #23 as OPEN, base `fix/ui-shell-format-width-startup`, head SHA `889f237b3f3f5727466b38653ba49cfe8411727c` (453 commits in the PR result). Android Build #2620 for that SHA reported **SUCCESS**. Run: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38087051940
 - **Important freshness warning:** documentation commits were made after the last checkpoint; the PR-search and workflow tools may not expose a perfectly synchronized branch/PR snapshot. On the next session, fetch the actual branch head and PR head independently, then check CI for that exact SHA before relying on #2620. Do not infer current-HEAD validation from the run above.
 - Browser implementation remains the next functional priority: Splice removal is recorded, but the real semantic local result list and verified end-to-end local sample selection/load/assignment remain incomplete. Physical MPC Studio MkII verification is still pending.
+
+
+---
+
+## Session refresh — 2026-10-10/11 UTC
+
+This section supersedes older mutable HEAD/CI statements above where they conflict. Always re-check live GitHub before using them.
+
+- **Live PR #23 head at this refresh:** `e48478fb18934d76b1cfeffa9a346e890c7c47f5`; PR is OPEN, not merged; base remains `fix/ui-shell-format-width-startup`. Confirmed through live PR metadata.
+- **Current Android Build:** run #2622, ID `38089917632`, was IN PROGRESS for that SHA at the time of this refresh. Do not claim this docs refresh is build-validated until a workflow for the resulting commit finishes successfully.
+- A new canonical operating document, `docs/DEVELOPMENT-OPERATING-PROTOCOL.md`, has been added. It defines local-first scope, bounded feature slices, evidence requirements, context efficiency and the session handoff loop.
+- `AGENTS.md`, `docs/PROJECT_MASTER_PROMPT.md`, `docs/IMPLEMENTATION-ROADMAP.md`, `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`, `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md`, `docs/MPC3-REFERENCE-INDEX.md`, and `docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md` now refer to the operating protocol and/or record the approved product-scope decision: exclude Splice, commercial marketplaces, paid-content promotion, partner advertising, upsells and unnecessary branded cloud/account dependencies; retain real local file and sample workflows.
+- **Next action:** first inspect the latest workflow result for the current PR head after these documentation commits. Fix CI/documentation contradictions before unrelated changes. Then inspect current Browser source/tests and remove any remaining Splice/marketplace surface from the actual product UI. Do not begin semantic Browser implementation until the branch/build baseline is understood.
+- **Important verification limit:** no physical MPC Studio MkII verification is claimed. Previous visual evidence from Build #2608 belongs to old SHA `77f4e18a8f40a2e3d58ec8dbdf873cb09070fe4a` and cannot prove the current Browser state.
