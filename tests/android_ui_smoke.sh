@@ -941,7 +941,7 @@ done
 
 echo "Running MPC Browser flat-chrome preflight..."
 echo "Running MPC Browser information-architecture preflight..."
-for required in 'REQUEST_SCAN_LOCAL_AUDIO' 'READ_MEDIA_AUDIO' 'READ_EXTERNAL_STORAGE' 'MpcLocalAudioCatalog.queryWavFiles' 'nativeAudioLoadSampleForPadLayer(' 'MediaPlayer' 'void assignSelectedBrowserFile()'; do
+for required in 'REQUEST_SCAN_LOCAL_AUDIO' 'READ_MEDIA_AUDIO' 'READ_EXTERNAL_STORAGE' 'MpcLocalAudioCatalog.queryWavFiles' 'nativeAudioLoadSampleForPadLayer(' 'MediaPlayer' 'void assignSelectedBrowserFile()' 'browserPickerTargetPad = Math.max(0, Math.min(15, selectedPad))' 'browserPickerTargetLayer = Math.max(0, Math.min(7, selectedLayer))' 'final int targetPad = browserPickerTargetPad >= 0' 'final int targetLayer = browserPickerTargetLayer >= 0'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" \
       && ! grep -Fq -- "$required" "android/app/src/main/AndroidManifest.xml" \
       && ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcLocalAudioCatalog.java"; then

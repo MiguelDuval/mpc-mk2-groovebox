@@ -232,6 +232,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private AlertDialog browserOptionsDialog;
     private MediaPlayer browserPreviewPlayer;
     private String browserPreviewUri = "";
+    private int browserPickerTargetPad = -1;
+    private int browserPickerTargetLayer = -1;
     private final ArrayList<MpcArrangeView.Lane> arrangementLanes = new ArrayList<>();
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
@@ -9314,6 +9316,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void openWavPicker() {
+        // Snapshot the actual destination before Android temporarily takes
+        // over the UI. The picker is an import mechanism, not a new target.
+        browserPickerTargetPad = Math.max(0, Math.min(15, selectedPad));
+        browserPickerTargetLayer = Math.max(0, Math.min(7, selectedLayer));
         stopBrowserPreview();
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -9351,6 +9357,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (requestCode == REQUEST_OPEN_WAV
                 && uiAuditAwaitingBrowserStoragePickerResult) {
             uiAuditAwaitingBrowserStoragePickerResult = false;
+            browserPickerTargetPad = -1;
+            browserPickerTargetLayer = -1;
             if (resultCode != RESULT_CANCELED) {
                 Log.e(TAG, "UI_INTERACTION_FAILED: storage picker audit expected Back/cancel"
                         + " | resultCode=" + resultCode);
@@ -9363,9 +9371,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             waitForBrowserAuditAfterPickerReturn(0);
             return;
         }
-        if (requestCode != REQUEST_OPEN_WAV || resultCode != RESULT_OK || data == null) {
+        if (requestCode != REQUEST_OPEN_WAV) {
             return;
         }
+        if (resultCode != RESULT_OK || data == null) {
+            browserPickerTargetPad = -1;
+            browserPickerTargetLayer = -1;
+            return;
+        }
+
+        final int targetPad = browserPickerTargetPad >= 0
+                ? browserPickerTargetPad : Math.max(0, Math.min(15, selectedPad));
+        final int targetLayer = browserPickerTargetLayer >= 0
+                ? browserPickerTargetLayer : Math.max(0, Math.min(7, selectedLayer));
+        browserPickerTargetPad = -1;
+        browserPickerTargetLayer = -1;
 
         Uri uri = data.getData();
         if (uri == null && data.getClipData() != null
@@ -9394,24 +9414,33 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             nativeAudioStop();
             final String loaded = nativeAudioLoadSampleForPadLayer(
-                    bytes, selectedPad, selectedLayer);
+                    bytes, targetPad, targetLayer);
             final String sampleName = sampleDisplayName(uri);
             if (loaded != null
                     && loaded.startsWith("Pad ")
                     && loaded.contains(" sample loaded")) {
                 nativeAudioSetPadSampleName(
-                        selectedPad, selectedLayer, sampleName);
-                if (browserView != null) {
-                    browserView.setCurrentSampleName(sampleName);
-                    if ("BROWSE".equals(currentPage)) {
-                        browserView.clearSelectedFile();
+                        targetPad, targetLayer, sampleName);
+                if (browserView != null && "BROWSE".equals(currentPage)) {
+                    if (selectedPad == targetPad && selectedLayer == targetLayer) {
+                        browserView.setCurrentSampleName(sampleName);
                     }
+                    browserView.clearSelectedFile();
                 }
             }
             final String restarted = nativeAudioStart();
 
             setAudioStateFromResult(restarted);
-            setBottomStatus(loaded + " | " + restarted);
+            if (loaded != null
+                    && loaded.startsWith("Pad ")
+                    && loaded.contains(" sample loaded")) {
+                setBottomStatus(String.format(
+                        Locale.ROOT,
+                        "ASSIGNED • %s → PAD %02d / LAYER %02d | %s",
+                        sampleName, targetPad + 1, targetLayer + 1, restarted));
+            } else {
+                setBottomStatus(loaded + " | " + restarted);
+            }
             refreshAllInspectorState();
             refreshSampleWaveform();
         } catch (IOException | IllegalArgumentException e) {

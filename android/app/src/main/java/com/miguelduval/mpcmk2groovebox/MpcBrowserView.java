@@ -278,6 +278,7 @@ final class MpcBrowserView extends LinearLayout {
         activeLocationItem = defaultItemForSection(activeSection);
         setActiveButton(sections, activeSection);
         rebuildSideNavigation();
+        setActiveNavigationItem(activeLocationItem);
         updateLocationLabel();
         renderResults();
     }
