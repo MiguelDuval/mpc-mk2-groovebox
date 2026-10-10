@@ -10069,6 +10069,44 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        awaitBrowserRuntimeEvidenceCapture();
+    }
+
+    private void awaitBrowserRuntimeEvidenceCapture() {
+        if (!uiAuditSmokeMode) {
+            runUiAuditAfterBrowserRuntimeEvidenceCapture();
+            return;
+        }
+
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-browser-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_BROWSER_CAPTURE_READY");
+
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable captureReleasePoll = new Runnable() {
+            @Override
+            public void run() {
+                if (destroyed) return;
+
+                if (releaseSignal.isFile()) {
+                    releaseSignal.delete();
+                    runUiAuditAfterBrowserRuntimeEvidenceCapture();
+                    return;
+                }
+                if (System.currentTimeMillis() >= deadline) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Browser external screenshot/hierarchy "
+                            + "capture handshake timed out");
+                    return;
+                }
+                waveformUiHandler.postDelayed(this, 100L);
+            }
+        };
+        waveformUiHandler.postDelayed(captureReleasePoll, 100L);
+    }
+
+    private void runUiAuditAfterBrowserRuntimeEvidenceCapture() {
+        if (destroyed) return;
         if (!captureBrowserAuditEvidence()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser runtime evidence capture");
             return;

@@ -1521,7 +1521,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -1566,10 +1566,52 @@ sleep 5
 echo "Waiting for application-side UI audit to complete..."
 UI_AUDIT_TIMEOUT_SECONDS=120
 ui_audit_complete=0
+browser_runtime_capture_done=0
 audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
 audit_poll=0
 while (( SECONDS < audit_deadline )); do
   log_snapshot="$(adb_bounded 5 logcat -d -v brief 2>/dev/null || true)"
+
+  if [ "$browser_runtime_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_BROWSER_CAPTURE_READY" <<<"$log_snapshot"; then
+    echo "Capturing actual rendered Browser screen and Android accessibility hierarchy..."
+    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-device.png; then
+      echo "ERROR: real Browser emulator screenshot capture failed"
+      exit 1
+    fi
+    if ! timeout --signal=TERM --kill-after=3s 30s \
+        adb shell uiautomator dump /sdcard/mpc-groovebox-browser-uiautomator.xml \
+        > /tmp/mpc-groovebox-browser-uiautomator.log 2>&1; then
+      cat /tmp/mpc-groovebox-browser-uiautomator.log || true
+      echo "ERROR: Browser-context uiautomator dump failed or timed out"
+      exit 1
+    fi
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-browser-uiautomator.xml \
+        > /tmp/mpc-groovebox-browser-uiautomator.xml; then
+      echo "ERROR: Browser-context UI hierarchy retrieval failed"
+      exit 1
+    fi
+    if ! test -s /tmp/mpc-groovebox-browser-device.png \
+        || ! test -s /tmp/mpc-groovebox-browser-uiautomator.xml; then
+      echo "ERROR: real Browser screenshot or accessibility hierarchy is empty"
+      exit 1
+    fi
+    for required in 'content-desc="MPC Browser filter SAMPLES"' \
+        'text="SAMPLE ASSIGN"' 'text="LOAD"' 'text="UP"'; do
+      if ! grep -Fq -- "$required" /tmp/mpc-groovebox-browser-uiautomator.xml; then
+        echo "ERROR: Browser platform hierarchy is missing expected visible control: $required"
+        cat /tmp/mpc-groovebox-browser-uiautomator.xml
+        exit 1
+      fi
+    done
+    if ! adb_bounded 10 shell run-as "$PACKAGE" \
+        touch cache/mpc-browser-capture-release; then
+      echo "ERROR: could not release app-side Browser capture checkpoint"
+      exit 1
+    fi
+    browser_runtime_capture_done=1
+  fi
+
   if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
     ui_audit_complete=1
     break
@@ -1604,12 +1646,15 @@ if [ "$ui_audit_complete" -ne 1 ]; then
   exit 1
 fi
 
-echo "Application-side UI audit completed; collecting Browser runtime evidence."
+echo "Application-side UI audit completed; collecting app-side Browser layout evidence."
 
-if ! adb_bounded 10 exec-out run-as "$PACKAGE" cat cache/mpc-groovebox-browser-render.png > /tmp/mpc-groovebox-browser.png; then
-  echo "ERROR: Browser runtime render screenshot could not be retrieved from the debug app"
+if [ "$browser_runtime_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-browser-device.png \
+    || ! test -s /tmp/mpc-groovebox-browser-uiautomator.xml; then
+  echo "ERROR: application audit completed without real Browser screen and UI hierarchy evidence"
   exit 1
 fi
+cp /tmp/mpc-groovebox-browser-device.png /tmp/mpc-groovebox-browser.png
 if ! adb_bounded 10 exec-out run-as "$PACKAGE" cat cache/mpc-groovebox-browser-hierarchy.txt > /tmp/mpc-groovebox-browser-hierarchy.txt; then
   echo "ERROR: Browser runtime accessibility hierarchy could not be retrieved from the debug app"
   exit 1

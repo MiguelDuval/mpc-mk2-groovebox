@@ -511,5 +511,6 @@ jobs:
             /tmp/mpc-groovebox-ui.xml
             /tmp/mpc-groovebox-browser.png
             /tmp/mpc-groovebox-browser-hierarchy.txt
+            /tmp/mpc-groovebox-browser-uiautomator.xml
           if-no-files-found: warn
           archive: true
