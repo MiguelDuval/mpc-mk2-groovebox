@@ -411,13 +411,15 @@ final class MpcBrowserView extends LinearLayout {
         main.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         main.setSingleLine(true);
         main.setEllipsize(TextUtils.TruncateAt.END);
-        row.addView(main, new LayoutParams(0, dp(context, 44), 1));
+        row.addView(main, new LayoutParams(0, dp(context, 34), 1));
         TextView sub = info(context, subtitle);
         sub.setTextSize(8);
         sub.setSingleLine(true);
         sub.setEllipsize(TextUtils.TruncateAt.END);
-        row.addView(sub, new LayoutParams(0, dp(context, 44), 1.7f));
-        results.addView(row, paramsMatch(context, 50));
+        row.addView(sub, new LayoutParams(0, dp(context, 34), 1.7f));
+        // Keep the two current-context rows fully visible above the Function
+        // Bar on the MPC landscape workspace instead of cropping the second row.
+        results.addView(row, paramsMatch(context, 40));
     }
 
     private void setActiveButton(LinearLayout container, String label) {

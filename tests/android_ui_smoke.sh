@@ -1510,6 +1510,9 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Main Output label repeats OUTPU
 
 echo "Running MPC Browser text overflow preflight..."
 require_source_contains "$BROWSER_SOURCE" 'destination.setSingleLine(true)'
+require_source_contains "$BROWSER_SOURCE" 'results.addView(row, paramsMatch(context, 40))'
+require_source_contains "$BROWSER_SOURCE" 'new LayoutParams(0, dp(context, 34), 1)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser result rows are clipped or storage target is not actionable'
 require_source_contains "$BROWSER_SOURCE" 'currentSample.setSingleLine(true)'
 require_source_contains "$BROWSER_SOURCE" 'main.setSingleLine(true)'
 require_source_contains "$BROWSER_SOURCE" 'sub.setSingleLine(true)'
