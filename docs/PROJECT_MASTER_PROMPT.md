@@ -882,3 +882,14 @@ Do not inflate partial progress into completed functionality.
 The goal is not to produce impressive-looking code.
 
 The goal is to build a stable, testable musical instrument around the MPC Studio MkII.
+
+
+## Current execution protocol — required before continuing
+
+Before coding, read `docs/SESSION-STATE.md` and `docs/DEVELOPMENT-OPERATING-PROTOCOL.md`. Verify the live branch HEAD, PR #23 state/base/head, current relevant GitHub Actions runs, and actual build artifacts. The session checkpoint is a convenience, not authoritative live state; correct stale information rather than repeating it.
+
+The product is a local-first, controller-first groovebox. MPC Standalone OS 3.9 is the interaction and information-architecture reference; its commercial ecosystem is not a product requirement. Splice, online sound stores, paid expansion promotion, partner advertising, upsell panels and unnecessary branded cloud/account integrations are intentionally excluded. Keep useful generic local categories and access to real local/USB files. Remove excluded UI entries from the actual implementation, not just from screenshots, and never substitute fake functionality.
+
+Use bounded, tested vertical slices rather than repeated broad audits or many status-only commits. Prioritize removing excluded commercial surfaces, completing the semantic local Browser and end-to-end sample workflow, then deepening Track/Arrange/Grid/Step and project/mixer work. Protect the realtime audio callback, existing sampler, sequencer clock/scheduler, MIDI transport, raw MkII decoder, hardware SysEx and working domain operations.
+
+For every feature slice, verify visual rendering, actual interaction, musical/domain state, relevant controller paths, current-SHA CI, APK artifact, and the required screenshot/UI hierarchy evidence. Update the roadmap and SESSION-STATE only with observed facts. Keep the workflow usable on free ChatGPT: no new paid services, no assumptions about background execution, and no repeated full-history scan when a targeted inspection suffices. The detailed mandatory workflow is in `docs/DEVELOPMENT-OPERATING-PROTOCOL.md`.
