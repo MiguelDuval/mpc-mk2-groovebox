@@ -9928,6 +9928,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View browserFunctionMeasureTarget = findViewWithExactText(
+                functionBar, "SAMPLE ASSIGN");
+        if (browserFunctionMeasureTarget == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar action missing before layout");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserFunctionMeasureTarget,
+                dp(20),
+                "Browser Function Bar",
+                this::runUiAuditAfterBrowserFunctionBarLayout);
+    }
+
+    private void runUiAuditAfterBrowserFunctionBarLayout() {
+        if (destroyed) return;
+
         View browserResults = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Browser results list");
         if (browserResults == null || !browserResults.isShown()
