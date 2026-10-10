@@ -1437,6 +1437,14 @@ for required in \
 done
 
 echo "Running startup visual evidence ordering preflight..."
+startup_ready_line=$(grep -n -m1 'startupComplete = true;' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+startup_shell_refresh_line=$(grep -n 'updateMpcShellState();' "$MAIN_ACTIVITY_SOURCE" | awk -F: -v start="$startup_ready_line" '$1 > start { print $1; exit }')
+startup_complete_log_line=$(grep -n -m1 'Log.i(TAG, "STARTUP_COMPLETE");' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$startup_ready_line" || -z "$startup_shell_refresh_line" || -z "$startup_complete_log_line" \
+    || "$startup_shell_refresh_line" -ge "$startup_complete_log_line" ]]; then
+  echo "ERROR: persistent MPC shell must refresh after startup readiness and before STARTUP_COMPLETE"
+  exit 1
+fi
 startup_capture_line=$(grep -n -m1 'echo "Capturing startup UI screenshot..."' "$0" | cut -d: -f1)
 startup_settle_line=$(grep -n -m1 'echo "Allowing startup path to settle..."' "$0" | cut -d: -f1)
 if [[ -z "$startup_capture_line" || -z "$startup_settle_line" || "$startup_capture_line" -ge "$startup_settle_line" ]]; then

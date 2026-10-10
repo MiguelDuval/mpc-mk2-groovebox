@@ -605,6 +605,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 Log.e(TAG, "MIDI_BRIDGE_STARTUP_FAILED", error);
                                 setBottomStatus("MIDI unavailable • " + error.getClass().getSimpleName());
                             }
+
+                            // Native state and MIDI readiness changed while the
+                            // shell was showing honest startup placeholders.
+                            // Refresh the persistent Main shell now so the XL
+                            // strip, Toolbar and Function Bar expose live state.
+                            updateMpcShellState();
                             Log.i(TAG, "STARTUP_COMPLETE");
 
                             if (uiAuditSmokeMode) {
