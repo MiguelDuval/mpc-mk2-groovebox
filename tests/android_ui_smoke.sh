@@ -1493,7 +1493,7 @@ require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'compactProgramDisplayName(fu
 require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'addProgramBand(strip, context, "MAIN", "OUTPUT", "MAIN OUTPUT")'
 require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'MPC Main selected track program: '
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Main XL program value wrapped or loses full program name'
-require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Main Output label redundantly repeats OUTPUT'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Main Output label repeats OUTPUT or lost value'
 
 echo "Running MPC Browser text overflow preflight..."
 require_source_contains "$BROWSER_SOURCE" 'destination.setSingleLine(true)'
