@@ -1464,7 +1464,9 @@ echo "Running MPC Browser visual/runtime contract preflight..."
 require_source_contains "$BROWSER_SOURCE" 'MpcBrowserFilterIconDrawable'
 require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("MPC Browser filter " + filter)'
 require_source_contains "$BROWSER_SOURCE" 'MPC Browser current location: PLACE • INTERNAL'
-require_source_contains "$MAIN_ACTIVITY_SOURCE" 'addFunction("AUDITION", false, null)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Button audition = addFunction("AUDITION", browserSampleAvailable,'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser audition current Pad/Layer sample'
+require_source_contains "$BROWSER_SOURCE" 'void auditionCurrentSample()'
 require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("Browser " + section + " tab")'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'up.setContentDescription("Browser UP from " + browserLocation)'
 

@@ -202,6 +202,10 @@ final class MpcBrowserView extends LinearLayout {
         this.listener = listener;
     }
 
+    void auditionCurrentSample() {
+        if (listener != null) listener.onPlayCurrent();
+    }
+
     void setTarget(int pad, int layer) {
         destination.setText(String.format(
                 Locale.ROOT,

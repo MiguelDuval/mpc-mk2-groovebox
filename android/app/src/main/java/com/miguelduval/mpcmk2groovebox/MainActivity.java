@@ -1795,8 +1795,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 // MPC Browser's primary bottom controls are Sample Assign,
                 // Audition and Open/Load. Keep the remaining Function Bar
                 // slots contextual rather than inventing Browser operations.
-                addFunction("SAMPLE ASSIGN", false, null);
-                addFunction("AUDITION", false, null);
+                Button sampleAssign = addFunction("SAMPLE ASSIGN", false, null);
+                sampleAssign.setContentDescription(
+                        "MPC Browser Sample Assign unavailable: no source item selected");
+                final boolean browserSampleAvailable = startupComplete
+                        && nativeAudioGetPadSampleFrameCount(
+                                Math.max(0, selectedPad), Math.max(0, selectedLayer)) > 0;
+                Button audition = addFunction("AUDITION", browserSampleAvailable,
+                        v -> {
+                            if (browserView != null) {
+                                browserView.auditionCurrentSample();
+                            }
+                        });
+                audition.setContentDescription(
+                        "MPC Browser audition current Pad/Layer sample");
                 addFunction("LOAD", true, v -> openWavPicker());
                 final String browserLocation =
                         navigationController.state().browserLocation();
@@ -9974,9 +9986,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     + " | bar=" + describeAuditView(functionBar));
             return;
         }
+        final boolean expectedAuditionEnabled = startupComplete
+                && nativeAudioGetPadSampleFrameCount(
+                        Math.max(0, selectedPad), Math.max(0, selectedLayer)) > 0;
         for (int i = 0; i < browserFunctionLabels.length; i++) {
             final View action = functionBar.getChildAt(i);
-            final boolean shouldBeEnabled = i >= 2;
+            final boolean shouldBeEnabled = i == 0 ? false
+                    : i == 1 ? expectedAuditionEnabled : true;
             if (!(action instanceof TextView)
                     || !browserFunctionLabels[i].contentEquals(((TextView) action).getText())
                     || !action.isShown()
@@ -9985,7 +10001,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     || action.isEnabled() != shouldBeEnabled) {
                 Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar action "
                         + browserFunctionLabels[i]
+                        + " | expectedEnabled=" + shouldBeEnabled
                         + " | action=" + describeAuditView(action));
+                return;
+            }
+        }
+        if (expectedAuditionEnabled) {
+            final View audition = functionBar.getChildAt(1);
+            if (!"MPC Browser audition current Pad/Layer sample".contentEquals(
+                    audition.getContentDescription())
+                    || !audition.performClick()
+                    || bottomStatus == null
+                    || bottomStatus.getText() == null
+                    || !bottomStatus.getText().toString().startsWith("PLAY CURRENT • PAD")) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Browser Audition did not trigger current sample"
+                        + " | status=" + (bottomStatus == null ? "null" : bottomStatus.getText())
+                        + " | action=" + describeAuditView(audition));
                 return;
             }
         }
