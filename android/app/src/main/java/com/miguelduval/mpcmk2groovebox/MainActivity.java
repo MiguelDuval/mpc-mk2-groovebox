@@ -9767,6 +9767,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void runUiAudit() {
+        if (!uiAuditSmokeMode) {
+            runUiAuditAfterMainEvidenceCapture();
+            return;
+        }
+
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-main-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_MAIN_CAPTURE_READY");
+
+        final long deadline = System.currentTimeMillis() + 60_000L;
+        final Runnable[] captureReleasePoll = new Runnable[1];
+        captureReleasePoll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                runUiAuditAfterMainEvidenceCapture();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_HIERARCHY_FAILED: Main screenshot/accessibility capture timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
+    }
+
+    private void runUiAuditAfterMainEvidenceCapture() {
         Log.i(TAG, "UI_HIERARCHY_BEGIN");
         String[] mainShellExpectedDescriptions = {
                 "MPC One Main Toolbar",

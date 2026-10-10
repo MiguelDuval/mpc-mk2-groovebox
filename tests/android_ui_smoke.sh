@@ -1571,7 +1571,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -1616,12 +1616,81 @@ sleep 5
 echo "Waiting for application-side UI audit to complete..."
 UI_AUDIT_TIMEOUT_SECONDS=120
 ui_audit_complete=0
+main_runtime_capture_done=0
 browser_runtime_capture_done=0
 storage_picker_capture_done=0
 audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
 audit_poll=0
 while (( SECONDS < audit_deadline )); do
   log_snapshot="$(adb_bounded 5 logcat -d -v brief 2>/dev/null || true)"
+
+  if [ "$main_runtime_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_MAIN_CAPTURE_READY" <<<"$log_snapshot"; then
+    echo "Capturing ready Main workspace and Android accessibility hierarchy..."
+    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-main-ready.png; then
+      echo "ERROR: ready Main screenshot capture failed"
+      exit 1
+    fi
+    if ! timeout --signal=TERM --kill-after=3s 30s \
+        adb shell uiautomator dump /sdcard/mpc-groovebox-main-ready-uiautomator.xml \
+        > /tmp/mpc-groovebox-main-ready-uiautomator.log 2>&1; then
+      cat /tmp/mpc-groovebox-main-ready-uiautomator.log || true
+      echo "ERROR: ready Main accessibility dump failed"
+      exit 1
+    fi
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-main-ready-uiautomator.xml \
+        > /tmp/mpc-groovebox-main-ready-uiautomator.xml; then
+      echo "ERROR: ready Main hierarchy retrieval failed"
+      exit 1
+    fi
+    if ! test -s /tmp/mpc-groovebox-main-ready.png \
+        || ! test -s /tmp/mpc-groovebox-main-ready-uiautomator.xml; then
+      echo "ERROR: ready Main screenshot or hierarchy is empty"
+      exit 1
+    fi
+    if ! python3 - /tmp/mpc-groovebox-main-ready-uiautomator.xml <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+required = [
+    "MPC One Main Toolbar",
+    "MPC Toolbar Menu",
+    "MPC shortcut BROWSER",
+    "Main Track and Arrangement workspace",
+    "MPC Main XL Mixer Strips",
+    "MPC Main mixer strips shown",
+]
+def dimensions(node):
+    m = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     node.attrib.get("bounds", ""))
+    if not m:
+        raise AssertionError("invalid bounds for " + repr(node.attrib))
+    x1, y1, x2, y2 = map(int, m.groups())
+    return x1, y1, x2, y2
+
+for description in required:
+    found = [n for n in nodes if n.attrib.get("content-desc") == description]
+    if len(found) != 1:
+        raise AssertionError(f"expected exactly one Main control {description!r}; got {len(found)}")
+    x1, y1, x2, y2 = dimensions(found[0])
+    if x2 <= x1 or y2 <= y1 or found[0].attrib.get("visible-to-user") == "false":
+        raise AssertionError(f"Main control is not visible with positive bounds: {description!r}")
+print("Ready Main accessibility controls verified:", len(required))
+PY
+    then
+      echo "ERROR: ready Main hierarchy failed canonical control checks"
+      cat /tmp/mpc-groovebox-main-ready-uiautomator.xml
+      exit 1
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-main-capture-release; then
+      echo "ERROR: could not release app-side Main capture checkpoint"
+      exit 1
+    fi
+    main_runtime_capture_done=1
+  fi
 
   if [ "$browser_runtime_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_BROWSER_CAPTURE_READY" <<<"$log_snapshot"; then
@@ -1840,6 +1909,13 @@ if [ "$ui_audit_complete" -ne 1 ]; then
 fi
 
 echo "Application-side UI audit completed; collecting app-side Browser layout evidence."
+
+if [ "$main_runtime_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-main-ready.png \
+    || ! test -s /tmp/mpc-groovebox-main-ready-uiautomator.xml; then
+  echo "ERROR: ready Main workspace lacks real screenshot/hierarchy evidence"
+  exit 1
+fi
 
 if [ "$storage_picker_capture_done" -ne 1 ] \
     || ! test -s /tmp/mpc-groovebox-storage-picker.png \

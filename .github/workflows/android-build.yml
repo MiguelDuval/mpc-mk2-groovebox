@@ -508,6 +508,8 @@ jobs:
           name: mpc-ui-visual-evidence
           path: |
             /tmp/mpc-groovebox-startup.png
+            /tmp/mpc-groovebox-main-ready.png
+            /tmp/mpc-groovebox-main-ready-uiautomator.xml
             /tmp/mpc-groovebox-ui.xml
             /tmp/mpc-groovebox-browser.png
             /tmp/mpc-groovebox-browser-hierarchy.txt
