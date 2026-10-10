@@ -4,6 +4,8 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.media.AudioAttributes;
+import android.media.MediaPlayer;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
@@ -19,6 +21,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
 import android.provider.OpenableColumns;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.GestureDetector;
@@ -68,6 +71,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int REQUEST_OPEN_WAV = 1001;
     private static final int REQUEST_RECORD_AUDIO = 1002;
     private static final int REQUEST_MONITOR_AUDIO = 1003;
+    private static final int REQUEST_SCAN_LOCAL_AUDIO = 1004;
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
     private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
     private static final boolean NATIVE_LIBRARY_LOADED;
@@ -226,6 +230,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private MpcArrangeView arrangementView;
     private MpcBrowserView browserView;
     private AlertDialog browserOptionsDialog;
+    private MediaPlayer browserPreviewPlayer;
+    private String browserPreviewUri = "";
     private final ArrayList<MpcArrangeView.Lane> arrangementLanes = new ArrayList<>();
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
@@ -1799,23 +1805,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         switch (mode) {
             case BROWSER:
-                // MPC Browser's primary bottom controls are Sample Assign,
-                // Audition and Open/Load. Keep the remaining Function Bar
-                // slots contextual rather than inventing Browser operations.
-                Button sampleAssign = addFunction("SAMPLE ASSIGN", false, null);
-                sampleAssign.setContentDescription(
-                        "MPC Browser Sample Assign unavailable: no source item selected");
-                final boolean browserSampleAvailable = startupComplete
-                        && nativeAudioGetPadSampleFrameCount(
-                                Math.max(0, selectedPad), Math.max(0, selectedLayer)) > 0;
-                Button audition = addFunction("AUDITION", browserSampleAvailable,
+                // Sample Assign consumes a selected, real Browser result. LOAD
+                // remains the direct Document Provider import path.
+                final MpcBrowserFile selectedBrowserFile =
+                        browserView == null ? null : browserView.selectedFile();
+                final boolean browserHasSelectedFile = selectedBrowserFile != null;
+                Button sampleAssign = addFunction(
+                        "SAMPLE ASSIGN", browserHasSelectedFile,
+                        v -> assignSelectedBrowserFile());
+                sampleAssign.setContentDescription(browserHasSelectedFile
+                        ? "MPC Browser assign selected local WAV to target Pad/Layer"
+                        : "MPC Browser Sample Assign unavailable: no source item selected");
+                Button audition = addFunction("AUDITION", browserHasSelectedFile,
                         v -> {
-                            if (browserView != null) {
-                                browserView.auditionCurrentSample();
-                            }
+                            if (browserView != null) browserView.auditionSelectedFile();
                         });
-                audition.setContentDescription(
-                        "MPC Browser audition current Pad/Layer sample");
+                audition.setContentDescription(browserHasSelectedFile
+                        ? "MPC Browser audition selected local WAV file"
+                        : "MPC Browser audition unavailable: no source item selected");
                 Button load = addFunction("LOAD", true, v -> openWavPicker());
                 load.setContentDescription("MPC Browser LOAD source file with Android Document Picker");
                 final String browserLocation =
@@ -5507,12 +5514,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
 
             @Override
-            public void onPlayCurrent() {
-                selectAndTriggerPad(selectedPad, 112);
-                setBottomStatus(String.format(
-                        Locale.ROOT,
-                        "PLAY CURRENT • PAD %02d / LAYER %02d",
-                        selectedPad + 1, selectedLayer + 1));
+            public void onLocalScanRequested() {
+                requestLocalAudioScan();
+            }
+
+            @Override
+            public void onFileSelected(MpcBrowserFile file) {
+                if (file == null) {
+                    setBottomStatus("BROWSER • no visible local WAV selected");
+                } else {
+                    stopBrowserPreview();
+                    setBottomStatus(String.format(
+                            Locale.ROOT,
+                            "SELECTED • %s • TARGET PAD %02d / LAYER %02d",
+                            file.displayName(), selectedPad + 1, selectedLayer + 1));
+                }
+                refreshMpcFunctionBar();
+            }
+
+            @Override
+            public void onAuditionSelectedFile() {
+                auditionBrowserFile(browserView == null ? null : browserView.selectedFile());
             }
 
             @Override
@@ -5567,6 +5589,186 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT));
         refreshMpcFunctionBar();
         updateModeRailSelection();
+    }
+
+    private void requestLocalAudioScan() {
+        final String permission = Build.VERSION.SDK_INT >= 33
+                ? Manifest.permission.READ_MEDIA_AUDIO
+                : Manifest.permission.READ_EXTERNAL_STORAGE;
+        if (checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
+            scanLocalAudioFiles();
+            return;
+        }
+        if (browserView != null) {
+            browserView.setScanState(
+                    "LOCAL AUDIO • PERMISSION REQUIRED • OPEN STORAGE STILL WORKS");
+        }
+        requestPermissions(new String[]{permission}, REQUEST_SCAN_LOCAL_AUDIO);
+    }
+
+    private void scanLocalAudioFiles() {
+        if (browserView == null || destroyed) return;
+        browserView.setScanState("LOCAL AUDIO • SCANNING DEVICE MEDIA…");
+        try {
+            startupExecutor.execute(() -> {
+                final List<MpcBrowserFile> files;
+                try {
+                    files = MpcLocalAudioCatalog.queryWavFiles(getContentResolver());
+                } catch (RuntimeException e) {
+                    runOnUiThread(() -> {
+                        if (destroyed || browserView == null) return;
+                        browserView.setScanState(
+                                "LOCAL AUDIO SCAN FAILED • " + e.getClass().getSimpleName());
+                        setBottomStatus("Local WAV scan failed: " + e.getClass().getSimpleName());
+                    });
+                    return;
+                }
+                runOnUiThread(() -> {
+                    if (destroyed || browserView == null) return;
+                    browserView.setLocalFiles(
+                            files,
+                            String.format(Locale.ROOT,
+                                    "LOCAL AUDIO • %d WAV FILES INDEXED", files.size()));
+                    setBottomStatus(String.format(Locale.ROOT,
+                            "LOCAL AUDIO • %d WAV FILES INDEXED", files.size()));
+                });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            browserView.setScanState("LOCAL AUDIO SCAN UNAVAILABLE • TRY AGAIN");
+            setBottomStatus("Local WAV scan unavailable: worker executor is closed");
+        }
+    }
+
+    private void assignSelectedBrowserFile() {
+        final MpcBrowserFile file = browserView == null ? null : browserView.selectedFile();
+        if (file == null) {
+            setBottomStatus("SAMPLE ASSIGN unavailable • select a local WAV result first");
+            refreshMpcFunctionBar();
+            return;
+        }
+        stopBrowserPreview();
+        final int targetPad = Math.max(0, Math.min(15, selectedPad));
+        final int targetLayer = Math.max(0, Math.min(7, selectedLayer));
+        setBottomStatus(String.format(Locale.ROOT,
+                "LOADING %s → PAD %02d / LAYER %02d…",
+                file.displayName(), targetPad + 1, targetLayer + 1));
+
+        try {
+            startupExecutor.execute(() -> {
+                final byte[] bytes;
+                try {
+                    bytes = readSampleBytes(Uri.parse(file.uri()));
+                } catch (Exception e) {
+                    runOnUiThread(() -> {
+                        if (!destroyed) {
+                            setBottomStatus("Local WAV read failed • "
+                                    + e.getClass().getSimpleName()
+                                    + (e.getMessage() == null ? "" : ": " + e.getMessage()));
+                        }
+                    });
+                    return;
+                }
+
+                runOnUiThread(() -> {
+                    if (destroyed) return;
+                    nativeAudioStop();
+                    final String loaded = nativeAudioLoadSampleForPadLayer(
+                            bytes, targetPad, targetLayer);
+                    final boolean loadSucceeded = loaded != null
+                            && loaded.startsWith("Pad ")
+                            && loaded.contains(" sample loaded");
+                    if (loadSucceeded) {
+                        nativeAudioSetPadSampleName(
+                                targetPad, targetLayer, file.displayName());
+                    }
+                    final String restarted = nativeAudioStart();
+                    setAudioStateFromResult(restarted);
+                    if (loadSucceeded) {
+                        setBottomStatus(String.format(Locale.ROOT,
+                                "ASSIGNED • %s → PAD %02d / LAYER %02d | %s",
+                                file.displayName(), targetPad + 1, targetLayer + 1, restarted));
+                        if (browserView != null
+                                && selectedPad == targetPad && selectedLayer == targetLayer) {
+                            browserView.setCurrentSampleName(file.displayName());
+                        }
+                    } else {
+                        setBottomStatus("Local WAV load failed • " + loaded + " | " + restarted);
+                    }
+                    refreshAllInspectorState();
+                    refreshSampleWaveform();
+                    refreshMpcFunctionBar();
+                });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            setBottomStatus("Local WAV load unavailable • worker executor is closed");
+        }
+    }
+
+    private void auditionBrowserFile(MpcBrowserFile file) {
+        if (file == null || file.uri().isEmpty()) {
+            setBottomStatus("AUDITION unavailable • select a local WAV result first");
+            return;
+        }
+        stopBrowserPreview();
+        final MediaPlayer player = new MediaPlayer();
+        browserPreviewPlayer = player;
+        browserPreviewUri = file.uri();
+        try {
+            player.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build());
+            player.setDataSource(this, Uri.parse(file.uri()));
+            player.setOnPreparedListener(prepared -> {
+                if (destroyed || browserPreviewPlayer != prepared) {
+                    try { prepared.release(); } catch (RuntimeException ignored) {}
+                    return;
+                }
+                prepared.start();
+                setBottomStatus("AUDITION • " + file.displayName());
+            });
+            player.setOnCompletionListener(completed -> {
+                if (browserPreviewPlayer != completed) return;
+                browserPreviewPlayer = null;
+                browserPreviewUri = "";
+                completed.release();
+                setBottomStatus("AUDITION COMPLETE • " + file.displayName());
+            });
+            player.setOnErrorListener((failed, what, extra) -> {
+                if (browserPreviewPlayer == failed) {
+                    browserPreviewPlayer = null;
+                    browserPreviewUri = "";
+                    try { failed.release(); } catch (RuntimeException ignored) {}
+                    setBottomStatus("AUDITION FAILED • this WAV could not be previewed");
+                }
+                return true;
+            });
+            player.prepareAsync();
+            setBottomStatus("AUDITION PREPARING • " + file.displayName());
+        } catch (Exception e) {
+            stopBrowserPreview();
+            setBottomStatus("AUDITION FAILED • " + e.getClass().getSimpleName());
+        }
+    }
+
+    private void stopBrowserPreview() {
+        final MediaPlayer player = browserPreviewPlayer;
+        browserPreviewPlayer = null;
+        browserPreviewUri = "";
+        if (player == null) return;
+        player.setOnPreparedListener(null);
+        player.setOnCompletionListener(null);
+        player.setOnErrorListener(null);
+        try {
+            if (player.isPlaying()) player.stop();
+        } catch (RuntimeException ignored) {
+            // The player can still be preparing when the user changes context.
+        }
+        try {
+            player.release();
+        } catch (RuntimeException ignored) {
+            // Release is best-effort during Activity teardown.
+        }
     }
 
     private void showBrowserOptionsDialog() {
@@ -9112,6 +9314,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void openWavPicker() {
+        stopBrowserPreview();
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         // Android file providers are inconsistent about the MIME they report
@@ -9198,6 +9401,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     && loaded.contains(" sample loaded")) {
                 nativeAudioSetPadSampleName(
                         selectedPad, selectedLayer, sampleName);
+                if (browserView != null) {
+                    browserView.setCurrentSampleName(sampleName);
+                    if ("BROWSE".equals(currentPage)) {
+                        browserView.clearSelectedFile();
+                    }
+                }
             }
             final String restarted = nativeAudioStart();
 
@@ -10048,7 +10257,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (browserContentTab == null || !browserContentTab.isSelected()
                 || findViewWithContentDescription(
                         getWindow().getDecorView(),
-                        "MPC Browser current location: CONTENT") == null
+                        "MPC Browser current location: CONTENT • SAMPLES") == null
                 || browserDrums == null || !browserDrums.isShown()
                 || browserDrums.getWidth() <= dp(80)
                 || browserDrums.getHeight() <= dp(20)
@@ -10120,7 +10329,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getWindow().getDecorView(), "MPC Browser navigation CONTENT DRUMS");
         if (findViewWithContentDescription(
                     getWindow().getDecorView(),
-                    "MPC Browser current location: CONTENT") == null
+                    "MPC Browser current location: CONTENT • SAMPLES") == null
                 || browserDrumsAfterUp == null || !browserDrumsAfterUp.isShown()
                 || browserDrumsAfterUp.isSelected()
                 || browserDrumsSemanticAfterUp != browserDrumsAfterUp
@@ -10185,9 +10394,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     + " | bar=" + describeAuditView(functionBar));
             return;
         }
-        final boolean expectedAuditionEnabled = startupComplete
-                && nativeAudioGetPadSampleFrameCount(
-                        Math.max(0, selectedPad), Math.max(0, selectedLayer)) > 0;
+        final boolean expectedAuditionEnabled =
+                browserView != null && browserView.selectedFile() != null;
         int minBrowserActionWidth = Integer.MAX_VALUE;
         int maxBrowserActionWidth = 0;
         for (int i = 0; i < browserFunctionLabels.length; i++) {
@@ -10217,7 +10425,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         final String[] expectedBrowserActionDescriptions = {
                 "MPC Browser Sample Assign unavailable: no source item selected",
-                "MPC Browser audition current Pad/Layer sample",
+                "MPC Browser audition unavailable: no source item selected",
                 "MPC Browser LOAD source file with Android Document Picker",
                 "Browser UP from CONTENT",
                 "MPC Browser BACK to previous workspace"
@@ -10233,21 +10441,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             }
         }
-        if (expectedAuditionEnabled) {
-            final View audition = functionBar.getChildAt(1);
-            if (!"MPC Browser audition current Pad/Layer sample".contentEquals(
-                    audition.getContentDescription())
-                    || !audition.performClick()
-                    || bottomStatus == null
-                    || bottomStatus.getText() == null
-                    || !bottomStatus.getText().toString().startsWith("PLAY CURRENT • PAD")) {
-                Log.e(TAG, "UI_INTERACTION_FAILED: Browser Audition did not trigger current sample"
-                        + " | status=" + (bottomStatus == null ? "null" : bottomStatus.getText())
-                        + " | action=" + describeAuditView(audition));
-                return;
-            }
-        }
-
         final String[] browserContextDescriptions = {
                 "MPC Browser search files",
                 "MPC Browser clear search",
@@ -10538,7 +10731,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 || !state.browserSearch().isEmpty()
                 || findViewWithContentDescription(
                         getWindow().getDecorView(),
-                        "MPC Browser current location: CONTENT") == null
+                        "MPC Browser current location: CONTENT • SAMPLES") == null
                 || restoredSamplesFilter == null || !restoredSamplesFilter.isSelected()
                 || restoredSearch == null || !(restoredSearch instanceof EditText)
                 || !((EditText) restoredSearch).getText().toString().isEmpty()) {
@@ -11322,6 +11515,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                            String[] permissions,
                                            int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == REQUEST_SCAN_LOCAL_AUDIO) {
+            if (grantResults.length == 0
+                    || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                if (browserView != null) {
+                    browserView.setScanState(
+                            "LOCAL AUDIO SCAN • PERMISSION DENIED • OPEN STORAGE STILL WORKS");
+                }
+                setBottomStatus(
+                        "Local audio permission denied • OPEN STORAGE remains available");
+            } else {
+                scanLocalAudioFiles();
+            }
+            return;
+        }
 
         if (grantResults.length == 0
                 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
@@ -12665,6 +12873,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     protected void onDestroy() {
         destroyed = true;
+        stopBrowserPreview();
         if (recordingWaveformUpdater != null) {
             waveformUiHandler.removeCallbacks(recordingWaveformUpdater);
         }

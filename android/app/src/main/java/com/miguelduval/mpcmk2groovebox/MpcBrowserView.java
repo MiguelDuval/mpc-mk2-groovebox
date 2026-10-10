@@ -13,6 +13,9 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -28,7 +31,9 @@ final class MpcBrowserView extends LinearLayout {
         void onFilterSelected(String filter);
         void onNavigateUp();
         void onOpenStorage();
-        void onPlayCurrent();
+        void onLocalScanRequested();
+        void onFileSelected(MpcBrowserFile file);
+        void onAuditionSelectedFile();
         void onSearchChanged(String query);
         void onOptionsRequested();
     }
@@ -54,6 +59,11 @@ final class MpcBrowserView extends LinearLayout {
 
     private Listener listener;
     private String activeSection = "PLACES";
+    private String activeLocationItem = "INTERNAL";
+    private List<MpcBrowserFile> localFiles = Collections.emptyList();
+    private MpcBrowserFile selectedFile;
+    private boolean localScanComplete;
+    private String localScanMessage = "LOCAL AUDIO • NOT SCANNED";
 
     MpcBrowserView(Context context) {
         super(context);
@@ -103,6 +113,7 @@ final class MpcBrowserView extends LinearLayout {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int st, int before, int count) {
                 if (listener != null) listener.onSearchChanged(s.toString());
+                renderResults();
             }
             @Override public void afterTextChanged(Editable e) {}
         });
@@ -135,6 +146,7 @@ final class MpcBrowserView extends LinearLayout {
             button.setOnClickListener(v -> {
                 if (listener != null) listener.onFilterSelected(filter);
                 setActiveButton(filters, filter);
+                renderResults();
             });
             filters.addView(button, weight());
         }
@@ -194,14 +206,6 @@ final class MpcBrowserView extends LinearLayout {
         results = new LinearLayout(context);
         results.setOrientation(VERTICAL);
         results.setPadding(0, dp(context, 3), 0, dp(context, 3));
-        addResult(context,
-                "OPEN STORAGE…",
-                "ANDROID DOCUMENTS • OPEN PICKER",
-                true);
-        addResult(context,
-                "CURRENT SAMPLE",
-                "PAD/LAYER • AUDITION",
-                false);
         scroll.addView(results);
         center.addView(scroll, new LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
@@ -210,21 +214,48 @@ final class MpcBrowserView extends LinearLayout {
 
         setSection("PLACES");
         setActiveButton(filters, "ALL");
+        renderResults();
     }
 
     void setListener(Listener listener) {
         this.listener = listener;
     }
 
-    void auditionCurrentSample() {
-        if (listener != null) listener.onPlayCurrent();
+    void auditionSelectedFile() {
+        if (listener != null) listener.onAuditionSelectedFile();
+    }
+
+    MpcBrowserFile selectedFile() {
+        return selectedFile;
+    }
+
+    void clearSelectedFile() {
+        selectedFile = null;
+        renderResults();
+        if (listener != null) listener.onFileSelected(null);
+    }
+
+    void setLocalFiles(List<MpcBrowserFile> files, String status) {
+        localFiles = files == null
+                ? Collections.emptyList()
+                : new ArrayList<>(files);
+        localScanComplete = true;
+        setProviderStatus(status == null || status.trim().isEmpty()
+                ? "LOCAL AUDIO • " + localFiles.size() + " WAV FILES INDEXED"
+                : status);
+        renderResults();
+    }
+
+    void setScanState(String status) {
+        setProviderStatus(status);
+        renderResults();
     }
 
     void setProviderStatus(String status) {
-        final String value = status == null || status.trim().isEmpty()
-                ? "PROVIDER • ANDROID DOCUMENTS • OPEN PICKER BELOW"
+        localScanMessage = status == null || status.trim().isEmpty()
+                ? "LOCAL AUDIO • NOT SCANNED"
                 : status;
-        providerState.setText(value);
+        providerState.setText(localScanMessage);
     }
 
     void setTarget(int pad, int layer) {
@@ -234,23 +265,21 @@ final class MpcBrowserView extends LinearLayout {
                 pad + 1,
                 layer + 1));
         currentSample.setText(
-                "SAMPLE • " + currentSampleName());
+                "CURRENT SAMPLE • " + currentSampleName());
     }
 
     void setCurrentSampleName(String name) {
         currentSample.setText(
-                "SAMPLE • " + (name == null || name.isEmpty() ? "NONE" : name));
+                "CURRENT SAMPLE • " + (name == null || name.isEmpty() ? "NONE" : name));
     }
 
     void setSection(String section) {
         activeSection = isKnownSection(section) ? section : "PLACES";
+        activeLocationItem = defaultItemForSection(activeSection);
         setActiveButton(sections, activeSection);
         rebuildSideNavigation();
-        final String label = "PLACES".equals(activeSection)
-                ? "PLACE • INTERNAL"
-                : activeSection;
-        location.setText(label);
-        location.setContentDescription("MPC Browser current location: " + label);
+        updateLocationLabel();
+        renderResults();
     }
 
     void setLocation(String value) {
@@ -261,34 +290,38 @@ final class MpcBrowserView extends LinearLayout {
             final String item = raw.substring(separator + 1);
             if (isKnownSection(section)) {
                 activeSection = section;
+                activeLocationItem = item;
                 setActiveButton(sections, activeSection);
                 rebuildSideNavigation();
-                final String label = locationLabel(section, item);
-                location.setText(label);
-                location.setContentDescription(
-                        "MPC Browser current location: " + label);
+                updateLocationLabel();
                 setActiveNavigationItem(item);
+                renderResults();
                 return;
             }
         }
         if (isKnownSection(raw)) {
             setSection(raw);
-            final String label =
-                    "PLACES".equals(raw)
-                            ? "PLACE • INTERNAL"
-                            : raw;
-            location.setText(label);
-            location.setContentDescription(
-                    "MPC Browser current location: " + label);
             return;
         }
-        setSection("PLACES");
-        final String label =
-                "PLACE • " + (raw.isEmpty() ? "INTERNAL" : raw);
+        activeSection = "PLACES";
+        activeLocationItem = raw.isEmpty() ? "INTERNAL" : raw;
+        setActiveButton(sections, activeSection);
+        rebuildSideNavigation();
+        updateLocationLabel();
+        setActiveNavigationItem(activeLocationItem);
+        renderResults();
+    }
+
+    private String defaultItemForSection(String section) {
+        if ("CONTENT".equals(section)) return "SAMPLES";
+        if ("EXPANSIONS".equals(section)) return "EXPANSIONS";
+        return "INTERNAL";
+    }
+
+    private void updateLocationLabel() {
+        final String label = locationLabel(activeSection, activeLocationItem);
         location.setText(label);
-        location.setContentDescription(
-                "MPC Browser current location: " + label);
-        setActiveNavigationItem(raw.isEmpty() ? "INTERNAL" : raw);
+        location.setContentDescription("MPC Browser current location: " + label);
     }
 
     private boolean isKnownSection(String section) {
@@ -331,13 +364,13 @@ final class MpcBrowserView extends LinearLayout {
                     "MPC Browser navigation " + section + " " + item);
             button.setTextSize(9);
             button.setOnClickListener(v -> {
+                activeLocationItem = item;
                 if (listener != null) {
                     listener.onNavigationItemSelected(section, item);
                 }
-                final String label = locationLabel(section, item);
-                location.setText(label);
-                location.setContentDescription("MPC Browser current location: " + label);
+                updateLocationLabel();
                 setActiveNavigationItem(item);
+                renderResults();
             });
             places.addView(button, paramsMatch(getContext(), 42));
         }
@@ -364,6 +397,7 @@ final class MpcBrowserView extends LinearLayout {
     void setFilter(String value) {
         setActiveButton(filters,
                 value == null || value.isEmpty() ? "ALL" : value);
+        renderResults();
     }
 
     void setSearch(String value) {
@@ -384,42 +418,214 @@ final class MpcBrowserView extends LinearLayout {
     private String currentSampleName() {
         CharSequence value = currentSample.getText();
         return value == null ? "NONE"
-                : value.toString().replace("SAMPLE • ", "");
+                : value.toString().replace("CURRENT SAMPLE • ", "");
     }
 
-    private void addResult(
-            Context context,
+    private boolean isCatalogLocationSupported() {
+        if ("PLACES".equals(activeSection)) {
+            return "INTERNAL".equalsIgnoreCase(activeLocationItem);
+        }
+        if ("CONTENT".equals(activeSection)) {
+            return "SAMPLES".equalsIgnoreCase(activeLocationItem)
+                    || "MY FILES".equalsIgnoreCase(activeLocationItem);
+        }
+        return false;
+    }
+
+    private String unavailableLocationTitle() {
+        if ("EXPANSIONS".equals(activeSection)) return "LOCAL EXPANSIONS NOT INDEXED";
+        if ("PLACES".equals(activeSection)) {
+            if (activeLocationItem.toUpperCase(Locale.ROOT).startsWith("FAVORITE")) {
+                return "FAVORITE LOCATION NOT CONFIGURED";
+            }
+            return "PLACE PROVIDER UNAVAILABLE";
+        }
+        return "CATEGORY PROVIDER NOT IMPLEMENTED";
+    }
+
+    private String unavailableLocationDetail() {
+        if ("EXPANSIONS".equals(activeSection)) {
+            return "No local expansion catalog is connected yet.";
+        }
+        if ("PLACES".equals(activeSection)) {
+            if ("MPC DOCUMENTS".equalsIgnoreCase(activeLocationItem)
+                    || "CONNECTED STORAGE".equalsIgnoreCase(activeLocationItem)) {
+                return "Use OPEN STORAGE to access this location through Android Documents.";
+            }
+            if (activeLocationItem.toUpperCase(Locale.ROOT).startsWith("FAVORITE")) {
+                return "Favourite folders are not persisted yet; choose OPEN STORAGE instead.";
+            }
+            return "This place is not backed by the local WAV catalog.";
+        }
+        return "No real local provider is available for " + activeLocationItem + " yet.";
+    }
+
+    private void renderResults() {
+        results.removeAllViews();
+
+        final List<MpcBrowserFile> visibleFiles = new ArrayList<>();
+        for (MpcBrowserFile file : localFiles) {
+            if (file.matchesBrowserQuery(
+                    activeSection, activeLocationItem, activeFilter(), searchQuery())) {
+                visibleFiles.add(file);
+            }
+        }
+
+        if (selectedFile != null) {
+            MpcBrowserFile stillVisible = null;
+            for (MpcBrowserFile file : visibleFiles) {
+                if (selectedFile.uri().equals(file.uri())) {
+                    stillVisible = file;
+                    break;
+                }
+            }
+            if (stillVisible == null) {
+                selectedFile = null;
+                if (listener != null) listener.onFileSelected(null);
+            } else {
+                selectedFile = stillVisible;
+            }
+        }
+
+        addActionRow(
+                "SCAN LOCAL AUDIO…",
+                "INDEX ACCESSIBLE DEVICE WAV FILES",
+                "MPC Browser scan local audio files",
+                true);
+        addActionRow(
+                "OPEN STORAGE…",
+                "ANDROID DOCUMENT PICKER • DIRECT WAV LOAD",
+                "MPC Browser open Android storage picker",
+                false);
+
+        if (!isCatalogLocationSupported()) {
+            addInfoRow(unavailableLocationTitle(), unavailableLocationDetail());
+            return;
+        }
+        if (!localScanComplete) {
+            addInfoRow("LOCAL WAV CATALOG NOT SCANNED",
+                    "Select SCAN LOCAL AUDIO to list real device files.");
+            return;
+        }
+        if (visibleFiles.isEmpty()) {
+            if (localFiles.isEmpty()) {
+                addInfoRow("NO LOCAL WAV FILES",
+                        "No accessible WAV files were found in the device media catalog.");
+            } else {
+                addInfoRow("NO MATCHING WAV FILES",
+                        "Change Search or select SAMPLES / ALL to show indexed WAV items.");
+            }
+            return;
+        }
+
+        for (MpcBrowserFile file : visibleFiles) {
+            addFileResult(file, selectedFile != null
+                    && selectedFile.uri().equals(file.uri()));
+        }
+    }
+
+    private String activeFilter() {
+        for (int i = 0; i < filters.getChildCount(); i++) {
+            final View child = filters.getChildAt(i);
+            if (!(child instanceof Button)) continue;
+            final Button button = (Button) child;
+            if (!button.isSelected()) continue;
+            final CharSequence description = button.getContentDescription();
+            if (description != null) {
+                final String value = description.toString();
+                final String prefix = "MPC Browser filter ";
+                if (value.startsWith(prefix)) return value.substring(prefix.length());
+            }
+            return button.getText().toString();
+        }
+        return "ALL";
+    }
+
+    private void addActionRow(
             String title,
             String subtitle,
-            boolean action) {
-        LinearLayout row = row(context);
-        row.setPadding(dp(context, 6), dp(context, 2), dp(context, 6), dp(context, 2));
-        if (action) {
-            row.setContentDescription(
-                    "MPC Browser open Android Documents storage picker");
-            row.setClickable(true);
-            row.setFocusable(true);
-            row.setOnClickListener(v -> {
-                if (listener != null) listener.onOpenStorage();
-            });
-        } else {
-            row.setContentDescription("MPC Browser informational row " + title);
-            row.setClickable(false);
-            row.setFocusable(false);
-        }
-        TextView main = info(context, title);
+            String contentDescription,
+            boolean scanAction) {
+        final LinearLayout row = row(getContext());
+        row.setPadding(dp(getContext(), 6), dp(getContext(), 2),
+                dp(getContext(), 6), dp(getContext(), 2));
+        row.setContentDescription(contentDescription);
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setBackground(stroke(SURFACE_2, LINE));
+        row.setOnClickListener(v -> {
+            if (listener == null) return;
+            if (scanAction) listener.onLocalScanRequested();
+            else listener.onOpenStorage();
+        });
+
+        final TextView main = info(getContext(), title);
         main.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         main.setSingleLine(true);
         main.setEllipsize(TextUtils.TruncateAt.END);
-        row.addView(main, new LayoutParams(0, dp(context, 34), 1));
-        TextView sub = info(context, subtitle);
+        row.addView(main, new LayoutParams(0, dp(getContext(), 34), 1));
+
+        final TextView sub = info(getContext(), subtitle);
         sub.setTextSize(8);
         sub.setSingleLine(true);
         sub.setEllipsize(TextUtils.TruncateAt.END);
-        row.addView(sub, new LayoutParams(0, dp(context, 34), 1.7f));
-        // Keep the two current-context rows fully visible above the Function
-        // Bar on the MPC landscape workspace instead of cropping the second row.
-        results.addView(row, paramsMatch(context, 40));
+        row.addView(sub, new LayoutParams(0, dp(getContext(), 34), 1.7f));
+        results.addView(row, paramsMatch(getContext(), 40));
+    }
+
+    private void addInfoRow(String title, String subtitle) {
+        final LinearLayout row = row(getContext());
+        row.setPadding(dp(getContext(), 6), dp(getContext(), 2),
+                dp(getContext(), 6), dp(getContext(), 2));
+        row.setContentDescription("MPC Browser status " + title);
+        row.setClickable(false);
+        row.setFocusable(false);
+        row.setBackground(stroke(BG, LINE));
+
+        final TextView main = info(getContext(), title);
+        main.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        main.setSingleLine(true);
+        main.setEllipsize(TextUtils.TruncateAt.END);
+        row.addView(main, new LayoutParams(0, dp(getContext(), 34), 1));
+
+        final TextView sub = info(getContext(), subtitle);
+        sub.setTextSize(8);
+        sub.setSingleLine(true);
+        sub.setEllipsize(TextUtils.TruncateAt.END);
+        row.addView(sub, new LayoutParams(0, dp(getContext(), 34), 1.7f));
+        results.addView(row, paramsMatch(getContext(), 40));
+    }
+
+    private void addFileResult(MpcBrowserFile file, boolean selected) {
+        final LinearLayout row = row(getContext());
+        row.setPadding(dp(getContext(), 6), dp(getContext(), 2),
+                dp(getContext(), 6), dp(getContext(), 2));
+        row.setContentDescription("MPC Browser file " + file.displayName()
+                + (selected ? " selected" : ""));
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setSelected(selected);
+        row.setBackground(stroke(
+                selected ? MPC_BROWSER_SELECTED : SURFACE_2,
+                selected ? MPC_BROWSER_SELECTED : LINE));
+        row.setOnClickListener(v -> {
+            selectedFile = file;
+            renderResults();
+            if (listener != null) listener.onFileSelected(file);
+        });
+
+        final TextView main = info(getContext(), file.displayName());
+        main.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        main.setSingleLine(true);
+        main.setEllipsize(TextUtils.TruncateAt.END);
+        row.addView(main, new LayoutParams(0, dp(getContext(), 34), 1));
+
+        final TextView sub = info(getContext(), file.metadataLine());
+        sub.setTextSize(8);
+        sub.setSingleLine(true);
+        sub.setEllipsize(TextUtils.TruncateAt.END);
+        row.addView(sub, new LayoutParams(0, dp(getContext(), 34), 1.7f));
+        results.addView(row, paramsMatch(getContext(), 40));
     }
 
     private void setActiveButton(LinearLayout container, String label) {

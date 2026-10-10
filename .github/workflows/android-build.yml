@@ -153,6 +153,9 @@ jobs:
       - name: Test Android sequence zoom policy
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest
 
+      - name: Test local Browser WAV filtering policy
+        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest
+
       - name: Test MPC Studio MkII semantic routing
         shell: bash
         run: |

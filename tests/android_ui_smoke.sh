@@ -941,6 +941,14 @@ done
 
 echo "Running MPC Browser flat-chrome preflight..."
 echo "Running MPC Browser information-architecture preflight..."
+for required in 'REQUEST_SCAN_LOCAL_AUDIO' 'READ_MEDIA_AUDIO' 'READ_EXTERNAL_STORAGE' 'MpcLocalAudioCatalog.queryWavFiles' 'nativeAudioLoadSampleForPadLayer(' 'MediaPlayer' 'void assignSelectedBrowserFile()'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" \
+      && ! grep -Fq -- "$required" "android/app/src/main/AndroidManifest.xml" \
+      && ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcLocalAudioCatalog.java"; then
+    echo "ERROR: Browser local WAV provider/workflow contract missing: $required"
+    exit 1
+  fi
+done
 echo "Running MPC Browser workspace composition preflight..."
 for required in   'body.addView(center, new LayoutParams(0, -1, 1))'   'center.addView(scroll, new LayoutParams('   'ViewGroup.LayoutParams.MATCH_PARENT, 0, 1)'   'scroll.setContentDescription("MPC Browser results list")'   'TARGET • PAD'   'Browser target context • state only'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
@@ -962,7 +970,7 @@ if ! grep -Fq -- '"PROJECTS", "PATTERNS", "KITS", "PLUGIN PRESETS", "SAMPLES", "
   exit 1
 fi
 
-for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void setSection(String section)'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'OPEN STORAGE…'   'CURRENT SAMPLE'; do
+for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void onLocalScanRequested();'   'void onFileSelected(MpcBrowserFile file);'   'void onAuditionSelectedFile();'   'void setSection(String section)'   'void setLocalFiles(List<MpcBrowserFile> files, String status)'   'matchesBrowserQuery('   'addFileResult('   'MPC Browser scan local audio files'   'SCAN LOCAL AUDIO…'   'NO LOCAL WAV FILES'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'OPEN STORAGE…'   'CURRENT SAMPLE'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser information-architecture contract missing: $required"
     exit 1
@@ -1495,7 +1503,7 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser Data Dial delta did not
 require_source_contains "$BROWSER_SOURCE" 'MPC Browser provider status'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser restore did not return to Main'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser CLEAR did not clear persisted query'
-require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser audition current Pad/Layer sample'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser audition unavailable: no source item selected'
 require_source_contains "$BROWSER_SOURCE" 'void auditionCurrentSample()'
 require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("Browser " + section + " tab")'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'up.setContentDescription("Browser UP from " + browserLocation)'
@@ -1728,6 +1736,7 @@ PY
       exit 1
     fi
     for required in 'content-desc="MPC Browser filter SAMPLES"' \
+        'content-desc="MPC Browser scan local audio files"' \
         'text="SAMPLE ASSIGN"' 'text="LOAD"' 'text="UP"'; do
       if ! grep -Fq -- "$required" /tmp/mpc-groovebox-browser-uiautomator.xml; then
         echo "ERROR: Browser platform hierarchy is missing expected visible control: $required"
@@ -1772,7 +1781,7 @@ if root_bounds[2] - x2 > 48:
 
 descriptions = [
     "MPC Browser Sample Assign unavailable: no source item selected",
-    "MPC Browser audition current Pad/Layer sample",
+    "MPC Browser audition unavailable: no source item selected",
     "MPC Browser LOAD source file with Android Document Picker",
     "Browser UP from CONTENT",
     "MPC Browser BACK to previous workspace",
