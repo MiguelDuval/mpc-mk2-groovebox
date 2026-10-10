@@ -313,7 +313,7 @@ final class MpcBrowserView extends LinearLayout {
         if ("CONTENT".equals(activeSection)) {
             items = new String[]{
                     "DRUMS", "INSTRUMENTS", "SAMPLES",
-                    "DEMOS", "MY FILES", "SPLICE"};
+                    "DEMOS", "MY FILES"};
         } else if ("EXPANSIONS".equals(activeSection)) {
             items = new String[]{
                     "EXPANSIONS", "USER CONTENT"};
