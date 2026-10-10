@@ -10039,6 +10039,36 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
         }
 
+        final View browserSearchTarget = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser search files");
+        final View browserClearSearch = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser clear search");
+        if (!(browserSearchTarget instanceof EditText) || browserClearSearch == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser search/clear controls missing");
+            return;
+        }
+        final EditText browserSearch = (EditText) browserSearchTarget;
+        browserSearch.setText("MPC_UI_AUDIT");
+        if (!"MPC_UI_AUDIT".equals(browserView.searchQuery())
+                || !"MPC_UI_AUDIT".equals(
+                        navigationController.state().browserSearch())
+                || navigationController.state().dataDialFocus()
+                        != MpcUiState.DataDialFocus.BROWSER_ITEM) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser search state propagation"
+                    + " | visible=" + browserView.searchQuery()
+                    + " | state=" + navigationController.state().browserSearch()
+                    + " | focus=" + navigationController.state().dataDialFocus());
+            return;
+        }
+        if (!browserClearSearch.performClick()
+                || !browserView.searchQuery().isEmpty()
+                || !navigationController.state().browserSearch().isEmpty()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CLEAR did not clear persisted query"
+                    + " | visible=" + browserView.searchQuery()
+                    + " | state=" + navigationController.state().browserSearch());
+            return;
+        }
+
         if (!captureBrowserAuditEvidence()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser runtime evidence capture");
             return;
