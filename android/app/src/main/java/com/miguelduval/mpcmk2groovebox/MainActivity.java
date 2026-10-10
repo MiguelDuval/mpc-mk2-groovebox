@@ -10432,7 +10432,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (browserStorageAction == null || !browserStorageAction.isShown()
                 || !browserStorageAction.isClickable()
                 || browserStorageAction.getWidth() <= dp(200)
-                || browserStorageAction.getHeight() <= dp(40)) {
+                || browserStorageAction.getHeight() <= dp(36)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action not hittable"
                     + " | action=" + describeAuditView(browserStorageAction));
             return;

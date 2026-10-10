@@ -1514,6 +1514,7 @@ require_source_contains "$BROWSER_SOURCE" 'results.addView(row, paramsMatch(cont
 require_source_contains "$BROWSER_SOURCE" 'new LayoutParams(0, dp(context, 34), 1)'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser result rows are clipped or storage target is not actionable'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'browserStorageAction.getHeight() <= dp(36)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser storage picker action not hittable'
 require_source_contains "$BROWSER_SOURCE" 'currentSample.setSingleLine(true)'
 require_source_contains "$BROWSER_SOURCE" 'main.setSingleLine(true)'
 require_source_contains "$BROWSER_SOURCE" 'sub.setSingleLine(true)'
