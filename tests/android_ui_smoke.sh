@@ -1493,10 +1493,11 @@ require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("MPC Bro
 require_source_contains "$BROWSER_SOURCE" 'MPC Browser current location: PLACE • INTERNAL'
 require_source_contains "$BROWSER_SOURCE" 'row.setOnClickListener(v -> {'
 require_source_contains "$BROWSER_SOURCE" 'listener.onOpenStorage();'
-require_source_contains "$BROWSER_SOURCE" 'ANDROID DOCUMENTS • OPEN PICKER'
+require_source_contains "$BROWSER_SOURCE" 'MPC Browser open Android storage picker'
+require_source_contains "$BROWSER_SOURCE" 'ANDROID DOCUMENT PICKER • DIRECT WAV LOAD'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'public void onOpenStorage()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'openWavPicker();'
-require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Button audition = addFunction("AUDITION", browserSampleAvailable,'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Button audition = addFunction("AUDITION", browserHasSelectedFile,'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser search state propagation'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser context did not survive view recreation'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser Data Dial delta did not expose provider limitation'
@@ -1504,7 +1505,7 @@ require_source_contains "$BROWSER_SOURCE" 'MPC Browser provider status'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser restore did not return to Main'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser CLEAR did not clear persisted query'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser audition unavailable: no source item selected'
-require_source_contains "$BROWSER_SOURCE" 'void auditionCurrentSample()'
+require_source_contains "$BROWSER_SOURCE" 'void auditionSelectedFile()'
 require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("Browser " + section + " tab")'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'up.setContentDescription("Browser UP from " + browserLocation)'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser LOAD source file with Android Document Picker'
@@ -1963,7 +1964,7 @@ if ! test -s /tmp/mpc-groovebox-browser.png || ! test -s /tmp/mpc-groovebox-brow
   echo "ERROR: Browser runtime evidence files are empty"
   exit 1
 fi
-for required in 'contentDescription="MPC Browser results list"' 'text="OPEN STORAGE…"' 'text="CURRENT SAMPLE"'; do
+for required in 'contentDescription="MPC Browser results list"' 'text="OPEN STORAGE…"' 'contentDescription="MPC Browser current sample"'; do
   if ! grep -Fq -- "$required" /tmp/mpc-groovebox-browser-hierarchy.txt; then
     echo "ERROR: Browser runtime hierarchy is missing visible results contract: $required"
     cat /tmp/mpc-groovebox-browser-hierarchy.txt

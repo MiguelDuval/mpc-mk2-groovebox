@@ -10463,49 +10463,51 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getWindow().getDecorView(), "MPC Browser target Pad and Layer");
         final View browserCurrentSample = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Browser current sample");
+        final View browserScanTitle = findViewWithExactText(
+                getWindow().getDecorView(), "SCAN LOCAL AUDIO…");
+        final View browserScanDetail = findViewWithExactText(
+                getWindow().getDecorView(), "INDEX ACCESSIBLE DEVICE WAV FILES");
+        final View browserScanAction = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser scan local audio files");
         final View browserStorageTitle = findViewWithExactText(
                 getWindow().getDecorView(), "OPEN STORAGE…");
         final View browserStorageDetail = findViewWithExactText(
-                getWindow().getDecorView(), "ANDROID DOCUMENTS • OPEN PICKER");
+                getWindow().getDecorView(), "ANDROID DOCUMENT PICKER • DIRECT WAV LOAD");
         final View browserStorageAction = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC Browser open Android Documents storage picker");
-        final View browserSampleInfoRow = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC Browser informational row CURRENT SAMPLE");
-        final android.graphics.Rect browserStorageVisibleRect =
-                new android.graphics.Rect();
-        final android.graphics.Rect browserSampleInfoVisibleRect =
-                new android.graphics.Rect();
+                getWindow().getDecorView(), "MPC Browser open Android storage picker");
+        final android.graphics.Rect browserScanVisibleRect = new android.graphics.Rect();
+        final android.graphics.Rect browserStorageVisibleRect = new android.graphics.Rect();
+        final boolean browserScanFullyVisible = browserScanAction != null
+                && browserScanAction.getGlobalVisibleRect(browserScanVisibleRect)
+                && browserScanVisibleRect.height() == browserScanAction.getHeight();
         final boolean browserStorageFullyVisible = browserStorageAction != null
                 && browserStorageAction.getGlobalVisibleRect(browserStorageVisibleRect)
                 && browserStorageVisibleRect.height() == browserStorageAction.getHeight();
-        final boolean browserSampleInfoFullyVisible = browserSampleInfoRow != null
-                && browserSampleInfoRow.getGlobalVisibleRect(browserSampleInfoVisibleRect)
-                && browserSampleInfoVisibleRect.height() == browserSampleInfoRow.getHeight();
-        if (browserStorageAction == null || !browserStorageAction.isShown()
+        if (browserScanAction == null || !browserScanAction.isShown()
+                || !browserScanAction.isClickable()
+                || browserScanAction.getWidth() <= dp(200)
+                || browserScanAction.getHeight() <= dp(36)
+                || !browserScanFullyVisible
+                || browserStorageAction == null || !browserStorageAction.isShown()
                 || !browserStorageAction.isClickable()
                 || browserStorageAction.getWidth() <= dp(200)
                 || browserStorageAction.getHeight() <= dp(36)
-                || !browserStorageFullyVisible || !browserSampleInfoFullyVisible) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser result rows are clipped or storage target is not actionable"
+                || !browserStorageFullyVisible) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser scan/storage actions are clipped or not actionable"
+                    + " | scan=" + describeAuditView(browserScanAction)
+                    + " | scanVisibleRect=" + browserScanVisibleRect
                     + " | storage=" + describeAuditView(browserStorageAction)
-                    + " | storageVisibleRect=" + browserStorageVisibleRect
-                    + " | sampleInfo=" + describeAuditView(browserSampleInfoRow)
-                    + " | sampleInfoVisibleRect=" + browserSampleInfoVisibleRect);
+                    + " | storageVisibleRect=" + browserStorageVisibleRect);
             return;
         }
-        final View browserSampleTitle = findViewWithExactText(
-                getWindow().getDecorView(), "CURRENT SAMPLE");
-        final View browserSampleDetail = findViewWithExactText(
-                getWindow().getDecorView(), "PAD/LAYER • AUDITION");
         final View[] browserSingleLineTargets = {
-                browserDestination, browserCurrentSample, browserStorageTitle,
-                browserStorageDetail, browserSampleTitle, browserSampleDetail
+                browserDestination, browserCurrentSample, browserScanTitle,
+                browserScanDetail, browserStorageTitle, browserStorageDetail
         };
         final String[] browserSingleLineLabels = {
-                "destination context", "current sample metadata", "storage result title",
-                "storage result details", "current sample result title", "current sample result details"
+                "destination context", "current sample metadata",
+                "local scan action title", "local scan action details",
+                "storage action title", "storage action details"
         };
         for (int i = 0; i < browserSingleLineTargets.length; i++) {
             final View target = browserSingleLineTargets[i];
@@ -10650,7 +10652,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final View browserStorageAction = findViewWithContentDescription(
                 getWindow().getDecorView(),
-                "MPC Browser open Android Documents storage picker");
+                "MPC Browser open Android storage picker");
         if (browserStorageAction == null || !browserStorageAction.isShown()
                 || !browserStorageAction.isClickable()
                 || browserStorageAction.getWidth() <= dp(200)
