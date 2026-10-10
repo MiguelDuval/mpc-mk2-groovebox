@@ -9840,8 +9840,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     + " | meter=" + describeAuditView(selectedTrackMeter));
             return;
         }
-        final View selectedTrackProgramValue = getWindow().getDecorView()
-                .findViewWithTag("MPC Main selected track program value");
+        final View selectedTrackProgramValue = xlMixerStrip.findViewWithTag(
+                "MPC Main selected track program value");
         final String nativeProgramLabel = nativeSequenceGetTrackProgram(
                 Math.max(0, nativeSequenceGetSelectedTrack()));
         final String programPrefix = "PROGRAM • ";
@@ -9865,18 +9865,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         ? "" : expectedProgramAccessibility))) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main XL program value wrapped or loses full program name"
                     + " | program=" + describeAuditView(selectedTrackProgramValue)
+                    + " | shown=" + (selectedTrackProgramValue != null
+                            && selectedTrackProgramValue.isShown())
+                    + " | text=" + (selectedTrackProgramValue instanceof TextView
+                            ? ((TextView) selectedTrackProgramValue).getText() : "not-text")
+                    + " | lines=" + (selectedTrackProgramValue instanceof TextView
+                            ? ((TextView) selectedTrackProgramValue).getLineCount() : -1)
+                    + " | description=" + programDescription
                     + " | expectedAccessibility=" + expectedProgramAccessibility);
             return;
         }
-        if ("MAIN OUTPUT".contentEquals(
-                findViewWithContentDescription(
-                        getWindow().getDecorView(),
-                        "MPC Main output value: MAIN OUTPUT") instanceof TextView
-                        ? ((TextView) findViewWithContentDescription(
-                                getWindow().getDecorView(),
-                                "MPC Main output value: MAIN OUTPUT")).getText()
-                        : "")) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main Output label redundantly repeats OUTPUT");
+        final View mainOutputValue = findViewWithContentDescription(
+                xlMixerStrip, "MPC Main output value: MAIN OUTPUT");
+        if (!(mainOutputValue instanceof TextView)
+                || !"MAIN".contentEquals(((TextView) mainOutputValue).getText())) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Output label repeats OUTPUT or lost value"
+                    + " | output=" + describeAuditView(mainOutputValue)
+                    + " | text=" + (mainOutputValue instanceof TextView
+                            ? ((TextView) mainOutputValue).getText() : "not-text"));
             return;
         }
 
