@@ -1649,6 +1649,9 @@ root_bounds = bounds(nodes[0])
 if x2 > root_bounds[2] or y2 > root_bounds[3]:
     raise AssertionError("Browser Options is outside the accessible screen bounds: "
                          + options.attrib.get("bounds", ""))
+if root_bounds[2] - x2 > 48:
+    raise AssertionError("Browser Options is separated from the safe right edge by an unexpected gap: "
+                         + options.attrib.get("bounds", ""))
 
 descriptions = [
     "MPC Browser Sample Assign unavailable: no source item selected",

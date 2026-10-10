@@ -2651,9 +2651,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
              * visible in screenshots but clipped to zero-width accessibility
              * bounds. Insets remain relevant while system bars are hidden.
              */
-            View appContent = mpcShell != null
-                    ? mpcShell.root()
-                    : findViewById(android.R.id.content);
+            // Use the stable Window content parent for every invocation. The
+            // policy runs both before and after shell creation; padding both
+            // the parent and shell would reserve the same nav inset twice.
+            View appContent = findViewById(android.R.id.content);
             if (appContent != null) {
                 appContent.setOnApplyWindowInsetsListener((view, insets) -> {
                     final int left;
