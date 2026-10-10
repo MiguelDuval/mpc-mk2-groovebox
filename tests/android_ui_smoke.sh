@@ -1612,6 +1612,13 @@ if ! test -s /tmp/mpc-groovebox-browser.png || ! test -s /tmp/mpc-groovebox-brow
   echo "ERROR: Browser runtime evidence files are empty"
   exit 1
 fi
+for required in 'contentDescription="MPC Browser results list"' 'text="OPEN STORAGE…"' 'text="CURRENT SAMPLE"'; do
+  if ! grep -Fq -- "$required" /tmp/mpc-groovebox-browser-hierarchy.txt; then
+    echo "ERROR: Browser runtime hierarchy is missing visible results contract: $required"
+    cat /tmp/mpc-groovebox-browser-hierarchy.txt
+    exit 1
+  fi
+done
 
 echo "Dumping post-audit UI hierarchy..."
 if ! timeout --signal=TERM --kill-after=3s 30s adb shell uiautomator dump > /tmp/mpc-groovebox-uiautomator.txt 2>&1; then

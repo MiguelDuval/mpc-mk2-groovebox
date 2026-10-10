@@ -5474,6 +5474,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
+        refreshMpcFunctionBar();
         updateModeRailSelection();
     }
 
@@ -9925,6 +9926,40 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     + " | all=" + describeAuditView(browserAllFilter)
                     + " | samples=" + describeAuditView(browserSamplesFilter));
             return;
+        }
+
+        View browserResults = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser results list");
+        if (browserResults == null || !browserResults.isShown()
+                || browserResults.getWidth() <= dp(200)
+                || browserResults.getHeight() <= dp(80)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser results viewport geometry"
+                    + " | results=" + describeAuditView(browserResults));
+            return;
+        }
+        final String[] browserFunctionLabels = {
+                "SAMPLE ASSIGN", "AUDITION", "LOAD", "UP", "BACK"
+        };
+        if (functionBar == null
+                || functionBar.getChildCount() != browserFunctionLabels.length) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar structure"
+                    + " | bar=" + describeAuditView(functionBar));
+            return;
+        }
+        for (int i = 0; i < browserFunctionLabels.length; i++) {
+            final View action = functionBar.getChildAt(i);
+            final boolean shouldBeEnabled = i >= 2;
+            if (!(action instanceof TextView)
+                    || !browserFunctionLabels[i].contentEquals(((TextView) action).getText())
+                    || !action.isShown()
+                    || action.getWidth() <= dp(50)
+                    || action.getHeight() <= dp(20)
+                    || action.isEnabled() != shouldBeEnabled) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar action "
+                        + browserFunctionLabels[i]
+                        + " | action=" + describeAuditView(action));
+                return;
+            }
         }
 
         if (!captureBrowserAuditEvidence()) {
