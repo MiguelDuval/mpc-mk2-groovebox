@@ -1468,6 +1468,17 @@ require_source_contains() {
   fi
 }
 
+echo "Running MPC Browser product-scope preflight..."
+if grep -Fqi -- 'splice' "$BROWSER_SOURCE"; then
+  echo "ERROR: excluded commercial Splice destination is present in the product Browser"
+  exit 1
+fi
+for local_category in '"DRUMS"' '"INSTRUMENTS"' '"SAMPLES"' '"DEMOS"' '"MY FILES"'; do
+  if ! grep -Fq -- "$local_category" "$BROWSER_SOURCE"; then
+    echo "ERROR: expected generic/local Browser category missing: $local_category"
+    exit 1
+  fi
+done
 echo "Running MPC Browser visual/runtime contract preflight..."
 require_source_contains "$BROWSER_SOURCE" 'MpcBrowserFilterIconDrawable'
 require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("MPC Browser filter " + filter)'
