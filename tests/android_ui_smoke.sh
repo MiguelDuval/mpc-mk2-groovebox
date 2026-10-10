@@ -1819,11 +1819,15 @@ fi
 
 echo "Application-side UI audit completed; collecting app-side Browser layout evidence."
 
-if [ "$storage_picker_capture_done" -ne 1 \
+if [ "$storage_picker_capture_done" -ne 1 ] \
     || ! test -s /tmp/mpc-groovebox-storage-picker.png \
     || ! test -s /tmp/mpc-groovebox-storage-picker-uiautomator.xml \
     || ! test -s /tmp/mpc-groovebox-storage-picker-activity.txt; then
   echo "ERROR: storage-picker round trip lacks captured UI/activity evidence"
+  exit 1
+fi
+if ! grep -Fq -- "UI_STORAGE_PICKER_RETURNED" <<<"$log_snapshot"; then
+  echo "ERROR: app audit completed without confirming the Browser return after picker cancellation"
   exit 1
 fi
 if [ "$browser_runtime_capture_done" -ne 1 ] \
