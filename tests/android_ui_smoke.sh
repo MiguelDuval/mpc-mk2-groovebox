@@ -2157,6 +2157,29 @@ PY
   return 1
 }
 
+wait_for_successful_audition() {
+  local hierarchy_path="$1" remote_path="$2" expected_name="$3" max_attempts="$4"
+  for ((attempt=1; attempt<=max_attempts; attempt++)); do
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    if python3 - "$hierarchy_path" "$expected_name" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, expected_name = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+texts = [n.attrib.get("text", "").strip() for n in root.iter("node")]
+success = any(value == "AUDITION • " + expected_name
+              or value == "AUDITION COMPLETE • " + expected_name
+              for value in texts)
+raise SystemExit(0 if success else 1)
+PY
+    then return 0; fi
+    sleep 1
+  done
+  echo "ERROR: selected WAV did not reach a successful audition state: $expected_name"
+  cat "$hierarchy_path" || true
+  return 1
+}
+
 wait_for_ui_text_pair() {
   local hierarchy_path="$1" remote_path="$2" first="$3" second="$4" max_attempts="$5"
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
@@ -2199,7 +2222,10 @@ PY
   return 1
 }
 
-if ! tap_ui_description "$DUMP" "MPC shortcut BROWSER"; then exit 1; fi
+# The previous smoke ends with the Browser rail highlighted while the workspace
+# has returned to Main. Open Browser through the toolbar's explicit route instead
+# of assuming the highlighted shortcut mirrors the current workspace.
+if ! tap_ui_description "$DUMP" "MPC Project Browser"; then exit 1; fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
     "MPC Browser scan local audio files" 20; then exit 1; fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser scan local audio files"; then exit 1; fi
@@ -2218,9 +2244,8 @@ if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser file $LOCAL_SAMPLE_NAM
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
     "MPC Browser audition selected local WAV file" 10; then exit 1; fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser audition selected local WAV file"; then exit 1; fi
-if ! wait_for_ui_text_pair "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "AUDITION" "$LOCAL_SAMPLE_NAME" 8; then
-  echo "ERROR: selected-file audition did not expose its file-specific runtime state"
+if ! wait_for_successful_audition "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "$LOCAL_SAMPLE_NAME" 8; then
   exit 1
 fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" \
