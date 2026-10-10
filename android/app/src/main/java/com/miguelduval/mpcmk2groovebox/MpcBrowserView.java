@@ -196,7 +196,7 @@ final class MpcBrowserView extends LinearLayout {
         results.setPadding(0, dp(context, 3), 0, dp(context, 3));
         addResult(context,
                 "OPEN STORAGE…",
-                "ANDROID DOCUMENTS • USE LOAD BELOW",
+                "ANDROID DOCUMENTS • OPEN PICKER",
                 true);
         addResult(context,
                 "CURRENT SAMPLE",
@@ -394,6 +394,19 @@ final class MpcBrowserView extends LinearLayout {
             boolean action) {
         LinearLayout row = row(context);
         row.setPadding(dp(context, 6), dp(context, 2), dp(context, 6), dp(context, 2));
+        if (action) {
+            row.setContentDescription(
+                    "MPC Browser open Android Documents storage picker");
+            row.setClickable(true);
+            row.setFocusable(true);
+            row.setOnClickListener(v -> {
+                if (listener != null) listener.onOpenStorage();
+            });
+        } else {
+            row.setContentDescription("MPC Browser informational row " + title);
+            row.setClickable(false);
+            row.setFocusable(false);
+        }
         TextView main = info(context, title);
         main.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         main.setSingleLine(true);

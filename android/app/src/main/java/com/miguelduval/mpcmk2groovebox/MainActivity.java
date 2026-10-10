@@ -10208,7 +10208,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final View browserStorageTitle = findViewWithExactText(
                 getWindow().getDecorView(), "OPEN STORAGE…");
         final View browserStorageDetail = findViewWithExactText(
-                getWindow().getDecorView(), "ANDROID DOCUMENTS • USE LOAD BELOW");
+                getWindow().getDecorView(), "ANDROID DOCUMENTS • OPEN PICKER");
+        final View browserStorageAction = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Browser open Android Documents storage picker");
+        if (browserStorageAction == null || !browserStorageAction.isShown()
+                || !browserStorageAction.isClickable()
+                || browserStorageAction.getWidth() <= dp(200)
+                || browserStorageAction.getHeight() <= dp(40)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage result is not a real actionable target"
+                    + " | action=" + describeAuditView(browserStorageAction));
+            return;
+        }
         final View browserSampleTitle = findViewWithExactText(
                 getWindow().getDecorView(), "CURRENT SAMPLE");
         final View browserSampleDetail = findViewWithExactText(
