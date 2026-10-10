@@ -1809,7 +1809,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         });
                 audition.setContentDescription(
                         "MPC Browser audition current Pad/Layer sample");
-                addFunction("LOAD", true, v -> openWavPicker());
+                Button load = addFunction("LOAD", true, v -> openWavPicker());
+                load.setContentDescription("MPC Browser LOAD source file with Android Document Picker");
                 final String browserLocation =
                         navigationController.state().browserLocation();
                 final boolean browserHasParent =
@@ -1843,7 +1844,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             refreshMpcFunctionBar();
                         });
                 up.setContentDescription("Browser UP from " + browserLocation);
-                addFunction("BACK", true, v -> navigateBackFromShell());
+                Button browserBack = addFunction(
+                        "BACK", true, v -> navigateBackFromShell());
+                browserBack.setContentDescription(
+                        "MPC Browser BACK to previous workspace");
                 break;
             case ARRANGE:
                 addFunction("CUT", false, null);
@@ -10002,6 +10006,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar action "
                         + browserFunctionLabels[i]
                         + " | expectedEnabled=" + shouldBeEnabled
+                        + " | action=" + describeAuditView(action));
+                return;
+            }
+        }
+        final String[] expectedBrowserActionDescriptions = {
+                "MPC Browser Sample Assign unavailable: no source item selected",
+                "MPC Browser audition current Pad/Layer sample",
+                "MPC Browser LOAD source file with Android Document Picker",
+                "Browser UP from CONTENT",
+                "MPC Browser BACK to previous workspace"
+        };
+        for (int i = 0; i < expectedBrowserActionDescriptions.length; i++) {
+            final View action = functionBar.getChildAt(i);
+            if (!expectedBrowserActionDescriptions[i].contentEquals(
+                    action.getContentDescription())) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar accessibility "
+                        + browserFunctionLabels[i]
+                        + " | expectedDescription=" + expectedBrowserActionDescriptions[i]
                         + " | action=" + describeAuditView(action));
                 return;
             }

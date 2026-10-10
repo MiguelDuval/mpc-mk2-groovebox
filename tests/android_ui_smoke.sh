@@ -1475,6 +1475,8 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser audition current Pa
 require_source_contains "$BROWSER_SOURCE" 'void auditionCurrentSample()'
 require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("Browser " + section + " tab")'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'up.setContentDescription("Browser UP from " + browserLocation)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser LOAD source file with Android Document Picker'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser BACK to previous workspace'
 
 echo "Running clean visual-evidence audit preflight..."
 for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStatus.setVisibility(View.GONE);'   'truthful Main screenshot'; do
