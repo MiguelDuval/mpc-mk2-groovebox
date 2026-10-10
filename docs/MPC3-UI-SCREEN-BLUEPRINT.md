@@ -2,6 +2,9 @@
 
 ## Purpose
 
+> **2026-10-06 reconciliation:** This blueprint is subordinate to `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md` and `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`. The canonical visible Main shell is **Toolbar → five Shortcuts → XL Channel Strip region → Workspace → Function Bar**. Historical references below to a persistent Sequence/Track/Program/Data Dial rail describe migration state only and must not drive current layout decisions.
+
+
 This is the implementation blueprint beneath MPC3-UI-MIGRATION-MASTER-SPEC.md.
 
 Each screen is specified by:
@@ -96,18 +99,18 @@ The bar must:
 
 ---
 
-## 1.1 Persistent left context strip
+## 1.1 XL Channel Strip region (canonical)
 
-The shell's left edge is deliberately split into two persistent functional columns:
+The shell's left edge is the documented MPC3 combination of:
 
 - **Shortcut rail:** exactly five configurable high-frequency destinations.
-- **Compact context/channel rail:** persistent Sequence, Track, Program, Pad and Data Dial context.
+- **XL Channel Strip region:** contextual mixer information for the current track/pad/main output.
 
-The compact context rail remains visible while the workspace changes. It is a glanceable status surface and a direct-entry surface for Sequence Select, Track Select and Program Select; it is not a second workspace.
+The former Android Sequence/Track/Program/Data Dial rail is migration-only and must remain hidden from the canonical visible Main composition. Sequence, Track, Program, Pad and Data Dial state still exists in semantic/UI state, but it belongs to the central workspace and contextual focus model.
 
-## 1.2 Compact context semantics
+## 1.2 Legacy compact-context semantics — migration only
 
-The persistent context strip exposes state, not duplicate editing controls:
+The retired migration-only context state previously exposed the following semantic values. These remain valid state concepts but are not a visible standalone dashboard:
 
 - **Sequence:** current sequence and tempo; opens Main Sequence Select.
 - **Track:** current track, type, REC-arm and mute state; opens Main Track Select.
@@ -127,7 +130,7 @@ Top:
 Toolbar.
 
 Left:
-Five shortcuts + compact mixer strip.
+Five shortcuts + XL Channel Strip region.
 
 Center:
 Sequence section.
@@ -186,18 +189,37 @@ Touch:
 
 ### Main Track quick-sample context
 
-- The default Main Track view pairs the performance pad surface with a compact sample waveform for the selected Pad/Layer.
-- A compact MPC-style track-state row sits directly above the canvas with **Monitor / Length / Velocity / Layer** vocabulary.
+- The default Main Track view is the controller-first Track/Arrangement waveform surface for the selected Pad/Layer; no 4x4 software pad matrix is part of the canonical Main layout.
+- A compact MPC-style track-state row sits directly below the Track canvas with **MONITOR / LENGTH / VELOCITY / LAYER** vocabulary.
 - Only truthful backend state is surfaced: Monitor is currently unavailable, Length is sequence-scoped, Velocity has no track-level semantic in the current backend, and Layer is the actual selected Drum sample layer.
-- Start/End handles use the existing sample-region semantic command; this is a quick-edit surface, not a replacement for full Sample Edit.
-- Layer −/+ changes only the selected sample layer and keeps the current Track/Pad context.
-- AUDITION triggers the currently selected Pad; SAMPLE EDIT opens the dedicated sample editor without changing the selected Track/Sequence.
+- Start/End handles use the existing sample-region semantic command; this is a quick-edit surface, not a replacement for full Track Edit.
+- The waveform preview shows eight compact layer indicators; the selected dot follows the same selected Layer state used by the Track-state field.
+- The Layer field selects the current sample layer; tapping it establishes shared SAMPLE_LAYER Data Dial focus, and the standard +/- hardware adjustment path changes the value without leaving Main.
+- An empty selected pad exposes large in-canvas BROWSE / RECORD actions; a loaded pad uses one compact audition control while the waveform remains the dominant visual surface.
+- Double-tapping the waveform opens the Track Edit Samples workflow; Main does not add a separate permanent SAMPLE EDIT button.
 
 ### Main Sequence field hierarchy
 
 - Main keeps the MPC-style compact Sequence vocabulary visible around the selected sequence and BPM: **SEQ / BARS / START / END / TRANSPOSE**.
 - Existing time-signature and loop state remain visible because they are backed by the current Sequence model.
 - TRANSPOSE is explicitly shown as unavailable until a real domain semantic exists.
+
+### Main visual-fidelity presentation rules
+
+The Main surface should visually read as an MPC One / MPC3 instrument screen before any implementation detail is considered:
+
+- Toolbar uses the graphite/status-oriented treatment and carries project identity, compact time-counter state, Timing Correct, metronome/automation state and MIDI In/Out status; transport remains hardware-first.
+- The visible page title is not a separate Android-style title chip; the selected shortcut and active Main sections provide the context.
+- Track identity remains one coherent header band.
+- The selected Track's Program is visible directly beneath that header as a Track-owned field.
+- Track-type presentation uses one persistent icon attached to Track identity; tapping it opens the Track Type selection context, where unsupported types remain explicitly unavailable.
+- Shortcut and Function Bar controls use flat rectangular surfaces with clear focus/selection state rather than generic rounded Android cards.
+
+### 2026-10-06 Main Sequence/Track framing fidelity checkpoint
+
+The Main Sequence and Track/Arrangement zones use a thin MPC-red boundary instead of heavy outer card framing. The zones remain rectangular and dense, while field-level focus/selection borders stay available for interactive state.
+
+The divider is presentation-only. It does not create a navigation or semantic focus state and does not touch audio, sampler, sequencer-clock, MIDI, decoder, or SysEx layers.
 
 ## 2.4 Arrangement preview
 
@@ -217,7 +239,7 @@ open Grid/appropriate editor.
 
 - Main presents Track and Arrangement as sibling local views of the same selected Track/Sequence context.
 - Track View is the default Main view on entry, matching the MPC workflow; switching to Arrangement changes presentation only and does not create a new navigation mode.
-- Track View keeps the performance pad/sample surface; Track Edit now provides a bounded truthful editor for the currently implemented Drum pad semantics.
+- Track View keeps the selected Pad/sample waveform surface; Pad selection remains on the physical controller, while Track Edit provides a bounded truthful editor for the currently implemented Drum pad semantics.
 - The Track section exposes a compact pencil affordance for Track Edit, matching the MPC entry point. The same semantic destination is also opened by double-tapping the Main Track sample/waveform area.
 - The Track section's compact pencil affordance and a double-tap on the Main Track sample/waveform area are the same semantic Track Edit entry gesture.
 - Double-tap on the Main Arrangement overview opens Grid for a Drum Track; unsupported Track Types remain explicitly unavailable rather than being routed into a mismatched editor.
@@ -1008,11 +1030,11 @@ Program Edit remains reserved until the backend can truthfully edit Program cont
 
 ## 2026-10-03 Main shell persistent-context checkpoint
 
-- The shell left edge is explicitly split into two persistent functional layers: five shortcuts and a compact context rail followed by the workspace.
-- The persistent context rail carries Sequence + BPM, selected Track identity/state, selected Track Program where truthful, selected Pad, semantic Data Dial focus/subcontext, and a thin sequence movement overview.
-- Mixer Strip detail visibility affects only mixer-detail controls; it must not hide or reset persistent Sequence/Track/Program/Pad/Dial context or sequence state.
-- Sequence, Track and Program entries are direct semantic entry points into the existing Main selection contexts. Non-Drum Program selection remains explicitly unavailable.
-- The shell geometry implementation contract is 44dp Toolbar, 48dp shortcut rail, 210dp context/channel rail and 40dp Function Bar. These are implementation geometry baselines, not claims of pixel-equivalent Akai hardware dimensions.
+- The shell left edge is explicitly split into two persistent functional layers: five shortcuts and a compact XL Channel Strip region followed by the workspace.
+- The migration state model still carries Sequence/Track/Program/Pad/Data Dial focus internally, but this is not a visible dashboard.
+- XL Channel Strip visibility affects only mixer-strip presentation; it must not mutate or reset persistent musical selection/transport state.
+- Sequence, Track and Program entries remain direct semantic entry points in the central Main workspace. Non-Drum Program selection remains explicitly unavailable.
+- The shell geometry implementation contract is 44dp Toolbar, 48dp shortcut rail, 210dp XL Channel Strip host and 40dp Function Bar. These are implementation geometry baselines, not claims of pixel-equivalent Akai hardware dimensions.
 - The Toolbar remains reduced to the MPC information hierarchy and does not expose diagnostic AUDIO/MIDI chips as primary product controls.
 
 
@@ -1028,7 +1050,7 @@ Shortcut slots remain five configurable MPC-style mode shortcuts. The visual til
 
 ## 2026-10-03 Persistent context hierarchy fidelity checkpoint
 
-The persistent context rail is intentionally denser than a general Android dashboard:
+The historical compact-context implementation checkpoint is intentionally retained below for provenance only. It is not a canonical visible Main region:
 
 - each context group has a small uppercase section caption;
 - value fields remain flat rectangular surfaces with compact typography;
@@ -1052,6 +1074,23 @@ Main is rendered as two visually coherent framed workspaces beneath the shared s
 
 The selected parameter continues to use the red focus outline; section framing itself does not become an additional semantic focus state.
 
+## 2026-10-04 Main Toolbar project-entry fidelity increment
+
+The persistent Toolbar keeps project identity, a compact adjacent Browser/project affordance, BAR/BEAT/TICK position, Timing Correct, metronome/automation state and MIDI In/Out status. The In/Out cells are status/monitor affordances; transport remains hardware-first. The Browser affordance opens the existing Browser semantic context and does not introduce a second navigation model.
+
+## 2026-10-04 Main Track type affordance fidelity checkpoint
+
+The Main Track header now reserves the full six-choice Program Type affordance documented for MPC Main:
+
+- Drum;
+- Keygroup;
+- Plugin;
+- MIDI;
+- Clip;
+- CV.
+
+Only Drum is enabled because it is the only Track Type with a truthful backend in the current build. The complete six-icon presentation remains visible so the Main screen follows the reference hierarchy without inventing unsupported behavior.
+
 ## 2026-10-03 Main shell geometry fidelity checkpoint
 
 The Main presentation now uses explicit MPC One geometry constants instead of scattered legacy spacing:
@@ -1066,4 +1105,145 @@ This is presentation-only. MpcUiState, MpcNavigationController, native sequencin
 
 - Main interactive controls now use a dedicated flat Main action helper; the global Android-style rounded button default is no longer inherited by Main controls.
 
-- Main Toolbar fidelity checkpoint: fixed Menu/Project zones, a flexible BAR/BEAT/TICK transport cluster, and fixed right-side TC/METRO/AUTO/PLAY/STOP hit-targets keep the MPC3 hierarchy stable across screen widths.
+- Main Toolbar fidelity checkpoint: fixed Menu/Project zones, a flexible BAR/BEAT/TICK transport cluster, fixed TC/METRO/AUTO controls and fixed MIDI In/Out status cells keep the MPC3 hierarchy stable across screen widths.
+
+
+## 2026-10-04 Pad Mixer fidelity checkpoint
+
+The Pad Mixer now follows the persistent MPC workspace model instead of the legacy four-strip diagnostic layout:
+
+- 16 Drum Pad strips are represented in one horizontally scrollable mixer workspace, with eight compact strips visible at the target density.
+- Each strip keeps Pad selection, sample identity, Level, Pan and Tune in one local context.
+- Level uses a vertical fader surface; Pad selection is the primary red semantic selection.
+- Data Dial focus is explicit and visible: LEVEL -> PAN -> TUNE, with Data Dial press cycling the three focused controls.
+- Data Dial deltas dispatch to the existing native pad Level/Pan/Tuning setters; no realtime callback, sampler, sequencer or MIDI decoder code is involved.
+- Channel Mixer remains RESERVED until truthful track-strip mixer semantics exist.
+
+Browser chrome now also uses the same flat MPC selection language as the migrated shell: rectangular surfaces, red selected state, and zero-radius framing.
+
+
+## 2026-10-04 Toolbar / Browser / Menu fidelity checkpoint
+
+- Toolbar chrome is graphite/status-oriented; red is reserved for semantic selection/accent surfaces.
+- Browser uses the MPC hierarchy `Places / Content / Expansions`, official file-type filter vocabulary, and keeps Sample Assign/Audition/Load on the shell Function Bar.
+- Browser target Pad/Layer and current sample are compact read-only context state; the workspace no longer reserves a duplicate 190dp target command panel.
+- Menu remains a 4×4 launcher. System commands are exposed through the shell Function Bar rather than a nested second footer.
+- Pad Mixer is a 16-pad workspace with eight visible compact strips and explicit Data Dial Level/Pan/Tune focus.
+
+
+### 2026-10-04 Main shell fidelity correction
+
+The Main screen is now being aligned to the actual MPC 3.9 composition rather than a generic “MPC-like” shell. The visible left region is the five-shortcut rail followed by XL Mixer Strips; the old persistent Sequence/Track/Program/Data Dial rail is hidden migration scaffolding only.
+
+The Track/Pad strip choice remains in the lower-right of the Main Track/Arrangement section, matching the documented MPC interaction placement. Main Toolbar presentation remains graphite in Main; red is reserved for semantic selection/accent surfaces.
+
+
+## 2026-10-04 XL Channel Strip fidelity checkpoint
+
+Main's visible left-side composition is now treated as a real MPC 3.9 XL Channel Strip rather than a generic Android mixer card:
+
+`five shortcuts -> XL Channel Strips -> Main workspace -> Function Bar`.
+
+The strip layout follows the documented relationship:
+- selected Track -> Main Output on the right;
+- selected Drum Pad -> corresponding Track on the right;
+- top visibility affordance controls expanded/collapsed strip detail;
+- LVL remains the implemented strip view while FX/SEND/I/O are reserved;
+- Track strips expose Mute/Solo/Automation/Record according to documented availability;
+- Pad strips do not invent Track-only controls;
+- the strip uses a dense vertical meter/fader and pan control rather than large Android-style value cards.
+
+The strip is presentation-first. Semantic ownership remains in `MpcUiState`, `MpcNavigationController`, MainActivity/native state, and the protected audio/MIDI layers.
+
+Source references:
+- MPC Standalone OS User Guide v3.9, Mixer Strips section, pp. 135-136.
+- Akai Professional, MPC3 FAQ: XL Channel Strip / Full-Color Track and Pad Mixer / One-to-One Track Workflow.
+
+Remaining fidelity gap:
+- dynamic right-strip switching for SEND/return context;
+- FX insert surface;
+- SEND knob surface;
+- I/O surface;
+- final physical MkII verification.
+
+
+## 2026-10-04 Main Track Type UI correction
+
+Fidelity correction: the Main Track header now renders one Track Type icon, matching the documented MPC workflow. The previous six-icon cluster has been removed from the persistent header. Six Track Types remain available conceptually through Track Type selection, but only the currently selected type is shown in the Main header.
+
+Interaction contract:
+- tap Track Type icon -> Track Type Select context;
+- Data Dial focus -> TRACK_TYPE;
+- current type is shown by the icon;
+- unsupported backend types remain unavailable rather than being visually presented as independently selectable Main buttons.
+
+This supersedes the earlier six-icon-cluster description.
+
+
+## 2026-10-04 Main Track identity geometry correction
+
+The Track identity band now places the single Track Type icon immediately before the Track number/name block, keeping the icon spatially attached to Track identity as described by the MPC 3.9 workflow. The Track Type icon is the only persistent type affordance; its selection surface opens the Track Type context. This replaces the earlier six-icon header interpretation.
+
+
+## 2026-10-04 Main Track controller-first layout correction
+
+Canonical Main Track composition is now controller-first: no on-screen 4x4 pad matrix is rendered inside Main. Pads are selected on the MPC Studio MkII, and the phone display uses the resulting selected Pad/Layer state in the waveform surface. This keeps the Main screen structurally faithful to MPC 3.x instead of adding Android-specific performance controls.
+
+
+## 2026-10-04 XL Channel Strip top-control fidelity
+
+The visible XL Channel Strip region keeps its show/hide control compact and icon-only. A textual "MIXER" header is not part of the strip identity and must not consume the strip's vertical workspace budget. The top control remains the single visibility affordance for the XL strip region.
+
+## 2026-10-04 Shortcut Rail selection indicator fidelity
+
+The five shortcut cells remain dark graphite in both selected and unselected states. The selected shortcut is identified by a narrow red edge indicator rendered by the same deterministic icon drawable used for the rail pictogram. This is presentation-only and does not change navigation or hardware routing.
+
+
+
+## Pull-Down Menu
+
+The shell now exposes an MPC-style Pull-Down Menu surface from the Main transport-position area. The first page is a compact Control/status surface; the second page is the Q-Link context. Both are shell overlays rather than independent navigation modes.
+
+Interaction contract:
+- swipe down from the Main transport/position area opens Pull-Down;
+- swipe up inside the panel closes it;
+- the close affordance and outside scrim also dismiss it;
+- page 2 exposes the documented Q-Link vocabulary while unavailable editing operations remain clearly RESERVED;
+- underlying Main selection and transport state remain unchanged.
+
+### 2026-10-05 Pull-Down chrome iconography fidelity
+
+The Pull-Down Menu's close and page-navigation affordances use the same deterministic original vector icon system as the rest of the MPC-facing shell. Visible Unicode glyphs are not used for close/previous/next controls, avoiding Android font substitution and keeping small controller-oriented touch targets visually stable.
+
+The Pull-Down remains a shell overlay: iconography changes presentation only and does not add navigation, audio, MIDI or Q-Link semantics.
+
+### 2026-10-06 Shortcut Rail icon + label fidelity checkpoint
+
+The canonical five-slot Shortcut Rail now uses a dedicated presentation item instead of generic Android Button-only chrome. Every slot renders a deterministic vector icon, a compact visible label and a thin MPC-style selection indicator; accessibility remains semantic (MPC shortcut <destination>).
+
+The factory order is unchanged and remains: Browser / Channel Mixer / Pad Mixer / Sounds / XY. Reserved destinations stay visually present because the rail reproduces the documented MPC high-frequency layout even when a backend destination is unavailable.
+
+Presentation ownership is split cleanly:
+- MpcShortcutRailItemView owns icon/label/selection rendering;
+- MainActivity keeps the existing semantic navigation callback and projects the selected mode;
+- MpcNavigationController remains the source of shortcut order/state.
+
+No realtime audio callback, sampler, sequencer scheduler/clock, MIDI transport, raw MkII decoder or SysEx layer is changed by this slice.
+
+Acceptance target: source regression green, followed by fresh Android Build + emulator smoke and separate physical MPC Studio MkII verification.
+
+## 2026-10-06 Main LAYER vocabulary fidelity
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+`Main` now presents the selected Drum layer as `LAYER 1` / `LAYER 2` / etc., matching the documented MPC Main field vocabulary. The semantic layer range remains unchanged; the UI no longer adds a synthetic `/8` suffix that is not part of the MPC Main surface.
+
+Presentation-only. No audio, sampler, sequencer, MIDI, MkII decoder or SysEx ownership changed.
+
+## 2026-10-06 Startup visual-evidence ordering
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The Android smoke harness now captures the startup screenshot after launch/process/activity/fatal-crash checks and before the settling interval that allows the application-side UI audit to navigate across contexts. This keeps the visual artifact anchored to the canonical Main surface.
+
+Acceptance-harness synchronization only. No audio, sampler, sequencer, MIDI, MPC Studio MkII decoder or SysEx behavior changed.

@@ -4,14 +4,97 @@ set -euo pipefail
 APK="android/app/build/outputs/apk/debug/app-debug.apk"
 PACKAGE="com.miguelduval.mpcmk2groovebox.debug"
 ACTIVITY="$PACKAGE/com.miguelduval.mpcmk2groovebox.MainActivity"
+DEVICE_DUMP="/sdcard/window_dump.xml"
 DUMP="/tmp/mpc-groovebox-ui.xml"
 SMOKE_MODE_EXTRA="mpc.groovebox.smoke.mode"
 MAIN_ACTIVITY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java"
+BROWSER_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"
+BROWSER_FILTER_ICON_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserFilterIconDrawable.java"
 UI_STATE_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"
 NAVIGATION_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcNavigationController.java"
 NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
 TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackEditView.java"
 SHELL_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"
+
+echo "Running reserved shortcut state ownership preflight..."
+reserved_nav_start=$(grep -n -m1 'private void navigateToMode(MpcUiState.Mode mode)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+reserved_nav_end=$(grep -n -m1 'private void updateMpcShellState()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$reserved_nav_start" || -z "$reserved_nav_end" || "$reserved_nav_end" -le "$reserved_nav_start" ]]; then
+  echo "ERROR: reserved shortcut navigation method boundary is missing"
+  exit 1
+fi
+reserved_nav_block=$(sed -n "${reserved_nav_start},$((reserved_nav_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if ! grep -Fq -- 'navigationController.navigate(mode);' <<<"$reserved_nav_block"; then
+  echo "ERROR: reserved shortcut activation must preserve its semantic mode"
+  exit 1
+fi
+echo "Running MPC shortcut config source hygiene preflight..."
+shortcut_config_start=$(grep -n -m1 'private void showShortcutConfigPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$shortcut_config_start" ]]; then
+  echo "ERROR: Shortcut config source boundary is missing"
+  exit 1
+fi
+shortcut_config_end=$(grep -n -m1 'private void navigateBackFromShell()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$shortcut_config_end" || "$shortcut_config_end" -le "$shortcut_config_start" ]]; then
+  shortcut_config_end=$((shortcut_config_start + 240))
+fi
+shortcut_config_block=$(sed -n "${shortcut_config_start},$((shortcut_config_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'availableModes' <<<"$shortcut_config_block"; then
+  echo "ERROR: Shortcut config must use the canonical shortcut catalog, not the obsolete availableModes list"
+  exit 1
+fi
+echo "Running MPC default shortcut fidelity preflight..."
+for required in \
+  'DEFAULT_SHORTCUTS' \
+  'MpcUiState.Mode.BROWSER' \
+  'MpcUiState.Mode.CHANNEL_MIXER' \
+  'MpcUiState.Mode.PAD_MIXER' \
+  'MpcUiState.Mode.SOUNDS' \
+  'MpcUiState.Mode.XYFX'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcModeRegistry.java" && \
+     ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"; then
+    echo "ERROR: MPC default shortcut fidelity contract missing: $required"
+    exit 1
+  fi
+done
+
+for required in \
+  'case BROWSER: return "BROWSER";' \
+  'case CHANNEL_MIXER: return "CH MIX";' \
+  'case PAD_MIXER: return "PAD MIX";' \
+  'case SOUNDS: return "SOUNDS";' \
+  'case XYFX: return "XY";'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC Shortcut Rail visible-label contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Eq -- 'case (BROWSER|CHANNEL_MIXER|PAD_MIXER|SOUNDS|XYFX): return "[^"]*[⌂☷⌕▦▥✎∿●≡▤✣♫▶╬☰]"' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: canonical MPC Shortcut Rail must not use Unicode glyphs as visible labels"
+  exit 1
+fi
+
+echo "Running MPC factory shortcut reset preflight..."
+if ! grep -Fq -- 'void resetDefaultShortcuts()' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcNavigationController.java" ||    ! grep -Fq -- 'navigationController.resetDefaultShortcuts();' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: factory shortcut reset must use the dedicated default-reset contract"
+  exit 1
+fi
+if grep -Fq -- 'navigationController.setShortcuts(' "$MAIN_ACTIVITY_SOURCE" &&    grep -Fq -- 'MpcModeRegistry.defaultShortcuts()' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main shortcut reset must not call strict setShortcuts(defaultShortcuts())"
+  exit 1
+fi
+
+echo "Running MPC Pull-Down Menu preflight..."
+for required in   "MpcPullDownPanelView"   "buildPullDownOverlay(root)"   "installPullDownGesture()"   "showPullDown()"   "hidePullDown()"   "CURRENT CONTROL"   "MPC Pull-Down Menu"   "sequenceTransportView.setContentDescription("   "swipe down for MPC Pull-Down Menu"; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java"; then
+    echo "ERROR: MPC Pull-Down Menu shell contract missing: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'pageIndex == 0' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java" ||    ! grep -Fq -- 'setPage(pageIndex + 1)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java" ||    ! grep -Fq -- 'setPage(0)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MPC Pull-Down must expose both Control and Q-Link pages"
+  exit 1
+fi
 
 echo "Running MPC Main UI source preflight..."
 for required in \
@@ -29,16 +112,35 @@ for required in \
   "BAR %03d  BEAT %d  TICK %03d" \
   'sequenceType.setText("SEQ")' \
   "Main Track View quick sample waveform" \
+  "Main Sequence transpose state" \
   "Main Track View monitor state" \
   "Main Track View length mode" \
   "Main Track View velocity state" \
+  "Main Sequence transpose state" \
+  'TRANSPOSE\n—' \
   "Main Track View selected layer" \
   "Main Mode sequence tempo source • SEQ • Global unavailable" \
-  "Main Mode Track / Arrangement context header" \
+  "Main Track visual hierarchy • Track / Program / workspace header" \
   "Main Mode selected track" \
   "MPC Toolbar Menu" \
+  "MPC Project Browser" \
+  "MPC_TOOLBAR_BG" \
+  "pageTitle.setVisibility(View.GONE)" \
   "Main Mode sequence header" \
-  "Main Mode BPM" \
+  "Main Mode Track Program context" \
+  "MPC_PANEL_DARK" \
+  "MPC_FLAT_RADIUS_DP));" \
+  "Main Mode selected program" \
+  "Main Mode program ownership status" \
+  "buildMainTrackTypeIconStrip" \
+  "Main Mode selected Track Type icon" \
+  '"TRACK TYPE • DRUM is the only implemented Track Type"' \
+  "buildMpcMenuTile" \
+  "styleMpcMenuFooterButton" \
+  "MPC Main BPM field • double-tap for numeric entry" \
+  "MPC Main BARS field • double-tap for numeric entry" \
+  "MPC Main LOOP START field • double-tap for numeric entry" \
+  "MPC Main LOOP END field • double-tap for numeric entry" \
   "Main Time Signature field • tap for editor" \
   "MPC_TIME_SIGNATURE_HIGHLIGHT" \
   "Timing Correct" \
@@ -49,7 +151,14 @@ for required in \
   "Main Arrangement View header" \
   "Main Track View record sample" \
   "Main Track View browse samples" \
-  "DRUM • TYPE" \
+  "Main Track View quick sample editor • controller-first selected Pad" \
+  'mainTrackSampleEmptyActions = row();' \
+  'mainTrackSampleAuditionButton = mainActionButton(' \
+  'FrameLayout sampleSurface = new FrameLayout(this);' \
+  'Gravity.CENTER' \
+  'Gravity.RIGHT | Gravity.CENTER_VERTICAL' \
+  'quickTrack.addView(sampleColumn,' \
+  'mainTrackTypeField = buildMainTrackTypeIconStrip();' \
   "Main Track Edit" \
   "trackContextHeader.addView(trackEditHeader," \
   "MPC Function Bar REC ARM" \
@@ -87,7 +196,6 @@ for required in \
   "MpcTrackEditView" \
   "hardwareFeedbackView.setVisibility" \
   "bottomStatus.setVisibility" \
-  "uiAuditSmokeMode ? View.VISIBLE : View.GONE" \
   "mpcShortcutLabel" \
   "mpcShortcutButton" \
   "buttonLedOnState" \
@@ -100,6 +208,18 @@ for required in \
   fi
 done
 
+# Main Track Type fidelity also needs the Pad-mode strip source window.
+# Keep this extraction before the first Pad-mode assertion; this script runs
+# with set -u, so referencing it earlier makes the CI fail before the real UI
+# preflight can execute.
+mixer_strip_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
+pad_mode_start=$(grep -n -m1 'if (padMode)' "$mixer_strip_source" | cut -d: -f1)
+if [[ -z "$pad_mode_start" ]]; then
+  echo "ERROR: Main XL mixer pad-mode branch is missing"
+  exit 1
+fi
+pad_mode_block=$(sed -n "$pad_mode_start,$((pad_mode_start + 24))p" "$mixer_strip_source")
+
 if grep -Eq -- 'private int hardwareFocus([[:space:]]|=)' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Data Dial focus must not have an independent MainActivity hardwareFocus field"
   exit 1
@@ -111,8 +231,8 @@ for required in   'private int hardwareFocusId()'   'navigationController.state(
   fi
 done
 
-if ! grep -Fq -- "uiAuditSmokeMode ? View.VISIBLE : View.GONE" "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: normal Main must not expose diagnostic footer as permanent UI"
+if ! grep -Fq -- "hardwareFeedbackView.setVisibility(View.GONE);" "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- "bottomStatus.setVisibility(View.GONE);" "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: ui-audit mode must keep diagnostic footer out of the visual evidence surface"
   exit 1
 fi
 
@@ -139,12 +259,12 @@ if ! grep -Fq -- 'trackContextHeader.addView(trackEditHeader,' "$MAIN_ACTIVITY_S
 fi
 main_identity_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 main_identity_type=$(grep -n -m1 'TextView trackName = mainField("TRACK")' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-main_identity_view=$(grep -n -m1 'mainTrackViewButton = mainActionButton(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_identity_view=$(grep -n -m1 'mainTrackViewButton = mainSectionToggle(' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 if [[ -z "$main_identity_start" || -z "$main_identity_type" || -z "$main_identity_view" || "$main_identity_type" -le "$main_identity_start" || "$main_identity_view" -le "$main_identity_type" ]]; then
   echo "ERROR: Main Track identity band source boundary is missing"
   exit 1
 fi
-main_identity_block=$(sed -n "$main_identity_type,$((main_identity_view - 1))p" "$MAIN_ACTIVITY_SOURCE")
+main_identity_block=$(sed -n "$main_identity_start,$((main_identity_view - 1))p" "$MAIN_ACTIVITY_SOURCE")
 if grep -Fq -- 'mainField("PROGRAM")' <<<"$main_identity_block" || grep -Fq -- 'Main Mode selected program' <<<"$main_identity_block"; then
   echo "ERROR: MPC3 Main Track identity band must not expose a duplicate Program field"
   exit 1
@@ -157,14 +277,24 @@ if grep -Fq -- 'mainProgramField' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: obsolete Main Program field presentation pointer remains"
   exit 1
 fi
-if ! grep -Fq -- 'mainTrackTypeField = buildMainTrackTypeSelector();' <<<"$main_identity_block"; then
-  echo "ERROR: unified Main Track identity ownership contract is missing"
+if ! grep -Fq -- 'mainTrackTypeField = buildMainTrackTypeIconStrip();' <<<"$main_identity_block" || \
+   ! grep -Fq -- 'trackContextHeader.addView(' <<<"$main_identity_block" || \
+   ! grep -Fq -- 'mainTrackTypeField,' <<<"$main_identity_block"; then
+  echo "ERROR: unified Main Track Type icon cluster ownership contract is missing"
   exit 1
 fi
 
-if ! grep -Fq -- 'mainArrangementViewButton = mainActionButton(' "$MAIN_ACTIVITY_SOURCE" || \
-   ! grep -Fq -- 'trackContextHeader.addView(mainArrangementViewButton,' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Arrangement action must stay attached to the unified Track/Arrangement header boundary"
+if ! grep -Fq -- 'mainArrangementViewButton = mainSectionToggle(' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'trackArrangementToggle.addView(mainArrangementViewButton,' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'trackContextHeader.addView(trackArrangementToggle,' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Arrangement action must stay inside the unified Track/Arrangement segmented header"
+  exit 1
+fi
+
+main_track_type_line=$(grep -n -m1 'mainTrackTypeField,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_track_name_line=$(grep -n -m1 'trackName,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_track_type_line" || -z "$main_track_name_line" || "$main_track_type_line" -ge "$main_track_name_line" ]]; then
+  echo "ERROR: Main Track Type icon must remain beside the Track identity before the Track name"
   exit 1
 fi
 
@@ -175,6 +305,76 @@ fi
 
 if ! grep -Fq -- 'MPC_FLAT_RADIUS_DP = 0' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: MPC Main/shell flat-chrome radius contract is missing"
+  exit 1
+fi
+if ! grep -Fq -- 'private static final int MPC_TOOLBAR_BG' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MPC One toolbar visual contract is missing"
+  exit 1
+fi
+if ! grep -Fq -- 'pageTitle.setVisibility(View.GONE);' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: legacy duplicate Main page title must remain hidden in the MPC toolbar"
+  exit 1
+fi
+if ! grep -Fq -- 'buildMainTrackTypeIconStrip()' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'refreshMainTrackTypeVisuals()' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track type icon cluster contract is missing"
+  exit 1
+fi
+echo "Running MPC Main Track Type single-icon fidelity preflight..."
+for required in \
+  'MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP = 38' \
+  'refreshMainTrackTypeVisuals();' \
+  'buildMainTrackTypeIconStrip()' \
+  'trackTypeIconDrawable(' \
+  'TRACKTYPE_ICON' \
+  'TRACK_TYPE_SELECT' \
+  'cleanTrackDisplayName(' ; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Main Track Type fidelity presentation contract missing: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'buildTrackStrip(' <<<"$pad_mode_block"; then
+  echo "ERROR: Main Pad-mode XL strip must pair the selected Pad with its selected Track"
+  exit 1
+fi
+if ! grep -Fq -- 'PAD • SELECTED' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: Main Pad-mode XL strip selected-Pad presentation contract is missing"
+  exit 1
+fi
+if grep -Fq -- 'focusLabel' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java" || \
+   grep -Fq -- 'DIAL •' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: XL Mixer Strip must not reintroduce the obsolete standalone Data Dial row"
+  exit 1
+fi
+if ! grep -Fq -- 'indicator.setBackgroundColor("LVL".equals(tabName) ? RED' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: MPC XL mixer tabs must use a flat active LVL underline"
+  exit 1
+fi
+for required in \
+  'MpcTrackTypeIconDrawable' \
+  'MpcTrackTypeIconDrawable.Type.DRUM' \
+  'MpcTrackTypeIconDrawable.Type.KEYGROUP' \
+  'MpcTrackTypeIconDrawable.Type.PLUGIN' \
+  'MpcTrackTypeIconDrawable.Type.MIDI' \
+  'MpcTrackTypeIconDrawable.Type.CLIP' \
+  'MpcTrackTypeIconDrawable.Type.CV' \
+  'setForeground(icon)' \
+  'Main Track Type ' \
+  'setContentDescription("Main Mode selected Track Type icon' \
+  'TRACKTYPE_ICON'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" && \
+     ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackTypeIconDrawable.java"; then
+    echo "ERROR: MPC Main Track Type six-icon presentation contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'findViewWithContentDescription(\n                content, "Main Mode track type selector")' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track Type must not retain a second selector lookup after unified field migration"
+  exit 1
+fi
+if ! grep -Fq -- 'Main Mode selected program' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: central MPC Program context contract is missing"
   exit 1
 fi
 
@@ -205,15 +405,16 @@ if ! grep -Fq -- 'MPC_TIME_SIGNATURE_HIGHLIGHT' "$MAIN_ACTIVITY_SOURCE"; then
   exit 1
 fi
 
-if ! grep -Fq -- 'mainActionButton("−", v -> adjustMainLayer(-1))' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'mainActionButton("+", v -> adjustMainLayer(1))' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main LAYER must expose compact previous/next layer controls"
+if ! grep -Fq -- 'TextView layerDetail = mainMetric("LAYER");' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'layerDetail.setOnClickListener' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main LAYER must remain a single focused field, not a duplicated +/- control group"
   exit 1
 fi
 if ! grep -Fq -- 'MpcUiState.DataDialFocus.SAMPLE_LAYER' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'LAYER • DATA DIAL / +/-' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main LAYER field must retain semantic Data Dial focus entry"
   exit 1
 fi
-if ! grep -Fq -- 'Button loop = mainActionButton("↻"' "$MAIN_ACTIVITY_SOURCE" ||
+if ! grep -Fq -- 'Button loop = mainActionButton("",' "$MAIN_ACTIVITY_SOURCE" ||
    ! grep -Fq -- 'nativeSequenceSetLoopEnabled(' "$MAIN_ACTIVITY_SOURCE" ||
    ! grep -Fq -- 'loop.setContentDescription(' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Sequence Loop must be a dedicated semantic toggle button"
@@ -228,22 +429,105 @@ if ! grep -Fq -- 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE
   exit 1
 fi
 
+main_layer_start=$(grep -n -m1 'TextView layerDetail = mainMetric("LAYER");' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_layer_start" ]]; then
+  echo "ERROR: Main LAYER field source boundary is missing"
+  exit 1
+fi
+main_layer_block=$(sed -n "${main_layer_start},$((main_layer_start + 38))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'LAYER\n%d/8' <<<"$main_layer_block"; then
+  echo "ERROR: Main LAYER presentation must match MPC vocabulary and show the current layer index without a synthetic /8 suffix"
+  exit 1
+fi
+if ! grep -Fq -- '"LAYER\n%d"' <<<"$main_layer_block"; then
+  echo "ERROR: Main LAYER presentation contract must render the selected layer as the MPC-style single index"
+  exit 1
+fi
+
+echo "Running MPC Main iconography regression preflight..."
+for required in   'MpcMainIconDrawable'   'Mode.PENCIL'   'Mode.LOOP'   'Mode.PLAY'   'Mode.MENU'   'trackEditHeader.setForeground(new MpcMainIconDrawable'   'loop.setForeground(new MpcMainIconDrawable'   'mainTrackSampleAuditionButton.setForeground(new MpcMainIconDrawable'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java"; then
+    echo "ERROR: MPC Main controls must use deterministic vector iconography instead of Unicode text glyphs: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'case LOOP:' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java" || \
+   ! grep -Fq -- 'drawLoop(' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java"; then
+  echo "ERROR: Main Loop icon is missing"
+  exit 1
+fi
+
+echo "Running MPC Toolbar chrome preflight..."
+for required in   'private static final int MPC_TOOLBAR_BG = Color.rgb(17, 19, 22);'   'bar.setBackgroundColor(MPC_TOOLBAR_BG)'   'private static final int MPC_SELECTION_RED = Color.rgb(224, 30, 61);'   'MPC Toolbar Menu'   'MPC Project Browser'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC3 graphite Toolbar contract missing: $required"
+    exit 1
+  fi
+done
+for required in   'private static final int BG = Color.rgb(17, 19, 22);'   'toolbar.setBackgroundColor(BG)'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"; then
+    echo "ERROR: outer MPC shell graphite Toolbar host contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'bar.setBackgroundColor(Color.rgb(224, 30, 61))' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MPC3 Main Toolbar must not be hard-coded red"
+  exit 1
+fi
+if ! grep -Fq -- 'compactTrackContext.setBackground(strokeBackground(
+                MPC_SELECTION_RED,' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MPC3 red selection accent contract is missing"
+  exit 1
+fi
+
 echo "Running MPC3 Toolbar geometry preflight..."
 for required in \
   'MPC_TOOLBAR_INSET_DP = 6' \
   'MPC_TOOLBAR_CONTROL_HEIGHT_DP = 34' \
   'MPC_TOOLBAR_GAP_DP = 2' \
   'MPC_TOOLBAR_MENU_WIDTH_DP = 38' \
-  'MPC_TOOLBAR_PROJECT_WIDTH_DP = 132' \
+  'MPC_TOOLBAR_PROJECT_IDENTITY_WIDTH_DP = 106' \
+  'MPC_TOOLBAR_PROJECT_BROWSER_WIDTH_DP = 26' \
   'MPC_TOOLBAR_TIMING_WIDTH_DP = 60' \
   'MPC_TOOLBAR_METRO_WIDTH_DP = 58' \
   'MPC_TOOLBAR_AUTO_WIDTH_DP = 48' \
-  'MPC_TOOLBAR_TRANSPORT_WIDTH_DP = 40' \
-  'bar.setContentDescription("MPC Main Toolbar")' \
-  'BAR 001  BEAT 1  TICK 000' \
-  'MPC Toolbar Menu'; do
+  'MPC_TOOLBAR_IO_WIDTH_DP = 40' \
+  'bar.setContentDescription("MPC One Main Toolbar")' \
+  'BAR  001    BEAT  1    TICK  000' \
+  'MPC Toolbar Menu' \
+  'MPC Toolbar MIDI IN' \
+  'MPC Toolbar MIDI OUT' \
+  'midiInTopStatus' \
+  'midiOutTopStatus' \
+  'MPC 3.9 keeps the Toolbar status-oriented' \
+  'hardware-first operation, while the final cells show MIDI In/Out' \
+  'view.setText("IN".equals(view.getTag()) ? "IN" : "OUT")'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MPC3 Toolbar geometry/content contract missing: $required"
+    exit 1
+  fi
+done
+
+echo "Running MPC shortcut pictography preflight..."
+SHORTCUT_ITEM_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutRailItemView.java"
+for required in   'MpcShortcutIconDrawable'   'new MpcShortcutIconDrawable('   'dp(MPC_SHORTCUT_SELECTION_WIDTH_DP)'   'setSelectedState(boolean selected)'   'setSelected(selected)'   'case BROWSER:'   'case GRID:'   'case STEP:'   'case TRACK_VIEW:'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "$SHORTCUT_ITEM_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutIconDrawable.java"; then
+    echo "ERROR: deterministic MPC shortcut icon contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'button.setTextColor(selected ? TEXT : MUTED)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: shortcut selection must not rely on Unicode glyph color alone"
+  exit 1
+fi
+if grep -Fq -- 'selected ? MPC_SELECTED : BG' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: shortcut rail must not use a full-width red selected tile"
+  exit 1
+fi
+for required in 'MPC_SHORTCUT_SELECTION_WIDTH_DP = 3' 'canvas.drawRect(' 'Color.rgb(224, 30, 61)' 'graphite surface' ; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutIconDrawable.java" && \
+     ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC shortcut selection-rail visual contract missing: $required"
     exit 1
   fi
 done
@@ -282,6 +566,24 @@ if grep -Fq -- 'dp(44)' <<<"$main_header_block"; then
   echo "ERROR: Main Track context header still uses the pre-fidelity 44dp geometry"
   exit 1
 fi
+
+echo "Running MPC One Main visual hierarchy preflight..."
+for required in \
+  'mainSectionToggle(' \
+  'Main Track Arrangement segmented control' \
+  'Main Mode Track workspace' \
+  'Main Mode selected program' \
+  'Main Program create button reserved' \
+  'programCreateButton' \
+  'Main Track visual hierarchy' \
+  'MPC_MAIN_WORKSPACE_WEIGHT' \
+  'MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36' \
+  'new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP), 1.0f)'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC One Main visual hierarchy contract missing: $required"
+    exit 1
+  fi
+done
 
 echo "Running Main workspace state-preservation preflight..."
 main_page_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
@@ -331,7 +633,7 @@ if ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(0)' <<<"$main_view_switch_
   echo "ERROR: Track/Arrangement switch must operate on one shared workspace host"
   exit 1
 fi
-if ! grep -Fq -- 'MPC presents Track / Arrangement as contextual headers' <<<"$main_view_switch_block"; then
+if ! grep -Fq -- 'MPC presents Track / Arrangement as a compact segmented context' <<<"$main_view_switch_block"; then
   echo "ERROR: Main Track/Arrangement header fidelity contract is missing"
   exit 1
 fi
@@ -375,7 +677,7 @@ for required in   'MPC Track View focused Track field'   'Track View track I/O u
     exit 1
   fi
 done
-for required in 'strip.setOnClickListener(v -> {' 'String trackIdentityStatus =' 'trackMetadataSeparator'; do
+for required in 'strip.setOnClickListener(v -> {' 'String trackIdentityStatus ='; do
   if ! grep -Fq -- "$required" <<<"$track_view_block"; then
     echo "ERROR: Track View selection/identity contract missing: $required"
     exit 1
@@ -407,8 +709,61 @@ if ! grep -Fq -- 'Track identity is intentionally compact' "$MAIN_ACTIVITY_SOURC
   exit 1
 fi
 
-if ! grep -Fq -- 'compactMixerStripModeToggle = mainActionButton("□  ▦",' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Track lower-right selector must expose the single-pad / four-squares pair"
+echo "Running Main Track-state row fidelity preflight..."
+for required in   'trackDetailRow.addView(monitorDetail, weight());'   'trackDetailRow.addView(lengthDetail, weight());'   'trackDetailRow.addView(velocityDetail, weight());'   'layerDetail,'   'selectedLayer + 1'   'setBottomStatus("LAYER • DATA DIAL / +/-")'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC Main Track-state row field contract missing: $required"
+    exit 1
+  fi
+done
+main_track_state_line=$(grep -n -m1 'trackWorkspace.addView(trackDetailRow' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_track_canvas_line=$(grep -n -m1 'trackWorkspace.addView(quickTrack' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_track_state_line" || -z "$main_track_canvas_line" || "$main_track_state_line" -le "$main_track_canvas_line" ]]; then
+  echo "ERROR: Main Track-state row must be rendered below the Track waveform/canvas"
+  exit 1
+fi
+if grep -Fq -- 'LinearLayout layerControls = row();' "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- 'layerControls.addView(layerDownButton' "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- 'layerControls.addView(layerUpButton' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main LAYER must remain one field, not a nested +/- control group"
+  exit 1
+fi
+if ! grep -Fq -- 'layerDetail.setOnClickListener' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main LAYER field must own the shared Data Dial focus entry"
+  exit 1
+fi
+
+echo "Running Main waveform layer-indicator preflight..."
+if ! grep -Fq -- 'public void setLayerIndicator(int layer)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/WaveformView.java" || \
+   ! grep -Fq -- 'drawLayerIndicator(canvas, left, right, top);' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/WaveformView.java" || \
+   ! grep -Fq -- 'mainTrackWaveform.setLayerIndicator(selectedLayer);' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main waveform eight-layer indicator contract is missing"
+  exit 1
+fi
+
+echo "Running Main Track/Pad selector placement preflight..."
+if ! grep -Fq -- 'mixerSelectorLp.bottomMargin = dp(44)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track/Pad selector must reserve the Track-state row below the canvas"
+  exit 1
+fi
+if ! grep -Fq -- 'mainSequenceTransposeField = transpose;' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main TRANSPOSE ownership must remain in the Sequence section"
+  exit 1
+fi
+echo "Running Main Track/Pad selector placement preflight..."
+if grep -Fq -- 'trackDetailRow.addView(compactMixerStripModeToggle' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track/Pad selector must not live inside the MONITOR/LENGTH/VELOCITY/LAYER state row"
+  exit 1
+fi
+
+for required in   'compactMixerStripModeToggle = mainActionButton("",'   'Gravity.RIGHT | Gravity.BOTTOM'   'FrameLayout.LayoutParams mixerSelectorLp = new FrameLayout.LayoutParams('   'mixerSelectorLp.rightMargin = dp(4)'   'mixerSelectorLp.bottomMargin = dp(44)'   'mainTrackArrangementHost.addView(compactMixerStripModeToggle, mixerSelectorLp)'   'MPC 3.9 places the Track/Pad channel-strip selector in the'   'lower-right corner of the Track/Arrangement section'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC Track/Pad selector lower-right placement contract missing: $required"
+    exit 1
+  fi
+done
+
+if ! grep -Fq -- 'compactMixerStripModeToggle = mainActionButton("",' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'compactMixerStripModeToggle.setForeground(new MpcMixerStripIconDrawable' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track lower-right selector must expose the deterministic single-pad / four-squares icon"
   exit 1
 fi
 
@@ -421,11 +776,15 @@ if ! grep -Fq -- 'Main Sequence Select list' "$MAIN_ACTIVITY_SOURCE" ||    ! gre
   echo "ERROR: Main Sequence Select must return to Main with Sequence Data Dial focus"
   exit 1
 fi
-if ! grep -Fq -- 'mainTrackSampleActionButton.setText("SAMPLE EDIT");' "$MAIN_ACTIVITY_SOURCE" || \
-   ! grep -Fq -- 'v -> showSamplePage());' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: loaded Main Track sample must expose SAMPLE EDIT"
+if grep -Fq -- 'mainTrackSampleActionButton.setText("SAMPLE EDIT");' "$MAIN_ACTIVITY_SOURCE" ||    grep -Fq -- 'Main Track View sample edit' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track canvas must not carry a permanent SAMPLE EDIT duplicate"
   exit 1
 fi
+if ! grep -Fq -- 'this::openMainTrackEditContext' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track sample must retain waveform double-tap Track Edit entry"
+  exit 1
+fi
+
 sequence_select_start=$(grep -n -m1 'private void showSequenceSelectPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 track_select_start=$(grep -n -m1 'private void showTrackSelectPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 program_select_start=$(grep -n -m1 'private void showProgramSelectPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
@@ -483,6 +842,12 @@ for required in   'MPC_FLAT_RADIUS_DP));'   'group.setBackground(strokeBackgroun
   fi
 done
 
+echo "Running Main Mixer default-state preflight..."
+if ! grep -Fq -- 'assertTrue(state.compactMixerVisible());' "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcUiStateTest.java"; then
+  echo "ERROR: Main mixer strips default-visibility regression test is missing"
+  exit 1
+fi
+
 echo "Running compact context sizing preflight..."
 if grep -Fq -- 'ViewGroup.LayoutParams.MATCH_PARENT, dp(304)' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: persistent MPC context rail must not reserve the obsolete fixed 304dp height"
@@ -497,7 +862,7 @@ echo "Running Main section framing preflight..."
 for required in \
   'sequenceCard.setBackground(strokeBackground(' \
   'trackProgramSection.setBackground(strokeBackground(' \
-  'Main Mode Track / Arrangement workspace section' \
+  'Main Track visual hierarchy • Track / Program / workspace section' \
   'Main Sequence Loop button'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Main section framing contract missing: $required"
@@ -533,24 +898,318 @@ fi
 
 track_detail_line=$(grep -n -m1 'trackWorkspace.addView(trackDetailRow,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 track_canvas_line=$(grep -n -m1 'trackWorkspace.addView(quickTrack,' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_detail_line" -ge "$track_canvas_line" ]]; then
-  echo "ERROR: Main Track state row must remain directly above the performance canvas"
+if [[ -z "$track_detail_line" || -z "$track_canvas_line" || "$track_canvas_line" -ge "$track_detail_line" ]]; then
+  echo "ERROR: Main Track state row must remain directly below the performance canvas"
   exit 1
 fi
 
 echo "Running Main Track/Arrangement horizontal canvas preflight..."
-main_pad_split=$(grep -n -m1 '0, ViewGroup.LayoutParams.MATCH_PARENT, 0.36f' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-main_wave_split=$(grep -n -m1 '0, ViewGroup.LayoutParams.MATCH_PARENT, 0.64f' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
-if [[ -z "$main_pad_split" || -z "$main_wave_split" || "$main_pad_split" -ge "$main_wave_split" ]]; then
-  echo "ERROR: Main Track touch-pad / waveform split is missing or reversed"
+if grep -Fq -- 'padColumn.addView(buildMiniMainPadGrid()' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main canonical Track/Arrangement workspace must not embed the Android 4x4 pad grid"
   exit 1
 fi
-if grep -Fq -- '0.52f' "$MAIN_ACTIVITY_SOURCE" || grep -Fq -- '0.48f' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: obsolete near-equal Main Track pad/waveform split remains"
+if grep -Fq -- 'quickTrack.addView(padColumn' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main canonical Track/Arrangement workspace must not allocate a software pad column"
   exit 1
 fi
 # The Track state row is intentionally rendered immediately above the performance canvas
 # (see the positive ordering assertion above). Do not assert the inverse here.
+
+echo "Running MPC Pad Mixer Java nesting preflight..."
+for required in   'interface FaderCallback'   'private final class Fader'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+    echo "ERROR: Pad Mixer Fader nesting contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'interface Callback {' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+  echo "ERROR: Pad Mixer Fader must not declare a static member interface inside an inner class"
+  exit 1
+fi
+
+echo "Running MPC Pad Mixer format-string safety preflight..."
+if grep -Fq -- 'PAN %+0.2f' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java" ||    grep -Fq -- 'TUNE %+0.1f' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+  echo "ERROR: Pad Mixer must not use Java Formatter +0 flag without an explicit width"
+  exit 1
+fi
+for required in 'PAN %+.2f' 'TUNE %+.1f'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+    echo "ERROR: Pad Mixer safe signed format contract missing: $required"
+    exit 1
+  fi
+done
+
+echo "Running MPC Browser flat-chrome preflight..."
+echo "Running MPC Browser information-architecture preflight..."
+echo "Running MPC Browser workspace composition preflight..."
+for required in   'body.addView(center, new LayoutParams(0, -1, 1))'   'center.addView(scroll, new LayoutParams('   'ViewGroup.LayoutParams.MATCH_PARENT, 0, 1)'   'scroll.setContentDescription("MPC Browser results list")'   'TARGET • PAD'   'Browser target context • state only'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
+    echo "ERROR: MPC Browser workspace composition contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'paramsWidth(context, 190)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
+  echo "ERROR: Browser must not reserve the legacy 190dp duplicate target card"
+  exit 1
+fi
+if grep -Fq -- 'targetPanel' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
+  echo "ERROR: Browser must not keep a separate Android-style target panel"
+  exit 1
+fi
+
+if ! grep -Fq -- '"PROJECTS", "PATTERNS", "KITS", "PLUGIN PRESETS", "SAMPLES", "ALL"' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
+  echo "ERROR: MPC Browser six file-type filters are not aligned with the canonical filter taxonomy"
+  exit 1
+fi
+
+for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void setSection(String section)'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'SPLICE'   'OPEN STORAGE…'   'CURRENT SAMPLE'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
+    echo "ERROR: MPC Browser information-architecture contract missing: $required"
+    exit 1
+  fi
+done
+for required in   'MPC_FLAT_RADIUS_DP = 0'   'MPC_BROWSER_SELECTED'   'MPC Browser'   'setCornerRadius(dp(getContext(), MPC_FLAT_RADIUS_DP))'   'selected ? MPC_BROWSER_SELECTED : SURFACE_2'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
+    echo "ERROR: MPC Browser flat-chrome contract missing: $required"
+    exit 1
+  fi
+done
+
+echo "Running MPC 4x4 Menu iconography preflight..."
+menu_tile_source_start=$(grep -n -m1 'private Button buildMpcMenuTile' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+menu_footer_start=$(grep -n -m1 'private Button styleMpcMenuFooterButton' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$menu_tile_source_start" || -z "$menu_footer_start" || "$menu_footer_start" -le "$menu_tile_source_start" ]]; then
+  echo "ERROR: MPC Menu tile source boundary is missing"
+  exit 1
+fi
+menu_tile_block=$(sed -n "${menu_tile_source_start},$((menu_footer_start - 1))p" "$MAIN_ACTIVITY_SOURCE")
+for required in 'MpcShortcutIconDrawable(entry.mode, 0.0f)' 'setCompoundDrawablesWithIntrinsicBounds(' 'setCompoundDrawablePadding('; do
+  if ! grep -Fq -- "$required" <<<"$menu_tile_block"; then
+    echo "ERROR: MPC 4x4 Menu tile vector icon contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'glyph + "\n" + title' <<<"$menu_tile_block"; then
+  echo "ERROR: MPC 4x4 Menu must not compose visible tiles from Unicode glyph text"
+  exit 1
+fi
+echo "Running MPC Menu Function Bar ownership preflight..."
+menu_start=$(grep -n -m1 'private void showMenuPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+shortcut_start=$(grep -n -m1 'private void showShortcutConfigPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$menu_start" || -z "$shortcut_start" || "$shortcut_start" -le "$menu_start" ]]; then
+  echo "ERROR: Menu source boundary is missing"
+  exit 1
+fi
+menu_block=$(sed -n "${menu_start},$((shortcut_start - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'LinearLayout system = row();' <<<"$menu_block"; then
+  echo "ERROR: Menu must not render a second internal bottom command bar"
+  exit 1
+fi
+for required in   'case MENU:'   'NEW PROJECT'   'SAVE'   'PREFERENCES'   'MIDI / CONTROL'   'EDIT SHORTCUTS'   'BACK'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Menu contextual Function Bar contract missing: $required"
+    exit 1
+  fi
+done
+
+echo "Running MPC Pad Mixer presentation preflight..."
+echo "Running MPC Pad Mixer Function Bar preflight..."
+echo "Running MPC Main XL Mixer Strip preflight..."
+for required in   'MpcMainMixerStripView'   'MPC Main XL Mixer Strips'   'MPC XL'   'TRACK • SELECTED'   'PAD • SELECTED'   'OUTPUT 1/2'   'MpcVerticalMeter'   'MpcPanSlider'   'addIdentityHeader('   'addProgramBand('   'MPC XL level meter and white-line fader'   'MPC XL selected track pan slider reserved'   'mixerStripVisible()'   'onMixerStripVisibilityChanged'   'MPC Main mixer strips show or hide'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+    echo "ERROR: Main XL Mixer Strip architecture contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'modeLabel' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: XL Mixer Strip must not reserve a textual MIXER header"
+  exit 1
+fi
+for required in 'visibilityButton = button(context, "", 10);' 'MpcMixerStripIconDrawable.Mode.PERSONAL_CHANNEL_STRIP' 'MPC Main mixer strips show or hide' 'header.addView(' 'dp(context, 26), dp(context, 20)'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+    echo "ERROR: XL Mixer Strip compact top visibility control contract missing: $required"
+    exit 1
+  fi
+done
+
+echo "Running MPC 3.9 Main XL mixer strip semantic preflight..."
+mixer_strip_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
+pad_mode_start=$(grep -n -m1 'if (padMode)' "$mixer_strip_source" | cut -d: -f1)
+if [[ -z "$pad_mode_start" ]]; then
+  echo "ERROR: Main XL mixer pad-mode branch is missing"
+  exit 1
+fi
+pad_mode_block=$(sed -n "$pad_mode_start,$((pad_mode_start + 24))p" "$mixer_strip_source")
+if ! grep -Fq -- 'buildPadStrip(' <<<"$pad_mode_block" ||    ! grep -Fq -- 'buildTrackStrip(' <<<"$pad_mode_block"; then
+  echo "ERROR: MPC 3.9 Pad Mixer Strip must pair the selected Pad with its selected Track"
+  exit 1
+fi
+if grep -Fq -- 'strips.addView(buildOutputStrip(' <<<"$pad_mode_block"; then
+  echo "ERROR: MPC 3.9 Pad Mixer Strip must not show Main Output as the right strip"
+  exit 1
+fi
+
+if ! grep -Fq -- 'new MpcMainMixerStripView(this,' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main XL Mixer Strip must be composed by the application shell"
+  exit 1
+fi
+if ! grep -Fq -- 'assertTrue(state.compactMixerVisible())' "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcUiStateTest.java"; then
+  echo "ERROR: Main Mixer default visibility regression test is missing"
+  exit 1
+fi
+
+echo "Running MPC Pad Mixer Data Dial preflight..."
+echo "Running MPC Pad Mixer hardware handler preflight..."
+for required in   'MpcUiState.Mode.PAD_MIXER'   'MpcUiState.DataDialFocus.PAD_MIXER_LEVEL'   'MpcUiState.DataDialFocus.PAD_MIXER_PAN'   'MpcUiState.DataDialFocus.PAD_MIXER_TUNE'   'cyclePadMixerDialFocus()'   'MpcPadMixerView.ControlFocus.LEVEL'   'MpcPadMixerView.ControlFocus.PAN'   'MpcPadMixerView.ControlFocus.TUNE'   'onControlFocus'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+    echo "ERROR: Pad Mixer hardware focus handler contract missing: $required"
+    exit 1
+  fi
+done
+
+for required in   'PAD_MIXER_LEVEL'   'PAD_MIXER_PAN'   'PAD_MIXER_TUNE'   'case PAD_MIXER:'   'cyclePadMixerDialFocus()'   'nativeAudioSetPadLevel(selectedPad'   'nativeAudioSetPadPan(selectedPad'   'nativeAudioSetPadTuning(selectedPad'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"; then
+    echo "ERROR: Pad Mixer Data Dial semantic contract missing: $required"
+    exit 1
+  fi
+done
+for required in   'enum ControlFocus'   'onControlFocus'   'setControlFocus'   'LEVEL'   'PAN'   'TUNE'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"; then
+    echo "ERROR: Pad Mixer control-focus UI contract missing: $required"
+    exit 1
+  fi
+done
+
+if ! grep -Fq -- 'case PAD_MIXER:' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Pad Mixer Function Bar context is missing"
+  exit 1
+fi
+pad_mixer_function_start=$(grep -n -m1 'case PAD_MIXER:' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+pad_mixer_function_end=$(
+  awk -v start="$pad_mixer_function_start"     'NR > start && /case SAMPLE_EDIT:/ { print NR; exit }'     "$MAIN_ACTIVITY_SOURCE"
+)
+if [[ -z "$pad_mixer_function_end" || "$pad_mixer_function_end" -le "$pad_mixer_function_start" ]]; then
+  echo "ERROR: Pad Mixer Function Bar source boundary is missing"
+  exit 1
+fi
+pad_mixer_function_block=$(sed -n "${pad_mixer_function_start},$((pad_mixer_function_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+for required in   'PAD −'   'PAD +'   'TRACK EDIT'   'MAIN'   'BROWSER'   'navigationController.setSelectedPad(selectedPad)'; do
+  if ! grep -Fq -- "$required" <<<"$pad_mixer_function_block"; then
+    echo "ERROR: Pad Mixer Function Bar contract missing: $required"
+    exit 1
+  fi
+done
+
+echo "Running MPC Pad Mixer ownership/presentation preflight..."
+mix_start=$(grep -n -m1 'private void showMixPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+mix_midi=$(grep -n -m1 'private void showMidiPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$mix_start" || -z "$mix_midi" || "$mix_midi" -le "$mix_start" ]]; then
+  echo "ERROR: Pad Mixer source boundary is missing"
+  exit 1
+fi
+mix_block=$(sed -n "${mix_start},$((mix_midi - 1))p" "$MAIN_ACTIVITY_SOURCE")
+
+# MainActivity owns semantic wiring; MpcPadMixerView owns Pad Mixer presentation.
+for required in \
+  'new MpcPadMixerView(' \
+  'MpcPadMixerView.ControlFocus.LEVEL' \
+  'MpcUiState.DataDialFocus.PAD_MIXER_LEVEL' \
+  'nativeAudioSetPadLevel(' \
+  'nativeAudioSetPadPan(' \
+  'nativeAudioSetPadTuning(' \
+  'nativeAudioGetPadLevel(' \
+  'nativeAudioGetPadPan(' \
+  'nativeAudioGetPadTuning(' \
+  'selectedPad' \
+  'PAD %02d'; do
+  if ! grep -Fq -- "$required" <<<"$mix_block"; then
+    echo "ERROR: MPC Pad Mixer MainActivity semantic contract missing: $required"
+    exit 1
+  fi
+done
+
+pad_mixer_view_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadMixerView.java"
+for required in \
+  'setContentDescription("MPC Pad Mixer")' \
+  'TextView title = text(context, "PAD MIXER"' \
+  'private static final int VISIBLE_STRIPS = 8;' \
+  'vertical fader' \
+  'interface Listener {' \
+  'enum ControlFocus' \
+  'onControlFocus' \
+  'setControlFocus' \
+  'LEVEL' \
+  'PAN' \
+  'TUNE'; do
+  if ! grep -Fq -- "$required" "$pad_mixer_view_source"; then
+    echo "ERROR: MPC Pad Mixer presentation contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'for (int pad = 0; pad < 4; pad++)' "$pad_mixer_view_source"; then
+  echo "ERROR: Pad Mixer must not regress to the obsolete four-strip diagnostic layout"
+  exit 1
+fi
+
+echo "Running MPC Shortcut Rail fidelity preflight..."
+SHORTCUT_MAIN_SOURCE="$MAIN_ACTIVITY_SOURCE"
+SHORTCUT_ITEM_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutRailItemView.java"
+for required in \
+  'private final MpcUiState.Mode mode' \
+  'MpcShortcutIconDrawable' \
+  'TextView labelView' \
+  'setSelectedState(boolean selected)' \
+  'selectionIndicator' \
+  'setContentDescription("MPC shortcut " + accessibleLabel)' \
+  'setOnClickListener' \
+  'setFocusable(true)'; do
+  if ! grep -Fq -- "$required" "$SHORTCUT_ITEM_SOURCE"; then
+    echo "ERROR: MPC Shortcut Rail item contract missing: $required"
+    exit 1
+  fi
+done
+for required in \
+  'private final MpcShortcutRailItemView[] shortcutButtons' \
+  'BROWSER' \
+  'CHANNEL MIXER' \
+  'PAD MIXER' \
+  'SOUNDS' \
+  'XY' \
+  'new MpcShortcutRailItemView(' \
+  'setSelectedState(' \
+  'item.mode() == active'; do
+  if ! grep -Fq -- "$required" "$SHORTCUT_MAIN_SOURCE"; then
+    echo "ERROR: MPC Shortcut Rail icon+label integration contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'private final Button[] shortcutButtons' "$SHORTCUT_MAIN_SOURCE"; then
+  echo "ERROR: MPC Shortcut Rail must not use generic Android Button-only presentation"
+  exit 1
+fi
+
+echo "Running MPC Main section framing fidelity preflight..."
+if ! grep -Fq -- "MPC_MAIN_SECTION_DIVIDER_DP = 2" "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MPC Main section divider geometry constant missing"
+  exit 1
+fi
+main_page_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+main_numeric_start=$(grep -n -m1 'private void installMainNumericEntry' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$main_page_start" || -z "$main_numeric_start" || "$main_numeric_start" -le "$main_page_start" ]]; then
+  echo "ERROR: Main page source boundary is missing"
+  exit 1
+fi
+main_page_block=$(sed -n "${main_page_start},$((main_numeric_start - 1))p" "$MAIN_ACTIVITY_SOURCE")
+for required in   "sequenceCard.setBackground(strokeBackground("   "trackProgramSection.setBackground(strokeBackground("   "MPC_PANEL_DARK, Color.TRANSPARENT, MPC_MAIN_RADIUS_DP"   "mainSectionDivider.setBackgroundColor(MPC_SELECTION_RED)"   "MPC Main Sequence / Track section divider"; do
+  if ! grep -Fq -- "$required" <<<"$main_page_block"; then
+    echo "ERROR: MPC Main Sequence/Track framing contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- "MPC_PANEL, MPC_PANEL_BORDER, MPC_MAIN_RADIUS_DP" <<<"$main_page_block"; then
+  echo "ERROR: Main Sequence/Track zones must not regress to heavy outer card framing"
+  exit 1
+fi
 
 echo "Running MPC shell geometry preflight..."
 for required in \
@@ -563,6 +1222,97 @@ for required in \
     exit 1
   fi
 done
+
+echo "Running MPC Pull-Down deterministic iconography preflight..."
+pull_down_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java"
+main_icon_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java"
+for required in \
+  'MpcMainIconDrawable.Mode.CLOSE' \
+  'MpcMainIconDrawable.Mode.PREVIOUS' \
+  'MpcMainIconDrawable.Mode.NEXT' \
+  'private Button iconButton(' \
+  'Swipe up to close • next page'; do
+  if ! grep -Fq -- "$required" "$pull_down_source"; then
+    echo "ERROR: MPC Pull-Down deterministic iconography contract missing: $required"
+    exit 1
+  fi
+done
+for required in 'CLOSE' 'PREVIOUS' 'NEXT' 'drawClose(' 'drawChevron(' ; do
+  if ! grep -Fq -- "$required" "$main_icon_source"; then
+    echo "ERROR: MPC Main deterministic icon drawable mode missing: $required"
+    exit 1
+  fi
+done
+if grep -Eq '[×‹›]' "$pull_down_source"; then
+  echo "ERROR: MPC Pull-Down must not use Unicode close/chevron glyphs in visible chrome"
+  exit 1
+fi
+
+echo "Running MPC One mixer iconography regression preflight..."
+mixer_main_source="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
+for required in   'MpcMixerStripIconDrawable'   'Mode.PERSONAL_CHANNEL_STRIP'   'Mode.TRACK_PAD_SELECTOR'   'visibilityButton = button(context, "", 10);'   'visibilityButton.setForeground(new MpcMixerStripIconDrawable'   'compactMixerStripModeToggle.setText("")'   'compactMixerStripModeToggle.setForeground(new MpcMixerStripIconDrawable'; do
+  if ! grep -Fq -- "$required" "$SHELL_SOURCE" &&      ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "$mixer_main_source"; then
+    echo "ERROR: MPC One mixer controls must use deterministic iconography instead of Unicode/Android text glyphs: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'TRACK_PAD_SELECTOR' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMixerStripIconDrawable.java"; then
+  echo "ERROR: Track/Pad selector icon drawable is missing"
+  exit 1
+fi
+
+echo "Running MPC XL channel-strip restore affordance preflight..."
+for required in \
+  'channelStripRestoreButton.setText("")' \
+  'channelStripRestoreButton.setForeground(new MpcMixerStripIconDrawable(' \
+  'MpcMixerStripIconDrawable.Mode.PERSONAL_CHANNEL_STRIP' \
+  'channelStripRestoreButton.setContentDescription('; do
+  if ! grep -Fq -- "$required" "$SHELL_SOURCE"; then
+    echo "ERROR: collapsed XL Channel Strip restore affordance contract missing: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'MPC XL Channel Strip show' "$SHELL_SOURCE"; then
+  echo "ERROR: collapsed XL Channel Strip restore affordance must describe the actual show action"
+  exit 1
+fi
+
+if grep -Fq -- '"MPC XL Channel Strip restore"' "$SHELL_SOURCE"; then
+  echo "ERROR: hidden XL Channel Strip restore control must expose the actual show action to accessibility"
+  exit 1
+fi
+
+if grep -Fq -- 'channelStripRestoreButton.setText("›")' "$SHELL_SOURCE"; then
+  echo "ERROR: collapsed XL Channel Strip must not use a visible Unicode chevron restore glyph"
+  exit 1
+fi
+
+echo "Running MPC XL channel-strip collapse/focus regression preflight..."
+for required in   'void setChannelStripVisible(boolean visible)'   'contextArea.getLayoutParams()'   'contextParams.width = visible'   ': 0;'   'channelStripRestoreButton'   'channelStripRestoreButton.setVisibility('   'visible ? View.GONE : View.VISIBLE'; do
+  if ! grep -Fq -- "$required" "$SHELL_SOURCE"; then
+    echo "ERROR: XL Channel Strip must collapse its full 210dp shell column while preserving a restore affordance: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'mpcShell.setChannelStripVisible(visible)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main shell visibility state must drive XL Channel Strip column geometry"
+  exit 1
+fi
+if ! grep -Fq -- 'setChannelStripRestoreListener' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: hidden XL Channel Strip must retain a shell-level restore path"
+  exit 1
+fi
+
+for required in   'final boolean levelFocus = "MIX LEVEL".equals(dialFocus)'   'final boolean panFocus = "MIX PAN".equals(dialFocus)'   'final boolean tuneFocus = "MIX TUNE".equals(dialFocus)'   'meter.setDialFocus(levelFocus)'   'pan.setDialFocus(panFocus)'   'MPC Main selected pad tuning'   'tuneValue.setBackground(stroke('   'tuneValue.setContentDescription("MPC Main selected pad tuning")'; do
+  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+    echo "ERROR: XL Channel Strip Data Dial focus must be visibly projected into Level/Pan/Tune controls: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'void setDialFocus(boolean focused)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: XL Channel Strip custom controls must expose an explicit Data Dial focus state"
+  exit 1
+fi
 
 echo "Running native JNI bridge source preflight..."
 for required in \
@@ -587,24 +1337,20 @@ for required in \
   fi
 done
 
-echo "Running persistent MPC context hierarchy preflight..."
-for required in \
-  'compactContextCaption("SEQUENCE")' \
-  'compactContextCaption("PROGRAM")' \
-  'compactContextCaption("DATA DIAL")' \
-  'private TextView compactContextField(' \
-  'private void setCompactContextFocus(' \
-  'private String compactDialFocusLabel(' \
-  'dp(14)' \
-  'dp(36)' \
-  'dp(34)' \
-  'active ? DANGER : LINE' \
-  '"DIAL\n" + compactDialFocusLabel(dialFocus)'; do
+echo "Running MPC Main visible mixer hierarchy preflight..."
+for required in   'compactContextPanel.setVisibility(View.GONE)'   'compactMixerPanel.setVisibility(View.GONE)'   'area.addView(mainMixerStripView,'   'refreshMpcMainMixerStripView()'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
-    echo "ERROR: persistent MPC context hierarchy contract missing: $required"
+    echo "ERROR: legacy context rail must be hidden behind the visible Main Mixer Strip migration layer: $required"
     exit 1
   fi
 done
+for required in   'compactContextCaption("SEQUENCE")'   'compactContextCaption("PROGRAM")'   'compactContextCaption("DATA DIAL")'   'private TextView compactContextField('   'private void setCompactContextFocus('   'private String compactDialFocusLabel('   '"DIAL\n" + compactDialFocusLabel(dialFocus)'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: semantic context refresh dependencies are missing: $required"
+    exit 1
+  fi
+done
+
 
 echo "Running persistent MPC context rail source preflight..."
 for required in \
@@ -690,55 +1436,535 @@ for required in \
   fi
 done
 
+echo "Running startup visual evidence ordering preflight..."
+startup_ready_line=$(grep -n -m1 'startupComplete = true;' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+startup_shell_refresh_line=$(grep -n 'updateMpcShellState();' "$MAIN_ACTIVITY_SOURCE" | awk -F: -v start="$startup_ready_line" '$1 > start { print $1; exit }')
+startup_complete_log_line=$(grep -n -m1 'Log.i(TAG, "STARTUP_COMPLETE");' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$startup_ready_line" || -z "$startup_shell_refresh_line" || -z "$startup_complete_log_line" \
+    || "$startup_shell_refresh_line" -ge "$startup_complete_log_line" ]]; then
+  echo "ERROR: persistent MPC shell must refresh after startup readiness and before STARTUP_COMPLETE"
+  exit 1
+fi
+startup_capture_line=$(grep -n -m1 'echo "Capturing startup UI screenshot..."' "$0" | cut -d: -f1)
+startup_settle_line=$(grep -n -m1 'echo "Allowing startup path to settle..."' "$0" | cut -d: -f1)
+if [[ -z "$startup_capture_line" || -z "$startup_settle_line" || "$startup_capture_line" -ge "$startup_settle_line" ]]; then
+  echo "ERROR: startup Main screenshot must be captured before post-launch settling can let the UI audit navigate away from Main"
+  exit 1
+fi
+echo "Running Pull-Down semantic routing preflight..."
+for required in   'void onTimeCounter();'   'void onTempo();'   'listener.onTimeCounter();'   'listener.onTempo();'   'showPullDownLocateDialog();'   'showPullDownTempoDialog();'   'nativeSequenceLocateMoveTicks(delta)'   'nativeSequenceSetTempo(bpm)'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java"; then
+    echo "ERROR: Pull-Down semantic routing contract missing: $required"
+    exit 1
+  fi
+done
+require_source_contains() {
+  local source="$1"
+  local required="$2"
+  echo "Checking source contract: $required"
+  if ! timeout --signal=TERM --kill-after=1s 5s grep -Fq -- "$required" "$source"; then
+    echo "ERROR: source contract missing or grep timed out: $required ($source)"
+    exit 1
+  fi
+}
+
+echo "Running MPC Browser visual/runtime contract preflight..."
+require_source_contains "$BROWSER_SOURCE" 'MpcBrowserFilterIconDrawable'
+require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("MPC Browser filter " + filter)'
+require_source_contains "$BROWSER_SOURCE" 'MPC Browser current location: PLACE • INTERNAL'
+require_source_contains "$BROWSER_SOURCE" 'row.setOnClickListener(v -> {'
+require_source_contains "$BROWSER_SOURCE" 'listener.onOpenStorage();'
+require_source_contains "$BROWSER_SOURCE" 'ANDROID DOCUMENTS • OPEN PICKER'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'public void onOpenStorage()'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'openWavPicker();'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Button audition = addFunction("AUDITION", browserSampleAvailable,'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser search state propagation'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser context did not survive view recreation'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser Data Dial delta did not expose provider limitation'
+require_source_contains "$BROWSER_SOURCE" 'MPC Browser provider status'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser restore did not return to Main'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser CLEAR did not clear persisted query'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser audition current Pad/Layer sample'
+require_source_contains "$BROWSER_SOURCE" 'void auditionCurrentSample()'
+require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("Browser " + section + " tab")'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'up.setContentDescription("Browser UP from " + browserLocation)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser LOAD source file with Android Document Picker'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser BACK to previous workspace'
+
+echo "Running clean visual-evidence audit preflight..."
+for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStatus.setVisibility(View.GONE);'   'truthful Main screenshot'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: clean visual evidence contract missing: $required"
+    exit 1
+  fi
+done
+echo "Running MPC Main XL strip value preflight..."
+MAIN_MIXER_STRIP_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
+require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'right.setSingleLine(true)'
+require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'right.setEllipsize(TextUtils.TruncateAt.END)'
+require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'compactProgramDisplayName(fullProgramName)'
+require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'addProgramBand(strip, context, "MAIN", "OUTPUT", "MAIN OUTPUT")'
+require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'MPC Main selected track program: '
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Main XL program value wrapped or loses full program name'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Main Output label repeats OUTPUT or lost value'
+
+echo "Running MPC Browser text overflow preflight..."
+require_source_contains "$BROWSER_SOURCE" 'destination.setSingleLine(true)'
+require_source_contains "$BROWSER_SOURCE" 'results.addView(row, paramsMatch(context, 40))'
+require_source_contains "$BROWSER_SOURCE" 'new LayoutParams(0, dp(context, 34), 1)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser result rows are clipped or storage target is not actionable'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'browserStorageAction.getHeight() <= dp(36)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser storage picker action not hittable'
+require_source_contains "$BROWSER_SOURCE" 'currentSample.setSingleLine(true)'
+require_source_contains "$BROWSER_SOURCE" 'main.setSingleLine(true)'
+require_source_contains "$BROWSER_SOURCE" 'sub.setSingleLine(true)'
+require_source_contains "$BROWSER_SOURCE" 'TextUtils.TruncateAt.END'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser text wrapped after layout'
+
+echo "Running MPC Browser geometry regression preflight..."
+require_source_contains "$BROWSER_SOURCE" 'filterBar.addView(filters, new LayoutParams(0, -1, 1))'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'functionBar.setWeightSum(visibleChildren)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser Function Bar unequal action widths'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser Options button has no hittable bounds'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'getInsetsIgnoringVisibility('
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'view.setPadding(left, 0, right, bottom)'
+require_source_contains "$0" 'Browser Options has zero/empty Android accessibility bounds'
+require_source_contains "$0" 'Function Bar action hit widths are unequal'
+
+echo "Running MPC Browser Options preflight..."
+for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "$BROWSER_SOURCE"; then
+    echo "ERROR: MPC Browser Options contract missing: $required"
+    exit 1
+  fi
+done
+echo "Running MPC Preferences taxonomy preflight..."
+for required in   'buildPreferencesCategoryBar("AUDIO")'   'MPC Preferences AUDIO'   'MPC Preferences MIDI / SYNC'   'MPC Preferences SEQUENCER'   'showPreferencesReservedPage'   'RESERVED / UNAVAILABLE'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC Preferences taxonomy contract missing: $required"
+    exit 1
+  fi
+done
 echo "Running Android runtime startup smoke..."
-echo "Installing debug APK..."
-adb install -r "$APK"
+echo "Running canonical Main shell visibility preflight..."
+for required in   'compactContextPanel.setVisibility(View.GONE);'   'compactMixerPanel.setVisibility(View.GONE);'   'header.setVisibility(View.GONE);'   'mainMixerStripView = new MpcMainMixerStripView'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: canonical Main shell visibility contract missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- '"MPC shell compact track program context"' "$MAIN_ACTIVITY_SOURCE"     && grep -Fq -- 'compactContextPanel.setVisibility(View.VISIBLE)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: legacy Main context dashboard must stay hidden"
+  exit 1
+fi
+echo "Running Android runtime startup smoke..."
+echo "Running MPC Main UI audit contract preflight..."
+for forbidden in   'shortcut.setContentDescription("MPC shortcut " + mode.label())'; do
+  if grep -Fq -- "$forbidden" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: stale factory shortcut accessibility override detected: $forbidden"
+    exit 1
+  fi
+done
+for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC Main XL Mixer Strips'   'Main Track visual hierarchy • Track / Program / workspace section'   'clickMpcToolbarMenuForAudit()'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: current MPC Main UI audit contract missing: $required"
+    exit 1
+  fi
+done
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: runtime smoke synchronization contract missing: $required"
+    exit 1
+  fi
+done
+adb_bounded() {
+  local seconds="$1"
+  shift
+  timeout --signal=TERM --kill-after=3s "${seconds}s" adb "$@"
+}
+
+echo "Installing debug APK (hard limit 120s)..."
+if ! adb_bounded 120 install -r "$APK"; then
+  echo "ERROR: adb install failed or timed out after 120s"
+  exit 1
+fi
 
 echo "Clearing logcat and launching MainActivity..."
-adb logcat -c
-adb shell am force-stop "$PACKAGE"
-adb shell am start -W -n "$ACTIVITY" --es "$SMOKE_MODE_EXTRA" "ui-audit" 2>&1 | tee /tmp/mpc-groovebox-am-start.txt
+if ! adb_bounded 10 logcat -c; then
+  echo "ERROR: adb logcat clear failed or timed out"
+  exit 1
+fi
+if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
+  echo "ERROR: adb force-stop failed or timed out"
+  exit 1
+fi
+if ! adb_bounded 60 shell am start -W -n "$ACTIVITY" --es "$SMOKE_MODE_EXTRA" "ui-audit" \
+    2>&1 | tee /tmp/mpc-groovebox-am-start.txt; then
+  echo "ERROR: MainActivity launch failed or timed out after 60s"
+  exit 1
+fi
+
+echo "Capturing startup UI screenshot..."
+if ! adb_bounded 15 exec-out screencap -p > /tmp/mpc-groovebox-startup.png; then
+  echo "ERROR: startup screenshot capture failed or timed out after 15s"
+  exit 1
+fi
 
 echo "Allowing startup path to settle..."
 sleep 5
 
-if ! adb shell pidof "$PACKAGE" | tr -d '\r' | grep -Eq '[0-9]'; then
-  echo "ERROR: MPC Groovebox process is not alive after launch"
-  adb logcat -d -v brief > /tmp/mpc-groovebox-logcat.txt || true
-  tail -n 250 /tmp/mpc-groovebox-logcat.txt || true
+echo "Waiting for application-side UI audit to complete..."
+UI_AUDIT_TIMEOUT_SECONDS=120
+ui_audit_complete=0
+main_runtime_capture_done=0
+browser_runtime_capture_done=0
+storage_picker_capture_done=0
+audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
+audit_poll=0
+while (( SECONDS < audit_deadline )); do
+  log_snapshot="$(adb_bounded 5 logcat -d -v brief 2>/dev/null || true)"
+
+  if [ "$main_runtime_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_MAIN_CAPTURE_READY" <<<"$log_snapshot"; then
+    echo "Capturing ready Main workspace and Android accessibility hierarchy..."
+    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-main-ready.png; then
+      echo "ERROR: ready Main screenshot capture failed"
+      exit 1
+    fi
+    if ! timeout --signal=TERM --kill-after=3s 30s \
+        adb shell uiautomator dump /sdcard/mpc-groovebox-main-ready-uiautomator.xml \
+        > /tmp/mpc-groovebox-main-ready-uiautomator.log 2>&1; then
+      cat /tmp/mpc-groovebox-main-ready-uiautomator.log || true
+      echo "ERROR: ready Main accessibility dump failed"
+      exit 1
+    fi
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-main-ready-uiautomator.xml \
+        > /tmp/mpc-groovebox-main-ready-uiautomator.xml; then
+      echo "ERROR: ready Main hierarchy retrieval failed"
+      exit 1
+    fi
+    if ! test -s /tmp/mpc-groovebox-main-ready.png \
+        || ! test -s /tmp/mpc-groovebox-main-ready-uiautomator.xml; then
+      echo "ERROR: ready Main screenshot or hierarchy is empty"
+      exit 1
+    fi
+    if ! python3 - /tmp/mpc-groovebox-main-ready-uiautomator.xml <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+required = [
+    "MPC One Main Toolbar",
+    "MPC Toolbar Menu",
+    "MPC shortcut BROWSER",
+    "Main Track and Arrangement workspace",
+    "MPC Main XL Mixer Strips",
+    "MPC Main mixer strips shown",
+]
+def dimensions(node):
+    m = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     node.attrib.get("bounds", ""))
+    if not m:
+        raise AssertionError("invalid bounds for " + repr(node.attrib))
+    x1, y1, x2, y2 = map(int, m.groups())
+    return x1, y1, x2, y2
+
+for description in required:
+    found = [n for n in nodes if n.attrib.get("content-desc") == description]
+    if len(found) != 1:
+        raise AssertionError(f"expected exactly one Main control {description!r}; got {len(found)}")
+    x1, y1, x2, y2 = dimensions(found[0])
+    if x2 <= x1 or y2 <= y1 or found[0].attrib.get("visible-to-user") == "false":
+        raise AssertionError(f"Main control is not visible with positive bounds: {description!r}")
+print("Ready Main accessibility controls verified:", len(required))
+PY
+    then
+      echo "ERROR: ready Main hierarchy failed canonical control checks"
+      cat /tmp/mpc-groovebox-main-ready-uiautomator.xml
+      exit 1
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-main-capture-release; then
+      echo "ERROR: could not release app-side Main capture checkpoint"
+      exit 1
+    fi
+    main_runtime_capture_done=1
+  fi
+
+  if [ "$browser_runtime_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_BROWSER_CAPTURE_READY" <<<"$log_snapshot"; then
+    echo "Capturing actual rendered Browser screen and Android accessibility hierarchy..."
+    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-device.png; then
+      echo "ERROR: real Browser emulator screenshot capture failed"
+      exit 1
+    fi
+    if ! timeout --signal=TERM --kill-after=3s 30s \
+        adb shell uiautomator dump /sdcard/mpc-groovebox-browser-uiautomator.xml \
+        > /tmp/mpc-groovebox-browser-uiautomator.log 2>&1; then
+      cat /tmp/mpc-groovebox-browser-uiautomator.log || true
+      echo "ERROR: Browser-context uiautomator dump failed or timed out"
+      exit 1
+    fi
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-browser-uiautomator.xml \
+        > /tmp/mpc-groovebox-browser-uiautomator.xml; then
+      echo "ERROR: Browser-context UI hierarchy retrieval failed"
+      exit 1
+    fi
+    if ! test -s /tmp/mpc-groovebox-browser-device.png \
+        || ! test -s /tmp/mpc-groovebox-browser-uiautomator.xml; then
+      echo "ERROR: real Browser screenshot or accessibility hierarchy is empty"
+      exit 1
+    fi
+    for required in 'content-desc="MPC Browser filter SAMPLES"' \
+        'text="SAMPLE ASSIGN"' 'text="LOAD"' 'text="UP"'; do
+      if ! grep -Fq -- "$required" /tmp/mpc-groovebox-browser-uiautomator.xml; then
+        echo "ERROR: Browser platform hierarchy is missing expected visible control: $required"
+        cat /tmp/mpc-groovebox-browser-uiautomator.xml
+        exit 1
+      fi
+    done
+
+    echo "Checking actual Android accessibility hit bounds for Browser Options and Function Bar..."
+    if ! python3 - /tmp/mpc-groovebox-browser-uiautomator.xml <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    if match is None:
+        raise AssertionError("malformed accessibility bounds: " + repr(node.attrib))
+    return tuple(map(int, match.groups()))
+
+def one(description):
+    found = [node for node in nodes if node.attrib.get("content-desc") == description]
+    if len(found) != 1:
+        raise AssertionError(f"expected one accessibility node for {description!r}; got {len(found)}")
+    return found[0]
+
+options = one("MPC Browser Options")
+x1, y1, x2, y2 = bounds(options)
+if x2 <= x1 or y2 <= y1:
+    raise AssertionError("Browser Options has zero/empty Android accessibility bounds: "
+                         + options.attrib.get("bounds", ""))
+root_bounds = bounds(nodes[0])
+if x2 > root_bounds[2] or y2 > root_bounds[3]:
+    raise AssertionError("Browser Options is outside the accessible screen bounds: "
+                         + options.attrib.get("bounds", ""))
+if root_bounds[2] - x2 > 48:
+    raise AssertionError("Browser Options is separated from the safe right edge by an unexpected gap: "
+                         + options.attrib.get("bounds", ""))
+
+descriptions = [
+    "MPC Browser Sample Assign unavailable: no source item selected",
+    "MPC Browser audition current Pad/Layer sample",
+    "MPC Browser LOAD source file with Android Document Picker",
+    "Browser UP from CONTENT",
+    "MPC Browser BACK to previous workspace",
+]
+widths = []
+for description in descriptions:
+    node = one(description)
+    left, top, right, bottom = bounds(node)
+    if right <= left or bottom <= top:
+        raise AssertionError(f"empty hit bounds for {description!r}: {node.attrib.get('bounds')}")
+    widths.append(right - left)
+tolerance = max(4, round(max(widths) * 0.08))
+if max(widths) - min(widths) > tolerance:
+    raise AssertionError(f"Function Bar action hit widths are unequal: {widths} (tolerance {tolerance})")
+print("Browser Options bounds:", (x1, y1, x2, y2))
+print("Function Bar accessibility widths:", widths)
+PY
+    then
+      echo "ERROR: Browser accessibility bounds are clipped or Function Bar targets are unequal"
+      cat /tmp/mpc-groovebox-browser-uiautomator.xml
+      exit 1
+    fi
+
+    if ! adb_bounded 10 shell run-as "$PACKAGE" \
+        touch cache/mpc-browser-capture-release; then
+      echo "ERROR: could not release app-side Browser capture checkpoint"
+      exit 1
+    fi
+    browser_runtime_capture_done=1
+  fi
+
+  if [ "$storage_picker_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_STORAGE_PICKER_LAUNCH_REQUESTED" <<<"$log_snapshot"; then
+    echo "Verifying actual Android Document Picker launch and capturing evidence..."
+    picker_activity=""
+    for picker_attempt in 1 2 3 4 5 6 7 8 9 10; do
+      picker_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+        | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+      if [[ -n "$picker_activity" ]] && ! grep -Fq -- "$PACKAGE" <<<"$picker_activity"; then
+        break
+      fi
+      sleep 1
+    done
+    if [[ -z "$picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$picker_activity"; then
+      echo "ERROR: Android Document Picker did not become the resumed activity"
+      printf '%s\n' "$picker_activity"
+      exit 1
+    fi
+    printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-storage-picker-activity.txt
+    if ! timeout --signal=TERM --kill-after=3s 30s \
+        adb shell uiautomator dump /sdcard/mpc-groovebox-storage-picker-uiautomator.xml \
+        > /tmp/mpc-groovebox-storage-picker-uiautomator.log 2>&1; then
+      cat /tmp/mpc-groovebox-storage-picker-uiautomator.log || true
+      echo "ERROR: Android Document Picker accessibility dump failed"
+      exit 1
+    fi
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-storage-picker-uiautomator.xml \
+        > /tmp/mpc-groovebox-storage-picker-uiautomator.xml; then
+      echo "ERROR: Android Document Picker hierarchy retrieval failed"
+      exit 1
+    fi
+    if ! test -s /tmp/mpc-groovebox-storage-picker-uiautomator.xml; then
+      echo "ERROR: Android Document Picker hierarchy is empty"
+      exit 1
+    fi
+
+    # The resumed-activity record can precede the first visible frame. Capture
+    # after the accessibility tree is ready, then retry briefly if the bitmap
+    # is still the nearly-black launch transition rather than rendered UI.
+    sleep 1
+    picker_screenshot_bytes=0
+    for screenshot_attempt in 1 2 3 4 5; do
+      if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-storage-picker.png; then
+        echo "ERROR: Android Document Picker screenshot capture failed"
+        exit 1
+      fi
+      picker_screenshot_bytes=$(wc -c < /tmp/mpc-groovebox-storage-picker.png)
+      if [ "$picker_screenshot_bytes" -ge 25000 ]; then
+        break
+      fi
+      sleep 1
+    done
+    if [ "$picker_screenshot_bytes" -lt 25000 ]; then
+      echo "ERROR: Android Document Picker screenshot remained blank/transition-sized"
+      echo "Screenshot bytes: $picker_screenshot_bytes"
+      exit 1
+    fi
+    if ! python3 - /tmp/mpc-groovebox-storage-picker-uiautomator.xml <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+if not nodes:
+    raise AssertionError("Android Document Picker hierarchy contains no accessibility nodes")
+print("Android Document Picker accessibility nodes:", len(nodes))
+PY
+    then
+      echo "ERROR: Android Document Picker hierarchy is not valid accessibility XML"
+      exit 1
+    fi
+    if ! adb_bounded 5 shell input keyevent KEYCODE_BACK; then
+      echo "ERROR: could not dismiss Android Document Picker with Back"
+      exit 1
+    fi
+    storage_picker_capture_done=1
+  fi
+
+  if grep -Fq -- "UI_STORAGE_PICKER_RETURNED" <<<"$log_snapshot" \
+      && [ "$storage_picker_capture_done" -ne 1 ]; then
+    echo "ERROR: app reported return from picker without captured picker evidence"
+    exit 1
+  fi
+  if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
+    ui_audit_complete=1
+    break
+  fi
+  if grep -Eq 'UI_HIERARCHY_FAILED:|UI_INTERACTION_FAILED:|UI_STARTUP_FINALIZATION_FAILED|STARTUP_NATIVE_FAILED' <<<"$log_snapshot"; then
+    echo "ERROR: application-side UI audit reported failure before external UI dump"
+    # Earlier audit stages may already have rendered the Browser screenshot and
+    # accessibility tree. Preserve them even when a later check fails.
+    adb_bounded 10 exec-out run-as "$PACKAGE" cat cache/mpc-groovebox-browser-render.png > /tmp/mpc-groovebox-browser.png 2>/dev/null || true
+    adb_bounded 10 exec-out run-as "$PACKAGE" cat cache/mpc-groovebox-browser-hierarchy.txt > /tmp/mpc-groovebox-browser-hierarchy.txt 2>/dev/null || true
+    grep -E -A 8 -B 3 'UI_HIERARCHY_FAILED:|UI_INTERACTION_FAILED:|UI_STARTUP_FINALIZATION_FAILED|STARTUP_NATIVE_FAILED' <<<"$log_snapshot" | tail -n 120 || true
+    exit 1
+  fi
+
+  # Poll process liveness every ten iterations so one slow adb call cannot
+  # stretch the audit timeout into minutes or hours.
+  if (( audit_poll % 10 == 0 )); then
+    pid_output="$(adb_bounded 5 shell pidof "$PACKAGE" 2>/dev/null || true)"
+    if ! grep -Eq '[0-9]' <<<"$(tr -d '\r' <<<"$pid_output")"; then
+      echo "ERROR: MPC Groovebox process exited or ADB became unresponsive during UI audit"
+      exit 1
+    fi
+  fi
+  audit_poll=$((audit_poll + 1))
+  sleep 1
+done
+
+if [ "$ui_audit_complete" -ne 1 ]; then
+  echo "ERROR: application-side UI audit did not reach UI_INTERACTION_COMPLETE within ${UI_AUDIT_TIMEOUT_SECONDS}s wall-clock deadline"
+  adb_bounded 10 logcat -d -v threadtime > /tmp/mpc-groovebox-logcat.txt || true
+  tail -n 350 /tmp/mpc-groovebox-logcat.txt || true
   exit 1
 fi
 
-if ! adb shell dumpsys activity activities | grep -Fq "$ACTIVITY"; then
-  echo "ERROR: MainActivity is not present in activity manager after launch"
-  adb shell dumpsys activity activities > /tmp/mpc-groovebox-activities.txt || true
-  tail -n 250 /tmp/mpc-groovebox-activities.txt || true
+echo "Application-side UI audit completed; collecting app-side Browser layout evidence."
+
+if [ "$main_runtime_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-main-ready.png \
+    || ! test -s /tmp/mpc-groovebox-main-ready-uiautomator.xml; then
+  echo "ERROR: ready Main workspace lacks real screenshot/hierarchy evidence"
   exit 1
 fi
 
-adb logcat -d -v threadtime > /tmp/mpc-groovebox-logcat.txt
-if grep -Eq 'AndroidRuntime: FATAL EXCEPTION|Fatal signal [0-9]+|FATAL EXCEPTION IN SYSTEM PROCESS' /tmp/mpc-groovebox-logcat.txt; then
-  echo "ERROR: Android runtime/native fatal crash detected during startup"
-  grep -E -A 35 -B 5 'AndroidRuntime: FATAL EXCEPTION|Fatal signal [0-9]+|FATAL EXCEPTION IN SYSTEM PROCESS' /tmp/mpc-groovebox-logcat.txt | tail -n 250 || true
+if [ "$storage_picker_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-storage-picker.png \
+    || ! test -s /tmp/mpc-groovebox-storage-picker-uiautomator.xml \
+    || ! test -s /tmp/mpc-groovebox-storage-picker-activity.txt; then
+  echo "ERROR: storage-picker round trip lacks captured UI/activity evidence"
   exit 1
 fi
+if ! grep -Fq -- "UI_STORAGE_PICKER_RETURNED" <<<"$log_snapshot"; then
+  echo "ERROR: app audit completed without confirming the Browser return after picker cancellation"
+  exit 1
+fi
+if [ "$browser_runtime_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-browser-device.png \
+    || ! test -s /tmp/mpc-groovebox-browser-uiautomator.xml; then
+  echo "ERROR: application audit completed without real Browser screen and UI hierarchy evidence"
+  exit 1
+fi
+cp /tmp/mpc-groovebox-browser-device.png /tmp/mpc-groovebox-browser.png
+if ! adb_bounded 10 exec-out run-as "$PACKAGE" cat cache/mpc-groovebox-browser-hierarchy.txt > /tmp/mpc-groovebox-browser-hierarchy.txt; then
+  echo "ERROR: Browser runtime accessibility hierarchy could not be retrieved from the debug app"
+  exit 1
+fi
+if ! test -s /tmp/mpc-groovebox-browser.png || ! test -s /tmp/mpc-groovebox-browser-hierarchy.txt; then
+  echo "ERROR: Browser runtime evidence files are empty"
+  exit 1
+fi
+for required in 'contentDescription="MPC Browser results list"' 'text="OPEN STORAGE…"' 'text="CURRENT SAMPLE"'; do
+  if ! grep -Fq -- "$required" /tmp/mpc-groovebox-browser-hierarchy.txt; then
+    echo "ERROR: Browser runtime hierarchy is missing visible results contract: $required"
+    cat /tmp/mpc-groovebox-browser-hierarchy.txt
+    exit 1
+  fi
+done
 
-echo "Dumping startup UI..."
-adb shell uiautomator dump "$DUMP" >/tmp/mpc-groovebox-uiautomator.txt 2>&1 || {
+echo "Dumping post-audit UI hierarchy..."
+if ! timeout --signal=TERM --kill-after=3s 30s adb shell uiautomator dump > /tmp/mpc-groovebox-uiautomator.txt 2>&1; then
   cat /tmp/mpc-groovebox-uiautomator.txt || true
-  echo "ERROR: uiautomator dump failed after startup"
-  exit 1
-}
-adb pull "$DUMP" "$DUMP" >/dev/null 2>&1 || true
-
-if [ ! -s "$DUMP" ]; then
-  echo "ERROR: startup UI dump is empty"
+  echo "ERROR: post-audit uiautomator dump failed or timed out after 30s"
   exit 1
 fi
-
-if ! grep -Fq 'MPC' "$DUMP"; then
-  echo "ERROR: startup UI dump does not contain MPC shell content"
-  cat "$DUMP"
+if ! adb_bounded 10 shell test -s "$DEVICE_DUMP"; then
+  echo "ERROR: post-audit UI dump file was not created: $DEVICE_DUMP"
+  cat /tmp/mpc-groovebox-uiautomator.txt || true
+  exit 1
+fi
+if ! adb_bounded 10 exec-out cat "$DEVICE_DUMP" >"$DUMP"; then
+  echo "ERROR: post-audit UI dump read failed or timed out: $DEVICE_DUMP"
+  cat /tmp/mpc-groovebox-uiautomator.txt || true
   exit 1
 fi
 

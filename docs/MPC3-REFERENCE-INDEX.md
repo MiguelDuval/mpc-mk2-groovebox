@@ -467,3 +467,25 @@ Confidence: HIGH for the overall geometry and bottom-tab behavior; individual un
 
 The Studio MkII protocol differentiates single-color LEDs (OFF/DIM/FULL = 0/1/2) from two-color LEDs.
 The Android feedback layer now uses a shared `buttonLedOnState()` policy and retains mutually-exclusive Level/Mute states.
+
+
+---
+
+## 2026-10-06 canonical research lock
+
+The current durable MPC3 reconstruction map is:
+
+- `docs/MPC3-9-OS-KNOWLEDGE-BASE.md` — screen taxonomy, routing matrix, control contract, version register, code audit and test plan.
+- `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md` — canonical implementation contract.
+- `docs/MPC-STYLE-UI-ROADMAP.md` — legacy/archive only.
+
+Current verified source facts:
+- Official v3.9 Main Mode is documented as Toolbar + Sequence + Shortcuts + Track/Arrangement Views + Mixer Strips + Function Buttons; double-tap Main waveform enters Track Edit and double-tap Arrangement enters Grid View. citeturn101044search0
+- MPC3 is a Standalone hardware OS and supports MPC One / One+; its architecture unifies tracks and programs into a single track container. citeturn431168search1
+- Browser includes Sample Assign, Places/Content/Expansions, five favourites, six filters and audition settings/options. citeturn431168search12
+- XL Channel Strips occupy the left edge beside five mode icons and can be shown/hidden; track/pad strip context is selected from Track/Arrangement. citeturn431168search0
+- Main Metro is a real MPC3 feature with settings and Pull-Down access; our disabled control is a backend gap rather than an intentional unsupported MPC feature. 
+- MPC3.9 Time Signature is an explicit Main-screen field; older MPC2 sequence assumptions must not be reused. citeturn431168search3
+
+Checked: 2026-10-06.
+Confidence: HIGH for the cited current MPC3 architecture/taxonomy.

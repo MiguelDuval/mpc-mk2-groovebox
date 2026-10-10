@@ -87,7 +87,7 @@ Old contexts can temporarily render inside the new shell.
 
 ### Main checkpoint
 
-New Main Mode can replace the old MAIN page without changing sampler/sequencer behavior.
+New Main Mode can replace the old MAIN page without changing sampler/sequencer behavior; the visible shell must follow the canonical five-shortcut + XL Channel Strip composition.
 
 ### Grid checkpoint
 
@@ -193,7 +193,7 @@ The presentation migration now has its first executable boundary:
 
 - `MpcUiState` is the UI/navigation snapshot and does not own audio or realtime objects.
 - `MpcNavigationController` owns mode, subcontext, focus, history and exactly five configurable shortcuts.
-- `MpcShell` owns the Toolbar / Shortcuts / compact context / Workspace / Function Bar composition.
+- `MpcShell` owns the Toolbar / five Shortcuts / XL Channel Strip region / Workspace / Function Bar composition.
 - `MainActivity` keeps legacy workspace implementations as temporary render adapters while the shell becomes the canonical composition.
 - MPC Studio MkII Main and Track View semantic navigation now enter different contexts; the previous routing of both actions to the Main workspace is removed.
 - Browser, Grid, Sampler and Channel Mixer are exposed through the five initial shortcut slots.
@@ -230,8 +230,8 @@ The recovered full project tree was preserved while the next UI slice was harden
 - corrected the Main smoke-test assertion so the documented Track-state row remains immediately above the performance canvas;
 - aligned `MpcShell` to the current implementation geometry contract: 44dp Toolbar, 48dp shortcut rail, 210dp context/channel rail, 40dp Function Bar;
 - restored four missing `MainActivity` JNI bridge entry points for launcher/step-edit context compatibility and the existing step-edit parameter policy;
-- added the persistent Main context rail for Sequence + BPM, Track, Program, Pad, semantic Data Dial focus/subcontext and sequence overview;
-- separated persistent context from Mixer Strip detail visibility so hiding the mixer does not hide the canonical context state;
+- retained the Main Sequence/Track/Program/Pad/Data Dial state model as an internal migration layer while moving the visible left region to the canonical XL Channel Strip composition;
+- made XL Channel Strip visibility independent from musical selection state;
 - kept all changes on a normal fast-forward commit chain from recovery HEAD; no files were deleted or replaced by a repository-wide tree rewrite.
 
 Files changed in this slice:
@@ -259,18 +259,51 @@ Remaining gaps:
 
 ## 2026-10-03 Persistent context hierarchy checkpoint
 
-The compact persistent context rail may receive presentation-only refinements that:
+The XL Channel Strip region may receive presentation-only refinements that:
 
 - preserve the fixed shell width and persistent visibility;
 - use small section captions and compact value fields to establish Sequence → Track → Program → Pad → Data Dial hierarchy;
 - project semantic Main Data Dial focus onto the corresponding context field without adding a second focus state;
 - keep mixer-detail visibility separate from the persistent context layer.
 
-Forbidden regressions remain: no domain ownership in the shell, no hiding of canonical context when Mixer Strip details are toggled, no duplicate transport controls, and no realtime/audio-thread coupling.
+Forbidden regressions remain: no domain ownership in the shell, no mutation or loss of canonical musical state when XL Channel Strips are shown/hidden, no duplicate transport controls, and no realtime/audio-thread coupling.
 
 Verification target:
 - source smoke checks lock the hierarchy helper, compact field heights and focus projection;
 - GitHub Actions and physical MkII verification remain separate acceptance gates.
+
+### 2026-10-04 Main Track type fidelity correction
+
+The Main Track header presents **one** Track Type icon beside the Track identity. The six documented Track Types (Drum / Keygroup / Plugin / MIDI / Clip / CV) are selector choices inside the Track Type context, not six persistent header controls. Unsupported types may remain unavailable in the selector, while the Main header always shows only the currently selected type. No audio, MIDI, scheduler, or native realtime path changed.
+
+### 2026-10-04 Toolbar project-entry increment
+
+The Toolbar now includes a compact project/browser entry beside project identity. This is presentation/navigation only and routes into the existing Browser semantic context. No project persistence, audio, MIDI, or transport ownership changed.
+
+## 2026-10-04 MPC One visual-fidelity checkpoint
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The next Main/shell presentation slice moves the implementation closer to the physical MPC One / documented MPC3 visual language without changing realtime or domain ownership:
+
+- the persistent Toolbar now uses the MPC One red status-bar treatment and keeps the legacy page title out of the visible chrome;
+- Toolbar time-counter text is compact and status-oriented;
+- shortcut buttons use an icon-first, flat selected-state treatment instead of generic Android button chrome;
+- Function Bar controls use flat graphite surfaces with stable left-to-right semantic ordering;
+- Main Track now exposes the selected Track's Program directly below the Track identity band, matching the documented MPC Main information hierarchy;
+- the Main Track header now has a compact Track-type icon cluster; unsupported types remain explicitly unavailable;
+- the old persistent left context rail is a migration-layer state surface only; the visible canonical left region is the XL Channel Strip area and shares the same Track/Program state.
+
+This is a presentation/navigation slice. No realtime audio callback, sampler scheduler, sequencer clock, raw MIDI decoder, or native audio ownership changed.
+
+External visual reference used during implementation:
+- documented MPC3 Main Mode / MPC One workflow screenshots;
+- official Akai MPC3 support material and MPC One documentation.
+
+Acceptance:
+- all existing source-level UI contracts remain green;
+- GitHub Actions must build and run the Android emulator smoke test for the new commit;
+- physical MkII verification remains a separate hardware gate.
 
 ## 2026-10-03 Compact context sizing checkpoint
 
@@ -302,3 +335,169 @@ Verification remains source-level because no Android build/physical MkII run is 
 - The Main-specific action helper prevents legacy rounded button styling from leaking into the MPC Main surface; legacy pages remain unchanged.
 
 - Main Toolbar remains presentation-only: the latest pass stabilizes geometry and touch targets without adding new domain ownership or transport semantics.
+
+
+## 2026-10-05 MPC One mixer affordance iconography checkpoint
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+Old context:
+- Main XL Channel Strip visibility and Track/Pad selection used Unicode glyphs on Android Buttons.
+
+New context:
+- XL Channel Strip visibility uses deterministic original vector iconography with an eye/show-hide semantic.
+- Main Track/Arrangement Track/Pad selector uses deterministic single-pad / four-squares iconography.
+- Icon state remains derived from existing `MpcUiState` mixer visibility/pad-mode state; no second state model was introduced.
+
+Source reference:
+- Akai Professional, “Output Routing Basics” — documents the XL Channel Strips, the top icon used to show/hide them, and the bottom-right single-pad/four-squares Track/Pad selector.
+
+Files changed:
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMixerStripIconDrawable.java`
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java`
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java`
+- `tests/android_ui_smoke.sh`
+
+Lower-layer files touched:
+- None.
+
+Tests:
+- Added source-level regression gate requiring deterministic mixer icon integration.
+- Existing XL Channel Strip collapse and Data Dial focus gates remain enabled; Data Dial focus is semantic state and must not become a separate visible dashboard.
+- Source contract verification passes against the feature branch.
+
+Actions:
+- Android Build was initiated for the updated branch; final runtime/emulator result pending at this checkpoint.
+
+Physical verification:
+- MPC Studio MkII verification remains pending.
+
+Remaining gaps:
+- Complete Android emulator smoke without System UI ANR interference.
+- Perform physical MkII workflow verification.
+
+
+## Migration checkpoint — 2026-10-05 MPC 3.x factory Shortcut Rail order
+
+- Date: 2026-10-05
+- Branch: `feature/mpc-one-ui-fidelity`
+- Previous context: truthful-only implemented default shortcuts (Browser / Track View / Grid / Step / Pad Mixer).
+- New context: canonical MPC 3.x factory Shortcut Rail order (Browser / Channel Mixer / Pad Mixer / Sounds / XY).
+- Source: MPC Standalone OS v3.5 User Guide, which documents five default Main shortcuts as Browser, Channel Mixer, Pad Mixer, Sounds, and XY. The current application keeps Channel Mixer / Sounds / XY behavior reserved until their backends exist, while preserving the hardware-facing visual order.
+- Files changed: `MpcModeRegistry.java`, `MpcNavigationControllerTest.java`.
+- Lower-layer files: none.
+- Tests: focused navigation defaults test updated; full Android Actions gate required before acceptance.
+- Physical verification: pending on MPC Studio MkII.
+- Remaining gap: implement the three reserved destination backends rather than changing the factory Shortcut Rail order.
+
+
+## 2026-10-05 MPC Pull-Down Menu checkpoint
+
+- Added `MpcPullDownPanelView` as a presentation-only shell overlay.
+- Wired it from Main transport-position gesture and dismissal scrim; no navigation/audio ownership was moved into the panel.
+- Control page reads current project/Sequence/BPM/MIDI/Audio state through MainActivity's existing state path.
+- Q-Link page preserves documented field vocabulary but marks unsupported operations RESERVED.
+- Lower layers touched: none.
+- Required acceptance: source/unit gates + GitHub Actions Android emulator smoke + physical MkII verification.
+
+
+### 2026-10-05 MPC Pull-Down + Menu acceptance checkpoint
+
+- Android Build #2299 (`83790e38d20d74687102bcd2f60e4d8b796ed912`) completed successfully.
+- Full source/unit preflight, Debug APK assembly, emulator startup and `runUiAudit()` passed.
+- Pull-Down now exposes the two-page Control/Q-Link shell; Q-Link operations remain explicitly RESERVED until backend semantics exist.
+- Main 4×4 Menu tiles now use the deterministic MPC shortcut vector vocabulary instead of visible Unicode glyphs.
+- KVM-enabled emulator smoke is now stable enough to exercise the real application runtime instead of failing during AVD boot.
+- Physical MPC Studio MkII verification is still pending; this acceptance does not claim hardware validation.
+
+## 2026-10-05 Pull-Down deterministic iconography checkpoint
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+Old context:
+- Pull-Down close and page navigation used visible Unicode `×/‹/›` glyphs.
+
+New context:
+- Pull-Down close/previous/next use deterministic original vector modes `CLOSE/PREVIOUS/NEXT` from `MpcMainIconDrawable`.
+- The panel remains a presentation-only shell overlay; no Q-Link backend or lower-layer ownership was introduced.
+
+Source reference:
+- Akai Professional, MPC3 FAQ and Output Routing Basics for the surrounding MPC3 Main/XL Channel Strip hierarchy: https://support.akaipro.com/en/support/solutions/articles/69000857771-mpc3-faq and https://support.akaipro.com/en/support/solutions/articles/69000868280-akai-pro-mpc-series-output-routing-basics
+
+Files changed:
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainIconDrawable.java`
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java`
+- `tests/android_ui_smoke.sh`
+- canonical migration documentation files and the 2026-10-06 shell reconciliation map
+
+Lower-layer files touched:
+- None.
+
+Tests:
+- Added source-level regression gate requiring deterministic Pull-Down icon modes and rejecting visible Unicode close/chevron glyphs.
+
+Actions:
+- Required Android Build + emulator smoke must pass on the new commit before acceptance.
+
+Physical verification:
+- Pending on MPC Studio MkII.
+
+
+## 2026-10-05 Runtime smoke gate synchronization
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The Android UI smoke acceptance gate must synchronize with the app-owned audit before asking Android `uiautomator` for the accessibility hierarchy. `runUiAudit()` performs many synchronous UI context rebuilds on the main thread; a fixed sleep is not valid evidence of UI idleness.
+
+Required runtime sequence:
+
+1. launch MainActivity in `ui-audit` mode;
+2. wait for `UI_INTERACTION_COMPLETE` while failing on explicit application-side UI/startup errors;
+3. request `uiautomator dump` only after the application-side audit has completed;
+4. enforce a bounded dump timeout and fail on timeout/error;
+5. keep the existing non-empty XML + MPC-content assertions.
+
+This is a test-harness synchronization correction only. It does not weaken the runtime gate and does not change audio, MIDI, sequencer, sampler, decoder or SysEx layers.
+
+
+## 2026-10-05 UI-audit hierarchy authority
+
+The application-side UI audit is part of the runtime acceptance contract and must describe the current canonical shell, not historical legacy-page controls. Main is controller-first and must not be made to expose a hidden/duplicate 4×4 pad grid merely to satisfy tests. Audit navigation must follow actual shell affordances (Shortcut Rail, Function Bar and Toolbar Menu) and assert semantic state where the companion surface intentionally has no touch control.
+
+
+## 2026-10-05 Post-layout runtime audit timing
+
+The application-side UI audit is now scheduled from the root decor view's first `OnPreDraw` callback after startup finalization. This is the correct lifecycle boundary for geometry-dependent assertions such as the Main waveform/XL Channel Strip sizes; the previous direct invocation raced Android measurement/layout completion.
+
+The audit remains fail-fast and unchanged in semantic scope. No fixed sleep or relaxed geometry threshold was introduced.
+
+
+## 2026-10-05 Sample surface audit ordering
+
+The Main waveform geometry assertion must execute while the startup Main workspace is fully laid out and before audit-driven Browser navigation causes a synchronous Main rebuild. The assertion remains a real measured height check; only its position in the audit sequence is corrected.
+
+
+## 2026-10-05 Canonical Layer semantic identifier
+
+Main's LAYER field uses the full semantic description `Main Track View selected layer • tap to focus Layer`. Runtime audit lookups must use that exact identifier because the harness intentionally performs exact ContentDescription matching.
+
+
+## 2026-10-05 Main geometry-before-state contract
+
+Geometry assertions for the canonical Main sample/Track/XL-Mixer surfaces run before audit-driven state mutations. This avoids measuring transient Android layout between synchronous controller-state changes while keeping the actual rendered dimensions under test.
+
+## 2026-10-06 Main LAYER vocabulary fidelity
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+`Main` now presents the selected Drum layer as `LAYER 1` / `LAYER 2` / etc., matching the documented MPC Main field vocabulary. The semantic layer range remains unchanged; the UI no longer adds a synthetic `/8` suffix that is not part of the MPC Main surface.
+
+Presentation-only. No audio, sampler, sequencer, MIDI, MkII decoder or SysEx ownership changed.
+
+## 2026-10-06 Startup visual-evidence ordering
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The Android smoke harness now captures the startup screenshot after launch/process/activity/fatal-crash checks and before the settling interval that allows the application-side UI audit to navigate across contexts. This keeps the visual artifact anchored to the canonical Main surface.
+
+Acceptance-harness synchronization only. No audio, sampler, sequencer, MIDI, MPC Studio MkII decoder or SysEx behavior changed.
