@@ -172,6 +172,7 @@ final class MpcBrowserView extends LinearLayout {
                 paramsMatch(context, 28));
 
         ScrollView scroll = new ScrollView(context);
+        scroll.setContentDescription("MPC Browser results list");
         results = new LinearLayout(context);
         results.setOrientation(VERTICAL);
         results.setPadding(0, dp(context, 3), 0, dp(context, 3));
@@ -184,7 +185,8 @@ final class MpcBrowserView extends LinearLayout {
                 "SELECTED PAD/LAYER • USE AUDITION BELOW",
                 false);
         scroll.addView(results);
-        center.addView(scroll, new LayoutParams(0, 0, 1));
+        center.addView(scroll, new LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         body.addView(center, new LayoutParams(0, -1, 1));
         addView(body, new LayoutParams(-1, 0, 1));
 
