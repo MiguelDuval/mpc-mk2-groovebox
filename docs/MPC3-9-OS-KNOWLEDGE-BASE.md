@@ -512,3 +512,23 @@ The first hard-timeout pass still left the smoke step running beyond its 15-minu
 ## 2026-10-09 Browser preflight and CI de-duplication
 
 The Android smoke had stalled during one compound Browser grep preflight before reaching ADB. That check is now split into named, individually bounded source assertions, so the log identifies the exact contract on failure. Feature branches with an open PR now use the pull-request workflow rather than starting a duplicate push workflow; emulator boot has a ten-minute ceiling while the full job remains capped.
+
+
+## Product-specific scope override — local-first build (2026-10-10)
+
+The tables above describe published MPC Standalone OS 3.9 reference taxonomy. That taxonomy is not a mandate to reproduce the commercial content ecosystem in this project.
+
+**Intentional product deviation:** Splice and other branded content subscriptions, online stores/marketplaces, paid expansion promotion, partner ads, upsell panels, and nonessential vendor-specific cloud/account integrations are excluded. In particular, do not implement a visible Splice Browser route just because the reference Browser taxonomy documents it.
+
+Keep useful local workflows: Places, generic content categories backed by real local results, user files, local/user expansion folders, Android Document Provider as an underlying storage primitive, accessible external/USB storage, and real sample selection/loading. A generic category without a provider must not masquerade as a working list.
+
+### Required Browser implementation status discipline
+
+- Browser location navigation is presentation/state routing until actual results change with the location.
+- Search and file-type filters are implemented only when they operate on a real semantic local result set.
+- Favourites are implemented only when the selected URI/location is persisted and restored correctly.
+- Audition is implemented only when selecting/previewing a real local result drives supported playback.
+- Load/Assign is implemented only when the chosen content reaches the intended Pad/Layer and survives the expected context return.
+- Android Document Picker integration alone is a storage-access primitive, not a complete MPC-style Browser.
+
+Use `docs/DEVELOPMENT-OPERATING-PROTOCOL.md` for the execution loop and `docs/SESSION-STATE.md` for the most recent verified checkpoint. Always verify those checkpoint values against live GitHub.
