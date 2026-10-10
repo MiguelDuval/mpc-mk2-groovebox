@@ -501,3 +501,21 @@ Branch: `feature/mpc-one-ui-fidelity`
 The Android smoke harness now captures the startup screenshot after launch/process/activity/fatal-crash checks and before the settling interval that allows the application-side UI audit to navigate across contexts. This keeps the visual artifact anchored to the canonical Main surface.
 
 Acceptance-harness synchronization only. No audio, sampler, sequencer, MIDI, MPC Studio MkII decoder or SysEx behavior changed.
+
+## 11. Bounded feature-slice and evidence contract
+
+For the current product-priority order, follow `docs/DEVELOPMENT-OPERATING-PROTOCOL.md` and check `docs/SESSION-STATE.md` at the beginning/end of each meaningful session. These do not weaken any protected-layer or realtime-safety rule above.
+
+A context/feature is not accepted based on a screenshot, control label, accessibility node, source grep, or successful compilation alone. Its acceptance record must distinguish:
+
+- real runtime visual evidence;
+- real action/semantic routing;
+- resulting domain/musical state;
+- relevant navigation and persistence behavior;
+- fresh CI/APK identity for the exact SHA;
+- expected evidence files present in the downloadable artifact;
+- emulator/software coverage versus physical MPC Studio MkII verification.
+
+Use the shortest useful test ladder: relevant unit/source contract first, then the appropriate full build/runtime smoke and visual evidence at the feature-slice boundary. Do not repeat broad audits without a concrete question. A missing required artifact is an evidence-export defect even when the build itself succeeded.
+
+The product-scope rule is local-first: Splice, marketplaces, paid content promotion, partner advertising, upsells and unnecessary branded cloud/account flows are intentionally excluded. Generic local file access and real sample workflows are retained. A reference-only feature must never be presented as required product work.
