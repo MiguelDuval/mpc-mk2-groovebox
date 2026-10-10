@@ -725,6 +725,23 @@ open/confirm.
 Shift + navigation:
 parent/alternate function where defined.
 
+## 10.4 Product-specific local-first scope
+
+The factory MPC 3.9 Browser taxonomy is a reference, not a requirement to reproduce its commercial content ecosystem.
+
+- **Exclude from the product:** Splice, online marketplaces/stores, paid expansion promotion, partner advertising, upsells, and nonessential branded cloud/account flows.
+- **Keep:** generic local Places/content categories when backed by real data; user files; local/user expansion folders; Android Document Provider/SAF as an underlying storage primitive; accessible external storage; real sample selection, loading and assignment.
+- Do not create an `SPLICE` destination in the app navigation. Official reference notes may mention it but must mark it as reference-only/intentionally excluded.
+- A visible category must produce genuine local results, be explicitly unavailable, or be omitted. The Android Document Picker alone is not the semantic Browser.
+- Search/filter are only complete when they affect actual results. Audition is only complete when a selected result is previewed via a genuine audio path. Load/Assign must preserve the target Pad/Layer and be verified after navigation.
+
+Acceptance priority:
+1. a local WAV appears as a real result;
+2. choosing it preserves the target Pad/Layer;
+3. LOAD uses the existing sample pipeline and updates the selected layer;
+4. Main/Track context reflects the loaded sample;
+5. current-SHA CI and screenshot/UI hierarchy evidence are inspected.
+
 ---
 
 # 11. Channel Mixer blueprint

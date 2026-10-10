@@ -1,114 +1,113 @@
 # Session State — MPC MkII Groovebox
 
-**Last checkpoint written:** 2026-10-10  
-**Purpose:** Fast handoff between ChatGPT sessions. Read first, then verify every mutable fact against live GitHub.
+**Checkpoint prepared:** 2026-10-10 (live GitHub verification at pre-checkpoint HEAD `a8c13c6cb7907c9d868fc928bd71d03672ddd0b8`)  
+**Purpose:** Compact handoff for the next ChatGPT session. Read this first, then independently verify every mutable fact against GitHub.
 
-> **Important freshness rule:** This checkpoint is not live telemetry. At the start of a session, fetch the actual branch HEAD, PR #23 state/base/head, recent commits, relevant Actions runs/checks and artifacts. Never assume this file's referenced SHA is still HEAD. The last verified repository HEAD before this checkpoint write was `bf019ea84a17ebfcd3d3cbec871d2e28b6c2aa10`; writing this file will itself advance the branch.
+> **Freshness rule:** This checkpoint will itself be committed after the pre-checkpoint SHA above. Therefore, it does **not** claim CI success for the commit containing this state refresh. On every session start, verify the live PR head, branch HEAD, latest Android Build and artifact files. Do not rely on remembered commit numbers or on this checkpoint instead of GitHub.
 
-## 1. Repository and branch safety
+## 1. Repository and safety
 
 - Repository: `MiguelDuval/mpc-mk2-groovebox`
-- Working branch: `feature/mpc-one-ui-fidelity`
-- Primary PR: [#23 — feat: MPC One Main UI visual fidelity pass](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23)
-- Last checked PR state: OPEN, not merged.
-- Last checked PR base: `fix/ui-shell-format-width-startup`.
-- Before the documentation refresh, branch comparison reported 448 commits ahead / 0 behind against the PR base. Recheck; the count changes whenever documentation is committed.
-- Never reset/rebase/force-push, do not retarget or merge PR #23 during routine work, and do not edit `main`.
-- Preserve the realtime audio callback, sampler playback/recording engine, sequencer scheduler/clock, MIDI transport, raw MPC Studio MkII decoder, SysEx protocol and working domain operations.
+- Active branch: `feature/mpc-one-ui-fidelity`
+- Primary PR: [#23 — MPC One Main UI visual fidelity pass](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23)
+- At the last live check before this state refresh, PR #23 was **OPEN, not merged**, base branch `fix/ui-shell-format-width-startup`, head SHA `a8c13c6cb7907c9d868fc928bd71d03672ddd0b8`.
+- PR #23 showed 453 commits and 35 changed files. A previous compare against the base reported 452 commits ahead / 0 behind; recheck this against live refs after the new state commit.
+- Never work on `main` for this migration. Do not reset, rebase, rewrite history, force-push, merge or retarget PR #23 during routine UI development.
+- Protect: realtime audio callback; sampler engine; sequencer clock/scheduler; MIDI transport; raw MkII decoder; SysEx protocol; working domain operations. Only introduce lower-layer changes when needed for a real semantic prerequisite.
+- Physical MPC Studio MkII behavior stays **unverified/pending** unless a real device test report is available.
 
-## 2. Product decision: local-first, no commercial ecosystem
+## 2. Approved product scope: local-first, no commercial ecosystem
 
-This decision is approved by the product owner and is mandatory for implementation:
+The product owner explicitly approved this scope.
 
-**Exclude from the actual product UI:** Splice, online stores/marketplaces, commercial expansion promotion, partner advertising, upsell panels, nonessential branded cloud integrations and vendor-specific sign-in/account dependencies.
+**Exclude from the actual product UI:** Splice and other branded content subscriptions; online stores/marketplaces; paid expansion promotion; partner advertisements; upsell/sales panels; unnecessary vendor-specific cloud or account/sign-in dependencies.
 
-**Keep:** actual local/app-owned files, generic local content categories backed by real results, Android Storage Access Framework / Document Provider as a lower-level storage primitive, available USB/external storage, user expansion folders, semantic sample browsing, preview where it is genuinely implemented, and loading/assignment to the selected Pad/Layer.
+**Keep:** real local/app-owned files; generic categories backed by actual results; Android Storage Access Framework / Document Provider as a lower-level storage mechanism; accessible USB/external storage supported by the device; user-owned expansion folders; local sample browsing; genuine audition where implemented; and loading/assignment to the selected Pad/Layer.
 
-The official MPC reference documents may still mention factory commercial items as historical/reference research. That does not make those items product requirements. A visible UI item must be implemented, explicitly unavailable, or omitted; never fake a provider or action.
+The official Akai reference can document its own commercial taxonomy. That is historical/reference evidence, not a requirement for this product. Mark intentional deviations as reference-only and do not add disconnected placeholders.
 
-## 3. Last verified build and evidence — not current HEAD
+## 3. Live CI situation at the last check
 
-- Last known successful Android Build: **#2608**.
-- Tested implementation SHA: `77f4e18a8f40a2e3d58ec8dbdf873cb09070fe4a`.
-- [Build #2608](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38074926971).
-- Live artifact listing/download for run `38074926971`: the `app-debug.apk` artifact (ID `11677509340`) has SHA-256 `43c036226d164d9c5fd911f9abd767f06b73e98049be00ac7a0547d91a730111`; the downloaded object is an APK ZIP container.
-- Live artifact listing/download for the `mpc-ui-visual-evidence` archive (ID `11677764864`) has SHA-256 `4c9b46ec574c8b75573cc0d8ab83ed76fd347f37111582dd22b5036f357b6773`.
-- **Evidence archive inspected directly:** it contains 10 files, including `mpc-groovebox-startup.png`, `mpc-groovebox-main-ready.png`, `mpc-groovebox-main-ready-uiautomator.xml`, Main UI hierarchy, Browser screenshot/hierarchy/XML, and Android storage-picker screenshot/XML/activity data. The ready-Main screenshot is 1920×1080, and all six required Main accessibility descriptions are present exactly once with positive bounds. A previous handoff reported those files missing from a different inspected archive; the direct inspection above resolves that discrepancy for artifact ID `11677764864`.
-- After the documentation commits made during 2026-10-10, no successful workflow had yet been confirmed for the then-current documentation HEAD. A fresh Android Build was observed queued on commit `8d59f33fda3bf0f0dec66cc3455212369c1913c6`; this state-file correction will advance HEAD again, so verify Actions against the new live HEAD. The success above proves only the app SHA `77f4...`, not the documentation commits.
-- Emulator evidence does not equal physical MPC Studio MkII verification.
+- Last successful full Android workflow before the current local-only Browser contract: [Android Build #2617](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38082008806), tested SHA `ca0dd4c5f209c0a34ad4c6ae1182ed13429036bb`. This does not validate later Browser changes.
+- [Android Build #2618](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38085798429), SHA `7754a5b22a0331e94638fece768364952603028f`, **FAILED** in the emulator smoke step. The new product-scope preflight correctly rejected the string `splice` in Browser source, but an older information-architecture assertion still incorrectly required `SPLICE`. Native tests and APK assembly had passed before smoke failed. This is a contradictory test expectation, not evidence that Splice should be retained.
+- Fix committed at `a8c13c6cb7907c9d868fc928bd71d03672ddd0b8` (`test: align Browser IA contract with local-only scope`): removed the obsolete `SPLICE` requirement from the Browser IA source preflight, retaining the separate assertion that Splice must not appear in the product Browser and the checks for generic local categories.
+- At the last live check, Android Build #2619 for SHA `a8c13c6cb7907c9d868fc928bd71d03672ddd0b8` was **IN PROGRESS**: [Build #2619](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38086888043). This session-state refresh advances HEAD, so #2619 may be cancelled/superseded. **The first task next session is to inspect the latest Android Build for the actual current PR SHA and fix any failure before adding unrelated work.**
+- Do not treat an APK produced by a workflow whose emulator smoke failed as a validated release artifact. Check the exact tested SHA and the conclusion of the entire workflow.
+- Earlier Build #2608 and its visual evidence describe the older SHA `77f4e18a8f40a2e3d58ec8dbdf873cb09070fe4a`, not current source. Its screenshots/hierarchy should not be used to assert that the Browser now excludes Splice or that later interactions work.
 
-## 4. Implementation snapshot
+## 4. Current implementation snapshot
 
-This is an observed high-level map, not a claim that each context is finished:
+- **Main shell:** toolbar, five-slot Shortcut Rail, XL Channel Strip host, workspace and Function Bar exist. Fidelity is improved but exact visual and behavioral parity is incomplete.
+- **Browser:** Splice has been removed from the actual Content navigation. Regression preflight requires its absence. Generic local categories retained include Drums, Instruments, Samples, Demos and My Files.
+- **Browser is still PARTIAL:** its result area remains placeholder/informational rows (Open Storage plus Current Sample), not a real semantic list of indexed local files. Search/filter controls and navigation state exist, but do not imply a fully working local result provider. Persisted favourites, complete options and a genuine selectable local result workflow remain gaps.
+- **Sample workflow:** existing WAV import route uses Android Document Picker and native sample load/assignment for the current selected Pad/Layer. Preserve this path while introducing a product-level result list; do not regress it.
+- **Track View / Arrange / Grid / Step:** partial; reuse existing event/domain operations and preserve explicit unavailable states for unsupported edits/non-Drum tracks.
+- **Sampler / Sample Edit:** substantial existing software/UI foundation (recording, monitor/threshold, waveform, region, crop/chop and layer semantics). Reuse, do not rewrite.
+- **Pad Mixer:** real Level/Pan/Tune subset exists. Full Channel Mixer/routing/FX remain incomplete.
+- **Project persistence, List Edit, Pad Perform, XYFX and other advanced contexts:** reserved/partial. No fake operations.
 
-- **Main shell:** canonical toolbar, five shortcut rail, XL strip host, workspace and Function Bar exist; structural fidelity is improved but detailed MPC visual/functional parity remains incomplete.
-- **Browser:** partial. The existing view has Places / Content / Expansions, search, six file-type filters, Options, target Pad/Layer, current-sample state and a native Android storage-picker action. The results area is still placeholder/informational rows rather than a proper semantic local-file result list. Splice has been present in Content navigation and must be removed from the actual app.
-- **Browser gaps:** true local results/provider, search/filter behavior over those results, persisted favourites, genuine audition state, meaningful options, robust semantic Load/Assign flow.
-- **Track View / Arrange / Grid / Step:** partial; preserve implemented semantic operations and explicitly reserved gaps. Do not claim full non-Drum Grid or edit-command parity.
-- **Sampler / Sample Edit:** substantial software/UI foundation already exists (recording, waveform, region, crop/chop, monitor/threshold and sample-layer semantics); continue reusing it.
-- **Pad Mixer:** supported Level/Pan/Tune path exists; additional routing/FX remains incomplete.
-- **Channel Mixer, Project persistence, List Edit, Pad Perform, XYFX and other advanced contexts:** documented reserved/partial gaps. Do not fabricate them.
-- **Physical MkII validation:** keep pending unless there is a specific current physical test report.
-- Do not infer product completeness from the accumulated 400+ commits. Feature and acceptance matrices matter more than commit count.
+Canonical implementation status and product decisions also live in `docs/MPC3-9-OS-KNOWLEDGE-BASE.md` and `docs/IMPLEMENTATION-ROADMAP.md`.
 
-Canonical detailed status lives in `docs/MPC3-9-OS-KNOWLEDGE-BASE.md` and `docs/IMPLEMENTATION-ROADMAP.md`.
+## 5. Operating documents now established
 
-## 5. Documentation refresh just made
+- `docs/SESSION-STATE.md` — this concise checkpoint. Update at meaningful milestones; live verification overrides it.
+- `docs/DEVELOPMENT-OPERATING-PROTOCOL.md` — mandatory workflow, local-first product scope, slice acceptance, evidence contract and free-tier/context-efficiency rules.
+- `AGENTS.md` — instructs agents to read both files before implementation.
+- `docs/PROJECT_MASTER_PROMPT.md` — incorporates the new execution rules and commercial-scope decision.
+- `docs/IMPLEMENTATION-ROADMAP.md` — priority order: remove excluded surfaces, complete real local Browser and sample workflow, then Track/Arrange/Grid/Step and project/mixer work.
+- `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`, `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md`, `docs/MPC3-REFERENCE-INDEX.md`, `docs/MPC3-UI-SCREEN-BLUEPRINT.md`, `docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md` — reference taxonomy, intentional product deviation, screen design and safety contract.
 
-New canonical process document:
-- `docs/DEVELOPMENT-OPERATING-PROTOCOL.md` — session loop, evidence contract, Browser acceptance target, local-first exclusions and free-tier/context-efficiency rules.
+Do not dump/re-read all large docs every session. Read this state, the protocol and master brief, then only the relevant sections of the roadmap/spec/source/tests.
 
-Documents updated to refer to the new rule and/or product decision:
-- `AGENTS.md`
-- `docs/PROJECT_MASTER_PROMPT.md`
-- `docs/IMPLEMENTATION-ROADMAP.md`
-- `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`
-- `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md`
-- `docs/MPC3-REFERENCE-INDEX.md`
-- `docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md`
+## 6. Exact next-work order
 
-The documentation-only commits preceding this checkpoint include:
-- `c53b3508237d521c64f7216d9cb8e7f249280260`
-- `ff82e2d94fb9818c862d3b53ae01d45e265dd553`
-- `fe5c08318fefd46bd3e49d7a0130bd77b288ba3f`
-- `79ea7a921b5d2e9b6d65168bc550bad183558a76`
-- `dc54fa50a6e5ec64a414a690cdf6e6f06932bb10`
-- `d243473cc03aad6aac6f7e895ad2cc9c2c812fc3`
-- `a56b0bf31d96c2efc808957b7be4b7413632b17a`
-- `bf019ea84a17ebfcd3d3cbec871d2e28b6c2aa10`
+### Task 0 — verify the latest CI for the actual head
 
-These were documentation commits; their existence does not prove runtime behavior or a successful build at their HEAD.
+1. Read PR #23's live head SHA and branch state.
+2. Inspect the newest Android Build run associated with that SHA. The previously running #2619 may have been superseded by this checkpoint commit.
+3. Confirm the result includes native tests, APK assembly, Android emulator smoke, and visual-evidence upload; identify the exact failed step if not green.
+4. Correct any test/evidence mismatch with a small change. Do not bring back Splice to satisfy an outdated assertion.
+5. Inspect the artifact names/files from the latest successful run. For visual evidence, verify expected PNG and XML hierarchy files exist in the downloaded archive, not only that the workflow log said they were captured.
+6. Update this state file at the end of the next meaningful implementation slice; don't create multiple status-only commits while the slice is unfinished.
 
-## 6. Next implementation sequence
+### Task 1 — semantic local Browser results (next implementation milestone)
 
-### Task 1 — remove excluded commercial Browser surface
+Design a small real vertical slice after inspecting the current code and Android storage capabilities:
 
-1. Read the updated operating protocol, state, roadmap, relevant Browser code and tests.
-2. Remove `SPLICE` from the actual Content navigation and add regression coverage that it is not presented as an actionable product destination.
-3. Inspect the rest of the implemented UI for comparable commercial/vendor-cloud/marketing entries; remove only clearly excluded surfaces, preserving generic local folders and external storage access.
-4. Avoid changing audio/MIDI/domain logic.
-5. Run targeted source/unit/contract tests; then create a fresh APK and complete the relevant Android smoke/visual audit.
-6. Inspect the actual evidence ZIP contents; explicitly verify screenshots/XML expected by the workflow. Fix any missing-artifact mismatch rather than merely changing the log.
-7. Record the exact code commit, CI URL/result, artifact checksum and remaining evidence gaps in this file after verification.
+- Keep Android Document Provider underneath the product Browser.
+- Provide a real way to discover accessible local audio files (for example a persisted user-selected document tree and/or indexed accessible local media, selected based on existing app/dependency support).
+- Show real result rows with file identity/metadata, not placeholders.
+- Selecting a result must preserve its URI and the current target Pad/Layer.
+- Load must use the existing sample decoder/native load/assignment path and update the correct sample name/state after returning to Main.
+- Search/type filters must be connected to the semantic local results or explicitly remain unavailable; do not claim functionality from a UI control alone.
+- Treat audition as a separate verified behavior. Do not fake preview by triggering an unrelated already-loaded sample.
+- Persist favourite locations only after URI permissions/storage and restoration are designed and tested.
+- Add tests for provider/result filtering and an Android smoke path appropriate to the new workflow.
+- Keep the first slice bounded: a real local WAV result → select target → load/assign → visible state result is more valuable than a broad unfinished browser framework.
 
-### Task 2 — semantic local Browser provider and results
+### Task 2 — high-value musical contexts
 
-Design before coding: inspect Android document/storage APIs and current sample-import callbacks. Implement the smallest vertical slice that shows real accessible local audio files, selects a real item, preserves the chosen target Pad/Layer, loads/assigns it, and proves the resulting sample state. Add search/filter next, then favourites/options only when backed by real persisted semantics.
+After Browser's core local workflow is verified, improve real Track, Arrange, Grid and Step scenarios; then increase mixer depth and project persistence according to existing semantic/domain APIs. Do not prioritize another long decorative-only pass over a broken high-frequency workflow.
 
-### Task 3 — finish high-value musical contexts
+## 7. Required test/evidence ladder
 
-After Browser acceptance, prioritize Track/Arrange/Grid/Step real workflows; then mixer depth and project persistence according to existing domain contracts. Do not spend extended time on decorative polish while a high-frequency musical workflow remains fake/incomplete.
+For each meaningful slice:
 
-## 7. Session completion/update rule
+1. Inspect current source, callers, state owner/backend command, docs, tests and relevant commits.
+2. Run the smallest relevant unit/source/native tests first.
+3. Build a fresh APK on the active branch.
+4. Run emulator UI smoke and capture real screenshot + accessibility/UI hierarchy relevant to the screen.
+5. Verify the semantic result/state change as well as geometry/hit bounds/focus/Back behavior.
+6. Check GitHub Actions for the exact SHA and inspect the APK/evidence artifacts, including archive contents and checksums where available.
+7. Update roadmap/status and this file with the commit, tested SHA, CI URL/conclusion, artifact identity, evidence files inspected, known gaps, hardware status and exact next task.
 
-At the end of every meaningful milestone, update this file once with verified facts:
-- actual HEAD and date checked;
-- PR state/base/head;
-- tested SHA and Actions result;
-- APK/artifact identity and checksum when available;
-- evidence files actually inspected and any missing ones;
-- change and tests;
-- physical hardware status;
-- exact next task.
+The final check must not be skipped to save time. Use fast targeted checks during iteration and the full cycle at the acceptance boundary. Do not create a separate full CI run for every tiny intermediate edit where a local or targeted test is sufficient.
 
-Do not repeatedly commit status-only changes during a single feature slice. Do not predict the SHA of the commit that will contain this file. In the next session, fetch live state first.
+## 8. Branch and commit discipline
+
+- Stay on `feature/mpc-one-ui-fidelity`, PR #23.
+- Never reset/rebase/force-push or edit `main`.
+- One coherent intent per commit; for a multi-document documentation update, prefer one atomic commit rather than a succession of per-file commits where tooling permits.
+- Do not add paid services, new credentials, cloud dependencies or required paid AI tools. Assume ChatGPT free-tier context/usage limits and optimize by reusing docs, targeted ranges, concise evidence inspection and bounded implementation slices.
+- No asynchronous promises: complete the checks possible in the current session and record unresolved work accurately.
+
