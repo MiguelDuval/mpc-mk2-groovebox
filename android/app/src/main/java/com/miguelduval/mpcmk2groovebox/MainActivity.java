@@ -5523,6 +5523,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             @Override
             public void onFileSelected(MpcBrowserFile file) {
                 if (file == null) {
+                    stopBrowserPreview();
                     setBottomStatus("BROWSER • no visible local WAV selected");
                 } else {
                     stopBrowserPreview();
@@ -5654,6 +5655,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setBottomStatus(String.format(Locale.ROOT,
                 "LOADING %s → PAD %02d / LAYER %02d…",
                 file.displayName(), targetPad + 1, targetLayer + 1));
+        if (browserView != null) {
+            browserView.setProviderStatus(String.format(Locale.ROOT,
+                    "LOADING • %s → PAD %02d / LAYER %02d",
+                    file.displayName(), targetPad + 1, targetLayer + 1));
+        }
 
         try {
             startupExecutor.execute(() -> {
@@ -5663,9 +5669,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 } catch (Exception e) {
                     runOnUiThread(() -> {
                         if (!destroyed) {
-                            setBottomStatus("Local WAV read failed • "
+                            final String failure = "Local WAV read failed • "
                                     + e.getClass().getSimpleName()
-                                    + (e.getMessage() == null ? "" : ": " + e.getMessage()));
+                                    + (e.getMessage() == null ? "" : ": " + e.getMessage());
+                            setBottomStatus(failure);
+                            if (browserView != null) {
+                                browserView.setProviderStatus(failure);
+                            }
                         }
                     });
                     return;
@@ -5686,15 +5696,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     final String restarted = nativeAudioStart();
                     setAudioStateFromResult(restarted);
                     if (loadSucceeded) {
-                        setBottomStatus(String.format(Locale.ROOT,
+                        final String assignmentStatus = String.format(Locale.ROOT,
                                 "ASSIGNED • %s → PAD %02d / LAYER %02d | %s",
-                                file.displayName(), targetPad + 1, targetLayer + 1, restarted));
-                        if (browserView != null
-                                && selectedPad == targetPad && selectedLayer == targetLayer) {
-                            browserView.setCurrentSampleName(file.displayName());
+                                file.displayName(), targetPad + 1, targetLayer + 1, restarted);
+                        setBottomStatus(assignmentStatus);
+                        if (browserView != null) {
+                            browserView.setProviderStatus(assignmentStatus);
+                            if (selectedPad == targetPad && selectedLayer == targetLayer) {
+                                browserView.setCurrentSampleName(file.displayName());
+                            }
                         }
                     } else {
-                        setBottomStatus("Local WAV load failed • " + loaded + " | " + restarted);
+                        final String failure = "Local WAV load failed • " + loaded + " | " + restarted;
+                        setBottomStatus(failure);
+                        if (browserView != null) browserView.setProviderStatus(failure);
                     }
                     refreshAllInspectorState();
                     refreshSampleWaveform();
@@ -5703,6 +5718,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             });
         } catch (java.util.concurrent.RejectedExecutionException e) {
             setBottomStatus("Local WAV load unavailable • worker executor is closed");
+            if (browserView != null) {
+                browserView.setProviderStatus("LOCAL WAV LOAD UNAVAILABLE • TRY AGAIN");
+            }
         }
     }
 
@@ -5727,14 +5745,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     return;
                 }
                 prepared.start();
-                setBottomStatus("AUDITION • " + file.displayName());
+                final String auditionStatus = "AUDITION • " + file.displayName();
+                setBottomStatus(auditionStatus);
+                if (browserView != null) browserView.setProviderStatus(auditionStatus);
             });
             player.setOnCompletionListener(completed -> {
                 if (browserPreviewPlayer != completed) return;
                 browserPreviewPlayer = null;
                 browserPreviewUri = "";
                 completed.release();
-                setBottomStatus("AUDITION COMPLETE • " + file.displayName());
+                final String auditionStatus = "AUDITION COMPLETE • " + file.displayName();
+                setBottomStatus(auditionStatus);
+                if (browserView != null) browserView.setProviderStatus(auditionStatus);
             });
             player.setOnErrorListener((failed, what, extra) -> {
                 if (browserPreviewPlayer == failed) {
@@ -5742,14 +5764,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     browserPreviewUri = "";
                     try { failed.release(); } catch (RuntimeException ignored) {}
                     setBottomStatus("AUDITION FAILED • this WAV could not be previewed");
+                    if (browserView != null) {
+                        browserView.setProviderStatus(
+                                "AUDITION FAILED • " + file.displayName());
+                    }
                 }
                 return true;
             });
             player.prepareAsync();
-            setBottomStatus("AUDITION PREPARING • " + file.displayName());
+            final String auditionStatus = "AUDITION PREPARING • " + file.displayName();
+            setBottomStatus(auditionStatus);
+            if (browserView != null) browserView.setProviderStatus(auditionStatus);
         } catch (Exception e) {
             stopBrowserPreview();
-            setBottomStatus("AUDITION FAILED • " + e.getClass().getSimpleName());
+            final String auditionStatus = "AUDITION FAILED • " + e.getClass().getSimpleName();
+            setBottomStatus(auditionStatus);
+            if (browserView != null) browserView.setProviderStatus(auditionStatus);
         }
     }
 
@@ -10643,7 +10673,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser Data Dial press did not expose provider limitation");
             return;
         }
-        browserView.setProviderStatus("PROVIDER • ANDROID DOCUMENTS • OPEN PICKER BELOW");
+        browserView.setProviderStatus("LOCAL AUDIO • NOT SCANNED");
 
         View browserOptions = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Browser Options");

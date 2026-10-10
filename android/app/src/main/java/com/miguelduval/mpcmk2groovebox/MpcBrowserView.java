@@ -195,7 +195,7 @@ final class MpcBrowserView extends LinearLayout {
                 paramsMatch(context, 34));
 
         providerState = info(context,
-                "PROVIDER • ANDROID DOCUMENTS • OPEN PICKER BELOW");
+                "LOCAL AUDIO • NOT SCANNED");
         providerState.setContentDescription("MPC Browser provider status");
         providerState.setTextSize(8);
         center.addView(providerState,

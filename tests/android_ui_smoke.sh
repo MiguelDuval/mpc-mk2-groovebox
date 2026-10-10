@@ -941,6 +941,17 @@ done
 
 echo "Running MPC Browser flat-chrome preflight..."
 echo "Running MPC Browser information-architecture preflight..."
+if grep -Fq -- 'PROVIDER • ANDROID DOCUMENTS • OPEN PICKER BELOW' "$BROWSER_SOURCE" \
+    || grep -Fq -- 'PROVIDER • ANDROID DOCUMENTS • OPEN PICKER BELOW' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Browser still presents Document Picker as its primary provider"
+  exit 1
+fi
+for required in 'providerState = info(context,' 'LOCAL AUDIO • NOT SCANNED'; do
+  if ! grep -Fq -- "$required" "$BROWSER_SOURCE"; then
+    echo "ERROR: Browser initial local-provider state missing: $required"
+    exit 1
+  fi
+done
 for required in 'REQUEST_SCAN_LOCAL_AUDIO' 'READ_MEDIA_AUDIO' 'READ_EXTERNAL_STORAGE' 'MpcLocalAudioCatalog.queryWavFiles' 'nativeAudioLoadSampleForPadLayer(' 'MediaPlayer' 'void assignSelectedBrowserFile()' 'browserPickerTargetPad = Math.max(0, Math.min(15, selectedPad))' 'browserPickerTargetLayer = Math.max(0, Math.min(7, selectedLayer))' 'final int targetPad = browserPickerTargetPad >= 0' 'final int targetLayer = browserPickerTargetLayer >= 0'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" \
       && ! grep -Fq -- "$required" "android/app/src/main/AndroidManifest.xml" \
@@ -1989,4 +2000,248 @@ if ! adb_bounded 10 exec-out cat "$DEVICE_DUMP" >"$DUMP"; then
   exit 1
 fi
 
-echo "Android runtime startup smoke passed."
+
+echo "Running Browser local MediaStore → audition → Pad/Layer assignment runtime test..."
+LOCAL_SAMPLE_SOURCE="android/app/src/main/assets/samples/pad01.wav.b64"
+LOCAL_SAMPLE_NAME="Browser-Smoke-Local.wav"
+LOCAL_SAMPLE_DEVICE="/sdcard/Music/$LOCAL_SAMPLE_NAME"
+LOCAL_SAMPLE_HOST="/tmp/$LOCAL_SAMPLE_NAME"
+BROWSER_LOCAL_XML="/tmp/mpc-groovebox-browser-local-results-uiautomator.xml"
+BROWSER_LOCAL_REMOTE="/sdcard/mpc-groovebox-browser-local-results-uiautomator.xml"
+
+if [[ ! -s "$LOCAL_SAMPLE_SOURCE" ]]; then
+  echo "ERROR: bundled WAV fixture is missing: $LOCAL_SAMPLE_SOURCE"
+  exit 1
+fi
+if ! base64 --decode "$LOCAL_SAMPLE_SOURCE" > "$LOCAL_SAMPLE_HOST"; then
+  echo "ERROR: could not decode Browser WAV fixture"
+  exit 1
+fi
+if ! file "$LOCAL_SAMPLE_HOST" | grep -Fq -- "WAVE"; then
+  echo "ERROR: Browser WAV fixture is not a decoded WAV file"
+  file "$LOCAL_SAMPLE_HOST" || true
+  exit 1
+fi
+if ! adb_bounded 10 shell mkdir -p /sdcard/Music; then
+  echo "ERROR: could not prepare emulator Music folder"
+  exit 1
+fi
+if ! adb_bounded 30 push "$LOCAL_SAMPLE_HOST" "$LOCAL_SAMPLE_DEVICE"; then
+  echo "ERROR: could not copy Browser WAV fixture to emulator storage"
+  exit 1
+fi
+emulator_sdk="$(adb_bounded 10 shell getprop ro.build.version.sdk | tr -d '\r')"
+if [[ "$emulator_sdk" =~ ^[0-9]+$ ]] && (( emulator_sdk >= 33 )); then
+  media_permission="android.permission.READ_MEDIA_AUDIO"
+else
+  media_permission="android.permission.READ_EXTERNAL_STORAGE"
+fi
+if ! adb_bounded 10 shell pm grant "$PACKAGE" "$media_permission"; then
+  echo "ERROR: could not grant emulator local-audio permission: $media_permission"
+  exit 1
+fi
+if ! adb_bounded 10 shell am broadcast \
+    -a android.intent.action.MEDIA_SCANNER_SCAN_FILE \
+    -d "file://$LOCAL_SAMPLE_DEVICE" > /tmp/mpc-browser-media-scan.txt; then
+  echo "ERROR: Android MediaScanner rejected the local WAV fixture"
+  cat /tmp/mpc-browser-media-scan.txt || true
+  exit 1
+fi
+sleep 2
+
+dump_device_ui() {
+  local remote_path="$1"
+  local host_path="$2"
+  local log_path="/tmp/mpc-groovebox-uiautomator-dump.log"
+  if ! adb_bounded 20 shell uiautomator dump "$remote_path" > "$log_path" 2>&1; then
+    cat "$log_path" || true
+    echo "ERROR: could not dump emulator UI hierarchy: $remote_path"
+    return 1
+  fi
+  if ! adb_bounded 10 exec-out cat "$remote_path" > "$host_path"; then
+    echo "ERROR: could not retrieve emulator UI hierarchy: $remote_path"
+    return 1
+  fi
+  if ! test -s "$host_path"; then
+    echo "ERROR: emulator UI hierarchy is empty: $host_path"
+    return 1
+  fi
+}
+
+ui_target_center() {
+  local hierarchy_path="$1"
+  local expected_description="$2"
+  python3 - "$hierarchy_path" "$expected_description" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+
+def bounds(value):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", value or "")
+    return tuple(map(int, match.groups())) if match else None
+
+def intersect(rect, clip):
+    if clip is None:
+        return rect
+    x1, y1, x2, y2 = rect
+    a1, b1, a2, b2 = clip
+    result = (max(x1, a1), max(y1, b1), min(x2, a2), min(y2, b2))
+    return result if result[0] < result[2] and result[1] < result[3] else None
+
+def visit(node, clips):
+    rect = bounds(node.attrib.get("bounds"))
+    cls = node.attrib.get("class", "")
+    child_clips = clips
+    if rect and ("ScrollView" in cls or node.attrib.get("scrollable") == "true"):
+        child_clips = clips + [rect]
+
+    desc = node.attrib.get("content-desc", "")
+    if (desc == expected or desc.startswith(expected)) and rect \
+            and node.attrib.get("clickable") == "true" \
+            and node.attrib.get("enabled") == "true":
+        visible = rect
+        for clip in reversed(clips):
+            visible = intersect(visible, clip)
+            if visible is None:
+                break
+        if visible:
+            x1, y1, x2, y2 = visible
+            print((x1+x2)//2, (y1+y2)//2)
+            return True
+
+    for child in list(node):
+        if visit(child, child_clips):
+            return True
+    return False
+
+if not visit(root, []):
+    sys.exit(2)
+PY
+}
+
+tap_ui_description() {
+  local hierarchy_path="$1"
+  local expected_description="$2"
+  local coordinates tap_x tap_y
+  if ! coordinates="$(ui_target_center "$hierarchy_path" "$expected_description")"; then
+    echo "ERROR: visible clickable UI target not found: $expected_description"
+    return 1
+  fi
+  read -r tap_x tap_y <<< "$coordinates"
+  if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+    echo "ERROR: could not tap UI target $expected_description at $tap_x,$tap_y"
+    return 1
+  fi
+}
+
+wait_for_ui_description() {
+  local hierarchy_path="$1" remote_path="$2" expected_description="$3" max_attempts="$4"
+  for ((attempt=1; attempt<=max_attempts; attempt++)); do
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    if python3 - "$hierarchy_path" "$expected_description" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, expected = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+raise SystemExit(0 if any(n.attrib.get("content-desc", "").startswith(expected)
+                          for n in root.iter("node")) else 1)
+PY
+    then return 0; fi
+    sleep 1
+  done
+  echo "ERROR: timed out waiting for UI target: $expected_description"
+  cat "$hierarchy_path" || true
+  return 1
+}
+
+wait_for_ui_text_pair() {
+  local hierarchy_path="$1" remote_path="$2" first="$3" second="$4" max_attempts="$5"
+  for ((attempt=1; attempt<=max_attempts; attempt++)); do
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    if python3 - "$hierarchy_path" "$first" "$second" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, first, second = sys.argv[1], sys.argv[2], sys.argv[3]
+root = ET.parse(path).getroot()
+texts = [n.attrib.get("text", "") for n in root.iter("node")]
+raise SystemExit(0 if any(first in value and second in value for value in texts) else 1)
+PY
+    then return 0; fi
+    sleep 1
+  done
+  echo "ERROR: timed out waiting for UI text pair: $first / $second"
+  cat "$hierarchy_path" || true
+  return 1
+}
+
+wait_for_ui_node_text_desc() {
+  local hierarchy_path="$1" remote_path="$2" expected_text="$3" expected_description="$4" max_attempts="$5"
+  for ((attempt=1; attempt<=max_attempts; attempt++)); do
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    if python3 - "$hierarchy_path" "$expected_text" "$expected_description" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, expected_text, expected_desc = sys.argv[1], sys.argv[2], sys.argv[3]
+root = ET.parse(path).getroot()
+ok = any(expected_text in n.attrib.get("text", "")
+         and expected_desc in n.attrib.get("content-desc", "")
+         for n in root.iter("node"))
+raise SystemExit(0 if ok else 1)
+PY
+    then return 0; fi
+    sleep 1
+  done
+  echo "ERROR: timed out waiting for node text/description: $expected_text / $expected_description"
+  cat "$hierarchy_path" || true
+  return 1
+}
+
+if ! tap_ui_description "$DUMP" "MPC shortcut BROWSER"; then exit 1; fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser scan local audio files" 20; then exit 1; fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser scan local audio files"; then exit 1; fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser file $LOCAL_SAMPLE_NAME" 30; then exit 1; fi
+
+# The sample follows two pinned Browser actions in a short ScrollView. Scroll it
+# fully into the hit area instead of tapping a clipped row at the viewport edge.
+if ! adb_bounded 10 shell input swipe 1400 930 1400 760 300; then
+  echo "ERROR: could not scroll the Browser result list"
+  exit 1
+fi
+sleep 1
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then exit 1; fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser file $LOCAL_SAMPLE_NAME"; then exit 1; fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser audition selected local WAV file" 10; then exit 1; fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser audition selected local WAV file"; then exit 1; fi
+if ! wait_for_ui_text_pair "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "AUDITION" "$LOCAL_SAMPLE_NAME" 8; then
+  echo "ERROR: selected-file audition did not expose its file-specific runtime state"
+  exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" \
+    "MPC Browser assign selected local WAV to target Pad/Layer"; then exit 1; fi
+if ! wait_for_ui_node_text_desc "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "CURRENT SAMPLE • $LOCAL_SAMPLE_NAME" "MPC Browser current sample" 20; then
+  echo "ERROR: WAV assignment did not update the Browser current Pad/Layer sample"
+  exit 1
+fi
+if ! wait_for_ui_text_pair "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "ASSIGNED" "PAD 01 / LAYER 01" 20; then
+  echo "ERROR: native sampler assignment did not report the correct target"
+  exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-local-results.png; then
+  echo "ERROR: could not capture local Browser result/assignment screenshot"
+  exit 1
+fi
+echo "Browser local WAV scan, selection, audition and Pad/Layer assignment passed."
+
+# Capture the final accessibility hierarchy after successful local assignment.
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then exit 1; fi
+
+echo "Android runtime startup and local Browser workflow smoke passed."
