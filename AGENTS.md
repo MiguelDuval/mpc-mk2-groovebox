@@ -4,7 +4,7 @@ This repository has one canonical project brief:
 
 **[`docs/PROJECT_MASTER_PROMPT.md`](docs/PROJECT_MASTER_PROMPT.md)**
 
-Every coding agent working on this repository must read that document before making changes.
+Before any implementation work, every coding agent must also read **[`docs/SESSION-STATE.md`](docs/SESSION-STATE.md)** and **[`docs/DEVELOPMENT-OPERATING-PROTOCOL.md`](docs/DEVELOPMENT-OPERATING-PROTOCOL.md)**, then verify their mutable status claims against live GitHub state. SESSION-STATE is a checkpoint, not a substitute for inspecting the active branch, PR, CI or source.
 
 ## Mandatory rules
 
@@ -24,6 +24,8 @@ Every coding agent working on this repository must read that document before mak
 
 Use these documents together:
 
+- `docs/SESSION-STATE.md` — concise, update-at-milestone state checkpoint; verify against live GitHub before relying on it.
+- `docs/DEVELOPMENT-OPERATING-PROTOCOL.md` — required session loop, product-scope exclusions, acceptance evidence and context-efficiency rules.
 - `docs/PROJECT_MASTER_PROMPT.md` — master operating brief.
 - `docs/ARCHITECTURE.md` — layer boundaries.
 - `docs/IMPLEMENTATION-ROADMAP.md` — stage sequence.
