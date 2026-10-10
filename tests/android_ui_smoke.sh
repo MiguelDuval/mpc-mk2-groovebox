@@ -1490,6 +1490,10 @@ require_source_contains "$BROWSER_SOURCE" 'filterBar.addView(filters, new Layout
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'functionBar.setWeightSum(visibleChildren)'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser Function Bar unequal action widths'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser Options button has no hittable bounds'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'getInsetsIgnoringVisibility('
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'view.setPadding(left, 0, right, bottom)'
+require_source_contains "$0" 'Browser Options has zero/empty Android accessibility bounds'
+require_source_contains "$0" 'Function Bar action hit widths are unequal'
 
 echo "Running MPC Browser Options preflight..."
 for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
@@ -1614,6 +1618,64 @@ while (( SECONDS < audit_deadline )); do
         exit 1
       fi
     done
+
+    echo "Checking actual Android accessibility hit bounds for Browser Options and Function Bar..."
+    if ! python3 - /tmp/mpc-groovebox-browser-uiautomator.xml <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    if match is None:
+        raise AssertionError("malformed accessibility bounds: " + repr(node.attrib))
+    return tuple(map(int, match.groups()))
+
+def one(description):
+    found = [node for node in nodes if node.attrib.get("content-desc") == description]
+    if len(found) != 1:
+        raise AssertionError(f"expected one accessibility node for {description!r}; got {len(found)}")
+    return found[0]
+
+options = one("MPC Browser Options")
+x1, y1, x2, y2 = bounds(options)
+if x2 <= x1 or y2 <= y1:
+    raise AssertionError("Browser Options has zero/empty Android accessibility bounds: "
+                         + options.attrib.get("bounds", ""))
+root_bounds = bounds(nodes[0])
+if x2 > root_bounds[2] or y2 > root_bounds[3]:
+    raise AssertionError("Browser Options is outside the accessible screen bounds: "
+                         + options.attrib.get("bounds", ""))
+
+descriptions = [
+    "MPC Browser Sample Assign unavailable: no source item selected",
+    "MPC Browser audition current Pad/Layer sample",
+    "MPC Browser LOAD source file with Android Document Picker",
+    "Browser UP from CONTENT",
+    "MPC Browser BACK to previous workspace",
+]
+widths = []
+for description in descriptions:
+    node = one(description)
+    left, top, right, bottom = bounds(node)
+    if right <= left or bottom <= top:
+        raise AssertionError(f"empty hit bounds for {description!r}: {node.attrib.get('bounds')}")
+    widths.append(right - left)
+tolerance = max(4, round(max(widths) * 0.08))
+if max(widths) - min(widths) > tolerance:
+    raise AssertionError(f"Function Bar action hit widths are unequal: {widths} (tolerance {tolerance})")
+print("Browser Options bounds:", (x1, y1, x2, y2))
+print("Function Bar accessibility widths:", widths)
+PY
+    then
+      echo "ERROR: Browser accessibility bounds are clipped or Function Bar targets are unequal"
+      cat /tmp/mpc-groovebox-browser-uiautomator.xml
+      exit 1
+    fi
+
     if ! adb_bounded 10 shell run-as "$PACKAGE" \
         touch cache/mpc-browser-capture-release; then
       echo "ERROR: could not release app-side Browser capture checkpoint"

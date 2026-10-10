@@ -2644,6 +2644,38 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
                 controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
             }
+
+            /*
+             * Keep the workstation inside the Android navigation-bar safe area.
+             * In landscape, drawing edge-to-edge can leave right-edge controls
+             * visible in screenshots but clipped to zero-width accessibility
+             * bounds. Insets remain relevant while system bars are hidden.
+             */
+            View appContent = mpcShell != null
+                    ? mpcShell.root()
+                    : findViewById(android.R.id.content);
+            if (appContent != null) {
+                appContent.setOnApplyWindowInsetsListener((view, insets) -> {
+                    final int left;
+                    final int right;
+                    final int bottom;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        final android.graphics.Insets navigationInsets =
+                                insets.getInsetsIgnoringVisibility(
+                                        WindowInsets.Type.navigationBars());
+                        left = navigationInsets.left;
+                        right = navigationInsets.right;
+                        bottom = navigationInsets.bottom;
+                    } else {
+                        left = insets.getStableInsetLeft();
+                        right = insets.getStableInsetRight();
+                        bottom = insets.getStableInsetBottom();
+                    }
+                    view.setPadding(left, 0, right, bottom);
+                    return insets;
+                });
+                appContent.requestApplyInsets();
+            }
             return;
         }
 
