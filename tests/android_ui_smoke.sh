@@ -1737,10 +1737,6 @@ PY
       exit 1
     fi
     printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-storage-picker-activity.txt
-    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-storage-picker.png; then
-      echo "ERROR: Android Document Picker screenshot capture failed"
-      exit 1
-    fi
     if ! timeout --signal=TERM --kill-after=3s 30s \
         adb shell uiautomator dump /sdcard/mpc-groovebox-storage-picker-uiautomator.xml \
         > /tmp/mpc-groovebox-storage-picker-uiautomator.log 2>&1; then
@@ -1753,9 +1749,30 @@ PY
       echo "ERROR: Android Document Picker hierarchy retrieval failed"
       exit 1
     fi
-    if ! test -s /tmp/mpc-groovebox-storage-picker.png \
-        || ! test -s /tmp/mpc-groovebox-storage-picker-uiautomator.xml; then
-      echo "ERROR: Android Document Picker screenshot or hierarchy is empty"
+    if ! test -s /tmp/mpc-groovebox-storage-picker-uiautomator.xml; then
+      echo "ERROR: Android Document Picker hierarchy is empty"
+      exit 1
+    fi
+
+    # The resumed-activity record can precede the first visible frame. Capture
+    # after the accessibility tree is ready, then retry briefly if the bitmap
+    # is still the nearly-black launch transition rather than rendered UI.
+    sleep 1
+    picker_screenshot_bytes=0
+    for screenshot_attempt in 1 2 3 4 5; do
+      if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-storage-picker.png; then
+        echo "ERROR: Android Document Picker screenshot capture failed"
+        exit 1
+      fi
+      picker_screenshot_bytes=$(wc -c < /tmp/mpc-groovebox-storage-picker.png)
+      if [ "$picker_screenshot_bytes" -ge 25000 ]; then
+        break
+      fi
+      sleep 1
+    done
+    if [ "$picker_screenshot_bytes" -lt 25000 ]; then
+      echo "ERROR: Android Document Picker screenshot remained blank/transition-sized"
+      echo "Screenshot bytes: $picker_screenshot_bytes"
       exit 1
     fi
     if ! python3 - /tmp/mpc-groovebox-storage-picker-uiautomator.xml <<'PY'
