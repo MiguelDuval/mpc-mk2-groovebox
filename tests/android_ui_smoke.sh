@@ -1530,8 +1530,8 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Main Output label repeats OUTPU
 
 echo "Running MPC Browser text overflow preflight..."
 require_source_contains "$BROWSER_SOURCE" 'destination.setSingleLine(true)'
-require_source_contains "$BROWSER_SOURCE" 'results.addView(row, paramsMatch(context, 40))'
-require_source_contains "$BROWSER_SOURCE" 'new LayoutParams(0, dp(context, 34), 1)'
+require_source_contains "$BROWSER_SOURCE" 'results.addView(row, paramsMatch(getContext(), 40))'
+require_source_contains "$BROWSER_SOURCE" 'new LayoutParams(0, dp(context, 34), 1.0f)'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser scan/storage actions are clipped or not actionable'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'browserStorageAction.getHeight() <= dp(36)'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser storage picker action not hittable'
