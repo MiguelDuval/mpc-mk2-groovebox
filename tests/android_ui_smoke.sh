@@ -1485,6 +1485,13 @@ for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStat
     exit 1
   fi
 done
+echo "Running MPC Main XL strip value preflight..."
+MAIN_MIXER_STRIP_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
+require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'right.setSingleLine(true)'
+require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'right.setEllipsize(TextUtils.TruncateAt.END)'
+require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'cleanProgramName(programName)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Main XL program value wrapped or repeats PROGRAM prefix'
+
 echo "Running MPC Browser text overflow preflight..."
 require_source_contains "$BROWSER_SOURCE" 'destination.setSingleLine(true)'
 require_source_contains "$BROWSER_SOURCE" 'currentSample.setSingleLine(true)'

@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -184,7 +185,7 @@ final class MpcMainMixerStripView extends LinearLayout {
         addProgramBand(
                 strip,
                 context,
-                clean(programName, "PROGRAM RESERVED"),
+                cleanProgramName(programName),
                 "PROGRAM");
 
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
@@ -422,6 +423,8 @@ final class MpcMainMixerStripView extends LinearLayout {
                 9,
                 TEXT);
         name.setTypeface(Typeface.DEFAULT_BOLD);
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
         labels.addView(name, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 22)));
 
         TextView type = text(
@@ -448,6 +451,13 @@ final class MpcMainMixerStripView extends LinearLayout {
 
         TextView right = text(context, value, 8, TEXT);
         right.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        right.setSingleLine(true);
+        right.setEllipsize(TextUtils.TruncateAt.END);
+        if ("PROGRAM".equals(caption)) {
+            // The band caption already says PROGRAM; keep the displayed name
+            // to the right, without repeating the model's semantic prefix.
+            right.setTag("MPC Main selected track program value");
+        }
         band.addView(right, new LayoutParams(0, dp(context, 28), 1));
         band.setBackgroundColor(PANEL_DARK);
         strip.addView(band, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 28)));
@@ -576,6 +586,14 @@ final class MpcMainMixerStripView extends LinearLayout {
                 break;
         }
         return new MpcTrackTypeIconDrawable(type);
+    }
+
+    private String cleanProgramName(String value) {
+        final String cleanValue = clean(value, "PROGRAM RESERVED");
+        final String prefix = "PROGRAM • ";
+        return cleanValue.startsWith(prefix)
+                ? cleanValue.substring(prefix.length()).trim()
+                : cleanValue;
     }
 
     private String clean(String value, String fallback) {

@@ -9840,6 +9840,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     + " | meter=" + describeAuditView(selectedTrackMeter));
             return;
         }
+        final View selectedTrackProgramValue = getWindow().getDecorView()
+                .findViewWithTag("MPC Main selected track program value");
+        if (!(selectedTrackProgramValue instanceof TextView)
+                || !selectedTrackProgramValue.isShown()
+                || ((TextView) selectedTrackProgramValue).getLineCount() != 1
+                || ((TextView) selectedTrackProgramValue).getText() == null
+                || ((TextView) selectedTrackProgramValue).getText().toString().isEmpty()
+                || ((TextView) selectedTrackProgramValue).getText().toString()
+                        .startsWith("PROGRAM • ")) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main XL program value wrapped or repeats PROGRAM prefix"
+                    + " | program=" + describeAuditView(selectedTrackProgramValue));
+            return;
+        }
 
         showPullDown();
         if (pullDownPanel == null
