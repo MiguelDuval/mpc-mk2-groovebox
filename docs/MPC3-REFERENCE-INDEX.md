@@ -489,3 +489,18 @@ Current verified source facts:
 
 Checked: 2026-10-06.
 Confidence: HIGH for the cited current MPC3 architecture/taxonomy.
+
+
+## 2026-10-10 — local-first Browser scope decision
+
+**Question:** Should the Browser reproduce every factory MPC 3.9 Content destination, including branded/partner content services?
+
+**Reference:** Akai's official Browser article documents the reference taxonomy; see Section 4 above and the detailed `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`.
+
+**Product decision:** No. Splice, commercial stores/marketplaces, paid expansion promotions, partner ads, upsells and unnecessary vendor-specific cloud/account dependencies are intentionally excluded. This is a product-specific scope choice, not a correction to Akai's published taxonomy.
+
+**Retain:** real local files, generic content categories backed by a provider, Android Document Provider beneath the app-level Browser, available external storage, local audition, target Pad/Layer, loading/assignment and persisted favourites when genuinely implemented.
+
+**Acceptance:** excluded routes are absent from the actual product UI; visible local categories return real results; Browser operations update the correct sample/layer state; no disconnected placeholder is described as complete.
+
+**Execution protocol:** `docs/DEVELOPMENT-OPERATING-PROTOCOL.md`. **Current verified checkpoint:** `docs/SESSION-STATE.md` (verify all mutable state against GitHub before use).
