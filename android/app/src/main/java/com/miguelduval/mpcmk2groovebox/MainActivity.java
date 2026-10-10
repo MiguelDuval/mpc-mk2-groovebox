@@ -9153,7 +9153,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         + " | resultCode=" + resultCode);
                 return;
             }
-            continueUiAuditAfterBrowserStoragePicker(true);
+            // DocumentUI returns control before the underlying immersive
+            // window has necessarily completed its first visible layout pass.
+            // Wait boundedly for Browser to become visible again before testing
+            // context retention or clicking Main's Back action.
+            waitForBrowserAuditAfterPickerReturn(0);
             return;
         }
         if (requestCode != REQUEST_OPEN_WAV || resultCode != RESULT_OK || data == null) {
@@ -9208,6 +9212,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     + e.getClass().getSimpleName() + ": " + e.getMessage()
                     + " | " + restarted);
         }
+    }
+
+    private void waitForBrowserAuditAfterPickerReturn(int attempt) {
+        if (destroyed) return;
+        if (browserView != null
+                && browserView.isShown()
+                && browserView.getWidth() > dp(200)
+                && browserView.getHeight() > dp(180)) {
+            continueUiAuditAfterBrowserStoragePicker(true);
+            return;
+        }
+        if (attempt >= 60) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser workspace did not become visible after storage picker"
+                    + " | browser=" + describeAuditView(browserView)
+                    + " | attempt=" + attempt);
+            return;
+        }
+        waveformUiHandler.postDelayed(
+                () -> waitForBrowserAuditAfterPickerReturn(attempt + 1),
+                50L);
     }
 
     private String sampleDisplayName(Uri uri) {
