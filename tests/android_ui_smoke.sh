@@ -1466,6 +1466,8 @@ require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("MPC Bro
 require_source_contains "$BROWSER_SOURCE" 'MPC Browser current location: PLACE • INTERNAL'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Button audition = addFunction("AUDITION", browserSampleAvailable,'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser search state propagation'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser context did not survive view recreation'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser restore did not return to Main'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser CLEAR did not clear persisted query'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser audition current Pad/Layer sample'
 require_source_contains "$BROWSER_SOURCE" 'void auditionCurrentSample()'

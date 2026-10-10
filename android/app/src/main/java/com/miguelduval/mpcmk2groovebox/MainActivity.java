@@ -10107,8 +10107,63 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         View browserBack = findViewWithExactText(
                 getWindow().getDecorView(), "BACK");
-        if (browserBack == null || !browserBack.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: BROWSER back to Main");
+        if (browserBack == null || !browserBack.performClick()
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: BROWSER back to Main"
+                    + " | mode=" + navigationController.state().mode());
+            return;
+        }
+
+        View browserShortcutAfterBack = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC shortcut BROWSER");
+        if (browserShortcutAfterBack == null || !browserShortcutAfterBack.performClick()
+                || browserView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser shortcut after Main return");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserView, dp(180), "Browser restored workspace",
+                this::runUiAuditAfterBrowserRestoreLayout);
+    }
+
+    private void runUiAuditAfterBrowserRestoreLayout() {
+        if (destroyed) return;
+
+        final MpcUiState state = navigationController.state();
+        final View restoredSamplesFilter = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser filter SAMPLES");
+        final View restoredSearch = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser search files");
+        if (browserView == null || !browserView.isShown()
+                || browserView.getWidth() <= dp(200)
+                || browserView.getHeight() <= dp(180)
+                || state.mode() != MpcUiState.Mode.BROWSER
+                || !"CONTENT".equals(state.browserLocation())
+                || !"SAMPLES".equals(state.browserFilter())
+                || !state.browserSearch().isEmpty()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Browser current location: CONTENT") == null
+                || restoredSamplesFilter == null || !restoredSamplesFilter.isSelected()
+                || restoredSearch == null || !(restoredSearch instanceof EditText)
+                || !((EditText) restoredSearch).getText().toString().isEmpty()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser context did not survive view recreation"
+                    + " | mode=" + state.mode()
+                    + " | location=" + state.browserLocation()
+                    + " | filter=" + state.browserFilter()
+                    + " | search=" + state.browserSearch()
+                    + " | browser=" + describeAuditView(browserView)
+                    + " | filterView=" + describeAuditView(restoredSamplesFilter));
+            return;
+        }
+
+        View browserBackAfterRestore = findViewWithExactText(
+                getWindow().getDecorView(), "BACK");
+        if (browserBackAfterRestore == null || !browserBackAfterRestore.isShown()
+                || !browserBackAfterRestore.performClick()
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser restore did not return to Main"
+                    + " | mode=" + navigationController.state().mode());
             return;
         }
 
