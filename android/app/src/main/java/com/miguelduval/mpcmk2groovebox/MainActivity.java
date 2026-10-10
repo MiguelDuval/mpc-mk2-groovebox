@@ -10112,6 +10112,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View browserProviderStatus = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser provider status");
+        handleHardwareDialDelta(1, false);
+        if (!(browserProviderStatus instanceof TextView)
+                || !((TextView) browserProviderStatus).getText().toString().contains(
+                        "DATA DIAL • RESERVED / UNAVAILABLE")
+                || navigationController.state().dataDialFocus()
+                        != MpcUiState.DataDialFocus.BROWSER_ITEM) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Data Dial delta did not expose provider limitation"
+                    + " | status=" + describeAuditView(browserProviderStatus));
+            return;
+        }
+        applyHardwareAction(
+                MpcStudioMk2SemanticActions.DATA_DIAL_PRESS, 0, 0, 0);
+        if (!((TextView) browserProviderStatus).getText().toString().contains(
+                "DATA DIAL • RESERVED / UNAVAILABLE")) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Data Dial press did not expose provider limitation");
+            return;
+        }
+        browserView.setProviderStatus("PROVIDER • ANDROID DOCUMENTS • LOAD BELOW");
+
         View browserOptions = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Browser Options");
         if (browserOptions == null) {
@@ -11213,6 +11234,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     cyclePadMixerDialFocus();
                     return;
                 }
+                if (navigationController.state().mode() == MpcUiState.Mode.BROWSER
+                        && navigationController.state().dataDialFocus()
+                                == MpcUiState.DataDialFocus.BROWSER_ITEM) {
+                    showBrowserDialUnavailableStatus();
+                    return;
+                }
                 if (hardwareLocateActive) {
                     setBottomStatus(
                             "LOCATE • DATA DIAL = ±1 BEAT • SHIFT = ±1 TICK");
@@ -11758,6 +11785,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshMpcCompactContext();
             return;
         }
+        if (navigationController.state().mode() == MpcUiState.Mode.BROWSER
+                && navigationController.state().dataDialFocus()
+                        == MpcUiState.DataDialFocus.BROWSER_ITEM) {
+            showBrowserDialUnavailableStatus();
+            return;
+        }
         if (hardwareFocusId() == HARDWARE_FOCUS_SEQUENCE_BPM) {
             changeSequenceTempo(fine ? delta * 0.1 : delta);
             return;
@@ -11954,6 +11987,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         setBottomStatus("DATA DIAL " + (delta > 0 ? "+" : "−") + " • no focused selector");
+    }
+
+    private void showBrowserDialUnavailableStatus() {
+        final String message =
+                "DATA DIAL • RESERVED / UNAVAILABLE — Browser file index not implemented";
+        if (browserView != null
+                && navigationController != null
+                && navigationController.state().mode() == MpcUiState.Mode.BROWSER) {
+            browserView.setProviderStatus(message);
+        }
+        setBottomStatus(message);
     }
 
     private String stepEditParameterLabel() {
