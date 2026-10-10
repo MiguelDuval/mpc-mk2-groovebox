@@ -9845,10 +9845,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String nativeProgramLabel = nativeSequenceGetTrackProgram(
                 Math.max(0, nativeSequenceGetSelectedTrack()));
         final String programPrefix = "PROGRAM • ";
-        final String expectedProgramAccessibility =
-                nativeProgramLabel != null && nativeProgramLabel.startsWith(programPrefix)
-                        ? nativeProgramLabel.substring(programPrefix.length()).trim()
-                        : nativeProgramLabel;
+        /*
+         * The UI audit may run before asynchronous native startup finishes.
+         * Until Main's startup-complete transition refreshes the strip, its
+         * truthful placeholder is "—", even if the native project is already
+         * initialized. Compare against the state the UI is allowed to expose.
+         */
+        final String expectedProgramAccessibility;
+        if (!startupComplete) {
+            expectedProgramAccessibility = "—";
+        } else {
+            expectedProgramAccessibility =
+                    nativeProgramLabel != null && nativeProgramLabel.startsWith(programPrefix)
+                            ? nativeProgramLabel.substring(programPrefix.length()).trim()
+                            : nativeProgramLabel;
+        }
         final CharSequence programDescription = selectedTrackProgramValue == null
                 ? null : selectedTrackProgramValue.getContentDescription();
         if (!(selectedTrackProgramValue instanceof TextView)
