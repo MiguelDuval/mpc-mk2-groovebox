@@ -31,10 +31,10 @@ The official MPC reference documents may still mention factory commercial items 
 - Last known successful Android Build: **#2608**.
 - Tested implementation SHA: `77f4e18a8f40a2e3d58ec8dbdf873cb09070fe4a`.
 - [Build #2608](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38074926971).
-- APK artifact from that run: `app-debug.apk`, reported SHA-256 `3c398510e4918a7c9c517149a884a1c336c55bb0faadb0da910ff819f27a3106`. Verify the digest from the actual current download before using it as a new-session guarantee.
-- UI evidence artifact ID observed in the previous audit: `11677683139`; its archive included startup Main, Browser and Android storage-picker screenshots/hierarchies.
-- **Known evidence defect to recheck/fix:** the downloaded #2608 archive did not contain `mpc-groovebox-main-ready.png` and `mpc-groovebox-main-ready-uiautomator.xml`, although workflow configuration expected them and logs reported six ready-Main controls verified. Do not report a complete evidence pack until actual artifact contents confirm both files.
-- After the documented commits made during 2026-10-10, no successful workflow was confirmed for their final HEAD at the time this checkpoint was written. The last success above proves only SHA `77f4...`, not later documentation commits. Fetch Actions live and decide whether a fresh run is required.
+- Live artifact listing/download for run `38074926971`: the `app-debug.apk` artifact (ID `11677509340`) has SHA-256 `43c036226d164d9c5fd911f9abd767f06b73e98049be00ac7a0547d91a730111`; the downloaded object is an APK ZIP container.
+- Live artifact listing/download for the `mpc-ui-visual-evidence` archive (ID `11677764864`) has SHA-256 `4c9b46ec574c8b75573cc0d8ab83ed76fd347f37111582dd22b5036f357b6773`.
+- **Evidence archive inspected directly:** it contains 10 files, including `mpc-groovebox-startup.png`, `mpc-groovebox-main-ready.png`, `mpc-groovebox-main-ready-uiautomator.xml`, Main UI hierarchy, Browser screenshot/hierarchy/XML, and Android storage-picker screenshot/XML/activity data. The ready-Main screenshot is 1920×1080, and all six required Main accessibility descriptions are present exactly once with positive bounds. A previous handoff reported those files missing from a different inspected archive; the direct inspection above resolves that discrepancy for artifact ID `11677764864`.
+- After the documentation commits made during 2026-10-10, no successful workflow had yet been confirmed for the then-current documentation HEAD. A fresh Android Build was observed queued on commit `8d59f33fda3bf0f0dec66cc3455212369c1913c6`; this state-file correction will advance HEAD again, so verify Actions against the new live HEAD. The success above proves only the app SHA `77f4...`, not the documentation commits.
 - Emulator evidence does not equal physical MPC Studio MkII verification.
 
 ## 4. Implementation snapshot
