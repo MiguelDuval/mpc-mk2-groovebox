@@ -9842,15 +9842,41 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         final View selectedTrackProgramValue = getWindow().getDecorView()
                 .findViewWithTag("MPC Main selected track program value");
+        final String nativeProgramLabel = nativeSequenceGetTrackProgram(
+                Math.max(0, nativeSequenceGetSelectedTrack()));
+        final String programPrefix = "PROGRAM • ";
+        final String expectedProgramAccessibility =
+                nativeProgramLabel != null && nativeProgramLabel.startsWith(programPrefix)
+                        ? nativeProgramLabel.substring(programPrefix.length()).trim()
+                        : nativeProgramLabel;
+        final CharSequence programDescription = selectedTrackProgramValue == null
+                ? null : selectedTrackProgramValue.getContentDescription();
         if (!(selectedTrackProgramValue instanceof TextView)
                 || !selectedTrackProgramValue.isShown()
                 || ((TextView) selectedTrackProgramValue).getLineCount() != 1
                 || ((TextView) selectedTrackProgramValue).getText() == null
                 || ((TextView) selectedTrackProgramValue).getText().toString().isEmpty()
                 || ((TextView) selectedTrackProgramValue).getText().toString()
-                        .startsWith("PROGRAM • ")) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main XL program value wrapped or repeats PROGRAM prefix"
-                    + " | program=" + describeAuditView(selectedTrackProgramValue));
+                        .startsWith("PROGRAM • ")
+                || programDescription == null
+                || !programDescription.toString().equals(
+                        "MPC Main selected track program: "
+                                + (expectedProgramAccessibility == null
+                                        ? "" : expectedProgramAccessibility))) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main XL program value wrapped or loses full program name"
+                    + " | program=" + describeAuditView(selectedTrackProgramValue)
+                    + " | expectedAccessibility=" + expectedProgramAccessibility);
+            return;
+        }
+        if ("MAIN OUTPUT".contentEquals(
+                findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Main output value: MAIN OUTPUT") instanceof TextView
+                        ? ((TextView) findViewWithContentDescription(
+                                getWindow().getDecorView(),
+                                "MPC Main output value: MAIN OUTPUT")).getText()
+                        : "")) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Output label redundantly repeats OUTPUT");
             return;
         }
 

@@ -182,11 +182,13 @@ final class MpcMainMixerStripView extends LinearLayout {
                 clean(trackName, "Track " + (track + 1)),
                 trackType);
 
+        final String fullProgramName = cleanProgramName(programName);
         addProgramBand(
                 strip,
                 context,
-                cleanProgramName(programName),
-                "PROGRAM");
+                compactProgramDisplayName(fullProgramName),
+                "PROGRAM",
+                fullProgramName);
 
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
 
@@ -269,11 +271,13 @@ final class MpcMainMixerStripView extends LinearLayout {
                 "PAD " + String.format(Locale.ROOT, "%02d", pad + 1),
                 "DRUM");
 
+        final String sampleDisplayName = clean(sampleName, "NO SAMPLE");
         addProgramBand(
                 strip,
                 context,
-                clean(sampleName, "NO SAMPLE"),
-                "SAMPLE");
+                sampleDisplayName,
+                "SAMPLE",
+                sampleDisplayName);
 
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
 
@@ -350,7 +354,7 @@ final class MpcMainMixerStripView extends LinearLayout {
                 "OUTPUT 1/2",
                 "MAIN");
 
-        addProgramBand(strip, context, "MAIN OUTPUT", "OUTPUT");
+        addProgramBand(strip, context, "MAIN", "OUTPUT", "MAIN OUTPUT");
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
 
         MpcVerticalMeter meter = new MpcVerticalMeter(context);
@@ -442,7 +446,8 @@ final class MpcMainMixerStripView extends LinearLayout {
             LinearLayout strip,
             Context context,
             String value,
-            String caption) {
+            String caption,
+            String accessibilityValue) {
         LinearLayout band = row(context);
         band.setPadding(dp(context, 4), 0, dp(context, 3), 0);
         TextView left = text(context, caption, 7, MUTED);
@@ -453,10 +458,16 @@ final class MpcMainMixerStripView extends LinearLayout {
         right.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
         right.setSingleLine(true);
         right.setEllipsize(TextUtils.TruncateAt.END);
+        right.setContentDescription(
+                "MPC Main " + caption.toLowerCase(Locale.ROOT)
+                        + " value: " + clean(accessibilityValue, value));
         if ("PROGRAM".equals(caption)) {
-            // The band caption already says PROGRAM; keep the displayed name
-            // to the right, without repeating the model's semantic prefix.
+            // Keep the compact screen label readable, while assistive
+            // technology retains the full program name from the project.
             right.setTag("MPC Main selected track program value");
+            right.setContentDescription(
+                    "MPC Main selected track program: "
+                            + clean(accessibilityValue, value));
         }
         band.addView(right, new LayoutParams(0, dp(context, 28), 1));
         band.setBackgroundColor(PANEL_DARK);
@@ -594,6 +605,15 @@ final class MpcMainMixerStripView extends LinearLayout {
         return cleanValue.startsWith(prefix)
                 ? cleanValue.substring(prefix.length()).trim()
                 : cleanValue;
+    }
+
+    private String compactProgramDisplayName(String value) {
+        // The factory-created default name is too long for this compact MPC
+        // strip. Compress only that generated pattern; preserve user names.
+        if (value.matches("(?i)Drum Program [0-9]+")) {
+            return "Drum " + value.substring(value.lastIndexOf(' ') + 1);
+        }
+        return value;
     }
 
     private String clean(String value, String fallback) {
