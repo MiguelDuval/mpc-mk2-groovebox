@@ -1184,3 +1184,13 @@ Branch: `feature/mpc-one-ui-fidelity`
 The Android smoke harness now captures the startup screenshot after launch/process/activity/fatal-crash checks and before the settling interval that allows the application-side UI audit to navigate across contexts. This keeps the visual artifact anchored to the canonical Main surface.
 
 Acceptance-harness synchronization only. No audio, sampler, sequencer, MIDI, MPC Studio MkII decoder or SysEx behavior changed.
+
+## Product-specific scope boundary — reference is not commercial parity
+
+The documented MPC Standalone OS 3.9 layout remains the visual, navigational and interaction reference. This project intentionally targets a useful local-first groovebox, not the vendor's full commercial ecosystem.
+
+Intentionally excluded product surfaces include Splice, online content marketplaces/stores, paid expansion promotion, partner advertising, upsell panels, and nonessential vendor-specific cloud/account integrations. Do not reproduce these in Browser, Sounds, Expansions, or another context. This is a product-scope exception, not a claim that such items are absent from Akai's official reference material.
+
+Preserve generic musical concepts only when they lead to real functionality: local Places, Drums/Instruments/Samples categories backed by local results, My Files, user-owned expansion folders, favourite storage locations, local audition, sample loading/assignment and accessible external storage. Keep Android Document Provider beneath the product-level Browser.
+
+For any intentional deviation from the factory reference, record the reason and acceptance test in `docs/MPC3-9-OS-KNOWLEDGE-BASE.md` and the current checkpoint in `docs/SESSION-STATE.md`. Product-specific scope decisions override copying the reference's commercial destinations. Fake or disconnected entries are not accepted as fidelity.
