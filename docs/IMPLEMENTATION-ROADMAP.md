@@ -711,3 +711,12 @@ Do not let repeated geometry-only smoke hardening displace feature delivery once
 A first-pass offline static audit is documented in `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md` with structured facts in `docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`. The supplied image's XZ rootfs digest was verified, the ext4-format rootfs was traversed, and the stripped 32-bit ARM `MPC` ELF version note was identified as `3.9.1.2 (f3af35cdc95)`. Bundled resources include 759 PNGs and 13 ACVS JSON layout descriptors; static strings/type-info identify Main layout and Q-Link/Browser-related research anchors.
 
 This is a research/documentation-only milestone; no Android code or realtime/audio/MIDI layer changed. No firmware, extracted proprietary images/content or full decompilation was added to the public repository. Bundled panel layout values are not yet confirmed as physical MPC One Main geometry. Follow-up native analysis (Ghidra plus nested SquashFS extraction) is optional research, not a prerequisite for the next product task. **The next implementation priority remains Android Document Picker selection → return → sample-target preservation**, then permissions/restoration tests for a persisted user-selected directory and favourites.
+
+
+## 2026-10-11 — Firmware second-pass UI schema research
+
+The second pass parsed Program Edit TUI JSON schema counts and Main/touch UI type-name anchors from the 3.9.1 Gen1 ELF. Main-specific names include `TouchMainPageNavigationPanel`, `TouchMainPageContentPanel`, track-specific panels, `TouchMainModeMixerProperties`, and dedicated Mixer strip containers. These are static identifiers, not decompiled behavior.
+
+**New correctness lead:** both the firmware's six Track Type selector assets and the official v3.9 guide point to **Audio / Drum / Keygroup / Plugin / MIDI / CV**. The recent project selector vocabulary places CLIP where AUDIO should be audited. Treat this as a high-priority fidelity discrepancy: inspect the existing selector/enum/tests after completing the current Document Picker select-return-target-preservation workflow, and keep Clip/Arrangement and Mixer strip categories separate. No app code was changed by this research checkpoint.
+
+Full data and limitations: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`.
