@@ -2598,7 +2598,7 @@ fi
 
 # The result must close DocumentsUI and return to the same Browser workspace.
 app_resumed=0
-for return_attempt in {1..20}; do
+for return_attempt in {1..6}; do
   returned_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
     | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
   if grep -Fq -- "$PACKAGE" <<<"$returned_activity"; then
@@ -2608,8 +2608,69 @@ for return_attempt in {1..20}; do
   sleep 1
 done
 if [[ "$app_resumed" != "1" ]]; then
+  # Some DocumentsUI builds select the row first and expose an explicit Open
+  # action instead of returning on the first tap. Inspect the live tree and
+  # complete that genuine picker action if present; otherwise retry the row once.
+  if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
+    echo "ERROR: could not inspect DocumentsUI after selecting the WAV"
+    exit 1
+  fi
+  picker_confirm_label="$(python3 - "$PICKER_UI_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+wanted = {"open", "select", "use this file"}
+for node in nodes:
+    label = node.attrib.get("text", "").strip()
+    if label.lower() not in wanted:
+        continue
+    current = node
+    while current is not None:
+        if current.attrib.get("clickable") == "true" and current.attrib.get("enabled") == "true":
+            print(label)
+            raise SystemExit(0)
+        current = parents.get(current)
+raise SystemExit(1)
+PY
+)" || picker_confirm_label=""
+  if [[ -n "$picker_confirm_label" ]]; then
+    if ! tap_ui_text "$PICKER_UI_XML" "$picker_confirm_label"; then
+      echo "ERROR: DocumentsUI exposed $picker_confirm_label but it could not be activated"
+      exit 1
+    fi
+  else
+    if ! tap_ui_text "$PICKER_UI_XML" "$PICKER_SAMPLE_NAME"; then
+      echo "ERROR: selected WAV row disappeared before DocumentsUI could return it"
+      exit 1
+    fi
+  fi
+  for return_attempt in {1..20}; do
+    returned_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+      | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+    if grep -Fq -- "$PACKAGE" <<<"$returned_activity"; then
+      app_resumed=1
+      break
+    fi
+    sleep 1
+  done
+fi
+if [[ "$app_resumed" != "1" ]]; then
   echo "ERROR: selecting a WAV in DocumentsUI did not return to the groovebox Activity"
   printf '%s\n' "$returned_activity"
+  if dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
+    python3 - "$PICKER_UI_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    label = node.attrib.get("text", "").strip()
+    desc = node.attrib.get("content-desc", "").strip()
+    if label or desc:
+        print(f"text={label!r} desc={desc!r}")
+PY
+  fi
   exit 1
 fi
 if ! wait_for_ui_node_text_desc "$PICKER_RETURN_XML" "$PICKER_RETURN_REMOTE" \
