@@ -522,5 +522,10 @@ jobs:
             /tmp/mpc-groovebox-storage-picker-activity.txt
             /tmp/mpc-groovebox-browser-local-results.png
             /tmp/mpc-groovebox-browser-local-results-uiautomator.xml
+            /tmp/mpc-groovebox-picker-select-source.png
+            /tmp/mpc-groovebox-picker-select-source-uiautomator.xml
+            /tmp/mpc-groovebox-picker-select-source-activity.txt
+            /tmp/mpc-groovebox-browser-picker-assignment.png
+            /tmp/mpc-groovebox-browser-picker-assignment-uiautomator.xml
           if-no-files-found: warn
           archive: true

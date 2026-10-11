@@ -2174,6 +2174,50 @@ tap_ui_description() {
   fi
 }
 
+tap_ui_text() {
+  local hierarchy_path="$1"
+  local expected_text="$2"
+  local coordinates tap_x tap_y
+  if ! coordinates="$(python3 - "$hierarchy_path" "$expected_text" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+for node in nodes:
+    if node.attrib.get("text", "").strip() != expected:
+        continue
+    candidate = node
+    while candidate is not None:
+        bounds = candidate.attrib.get("bounds", "")
+        if candidate.attrib.get("clickable") == "true" \\
+                and candidate.attrib.get("enabled") == "true" \\
+                and bounds.startswith("[") and bounds.endswith("]"):
+            try:
+                left_top, right_bottom = bounds[1:-1].split("][")
+                left, top = map(int, left_top.split(","))
+                right, bottom = map(int, right_bottom.split(","))
+                if right > left and bottom > top:
+                    print((left + right) // 2, (top + bottom) // 2)
+                    raise SystemExit(0)
+            except ValueError:
+                pass
+        candidate = parents.get(candidate)
+sys.exit(2)
+PY
+)"; then
+    echo "ERROR: clickable node for picker text not found: $expected_text"
+    return 1
+  fi
+  read -r tap_x tap_y <<< "$coordinates"
+  if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+    echo "ERROR: could not select visible picker text $expected_text at $tap_x,$tap_y"
+    return 1
+  fi
+}
+
 wait_for_ui_description() {
   local hierarchy_path="$1" remote_path="$2" expected_description="$3" max_attempts="$4"
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
@@ -2373,7 +2417,153 @@ if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-local-res
 fi
 echo "Browser local WAV scan, selection, audition and Pad/Layer assignment passed."
 
-# Capture the final accessibility hierarchy after successful local assignment.
-if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then exit 1; fi
+# End-to-end SAF selection → Activity result → sampler assignment.
+# Use a distinct WAV in Downloads so the test proves that the picker-selected
+# document, not the previous MediaStore selection, becomes the Pad/Layer sample.
+echo "Running Android Document Picker selection-return-target-preservation test..."
+PICKER_SAMPLE_NAME="Browser-Picker-Return.wav"
+PICKER_SAMPLE_HOST="/tmp/$PICKER_SAMPLE_NAME"
+PICKER_SAMPLE_DEVICE="/sdcard/Download/$PICKER_SAMPLE_NAME"
+PICKER_SAMPLE_CANONICAL="/storage/emulated/0/Download/$PICKER_SAMPLE_NAME"
+PICKER_MEDIA_SCAN="/tmp/mpc-browser-picker-media-scan.txt"
+PICKER_MEDIA_QUERY="/tmp/mpc-browser-picker-media-query.txt"
+PICKER_UI_XML="/tmp/mpc-groovebox-picker-select-source-uiautomator.xml"
+PICKER_UI_REMOTE="/sdcard/mpc-groovebox-picker-select-source-uiautomator.xml"
+PICKER_RETURN_XML="/tmp/mpc-groovebox-browser-picker-assignment-uiautomator.xml"
+PICKER_RETURN_REMOTE="/sdcard/mpc-groovebox-browser-picker-assignment-uiautomator.xml"
+
+if ! cp "$LOCAL_SAMPLE_HOST" "$PICKER_SAMPLE_HOST"; then
+  echo "ERROR: could not prepare distinct SAF picker WAV fixture"
+  exit 1
+fi
+if ! adb_bounded 10 shell mkdir -p /sdcard/Download; then
+  echo "ERROR: could not prepare emulator Downloads folder"
+  exit 1
+fi
+if ! adb_bounded 30 push "$PICKER_SAMPLE_HOST" "$PICKER_SAMPLE_DEVICE"; then
+  echo "ERROR: could not copy SAF picker WAV fixture to Downloads"
+  exit 1
+fi
+if ! adb_bounded 15 shell content call \
+    --uri content://media \
+    --method scan_file \
+    --arg "$PICKER_SAMPLE_CANONICAL" > "$PICKER_MEDIA_SCAN" 2>&1; then
+  echo "ERROR: MediaStore scan_file failed for picker-return WAV fixture"
+  cat "$PICKER_MEDIA_SCAN" || true
+  exit 1
+fi
+PICKER_MEDIA_ITEM_URI="$(grep -oE 'content://media/[^[:space:]]+/audio/media/[0-9]+' \
+    "$PICKER_MEDIA_SCAN" | head -n 1 || true)"
+PICKER_MEDIA_ITEM_ID="${PICKER_MEDIA_ITEM_URI##*/}"
+PICKER_MEDIA_COLLECTION_URI="${PICKER_MEDIA_ITEM_URI%/*}"
+if [[ ! "$PICKER_MEDIA_ITEM_ID" =~ ^[0-9]+$ || -z "$PICKER_MEDIA_COLLECTION_URI" ]]; then
+  echo "ERROR: MediaStore did not return an audio URI for the picker-return fixture"
+  cat "$PICKER_MEDIA_SCAN" || true
+  exit 1
+fi
+if ! adb_bounded 10 shell content query \
+    --uri "$PICKER_MEDIA_COLLECTION_URI" \
+    --projection _id:_display_name:mime_type \
+    --where "_id=$PICKER_MEDIA_ITEM_ID" > "$PICKER_MEDIA_QUERY" 2>&1; then
+  echo "ERROR: could not verify the picker-return WAV in MediaStore"
+  cat "$PICKER_MEDIA_QUERY" || true
+  exit 1
+fi
+if ! grep -Fq -- "$PICKER_SAMPLE_NAME" "$PICKER_MEDIA_QUERY"; then
+  echo "ERROR: indexed picker-return fixture name did not match"
+  cat "$PICKER_MEDIA_QUERY" || true
+  exit 1
+fi
+
+# Open the actual Android SAF provider from Browser's LOAD function.
+if ! tap_ui_description "$BROWSER_LOCAL_XML" \
+    "MPC Browser LOAD source file with Android Document Picker"; then exit 1; fi
+picker_activity=""
+for picker_attempt in {1..15}; do
+  picker_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if [[ -n "$picker_activity" ]] && ! grep -Fq -- "$PACKAGE" <<<"$picker_activity"; then
+    break
+  fi
+  sleep 1
+done
+if [[ -z "$picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$picker_activity"; then
+  echo "ERROR: Android Document Picker did not become the resumed activity for selection test"
+  printf '%s\n' "$picker_activity"
+  exit 1
+fi
+printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-picker-select-source-activity.txt
+if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "$PICKER_SAMPLE_NAME" 12; then
+  # If Recent did not surface the fresh fixture, open the system roots drawer and
+  # navigate to Downloads. This is ordinary DocumentsUI navigation, not a fake
+  # app-side picker or direct URI injection.
+  if ! tap_ui_description "$PICKER_UI_XML" "Show roots"; then
+    if ! tap_ui_description "$PICKER_UI_XML" "Show navigation drawer"; then
+      echo "ERROR: picker fixture is not in Recent and DocumentsUI root navigation is unavailable"
+      exit 1
+    fi
+  fi
+  if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "Downloads" 8; then
+    echo "ERROR: DocumentsUI root drawer did not expose Downloads"
+    exit 1
+  fi
+  if ! tap_ui_text "$PICKER_UI_XML" "Downloads"; then
+    echo "ERROR: could not open Downloads in Android Document Picker"
+    exit 1
+  fi
+  if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "$PICKER_SAMPLE_NAME" 15; then
+    echo "ERROR: picker did not show the prepared WAV in Downloads"
+    exit 1
+  fi
+fi
+# Keep an artifact of the actual picker state with the distinct WAV visible.
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-picker-select-source.png; then
+  echo "ERROR: could not capture picker source selection screen"
+  exit 1
+fi
+if ! cp "$PICKER_UI_XML" /tmp/mpc-groovebox-picker-select-source-uiautomator.xml; then
+  echo "ERROR: could not preserve picker source hierarchy"
+  exit 1
+fi
+if ! tap_ui_text "$PICKER_UI_XML" "$PICKER_SAMPLE_NAME"; then
+  echo "ERROR: visible SAF picker WAV row was not selectable"
+  exit 1
+fi
+
+# The result must close DocumentsUI and return to the same Browser workspace.
+app_resumed=0
+for return_attempt in {1..20}; do
+  returned_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if grep -Fq -- "$PACKAGE" <<<"$returned_activity"; then
+    app_resumed=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$app_resumed" != "1" ]]; then
+  echo "ERROR: selecting a WAV in DocumentsUI did not return to the groovebox Activity"
+  printf '%s\n' "$returned_activity"
+  exit 1
+fi
+if ! wait_for_ui_node_text_desc "$PICKER_RETURN_XML" "$PICKER_RETURN_REMOTE" \
+    "CURRENT SAMPLE • $PICKER_SAMPLE_NAME" "MPC Browser current sample" 30; then
+  echo "ERROR: picker-return sample name did not reach Browser's current Pad/Layer state"
+  exit 1
+fi
+if ! wait_for_ui_text_pair "$PICKER_RETURN_XML" "$PICKER_RETURN_REMOTE" \
+    "ASSIGNED" "PAD 01 / LAYER 01" 30; then
+  echo "ERROR: picker-return assignment did not preserve the intended Pad 01 / Layer 01 target"
+  exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-picker-assignment.png; then
+  echo "ERROR: could not capture post-picker assignment screen"
+  exit 1
+fi
+if ! dump_device_ui "$PICKER_RETURN_REMOTE" "$PICKER_RETURN_XML"; then
+  echo "ERROR: could not capture post-picker accessibility hierarchy"
+  exit 1
+fi
+echo "Android Document Picker select → return → Pad/Layer assignment passed."
 
 echo "Android runtime startup and local Browser workflow smoke passed."
