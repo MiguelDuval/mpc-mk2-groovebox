@@ -2269,6 +2269,58 @@ if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser scan local audio files
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
     "MPC Browser file $LOCAL_SAMPLE_NAME" 30; then exit 1; fi
 
+# Exercise the real on-screen Search field against the indexed MediaStore rows.
+# Positive and negative queries must change the visible result set, not only the
+# query label or accessibility description.
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser search files"; then exit 1; fi
+if ! adb_bounded 10 shell input text "Browser-Smoke-Local"; then
+  echo "ERROR: could not enter positive Browser search query"
+  exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
+  echo "ERROR: Search did not retain the matching indexed WAV"
+  exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then exit 1; fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser search files"; then exit 1; fi
+if ! adb_bounded 10 shell input text "NoSuchWavResult"; then
+  echo "ERROR: could not enter negative Browser search query"
+  exit 1
+fi
+if ! wait_for_ui_text "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "NO MATCHING WAV FILES" 10; then
+  echo "ERROR: a non-matching search query did not empty the real result set"
+  exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then exit 1; fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
+  echo "ERROR: clearing Search did not restore indexed results"
+  exit 1
+fi
+
+# File-type filters must act on actual results too: PROJECTS yields none for
+# the WAV-only loader, while ALL and SAMPLES restore the real WAV row.
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter PROJECTS"; then exit 1; fi
+if ! wait_for_ui_text "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "NO MATCHING WAV FILES" 10; then
+  echo "ERROR: PROJECTS filter incorrectly retained WAV sample results"
+  exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter ALL"; then exit 1; fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
+  echo "ERROR: ALL filter failed to restore indexed WAV results"
+  exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter SAMPLES"; then exit 1; fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
+  echo "ERROR: SAMPLES filter failed to restore indexed WAV results"
+  exit 1
+fi
+
 # The sample follows two pinned Browser actions in a short ScrollView. Scroll it
 # fully into the hit area instead of tapping a clipped row at the viewport edge.
 if ! adb_bounded 10 shell input swipe 1400 930 1400 760 300; then
