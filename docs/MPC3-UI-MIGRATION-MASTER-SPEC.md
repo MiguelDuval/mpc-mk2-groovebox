@@ -1196,3 +1196,10 @@ Intentionally excluded product surfaces include Splice, online content marketpla
 Preserve generic musical concepts only when they lead to real functionality: local Places, Drums/Instruments/Samples categories backed by local results, My Files, user-owned expansion folders, favourite storage locations, local audition, sample loading/assignment and accessible external storage. Keep Android Document Provider beneath the product-level Browser.
 
 For any intentional deviation from the factory reference, record the reason and acceptance test in `docs/MPC3-9-OS-KNOWLEDGE-BASE.md` and the current checkpoint in `docs/SESSION-STATE.md`. Product-specific scope decisions override copying the reference's commercial destinations. Fake or disconnected entries are not accepted as fidelity.
+
+
+## 2026-10-11 — Track Type taxonomy evidence note (research follow-up)
+
+Firmware metadata and the official v3.9 Standalone User Guide point to six Main Track Types: **Audio, Drum, Keygroup, Plugin, MIDI and CV**. The extracted `ACVS/graphics/track type selection` group contains matching selector icons for those six and no Clip selector icon. `strip-clip.png` belongs to the separate strip/program-type icon group and is not sufficient evidence that Clip is a Track Type.
+
+This is a research discrepancy against the project's recent Track Type selector vocabulary (CLIP included, AUDIO omitted). Before extending the selector, inspect the current enum, rendering and tests; confirm against the official guide and a real OS 3.9.1 hardware reference. Preserve Clip/Arrangement workflows as distinct concepts, and do not infer domain capability or runtime behavior from static file/class names alone. Details and confidence are in `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`.
