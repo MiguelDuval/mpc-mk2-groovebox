@@ -519,3 +519,18 @@ Confidence: HIGH for the cited current MPC3 architecture/taxonomy.
 **Repository decision:** keep manual + real hardware observations as the visual authority. Use firmware-derived facts as research leads only; do not copy bundled assets, publish the image, treat strings as proof of behavior, or restore commercial Browser destinations excluded by the local-first product decision.
 
 **Report:** [MPC 3.9.1 Gen1 firmware static analysis](research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md); [machine-readable summary](research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json).
+
+
+## 2026-10-11 — Firmware UI-schema follow-up and Track Type correction lead
+
+**Question:** Do firmware resources corroborate the project's current Track Type selector vocabulary?
+
+**Firmware evidence:** `ACVS/graphics/track type selection` contains six 125×125 images named `track-audio`, `track-cv`, `track-drum`, `track-keygroup`, `track-midi`, and `track-plugin`. There is no `track-clip.png` in that selector group. The distinct `programtypeicons` group does contain `strip-clip.png`, along with strip categories such as return, submix and master.
+
+**Published reference:** the official MPC Standalone OS v3.9 guide's Tracks chapter defines the six main Track Types as Audio, Drum, Keygroup, Plugin, MIDI and CV. Guide URL: https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf
+
+**Finding / decision:** HIGH confidence that the firmware selector asset set and official guide agree. The project's recent selector vocabulary (CLIP present, AUDIO absent) needs a code/test audit. Clip/Arrangement UI and Mixer strip categories must stay conceptually separate; do not blindly change domain types from filenames alone.
+
+**Additional static findings:** the main ELF contains TouchMainPage/navigation/content/track-panel and TouchMainModeMixerProperties type-name anchors. Program Edit resource metadata comprises 10 TUI JSON pages, 66 tabs and 652 component entries; these counts describe stored schemas, not runtime availability. `Help.json` includes host/shared interaction terminology, so ACVS layout dimensions remain unconfirmed as physical screen geometry.
+
+**Report:** `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`; structured data: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`.
