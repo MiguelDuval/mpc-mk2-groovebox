@@ -571,3 +571,28 @@ Observed target app version is `3.9.1.2 (f3af35cdc95)`, ARM 32-bit EABI5 strippe
 Full report: [`docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`](research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md). Machine-readable summary: [`docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`](research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json).
 
 **Public-repository boundary:** the firmware, raw filesystem, proprietary PNGs/content, complete private inventory and full decompilation are deliberately not checked in. The local audit did not execute the ARM binary, extract nested `/opt/ramfs-update.squashfs`, or perform Ghidra function-level decompilation. A promising next reverse-engineering anchor is `SerialisableTUIMainModeLayoutData` / `SerialisableTUIMainModeMixerLayoutData`, but this does not displace the next product task: Document Picker selection → return → sample target preservation.
+
+
+## 28. 2026-10-11 — Second-pass firmware UI schema findings
+
+### Main / Touch UI implementation anchors
+
+The Gen1 3.9.1 image's stripped `MPC` ELF contains readable type-information/string anchors for `TouchMainPage`, `TouchMainPageNavigationPanel`, `TouchMainPageContentPanel`, track-specific Main panels (Audio, Bus, CV, Drum, Keygroup, MIDI, Plugin), `TouchMainModeMixerProperties` (`Display` / `PanelType`), `TouchMixerChannelStripMPC`, `TouchMultiMixerStrip`, `TouchDoubleChannelStripContainer`, `TouchModeShortcutPanel`, `QLinkMainMode` and `TransportBarCentreControls`. Property-name anchors include `tuiMainModeLayout` and `tuiMainModeMixerLayout`.
+
+Confidence: HIGH that the names occur in the binary; MEDIUM that the names accurately summarize class responsibilities; not enough to establish exact geometry, routing, enum values or runtime transitions. This was strings/type-information inspection, not method-body decompilation.
+
+### Program Edit page schema inventory
+
+The extracted `Resources/Pages` tree contains 10 `TUI.json` files: four marked CompleteDescription (Drum, Keygroup, CV 8-channel, CV 16-channel) and six PartialDescription (MIDI, Legacy CV, four Plugin variants). These contain 66 tabs and 652 serialized component entries in total. Across local component definitions in page JSONs, 136 action descriptors were counted (Mouse Down 59, Enter Pressed 50, Double Click 27); handler labels include Show Overlay, Q-Link and Toggle Switch. These are schema counts, not observed user actions.
+
+### High-priority Track Type vocabulary discrepancy
+
+The firmware's `ACVS/graphics/track type selection` group contains six 125×125 selector assets: AUDIO, CV, DRUM, KEYGROUP, MIDI and PLUGIN. It has no `track-clip.png`. A separate `programtypeicons` group contains `strip-clip.png` as one of several Mixer/strip-category icons. The official v3.9 Standalone User Guide likewise identifies the six main Track Types as **Audio, Drum, Keygroup, Plugin, MIDI and CV**.
+
+This conflicts with the current migration vocabulary that uses CLIP and omits AUDIO in its Track Type selector. **Action:** after the current Document Picker end-to-end workflow, audit the actual Track Type selector and tests and reconcile the visible type list against the official v3.9 guide and a real device reference. Do not silently equate clip/arrangement concepts with a selectable Track Type.
+
+### Layout metadata boundary
+
+`ACVS/layout/Help.json` has 51 help entries and includes mouse/hover/window vocabulary, while the same executable contains touch-specific Main classes. This supports a shared/multiple-interface resource interpretation and reinforces the boundary: panel JSON dimensions remain unverified as physical MPC One Main geometry. Do not apply them to Android without corroboration.
+
+Full evidence: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`; machine-readable summary: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`.
