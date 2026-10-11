@@ -2511,6 +2511,14 @@ if [[ -z "$picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$picker_activity"; 
   exit 1
 fi
 printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-picker-select-source-activity.txt
+
+# Always capture the first DocumentsUI frame before reading or tapping its
+# controls. The activity can be resumed before its first accessibility tree is ready.
+if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
+  echo "ERROR: could not capture initial Android Document Picker hierarchy"
+  exit 1
+fi
+
 # Recent may legitimately be empty even though the test file exists in
 # Downloads. Prefer the picker's own global Search UI before using its root drawer.
 # This still exercises a real DocumentsUI selection and Activity result; no URI
@@ -2544,9 +2552,11 @@ PY
 fi
 
 if [[ "$picker_file_found" != "1" ]]; then
-  # Search can be provider-specific. Return to Recent, then use the standard
-  # DocumentsUI root navigation as a second genuine interaction path.
+  # Search can be provider-specific. Dismiss the keyboard, collapse Search,
+  # then use the standard DocumentsUI root navigation as a second genuine path.
   adb_bounded 10 shell input keyevent BACK || true
+  adb_bounded 10 shell input keyevent BACK || true
+  sleep 1
   if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
     echo "ERROR: could not restore the picker before root navigation"
     exit 1
