@@ -2214,10 +2214,24 @@ for node in nodes:
                 print((left + right) // 2, (top + bottom) // 2)
                 raise SystemExit(0)
         candidate = parents.get(candidate)
+    # List/provider rows may be touchable by their parent container even when
+    # accessibility omits clickable=true. The actual visible filename center is
+    # a safe fallback after editable Search nodes have been explicitly excluded.
+    bounds = node.attrib.get("bounds", "")
+    if bounds.startswith("[") and bounds.endswith("]"):
+        try:
+            first, second = bounds[1:-1].split("][")
+            left, top = map(int, first.split(","))
+            right, bottom = map(int, second.split(","))
+            if right > left and bottom > top:
+                print((left + right) // 2, (top + bottom) // 2)
+                raise SystemExit(0)
+        except ValueError:
+            pass
 sys.exit(2)
 PY
 )"; then
-    echo "ERROR: real clickable DocumentsUI result row not found for: $expected_text"
+    echo "ERROR: visible DocumentsUI result text not found for: $expected_text"
     return 1
   fi
   read -r tap_x tap_y <<< "$coordinates"
@@ -2242,6 +2256,9 @@ parents = {child: parent for parent in nodes for child in list(parent)}
 for node in nodes:
     if node.attrib.get("text", "").strip() != expected:
         continue
+    cls = node.attrib.get("class", "").lower()
+    if any(token in cls for token in ("edittext", "searchauto", "autocomplete")):
+        continue
     candidate = node
     while candidate is not None:
         bounds = candidate.attrib.get("bounds", "")
@@ -2256,10 +2273,24 @@ for node in nodes:
             except ValueError:
                 pass
         candidate = parents.get(candidate)
+    # Some DocumentsUI list items delegate touch handling while exposing only
+    # a non-clickable TextView in the accessibility tree. Tap its visible center
+    # as a bounded fallback; never fall back to the editable Search field.
+    bounds = node.attrib.get("bounds", "")
+    if bounds.startswith("[") and bounds.endswith("]"):
+        try:
+            left_top, right_bottom = bounds[1:-1].split("][")
+            left, top = map(int, left_top.split(","))
+            right, bottom = map(int, right_bottom.split(","))
+            if right > left and bottom > top:
+                print((left + right) // 2, (top + bottom) // 2)
+                raise SystemExit(0)
+        except ValueError:
+            pass
 sys.exit(2)
 PY
 )"; then
-    echo "ERROR: clickable node for picker text not found: $expected_text"
+    echo "ERROR: visible non-editable picker text not found: $expected_text"
     return 1
   fi
   read -r tap_x tap_y <<< "$coordinates"
