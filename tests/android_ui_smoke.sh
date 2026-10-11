@@ -2231,7 +2231,9 @@ for node in nodes:
             left, top = map(int, first.split(","))
             right, bottom = map(int, second.split(","))
             if right > left and bottom > top:
-                print((left + right) // 2, (top + bottom) // 2)
+                # Tap the row's left-side body, away from filename/type child
+                # TextViews and the separate preview control on the far right.
+                print(left + min(80, max(1, (right - left) // 10)), (top + bottom) // 2)
                 raise SystemExit(0)
         except ValueError:
             pass
@@ -2749,6 +2751,13 @@ PY
   else
     if ! tap_ui_picker_result_row "$PICKER_UI_XML" "$PICKER_SAMPLE_NAME"; then
       echo "ERROR: selected WAV result row disappeared before DocumentsUI could return it"
+      exit 1
+    fi
+    # item_root is focusable on this Android 16 provider build but does not
+    # advertise an accessibility click action; activate its focused row as a
+    # genuine UI interaction, not by injecting a synthetic Activity result.
+    if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_CENTER; then
+      echo "ERROR: could not activate focused DocumentsUI WAV row"
       exit 1
     fi
   fi
