@@ -2192,9 +2192,7 @@ for node in nodes:
     candidate = node
     while candidate is not None:
         bounds = candidate.attrib.get("bounds", "")
-        if candidate.attrib.get("clickable") == "true" \\
-                and candidate.attrib.get("enabled") == "true" \\
-                and bounds.startswith("[") and bounds.endswith("]"):
+        if candidate.attrib.get("clickable") == "true" and candidate.attrib.get("enabled") == "true" and bounds.startswith("[") and bounds.endswith("]"):
             try:
                 left_top, right_bottom = bounds[1:-1].split("][")
                 left, top = map(int, left_top.split(","))
