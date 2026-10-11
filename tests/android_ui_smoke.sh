@@ -2040,14 +2040,42 @@ if ! adb_bounded 10 shell pm grant "$PACKAGE" "$media_permission"; then
   echo "ERROR: could not grant emulator local-audio permission: $media_permission"
   exit 1
 fi
-if ! adb_bounded 10 shell am broadcast \
-    -a android.intent.action.MEDIA_SCANNER_SCAN_FILE \
-    -d "file://$LOCAL_SAMPLE_DEVICE" > /tmp/mpc-browser-media-scan.txt; then
-  echo "ERROR: Android MediaScanner rejected the local WAV fixture"
+# ACTION_MEDIA_SCANNER_SCAN_FILE was deprecated in Android 10 and does
+# not reliably seed MediaStore on current emulator images. Use the provider's
+# scan_file call as shell, then verify the exact indexed row before exercising
+# the app UI. This keeps the runtime test about Browser behavior, not scanner lag.
+LOCAL_SAMPLE_CANONICAL="/storage/emulated/0/Music/$LOCAL_SAMPLE_NAME"
+if ! adb_bounded 15 shell content call \
+    --uri content://media \
+    --method scan_file \
+    --arg "$LOCAL_SAMPLE_CANONICAL" > /tmp/mpc-browser-media-scan.txt 2>&1; then
+  echo "ERROR: MediaStore scan_file call failed for local WAV fixture"
   cat /tmp/mpc-browser-media-scan.txt || true
   exit 1
 fi
-sleep 2
+
+MEDIASTORE_FIXTURE_QUERY="/tmp/mpc-browser-mediastore-fixture-query.txt"
+media_fixture_indexed=0
+for attempt in {1..15}; do
+  if adb_bounded 10 shell content query \
+      --uri content://media/external/audio/media \
+      --projection _id:_display_name:mime_type \
+      --where "_display_name='$LOCAL_SAMPLE_NAME'" > "$MEDIASTORE_FIXTURE_QUERY" 2>&1 \
+      && grep -Fq -- "$LOCAL_SAMPLE_NAME" "$MEDIASTORE_FIXTURE_QUERY"; then
+    media_fixture_indexed=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$media_fixture_indexed" != "1" ]]; then
+  echo "ERROR: MediaStore did not index the test WAV; refusing to confuse fixture setup with Browser failure"
+  echo "--- scan_file response ---"
+  cat /tmp/mpc-browser-media-scan.txt || true
+  echo "--- MediaStore query ---"
+  cat "$MEDIASTORE_FIXTURE_QUERY" || true
+  exit 1
+fi
+echo "MediaStore fixture indexed: $LOCAL_SAMPLE_NAME"
 
 dump_device_ui() {
   local remote_path="$1"
