@@ -2765,8 +2765,13 @@ PY
       exit 1
     fi
     # item_root is focusable on this Android 16 provider build but does not
-    # advertise an accessibility click action; activate its focused row as a
-    # genuine UI interaction, not by injecting a synthetic Activity result.
+    # advertise an accessibility click action. Try both standard keyboard
+    # activation keys on the focused real file row; the activity-result/URI
+    # assertions below still prove that a genuine pick actually completed.
+    if ! adb_bounded 5 shell input keyevent KEYCODE_ENTER; then
+      echo "ERROR: could not send Enter to focused DocumentsUI WAV row"
+      exit 1
+    fi
     if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_CENTER; then
       echo "ERROR: could not activate focused DocumentsUI WAV row"
       exit 1
