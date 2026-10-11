@@ -2271,6 +2271,20 @@ PY
     echo "ERROR: could not tap DocumentsUI result row $expected_text at $tap_x,$tap_y"
     return 1
   fi
+  # On some Android 16 DocumentsUI builds a list row takes focus on the first
+  # tap and opens only on the next tap. Check the real resumed Activity before
+  # trying a second tap immediately; never double-tap into the app after a
+  # successful return.
+  sleep 0.35
+  local picker_activity
+  picker_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if [[ -n "$picker_activity" ]] && ! grep -Fq -- "$PACKAGE" <<<"$picker_activity"; then
+    if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+      echo "ERROR: could not activate focused DocumentsUI result $expected_text"
+      return 1
+    fi
+  fi
 }
 
 tap_ui_text() {
