@@ -2638,6 +2638,38 @@ if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "$PICKER_SAMPLE_NAME"
   echo "ERROR: picker did not show the prepared WAV in Downloads"
   exit 1
 fi
+
+# Android 16 DocumentsUI grid cards expose a separate Preview control while
+# the file tile itself is not accessibility-clickable. Switch to the real
+# list row before selecting, and verify the mode transition rather than
+# repeatedly tapping the decorative thumbnail/card whitespace.
+if grep -Fq -- 'content-desc="List view"' "$PICKER_UI_XML"; then
+  if ! tap_ui_description "$PICKER_UI_XML" "List view"; then
+    echo "ERROR: could not switch DocumentsUI to its selectable list-row mode"
+    exit 1
+  fi
+  picker_list_mode=0
+  for list_attempt in {1..10}; do
+    if dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML" \
+        && grep -Fq -- 'content-desc="Grid view"' "$PICKER_UI_XML"; then
+      picker_list_mode=1
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$picker_list_mode" != "1" ]]; then
+    echo "ERROR: DocumentsUI did not enter list mode after activating List view"
+    exit 1
+  fi
+elif ! grep -Fq -- 'content-desc="Grid view"' "$PICKER_UI_XML"; then
+  echo "ERROR: DocumentsUI exposes neither List view nor Grid view; cannot prove row selection"
+  exit 1
+fi
+if ! grep -Fq -- "$PICKER_SAMPLE_NAME" "$PICKER_UI_XML"; then
+  echo "ERROR: picker WAV disappeared while switching to list mode"
+  exit 1
+fi
+
 # Keep an artifact of the actual picker state with the distinct WAV visible.
 if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-picker-select-source.png; then
   echo "ERROR: could not capture picker source selection screen"
