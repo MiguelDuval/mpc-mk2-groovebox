@@ -2285,6 +2285,12 @@ if ! adb_bounded 10 shell input text "Browser-Smoke-Local"; then
   echo "ERROR: could not enter positive Browser search query"
   exit 1
 fi
+# Dismiss the landscape IME before tapping Browser chrome; otherwise the
+# keyboard can intercept the Clear button's coordinates and append the next query.
+if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
+  echo "ERROR: could not dismiss the keyboard after positive Browser search"
+  exit 1
+fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
     "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
   echo "ERROR: Search did not retain the matching indexed WAV"
@@ -2294,6 +2300,10 @@ if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then ex
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser search files"; then exit 1; fi
 if ! adb_bounded 10 shell input text "NoSuchWavResult"; then
   echo "ERROR: could not enter negative Browser search query"
+  exit 1
+fi
+if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
+  echo "ERROR: could not dismiss the keyboard after negative Browser search"
   exit 1
 fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
