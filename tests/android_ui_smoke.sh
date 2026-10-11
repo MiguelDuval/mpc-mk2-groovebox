@@ -2199,9 +2199,13 @@ for node in nodes:
         continue
     candidate = node
     tile_bounds = None
+    row_bounds = None
     while candidate is not None:
         bounds = candidate.attrib.get("bounds", "")
         cls_candidate = candidate.attrib.get("class", "").lower()
+        resource_id = candidate.attrib.get("resource-id", "")
+        if resource_id == "com.android.documentsui:id/item_root" and bounds.startswith("[") and bounds.endswith("]"):
+            row_bounds = bounds
         if "materialcardview" in cls_candidate and bounds.startswith("[") and bounds.endswith("]"):
             tile_bounds = bounds
         if (candidate.attrib.get("clickable") == "true"
@@ -2218,9 +2222,21 @@ for node in nodes:
                 print((left + right) // 2, (top + bottom) // 2)
                 raise SystemExit(0)
         candidate = parents.get(candidate)
-    # In DocumentsUI grid mode, filename TextViews and their MaterialCardView
-    # are exposed as non-clickable; the card is the actual file-tile hit area.
-    # Click the center of that visible tile before falling back to text bounds.
+    # DocumentsUI may expose item_root as focusable but not accessibility-clickable.
+    # Once the test has switched to list mode, tap the full row's hit area,
+    # rather than a child TextView that may not own the touch listener.
+    if row_bounds:
+        try:
+            first, second = row_bounds[1:-1].split("][")
+            left, top = map(int, first.split(","))
+            right, bottom = map(int, second.split(","))
+            if right > left and bottom > top:
+                print((left + right) // 2, (top + bottom) // 2)
+                raise SystemExit(0)
+        except ValueError:
+            pass
+    # In grid mode, filenames and their MaterialCardView can be exposed as
+    # non-clickable; use the tile body before falling back to the text bounds.
     if tile_bounds:
         try:
             first, second = tile_bounds[1:-1].split("][")
