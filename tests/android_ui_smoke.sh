@@ -1602,7 +1602,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -2174,6 +2174,59 @@ tap_ui_description() {
   fi
 }
 
+# DocumentsUI can expose the same filename in both its editable Search
+# field and the actual result row. Generic tap_ui_text deliberately chooses the
+# first exact label, so it is unsafe for this duplicate-label picker screen.
+# This helper ignores editable-text matches and clicks the nearest real
+# enabled/clickable ancestor of the matching result-row text node.
+tap_ui_picker_result_row() {
+  local hierarchy_path="$1"
+  local expected_text="$2"
+  local coordinates tap_x tap_y
+  if ! coordinates="$(python3 - "$hierarchy_path" "$expected_text" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+for node in nodes:
+    if node.attrib.get("text", "").strip() != expected:
+        continue
+    cls = node.attrib.get("class", "").lower()
+    if any(token in cls for token in ("edittext", "searchauto", "autocomplete")):
+        continue
+    candidate = node
+    while candidate is not None:
+        bounds = candidate.attrib.get("bounds", "")
+        if (candidate.attrib.get("clickable") == "true"
+                and candidate.attrib.get("enabled") == "true"
+                and bounds.startswith("[") and bounds.endswith("]")):
+            try:
+                first, second = bounds[1:-1].split("][")
+                left, top = map(int, first.split(","))
+                right, bottom = map(int, second.split(","))
+            except ValueError:
+                candidate = parents.get(candidate)
+                continue
+            if right > left and bottom > top:
+                print((left + right) // 2, (top + bottom) // 2)
+                raise SystemExit(0)
+        candidate = parents.get(candidate)
+sys.exit(2)
+PY
+)"; then
+    echo "ERROR: real clickable DocumentsUI result row not found for: $expected_text"
+    return 1
+  fi
+  read -r tap_x tap_y <<< "$coordinates"
+  if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+    echo "ERROR: could not tap DocumentsUI result row $expected_text at $tap_x,$tap_y"
+    return 1
+  fi
+}
+
 tap_ui_text() {
   local hierarchy_path="$1"
   local expected_text="$2"
@@ -2591,8 +2644,8 @@ if ! test -s "$PICKER_UI_XML"; then
   echo "ERROR: Android Document Picker source hierarchy is missing or empty"
   exit 1
 fi
-if ! tap_ui_text "$PICKER_UI_XML" "$PICKER_SAMPLE_NAME"; then
-  echo "ERROR: visible SAF picker WAV row was not selectable"
+if ! tap_ui_picker_result_row "$PICKER_UI_XML" "$PICKER_SAMPLE_NAME"; then
+  echo "ERROR: visible SAF picker WAV result row was not selectable"
   exit 1
 fi
 
@@ -2641,8 +2694,8 @@ PY
       exit 1
     fi
   else
-    if ! tap_ui_text "$PICKER_UI_XML" "$PICKER_SAMPLE_NAME"; then
-      echo "ERROR: selected WAV row disappeared before DocumentsUI could return it"
+    if ! tap_ui_picker_result_row "$PICKER_UI_XML" "$PICKER_SAMPLE_NAME"; then
+      echo "ERROR: selected WAV result row disappeared before DocumentsUI could return it"
       exit 1
     fi
   fi
