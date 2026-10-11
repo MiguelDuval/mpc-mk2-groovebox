@@ -9464,21 +9464,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (loaded != null
                     && loaded.startsWith("Pad ")
                     && loaded.contains(" sample loaded")) {
-                setBottomStatus(String.format(
+                final String assignmentStatus = String.format(
                         Locale.ROOT,
                         "ASSIGNED • %s → PAD %02d / LAYER %02d | %s",
-                        sampleName, targetPad + 1, targetLayer + 1, restarted));
+                        sampleName, targetPad + 1, targetLayer + 1, restarted);
+                setBottomStatus(assignmentStatus);
+                // Keep the Browser's own result/status surface in sync with
+                // the state change made through Android Document Provider.
+                if (browserView != null) {
+                    browserView.setProviderStatus(assignmentStatus);
+                }
             } else {
-                setBottomStatus(loaded + " | " + restarted);
+                final String loadFailure = loaded + " | " + restarted;
+                setBottomStatus(loadFailure);
+                if (browserView != null) {
+                    browserView.setProviderStatus(loadFailure);
+                }
             }
             refreshAllInspectorState();
             refreshSampleWaveform();
         } catch (IOException | IllegalArgumentException e) {
             final String restarted = nativeAudioStart();
             setAudioStateFromResult(restarted);
-            setBottomStatus("Sample load failed: "
+            final String pickerFailure = "Sample load failed: "
                     + e.getClass().getSimpleName() + ": " + e.getMessage()
-                    + " | " + restarted);
+                    + " | " + restarted;
+            setBottomStatus(pickerFailure);
+            if (browserView != null) {
+                browserView.setProviderStatus(pickerFailure);
+            }
         }
     }
 

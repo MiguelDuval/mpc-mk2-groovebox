@@ -2810,8 +2810,8 @@ if ! wait_for_ui_node_text_desc "$PICKER_RETURN_XML" "$PICKER_RETURN_REMOTE" \
   exit 1
 fi
 if ! wait_for_ui_text_pair "$PICKER_RETURN_XML" "$PICKER_RETURN_REMOTE" \
-    "ASSIGNED" "PAD 01 / LAYER 01" 30; then
-  echo "ERROR: picker-return assignment did not preserve the intended Pad 01 / Layer 01 target"
+    "ASSIGNED • $PICKER_SAMPLE_NAME" "PAD 01 / LAYER 01" 30; then
+  echo "ERROR: picker-return assignment status did not identify the selected WAV and preserved Pad 01 / Layer 01 target"
   exit 1
 fi
 if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-picker-assignment.png; then
