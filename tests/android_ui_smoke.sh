@@ -2288,8 +2288,8 @@ if ! adb_bounded 10 shell input text "NoSuchWavResult"; then
   echo "ERROR: could not enter negative Browser search query"
   exit 1
 fi
-if ! wait_for_ui_text "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "NO MATCHING WAV FILES" 10; then
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser status NO MATCHING WAV FILES" 10; then
   echo "ERROR: a non-matching search query did not empty the real result set"
   exit 1
 fi
@@ -2303,8 +2303,8 @@ fi
 # File-type filters must act on actual results too: PROJECTS yields none for
 # the WAV-only loader, while ALL and SAMPLES restore the real WAV row.
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter PROJECTS"; then exit 1; fi
-if ! wait_for_ui_text "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "NO MATCHING WAV FILES" 10; then
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser status NO MATCHING WAV FILES" 10; then
   echo "ERROR: PROJECTS filter incorrectly retained WAV sample results"
   exit 1
 fi
