@@ -106,5 +106,128 @@
     "No physical MPC One interaction or screenshot was available",
     "No proprietary firmware or extracted UI assets included in repository"
   ],
-  "projectPriorityUnchanged": "Real Android Document Picker select-return-target-preservation test remains the next implementation task."
+  "projectPriorityUnchanged": "Real Android Document Picker select-return-target-preservation test remains the next implementation task.",
+  "uiSchemaFollowUp": {
+    "checkedDate": "2026-10-11",
+    "method": [
+      "Parsed extracted Program Edit TUI.json schemas",
+      "Counted serialized component/action metadata",
+      "Inventoried graphics category filenames and PNG dimensions",
+      "Parsed ACVS/layout/Help.json",
+      "Inspected MPC ELF sections, DT_NEEDED dependencies and UI-related strings/type-information"
+    ],
+    "serializedPages": {
+      "tuiJsonFiles": 10,
+      "completeDescriptions": 4,
+      "partialDescriptions": 6,
+      "totalTabs": 66,
+      "totalComponentEntries": 652,
+      "localComponentDefinitionsAcrossPagesJson": 199,
+      "serializedActions": 136,
+      "actionTriggers": {
+        "Mouse Down": 59,
+        "Enter Pressed": 50,
+        "Double Click": 27
+      },
+      "actionHandlers": {
+        "Show Overlay": 62,
+        "Q-Link": 48,
+        "Toggle Switch": 26
+      },
+      "caveat": "Metadata counts only; not runtime instrumentation."
+    },
+    "mainTouchTypeInfoAnchors": [
+      "TouchMainPage",
+      "TouchMainPageNavigationPanel",
+      "TouchMainPageContentPanel",
+      "TouchMainPageTrackSidePanel",
+      "TouchMainPageTrackClipPanel",
+      "TouchMainPageClipSidePanel",
+      "TouchMainPageAudioTrackPanel",
+      "TouchMainPageBusTrackPanel",
+      "TouchMainPageCVTrackPanel",
+      "TouchMainPageDrumTrackPanel",
+      "TouchMainPageKeygroupTrackPanel",
+      "TouchMainPageMidiTrackPanel",
+      "TouchMainPagePluginTrackPanel",
+      "TouchMainModeMixerProperties",
+      "TouchMixerChannelStripMPC",
+      "TouchMultiMixerStrip",
+      "TouchDoubleChannelStripContainer",
+      "TouchModeShortcutPanel",
+      "QLinkMainMode",
+      "TransportBarCentreControls",
+      "MpcInterfaceBehaviour"
+    ],
+    "serializedPropertyNameAnchors": [
+      "tuiMainModeLayout",
+      "tuiMainModeMixerLayout",
+      "ProjectDefaults.tuiMainModeLaunchSelectedClipDuringPlayback"
+    ],
+    "help": {
+      "entries": 51,
+      "hostOrSharedUiVocabularyObserved": [
+        "mouse",
+        "hover",
+        "click",
+        "window",
+        "status bar"
+      ],
+      "interpretation": "Shows shared/host-like abstractions are present; not proof that every ACVS layout applies only to desktop."
+    },
+    "trackTypeAssetAudit": {
+      "selectorGroup": "ACVS/graphics/track type selection",
+      "selectorAssets125x125": [
+        "track-audio.png",
+        "track-cv.png",
+        "track-drum.png",
+        "track-keygroup.png",
+        "track-midi.png",
+        "track-plugin.png"
+      ],
+      "selectorGroupCount": 6,
+      "selectorAssetForClipFound": false,
+      "separateStripTypeIcons": [
+        "strip-audio.png",
+        "strip-clip.png",
+        "strip-cv.png",
+        "strip-keygroup.png",
+        "strip-master.png",
+        "strip-midi.png",
+        "strip-multi.png",
+        "strip-pad.png",
+        "strip-plugin.png",
+        "strip-program.png",
+        "strip-return.png",
+        "strip-submix.png",
+        "strip-unavailable.png"
+      ],
+      "observedDiscrepancy": "Official MPC Standalone OS v3.9 guide lists Track Types Audio, Drum, Keygroup, Plugin, MIDI, CV; project's recent migration vocabulary uses CLIP where AUDIO should be audited.",
+      "codeChanged": false
+    },
+    "mainExecutable": {
+      "textSectionBytes": 73228776,
+      "rodataSectionBytes": 28611512,
+      "dynamicStringTableBytes": 503748,
+      "declaredDependencies": [
+        "libasound.so.2",
+        "libdrm.so.2",
+        "libinput.so.10",
+        "libxkbcommon.so.0",
+        "libudev.so.1",
+        "libusbgx.so.3",
+        "libfreetype.so.6",
+        "libcurl.so.4",
+        "libdbus-1.so.3",
+        "libaz01-prog.so.0",
+        "libaz0x-info.so.0"
+      ],
+      "caveat": "DT_NEEDED names show link-time dependencies, not confirmed runtime call paths."
+    },
+    "newFollowUp": [
+      "Audit the app Track Type chooser and tests for AUDIO vs CLIP; verify before source change.",
+      "Use TouchMainPage and TouchMainModeMixerProperties anchors for later Ghidra cross-reference analysis.",
+      "Keep real Android Document Picker selection/return/Pad-Layer target preservation as the next functional implementation task."
+    ]
+  }
 }
