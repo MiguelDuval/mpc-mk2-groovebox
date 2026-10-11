@@ -2261,6 +2261,26 @@ PY
   return 1
 }
 
+wait_for_ui_text() {
+  local hierarchy_path="$1" remote_path="$2" expected_fragment="$3" max_attempts="$4"
+  for ((attempt=1; attempt<=max_attempts; attempt++)); do
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    if python3 - "$hierarchy_path" "$expected_fragment" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, expected = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+texts = [node.attrib.get("text", "") for node in root.iter("node")]
+raise SystemExit(0 if any(expected in value for value in texts) else 1)
+PY
+    then return 0; fi
+    sleep 1
+  done
+  echo "ERROR: timed out waiting for UI text: $expected_fragment"
+  cat "$hierarchy_path" || true
+  return 1
+}
+
 wait_for_ui_text_pair() {
   local hierarchy_path="$1" remote_path="$2" first="$3" second="$4" max_attempts="$5"
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
