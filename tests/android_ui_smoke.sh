@@ -2222,18 +2222,16 @@ for node in nodes:
                 print((left + right) // 2, (top + bottom) // 2)
                 raise SystemExit(0)
         candidate = parents.get(candidate)
-    # DocumentsUI may expose item_root as focusable but not accessibility-clickable.
-    # Once the test has switched to list mode, tap the full row's hit area,
-    # rather than a child TextView that may not own the touch listener.
+    # DocumentsUI's item_root is a non-clickable LinearLayout; its left
+    # thumbnail area may behave as preview. Prefer the actual filename center
+    # (a real row child) and leave the separate Preview control untouched.
     if row_bounds:
         try:
-            first, second = row_bounds[1:-1].split("][")
+            first, second = node.attrib.get("bounds", "")[1:-1].split("][")
             left, top = map(int, first.split(","))
             right, bottom = map(int, second.split(","))
             if right > left and bottom > top:
-                # Tap the row's left-side body, away from filename/type child
-                # TextViews and the separate preview control on the far right.
-                print(left + min(80, max(1, (right - left) // 10)), (top + bottom) // 2)
+                print((left + right) // 2, (top + bottom) // 2)
                 raise SystemExit(0)
         except ValueError:
             pass
