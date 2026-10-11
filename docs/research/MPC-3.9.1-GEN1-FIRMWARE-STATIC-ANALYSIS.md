@@ -172,3 +172,76 @@ Do **not** commit or attach to public issues/PRs:
 - full decompiled or disassembled implementation code.
 
 This report retains only hashes, structural metadata, file-path-level observations, concise technical identifiers and carefully qualified deductions. Continue to use original artwork and the project's own implementation.
+
+
+## 9. Second-pass UI resource schema and native type-information findings — 2026-10-11
+
+This pass inspected extracted `Pages` JSON schemas, UI graphic inventories/dimensions, `ACVS/layout/Help.json`, the app's dynamic-link metadata and UI-related strings/type-information in the stripped ARM ELF.
+
+### 9.1 Serialized UI-page schema inventory
+
+Under `/usr/share/Akai/SME0/Resources/Pages`, the extracted filesystem contains **10 `TUI.json` files** for Program Edit configurations:
+
+| Configuration | Description marker | Tabs | Serialized component entries |
+|---|---:|---:|---:|
+| CV / 8 Channel | CompleteDescription | 12 | 99 |
+| CV / 16 Channel | CompleteDescription | 13 | 107 |
+| Drum | CompleteDescription | 11 | 44 |
+| Keygroup | CompleteDescription | 24 | 325 |
+| Legacy CV | PartialDescription | 1 | 8 |
+| MIDI | PartialDescription | 1 | 3 |
+| Plugin / Default Insert | PartialDescription | 1 | 16 |
+| Plugin / Default Instrument | PartialDescription | 1 | 16 |
+| Plugin / Default Soul Insert | PartialDescription | 1 | 17 |
+| Plugin / Default Soul Instrument | PartialDescription | 1 | 17 |
+
+Across these TUI page descriptions: **66 tabs and 652 component entries**. This inventories Program Edit resource coverage, not proof that all configurations are enabled on every Gen1 device in the same form.
+
+Across local component definitions in the extracted `Pages` JSON files, a local parser counted 199 definitions and 136 serialized action descriptors. Trigger counts were Mouse Down (59), Enter Pressed (50), and Double Click (27); handler labels included Show Overlay (62), Q-Link (48), and Toggle Switch (26). These are metadata counts, not observed runtime events.
+
+`ACVS/layout/Help.json` contains 51 help entries and includes mouse, hover, click, window and status-bar vocabulary. The same executable also contains clearly touch-oriented class/type names. This indicates multiple/shared interaction abstractions; it does **not** prove every `ACVS/layout` descriptor is desktop-only. Treat those geometries as clues whose target context remains unresolved.
+
+### 9.2 Main-mode and touch-oriented class-family evidence
+
+Readable type names and mangled template/type strings in `/usr/bin/MPC` include:
+
+- `TouchMainPage`, `TouchMainPageNavigationPanel`, `TouchMainPageContentPanel`;
+- `TouchMainPageTrackSidePanel`, `TouchMainPageTrackClipPanel`, `TouchMainPageClipSidePanel`;
+- `TouchMainPageAudioTrackPanel`, `TouchMainPageBusTrackPanel`, `TouchMainPageCVTrackPanel`, `TouchMainPageDrumTrackPanel`, `TouchMainPageKeygroupTrackPanel`, `TouchMainPageMidiTrackPanel`, and `TouchMainPagePluginTrackPanel`;
+- `TouchMainModeMixerProperties` with `Display` and `PanelType` type names;
+- `TouchMixerChannelStripMPC`, `TouchMultiMixerStrip`, `TouchDoubleChannelStripContainer`;
+- `TouchModeShortcutPanel`, `QLinkMainMode`, `TransportBarCentreControls`, and `MpcInterfaceBehaviour`.
+
+Property-name strings include `tuiMainModeLayout`, `tuiMainModeMixerLayout`, and `ProjectDefaults.tuiMainModeLaunchSelectedClipDuringPlayback`. This pass did not recover schema fields, enum values, defaults or call graphs. These names suggest distinct state concepts for Main content/navigation, Track/Clip panels and Mixer presentation, but do not prove exact visibility or transition semantics.
+
+**Naming caution:** `TouchMainPageTrackClipPanel` / `TouchMainPageClipPanel` is not proof that “Clip” is a selectable Track Type. Class names describe implementation vocabulary, not the product-facing type list.
+
+### 9.3 Track Type taxonomy discrepancy to audit
+
+The resource group `ACVS/graphics/track type selection` contains exactly six 125×125 PNGs:
+
+- `track-audio.png`
+- `track-cv.png`
+- `track-drum.png`
+- `track-keygroup.png`
+- `track-midi.png`
+- `track-plugin.png`
+
+There is **no** `track-clip.png` in this selector-icon group. In contrast, the separate `ACVS/graphics/programtypeicons` group contains 13 small files, including `strip-clip.png` and other strip categories.
+
+This aligns with the official MPC Standalone OS v3.9 guide's six main Track Types: **Audio, Drum, Keygroup, Plugin, MIDI and CV** (Tracks chapter; canonical guide already indexed in this repository). It raises a concrete mismatch with the project's current migration vocabulary, which has placed CLIP among the six Track Type selector choices while omitting AUDIO.
+
+**Research decision:** do not change the domain model based on artwork names alone. At the next Track Type UI change, audit the selector implementation/tests against the official manual and actual MPC One OS 3.9.1 screen. The likely UI correction is to expose AUDIO rather than CLIP in the Track Type chooser, while retaining Clip/Arrangement concepts separately where supported. This research-only pass did not modify application code.
+
+### 9.4 Binary shape and linked subsystem evidence
+
+The primary `MPC` ELF has a `.text` section of 73,228,776 bytes (69.84 MiB), `.rodata` of 28,611,512 bytes (27.29 MiB), and a dynamic string table of 503,748 bytes. It is a substantial stripped C++ executable, not a small shell wrapper.
+
+Declared dynamic dependencies include `libasound.so.2`, `libdrm.so.2`, `libinput.so.10`, `libxkbcommon.so.0`, `libudev.so.1`, `libusbgx.so.3`, `libfreetype.so.6`, `libcurl.so.4`, `libdbus-1.so.3`, plus Akai libraries `libaz01-prog.so.0` and `libaz0x-info.so.0`. These are link-time facts consistent with audio, input/display, USB/device, font and service integration; they do not prove which paths are active at runtime.
+
+### 9.5 Implications and next reverse-engineering step
+
+1. Use `TouchMainPage*` and `TouchMainModeMixerProperties` as search anchors when Ghidra is available; establish class/data references before inferring fields or behavior.
+2. Preserve the distinction between the Main Track Type selector (Audio/Drum/Keygroup/Plugin/MIDI/CV per the official guide) and separate Clip/Arrangement and channel-strip taxonomies.
+3. Keep `ACVS/layout` geometry unpromoted to physical-device specifications until corroborated against actual MPC One evidence and the correct version's manual.
+4. The next product workflow remains Android Document Picker file selection → return → preserved Pad/Layer target. No app source or realtime/audio/MIDI/hardware-protocol code changed in this research pass.
