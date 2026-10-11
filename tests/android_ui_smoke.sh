@@ -2266,8 +2266,16 @@ if ! tap_ui_description "$DUMP" "MPC Project Browser"; then exit 1; fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
     "MPC Browser scan local audio files" 20; then exit 1; fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser scan local audio files"; then exit 1; fi
+# The prior app-side UI audit can leave Browser search/filter state behind.
+# Reset both controls explicitly so the fixture visibility check starts from a
+# deterministic catalog view rather than the audit's last navigation context.
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then exit 1; fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter ALL"; then exit 1; fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 30; then exit 1; fi
+    "MPC Browser file $LOCAL_SAMPLE_NAME" 20; then
+  echo "ERROR: clearing inherited Browser state did not reveal the indexed local WAV"
+  exit 1
+fi
 
 # Exercise the real on-screen Search field against the indexed MediaStore rows.
 # Positive and negative queries must change the visible result set, not only the
