@@ -135,7 +135,7 @@ No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry 
 ## Stage 7 — MPC 3.9 standalone UI migration
 - UI shell. **MPC 3.9 MIGRATION FOUNDATION IMPLEMENTED — `MpcShell` owns the persistent Toolbar / five configurable shortcuts / XL Channel Strip region / Workspace / contextual Function Bar. Legacy seven-page rail is no longer the canonical shell; legacy workspace pages remain temporary adapters.**
 - Main. **UI FOUNDATION + MPC MAIN CONTEXT REFINEMENT IMPLEMENTED — controller-first selected-pad context, quick sample waveform with Start/End editing, layer selection, direct audition trigger, persistent Main Pad Mixer Strip level/pan/tuning readout, real imported sample-name display, and MPC-style BAR/BEAT/TICK toolbar position display. The canonical Main composition no longer embeds an Android 4x4 pad grid, matching the hardware-first MPC workflow. Full Track Edit and full Channel Mixer remain separately gated by backend support.**
-- Browser. **UI FOUNDATION IMPLEMENTED — dedicated Browser mode with explicit WAV load target; full indexed/searchable browser is a later slice.**
+- Browser. **LOCAL WAV VERTICAL SLICE IMPLEMENTED + ANDROID E2E VERIFIED (Build #2632, code SHA `bc71f1dfb69d8a94b7de266300a704c27b2a1338`) — a MediaStore-backed WAV result list, scan/permission path, real selection, MediaPlayer audition and native Pad/Layer assignment now complete one real local workflow. Search/filter policy has JVM coverage. Runtime search/filter taps, actual SAF file selection/return, document-tree browsing and persisted favourites remain follow-up slices. Unsupported categories remain honest no-provider states.**
 - Sampler. **UI FOUNDATION + WAVEFORM IMPLEMENTED — dedicated sample editor context with a shared editable waveform, region/edit, envelope, filter and layer tabs.**
 - Sample Edit. **UI FOUNDATION + WAVEFORM IMPLEMENTED — direct S/E drag editing, zoom/pan, audition, crop and chop actions are isolated to the sample context.**
 - Grid. **SEQUENCE CONTEXT IMPLEMENTED — dedicated track/sequence context is now available from the Sequencer page; detailed note editing remains next.**
@@ -693,9 +693,9 @@ MPC Standalone OS 3.9 remains the UI/interaction reference, but reproducing Akai
 
 ### Ordered implementation priorities
 
-1. Remove Splice from the actual Browser navigation and audit the implemented product UI for other excluded commercial, cloud or dead-end entries. Keep only real local-content paths.
-2. Finish the semantic local Browser in bounded slices: real result model/list, working location/category and search/filter behavior, selected item metadata and destination Pad/Layer. Persist favourites only when backed by a tested storage/provider implementation.
-3. Complete the local sample vertical slice: choose a real local WAV, audition through a genuine supported path, load and assign to the intended Pad/Layer, preserve context through picker navigation, then verify the resulting sample state and audio playback. Explicitly label any missing backend contract.
+1. **Core commercial exclusion DONE:** Splice has been removed from product navigation and source smoke rejects its reintroduction. Re-audit when new Browser routes are added; do not restore stores, paid-content promotion, ads or upsells.
+2. **Local Browser IN PROGRESS:** the first vertical slice is implemented and E2E-verified on Android Build #2632 / code SHA `bc71f1dfb69d8a94b7de266300a704c27b2a1338` (real MediaStore WAV list, selection, audition, sample assignment). Next add runtime search/filter interaction coverage, then actual SAF file-pick/return acceptance. Only after that implement a persisted document-tree/favourite-location slice with permission/restoration tests.
+3. **Local sample slice PARTIALLY DONE:** MediaStore selection → genuine audition → native load/assign → visible Pad 01 / Layer 01/current-sample feedback is E2E-verified. The direct Android Document Picker path snapshots the chosen target, but selecting a file in the picker and proving the returned assignment still reaches that target needs a dedicated runtime test.
 4. Improve Track, Arrange, Grid and Step based on high-frequency musical scenarios, then deepen mixer/project persistence where supported by existing semantics.
 5. Continue checking hardware ergonomics separately; emulator success is not physical MkII verification.
 

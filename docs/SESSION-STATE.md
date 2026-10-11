@@ -26,21 +26,23 @@ The product owner explicitly approved this scope.
 
 The official Akai reference can document its own commercial taxonomy. That is historical/reference evidence, not a requirement for this product. Mark intentional deviations as reference-only and do not add disconnected placeholders.
 
-## 3. Live CI situation at the last check
+## 3. Live CI situation — verified 2026-10-11 00:35 UTC
 
-- Last successful full Android workflow before the current local-only Browser contract: [Android Build #2617](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38082008806), tested SHA `ca0dd4c5f209c0a34ad4c6ae1182ed13429036bb`. This does not validate later Browser changes.
-- [Android Build #2618](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38085798429), SHA `7754a5b22a0331e94638fece768364952603028f`, **FAILED** in the emulator smoke step. The new product-scope preflight correctly rejected the string `splice` in Browser source, but an older information-architecture assertion still incorrectly required `SPLICE`. Native tests and APK assembly had passed before smoke failed. This is a contradictory test expectation, not evidence that Splice should be retained.
-- Fix committed at `a8c13c6cb7907c9d868fc928bd71d03672ddd0b8` (`test: align Browser IA contract with local-only scope`): removed the obsolete `SPLICE` requirement from the Browser IA source preflight, retaining the separate assertion that Splice must not appear in the product Browser and the checks for generic local categories.
-- At the last live check, Android Build #2619 for SHA `a8c13c6cb7907c9d868fc928bd71d03672ddd0b8` was **IN PROGRESS**: [Build #2619](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38086888043). This session-state refresh advances HEAD, so #2619 may be cancelled/superseded. **The first task next session is to inspect the latest Android Build for the actual current PR SHA and fix any failure before adding unrelated work.**
-- Do not treat an APK produced by a workflow whose emulator smoke failed as a validated release artifact. Check the exact tested SHA and the conclusion of the entire workflow.
-- Earlier Build #2608 and its visual evidence describe the older SHA `77f4e18a8f40a2e3d58ec8dbdf873cb09070fe4a`, not current source. Its screenshots/hierarchy should not be used to assert that the Browser now excludes Splice or that later interactions work.
+- PR #23 remains **OPEN / not merged**, base `fix/ui-shell-format-width-startup`, branch `feature/mpc-one-ui-fidelity`. The validated implementation SHA at this checkpoint is `bc71f1dfb69d8a94b7de266300a704c27b2a1338`.
+- **Android Build #2632 — SUCCESS** for that exact SHA, run ID `38098504950`: all 57 workflow steps succeeded, including unit/native checks, the dedicated `MpcBrowserFileTest`, APK assembly, emulator startup/UI smoke, the Browser local MediaStore → result selection → audition → Pad/Layer assignment path, and UI evidence upload. Run: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38098504950
+- Test-harness failures immediately before this success are understood and corrected. #2630 showed zero indexed WAVs because its deprecated media-scanner broadcast did not seed MediaStore. #2631 used `content query --where "_display_name='Browser-Smoke-Local.wav'"`, which failed on the emulator with `IllegalArgumentException: Invalid token Browser`; the preceding `scan_file` call had actually returned a valid MediaStore URI. Commit `bc71f1d` queries the returned item's numeric `_id` and checks the expected filename before entering the UI flow.
+- **APK artifact:** ID `11686723680`, 8,211,869 bytes; downloaded as `MPC-MkII-Groovebox-2632.apk`. SHA-256: `17c146db6c9c34f650e0f3742bdb382eda1f437133945371fa232169905f07a0`. The file is identified as an Android package and its ZIP structure passes integrity checking.
+- **Visual evidence artifact:** ID `11686754109`, 847,926 bytes; SHA-256 of the downloaded evidence ZIP: `ba972a004365a983c57be4af030a254cb43e0d6a7c91bc287c587dab37b08d42`. Actual archive contents were inspected. It contains `mpc-groovebox-browser-local-results.png` (1920×1080, 217,491 bytes) and `mpc-groovebox-browser-local-results-uiautomator.xml` (54,465 bytes), plus the startup/Main/Browser/Document Picker evidence. The Browser hierarchy records `CURRENT SAMPLE • Browser-Smoke-Local.wav`, its target `PAD 01 / LAYER 01`, and `ASSIGNED • Browser-Smoke-Local.wav → PAD 01 / LAYER 01`.
+- No physical MPC Studio MkII verification is claimed. Emulator runtime verification passed.
+- This section records the last fully validated **implementation** SHA. Updating this document advances the PR head; verify the fresh workflow for the documentation commit independently before treating that newer SHA as CI-green.
 
 ## 4. Current implementation snapshot
 
 - **Main shell:** toolbar, five-slot Shortcut Rail, XL Channel Strip host, workspace and Function Bar exist. Fidelity is improved but exact visual and behavioral parity is incomplete.
 - **Browser:** Splice has been removed from the actual Content navigation. Regression preflight requires its absence. Generic local categories retained include Drums, Instruments, Samples, Demos and My Files.
-- **Browser is still PARTIAL:** its result area remains placeholder/informational rows (Open Storage plus Current Sample), not a real semantic list of indexed local files. Search/filter controls and navigation state exist, but do not imply a fully working local result provider. Persisted favourites, complete options and a genuine selectable local result workflow remain gaps.
-- **Sample workflow:** existing WAV import route uses Android Document Picker and native sample load/assignment for the current selected Pad/Layer. Preserve this path while introducing a product-level result list; do not regress it.
+- **Browser core local WAV slice — IMPLEMENTED and emulator-verified:** the result panel now contains actual MediaStore-indexed WAV rows rather than placeholder sample/storage rows. Explicit Scan permission, selected-file identity, target Pad/Layer context, real MediaPlayer audition, and assignment through the existing native sampler operation were exercised by Android smoke. Pure JVM tests cover WAV eligibility and semantic search/filter decisions.
+- **Browser remains PARTIAL:** indexed results currently cover WAVs in the supported `PLACES/INTERNAL`, `CONTENT/SAMPLES`, and `CONTENT/MY FILES` locations. Other categories show honest no-provider states. Runtime smoke has not yet exercised search/filter taps end-to-end; folders selected through `ACTION_OPEN_DOCUMENT_TREE`, persisted/restored favourite locations, and the actual SAF file-pick → return → target assignment path remain follow-up work.
+- **Sample workflow:** MediaStore result assignment and actual audition are verified. The separate Android Document Picker entry still uses the existing native WAV loader and now snapshots the intended Pad/Layer across picker navigation; UI smoke currently verifies picker launch, but a real pick-and-return target-preservation run is still pending.
 - **Track View / Arrange / Grid / Step:** partial; reuse existing event/domain operations and preserve explicit unavailable states for unsupported edits/non-Drum tracks.
 - **Sampler / Sample Edit:** substantial existing software/UI foundation (recording, monitor/threshold, waveform, region, crop/chop and layer semantics). Reuse, do not rewrite.
 - **Pad Mixer:** real Level/Pan/Tune subset exists. Full Channel Mixer/routing/FX remain incomplete.
@@ -61,29 +63,22 @@ Do not dump/re-read all large docs every session. Read this state, the protocol 
 
 ## 6. Exact next-work order
 
-### Task 0 — verify the latest CI for the actual head
+### Task 0 — verify CI for the local WAV Browser slice — PASSED 2026-10-11
 
-1. Read PR #23's live head SHA and branch state.
-2. Inspect the newest Android Build run associated with that SHA. The previously running #2619 may have been superseded by this checkpoint commit.
-3. Confirm the result includes native tests, APK assembly, Android emulator smoke, and visual-evidence upload; identify the exact failed step if not green.
-4. Correct any test/evidence mismatch with a small change. Do not bring back Splice to satisfy an outdated assertion.
-5. Inspect the artifact names/files from the latest successful run. For visual evidence, verify expected PNG and XML hierarchy files exist in the downloaded archive, not only that the workflow log said they were captured.
-6. Update this state file at the end of the next meaningful implementation slice; don't create multiple status-only commits while the slice is unfinished.
+1. PR #23 head `bc71f1dfb69d8a94b7de266300a704c27b2a1338` matched the tested run #2632.
+2. Full Android Build #2632 succeeded (57/57 steps), including the local Browser WAV filtering JVM test, fresh APK, emulator smoke, and evidence upload.
+3. The emulator smoke proved this real sequence: MediaStore WAV indexed → Browser result visible and selectable → actual selected-file audition state → native assignment to Pad 01 / Layer 01 → updated current sample label and assignment status.
+4. APK and evidence archives were downloaded and inspected. The expected local Browser PNG and XML hierarchy are physically present in the evidence archive.
+5. The current commit is verified; this state/roadmap/knowledge-base documentation update creates a newer PR head which requires its own workflow check.
 
-### Task 1 — semantic local Browser results (next implementation milestone)
+### Task 1 — extend acceptance of the semantic local Browser (next)
 
-Design a small real vertical slice after inspecting the current code and Android storage capabilities:
+Keep the implementation narrow; do not rewrite the Browser or native audio layer.
 
-- Keep Android Document Provider underneath the product Browser.
-- Provide a real way to discover accessible local audio files (for example a persisted user-selected document tree and/or indexed accessible local media, selected based on existing app/dependency support).
-- Show real result rows with file identity/metadata, not placeholders.
-- Selecting a result must preserve its URI and the current target Pad/Layer.
-- Load must use the existing sample decoder/native load/assignment path and update the correct sample name/state after returning to Main.
-- Search/type filters must be connected to the semantic local results or explicitly remain unavailable; do not claim functionality from a UI control alone.
-- Treat audition as a separate verified behavior. Do not fake preview by triggering an unrelated already-loaded sample.
-- Persist favourite locations only after URI permissions/storage and restoration are designed and tested.
-- Add tests for provider/result filtering and an Android smoke path appropriate to the new workflow.
-- Keep the first slice bounded: a real local WAV result → select target → load/assign → visible state result is more valuable than a broad unfinished browser framework.
+1. Add runtime interaction assertions that search and the real `SAMPLES / ALL` filters change the indexed WAV result set. Keep JVM policy tests, but do not treat those alone as UI acceptance.
+2. Exercise selecting a real WAV through the Android Document Picker and returning to the app. Assert the preserved Pad/Layer target and visible sample name after assignment; do not only assert that the picker launches.
+3. Then design a separate slice for a user-selected document tree, persistable URI access and restored favourite folders. Add it only with explicit permission/restoration tests. Until then favourites and unimplemented locations remain unavailable, not decorative successes.
+4. Continue auditing for excluded Splice/marketplace/paid-content routes when new Browser paths are added.
 
 ### Task 2 — high-value musical contexts
 
@@ -125,13 +120,14 @@ The final check must not be skipped to save time. Use fast targeted checks durin
 
 ---
 
-## Session refresh — 2026-10-10/11 UTC
+## Session refresh — 2026-10-11 UTC (post local WAV Browser slice)
 
-This section supersedes older mutable HEAD/CI statements above where they conflict. Always re-check live GitHub before using them.
+This is the latest checkpoint for the implementation state. Always compare it with live GitHub; this documentation commit is newer than the implementation SHA proven by Android Build #2632.
 
-- **Live PR #23 head at this refresh:** `e48478fb18934d76b1cfeffa9a346e890c7c47f5`; PR is OPEN, not merged; base remains `fix/ui-shell-format-width-startup`. Confirmed through live PR metadata.
-- **Current Android Build:** run #2622, ID `38089917632`, was IN PROGRESS for that SHA at the time of this refresh. Do not claim this docs refresh is build-validated until a workflow for the resulting commit finishes successfully.
-- A new canonical operating document, `docs/DEVELOPMENT-OPERATING-PROTOCOL.md`, has been added. It defines local-first scope, bounded feature slices, evidence requirements, context efficiency and the session handoff loop.
-- `AGENTS.md`, `docs/PROJECT_MASTER_PROMPT.md`, `docs/IMPLEMENTATION-ROADMAP.md`, `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`, `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md`, `docs/MPC3-REFERENCE-INDEX.md`, and `docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md` now refer to the operating protocol and/or record the approved product-scope decision: exclude Splice, commercial marketplaces, paid-content promotion, partner advertising, upsells and unnecessary branded cloud/account dependencies; retain real local file and sample workflows.
-- **Next action:** first inspect the latest workflow result for the current PR head after these documentation commits. Fix CI/documentation contradictions before unrelated changes. Then inspect current Browser source/tests and remove any remaining Splice/marketplace surface from the actual product UI. Do not begin semantic Browser implementation until the branch/build baseline is understood.
-- **Important verification limit:** no physical MPC Studio MkII verification is claimed. Previous visual evidence from Build #2608 belongs to old SHA `77f4e18a8f40a2e3d58ec8dbdf873cb09070fe4a` and cannot prove the current Browser state.
+- At checkpoint time, PR #23 was OPEN, base `fix/ui-shell-format-width-startup`, implementation branch `feature/mpc-one-ui-fidelity`, validated code SHA `bc71f1dfb69d8a94b7de266300a704c27b2a1338`.
+- Android Build #2632 / run ID `38098504950` completed **SUCCESS** on that SHA. All 57 workflow steps passed. Exact results and archive identities are in section 3 above.
+- Local Browser runtime E2E verified a WAV row discovered from MediaStore, selected-file audition, actual sampler assignment to Pad 01 / Layer 01, and current-sample/assignment feedback. No audio engine/realtime callback, MIDI transport, raw MkII decoder or SysEx subsystem was rewritten for this slice.
+- The next high-value task is **runtime search/filter coverage plus an actual SAF file-pick → return → assignment target-preservation test**. Only after these should the work move to a separate, tested document-tree/favourite persistence slice. Avoid more geometry-only cleanup while these functional acceptance gaps remain.
+- Known gaps: runtime search/filter taps and actual SAF selected-file assignment need end-to-end verification; document-tree browsing and persisted favorites are not implemented; unsupported category/file types do not produce real lists; physical MPC Studio MkII verification remains pending.
+- Keep the local-first product scope: no Splice, stores, paid expansion promotion, partner ads, upsells or unnecessary vendor account/cloud dependencies.
+

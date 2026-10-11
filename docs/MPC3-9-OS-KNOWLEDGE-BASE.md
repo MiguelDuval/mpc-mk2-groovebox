@@ -532,3 +532,26 @@ Keep useful local workflows: Places, generic content categories backed by real l
 - Android Document Picker integration alone is a storage-access primitive, not a complete MPC-style Browser.
 
 Use `docs/DEVELOPMENT-OPERATING-PROTOCOL.md` for the execution loop and `docs/SESSION-STATE.md` for the most recent verified checkpoint. Always verify those checkpoint values against live GitHub.
+
+## 2026-10-11 Local WAV Browser vertical-slice checkpoint
+
+**Verified implementation SHA:** `bc71f1dfb69d8a94b7de266300a704c27b2a1338`  
+**CI:** Android Build #2632 / run ID `38098504950`, full workflow SUCCESS (57/57 steps).  
+**Run:** https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38098504950
+
+Implemented and exercised on the emulator:
+
+- `MpcLocalAudioCatalog` scans actual MediaStore audio rows on an explicit user request and exposes only WAV files accepted by the current native loader; it performs no file work in the realtime audio callback.
+- `MpcBrowserView` renders real indexed file rows with URI-backed identity and size/duration metadata. Selecting a row changes real selected-item state; target Pad/Layer remains separately visible.
+- Browser search and the `SAMPLES / ALL` filter decision path are connected to the real result model and have JVM unit coverage. End-to-end taps for search/filter are still a required follow-up acceptance test.
+- Audition uses the selected URI through Android `MediaPlayer`; SAMPLE ASSIGN reads the selected WAV and calls the existing native sampler load/name operations. No audio-engine rewrite was part of this slice.
+- Android smoke verified fixture indexing by MediaStore scan URI, result visibility, selected-file audition, assignment to Pad 01 / Layer 01 and the resulting accessibility hierarchy. Evidence ZIP `mpc-ui-visual-evidence` (artifact ID `11686754109`) was inspected; it contains `mpc-groovebox-browser-local-results.png` and `mpc-groovebox-browser-local-results-uiautomator.xml`. The hierarchy contains both `CURRENT SAMPLE • Browser-Smoke-Local.wav` and `ASSIGNED • Browser-Smoke-Local.wav → PAD 01 / LAYER 01`.
+- The test fixture uses the item URI returned by the Android MediaStore `scan_file` provider call, then queries the numeric item ID. This avoids the emulator shell's failure to parse a hyphenated display name in the older selection expression.
+
+Deliberate limitations / next acceptance work:
+
+- Current indexed scope is WAV files in supported `PLACES/INTERNAL`, `CONTENT/SAMPLES` and `CONTENT/MY FILES` locations. Other categories/file types do not pretend to have provider results.
+- Runtime UI tests for search and type filters, plus selecting a file inside the Android Document Picker and verifying Pad/Layer target preservation on return, are still needed.
+- `ACTION_OPEN_DOCUMENT_TREE`, a persisted user-selected root and persisted/restored favourite folders are not implemented; a future slice must include persisted URI-permission and restoration tests.
+- Physical MPC Studio MkII verification remains pending; emulator CI must not be reported as hardware verification.
+
