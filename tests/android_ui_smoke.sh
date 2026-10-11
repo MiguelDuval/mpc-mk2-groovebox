@@ -2198,8 +2198,12 @@ for node in nodes:
     if any(token in cls for token in ("edittext", "searchauto", "autocomplete")):
         continue
     candidate = node
+    tile_bounds = None
     while candidate is not None:
         bounds = candidate.attrib.get("bounds", "")
+        cls_candidate = candidate.attrib.get("class", "").lower()
+        if "materialcardview" in cls_candidate and bounds.startswith("[") and bounds.endswith("]"):
+            tile_bounds = bounds
         if (candidate.attrib.get("clickable") == "true"
                 and candidate.attrib.get("enabled") == "true"
                 and bounds.startswith("[") and bounds.endswith("]")):
@@ -2214,9 +2218,19 @@ for node in nodes:
                 print((left + right) // 2, (top + bottom) // 2)
                 raise SystemExit(0)
         candidate = parents.get(candidate)
-    # List/provider rows may be touchable by their parent container even when
-    # accessibility omits clickable=true. The actual visible filename center is
-    # a safe fallback after editable Search nodes have been explicitly excluded.
+    # In DocumentsUI grid mode, filename TextViews and their MaterialCardView
+    # are exposed as non-clickable; the card is the actual file-tile hit area.
+    # Click the center of that visible tile before falling back to text bounds.
+    if tile_bounds:
+        try:
+            first, second = tile_bounds[1:-1].split("][")
+            left, top = map(int, first.split(","))
+            right, bottom = map(int, second.split(","))
+            if right > left and bottom > top:
+                print((left + right) // 2, (top + bottom) // 2)
+                raise SystemExit(0)
+        except ValueError:
+            pass
     bounds = node.attrib.get("bounds", "")
     if bounds.startswith("[") and bounds.endswith("]"):
         try:
