@@ -30,7 +30,7 @@ final class MpcBrowserView extends LinearLayout {
         void onNavigationItemSelected(String section, String item);
         void onFilterSelected(String filter);
         void onNavigateUp();
-        void onOpenStorage();
+        void onChooseFolder();
         void onLocalScanRequested();
         void onFileSelected(MpcBrowserFile file);
         void onAuditionSelectedFile();
@@ -64,6 +64,13 @@ final class MpcBrowserView extends LinearLayout {
     private MpcBrowserFile selectedFile;
     private boolean localScanComplete;
     private String localScanMessage = "LOCAL AUDIO • NOT SCANNED";
+    private List<MpcBrowserFile> userFolderFiles = Collections.emptyList();
+    private String userFolderName = "";
+    private String userFolderStatus = "USER FOLDER • NOT CONFIGURED";
+    private boolean userFolderConfigured;
+    private boolean userFolderAccessReady;
+    private boolean userFolderScanComplete;
+    private boolean userFolderScanFailed;
 
     MpcBrowserView(Context context) {
         super(context);
@@ -252,10 +259,58 @@ final class MpcBrowserView extends LinearLayout {
     }
 
     void setProviderStatus(String status) {
-        localScanMessage = status == null || status.trim().isEmpty()
-                ? "LOCAL AUDIO • NOT SCANNED"
+        final String value = status == null || status.trim().isEmpty()
+                ? "LOCAL AUDIO • NOT SCANNED" : status;
+        if (isUserFolderLocation()) userFolderStatus = value;
+        else localScanMessage = value;
+        providerState.setText(value);
+    }
+
+    void setUserFolderState(String name, boolean accessReady, String status) {
+        final String nextName = name == null ? "" : name.trim();
+        final boolean rootChanged = !nextName.equals(userFolderName);
+        userFolderName = nextName;
+        userFolderConfigured = !nextName.isEmpty();
+        userFolderAccessReady = userFolderConfigured && accessReady;
+        userFolderScanComplete = false;
+        userFolderScanFailed = false;
+        if (rootChanged || !userFolderAccessReady) userFolderFiles = Collections.emptyList();
+        userFolderStatus = status == null || status.trim().isEmpty()
+                ? (userFolderConfigured ? "USER FOLDER • NOT SCANNED" : "USER FOLDER • NOT CONFIGURED")
                 : status;
-        providerState.setText(localScanMessage);
+        rebuildSideNavigation();
+        setActiveNavigationItem(activeLocationItem);
+        renderResults();
+    }
+
+    void setUserFolderFiles(String name, List<MpcBrowserFile> files, String status) {
+        final String nextName = name == null ? "" : name.trim();
+        if (!nextName.isEmpty()) userFolderName = nextName;
+        userFolderConfigured = !userFolderName.isEmpty();
+        userFolderAccessReady = userFolderConfigured;
+        userFolderFiles = files == null ? Collections.emptyList() : new ArrayList<>(files);
+        userFolderScanComplete = true;
+        userFolderScanFailed = false;
+        userFolderStatus = status == null || status.trim().isEmpty()
+                ? "USER FOLDER • " + userFolderFiles.size() + " WAV FILES INDEXED" : status;
+        rebuildSideNavigation();
+        setActiveNavigationItem(activeLocationItem);
+        renderResults();
+    }
+
+    void setUserFolderFailure(String name, String status) {
+        final String nextName = name == null ? "" : name.trim();
+        if (!nextName.isEmpty()) userFolderName = nextName;
+        userFolderConfigured = !userFolderName.isEmpty();
+        userFolderAccessReady = userFolderConfigured;
+        userFolderFiles = Collections.emptyList();
+        userFolderScanComplete = true;
+        userFolderScanFailed = true;
+        userFolderStatus = status == null || status.trim().isEmpty()
+                ? "USER FOLDER • READ FAILED • CHOOSE FOLDER AGAIN" : status;
+        rebuildSideNavigation();
+        setActiveNavigationItem(activeLocationItem);
+        renderResults();
     }
 
     void setTarget(int pad, int layer) {
@@ -352,10 +407,12 @@ final class MpcBrowserView extends LinearLayout {
             items = new String[]{
                     "EXPANSIONS", "USER CONTENT"};
         } else {
-            items = new String[]{
-                    "INTERNAL", "MPC DOCUMENTS", "CONNECTED STORAGE",
-                    "FAVORITE 1", "FAVORITE 2", "FAVORITE 3",
-                    "FAVORITE 4", "FAVORITE 5"};
+            final List<String> placesItems = new ArrayList<>();
+            Collections.addAll(placesItems, "INTERNAL", "MPC DOCUMENTS", "CONNECTED STORAGE");
+            if (userFolderConfigured) placesItems.add("USER FOLDER");
+            Collections.addAll(placesItems,
+                    "FAVORITE 1", "FAVORITE 2", "FAVORITE 3", "FAVORITE 4", "FAVORITE 5");
+            items = placesItems.toArray(new String[0]);
         }
 
         for (String item : items) {
@@ -422,9 +479,15 @@ final class MpcBrowserView extends LinearLayout {
                 : value.toString().replace("CURRENT SAMPLE • ", "");
     }
 
+    private boolean isUserFolderLocation() {
+        return "PLACES".equals(activeSection)
+                && "USER FOLDER".equalsIgnoreCase(activeLocationItem);
+    }
+
     private boolean isCatalogLocationSupported() {
         if ("PLACES".equals(activeSection)) {
-            return "INTERNAL".equalsIgnoreCase(activeLocationItem);
+            if ("INTERNAL".equalsIgnoreCase(activeLocationItem)) return true;
+            return isUserFolderLocation() && userFolderConfigured && userFolderAccessReady;
         }
         if ("CONTENT".equals(activeSection)) {
             return "SAMPLES".equalsIgnoreCase(activeLocationItem)
@@ -436,6 +499,8 @@ final class MpcBrowserView extends LinearLayout {
     private String unavailableLocationTitle() {
         if ("EXPANSIONS".equals(activeSection)) return "LOCAL EXPANSIONS NOT INDEXED";
         if ("PLACES".equals(activeSection)) {
+            if (isUserFolderLocation()) return userFolderConfigured
+                    ? "USER FOLDER ACCESS NEEDS RENEWAL" : "USER FOLDER NOT CONFIGURED";
             if (activeLocationItem.toUpperCase(Locale.ROOT).startsWith("FAVORITE")) {
                 return "FAVORITE LOCATION NOT CONFIGURED";
             }
@@ -445,16 +510,15 @@ final class MpcBrowserView extends LinearLayout {
     }
 
     private String unavailableLocationDetail() {
-        if ("EXPANSIONS".equals(activeSection)) {
-            return "No local expansion catalog is connected yet.";
-        }
+        if ("EXPANSIONS".equals(activeSection)) return "No local expansion catalog is connected yet.";
         if ("PLACES".equals(activeSection)) {
+            if (isUserFolderLocation()) return "Choose CHOOSE FOLDER to grant this app read access to a local folder.";
             if ("MPC DOCUMENTS".equalsIgnoreCase(activeLocationItem)
                     || "CONNECTED STORAGE".equalsIgnoreCase(activeLocationItem)) {
-                return "Use OPEN STORAGE to access this location through Android Documents.";
+                return "Choose a local folder to browse real documents. Android file import remains available from LOAD.";
             }
             if (activeLocationItem.toUpperCase(Locale.ROOT).startsWith("FAVORITE")) {
-                return "Favourite folders are not persisted yet; choose OPEN STORAGE instead.";
+                return "Favourite folders are not persisted yet; choose CHOOSE FOLDER instead.";
             }
             return "This place is not backed by the local WAV catalog.";
         }
@@ -463,9 +527,11 @@ final class MpcBrowserView extends LinearLayout {
 
     private void renderResults() {
         results.removeAllViews();
-
+        providerState.setText(isUserFolderLocation() ? userFolderStatus : localScanMessage);
+        final List<MpcBrowserFile> sourceFiles =
+                isUserFolderLocation() ? userFolderFiles : localFiles;
         final List<MpcBrowserFile> visibleFiles = new ArrayList<>();
-        for (MpcBrowserFile file : localFiles) {
+        for (MpcBrowserFile file : sourceFiles) {
             if (file.matchesBrowserQuery(
                     activeSection, activeLocationItem, activeFilter(), searchQuery())) {
                 visibleFiles.add(file);
@@ -494,29 +560,44 @@ final class MpcBrowserView extends LinearLayout {
                 "MPC Browser scan local audio files",
                 true);
         addActionRow(
-                "OPEN STORAGE…",
-                "ANDROID DOCUMENT PICKER • DIRECT WAV LOAD",
-                "MPC Browser open Android storage picker",
+                "CHOOSE FOLDER…",
+                "PERSIST A LOCAL FOLDER FOR BROWSING",
+                "MPC Browser choose a local folder for Browser results",
                 false);
-
         if (!isCatalogLocationSupported()) {
             addInfoRow(unavailableLocationTitle(), unavailableLocationDetail());
             return;
         }
-        if (!localScanComplete) {
-            addInfoRow("LOCAL WAV CATALOG NOT SCANNED",
-                    "Select SCAN LOCAL AUDIO to list real device files.");
-            return;
-        }
-        if (visibleFiles.isEmpty()) {
-            if (localFiles.isEmpty()) {
-                addInfoRow("NO LOCAL WAV FILES",
-                        "No accessible WAV files were found in the device media catalog.");
-            } else {
-                addInfoRow("NO MATCHING WAV FILES",
-                        "Change Search or select SAMPLES / ALL to show indexed WAV items.");
+        if (isUserFolderLocation()) {
+            if (userFolderScanFailed) {
+                addInfoRow("USER FOLDER READ FAILED", "Read access failed. Choose another local folder to retry.");
+                return;
             }
-            return;
+            if (!userFolderScanComplete) {
+                addInfoRow("USER FOLDER SCANNING", "Indexing WAV files directly inside " + userFolderName + ".");
+                return;
+            }
+            if (visibleFiles.isEmpty()) {
+                if (userFolderFiles.isEmpty()) {
+                    addInfoRow("NO WAV FILES IN USER FOLDER", "No WAV files were found directly inside " + userFolderName + ".");
+                } else {
+                    addInfoRow("NO MATCHING WAV FILES", "Change Search or select SAMPLES / ALL to show folder WAV items.");
+                }
+                return;
+            }
+        } else {
+            if (!localScanComplete) {
+                addInfoRow("LOCAL WAV CATALOG NOT SCANNED", "Select SCAN LOCAL AUDIO to list real device files.");
+                return;
+            }
+            if (visibleFiles.isEmpty()) {
+                if (localFiles.isEmpty()) {
+                    addInfoRow("NO LOCAL WAV FILES", "No accessible WAV files were found in the device media catalog.");
+                } else {
+                    addInfoRow("NO MATCHING WAV FILES", "Change Search or select SAMPLES / ALL to show indexed WAV items.");
+                }
+                return;
+            }
         }
 
         for (MpcBrowserFile file : visibleFiles) {
@@ -557,7 +638,7 @@ final class MpcBrowserView extends LinearLayout {
         row.setOnClickListener(v -> {
             if (listener == null) return;
             if (scanAction) listener.onLocalScanRequested();
-            else listener.onOpenStorage();
+            else listener.onChooseFolder();
         });
 
         final TextView main = info(getContext(), title);

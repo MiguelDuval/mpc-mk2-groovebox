@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.UriPermission;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.content.pm.PackageManager;
@@ -20,6 +21,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
+import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -72,6 +74,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int REQUEST_RECORD_AUDIO = 1002;
     private static final int REQUEST_MONITOR_AUDIO = 1003;
     private static final int REQUEST_SCAN_LOCAL_AUDIO = 1004;
+    private static final int REQUEST_OPEN_DOCUMENT_TREE = 1005;
+    private static final String BROWSER_STORAGE_PREFERENCES = "mpc_browser_storage";
+    private static final String PREF_USER_TREE_URI = "user_tree_uri";
+    private static final String PREF_USER_TREE_NAME = "user_tree_name";
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
     private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
     private static final boolean NATIVE_LIBRARY_LOADED;
@@ -232,6 +238,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private AlertDialog browserOptionsDialog;
     private MediaPlayer browserPreviewPlayer;
     private String browserPreviewUri = "";
+    private Uri browserUserTreeUri;
+    private String browserUserTreeName = "";
     private int browserPickerTargetPad = -1;
     private int browserPickerTargetLayer = -1;
     private final ArrayList<MpcArrangeView.Lane> arrangementLanes = new ArrayList<>();
@@ -5473,6 +5481,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController.setDataDialFocus(
                         MpcUiState.DataDialFocus.BROWSER_ITEM);
                 setBottomStatus("BROWSER • " + locationKey);
+                if ("PLACES".equals(section) && "USER FOLDER".equals(item)) {
+                    if (browserUserTreeUri != null && hasPersistedReadPermission(browserUserTreeUri)) {
+                        loadBrowserDocumentTree(browserUserTreeUri, browserUserTreeName, browserView);
+                    } else {
+                        browserView.setUserFolderState(browserUserTreeName, false,
+                                "USER FOLDER • ACCESS NEEDS RENEWAL • CHOOSE FOLDER");
+                    }
+                }
                 refreshMpcFunctionBar();
             }
 
@@ -5511,8 +5527,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
 
             @Override
-            public void onOpenStorage() {
-                openWavPicker();
+            public void onChooseFolder() {
+                openBrowserDocumentTreePicker();
             }
 
             @Override
@@ -5586,12 +5602,178 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             browserView.setCurrentSampleName("NONE");
         }
         browserView.setTarget(selectedPad, selectedLayer);
+        restoreUserDocumentTree(browserView);
 
         content.addView(page, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         refreshMpcFunctionBar();
         updateModeRailSelection();
+    }
+
+    private void openBrowserDocumentTreePicker() {
+        final Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && browserUserTreeUri != null) {
+            intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, browserUserTreeUri);
+        }
+        try {
+            startActivityForResult(intent, REQUEST_OPEN_DOCUMENT_TREE);
+        } catch (RuntimeException e) {
+            final Intent fallback = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            fallback.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                    | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+            try {
+                startActivityForResult(fallback, REQUEST_OPEN_DOCUMENT_TREE);
+            } catch (RuntimeException fallbackError) {
+                final String status = "USER FOLDER • PICKER UNAVAILABLE • "
+                        + fallbackError.getClass().getSimpleName();
+                setBottomStatus(status);
+                if (browserView != null) browserView.setProviderStatus(status);
+            }
+        }
+    }
+
+    private boolean hasPersistedReadPermission(Uri treeUri) {
+        if (treeUri == null) return false;
+        try {
+            for (UriPermission permission : getContentResolver().getPersistedUriPermissions()) {
+                if (treeUri.equals(permission.getUri()) && permission.isReadPermission()) return true;
+            }
+        } catch (RuntimeException ignored) { }
+        return false;
+    }
+
+    private void restoreUserDocumentTree(MpcBrowserView target) {
+        final android.content.SharedPreferences prefs =
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE);
+        final String savedUri = prefs.getString(PREF_USER_TREE_URI, "");
+        final String savedName = prefs.getString(PREF_USER_TREE_NAME, "");
+        if (savedUri == null || savedUri.trim().isEmpty()) {
+            browserUserTreeUri = null;
+            browserUserTreeName = "";
+            target.setUserFolderState("", false, "USER FOLDER • NOT CONFIGURED");
+            return;
+        }
+        try {
+            browserUserTreeUri = Uri.parse(savedUri);
+            browserUserTreeName = savedName == null || savedName.trim().isEmpty()
+                    ? MpcDocumentTreeCatalog.fallbackDisplayName(browserUserTreeUri) : savedName.trim();
+        } catch (RuntimeException e) {
+            browserUserTreeUri = null;
+            browserUserTreeName = savedName == null ? "" : savedName.trim();
+            target.setUserFolderState(browserUserTreeName, false,
+                    "USER FOLDER • SAVED LOCATION INVALID • CHOOSE FOLDER");
+            return;
+        }
+        if (!hasPersistedReadPermission(browserUserTreeUri)) {
+            target.setUserFolderState(browserUserTreeName, false,
+                    "USER FOLDER • ACCESS NEEDS RENEWAL • CHOOSE FOLDER");
+            return;
+        }
+        target.setUserFolderState(browserUserTreeName, true, "USER FOLDER • RESTORING…");
+        loadBrowserDocumentTree(browserUserTreeUri, browserUserTreeName, target);
+    }
+
+    private void loadBrowserDocumentTree(Uri treeUri, String fallbackName, MpcBrowserView target) {
+        if (treeUri == null || target == null || destroyed) return;
+        if (!hasPersistedReadPermission(treeUri)) {
+            target.setUserFolderState(fallbackName, false,
+                    "USER FOLDER • ACCESS NEEDS RENEWAL • CHOOSE FOLDER");
+            return;
+        }
+        final String fallback = fallbackName == null || fallbackName.trim().isEmpty()
+                ? "USER FOLDER" : fallbackName.trim();
+        target.setUserFolderState(fallback, true, "USER FOLDER • SCANNING…");
+        try {
+            startupExecutor.execute(() -> {
+                final String folderName;
+                final List<MpcBrowserFile> files;
+                try {
+                    folderName = MpcDocumentTreeCatalog.queryDisplayName(getContentResolver(), treeUri);
+                    files = MpcDocumentTreeCatalog.queryWavFiles(getContentResolver(), treeUri);
+                } catch (RuntimeException e) {
+                    runOnUiThread(() -> {
+                        if (destroyed || browserView != target || !treeUri.equals(browserUserTreeUri)) return;
+                        final String status = "USER FOLDER • READ FAILED • "
+                                + e.getClass().getSimpleName() + " • CHOOSE FOLDER AGAIN";
+                        target.setUserFolderFailure(fallback, status);
+                        if ("BROWSE".equals(currentPage)
+                                && "PLACES/USER FOLDER".equals(navigationController.state().browserLocation())) setBottomStatus(status);
+                    });
+                    return;
+                }
+                runOnUiThread(() -> {
+                    if (destroyed || browserView != target || !treeUri.equals(browserUserTreeUri)) return;
+                    final String resolved = folderName == null || folderName.trim().isEmpty()
+                            ? fallback : folderName.trim();
+                    browserUserTreeName = resolved;
+                    getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
+                            .edit().putString(PREF_USER_TREE_NAME, resolved).apply();
+                    final String label = files.size() == 1 ? "WAV FILE" : "WAV FILES";
+                    final String status = String.format(Locale.ROOT, "USER FOLDER • %d %s INDEXED", files.size(), label);
+                    target.setUserFolderFiles(resolved, files, status);
+                    if ("BROWSE".equals(currentPage)
+                            && "PLACES/USER FOLDER".equals(navigationController.state().browserLocation())) setBottomStatus(status);
+                });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            final String status = "USER FOLDER • SCAN UNAVAILABLE • REOPEN BROWSER";
+            target.setUserFolderFailure(fallback, status);
+            if ("BROWSE".equals(currentPage)) setBottomStatus(status);
+        }
+    }
+
+    private void handleUserDocumentTreeResult(int resultCode, Intent data) {
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            setBottomStatus("USER FOLDER • SELECTION CANCELLED");
+            if (browserView != null && browserUserTreeUri == null) browserView.setProviderStatus("USER FOLDER • NO FOLDER SELECTED");
+            return;
+        }
+        final Uri treeUri = data.getData();
+        if ((data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION) == 0) {
+            final String status = "USER FOLDER • READ ACCESS NOT GRANTED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState(browserUserTreeName, false, status);
+            return;
+        }
+        try {
+            getContentResolver().takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (SecurityException e) {
+            final String status = "USER FOLDER • PERSISTENT ACCESS DENIED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState(browserUserTreeName, false, status);
+            return;
+        }
+        if (!hasPersistedReadPermission(treeUri)) {
+            final String status = "USER FOLDER • ACCESS COULD NOT BE PERSISTED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState(browserUserTreeName, false, status);
+            return;
+        }
+        final String name;
+        try {
+            name = MpcDocumentTreeCatalog.fallbackDisplayName(treeUri);
+        } catch (RuntimeException e) {
+            setBottomStatus("USER FOLDER • INVALID DOCUMENT TREE");
+            return;
+        }
+        browserUserTreeUri = treeUri;
+        browserUserTreeName = name;
+        getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE).edit()
+                .putString(PREF_USER_TREE_URI, treeUri.toString()).putString(PREF_USER_TREE_NAME, name).apply();
+        if (browserView != null && "BROWSE".equals(currentPage)) {
+            navigationController.setBrowser("PLACES/USER FOLDER",
+                    navigationController.state().browserFilter(), navigationController.state().browserSearch());
+            browserView.setUserFolderState(name, true, "USER FOLDER • FOLDER SELECTED • SCANNING…");
+            browserView.setLocation("PLACES/USER FOLDER");
+            loadBrowserDocumentTree(treeUri, name, browserView);
+        }
+        setBottomStatus("USER FOLDER • " + name + " • ACCESS SAVED");
+        refreshMpcFunctionBar();
     }
 
     private void requestLocalAudioScan() {
@@ -9384,6 +9566,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_OPEN_DOCUMENT_TREE) {
+            handleUserDocumentTreeResult(resultCode, data);
+            return;
+        }
         if (requestCode == REQUEST_OPEN_WAV
                 && uiAuditAwaitingBrowserStoragePickerResult) {
             uiAuditAwaitingBrowserStoragePickerResult = false;

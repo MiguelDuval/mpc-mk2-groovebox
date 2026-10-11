@@ -952,7 +952,7 @@ for required in 'providerState = info(context,' 'LOCAL AUDIO • NOT SCANNED'; d
     exit 1
   fi
 done
-for required in 'REQUEST_SCAN_LOCAL_AUDIO' 'READ_MEDIA_AUDIO' 'READ_EXTERNAL_STORAGE' 'MpcLocalAudioCatalog.queryWavFiles' 'nativeAudioLoadSampleForPadLayer(' 'MediaPlayer' 'void assignSelectedBrowserFile()' 'browserPickerTargetPad = Math.max(0, Math.min(15, selectedPad))' 'browserPickerTargetLayer = Math.max(0, Math.min(7, selectedLayer))' 'final int targetPad = browserPickerTargetPad >= 0' 'final int targetLayer = browserPickerTargetLayer >= 0'; do
+for required in 'REQUEST_SCAN_LOCAL_AUDIO' 'REQUEST_OPEN_DOCUMENT_TREE' 'ACTION_OPEN_DOCUMENT_TREE' 'takePersistableUriPermission(' 'READ_MEDIA_AUDIO' 'READ_EXTERNAL_STORAGE' 'MpcLocalAudioCatalog.queryWavFiles' 'MpcDocumentTreeCatalog.queryWavFiles' 'nativeAudioLoadSampleForPadLayer(' 'MediaPlayer' 'void assignSelectedBrowserFile()' 'browserPickerTargetPad = Math.max(0, Math.min(15, selectedPad))' 'browserPickerTargetLayer = Math.max(0, Math.min(7, selectedLayer))' 'final int targetPad = browserPickerTargetPad >= 0' 'final int targetLayer = browserPickerTargetLayer >= 0'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" \
       && ! grep -Fq -- "$required" "android/app/src/main/AndroidManifest.xml" \
       && ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcLocalAudioCatalog.java"; then
@@ -981,7 +981,7 @@ if ! grep -Fq -- '"PROJECTS", "PATTERNS", "KITS", "PLUGIN PRESETS", "SAMPLES", "
   exit 1
 fi
 
-for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void onLocalScanRequested();'   'void onFileSelected(MpcBrowserFile file);'   'void onAuditionSelectedFile();'   'void setSection(String section)'   'void setLocalFiles(List<MpcBrowserFile> files, String status)'   'matchesBrowserQuery('   'addFileResult('   'MPC Browser scan local audio files'   'SCAN LOCAL AUDIO…'   'NO LOCAL WAV FILES'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'OPEN STORAGE…'   'CURRENT SAMPLE'; do
+for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void onChooseFolder();'   'void onLocalScanRequested();'   'void onFileSelected(MpcBrowserFile file);'   'void onAuditionSelectedFile();'   'void setSection(String section)'   'void setLocalFiles(List<MpcBrowserFile> files, String status)'   'matchesBrowserQuery('   'addFileResult('   'MPC Browser scan local audio files'   'SCAN LOCAL AUDIO…'   'NO LOCAL WAV FILES'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'CHOOSE FOLDER…'   'setUserFolderFiles('   'MPC Browser choose a local folder for Browser results'   'CURRENT SAMPLE'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser information-architecture contract missing: $required"
     exit 1
@@ -1503,11 +1503,14 @@ require_source_contains "$BROWSER_SOURCE" 'MpcBrowserFilterIconDrawable'
 require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("MPC Browser filter " + filter)'
 require_source_contains "$BROWSER_SOURCE" 'MPC Browser current location: PLACE • INTERNAL'
 require_source_contains "$BROWSER_SOURCE" 'row.setOnClickListener(v -> {'
-require_source_contains "$BROWSER_SOURCE" 'listener.onOpenStorage();'
-require_source_contains "$BROWSER_SOURCE" 'MPC Browser open Android storage picker'
-require_source_contains "$BROWSER_SOURCE" 'ANDROID DOCUMENT PICKER • DIRECT WAV LOAD'
-require_source_contains "$MAIN_ACTIVITY_SOURCE" 'public void onOpenStorage()'
+require_source_contains "$BROWSER_SOURCE" 'listener.onChooseFolder();'
+require_source_contains "$BROWSER_SOURCE" 'MPC Browser choose a local folder for Browser results'
+require_source_contains "$BROWSER_SOURCE" 'PERSIST A LOCAL FOLDER FOR BROWSING'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'public void onChooseFolder()'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'openBrowserDocumentTreePicker();'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'openWavPicker();'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'restoreUserDocumentTree(browserView)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'PREF_USER_TREE_URI'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Button audition = addFunction("AUDITION", browserHasSelectedFile,'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser search state propagation'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Browser context did not survive view recreation'
@@ -1975,7 +1978,7 @@ if ! test -s /tmp/mpc-groovebox-browser.png || ! test -s /tmp/mpc-groovebox-brow
   echo "ERROR: Browser runtime evidence files are empty"
   exit 1
 fi
-for required in 'contentDescription="MPC Browser results list"' 'text="OPEN STORAGE…"' 'contentDescription="MPC Browser current sample"'; do
+for required in 'contentDescription="MPC Browser results list"' 'text="CHOOSE FOLDER…"' 'contentDescription="MPC Browser current sample"'; do
   if ! grep -Fq -- "$required" /tmp/mpc-groovebox-browser-hierarchy.txt; then
     echo "ERROR: Browser runtime hierarchy is missing visible results contract: $required"
     cat /tmp/mpc-groovebox-browser-hierarchy.txt

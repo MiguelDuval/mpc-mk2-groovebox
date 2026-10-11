@@ -42,7 +42,8 @@ final class MpcBrowserFile {
         final String normalizedFilter = upper(filter);
         final boolean supportedPlace =
                 "PLACES".equals(normalizedSection)
-                        && "INTERNAL".equals(normalizedLocation);
+                        && ("INTERNAL".equals(normalizedLocation)
+                                || "USER FOLDER".equals(normalizedLocation));
         final boolean supportedContent =
                 "CONTENT".equals(normalizedSection)
                         && ("SAMPLES".equals(normalizedLocation)
