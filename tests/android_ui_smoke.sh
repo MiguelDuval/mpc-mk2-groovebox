@@ -2272,10 +2272,9 @@ PY
     return 1
   fi
   # On some Android 16 DocumentsUI builds a list row takes focus on the first
-  # tap and opens only on the next tap. Check the real resumed Activity before
-  # trying a second tap immediately; never double-tap into the app after a
-  # successful return.
-  sleep 0.35
+  # tap and opens only on the next tap. Keep the activity check inside the
+  # platform double-tap interval; never tap again after the app has resumed.
+  sleep 0.05
   local picker_activity
   picker_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
     | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
