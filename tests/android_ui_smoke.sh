@@ -2572,66 +2572,26 @@ if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
   exit 1
 fi
 
-# Recent may legitimately be empty even though the test file exists in
-# Downloads. Prefer the picker's own global Search UI before using its root drawer.
-# This still exercises a real DocumentsUI selection and Activity result; no URI
-# is injected into the application.
-picker_file_found=0
-if tap_ui_description "$PICKER_UI_XML" "Search"; then
-  if ! adb_bounded 10 shell input text "$PICKER_SAMPLE_NAME"; then
-    echo "ERROR: could not search for the prepared WAV in Android Document Picker"
+# Recent/search results are scoped to the current DocumentsUI location on
+# Android 16; the filename in the EditText is not proof of a result. Navigate
+# through the real provider root to Downloads, where the fixture was created.
+if ! tap_ui_description "$PICKER_UI_XML" "Show roots"; then
+  if ! tap_ui_description "$PICKER_UI_XML" "Show navigation drawer"; then
+    echo "ERROR: Android Document Picker root navigation is unavailable"
     exit 1
   fi
-  adb_bounded 10 shell input keyevent ENTER || true
-  for search_attempt in {1..12}; do
-    if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
-      echo "ERROR: could not inspect DocumentsUI search results"
-      exit 1
-    fi
-    if python3 - "$PICKER_UI_XML" "$PICKER_SAMPLE_NAME" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
-root = ET.parse(sys.argv[1]).getroot()
-needle = sys.argv[2]
-raise SystemExit(0 if any(needle in node.attrib.get("text", "")
-                          for node in root.iter("node")) else 1)
-PY
-    then
-      picker_file_found=1
-      break
-    fi
-    sleep 1
-  done
 fi
-
-if [[ "$picker_file_found" != "1" ]]; then
-  # Search can be provider-specific. Dismiss the keyboard, collapse Search,
-  # then use the standard DocumentsUI root navigation as a second genuine path.
-  adb_bounded 10 shell input keyevent BACK || true
-  adb_bounded 10 shell input keyevent BACK || true
-  sleep 1
-  if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
-    echo "ERROR: could not restore the picker before root navigation"
-    exit 1
-  fi
-  if ! tap_ui_description "$PICKER_UI_XML" "Show roots"; then
-    if ! tap_ui_description "$PICKER_UI_XML" "Show navigation drawer"; then
-      echo "ERROR: picker fixture is not in Recent and DocumentsUI root navigation is unavailable"
-      exit 1
-    fi
-  fi
-  if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "Downloads" 8; then
-    echo "ERROR: DocumentsUI search and root navigation did not expose the picker fixture"
-    exit 1
-  fi
-  if ! tap_ui_text "$PICKER_UI_XML" "Downloads"; then
-    echo "ERROR: could not open Downloads in Android Document Picker"
-    exit 1
-  fi
-  if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "$PICKER_SAMPLE_NAME" 15; then
-    echo "ERROR: picker did not show the prepared WAV in Downloads"
-    exit 1
-  fi
+if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "Downloads" 8; then
+  echo "ERROR: DocumentsUI root drawer did not expose Downloads"
+  exit 1
+fi
+if ! tap_ui_text "$PICKER_UI_XML" "Downloads"; then
+  echo "ERROR: could not open Downloads in Android Document Picker"
+  exit 1
+fi
+if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "$PICKER_SAMPLE_NAME" 15; then
+  echo "ERROR: picker did not show the prepared WAV in Downloads"
+  exit 1
 fi
 # Keep an artifact of the actual picker state with the distinct WAV visible.
 if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-picker-select-source.png; then
