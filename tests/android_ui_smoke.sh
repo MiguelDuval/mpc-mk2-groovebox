@@ -2585,8 +2585,10 @@ if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-picker-select-sou
   echo "ERROR: could not capture picker source selection screen"
   exit 1
 fi
-if ! cp "$PICKER_UI_XML" /tmp/mpc-groovebox-picker-select-source-uiautomator.xml; then
-  echo "ERROR: could not preserve picker source hierarchy"
+# PICKER_UI_XML is already the canonical evidence path; assert its
+# contents instead of copying the file onto itself.
+if ! test -s "$PICKER_UI_XML"; then
+  echo "ERROR: Android Document Picker source hierarchy is missing or empty"
   exit 1
 fi
 if ! tap_ui_text "$PICKER_UI_XML" "$PICKER_SAMPLE_NAME"; then
