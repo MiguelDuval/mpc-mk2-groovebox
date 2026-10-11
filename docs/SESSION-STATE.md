@@ -145,3 +145,15 @@ This checkpoint records the implementation SHA proven by Android Build #2637. Th
 - Limits: no Ghidra function-level decompilation, no target execution or physical device capture, no nested SquashFS extraction, and no e2fsck consistency validation. Layout JSON is not treated as verified pixel geometry for the standalone Main screen. No firmware/image assets/private inventory were added to this public repository.
 - Live pre-documentation Android Build run [38110623016](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38110623016) succeeded for parent SHA `dbfdac56802e1d7435ba1b4b7647e3a848917703`. The new documentation commit's Actions outcome must be checked separately; do not carry forward the parent's green status.
 - **Next implementation task unchanged:** real Android Document Picker file selection → return → target preservation/sample-state assertion. Then user-selected tree/persisted favourites with grant restoration tests. Do not reprioritize to UI cosmetics because of the firmware findings.
+
+
+---
+
+## Firmware research refresh — 2026-10-11 (second pass)
+
+- Re-inspected extracted UI metadata, not only the filesystem container: 10 Program Edit `TUI.json` files, 66 tabs, 652 component entries; 199 local component definitions and 136 serialized action descriptors across page JSONs. `Help.json` has 51 entries and host/shared mouse/hover/window vocabulary. The same stripped ELF contains touch-specific Main and Mixer class-name anchors.
+- Main/touch strings include `TouchMainPageNavigationPanel`, `TouchMainPageContentPanel`, separate Audio/Bus/CV/Drum/Keygroup/MIDI/Plugin track panels, `TouchMainModeMixerProperties`, `TouchMixerChannelStripMPC`, and `TouchDoubleChannelStripContainer`. These are metadata/type-name observations only; no function-body decompilation or runtime validation.
+- **Important Track Type discrepancy:** firmware selector assets are exactly Audio/CV/Drum/Keygroup/MIDI/Plugin, and the official v3.9 guide lists the same six types. The project's recent UI vocabulary has CLIP but not AUDIO. Audit visible selector/tests after the current SAF Document Picker selection-return-target-preservation task. Do not confuse `strip-clip.png` or a `TouchMainPageTrackClipPanel` class name with Track Type selector proof.
+- The report and JSON summary were updated: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md` and `docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`. Knowledge base, reference index, UI blueprint, roadmap and master spec point future agents to the discrepancy and confidence boundary.
+- Parent implementation/documentation commit `371e1f415900cd2ea13fbf5efedb3ac9deba0d72` passed Android Build #38111336958: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38111336958 . All follow-on documentation commits require verification at the final current branch SHA.
+- **No application source/audio/MIDI/backend changes in this research pass.** Next functional task remains real Android Document Picker file selection → return → Pad/Layer target preservation. Follow that with the Track Type selector source/test audit.
