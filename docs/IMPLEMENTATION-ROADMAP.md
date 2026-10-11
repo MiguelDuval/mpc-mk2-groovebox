@@ -704,3 +704,10 @@ MPC Standalone OS 3.9 remains the UI/interaction reference, but reproducing Akai
 A UI item is not done because its button is drawn or an audit assertion passes. Record the real semantic action/state change, relevant tests, current-SHA Actions result, APK identity, inspected screenshots/UI hierarchy, and physical hardware status if relevant. Confirm that expected evidence files are actually present in the downloadable artifact.
 
 Do not let repeated geometry-only smoke hardening displace feature delivery once a screen's key safety/interaction contracts pass. Fix real regressions promptly, then return to the highest-value incomplete workflow.
+
+
+## 2026-10-11 — MPC 3.9.1 Gen1 firmware research checkpoint
+
+A first-pass offline static audit is documented in `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md` with structured facts in `docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`. The supplied image's XZ rootfs digest was verified, the ext4-format rootfs was traversed, and the stripped 32-bit ARM `MPC` ELF version note was identified as `3.9.1.2 (f3af35cdc95)`. Bundled resources include 759 PNGs and 13 ACVS JSON layout descriptors; static strings/type-info identify Main layout and Q-Link/Browser-related research anchors.
+
+This is a research/documentation-only milestone; no Android code or realtime/audio/MIDI layer changed. No firmware, extracted proprietary images/content or full decompilation was added to the public repository. Bundled panel layout values are not yet confirmed as physical MPC One Main geometry. Follow-up native analysis (Ghidra plus nested SquashFS extraction) is optional research, not a prerequisite for the next product task. **The next implementation priority remains Android Document Picker selection → return → sample-target preservation**, then permissions/restoration tests for a persisted user-selected directory and favourites.

@@ -558,3 +558,16 @@ Next acceptance slice:
 3. Continue to surface unsupported categories honestly. No Splice, online stores, upsell surfaces or unnecessary branded cloud/account dependencies.
 4. Physical MPC Studio MkII verification remains pending. Emulator success is not evidence of a physical hardware test.
 
+
+
+## 27. 2026-10-11 — MPC 3.9.1 Gen1 firmware static audit
+
+Input identity: `MPC-3.9.1-Gen1-update.img`, SHA-256 `4c0f7797a006313fad206f9513eca8b3823e834c9e0941a6b5f088386cb835d6`, size 162,220,784 bytes. The AZ01 container declares an XZ `rootfs` payload at offset 340 bytes; its 162,220,428-byte payload SHA-1 matches the embedded digest. XZ validation passed and produced an ext4-format filesystem of 441,279,488 bytes.
+
+Observed target app version is `3.9.1.2 (f3af35cdc95)`, ARM 32-bit EABI5 stripped ELF, Build ID `8371199f945ecc40f79cb19c17ff5de72810a91c`. A local read-only traversal found 11,529 entries with zero directory parsing errors. The bundled `ACVS` resource tree contains 759 PNGs and 13 JSON layout descriptors. Main layout-data type names, UI component names, Browser/Q-Link settings and track/channel vocabulary were identified in static strings/type-info. These are evidence anchors, not a recovered source tree.
+
+**Interpretation limit:** `ACVS/layout` values are bundled panel geometry (e.g. toolbar height 55, status bar height 34, browser width 294, MainBody padding left 208/right 397). Help strings mention host/desktop-oriented concepts. These values are *not yet validated as pixel-perfect physical MPC One Main specifications* and must not be applied blindly. Use the official v3.9 guide and actual hardware screenshots as the behavioral/visual authority.
+
+Full report: [`docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`](research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md). Machine-readable summary: [`docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`](research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json).
+
+**Public-repository boundary:** the firmware, raw filesystem, proprietary PNGs/content, complete private inventory and full decompilation are deliberately not checked in. The local audit did not execute the ARM binary, extract nested `/opt/ramfs-update.squashfs`, or perform Ghidra function-level decompilation. A promising next reverse-engineering anchor is `SerialisableTUIMainModeLayoutData` / `SerialisableTUIMainModeMixerLayoutData`, but this does not displace the next product task: Document Picker selection → return → sample target preservation.

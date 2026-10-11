@@ -1,6 +1,6 @@
 # Session State — MPC MkII Groovebox
 
-**Checkpoint prepared:** 2026-10-11 (implementation evidence verified on `94ee3bfa9a8407d20ab6f0c69bde47519fe8fb07`; documentation refresh itself will create a newer SHA that requires its own CI check)  
+**Checkpoint prepared:** 2026-10-11 (firmware research and documentation refresh; the pre-documentation implementation HEAD was verified as `dbfdac56802e1d7435ba1b4b7647e3a848917703`, with Android Build SUCCESS; this documentation commit needs its own CI check)  
 **Purpose:** Compact handoff for the next ChatGPT session. Read this first, then independently verify every mutable fact against GitHub.
 
 > **Freshness rule:** This checkpoint will itself be committed after the pre-checkpoint SHA above. Therefore, it does **not** claim CI success for the commit containing this state refresh. On every session start, verify the live PR head, branch HEAD, latest Android Build and artifact files. Do not rely on remembered commit numbers or on this checkpoint instead of GitHub.
@@ -10,8 +10,8 @@
 - Repository: `MiguelDuval/mpc-mk2-groovebox`
 - Active branch: `feature/mpc-one-ui-fidelity`
 - Primary PR: [#23 — MPC One Main UI visual fidelity pass](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23)
-- At the last live check before this state refresh, PR #23 was **OPEN, not merged**, base branch `fix/ui-shell-format-width-startup`, head SHA `a8c13c6cb7907c9d868fc928bd71d03672ddd0b8`.
-- PR #23 showed 453 commits and 35 changed files. A previous compare against the base reported 452 commits ahead / 0 behind; recheck this against live refs after the new state commit.
+- Immediately before this documentation update, PR #23 was **OPEN, not merged**, base `fix/ui-shell-format-width-startup`, head branch `feature/mpc-one-ui-fidelity`, head SHA `dbfdac56802e1d7435ba1b4b7647e3a848917703`.
+- Live GitHub reported 472 commits and 40 changed files in PR #23 before this documentation-only commit. Verify fresh branch/PR refs on the next session; do not use these values as post-commit state.
 - Never work on `main` for this migration. Do not reset, rebase, rewrite history, force-push, merge or retarget PR #23 during routine UI development.
 - Protect: realtime audio callback; sampler engine; sequencer clock/scheduler; MIDI transport; raw MkII decoder; SysEx protocol; working domain operations. Only introduce lower-layer changes when needed for a real semantic prerequisite.
 - Physical MPC Studio MkII behavior stays **unverified/pending** unless a real device test report is available.
@@ -26,7 +26,7 @@ The product owner explicitly approved this scope.
 
 The official Akai reference can document its own commercial taxonomy. That is historical/reference evidence, not a requirement for this product. Mark intentional deviations as reference-only and do not add disconnected placeholders.
 
-## 3. Live CI situation — verified 2026-10-11 04:06 UTC
+## 3. CI record — historical snapshot verified 2026-10-11 04:06 UTC (latest pre-documentation check is recorded at the end)
 
 - PR #23 is **OPEN / not merged**, base `fix/ui-shell-format-width-startup`, head branch `feature/mpc-one-ui-fidelity`. The implementation SHA verified by the latest full workflow is `94ee3bfa9a8407d20ab6f0c69bde47519fe8fb07`.
 - **Android Build #2637 — SUCCESS** on that exact SHA, run ID `38110061687`: 57/57 steps passed, including native/JVM tests, `MpcBrowserFileTest`, fresh APK assembly, Android emulator smoke, local Browser Search/filter interactions, sample audition/assignment, and visual evidence upload. Run: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38110061687
@@ -132,3 +132,16 @@ This checkpoint records the implementation SHA proven by Android Build #2637. Th
 - Known gaps: real picker selection/return assignment still needs runtime coverage; user-selected tree/favourites are not implemented; non-WAV/project/plugin categories have no real provider and must stay unavailable; physical MPC Studio MkII verification remains pending.
 - The local-first scope stays fixed: no Splice, stores, paid expansion promotion, partner ads, upsells, or unnecessary vendor accounts/cloud.
 
+
+
+---
+
+## Firmware research refresh — 2026-10-11
+
+- Inspected owner-supplied `MPC-3.9.1-Gen1-update.img` locally; SHA-256: `4c0f7797a006313fad206f9513eca8b3823e834c9e0941a6b5f088386cb835d6`, 162,220,784 bytes.
+- Verified the envelope declares an XZ `rootfs` payload at offset 340, length 162,220,428; the embedded SHA-1 matches and `xz -t` succeeds. Decompressed filesystem SHA-256: `6aafd4384469a76df4c4270aa4f07b3f7e411828a691c75d5471c5fdfe2d69f3`; local read-only traversal found 11,529 entries with no directory parse errors.
+- Confirmed application version `3.9.1.2 (f3af35cdc95)`, stripped ARM EABI5 ELF Build ID `8371199f945ecc40f79cb19c17ff5de72810a91c`. Found ACVS resources with 759 PNG and 13 JSON layout files, panel dimensions to investigate, and static RTTI/string anchors for Main layout data and Q-Link/Browser settings.
+- Detailed report: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`; structured summary: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`.
+- Limits: no Ghidra function-level decompilation, no target execution or physical device capture, no nested SquashFS extraction, and no e2fsck consistency validation. Layout JSON is not treated as verified pixel geometry for the standalone Main screen. No firmware/image assets/private inventory were added to this public repository.
+- Live pre-documentation Android Build run [38110623016](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38110623016) succeeded for parent SHA `dbfdac56802e1d7435ba1b4b7647e3a848917703`. The new documentation commit's Actions outcome must be checked separately; do not carry forward the parent's green status.
+- **Next implementation task unchanged:** real Android Document Picker file selection → return → target preservation/sample-state assertion. Then user-selected tree/persisted favourites with grant restoration tests. Do not reprioritize to UI cosmetics because of the firmware findings.

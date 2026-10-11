@@ -39,11 +39,13 @@ The migration targets:
 
 The migration does not target:
 
-- Akai source code;
-- firmware extraction;
-- proprietary graphic assets;
+- incorporating Akai source code into the product;
+- using firmware-extracted proprietary artwork/assets as application resources;
+- publishing firmware images, raw filesystem dumps, extracted proprietary content or full decompilation output;
 - undocumented behavior presented as fact;
 - exact MPC project compatibility unless separately implemented and tested.
+
+**Research-only exception:** when the product owner explicitly supplies/authorizes a firmware image, offline inspection of its container, filesystem metadata, strings, resource manifests and selected binary structures may be used as private research evidence. This does not authorize redistributing firmware/assets, copying code/artwork into the product, or treating a string/resource name as proof of runtime behavior. Document hashes, methods, confidence and limitations; corroborate UI conclusions against the official manual and real hardware observations.
 
 ### 1.2 Canonical software source
 

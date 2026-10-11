@@ -504,3 +504,18 @@ Confidence: HIGH for the cited current MPC3 architecture/taxonomy.
 **Acceptance:** excluded routes are absent from the actual product UI; visible local categories return real results; Browser operations update the correct sample/layer state; no disconnected placeholder is described as complete.
 
 **Execution protocol:** `docs/DEVELOPMENT-OPERATING-PROTOCOL.md`. **Current verified checkpoint:** `docs/SESSION-STATE.md` (verify all mutable state against GitHub before use).
+
+
+## 2026-10-11 — Gen1 MPC 3.9.1 firmware audit (secondary implementation evidence)
+
+**Question:** Can the owner-supplied Gen1 image provide reliable information beyond public screenshots/manuals?
+
+**Input:** `MPC-3.9.1-Gen1-update.img`, SHA-256 `4c0f7797a006313fad206f9513eca8b3823e834c9e0941a6b5f088386cb835d6`; version note `3.9.1.2 (f3af35cdc95)`. The payload is XZ-compressed `rootfs` and its embedded SHA-1 verifies. The filesystem is ext4-format and can be traversed locally.
+
+**Findings:** 759 PNGs and 13 JSON layout descriptors exist under bundled `ACVS` resources; Program Edit TUI/component JSON also exists; static strings/type-info include Main layout data classes, Q-Link/Main and Media Browser components, Sound Select settings, Step Sequencer settings and track/channel type names.
+
+**Confidence:** HIGH for byte hashes, declared metadata, ELF type/version note, exact file counts and strings. MEDIUM for inferred component responsibilities from names. LOW until validated for any claim that an ACVS panel geometry value equals physical MPC One Main pixel geometry. No ARM execution or method-body decompilation was performed.
+
+**Repository decision:** keep manual + real hardware observations as the visual authority. Use firmware-derived facts as research leads only; do not copy bundled assets, publish the image, treat strings as proof of behavior, or restore commercial Browser destinations excluded by the local-first product decision.
+
+**Report:** [MPC 3.9.1 Gen1 firmware static analysis](research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md); [machine-readable summary](research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json).
