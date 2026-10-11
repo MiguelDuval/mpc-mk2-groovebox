@@ -2511,10 +2511,46 @@ if [[ -z "$picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$picker_activity"; 
   exit 1
 fi
 printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-picker-select-source-activity.txt
-if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "$PICKER_SAMPLE_NAME" 12; then
-  # If Recent did not surface the fresh fixture, open the system roots drawer and
-  # navigate to Downloads. This is ordinary DocumentsUI navigation, not a fake
-  # app-side picker or direct URI injection.
+# Recent may legitimately be empty even though the test file exists in
+# Downloads. Prefer the picker's own global Search UI before using its root drawer.
+# This still exercises a real DocumentsUI selection and Activity result; no URI
+# is injected into the application.
+picker_file_found=0
+if tap_ui_description "$PICKER_UI_XML" "Search"; then
+  if ! adb_bounded 10 shell input text "$PICKER_SAMPLE_NAME"; then
+    echo "ERROR: could not search for the prepared WAV in Android Document Picker"
+    exit 1
+  fi
+  adb_bounded 10 shell input keyevent ENTER || true
+  for search_attempt in {1..12}; do
+    if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
+      echo "ERROR: could not inspect DocumentsUI search results"
+      exit 1
+    fi
+    if python3 - "$PICKER_UI_XML" "$PICKER_SAMPLE_NAME" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+needle = sys.argv[2]
+raise SystemExit(0 if any(needle in node.attrib.get("text", "")
+                          for node in root.iter("node")) else 1)
+PY
+    then
+      picker_file_found=1
+      break
+    fi
+    sleep 1
+  done
+fi
+
+if [[ "$picker_file_found" != "1" ]]; then
+  # Search can be provider-specific. Return to Recent, then use the standard
+  # DocumentsUI root navigation as a second genuine interaction path.
+  adb_bounded 10 shell input keyevent BACK || true
+  if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
+    echo "ERROR: could not restore the picker before root navigation"
+    exit 1
+  fi
   if ! tap_ui_description "$PICKER_UI_XML" "Show roots"; then
     if ! tap_ui_description "$PICKER_UI_XML" "Show navigation drawer"; then
       echo "ERROR: picker fixture is not in Recent and DocumentsUI root navigation is unavailable"
@@ -2522,7 +2558,7 @@ if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "$PICKER_SAMPLE_NAME"
     fi
   fi
   if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "Downloads" 8; then
-    echo "ERROR: DocumentsUI root drawer did not expose Downloads"
+    echo "ERROR: DocumentsUI search and root navigation did not expose the picker fixture"
     exit 1
   fi
   if ! tap_ui_text "$PICKER_UI_XML" "Downloads"; then
