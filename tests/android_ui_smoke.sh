@@ -2054,28 +2054,37 @@ if ! adb_bounded 15 shell content call \
   exit 1
 fi
 
+# scan_file returns the exact indexed content URI. Query that returned item
+# by numeric _id; quoting the fixture's hyphenated display name in the legacy
+# shell content-query --where parser is not portable across emulator API levels.
 MEDIASTORE_FIXTURE_QUERY="/tmp/mpc-browser-mediastore-fixture-query.txt"
-media_fixture_indexed=0
-for attempt in {1..15}; do
-  if adb_bounded 10 shell content query \
-      --uri content://media/external/audio/media \
-      --projection _id:_display_name:mime_type \
-      --where "_display_name='$LOCAL_SAMPLE_NAME'" > "$MEDIASTORE_FIXTURE_QUERY" 2>&1 \
-      && grep -Fq -- "$LOCAL_SAMPLE_NAME" "$MEDIASTORE_FIXTURE_QUERY"; then
-    media_fixture_indexed=1
-    break
-  fi
-  sleep 1
-done
-if [[ "$media_fixture_indexed" != "1" ]]; then
-  echo "ERROR: MediaStore did not index the test WAV; refusing to confuse fixture setup with Browser failure"
+MEDIA_ITEM_URI="$(grep -oE 'content://media/[^[:space:]]+/audio/media/[0-9]+' \
+    /tmp/mpc-browser-media-scan.txt | head -n 1 || true)"
+MEDIA_ITEM_ID="${MEDIA_ITEM_URI##*/}"
+MEDIA_COLLECTION_URI="${MEDIA_ITEM_URI%/*}"
+if [[ ! "$MEDIA_ITEM_ID" =~ ^[0-9]+$ || -z "$MEDIA_COLLECTION_URI" ]]; then
+  echo "ERROR: MediaStore scan_file did not return a usable audio content URI"
+  cat /tmp/mpc-browser-media-scan.txt || true
+  exit 1
+fi
+if ! adb_bounded 10 shell content query \
+    --uri "$MEDIA_COLLECTION_URI" \
+    --projection _id:_display_name:mime_type \
+    --where "_id=$MEDIA_ITEM_ID" > "$MEDIASTORE_FIXTURE_QUERY" 2>&1; then
+  echo "ERROR: could not query scan_file's returned MediaStore item by ID"
+  cat /tmp/mpc-browser-media-scan.txt || true
+  cat "$MEDIASTORE_FIXTURE_QUERY" || true
+  exit 1
+fi
+if ! grep -Fq -- "$LOCAL_SAMPLE_NAME" "$MEDIASTORE_FIXTURE_QUERY"; then
+  echo "ERROR: scan_file URI did not resolve to the expected local WAV"
   echo "--- scan_file response ---"
   cat /tmp/mpc-browser-media-scan.txt || true
   echo "--- MediaStore query ---"
   cat "$MEDIASTORE_FIXTURE_QUERY" || true
   exit 1
 fi
-echo "MediaStore fixture indexed: $LOCAL_SAMPLE_NAME"
+echo "MediaStore fixture indexed and verified: $LOCAL_SAMPLE_NAME (ID $MEDIA_ITEM_ID)"
 
 dump_device_ui() {
   local remote_path="$1"
