@@ -1264,3 +1264,11 @@ Branch: `feature/mpc-one-ui-fidelity`
 The Android smoke harness now captures the startup screenshot after launch/process/activity/fatal-crash checks and before the settling interval that allows the application-side UI audit to navigate across contexts. This keeps the visual artifact anchored to the canonical Main surface.
 
 Acceptance-harness synchronization only. No audio, sampler, sequencer, MIDI, MPC Studio MkII decoder or SysEx behavior changed.
+
+## 2026-10-11 firmware-backed audit note — Main Track Type selector
+
+The 3.9.1 Gen1 firmware's selector-asset folder contains six Track Type icons: **Audio, CV, Drum, Keygroup, MIDI and Plugin**. It does not contain a `track-clip.png` in that selector set. A separate Mixer/strip icon family contains `strip-clip.png`, which must not be assumed to mean Clip is a selectable Track Type. The official MPC Standalone OS v3.9 guide's Tracks chapter lists the same six types.
+
+**Current discrepancy to audit:** project UI/migration labels have used CLIP and omitted AUDIO in the Track Type list. Before the next Track Type UI implementation, align the visible chooser and tests with the official reference and confirm any version-specific exception on real MPC One OS 3.9.1. Clip/Arrangement remains a separate screen/workflow concept. Do not change the domain model or claim a Clip Track Type based only on a class name such as `TouchMainPageTrackClipPanel`.
+
+Firmware class-name anchors include `TouchMainPage`, `TouchMainPageNavigationPanel`, `TouchMainPageContentPanel`, track-specific panel families, `TouchMainModeMixerProperties`, `TouchMixerChannelStripMPC` and `TouchDoubleChannelStripContainer`. They support the separation of Main content, track context and Mixer presentation but do not establish precise panel geometry or runtime transitions. See the firmware static-analysis report for confidence and limitations.
