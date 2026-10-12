@@ -5527,6 +5527,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
 
             @Override
+            public void onOpenStorage() {
+                openWavPicker();
+            }
+
+            @Override
             public void onChooseFolder() {
                 openBrowserDocumentTreePicker();
             }
