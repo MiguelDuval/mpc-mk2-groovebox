@@ -3009,7 +3009,7 @@ fi
 echo "Android Document Picker select → return → Pad/Layer assignment passed."
 
 echo "Running Android user document-tree → Browser results → persisted grant restoration..."
-TREE_FOLDER_NAME="MPC-Browser-Tree"
+TREE_FOLDER_NAME="AAA-MPC-Browser-Tree"
 TREE_SAMPLE_NAME="Browser-Tree-Only.wav"
 TREE_FOLDER_DEVICE="/sdcard/$TREE_FOLDER_NAME"
 TREE_SAMPLE_DEVICE="$TREE_FOLDER_DEVICE/$TREE_SAMPLE_NAME"
