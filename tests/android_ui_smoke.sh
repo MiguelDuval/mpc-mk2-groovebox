@@ -2191,12 +2191,13 @@ tap_ui_picker_result_row() {
   local hierarchy_path="$1"
   local expected_text="$2"
   local tap_mode="${3:-auto}"
+  local tap_kind="${4:-label}"
   local coordinates tap_x tap_y
-  if ! coordinates="$(python3 - "$hierarchy_path" "$expected_text" <<'PY'
+  if ! coordinates="$(python3 - "$hierarchy_path" "$expected_text" "$tap_kind" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 
-path, expected = sys.argv[1], sys.argv[2]
+path, expected, tap_kind = sys.argv[1], sys.argv[2], sys.argv[3]
 root = ET.parse(path).getroot()
 nodes = list(root.iter("node"))
 parents = {child: parent for parent in nodes for child in list(parent)}
@@ -2209,12 +2210,15 @@ for node in nodes:
     candidate = node
     tile_bounds = None
     row_bounds = None
+    icon_bounds = None
+    row_node = None
     while candidate is not None:
         bounds = candidate.attrib.get("bounds", "")
         cls_candidate = candidate.attrib.get("class", "").lower()
         resource_id = candidate.attrib.get("resource-id", "")
         if resource_id == "com.android.documentsui:id/item_root" and bounds.startswith("[") and bounds.endswith("]"):
             row_bounds = bounds
+            row_node = candidate
         if "materialcardview" in cls_candidate and bounds.startswith("[") and bounds.endswith("]"):
             tile_bounds = bounds
         if (candidate.attrib.get("clickable") == "true"
@@ -2231,8 +2235,31 @@ for node in nodes:
                 print((left + right) // 2, (top + bottom) // 2)
                 raise SystemExit(0)
         candidate = parents.get(candidate)
-    # For folders and files, prefer the actual label bounds; the icon area can
-    # be a selection/preview hotspot in DocumentsUI.
+    # Folder activation and file selection use different hit targets on some
+    # DocumentsUI grids. Keep each target explicit rather than guessing.
+    if tap_kind == "icon" and row_node is not None:
+        for child in row_node.iter("node"):
+            if child.attrib.get("resource-id") == "com.android.documentsui:id/icon":
+                try:
+                    first, second = child.attrib.get("bounds", "")[1:-1].split("][")
+                    left, top = map(int, first.split(","))
+                    right, bottom = map(int, second.split(","))
+                except ValueError:
+                    continue
+                if right > left and bottom > top:
+                    print((left + right) // 2, (top + bottom) // 2)
+                    raise SystemExit(0)
+    if tap_kind == "card" and tile_bounds:
+        try:
+            first, second = tile_bounds[1:-1].split("][")
+            left, top = map(int, first.split(","))
+            right, bottom = map(int, second.split(","))
+            if right > left and bottom > top:
+                print((left + right) // 2, (top + bottom) // 2)
+                raise SystemExit(0)
+        except ValueError:
+            pass
+    # Otherwise use the actual label bounds for normal file selections.
     if row_bounds:
         try:
             first, second = node.attrib.get("bounds", "")[1:-1].split("][")
@@ -2243,8 +2270,6 @@ for node in nodes:
                 raise SystemExit(0)
         except ValueError:
             pass
-    # In grid mode, filenames and their MaterialCardView can be exposed as
-    # non-clickable; use the tile body before falling back to the text bounds.
     if tile_bounds:
         try:
             first, second = tile_bounds[1:-1].split("][")
@@ -2433,14 +2458,28 @@ PY
 # reliably distinguish the foreground picker from the paused app.
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  # A single label tap maps to DocumentsUI's touch activation path. Do not reuse
-  # the file-row fallback that may emit a second tap and toggle selection mode.
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" single; then
-    echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"
+  # Test two distinct DocumentsUI grid hit targets. Previous evidence confirms
+  # the visible folder card exposes non-clickable accessibility nodes, so use a
+  # fast two-touch gesture on the folder icon first, then the card centre only
+  # if DocumentsUI remains in the same parent and the child is still absent.
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double icon; then
+    echo "ERROR: DocumentsUI folder icon is not actionable: $folder_label"
     return 1
   fi
-  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 15; then
-    echo "ERROR: opening folder $folder_label did not expose expected child $child_label"
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 6; then
+    return 0
+  fi
+  if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path" || \
+     ! grep -Fq -- 'package="com.android.documentsui"' "$hierarchy_path"; then
+    echo "ERROR: DocumentsUI left the parent directory without exposing $child_label"
+    return 1
+  fi
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double card; then
+    echo "ERROR: DocumentsUI folder tile is not actionable: $folder_label"
+    return 1
+  fi
+  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
+    echo "ERROR: opening folder $folder_label by icon/card did not expose expected child $child_label"
     return 1
   fi
 }
