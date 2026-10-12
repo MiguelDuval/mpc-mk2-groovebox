@@ -2532,10 +2532,11 @@ PY
 
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  # In list mode the filename label and its full row are distinct nodes. Tap
-  # the center of item_root, not merely the non-clickable label TextView.
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" single row; then
-    echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"
+  # The fixture is deliberately sorted first, and the visibility guard proves
+  # its title is clear of the fixed footer. Tap the visible folder-title target
+  # itself instead of a broad row center that may land in non-interactive space.
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" single; then
+    echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"
     return 1
   fi
   if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 4; then
