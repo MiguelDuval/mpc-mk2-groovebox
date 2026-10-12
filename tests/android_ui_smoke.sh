@@ -2902,23 +2902,11 @@ fi
 if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
   echo "ERROR: could not inspect the initial document-tree picker"; exit 1
 fi
-# ACTION_OPEN_DOCUMENT_TREE may start at the internal-storage root on
-# Android 16 rather than the Recent screen used by ACTION_OPEN_DOCUMENT.
-# Accept either provider presentation, but always enter the real Download folder.
-if grep -Eq 'content-desc="Show roots"|content-desc="Show navigation drawer"' "$TREE_PICKER_XML"; then
-  if ! tap_ui_description "$TREE_PICKER_XML" "Show roots"; then
-    if ! tap_ui_description "$TREE_PICKER_XML" "Show navigation drawer"; then
-      echo "ERROR: DocumentsUI exposed a root screen but its navigation control was not actionable"
-      exit 1
-    fi
-  fi
-  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Downloads" 10; then
-    echo "ERROR: tree picker did not expose Downloads in the roots drawer"; exit 1
-  fi
-  if ! tap_ui_text "$TREE_PICKER_XML" "Downloads"; then
-    echo "ERROR: could not open Downloads in the tree picker"; exit 1
-  fi
-elif grep -Fq -- 'text="Download"' "$TREE_PICKER_XML"; then
+# Android 16 can expose the internal-storage directory list while keeping
+# the roots-drawer control visible. Prefer the real Download directory when it
+# is already on screen: choosing "Downloads" from the drawer can switch to a
+# provider root that does not expose arbitrary child folders such as our fixture.
+if grep -Fq -- 'text="Download"' "$TREE_PICKER_XML"; then
   # The root folder itself is intentionally unselectable ("Can't use this folder").
   if ! tap_ui_text "$TREE_PICKER_XML" "Download"; then
     echo "ERROR: could not enter Download from the internal-storage root"; exit 1
@@ -2926,6 +2914,42 @@ elif grep -Fq -- 'text="Download"' "$TREE_PICKER_XML"; then
 elif grep -Fq -- 'text="Downloads"' "$TREE_PICKER_XML"; then
   if ! tap_ui_text "$TREE_PICKER_XML" "Downloads"; then
     echo "ERROR: could not open Downloads in the tree picker"; exit 1
+  fi
+elif grep -Eq 'content-desc="Show roots"|content-desc="Show navigation drawer"' "$TREE_PICKER_XML"; then
+  if ! tap_ui_description "$TREE_PICKER_XML" "Show roots"; then
+    if ! tap_ui_description "$TREE_PICKER_XML" "Show navigation drawer"; then
+      echo "ERROR: DocumentsUI exposed a root screen but its navigation control was not actionable"
+      exit 1
+    fi
+  fi
+  # If the picker started in Recents, select the actual device storage root,
+  # then navigate into its Download directory. Do not choose the Downloads
+  # media/provider root, which is not equivalent to /sdcard/Download.
+  tree_storage_root=""
+  for candidate in "Android SDK built for x86_64" "Internal storage" "Internal Storage"; do
+    if grep -Fq -- "text=\"$candidate\"" "$TREE_PICKER_XML"; then
+      tree_storage_root="$candidate"
+      break
+    fi
+  done
+  if [[ -z "$tree_storage_root" ]]; then
+    echo "ERROR: roots drawer did not expose the internal device-storage root"
+    python3 - "$TREE_PICKER_XML" <<'PY'
+import sys, xml.etree.ElementTree as ET
+for n in ET.parse(sys.argv[1]).getroot().iter("node"):
+    t=n.attrib.get("text","").strip(); d=n.attrib.get("content-desc","").strip()
+    if t or d: print(f"text={t!r} desc={d!r}")
+PY
+    exit 1
+  fi
+  if ! tap_ui_text "$TREE_PICKER_XML" "$tree_storage_root"; then
+    echo "ERROR: could not open the internal device-storage root"; exit 1
+  fi
+  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Download" 10; then
+    echo "ERROR: internal device-storage root did not expose Download"; exit 1
+  fi
+  if ! tap_ui_text "$TREE_PICKER_XML" "Download"; then
+    echo "ERROR: could not enter Download from device storage"; exit 1
   fi
 else
   echo "ERROR: tree picker exposed neither root navigation nor a Download folder"
