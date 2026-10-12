@@ -2903,17 +2903,12 @@ if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
   echo "ERROR: could not inspect the initial document-tree picker"; exit 1
 fi
 # Android 16 can expose the internal-storage directory list while keeping
-# the roots-drawer control visible. Prefer the real Download directory when it
-# is already on screen: choosing "Downloads" from the drawer can switch to a
-# provider root that does not expose arbitrary child folders such as our fixture.
+# the roots-drawer control visible. A visible singular "Download" is the real
+# child folder. Do not tap the drawer's plural "Downloads" provider root: it
+# is not guaranteed to map to /sdcard/Download or expose our test fixture.
 if grep -Fq -- 'text="Download"' "$TREE_PICKER_XML"; then
-  # The root folder itself is intentionally unselectable ("Can't use this folder").
-  if ! tap_ui_text "$TREE_PICKER_XML" "Download"; then
-    echo "ERROR: could not enter Download from the internal-storage root"; exit 1
-  fi
-elif grep -Fq -- 'text="Downloads"' "$TREE_PICKER_XML"; then
-  if ! tap_ui_text "$TREE_PICKER_XML" "Downloads"; then
-    echo "ERROR: could not open Downloads in the tree picker"; exit 1
+  if ! tap_ui_picker_result_row "$TREE_PICKER_XML" "Download"; then
+    echo "ERROR: could not open the physical Download folder"; exit 1
   fi
 elif grep -Eq 'content-desc="Show roots"|content-desc="Show navigation drawer"' "$TREE_PICKER_XML"; then
   if ! tap_ui_description "$TREE_PICKER_XML" "Show roots"; then
@@ -2923,8 +2918,8 @@ elif grep -Eq 'content-desc="Show roots"|content-desc="Show navigation drawer"' 
     fi
   fi
   # If the picker started in Recents, select the actual device storage root,
-  # then navigate into its Download directory. Do not choose the Downloads
-  # media/provider root, which is not equivalent to /sdcard/Download.
+  # then navigate into its physical Download directory rather than Downloads
+  # from the virtual media/provider roots.
   tree_storage_root=""
   for candidate in "Android SDK built for x86_64" "Internal storage" "Internal Storage"; do
     if grep -Fq -- "text=\"$candidate\"" "$TREE_PICKER_XML"; then
@@ -2948,8 +2943,8 @@ PY
   if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Download" 10; then
     echo "ERROR: internal device-storage root did not expose Download"; exit 1
   fi
-  if ! tap_ui_text "$TREE_PICKER_XML" "Download"; then
-    echo "ERROR: could not enter Download from device storage"; exit 1
+  if ! tap_ui_picker_result_row "$TREE_PICKER_XML" "Download"; then
+    echo "ERROR: could not open the physical Download folder"; exit 1
   fi
 else
   echo "ERROR: tree picker exposed neither root navigation nor a Download folder"
@@ -2964,7 +2959,7 @@ fi
 if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 15; then
   echo "ERROR: tree picker did not expose the prepared folder"; exit 1
 fi
-if ! tap_ui_text "$TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
+if ! tap_ui_picker_result_row "$TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
   echo "ERROR: could not enter the prepared document folder"; exit 1
 fi
 TREE_USE_FOLDER_LABEL="USE THIS FOLDER"
