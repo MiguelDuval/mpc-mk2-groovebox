@@ -2832,4 +2832,195 @@ if ! dump_device_ui "$PICKER_RETURN_REMOTE" "$PICKER_RETURN_XML"; then
 fi
 echo "Android Document Picker select → return → Pad/Layer assignment passed."
 
+echo "Running Android user document-tree → Browser results → persisted grant restoration..."
+TREE_FOLDER_NAME="MPC-Browser-Tree"
+TREE_SAMPLE_NAME="Browser-Tree-Only.wav"
+TREE_FOLDER_DEVICE="/sdcard/Download/$TREE_FOLDER_NAME"
+TREE_SAMPLE_DEVICE="$TREE_FOLDER_DEVICE/$TREE_SAMPLE_NAME"
+TREE_MEDIA_QUERY="/tmp/mpc-browser-tree-not-in-mediastore.txt"
+TREE_PICKER_XML="/tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml"
+TREE_PICKER_REMOTE="/sdcard/mpc-groovebox-browser-tree-picker-uiautomator.xml"
+TREE_BROWSER_XML="/tmp/mpc-groovebox-browser-tree-results-uiautomator.xml"
+TREE_BROWSER_REMOTE="/sdcard/mpc-groovebox-browser-tree-results-uiautomator.xml"
+TREE_RESTORED_XML="/tmp/mpc-groovebox-browser-tree-restored-uiautomator.xml"
+TREE_RESTORED_REMOTE="/sdcard/mpc-groovebox-browser-tree-restored-uiautomator.xml"
+
+if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
+  echo "ERROR: could not create user-folder test fixture"; exit 1
+fi
+if ! adb_bounded 10 shell touch "$TREE_FOLDER_DEVICE/.nomedia"; then
+  echo "ERROR: could not protect the tree fixture from MediaStore indexing"; exit 1
+fi
+if ! adb_bounded 30 push "$LOCAL_SAMPLE_HOST" "$TREE_SAMPLE_DEVICE"; then
+  echo "ERROR: could not copy tree-only WAV fixture"; exit 1
+fi
+if ! adb_bounded 10 shell content query \
+    --uri content://media/external/audio/media \
+    --projection _display_name \
+    --where "_display_name='$TREE_SAMPLE_NAME'" > "$TREE_MEDIA_QUERY" 2>&1; then
+  echo "ERROR: could not verify MediaStore exclusion for tree fixture"
+  cat "$TREE_MEDIA_QUERY" || true
+  exit 1
+fi
+if grep -Fq -- "$TREE_SAMPLE_NAME" "$TREE_MEDIA_QUERY"; then
+  echo "ERROR: tree-only WAV appeared in MediaStore, so provider isolation cannot be proven"
+  cat "$TREE_MEDIA_QUERY" || true
+  exit 1
+fi
+
+# Enter Places > User Folder. The folder action should only appear in this location.
+if ! tap_ui_description "$PICKER_RETURN_XML" "Browser PLACES tab"; then
+  echo "ERROR: Browser Places tab is not actionable"; exit 1
+fi
+if ! wait_for_ui_description "$TREE_BROWSER_XML" "$TREE_BROWSER_REMOTE" \
+    "MPC Browser navigation PLACES USER FOLDER" 15; then
+  echo "ERROR: Places did not expose the truthful USER FOLDER destination"; exit 1
+fi
+if ! tap_ui_description "$TREE_BROWSER_XML" "MPC Browser navigation PLACES USER FOLDER"; then
+  echo "ERROR: USER FOLDER navigation row was not actionable"; exit 1
+fi
+if ! wait_for_ui_description "$TREE_BROWSER_XML" "$TREE_BROWSER_REMOTE" \
+    "MPC Browser choose a local folder for Browser results" 15; then
+  echo "ERROR: USER FOLDER did not expose its Choose Folder action"; exit 1
+fi
+if ! tap_ui_description "$TREE_BROWSER_XML" "MPC Browser choose a local folder for Browser results"; then
+  echo "ERROR: Choose Folder action could not launch Android DocumentsUI"; exit 1
+fi
+
+tree_picker_activity=""
+for tree_picker_attempt in {1..15}; do
+  tree_picker_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if [[ -n "$tree_picker_activity" ]] && ! grep -Fq -- "$PACKAGE" <<<"$tree_picker_activity"; then break; fi
+  sleep 1
+done
+if [[ -z "$tree_picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$tree_picker_activity"; then
+  echo "ERROR: ACTION_OPEN_DOCUMENT_TREE did not launch an external DocumentsUI activity"
+  printf '%s\n' "$tree_picker_activity"
+  exit 1
+fi
+if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
+  echo "ERROR: could not inspect the initial document-tree picker"; exit 1
+fi
+if ! tap_ui_description "$TREE_PICKER_XML" "Show roots"; then
+  if ! tap_ui_description "$TREE_PICKER_XML" "Show navigation drawer"; then
+    echo "ERROR: tree picker does not expose root navigation"; exit 1
+  fi
+fi
+if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Downloads" 10; then
+  echo "ERROR: tree picker did not expose Downloads"; exit 1
+fi
+if ! tap_ui_text "$TREE_PICKER_XML" "Downloads"; then
+  echo "ERROR: could not open Downloads in tree picker"; exit 1
+fi
+if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 15; then
+  echo "ERROR: tree picker did not expose the prepared folder"; exit 1
+fi
+if ! tap_ui_text "$TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
+  echo "ERROR: could not enter the prepared document folder"; exit 1
+fi
+if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Use this folder" 12; then
+  echo "ERROR: selected directory did not expose Use this folder"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png; then
+  echo "ERROR: could not capture document-tree picker screenshot"; exit 1
+fi
+if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
+  echo "ERROR: could not capture document-tree picker hierarchy"; exit 1
+fi
+if ! tap_ui_text "$TREE_PICKER_XML" "Use this folder"; then
+  echo "ERROR: could not confirm folder selection"; exit 1
+fi
+
+tree_app_resumed=0
+for tree_return_attempt in {1..25}; do
+  tree_return_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if grep -Fq -- "$PACKAGE" <<<"$tree_return_activity"; then tree_app_resumed=1; break; fi
+  if dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
+    if grep -Eiq 'text="Allow"|text="ALLOW"' "$TREE_PICKER_XML"; then
+      if ! tap_ui_text "$TREE_PICKER_XML" "Allow"; then
+        echo "ERROR: could not accept DocumentsUI storage permission confirmation"; exit 1
+      fi
+    fi
+  fi
+  sleep 1
+done
+if [[ "$tree_app_resumed" != "1" ]]; then
+  echo "ERROR: document-tree selection did not return to the groovebox Activity"
+  printf '%s\n' "$tree_return_activity"
+  if dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
+    python3 - "$TREE_PICKER_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+for node in ET.parse(sys.argv[1]).getroot().iter("node"):
+    label = node.attrib.get("text", "").strip()
+    desc = node.attrib.get("content-desc", "").strip()
+    if label or desc:
+        print(f"text={label!r} desc={desc!r}")
+PY
+  fi
+  exit 1
+fi
+if ! wait_for_ui_text "$TREE_BROWSER_XML" "$TREE_BROWSER_REMOTE" "$TREE_SAMPLE_NAME" 30; then
+  echo "ERROR: selected document tree did not return its real WAV file as a Browser row"; exit 1
+fi
+if ! wait_for_ui_node_text_desc "$TREE_BROWSER_XML" "$TREE_BROWSER_REMOTE" \
+    "USER FOLDER • 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
+  echo "ERROR: Browser did not report the actual tree-backed WAV count"; exit 1
+fi
+
+# The filters must operate on document-tree results rather than MediaStore's independent list.
+if ! tap_ui_description "$TREE_BROWSER_XML" "MPC Browser filter PROJECTS"; then exit 1; fi
+if ! dump_device_ui "$TREE_BROWSER_REMOTE" "$TREE_BROWSER_XML"; then exit 1; fi
+if grep -Fq -- "$TREE_SAMPLE_NAME" "$TREE_BROWSER_XML"; then
+  echo "ERROR: PROJECTS filter did not remove the WAV from the selected folder"; exit 1
+fi
+if ! tap_ui_description "$TREE_BROWSER_XML" "MPC Browser filter SAMPLES"; then exit 1; fi
+if ! wait_for_ui_text "$TREE_BROWSER_XML" "$TREE_BROWSER_REMOTE" "$TREE_SAMPLE_NAME" 12; then
+  echo "ERROR: SAMPLES filter did not restore the tree-backed WAV"; exit 1
+fi
+if ! tap_ui_description "$TREE_BROWSER_XML" "MPC Browser filter ALL"; then exit 1; fi
+if ! wait_for_ui_text "$TREE_BROWSER_XML" "$TREE_BROWSER_REMOTE" "$TREE_SAMPLE_NAME" 12; then
+  echo "ERROR: ALL filter did not restore the tree-backed WAV"; exit 1
+fi
+
+# Verify grant/root restoration after process death, not only after Activity return.
+if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
+  echo "ERROR: could not stop the app for tree permission restoration test"; exit 1
+fi
+if ! adb_bounded 30 shell am start -W -n "$ACTIVITY"; then
+  echo "ERROR: could not restart app for tree permission restoration test"; exit 1
+fi
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Browser" 40; then
+  echo "ERROR: Main did not return after app process restart"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
+  echo "ERROR: could not refresh Main hierarchy after process restart"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "MPC Project Browser"; then
+  echo "ERROR: could not reopen Browser after process restart"; exit 1
+fi
+if ! wait_for_ui_description "$TREE_RESTORED_XML" "$TREE_RESTORED_REMOTE" \
+    "MPC Browser navigation PLACES USER FOLDER" 30; then
+  echo "ERROR: saved USER FOLDER destination did not survive process restart"; exit 1
+fi
+if ! tap_ui_description "$TREE_RESTORED_XML" "MPC Browser navigation PLACES USER FOLDER"; then
+  echo "ERROR: restored USER FOLDER destination was not actionable"; exit 1
+fi
+if ! wait_for_ui_text "$TREE_RESTORED_XML" "$TREE_RESTORED_REMOTE" "$TREE_SAMPLE_NAME" 30; then
+  echo "ERROR: persisted document-tree grant did not restore the actual WAV result"; exit 1
+fi
+if ! wait_for_ui_node_text_desc "$TREE_RESTORED_XML" "$TREE_RESTORED_REMOTE" \
+    "USER FOLDER • 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
+  echo "ERROR: restored folder provider status did not match the real scan result"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-restored.png; then
+  echo "ERROR: could not capture restored document-tree Browser screenshot"; exit 1
+fi
+if ! dump_device_ui "$TREE_RESTORED_REMOTE" "$TREE_RESTORED_XML"; then
+  echo "ERROR: could not capture restored document-tree Browser hierarchy"; exit 1
+fi
+echo "Android document-tree selection, real WAV results, filters and persisted access restoration passed."
+
 echo "Android runtime startup and local Browser workflow smoke passed."

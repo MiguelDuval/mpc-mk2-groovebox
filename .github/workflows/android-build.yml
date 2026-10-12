@@ -527,5 +527,9 @@ jobs:
             /tmp/mpc-groovebox-picker-select-source-activity.txt
             /tmp/mpc-groovebox-browser-picker-assignment.png
             /tmp/mpc-groovebox-browser-picker-assignment-uiautomator.xml
+            /tmp/mpc-groovebox-browser-tree-picker.png
+            /tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml
+            /tmp/mpc-groovebox-browser-tree-restored.png
+            /tmp/mpc-groovebox-browser-tree-restored-uiautomator.xml
           if-no-files-found: warn
           archive: true
