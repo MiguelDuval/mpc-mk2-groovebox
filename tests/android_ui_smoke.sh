@@ -2469,6 +2469,67 @@ PY
 # Folder navigation opts into the fast double-tap path because Android 16 can
 # focus non-clickable SAF folder cards on the first tap and dumpsys may not
 # reliably distinguish the foreground picker from the paused app.
+# Test the physical hit target, not merely the presence of an accessibility
+# label. DocumentsUI includes partially clipped/preloaded rows in UIAutomator XML;
+# such rows may sit under the fixed "Use this folder" footer and cannot be tapped.
+picker_folder_row_fully_visible() {
+  local hierarchy_path="$1" folder_label="$2"
+  python3 - "$hierarchy_path" "$folder_label" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, label = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+
+def rect(raw):
+    try:
+        first, second = raw[1:-1].split("][")
+        left, top = map(int, first.split(","))
+        right, bottom = map(int, second.split(","))
+        return left, top, right, bottom
+    except (ValueError, IndexError):
+        return None
+
+footer = None
+directory = None
+for n in nodes:
+    rid = n.attrib.get("resource-id", "")
+    if rid == "com.android.documentsui:id/container_save":
+        footer = rect(n.attrib.get("bounds", ""))
+    elif rid == "com.android.documentsui:id/dir_list":
+        directory = rect(n.attrib.get("bounds", ""))
+
+if not footer or not directory:
+    raise SystemExit(1)
+footer_top = footer[1]
+list_top, _, list_right, list_bottom = directory
+
+for n in nodes:
+    if n.attrib.get("text", "").strip() != label:
+        continue
+    current = n
+    row = None
+    while current is not None:
+        if current.attrib.get("resource-id") == "com.android.documentsui:id/item_root":
+            candidate = rect(current.attrib.get("bounds", ""))
+            if candidate and candidate[2] > candidate[0] and candidate[3] > candidate[1]:
+                row = candidate
+                break
+        current = parents.get(current)
+    if not row:
+        continue
+    left, top, right, bottom = row
+    # The row must be fully inside the scrolling list and above the fixed footer.
+    if left >= 0 and right <= list_right and top >= list_top and bottom <= min(list_bottom, footer_top - 8):
+        label_rect = rect(n.attrib.get("bounds", ""))
+        if label_rect and label_rect[1] >= top and label_rect[3] <= bottom:
+            raise SystemExit(0)
+raise SystemExit(1)
+PY
+}
+
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
   # In list mode the filename label and its full row are distinct nodes. Tap
@@ -3075,11 +3136,15 @@ PY
   fi
 fi
 
-# The fixture sorts among the real internal-storage folders. Scroll only the
-# DocumentsUI list if necessary; no keyboard keys or unrelated toolbar controls.
+# UIAutomator can report the next row before it is fully visible. Require
+# the complete item_root hit target above the fixed Use Folder footer; otherwise
+# scroll the directory list upward to bring the folder onto an actual tap area.
 tree_folder_visible=0
-for tree_folder_attempt in {1..5}; do
-  if wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 2; then
+for tree_folder_attempt in {1..8}; do
+  if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
+    echo "ERROR: could not refresh DocumentsUI while locating the test folder"; exit 1
+  fi
+  if picker_folder_row_fully_visible "$TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
     tree_folder_visible=1
     break
   fi
@@ -3089,6 +3154,7 @@ for tree_folder_attempt in {1..5}; do
   if ! adb_bounded 10 shell input swipe 800 1450 800 620 350; then
     echo "ERROR: could not scroll DocumentsUI to the prepared test folder"; exit 1
   fi
+  sleep 0.2
 done
 if [[ "$tree_folder_visible" != "1" ]]; then
   echo "ERROR: internal-storage root did not expose the prepared test folder"
