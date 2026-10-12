@@ -2190,14 +2190,13 @@ tap_ui_description() {
 tap_ui_picker_result_row() {
   local hierarchy_path="$1"
   local expected_text="$2"
-  local force_double_tap="${3:-false}"
-  local tap_kind="${4:-label}"
+  local tap_mode="${3:-auto}"
   local coordinates tap_x tap_y
-  if ! coordinates="$(python3 - "$hierarchy_path" "$expected_text" "$tap_kind" <<'PY'
+  if ! coordinates="$(python3 - "$hierarchy_path" "$expected_text" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 
-path, expected, tap_kind = sys.argv[1], sys.argv[2], sys.argv[3]
+path, expected = sys.argv[1], sys.argv[2]
 root = ET.parse(path).getroot()
 nodes = list(root.iter("node"))
 parents = {child: parent for parent in nodes for child in list(parent)}
@@ -2232,29 +2231,8 @@ for node in nodes:
                 print((left + right) // 2, (top + bottom) // 2)
                 raise SystemExit(0)
         candidate = parents.get(candidate)
-    # Folder cards expose a non-clickable label and a separate icon area.
-    # When navigating directories, tap the folder icon first; file selection
-    # keeps using the actual filename center to avoid its Preview hotspot.
-    if tap_kind == "icon" and row_bounds:
-        candidate = node
-        item_root = None
-        while candidate is not None:
-            if candidate.attrib.get("resource-id") == "com.android.documentsui:id/item_root":
-                item_root = candidate
-                break
-            candidate = parents.get(candidate)
-        if item_root is not None:
-            for child in item_root.iter("node"):
-                if child.attrib.get("resource-id") == "com.android.documentsui:id/icon":
-                    try:
-                        first, second = child.attrib.get("bounds", "")[1:-1].split("][")
-                        left, top = map(int, first.split(","))
-                        right, bottom = map(int, second.split(","))
-                    except ValueError:
-                        continue
-                    if right > left and bottom > top:
-                        print((left + right) // 2, (top + bottom) // 2)
-                        raise SystemExit(0)
+    # For folders and files, prefer the actual label bounds; the icon area can
+    # be a selection/preview hotspot in DocumentsUI.
     if row_bounds:
         try:
             first, second = node.attrib.get("bounds", "")[1:-1].split("][")
@@ -2295,12 +2273,17 @@ PY
     return 1
   fi
   read -r tap_x tap_y <<< "$coordinates"
-  # Directory navigation opts into exactly two rapid taps. Do this before the
-  # ordinary single tap, otherwise the folder would receive three events and
-  # Android 16 may treat them as separate selection gestures.
-  if [[ "$force_double_tap" == "true" ]]; then
+  # Explicit "single" is used for directory activation: a second rapid touch
+  # can be interpreted as a selection gesture by DocumentsUI's touch handler.
+  if [[ "$tap_mode" == "single" ]]; then
+    if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+      echo "ERROR: could not tap DocumentsUI result row $expected_text at $tap_x,$tap_y"
+      return 1
+    fi
+    return 0
+  elif [[ "$tap_mode" == "double" ]]; then
     if ! adb_bounded 10 shell sh -c "input tap $tap_x $tap_y; sleep 0.08; input tap $tap_x $tap_y"; then
-      echo "ERROR: could not double-tap DocumentsUI folder row $expected_text"
+      echo "ERROR: could not double-tap DocumentsUI result row $expected_text"
       return 1
     fi
     return 0
@@ -2309,7 +2292,7 @@ PY
     echo "ERROR: could not tap DocumentsUI result row $expected_text at $tap_x,$tap_y"
     return 1
   fi
-  # Preserve the guarded existing behavior for ordinary file rows.
+  # Preserve the guarded existing behavior for normal file-selection rows.
   sleep 0.05
   local picker_activity
   picker_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
@@ -2450,26 +2433,13 @@ PY
 # reliably distinguish the foreground picker from the paused app.
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  # The folder icon is distinct from the file-preview hit target in this
-  # provider. Try its tile first, then fall back to the label only if DocumentsUI
-  # remains on the same parent directory; never use generic keyboard events.
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" true icon; then
-    echo "ERROR: DocumentsUI folder icon is not actionable: $folder_label"
+  # A single label tap maps to DocumentsUI's touch activation path. Do not reuse
+  # the file-row fallback that may emit a second tap and toggle selection mode.
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" single; then
+    echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"
     return 1
   fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 5; then
-    return 0
-  fi
-  if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path" || \
-     ! grep -Fq -- 'package="com.android.documentsui"' "$hierarchy_path"; then
-    echo "ERROR: DocumentsUI left parent directory without exposing $child_label"
-    return 1
-  fi
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" true label; then
-    echo "ERROR: DocumentsUI folder label is not actionable: $folder_label"
-    return 1
-  fi
-  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 10; then
+  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 15; then
     echo "ERROR: opening folder $folder_label did not expose expected child $child_label"
     return 1
   fi
