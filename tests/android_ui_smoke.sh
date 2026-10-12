@@ -2414,6 +2414,35 @@ PY
   return 1
 }
 
+# Open one real DocumentsUI folder and prove that its expected child became
+# visible. Android 16 may report a row as non-clickable and may omit the resumed
+# activity from dumpsys; retry a touch only while the same folder row is still
+# on a live DocumentsUI screen. Never send generic Enter/Center key events here:
+# those can activate an unrelated toolbar command such as "New folder".
+tap_ui_picker_folder_until_child() {
+  local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label"; then
+    echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"
+    return 1
+  fi
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 5; then
+    return 0
+  fi
+  if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path" || \
+     ! grep -Fq -- 'package="com.android.documentsui"' "$hierarchy_path"; then
+    echo "ERROR: DocumentsUI left folder $folder_label before showing expected child $child_label"
+    return 1
+  fi
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label"; then
+    echo "ERROR: could not retry DocumentsUI folder row: $folder_label"
+    return 1
+  fi
+  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 10; then
+    echo "ERROR: opening folder $folder_label did not expose expected child $child_label"
+    return 1
+  fi
+}
+
 wait_for_ui_text_pair() {
   local hierarchy_path="$1" remote_path="$2" first="$3" second="$4" max_attempts="$5"
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
@@ -2903,12 +2932,12 @@ if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
   echo "ERROR: could not inspect the initial document-tree picker"; exit 1
 fi
 # Android 16 can expose the internal-storage directory list while keeping
-# the roots-drawer control visible. A visible singular "Download" is the real
-# child folder. Do not tap the drawer's plural "Downloads" provider root: it
-# is not guaranteed to map to /sdcard/Download or expose our test fixture.
+# the roots-drawer control visible. A singular Download child is the real folder;
+# never choose the virtual Downloads provider root from the navigation drawer.
 if grep -Fq -- 'text="Download"' "$TREE_PICKER_XML"; then
-  if ! tap_ui_picker_result_row "$TREE_PICKER_XML" "Download"; then
-    echo "ERROR: could not open the physical Download folder"; exit 1
+  if ! tap_ui_picker_folder_until_child \
+      "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Download" "$TREE_FOLDER_NAME"; then
+    echo "ERROR: could not navigate from physical Download to the prepared folder"; exit 1
   fi
 elif grep -Eq 'content-desc="Show roots"|content-desc="Show navigation drawer"' "$TREE_PICKER_XML"; then
   if ! tap_ui_description "$TREE_PICKER_XML" "Show roots"; then
@@ -2917,9 +2946,8 @@ elif grep -Eq 'content-desc="Show roots"|content-desc="Show navigation drawer"' 
       exit 1
     fi
   fi
-  # If the picker started in Recents, select the actual device storage root,
-  # then navigate into its physical Download directory rather than Downloads
-  # from the virtual media/provider roots.
+  # From Recents, choose actual internal device storage, not the Downloads
+  # virtual/media root. Then use the same child-verified physical folder action.
   tree_storage_root=""
   for candidate in "Android SDK built for x86_64" "Internal storage" "Internal Storage"; do
     if grep -Fq -- "text=\"$candidate\"" "$TREE_PICKER_XML"; then
@@ -2943,8 +2971,9 @@ PY
   if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Download" 10; then
     echo "ERROR: internal device-storage root did not expose Download"; exit 1
   fi
-  if ! tap_ui_picker_result_row "$TREE_PICKER_XML" "Download"; then
-    echo "ERROR: could not activate the physical Download folder row"; exit 1
+  if ! tap_ui_picker_folder_until_child \
+      "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Download" "$TREE_FOLDER_NAME"; then
+    echo "ERROR: could not navigate from physical Download to the prepared folder"; exit 1
   fi
 else
   echo "ERROR: tree picker exposed neither root navigation nor a Download folder"
@@ -2956,38 +2985,9 @@ for n in ET.parse(sys.argv[1]).getroot().iter("node"):
 PY
   exit 1
 fi
-# DocumentsUI may focus a folder row without opening it on the first touch.
-# Confirm the next-level folder is visible; if not, activate the focused physical
-# Download row with keyboard semantics. This fallback applies whether the picker
-# began at the storage root or arrived there through the roots drawer.
-if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 4; then
-  if ! adb_bounded 5 shell input keyevent KEYCODE_ENTER; then
-    echo "ERROR: could not activate the focused physical Download row"; exit 1
-  fi
-  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 4; then
-    if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_CENTER; then
-      echo "ERROR: could not open the focused physical Download row"; exit 1
-    fi
-  fi
-fi
-if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 10; then
-  echo "ERROR: physical Download did not reveal the prepared folder"; exit 1
-fi
-if ! tap_ui_picker_result_row "$TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
-  echo "ERROR: could not activate the prepared document folder row"; exit 1
-fi
-if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 4; then
-  if ! adb_bounded 5 shell input keyevent KEYCODE_ENTER; then
-    echo "ERROR: could not activate the focused test-folder row"; exit 1
-  fi
-  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 4; then
-    if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_CENTER; then
-      echo "ERROR: could not open the focused test-folder row"; exit 1
-    fi
-  fi
-fi
-if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 10; then
-  echo "ERROR: prepared folder did not expose the real WAV child; refusing to grant a parent folder"; exit 1
+if ! tap_ui_picker_folder_until_child \
+    "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" "$TREE_SAMPLE_NAME"; then
+  echo "ERROR: selected folder did not expose the actual tree-only WAV"; exit 1
 fi
 TREE_USE_FOLDER_LABEL="USE THIS FOLDER"
 if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_USE_FOLDER_LABEL" 12; then
