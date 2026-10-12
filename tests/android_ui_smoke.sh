@@ -2295,22 +2295,19 @@ PY
     return 1
   fi
   read -r tap_x tap_y <<< "$coordinates"
-  if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
-    echo "ERROR: could not tap DocumentsUI result row $expected_text at $tap_x,$tap_y"
-    return 1
-  fi
-  # Direct file selection must not blindly tap twice: the picker may return to
-  # the app after the first tap. Directory navigation opts into a fast second
-  # tap because some Android 16 providers only focus a folder on the first tap
-  # and expose no useful resumed-activity record while the picker is foreground.
+  # Directory navigation opts into exactly two rapid taps. Do this before the
+  # ordinary single tap, otherwise the folder would receive three events and
+  # Android 16 may treat them as separate selection gestures.
   if [[ "$force_double_tap" == "true" ]]; then
-    # Keep both taps in one adb shell session so command startup latency does
-    # not turn a double tap into two delayed focus-only taps.
     if ! adb_bounded 10 shell sh -c "input tap $tap_x $tap_y; sleep 0.08; input tap $tap_x $tap_y"; then
       echo "ERROR: could not double-tap DocumentsUI folder row $expected_text"
       return 1
     fi
     return 0
+  fi
+  if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+    echo "ERROR: could not tap DocumentsUI result row $expected_text at $tap_x,$tap_y"
+    return 1
   fi
   # Preserve the guarded existing behavior for ordinary file rows.
   sleep 0.05
