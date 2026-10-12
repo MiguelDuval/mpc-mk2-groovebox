@@ -2235,6 +2235,19 @@ for node in nodes:
                 print((left + right) // 2, (top + bottom) // 2)
                 raise SystemExit(0)
         candidate = parents.get(candidate)
+    # In DocumentsUI list mode the child TextView is not clickable. For
+    # directory navigation tap the center of the full item_root row so the
+    # RecyclerView's row-level touch handler receives the event.
+    if tap_kind == "row" and row_bounds:
+        try:
+            first, second = row_bounds[1:-1].split("][")
+            left, top = map(int, first.split(","))
+            right, bottom = map(int, second.split(","))
+            if right > left and bottom > top:
+                print((left + right) // 2, (top + bottom) // 2)
+                raise SystemExit(0)
+        except ValueError:
+            pass
     # Folder activation and file selection use different hit targets on some
     # DocumentsUI grids. Keep each target explicit rather than guessing.
     if tap_kind == "icon" and row_node is not None:
@@ -2458,10 +2471,9 @@ PY
 # reliably distinguish the foreground picker from the paused app.
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  # Prefer the DocumentsUI list-row activation path. The grid cards reported
-  # neither clickability nor a successful open when tapped, so normalize the
-  # picker into list mode before this helper is called and issue one row tap.
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" single; then
+  # In list mode the filename label and its full row are distinct nodes. Tap
+  # the center of item_root, not merely the non-clickable label TextView.
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" single row; then
     echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"
     return 1
   fi
