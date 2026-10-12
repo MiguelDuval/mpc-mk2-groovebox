@@ -981,7 +981,7 @@ if ! grep -Fq -- '"PROJECTS", "PATTERNS", "KITS", "PLUGIN PRESETS", "SAMPLES", "
   exit 1
 fi
 
-for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void onChooseFolder();'   'void onLocalScanRequested();'   'void onFileSelected(MpcBrowserFile file);'   'void onAuditionSelectedFile();'   'void setSection(String section)'   'void setLocalFiles(List<MpcBrowserFile> files, String status)'   'matchesBrowserQuery('   'addFileResult('   'MPC Browser scan local audio files'   'SCAN LOCAL AUDIO…'   'NO LOCAL WAV FILES'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'CHOOSE FOLDER…'   'setUserFolderFiles('   'MPC Browser choose a local folder for Browser results'   'CURRENT SAMPLE'; do
+for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void onChooseFolder();'   'void onLocalScanRequested();'   'void onFileSelected(MpcBrowserFile file);'   'void onAuditionSelectedFile();'   'void setSection(String section)'   'void setLocalFiles(List<MpcBrowserFile> files, String status)'   'matchesBrowserQuery('   'addFileResult('   'MPC Browser scan local audio files'   'SCAN LOCAL AUDIO…'   'NO LOCAL WAV FILES'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'OPEN STORAGE…'   'CHOOSE FOLDER…'   'setUserFolderFiles('   'MPC Browser open Android storage picker'   'MPC Browser choose a local folder for Browser results'   'CURRENT SAMPLE'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser information-architecture contract missing: $required"
     exit 1
@@ -1503,9 +1503,13 @@ require_source_contains "$BROWSER_SOURCE" 'MpcBrowserFilterIconDrawable'
 require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("MPC Browser filter " + filter)'
 require_source_contains "$BROWSER_SOURCE" 'MPC Browser current location: PLACE • INTERNAL'
 require_source_contains "$BROWSER_SOURCE" 'row.setOnClickListener(v -> {'
+require_source_contains "$BROWSER_SOURCE" 'listener.onOpenStorage();'
+require_source_contains "$BROWSER_SOURCE" 'MPC Browser open Android storage picker'
+require_source_contains "$BROWSER_SOURCE" 'ANDROID DOCUMENT PICKER • DIRECT WAV LOAD'
 require_source_contains "$BROWSER_SOURCE" 'listener.onChooseFolder();'
 require_source_contains "$BROWSER_SOURCE" 'MPC Browser choose a local folder for Browser results'
 require_source_contains "$BROWSER_SOURCE" 'PERSIST A LOCAL FOLDER FOR BROWSING'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'public void onOpenStorage()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'public void onChooseFolder()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'openBrowserDocumentTreePicker();'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Button load = addFunction("LOAD", true, v -> openWavPicker());'
@@ -1979,7 +1983,7 @@ if ! test -s /tmp/mpc-groovebox-browser.png || ! test -s /tmp/mpc-groovebox-brow
   echo "ERROR: Browser runtime evidence files are empty"
   exit 1
 fi
-for required in 'contentDescription="MPC Browser results list"' 'text="CHOOSE FOLDER…"' 'contentDescription="MPC Browser current sample"'; do
+for required in 'contentDescription="MPC Browser results list"' 'text="OPEN STORAGE…"' 'contentDescription="MPC Browser current sample"'; do
   if ! grep -Fq -- "$required" /tmp/mpc-groovebox-browser-hierarchy.txt; then
     echo "ERROR: Browser runtime hierarchy is missing visible results contract: $required"
     cat /tmp/mpc-groovebox-browser-hierarchy.txt
