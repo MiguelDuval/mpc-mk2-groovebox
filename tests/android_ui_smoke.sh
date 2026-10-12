@@ -2902,16 +2902,40 @@ fi
 if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
   echo "ERROR: could not inspect the initial document-tree picker"; exit 1
 fi
-if ! tap_ui_description "$TREE_PICKER_XML" "Show roots"; then
-  if ! tap_ui_description "$TREE_PICKER_XML" "Show navigation drawer"; then
-    echo "ERROR: tree picker does not expose root navigation"; exit 1
+# ACTION_OPEN_DOCUMENT_TREE may start at the internal-storage root on
+# Android 16 rather than the Recent screen used by ACTION_OPEN_DOCUMENT.
+# Accept either provider presentation, but always enter the real Download folder.
+if grep -Eq 'content-desc="Show roots"|content-desc="Show navigation drawer"' "$TREE_PICKER_XML"; then
+  if ! tap_ui_description "$TREE_PICKER_XML" "Show roots"; then
+    if ! tap_ui_description "$TREE_PICKER_XML" "Show navigation drawer"; then
+      echo "ERROR: DocumentsUI exposed a root screen but its navigation control was not actionable"
+      exit 1
+    fi
   fi
-fi
-if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Downloads" 10; then
-  echo "ERROR: tree picker did not expose Downloads"; exit 1
-fi
-if ! tap_ui_text "$TREE_PICKER_XML" "Downloads"; then
-  echo "ERROR: could not open Downloads in tree picker"; exit 1
+  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Downloads" 10; then
+    echo "ERROR: tree picker did not expose Downloads in the roots drawer"; exit 1
+  fi
+  if ! tap_ui_text "$TREE_PICKER_XML" "Downloads"; then
+    echo "ERROR: could not open Downloads in the tree picker"; exit 1
+  fi
+elif grep -Fq -- 'text="Download"' "$TREE_PICKER_XML"; then
+  # The root folder itself is intentionally unselectable ("Can't use this folder").
+  if ! tap_ui_text "$TREE_PICKER_XML" "Download"; then
+    echo "ERROR: could not enter Download from the internal-storage root"; exit 1
+  fi
+elif grep -Fq -- 'text="Downloads"' "$TREE_PICKER_XML"; then
+  if ! tap_ui_text "$TREE_PICKER_XML" "Downloads"; then
+    echo "ERROR: could not open Downloads in the tree picker"; exit 1
+  fi
+else
+  echo "ERROR: tree picker exposed neither root navigation nor a Download folder"
+  python3 - "$TREE_PICKER_XML" <<'PY'
+import sys, xml.etree.ElementTree as ET
+for n in ET.parse(sys.argv[1]).getroot().iter("node"):
+    t=n.attrib.get("text","").strip(); d=n.attrib.get("content-desc","").strip()
+    if t or d: print(f"text={t!r} desc={d!r}")
+PY
+  exit 1
 fi
 if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 15; then
   echo "ERROR: tree picker did not expose the prepared folder"; exit 1
@@ -2919,8 +2943,12 @@ fi
 if ! tap_ui_text "$TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
   echo "ERROR: could not enter the prepared document folder"; exit 1
 fi
-if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Use this folder" 12; then
-  echo "ERROR: selected directory did not expose Use this folder"; exit 1
+TREE_USE_FOLDER_LABEL="USE THIS FOLDER"
+if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_USE_FOLDER_LABEL" 12; then
+  TREE_USE_FOLDER_LABEL="Use this folder"
+  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_USE_FOLDER_LABEL" 3; then
+    echo "ERROR: selected directory did not expose Use this folder"; exit 1
+  fi
 fi
 if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png; then
   echo "ERROR: could not capture document-tree picker screenshot"; exit 1
@@ -2928,7 +2956,7 @@ fi
 if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
   echo "ERROR: could not capture document-tree picker hierarchy"; exit 1
 fi
-if ! tap_ui_text "$TREE_PICKER_XML" "Use this folder"; then
+if ! tap_ui_text "$TREE_PICKER_XML" "$TREE_USE_FOLDER_LABEL"; then
   echo "ERROR: could not confirm folder selection"; exit 1
 fi
 
