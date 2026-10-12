@@ -2944,7 +2944,20 @@ PY
     echo "ERROR: internal device-storage root did not expose Download"; exit 1
   fi
   if ! tap_ui_picker_result_row "$TREE_PICKER_XML" "Download"; then
-    echo "ERROR: could not open the physical Download folder"; exit 1
+    echo "ERROR: could not activate the physical Download folder row"; exit 1
+  fi
+  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 4; then
+    if ! adb_bounded 5 shell input keyevent KEYCODE_ENTER; then
+      echo "ERROR: could not activate the focused physical Download row"; exit 1
+    fi
+    if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 4; then
+      if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_CENTER; then
+        echo "ERROR: could not open the focused physical Download row"; exit 1
+      fi
+    fi
+  fi
+  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 10; then
+    echo "ERROR: physical Download did not reveal the prepared folder"; exit 1
   fi
 else
   echo "ERROR: tree picker exposed neither root navigation nor a Download folder"
@@ -2956,11 +2969,27 @@ for n in ET.parse(sys.argv[1]).getroot().iter("node"):
 PY
   exit 1
 fi
-if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 15; then
-  echo "ERROR: tree picker did not expose the prepared folder"; exit 1
+# DocumentsUI can focus a folder row without opening it on the first touch.
+# Confirm the next-level folder is actually visible; if not, activate the focused
+# row with keyboard semantics rather than accidentally granting the parent folder.
+if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 4; then
+  echo "ERROR: physical Download did not expose the prepared folder"; exit 1
 fi
 if ! tap_ui_picker_result_row "$TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
-  echo "ERROR: could not enter the prepared document folder"; exit 1
+  echo "ERROR: could not activate the prepared document folder row"; exit 1
+fi
+if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 4; then
+  if ! adb_bounded 5 shell input keyevent KEYCODE_ENTER; then
+    echo "ERROR: could not activate the focused test-folder row"; exit 1
+  fi
+  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 4; then
+    if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_CENTER; then
+      echo "ERROR: could not open the focused test-folder row"; exit 1
+    fi
+  fi
+fi
+if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 10; then
+  echo "ERROR: prepared folder did not expose the real WAV child; refusing to grant a parent folder"; exit 1
 fi
 TREE_USE_FOLDER_LABEL="USE THIS FOLDER"
 if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_USE_FOLDER_LABEL" 12; then
