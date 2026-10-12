@@ -2532,14 +2532,14 @@ PY
 
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  # The fixture is deliberately sorted first, and the visibility guard proves
-  # its title is clear of the fixed footer. Tap the visible folder-title target
-  # itself instead of a broad row center that may land in non-interactive space.
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" single; then
+  # DocumentsUI may treat the first tap on a non-clickable folder title
+  # as focus/selection. This fixture is alphabetically first and fully above the
+  # fixed footer, so use a rapid double-tap to open the actual child directory.
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double; then
     echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"
     return 1
   fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 4; then
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
     return 0
   fi
 
