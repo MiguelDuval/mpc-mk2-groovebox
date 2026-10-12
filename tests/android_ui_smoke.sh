@@ -2277,9 +2277,20 @@ PY
     echo "ERROR: could not tap DocumentsUI result row $expected_text at $tap_x,$tap_y"
     return 1
   fi
-  # On some Android 16 DocumentsUI builds a list row takes focus on the first
-  # tap and opens only on the next tap. Keep the activity check inside the
-  # platform double-tap interval; never tap again after the app has resumed.
+  # Direct file selection must not blindly tap twice: the picker may return to
+  # the app after the first tap. Directory navigation opts into a fast second
+  # tap because some Android 16 providers only focus a folder on the first tap
+  # and expose no useful resumed-activity record while the picker is foreground.
+  local force_double_tap="${3:-false}"
+  if [[ "$force_double_tap" == "true" ]]; then
+    sleep 0.05
+    if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+      echo "ERROR: could not double-tap DocumentsUI folder row $expected_text"
+      return 1
+    fi
+    return 0
+  fi
+  # Preserve the guarded existing behavior for ordinary file rows.
   sleep 0.05
   local picker_activity
   picker_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
@@ -2414,30 +2425,17 @@ PY
   return 1
 }
 
-# Open one real DocumentsUI folder and prove that its expected child became
-# visible. Android 16 may report a row as non-clickable and may omit the resumed
-# activity from dumpsys; retry a touch only while the same folder row is still
-# on a live DocumentsUI screen. Never send generic Enter/Center key events here:
-# those can activate an unrelated toolbar command such as "New folder".
+# Open a real DocumentsUI directory and verify the expected child appears.
+# Folder navigation opts into the fast double-tap path because Android 16 can
+# focus non-clickable SAF folder cards on the first tap and dumpsys may not
+# reliably distinguish the foreground picker from the paused app.
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label"; then
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" true; then
     echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"
     return 1
   fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 5; then
-    return 0
-  fi
-  if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path" || \
-     ! grep -Fq -- 'package="com.android.documentsui"' "$hierarchy_path"; then
-    echo "ERROR: DocumentsUI left folder $folder_label before showing expected child $child_label"
-    return 1
-  fi
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label"; then
-    echo "ERROR: could not retry DocumentsUI folder row: $folder_label"
-    return 1
-  fi
-  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 10; then
+  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 15; then
     echo "ERROR: opening folder $folder_label did not expose expected child $child_label"
     return 1
   fi
@@ -2864,7 +2862,7 @@ echo "Android Document Picker select → return → Pad/Layer assignment passed.
 echo "Running Android user document-tree → Browser results → persisted grant restoration..."
 TREE_FOLDER_NAME="MPC-Browser-Tree"
 TREE_SAMPLE_NAME="Browser-Tree-Only.wav"
-TREE_FOLDER_DEVICE="/sdcard/Download/$TREE_FOLDER_NAME"
+TREE_FOLDER_DEVICE="/sdcard/$TREE_FOLDER_NAME"
 TREE_SAMPLE_DEVICE="$TREE_FOLDER_DEVICE/$TREE_SAMPLE_NAME"
 TREE_MEDIA_QUERY="/tmp/mpc-browser-tree-not-in-mediastore.txt"
 TREE_PICKER_XML="/tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml"
@@ -2931,52 +2929,60 @@ fi
 if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
   echo "ERROR: could not inspect the initial document-tree picker"; exit 1
 fi
-# Android 16 can expose the internal-storage directory list while keeping
-# the roots-drawer control visible. A singular Download child is the real folder;
-# never choose the virtual Downloads provider root from the navigation drawer.
-if grep -Fq -- 'text="Download"' "$TREE_PICKER_XML"; then
-  if ! tap_ui_picker_folder_until_child \
-      "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Download" "$TREE_FOLDER_NAME"; then
-    echo "ERROR: could not navigate from physical Download to the prepared folder"; exit 1
-  fi
-elif grep -Eq 'content-desc="Show roots"|content-desc="Show navigation drawer"' "$TREE_PICKER_XML"; then
-  if ! tap_ui_description "$TREE_PICKER_XML" "Show roots"; then
-    if ! tap_ui_description "$TREE_PICKER_XML" "Show navigation drawer"; then
-      echo "ERROR: DocumentsUI exposed a root screen but its navigation control was not actionable"
-      exit 1
+# ACTION_OPEN_DOCUMENT_TREE starts at the internal-storage root on this
+# Android 16 emulator. Keep the isolated fixture as a direct child of that root
+# so this test doesn't depend on entering Download first (a provider-specific
+# navigation path). The storage root itself is intentionally not grantable.
+if ! grep -Fq -- "text=\"$TREE_FOLDER_NAME\"" "$TREE_PICKER_XML"; then
+  if ! grep -Fq -- 'text="Android SDK built for x86_64"' "$TREE_PICKER_XML" && \
+     ! grep -Fq -- 'text="Internal storage"' "$TREE_PICKER_XML" && \
+     ! grep -Fq -- 'text="Internal Storage"' "$TREE_PICKER_XML"; then
+    if ! tap_ui_description "$TREE_PICKER_XML" "Show roots"; then
+      if ! tap_ui_description "$TREE_PICKER_XML" "Show navigation drawer"; then
+        echo "ERROR: DocumentsUI exposed neither an internal-storage root nor an actionable roots drawer"
+        exit 1
+      fi
     fi
-  fi
-  # From Recents, choose actual internal device storage, not the Downloads
-  # virtual/media root. Then use the same child-verified physical folder action.
-  tree_storage_root=""
-  for candidate in "Android SDK built for x86_64" "Internal storage" "Internal Storage"; do
-    if grep -Fq -- "text=\"$candidate\"" "$TREE_PICKER_XML"; then
-      tree_storage_root="$candidate"
-      break
-    fi
-  done
-  if [[ -z "$tree_storage_root" ]]; then
-    echo "ERROR: roots drawer did not expose the internal device-storage root"
-    python3 - "$TREE_PICKER_XML" <<'PY'
+    tree_storage_root=""
+    for candidate in "Android SDK built for x86_64" "Internal storage" "Internal Storage"; do
+      if grep -Fq -- "text=\"$candidate\"" "$TREE_PICKER_XML"; then
+        tree_storage_root="$candidate"
+        break
+      fi
+    done
+    if [[ -z "$tree_storage_root" ]]; then
+      echo "ERROR: roots drawer did not expose the internal device-storage root"
+      python3 - "$TREE_PICKER_XML" <<'PY'
 import sys, xml.etree.ElementTree as ET
 for n in ET.parse(sys.argv[1]).getroot().iter("node"):
     t=n.attrib.get("text","").strip(); d=n.attrib.get("content-desc","").strip()
     if t or d: print(f"text={t!r} desc={d!r}")
 PY
-    exit 1
+      exit 1
+    fi
+    if ! tap_ui_text "$TREE_PICKER_XML" "$tree_storage_root"; then
+      echo "ERROR: could not open the internal device-storage root"; exit 1
+    fi
   fi
-  if ! tap_ui_text "$TREE_PICKER_XML" "$tree_storage_root"; then
-    echo "ERROR: could not open the internal device-storage root"; exit 1
+fi
+
+# The fixture sorts among the real internal-storage folders. Scroll only the
+# DocumentsUI list if necessary; no keyboard keys or unrelated toolbar controls.
+tree_folder_visible=0
+for tree_folder_attempt in {1..5}; do
+  if wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 2; then
+    tree_folder_visible=1
+    break
   fi
-  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Download" 10; then
-    echo "ERROR: internal device-storage root did not expose Download"; exit 1
+  if ! grep -Fq -- 'package="com.android.documentsui"' "$TREE_PICKER_XML"; then
+    echo "ERROR: Android DocumentsUI closed before the test folder appeared"; exit 1
   fi
-  if ! tap_ui_picker_folder_until_child \
-      "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "Download" "$TREE_FOLDER_NAME"; then
-    echo "ERROR: could not navigate from physical Download to the prepared folder"; exit 1
+  if ! adb_bounded 10 shell input swipe 800 1450 800 620 350; then
+    echo "ERROR: could not scroll DocumentsUI to the prepared test folder"; exit 1
   fi
-else
-  echo "ERROR: tree picker exposed neither root navigation nor a Download folder"
+done
+if [[ "$tree_folder_visible" != "1" ]]; then
+  echo "ERROR: internal-storage root did not expose the prepared test folder"
   python3 - "$TREE_PICKER_XML" <<'PY'
 import sys, xml.etree.ElementTree as ET
 for n in ET.parse(sys.argv[1]).getroot().iter("node"):
