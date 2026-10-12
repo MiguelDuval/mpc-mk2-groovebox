@@ -2320,8 +2320,16 @@ PY
     fi
     return 0
   elif [[ "$tap_mode" == "double" ]]; then
-    if ! adb_bounded 10 shell sh -c "input tap $tap_x $tap_y; sleep 0.08; input tap $tap_x $tap_y"; then
-      echo "ERROR: could not double-tap DocumentsUI result row $expected_text"
+    # Use two explicit adb input events. Passing a compound semicolon command
+    # through nested "adb shell sh -c" quoting can collapse into a single tap
+    # on some platform-tools versions, defeating folder activation.
+    if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+      echo "ERROR: first tap failed for DocumentsUI result row $expected_text"
+      return 1
+    fi
+    sleep 0.08
+    if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+      echo "ERROR: second tap failed for DocumentsUI result row $expected_text"
       return 1
     fi
     return 0
