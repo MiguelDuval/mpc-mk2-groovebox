@@ -2458,28 +2458,17 @@ PY
 # reliably distinguish the foreground picker from the paused app.
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  # Test two distinct DocumentsUI grid hit targets. Previous evidence confirms
-  # the visible folder card exposes non-clickable accessibility nodes, so use a
-  # fast two-touch gesture on the folder icon first, then the card centre only
-  # if DocumentsUI remains in the same parent and the child is still absent.
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double icon; then
-    echo "ERROR: DocumentsUI folder icon is not actionable: $folder_label"
-    return 1
-  fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 6; then
-    return 0
-  fi
-  if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path" || \
-     ! grep -Fq -- 'package="com.android.documentsui"' "$hierarchy_path"; then
-    echo "ERROR: DocumentsUI left the parent directory without exposing $child_label"
-    return 1
-  fi
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double card; then
-    echo "ERROR: DocumentsUI folder tile is not actionable: $folder_label"
+  # Prefer the DocumentsUI list-row activation path. The grid cards reported
+  # neither clickability nor a successful open when tapped, so normalize the
+  # picker into list mode before this helper is called and issue one row tap.
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" single; then
+    echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"
     return 1
   fi
   if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
-    echo "ERROR: opening folder $folder_label by icon/card did not expose expected child $child_label"
+    # Preserve the exact post-tap UI as artifact evidence, even on failure.
+    adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png || true
+    echo "ERROR: opening folder $folder_label did not expose expected child $child_label"
     return 1
   fi
 }
@@ -2971,6 +2960,24 @@ if [[ -z "$tree_picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$tree_picker_a
 fi
 if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
   echo "ERROR: could not inspect the initial document-tree picker"; exit 1
+fi
+# Capture actual DocumentsUI evidence before interacting; this path is included
+# in the always-uploaded evidence package, including when the smoke test fails.
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png; then
+  echo "ERROR: could not capture initial document-tree picker screenshot"; exit 1
+fi
+# Grid cards exposed non-clickable text/icon nodes and taps never opened the
+# target directory. Switch to the provider's list-row layout where available.
+if grep -Fq -- 'content-desc="List view"' "$TREE_PICKER_XML"; then
+  if ! tap_ui_description "$TREE_PICKER_XML" "List view"; then
+    echo "ERROR: DocumentsUI List view control was visible but not actionable"; exit 1
+  fi
+  if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
+    echo "ERROR: could not inspect DocumentsUI list view"; exit 1
+  fi
+  if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png; then
+    echo "ERROR: could not capture DocumentsUI list view screenshot"; exit 1
+  fi
 fi
 # ACTION_OPEN_DOCUMENT_TREE starts at the internal-storage root on this
 # Android 16 emulator. Keep the isolated fixture as a direct child of that root
