@@ -2946,19 +2946,6 @@ PY
   if ! tap_ui_picker_result_row "$TREE_PICKER_XML" "Download"; then
     echo "ERROR: could not activate the physical Download folder row"; exit 1
   fi
-  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 4; then
-    if ! adb_bounded 5 shell input keyevent KEYCODE_ENTER; then
-      echo "ERROR: could not activate the focused physical Download row"; exit 1
-    fi
-    if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 4; then
-      if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_CENTER; then
-        echo "ERROR: could not open the focused physical Download row"; exit 1
-      fi
-    fi
-  fi
-  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 10; then
-    echo "ERROR: physical Download did not reveal the prepared folder"; exit 1
-  fi
 else
   echo "ERROR: tree picker exposed neither root navigation nor a Download folder"
   python3 - "$TREE_PICKER_XML" <<'PY'
@@ -2969,11 +2956,22 @@ for n in ET.parse(sys.argv[1]).getroot().iter("node"):
 PY
   exit 1
 fi
-# DocumentsUI can focus a folder row without opening it on the first touch.
-# Confirm the next-level folder is actually visible; if not, activate the focused
-# row with keyboard semantics rather than accidentally granting the parent folder.
+# DocumentsUI may focus a folder row without opening it on the first touch.
+# Confirm the next-level folder is visible; if not, activate the focused physical
+# Download row with keyboard semantics. This fallback applies whether the picker
+# began at the storage root or arrived there through the roots drawer.
 if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 4; then
-  echo "ERROR: physical Download did not expose the prepared folder"; exit 1
+  if ! adb_bounded 5 shell input keyevent KEYCODE_ENTER; then
+    echo "ERROR: could not activate the focused physical Download row"; exit 1
+  fi
+  if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 4; then
+    if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_CENTER; then
+      echo "ERROR: could not open the focused physical Download row"; exit 1
+    fi
+  fi
+fi
+if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" 10; then
+  echo "ERROR: physical Download did not reveal the prepared folder"; exit 1
 fi
 if ! tap_ui_picker_result_row "$TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
   echo "ERROR: could not activate the prepared document folder row"; exit 1
