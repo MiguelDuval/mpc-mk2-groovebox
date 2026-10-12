@@ -2532,9 +2532,18 @@ PY
 
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  # DocumentsUI may treat the first tap on a non-clickable folder title
-  # as focus/selection. This fixture is alphabetically first and fully above the
-  # fixed footer, so use a rapid double-tap to open the actual child directory.
+  # On this DocumentsUI provider, the folder icon is the strongest
+  # navigation hit target. The fixture is alphabetically first and fully above
+  # the fixed footer, so activate the icon with a rapid double-tap.
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double icon; then
+    echo "ERROR: DocumentsUI folder icon is not actionable: $folder_label"
+    return 1
+  fi
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 6; then
+    return 0
+  fi
+  # If the icon gesture only selected the row, try the actual title target while
+  # it is still fully visible. The child assertion prevents false success.
   if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double; then
     echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"
     return 1
