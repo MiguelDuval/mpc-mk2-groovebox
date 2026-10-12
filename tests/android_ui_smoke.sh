@@ -2190,6 +2190,7 @@ tap_ui_description() {
 tap_ui_picker_result_row() {
   local hierarchy_path="$1"
   local expected_text="$2"
+  local force_double_tap="${3:-false}"
   local coordinates tap_x tap_y
   if ! coordinates="$(python3 - "$hierarchy_path" "$expected_text" <<'PY'
 import sys
@@ -2281,10 +2282,10 @@ PY
   # the app after the first tap. Directory navigation opts into a fast second
   # tap because some Android 16 providers only focus a folder on the first tap
   # and expose no useful resumed-activity record while the picker is foreground.
-  local force_double_tap="${3:-false}"
   if [[ "$force_double_tap" == "true" ]]; then
-    sleep 0.05
-    if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+    # Keep both taps in one adb shell session so command startup latency does
+    # not turn a double tap into two delayed focus-only taps.
+    if ! adb_bounded 10 shell sh -c "input tap $tap_x $tap_y; sleep 0.08; input tap $tap_x $tap_y"; then
       echo "ERROR: could not double-tap DocumentsUI folder row $expected_text"
       return 1
     fi
@@ -2942,6 +2943,9 @@ if ! grep -Fq -- "text=\"$TREE_FOLDER_NAME\"" "$TREE_PICKER_XML"; then
         echo "ERROR: DocumentsUI exposed neither an internal-storage root nor an actionable roots drawer"
         exit 1
       fi
+    fi
+    if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
+      echo "ERROR: could not inspect DocumentsUI roots drawer"; exit 1
     fi
     tree_storage_root=""
     for candidate in "Android SDK built for x86_64" "Internal storage" "Internal Storage"; do
