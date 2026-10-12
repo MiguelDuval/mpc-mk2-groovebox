@@ -2477,10 +2477,54 @@ tap_ui_picker_folder_until_child() {
     echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"
     return 1
   fi
-  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
-    # Preserve the exact post-tap UI as artifact evidence, even on failure.
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 4; then
+    return 0
+  fi
+
+  # On the emulator provider, touch events may leave the non-clickable row
+  # unfocused. Navigate using D-pad only until this exact folder's item_root is
+  # focused, then press Enter. Never send Enter against toolbar/other controls.
+  local folder_focused=0
+  for focus_attempt in {1..20}; do
+    if python3 - "$hierarchy_path" "$folder_label" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, label = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+for node in nodes:
+    if node.attrib.get("text", "").strip() != label:
+        continue
+    current = node
+    while current is not None:
+        if current.attrib.get("resource-id") == "com.android.documentsui:id/item_root":
+            raise SystemExit(0 if current.attrib.get("focused") == "true" else 1)
+        current = parents.get(current)
+raise SystemExit(1)
+PY
+    then
+      folder_focused=1
+      break
+    fi
+    if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_DOWN; then
+      echo "ERROR: could not move focus to DocumentsUI folder $folder_label"; return 1
+    fi
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then
+      echo "ERROR: could not inspect DocumentsUI while focusing $folder_label"; return 1
+    fi
+  done
+  if [[ "$folder_focused" != "1" ]]; then
     adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png || true
-    echo "ERROR: opening folder $folder_label did not expose expected child $child_label"
+    echo "ERROR: DocumentsUI never focused the intended folder row: $folder_label"
+    return 1
+  fi
+  if ! adb_bounded 5 shell input keyevent KEYCODE_ENTER; then
+    echo "ERROR: could not activate focused DocumentsUI folder $folder_label"; return 1
+  fi
+  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
+    adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png || true
+    echo "ERROR: focused folder $folder_label did not expose expected child $child_label"
     return 1
   fi
 }
