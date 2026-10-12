@@ -30,6 +30,7 @@ final class MpcBrowserView extends LinearLayout {
         void onNavigationItemSelected(String section, String item);
         void onFilterSelected(String filter);
         void onNavigateUp();
+        void onOpenStorage();
         void onChooseFolder();
         void onLocalScanRequested();
         void onFileSelected(MpcBrowserFile file);
@@ -409,7 +410,7 @@ final class MpcBrowserView extends LinearLayout {
         } else {
             final List<String> placesItems = new ArrayList<>();
             Collections.addAll(placesItems, "INTERNAL", "MPC DOCUMENTS", "CONNECTED STORAGE");
-            if (userFolderConfigured) placesItems.add("USER FOLDER");
+            placesItems.add("USER FOLDER");
             Collections.addAll(placesItems,
                     "FAVORITE 1", "FAVORITE 2", "FAVORITE 3", "FAVORITE 4", "FAVORITE 5");
             items = placesItems.toArray(new String[0]);
@@ -559,11 +560,19 @@ final class MpcBrowserView extends LinearLayout {
                 "INDEX ACCESSIBLE DEVICE WAV FILES",
                 "MPC Browser scan local audio files",
                 true);
-        addActionRow(
-                "CHOOSE FOLDER…",
-                "PERSIST A LOCAL FOLDER FOR BROWSING",
-                "MPC Browser choose a local folder for Browser results",
-                false);
+        if (isUserFolderLocation()) {
+            addActionRow(
+                    "CHOOSE FOLDER…",
+                    "PERSIST A LOCAL FOLDER FOR BROWSING",
+                    "MPC Browser choose a local folder for Browser results",
+                    false);
+        } else {
+            addActionRow(
+                    "OPEN STORAGE…",
+                    "ANDROID DOCUMENT PICKER • DIRECT WAV LOAD",
+                    "MPC Browser open Android storage picker",
+                    false);
+        }
         if (!isCatalogLocationSupported()) {
             addInfoRow(unavailableLocationTitle(), unavailableLocationDetail());
             return;
@@ -638,7 +647,8 @@ final class MpcBrowserView extends LinearLayout {
         row.setOnClickListener(v -> {
             if (listener == null) return;
             if (scanAction) listener.onLocalScanRequested();
-            else listener.onChooseFolder();
+            else if (isUserFolderLocation()) listener.onChooseFolder();
+            else listener.onOpenStorage();
         });
 
         final TextView main = info(getContext(), title);
