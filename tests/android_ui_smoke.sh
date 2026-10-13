@@ -2320,16 +2320,11 @@ PY
     fi
     return 0
   elif [[ "$tap_mode" == "double" ]]; then
-    # Use two explicit adb input events. Passing a compound semicolon command
-    # through nested "adb shell sh -c" quoting can collapse into a single tap
-    # on some platform-tools versions, defeating folder activation.
-    if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
-      echo "ERROR: first tap failed for DocumentsUI result row $expected_text"
-      return 1
-    fi
-    sleep 0.08
-    if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
-      echo "ERROR: second tap failed for DocumentsUI result row $expected_text"
+    # Send both taps in one remote-shell command so ADB startup latency does
+    # not split them into two ordinary focus-only taps. Avoid nested "sh -c"
+    # quoting; the Android shell receives the semicolon sequence directly.
+    if ! adb_bounded 10 shell "input tap $tap_x $tap_y; sleep 0.08; input tap $tap_x $tap_y"; then
+      echo "ERROR: could not double-tap DocumentsUI result row $expected_text"
       return 1
     fi
     return 0
@@ -2541,15 +2536,14 @@ PY
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
   # The test folder is sorted first and picker_folder_row_fully_visible has
-  # verified its full item_root lies above the fixed footer. Target that row's
-  # center (not the nested TextView or icon) so the RecyclerView receives the
-  # normal directory click. Fall back to the existing focused-row route only
-  # if the child is still absent.
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" single row; then
+  # verified its full item_root lies above the fixed footer. In this SAF tree
+  # picker, a single tap only leaves focus on the folder; use a true rapid
+  # double-tap on the full row to enter the directory.
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double row; then
     echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"
     return 1
   fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 8; then
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 10; then
     return 0
   fi
   if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path" || \
