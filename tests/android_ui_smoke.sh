@@ -1733,6 +1733,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
+folder_label = sys.argv[2]
 nodes = list(root.iter("node"))
 required = [
     "MPC One Main Toolbar",
@@ -3110,10 +3111,22 @@ for tree_return_attempt in {1..25}; do
     | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
   if grep -Fq -- "$PACKAGE" <<<"$tree_return_activity"; then tree_app_resumed=1; break; fi
   if dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
-    if grep -Eiq 'text="Allow"|text="ALLOW"' "$TREE_PICKER_XML"; then
-      if ! tap_ui_text "$TREE_PICKER_XML" "Allow"; then
+    tree_allow_label="$(python3 - "$TREE_PICKER_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    label = node.attrib.get("text", "").strip()
+    if label.casefold() == "allow":
+        print(label)
+        break
+PY
+)"
+    if [[ -n "$tree_allow_label" ]]; then
+      if ! tap_ui_text "$TREE_PICKER_XML" "$tree_allow_label"; then
         echo "ERROR: could not accept DocumentsUI storage permission confirmation"; exit 1
       fi
+    fi
     fi
   fi
   sleep 1
