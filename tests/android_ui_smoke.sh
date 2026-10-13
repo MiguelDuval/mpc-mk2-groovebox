@@ -1733,7 +1733,6 @@ import sys
 import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
-folder_label = sys.argv[2]
 nodes = list(root.iter("node"))
 required = [
     "MPC One Main Toolbar",
@@ -2523,6 +2522,7 @@ picker_folder_row_fully_visible() {
 import sys
 import xml.etree.ElementTree as ET
 root = ET.parse(sys.argv[1]).getroot()
+folder_label = sys.argv[2]
 nodes = list(root.iter("node"))
 parents = {child: parent for parent in nodes for child in list(parent)}
 def rect(raw):
