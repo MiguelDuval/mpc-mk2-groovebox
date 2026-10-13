@@ -596,3 +596,18 @@ This conflicts with the current migration vocabulary that uses CLIP and omits AU
 `ACVS/layout/Help.json` has 51 help entries and includes mouse/hover/window vocabulary, while the same executable contains touch-specific Main classes. This supports a shared/multiple-interface resource interpretation and reinforces the boundary: panel JSON dimensions remain unverified as physical MPC One Main geometry. Do not apply them to Android without corroboration.
 
 Full evidence: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`; machine-readable summary: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`.
+
+
+## 29. 2026-10-13 — Local Browser end-to-end acceptance
+
+Android Build #2701 completed SUCCESS on implementation SHA `f325676ecd147426952bfda4c1e160cc620489bd` (57/57 workflow steps). This closes the local Browser select/load path previously left open in Sections 27–28.
+
+- MediaStore-backed WAV rows, positive/negative Search, Clear, real-result filtering, selected-file identity, genuine MediaPlayer audition and native sampler assignment passed runtime smoke.
+- Android Document Picker selection → return → target Pad/Layer preservation and assigned-sample feedback passed.
+- Android `ACTION_OPEN_DOCUMENT_TREE` persisted read access, real direct-child WAV rows, provider-specific filtering, and restoration of the saved USER FOLDER plus real file after app process stop/relaunch passed.
+- The downloadable evidence archive for that SHA was inspected. It contains the Browser result screenshot/XML, Document Picker assignment screenshot/XML, and restored folder screenshot/XML; the restored hierarchy confirms `USER FOLDER • 1 WAV FILE INDEXED` and `TARGET • PAD 01 / LAYER 01`.
+- No realtime audio callback, sampler engine, sequencer scheduler/clock, MIDI transport, raw MPC Studio MkII decoder or hardware SysEx layer was rewritten. Physical controller validation remains pending.
+
+**Remaining Browser gaps:** favourite locations 1–5 are not yet stored/restored, and categories without genuine providers remain unavailable/no-result. Splice and commercial surfaces remain intentionally excluded.
+
+**Next discrepancy to audit:** the Gen1 firmware Main Track Type selector assets and official v3.9 Guide indicate AUDIO / CV / DRUM / KEYGROUP / MIDI / PLUGIN. Native `TrackKind` reports AUDIO, but Android `MpcTrackTypeIconDrawable.Type` currently contains CLIP instead of AUDIO. Keep this distinct from Program Type/Clip-related strip vocabulary; make a small mapping/test correction without fabricating a Track Type conversion backend.

@@ -5,6 +5,32 @@
 
 > **Freshness rule:** This checkpoint will itself be committed after the pre-checkpoint SHA above. Therefore, it does **not** claim CI success for the commit containing this state refresh. On every session start, verify the live PR head, branch HEAD, latest Android Build and artifact files. Do not rely on remembered commit numbers or on this checkpoint instead of GitHub.
 
+## Current verified checkpoint — 2026-10-13 19:57 UTC
+
+**Live source of truth:** branch `feature/mpc-one-ui-fidelity`, PR #23 OPEN / not merged, base `fix/ui-shell-format-width-startup`. The implementation SHA below was independently matched to the live branch and PR head before this checkpoint was prepared.
+
+### Android Build #2701 — SUCCESS
+
+- Tested SHA: `f325676ecd147426952bfda4c1e160cc620489bd`.
+- Run: [Android Build #2701](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38457819068); **57/57 workflow steps passed**, including all native/JVM tests, APK assembly/upload, Android emulator runtime smoke and visual-evidence upload.
+- Runtime smoke verified the real MediaStore WAV workflow: positive/negative search, Clear, PROJECTS and ALL/SAMPLES filtering, result selection, genuine MediaPlayer audition, and native sample assignment.
+- Runtime smoke also selected a real WAV inside Android Document Picker, returned to Browser and verified sample/target feedback for **PAD 01 / LAYER 01**.
+- The user-selected `ACTION_OPEN_DOCUMENT_TREE` folder returned a real WAV row; PROJECTS/SAMPLES/ALL filters acted on its actual contents. After `am force-stop` and a fresh `ui-only` app launch, the saved USER FOLDER destination and persisted SAF read grant restored the same real WAV result.
+- The preceding Android Builds #2699 and #2700 failed only at the final process-restart accessibility/hierarchy assertion. The #2701 harness launches the post-stop check in the existing UI-only diagnostic mode, avoiding unrelated full audio/MIDI startup navigation. The restoration/result assertions remain intact; they were not weakened.
+
+### Verified artifacts for SHA `f325676ecd147426952bfda4c1e160cc620489bd`
+
+- APK artifact ID `11845196080`, 8,211,869 bytes; downloaded and ZIP-integrity checked. APK SHA-256: `4a226d5db99a853fcdb96889ebea2b287d2275bfb97afaff146457a4055af6ec`.
+- Visual evidence artifact ID `11844421772`, 1,373,722 bytes; SHA-256: `61f485fb46b678d01a1c39a447d085478a976c16619fbb473177ae044df5f92e`. Its ZIP integrity was checked; 21 files are present, including the actual Browser local-results screenshot/XML, Document Picker assignment screenshot/XML, and user-folder-restored screenshot/XML. The restored hierarchy reports `USER FOLDER • 1 WAV FILE INDEXED`, the tree-only WAV result, and `TARGET • PAD 01 / LAYER 01`.
+- Physical MPC Studio MkII verification remains **PENDING**; these results are Android emulator evidence only.
+
+### Still incomplete / next task
+
+- Favourite folders 1–5 remain explicitly unconfigured and are **not** implemented as persisted favourites.
+- Unsupported categories/locations without providers must continue to report truthful unavailable/no-results states. Splice, commercial stores, upsells and unnecessary vendor cloud/account dependencies remain excluded.
+- Next source task: reconcile the known Main Track Type discrepancy. Native `TrackKind` exposes `AUDIO`, while the Android Track Type icon vocabulary currently substitutes `CLIP`; inspect icon mapping, selection/focus affordances and smoke contracts before a small change. Do not invent a Track Type conversion operation that has no backend contract.
+- This is the last fully verified implementation SHA at checkpoint time. This documentation refresh creates a new SHA; verify Android Build on that resulting SHA before treating it as current-HEAD validated.
+
 ## 1. Repository and safety
 
 - Repository: `MiguelDuval/mpc-mk2-groovebox`
@@ -42,8 +68,10 @@ The official Akai reference can document its own commercial taxonomy. That is hi
 - **Main shell:** toolbar, five-slot Shortcut Rail, XL Channel Strip host, workspace and Function Bar exist. Fidelity is improved but exact visual and behavioral parity is incomplete.
 - **Browser:** Splice has been removed from the actual Content navigation. Regression preflight requires its absence. Generic local categories retained include Drums, Instruments, Samples, Demos and My Files.
 - **Browser core local WAV slice — IMPLEMENTED and emulator-verified:** MediaStore-backed result rows, selected-file identity, real MediaPlayer audition, and assignment through the existing native sampler operation are complete. Full runtime smoke now additionally verifies positive/negative Search, Clear, PROJECTS filtering and ALL/SAMPLES restoration on real result rows.
-- **Browser remains PARTIAL:** indexed WAV results currently work in `PLACES/INTERNAL`, `CONTENT/SAMPLES`, and `CONTENT/MY FILES`. Other categories show honest no-provider states. User-selected document-tree roots via `ACTION_OPEN_DOCUMENT_TREE`, persisted/restored favourite locations, and actual SAF file-pick → return → Pad/Layer target preservation remain unimplemented/follow-up work.
-- **Sample workflow:** MediaStore result assignment and actual audition are verified. The Document Picker route still uses the existing native WAV loader and snapshots the intended Pad/Layer; only picker launch is currently verified on Android smoke. A real picker selection/return/assignment test is next.
+- **Browser core local workflow — IMPLEMENTED and emulator-verified:** MediaStore-backed real WAV rows; positive/negative Search, Clear and file-type filters; actual file selection and MediaPlayer audition; native sampler assignment; and visible target/current-sample feedback.
+- **Browser SAF folder workflow — IMPLEMENTED and emulator-verified:** `ACTION_OPEN_DOCUMENT_TREE`, persistable read permission, real direct-child WAV results, Search/filter behavior over that provider, SharedPreferences URI/name storage, and restoration of the USER FOLDER destination/result after a full app process stop/relaunch all passed Android Build #2701.
+- **Android Document Picker load — E2E-verified:** selecting a real WAV in the picker returns to the app and assigns it through the existing sampler path to the snapshotted target Pad/Layer. Build #2701 evidence confirms `CURRENT SAMPLE` and `ASSIGNED` for PAD 01 / LAYER 01.
+- **Browser remains PARTIAL:** favourite folders 1–5 are not actually persisted/implemented; MPC DOCUMENTS, CONNECTED STORAGE, non-Samples content categories and expansion providers stay unavailable/no-result unless connected to real sources. Do not describe decorative navigation as implemented storage access.
 - **Track View / Arrange / Grid / Step:** partial; reuse existing event/domain operations and preserve explicit unavailable states for unsupported edits/non-Drum tracks.
 - **Sampler / Sample Edit:** substantial existing software/UI foundation (recording, monitor/threshold, waveform, region, crop/chop and layer semantics). Reuse, do not rewrite.
 - **Pad Mixer:** real Level/Pan/Tune subset exists. Full Channel Mixer/routing/FX remain incomplete.
@@ -72,14 +100,16 @@ Do not dump/re-read all large docs every session. Read this state, the protocol 
 4. The APK and evidence archives were downloaded and inspected. Exact identifiers, SHA-256 sums and screenshot/XML evidence are recorded in section 3 above.
 5. The next documentation-only commit will have a new SHA and must be checked against its own workflow.
 
-### Task 1 — validate the Android Document Picker assignment path (next)
+### Task 1 — Local Browser E2E acceptance — PASSED 2026-10-13
 
-Keep the work bounded; preserve the existing picker and native loader rather than rewriting storage or audio.
+1. Android Document Picker select → return → native assignment to the preserved Pad/Layer passed on Build #2701.
+2. Android user document-tree selection, real WAV rows, filters, persisted URI/read-grant restoration after process stop/relaunch passed on Build #2701.
+3. Actual APK and visual-evidence artifacts for exact SHA `f325676ecd147426952bfda4c1e160cc620489bd` were downloaded and inspected. Run, IDs, hashes and evidence files are recorded in the current checkpoint above.
+4. Keep the storage workflow intact. Add favourite locations only when actual storage, persistence/restoration and tests are implemented.
 
-1. Extend emulator smoke to launch Browser LOAD / Android Document Picker, select the known local WAV fixture, return to the app, and assert the intended Pad/Layer target survived the activity round-trip.
-2. Assert the actual selected filename and native sampler state after return/assignment—not just that the picker opened. Keep the MediaStore workflow green.
-3. Then design a separate document-tree slice using `ACTION_OPEN_DOCUMENT_TREE`, persistable URI permissions, restoration after app/activity recreation, and actual folder-backed Browser results. Only add favourite folders with storage-and-restoration tests.
-4. Continue excluding Splice/marketplaces/paid-content promotion and leave unsupported categories truthfully unavailable.
+### Task 2 — reconcile Main Track Type vocabulary — NEXT
+
+Audit `MpcTrackTypeIconDrawable`, `MainActivity.refreshMainTrackTypeVisuals()/trackTypeIconDrawable()`, relevant smoke assertions, and native `TrackKind`. The Android icon enum currently uses CLIP where native Main Track Type reporting includes AUDIO. Keep Program Type / Clip/Arrangement concepts distinct. Preserve truthful RESERVED behavior for type conversion because no existing-track conversion command has been established. Make a small correction with focused source tests, then run the full Android workflow for the finished slice.
 
 ### Task 2 — high-value musical contexts
 

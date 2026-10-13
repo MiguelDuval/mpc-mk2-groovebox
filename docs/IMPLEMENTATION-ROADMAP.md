@@ -693,11 +693,13 @@ MPC Standalone OS 3.9 remains the UI/interaction reference, but reproducing Akai
 
 ### Ordered implementation priorities
 
-1. **Core commercial exclusion DONE:** Splice is removed from product navigation and source smoke rejects its reintroduction. Re-audit when new Browser routes are added; do not restore stores, paid-content promotion, ads or upsells.
-2. **Local Browser IN PROGRESS:** on Android Build #2637 / code SHA `94ee3bfa9a8407d20ab6f0c69bde47519fe8fb07`, end-to-end tests pass for MediaStore WAV rows, positive/negative Search, Clear, PROJECTS/ALL/SAMPLES result changes, selection, audition, and native sample assignment. Next validate actual SAF file-pick/return and target persistence, then implement a user-selected document tree and persisted favourites only with permission/restoration tests.
-3. **Local sample slice PARTIALLY DONE:** MediaStore selection → genuine audition → native load/assign → visible Pad 01 / Layer 01/current-sample feedback is E2E-verified. The Android Document Picker currently passes launch smoke only; selecting a file inside it and proving target preservation after returning needs a dedicated runtime test.
-4. Improve Track, Arrange, Grid and Step based on high-frequency musical scenarios, then deepen mixer/project persistence where supported by existing semantics.
-5. Continue checking hardware ergonomics separately; emulator success is not physical MkII verification.
+1. **Core commercial exclusion DONE:** Splice is absent from product navigation and source smoke rejects its reintroduction. Keep stores, paid-content promotion, advertising and upsells excluded.
+2. **Local Browser core E2E — VERIFIED:** Android Build #2701 on `f325676ecd147426952bfda4c1e160cc620489bd` passed MediaStore WAV discovery; positive/negative Search, Clear and real-result filter changes; selection, genuine audition and native assignment.
+3. **Android Document Picker load — VERIFIED:** smoke selected a real WAV inside the picker, returned to Browser and verified target Pad/Layer plus sample-assignment feedback.
+4. **User-selected local folder / persisted SAF grant — VERIFIED:** real tree-backed WAV results and PROJECTS/SAMPLES/ALL filters passed; after app process stop/relaunch, the USER FOLDER destination, persisted URI permission and real WAV result were restored.
+5. **Still incomplete:** favourite folders are not yet genuinely persisted. MPC DOCUMENTS, CONNECTED STORAGE and other categories without a real provider remain unavailable/no-result, never fake populated.
+6. **Next implementation slice:** correct the Main Track Type vocabulary mismatch (native `AUDIO` vs Android `CLIP` selector icon enum), inspect test contracts, and keep conversion actions truthful until a backend operation exists. Then improve Track, Arrange, Grid and Step through complete musical workflows.
+7. Physical MPC Studio MkII behavior remains pending; emulator success is not hardware verification.
 
 ### Definition of done for a roadmap item
 
