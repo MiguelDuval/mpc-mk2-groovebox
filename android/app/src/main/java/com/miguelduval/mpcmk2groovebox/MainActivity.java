@@ -75,6 +75,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int REQUEST_MONITOR_AUDIO = 1003;
     private static final int REQUEST_SCAN_LOCAL_AUDIO = 1004;
     private static final int REQUEST_OPEN_DOCUMENT_TREE = 1005;
+    private static final String TRACK_TYPE_CHANGE_RESERVED_STATUS =
+            "TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation";
     private static final String BROWSER_STORAGE_PREFERENCES = "mpc_browser_storage";
     private static final String PREF_USER_TREE_URI = "user_tree_uri";
     private static final String PREF_USER_TREE_NAME = "user_tree_name";
@@ -4383,16 +4385,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         iconButton.setPadding(0, 0, 0, 0);
         iconButton.setBackground(strokeBackground(
                 MPC_PANEL_DARK, MPC_PANEL_BORDER, MPC_FLAT_RADIUS_DP));
-        iconButton.setOnClickListener(v -> {
-            navigationController.setSubcontext(
-                    MpcUiState.Subcontext.TRACK_TYPE_SELECT);
-            navigationController.setDataDialFocus(
-                    MpcUiState.DataDialFocus.TRACK_TYPE);
-            navigationController.setActionAvailable(true);
-            setBottomStatus(
-                    "TRACK TYPE SELECT • DATA DIAL / +/-");
-            refreshMainDataDialFocusVisuals();
-        });
+        iconButton.setOnClickListener(v ->
+                setBottomStatus(TRACK_TYPE_CHANGE_RESERVED_STATUS));
         strip.addView(
                 iconButton,
                 new LinearLayout.LayoutParams(dp(34), dp(34)));
@@ -4468,8 +4462,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         iconButton.setAlpha(supported ? 1.0f : 0.58f);
         iconButton.setContentDescription(
                 "Main Track Type " + active
-                        + (supported ? " available" : " reserved")
-                        + " • tap to select");
+                        + (supported ? " • Drum workflow available" : " • workflow reserved")
+                        + " • type conversion unavailable"
+                        + (supported ? " • tap for status" : ""));
         iconButton.setBackground(strokeBackground(
                 focused ? MPC_SELECTED : MPC_PANEL_DARK,
                 focused ? MPC_SELECTION_RED : MPC_PANEL_BORDER,
@@ -4481,6 +4476,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 active == null ? "DRUM" : active.trim().toUpperCase(Locale.ROOT);
         final MpcTrackTypeIconDrawable.Type type;
         switch (value) {
+            case "DRUM":
+                type = MpcTrackTypeIconDrawable.Type.DRUM;
+                break;
             case "KEYGROUP":
                 type = MpcTrackTypeIconDrawable.Type.KEYGROUP;
                 break;
@@ -4490,8 +4488,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case "MIDI":
                 type = MpcTrackTypeIconDrawable.Type.MIDI;
                 break;
-            case "CLIP":
-                type = MpcTrackTypeIconDrawable.Type.CLIP;
+            case "AUDIO":
+                type = MpcTrackTypeIconDrawable.Type.AUDIO;
                 break;
             case "CV":
                 type = MpcTrackTypeIconDrawable.Type.CV;
@@ -12045,8 +12043,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
                 return;
             case MpcStudioMk2SemanticActions.TRACK_TYPE_SELECTION_CONTEXT:
-                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK_TYPE);
-                setBottomStatus("TRACK TYPE • reserved");
+                navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
+                setBottomStatus(TRACK_TYPE_CHANGE_RESERVED_STATUS);
+                refreshMainDataDialFocusVisuals();
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_DELTA:
             case MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA:
@@ -12749,8 +12749,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (hardwareFocusId() == 5) {
-            setBottomStatus(
-                    "TRACK TYPE • DRUM is the only implemented Track Type");
+            setBottomStatus(TRACK_TYPE_CHANGE_RESERVED_STATUS);
             refreshMainDataDialFocusVisuals();
             return;
         }

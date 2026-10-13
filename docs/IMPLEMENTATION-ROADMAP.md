@@ -698,8 +698,9 @@ MPC Standalone OS 3.9 remains the UI/interaction reference, but reproducing Akai
 3. **Android Document Picker load — VERIFIED:** smoke selected a real WAV inside the picker, returned to Browser and verified target Pad/Layer plus sample-assignment feedback.
 4. **User-selected local folder / persisted SAF grant — VERIFIED:** real tree-backed WAV results and PROJECTS/SAMPLES/ALL filters passed; after app process stop/relaunch, the USER FOLDER destination, persisted URI permission and real WAV result were restored.
 5. **Still incomplete:** favourite folders are not yet genuinely persisted. MPC DOCUMENTS, CONNECTED STORAGE and other categories without a real provider remain unavailable/no-result, never fake populated.
-6. **Next implementation slice:** correct the Main Track Type vocabulary mismatch (native `AUDIO` vs Android `CLIP` selector icon enum), inspect test contracts, and keep conversion actions truthful until a backend operation exists. Then improve Track, Arrange, Grid and Step through complete musical workflows.
-7. Physical MPC Studio MkII behavior remains pending; emulator success is not hardware verification.
+6. **Main Track Type vocabulary — source correction included in this changeset; exact-SHA CI required:** the Android Main icon maps native `AUDIO` and `DRUM` explicitly, uses an original Audio waveform glyph and removes `CLIP` from Track Type vocabulary. Touch/controller selection now reports RESERVED and does not enter a fake selector. No existing-track conversion API is fabricated. Accept this slice only after the full Android Build passes on the resulting commit SHA.
+7. **Next after that CI acceptance:** improve high-frequency Track, Arrange, Grid and Step musical scenarios through complete, tested workflows; then deepen mixer/project persistence according to real backend contracts.
+8. Physical MPC Studio MkII behavior remains pending; emulator success is not hardware verification.
 
 ### Definition of done for a roadmap item
 

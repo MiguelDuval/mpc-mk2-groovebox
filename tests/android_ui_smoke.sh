@@ -134,7 +134,7 @@ for required in \
   "Main Mode program ownership status" \
   "buildMainTrackTypeIconStrip" \
   "Main Mode selected Track Type icon" \
-  '"TRACK TYPE • DRUM is the only implemented Track Type"' \
+  'TRACK_TYPE_CHANGE_RESERVED_STATUS' \
   "buildMpcMenuTile" \
   "styleMpcMenuFooterButton" \
   "MPC Main BPM field • double-tap for numeric entry" \
@@ -327,7 +327,7 @@ for required in \
   'buildMainTrackTypeIconStrip()' \
   'trackTypeIconDrawable(' \
   'TRACKTYPE_ICON' \
-  'TRACK_TYPE_SELECT' \
+  'TRACK_TYPE_CHANGE_RESERVED_STATUS' \
   'cleanTrackDisplayName(' ; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Main Track Type fidelity presentation contract missing: $required"
@@ -357,7 +357,7 @@ for required in \
   'MpcTrackTypeIconDrawable.Type.KEYGROUP' \
   'MpcTrackTypeIconDrawable.Type.PLUGIN' \
   'MpcTrackTypeIconDrawable.Type.MIDI' \
-  'MpcTrackTypeIconDrawable.Type.CLIP' \
+  'MpcTrackTypeIconDrawable.Type.AUDIO' \
   'MpcTrackTypeIconDrawable.Type.CV' \
   'setForeground(icon)' \
   'Main Track Type ' \
@@ -369,6 +369,27 @@ for required in \
     exit 1
   fi
 done
+track_type_map_start=$(grep -n -m1 'private MpcTrackTypeIconDrawable trackTypeIconDrawable(String active)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+track_type_map_end=$(awk -v start="$track_type_map_start" 'NR > start && /^    private / { print NR; exit }' "$MAIN_ACTIVITY_SOURCE")
+if [[ -z "$track_type_map_start" || -z "$track_type_map_end" || "$track_type_map_end" -le "$track_type_map_start" ]]; then
+  echo "ERROR: Main Track Type native-label mapping source boundary is missing"
+  exit 1
+fi
+track_type_map_block=$(sed -n "${track_type_map_start},$((track_type_map_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+for required in 'case "AUDIO":' 'type = MpcTrackTypeIconDrawable.Type.AUDIO;' 'case "DRUM":' 'type = MpcTrackTypeIconDrawable.Type.DRUM;' 'case "CV":'; do
+  if ! grep -Fq -- "$required" <<<"$track_type_map_block"; then
+    echo "ERROR: native Main Track Type vocabulary mapping missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'case "CLIP":' <<<"$track_type_map_block" || \
+   grep -Fq -- 'Type.CLIP' "$MAIN_ACTIVITY_SOURCE" || \
+   grep -Fq -- 'Type.CLIP' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackTypeIconDrawable.java" || \
+   grep -Fq -- 'private void clip(' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackTypeIconDrawable.java"; then
+  echo "ERROR: Clip/Arrangement vocabulary must not stand in for the AUDIO Main Track Type"
+  exit 1
+fi
+
 if grep -Fq -- 'findViewWithContentDescription(\n                content, "Main Mode track type selector")' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track Type must not retain a second selector lookup after unified field migration"
   exit 1
@@ -830,7 +851,11 @@ if ! grep -Fq -- 'PROGRAM SELECT • DRUM TRACK REQUIRED' "$MAIN_ACTIVITY_SOURCE
   exit 1
 fi
 
-if ! grep -Fq -- 'TRACK TYPE • DRUM is the only implemented Track Type' "$MAIN_ACTIVITY_SOURCE"; then
+if grep -Fq -- 'MpcUiState.Subcontext.TRACK_TYPE_SELECT' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track Type must not enter a selector state without a real conversion backend"
+  exit 1
+fi
+if ! grep -Fq -- 'TRACK_TYPE_CHANGE_RESERVED_STATUS' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Track Type Data Dial must remain truthful/reserved instead of routing to another screen"
   exit 1
 fi
@@ -1757,7 +1782,15 @@ for description in required:
     x1, y1, x2, y2 = dimensions(found[0])
     if x2 <= x1 or y2 <= y1 or found[0].attrib.get("visible-to-user") == "false":
         raise AssertionError(f"Main control is not visible with positive bounds: {description!r}")
-print("Ready Main accessibility controls verified:", len(required))
+track_types = [
+    n for n in nodes
+    if n.attrib.get("content-desc", "").startswith("Main Track Type DRUM ")
+]
+if len(track_types) != 1:
+    raise AssertionError(f"expected one truthful Main Track Type state; got {len(track_types)}")
+if "type conversion unavailable" not in track_types[0].attrib.get("content-desc", ""):
+    raise AssertionError("Main Track Type must not advertise a missing conversion operation")
+print("Ready Main accessibility controls verified:", len(required), "+ Track Type truthfulness")
 PY
     then
       echo "ERROR: ready Main hierarchy failed canonical control checks"

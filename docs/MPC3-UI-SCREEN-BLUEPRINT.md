@@ -212,7 +212,7 @@ The Main surface should visually read as an MPC One / MPC3 instrument screen bef
 - The visible page title is not a separate Android-style title chip; the selected shortcut and active Main sections provide the context.
 - Track identity remains one coherent header band.
 - The selected Track's Program is visible directly beneath that header as a Track-owned field.
-- Track-type presentation uses one persistent icon attached to Track identity; tapping it opens the Track Type selection context, where unsupported types remain explicitly unavailable.
+- Track-type presentation uses one persistent icon attached to Track identity. A real Track Type chooser is a future interaction only when an existing-track conversion command exists; until then, touch/controller requests report RESERVED and must not enter a fake selector context.
 - Shortcut and Function Bar controls use flat rectangular surfaces with clear focus/selection state rather than generic rounded Android cards.
 
 ### 2026-10-06 Main Sequence/Track framing fidelity checkpoint
@@ -1106,7 +1106,7 @@ The Main Track header now reserves the full six-choice Program Type affordance d
 - Clip;
 - CV.
 
-Only Drum is enabled because it is the only Track Type with a truthful backend in the current build. The complete six-icon presentation remains visible so the Main screen follows the reference hierarchy without inventing unsupported behavior.
+The reference taxonomy has six types: Audio, CV, Drum, Keygroup, MIDI and Plugin. Main renders only the active Track Type icon, not a persistent six-icon cluster. The current native `TrackKind` has Audio, Drum, Keygroup, Plugin and MIDI, but not CV; only Drum editing is fully wired for Main's sampler workflow. Other workflows and all existing-track type conversion remain explicitly RESERVED until the relevant semantic operations exist.
 
 ## 2026-10-03 Main shell geometry fidelity checkpoint
 
@@ -1272,3 +1272,12 @@ The 3.9.1 Gen1 firmware's selector-asset folder contains six Track Type icons: *
 **Current discrepancy to audit:** project UI/migration labels have used CLIP and omitted AUDIO in the Track Type list. Before the next Track Type UI implementation, align the visible chooser and tests with the official reference and confirm any version-specific exception on real MPC One OS 3.9.1. Clip/Arrangement remains a separate screen/workflow concept. Do not change the domain model or claim a Clip Track Type based only on a class name such as `TouchMainPageTrackClipPanel`.
 
 Firmware class-name anchors include `TouchMainPage`, `TouchMainPageNavigationPanel`, `TouchMainPageContentPanel`, track-specific panel families, `TouchMainModeMixerProperties`, `TouchMixerChannelStripMPC` and `TouchDoubleChannelStripContainer`. They support the separation of Main content, track context and Mixer presentation but do not establish precise panel geometry or runtime transitions. See the firmware static-analysis report for confidence and limitations.
+
+
+## 2026-10-13 Main Track Type vocabulary and selection truthfulness
+
+The Main Track Type icon enum now uses **AUDIO** rather than **CLIP**. `MainActivity.trackTypeIconDrawable()` explicitly maps the native `AUDIO` and `DRUM` labels; Audio has an original waveform-line glyph. The six-type reference taxonomy remains Audio/CV/Drum/Keygroup/MIDI/Plugin, and Clip/Arrangement terminology stays separate.
+
+The current native `TrackKind` does not define CV and there is no operation for converting an existing Track's type. Accordingly, the icon describes the current type; touch or controller Track Type selection reports `TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation` rather than navigating to a nonfunctional chooser. Drum workflow is preserved; non-Drum editing/type conversion remain unavailable.
+
+The source smoke now checks the exact AUDIO/DRUM/CV mapping branches, rejects CLIP-as-Track-Type and verifies the Main accessibility description states that conversion is unavailable. Check the full Android Build tied to the resulting commit SHA before treating this correction as accepted. Physical MPC One / MPC Studio MkII validation remains separate.

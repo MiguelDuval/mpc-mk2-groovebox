@@ -20,7 +20,7 @@ final class MpcTrackTypeIconDrawable extends Drawable {
         KEYGROUP,
         PLUGIN,
         MIDI,
-        CLIP,
+        AUDIO,
         CV
     }
 
@@ -73,8 +73,8 @@ final class MpcTrackTypeIconDrawable extends Drawable {
             case MIDI:
                 midi(canvas, cx, cy, s);
                 break;
-            case CLIP:
-                clip(canvas, cx, cy, s);
+            case AUDIO:
+                audio(canvas, cx, cy, s);
                 break;
             case CV:
                 cv(canvas, cx, cy, s);
@@ -90,6 +90,17 @@ final class MpcTrackTypeIconDrawable extends Drawable {
                 final float top = y + row * cell * 1.35f - cell * 0.5f;
                 c.drawRect(left, top, left + cell, top + cell, paint);
             }
+        }
+    }
+
+    private void audio(Canvas c, float x, float y, float s) {
+        final float[] halfHeights = {0.22f, 0.55f, 0.34f, 0.92f, 0.48f, 0.70f, 0.26f};
+        final float halfWidth = s * 0.9f;
+        for (int i = 0; i < halfHeights.length; i++) {
+            final float px = x - halfWidth
+                    + 2.0f * halfWidth * i / (halfHeights.length - 1);
+            final float amplitude = s * halfHeights[i];
+            c.drawLine(px, y - amplitude, px, y + amplitude, paint);
         }
     }
 
@@ -132,19 +143,6 @@ final class MpcTrackTypeIconDrawable extends Drawable {
         for (float offset : dx) {
             c.drawCircle(x + offset * s, y + s * 0.08f, r, paint);
         }
-    }
-
-    private void clip(Canvas c, float x, float y, float s) {
-        final Path p = new Path();
-        p.moveTo(x - s, y - s);
-        p.lineTo(x + s * 0.35f, y - s);
-        p.lineTo(x + s, y - s * 0.35f);
-        p.lineTo(x + s, y + s);
-        p.lineTo(x - s, y + s);
-        p.close();
-        c.drawPath(p, paint);
-        c.drawLine(x + s * 0.35f, y - s, x + s * 0.35f, y - s * 0.35f, paint);
-        c.drawLine(x + s * 0.35f, y - s * 0.35f, x + s, y - s * 0.35f, paint);
     }
 
     private void cv(Canvas c, float x, float y, float s) {

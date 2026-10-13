@@ -611,3 +611,14 @@ Android Build #2701 completed SUCCESS on implementation SHA `f325676ecd147426952
 **Remaining Browser gaps:** favourite locations 1–5 are not yet stored/restored, and categories without genuine providers remain unavailable/no-result. Splice and commercial surfaces remain intentionally excluded.
 
 **Next discrepancy to audit:** the Gen1 firmware Main Track Type selector assets and official v3.9 Guide indicate AUDIO / CV / DRUM / KEYGROUP / MIDI / PLUGIN. Native `TrackKind` reports AUDIO, but Android `MpcTrackTypeIconDrawable.Type` currently contains CLIP instead of AUDIO. Keep this distinct from Program Type/Clip-related strip vocabulary; make a small mapping/test correction without fabricating a Track Type conversion backend.
+
+
+## 30. 2026-10-13 — Main Track Type vocabulary and truthful selection status
+
+The Gen1 firmware evidence from Section 28 is now applied to the Main Track Type icon surface. The source update explicitly maps native `AUDIO` and `DRUM` labels, replaces the misleading CLIP icon with an original waveform-line AUDIO glyph, and keeps the reference vocabulary distinct from Program Type / Clip-Arrangement terminology.
+
+- Main Track Type label set remains the six reference types Audio / CV / Drum / Keygroup / MIDI / Plugin. Native `TrackKind` currently contains Audio / Drum / Keygroup / Plugin / MIDI and has no CV kind; CV remains reference-only/unavailable for native track creation in this build.
+- The Main header continues to show one icon for the currently selected type, not a six-icon cluster. Drum editing remains supported. Other non-Drum editing workflows and conversion of an existing Track's type remain explicitly RESERVED until semantic backend operations exist.
+- The touch affordance and hardware `TRACK_TYPE_SELECTION_CONTEXT` now report `TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation`; neither enters a fake Track Type Select state. No type conversion is emulated using unrelated `addTrack` operations.
+- Smoke assertions verify the native AUDIO and DRUM mapping branches, keep CV visibly in the documented icon taxonomy, reject CLIP in Track Type mapping/icon vocabulary and inspect the actual Main accessibility description for an unavailable-conversion state.
+- No realtime audio callback, sampler engine, sequencer scheduler/clock, MIDI transport, raw MkII decoder or SysEx protocol was changed. Verify the full Android Build against the resulting new SHA before acceptance; physical controller testing remains pending.
