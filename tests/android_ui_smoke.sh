@@ -1657,7 +1657,7 @@ cat > "$TREE_PREFS_HOST" <<EOF
   <string name="user_tree_name">${TREE_FOLDER_NAME}</string>
 </map>
 EOF
-TREE_PREFS_B64="$(base64 < "$TREE_PREFS_HOST" | tr -d '\\r\\n')"
+TREE_PREFS_B64="$(base64 < "$TREE_PREFS_HOST" | tr -d '\r\n')"
 if [[ -z "$TREE_PREFS_B64" ]]; then
   echo "ERROR: could not encode the ungranted initial Browser tree location"; exit 1
 fi
