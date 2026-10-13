@@ -3173,7 +3173,9 @@ fi
 if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
   echo "ERROR: could not stop the app for tree permission restoration test"; exit 1
 fi
-if ! adb_bounded 30 shell am start -W -n "$ACTIVITY"; then
+# Start a fresh default-intent task, not the earlier ui-audit task used by the smoke harness.
+# The saved SAF grant/URI live in app/system storage and survive clearing the Activity task.
+if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY"; then
   echo "ERROR: could not restart app for tree permission restoration test"; exit 1
 fi
 if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Browser" 40; then
