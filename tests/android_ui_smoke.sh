@@ -2363,7 +2363,8 @@ PY
     # Send both taps in one remote-shell command so ADB startup latency does
     # not split them into two ordinary focus-only taps. Avoid nested "sh -c"
     # quoting; the Android shell receives the semicolon sequence directly.
-    if ! adb_bounded 10 shell "input tap $tap_x $tap_y; sleep 0.08; input tap $tap_x $tap_y"; then
+    echo "DocumentsUI tap: $tap_mode $tap_kind '$expected_text' at $tap_x,$tap_y" >&2
+    if ! adb_bounded 10 shell "input tap $tap_x $tap_y; sleep 0.35; input tap $tap_x $tap_y"; then
       echo "ERROR: could not double-tap DocumentsUI result row $expected_text"
       return 1
     fi
@@ -2515,6 +2516,73 @@ PY
 # Test the physical hit target, not merely the presence of an accessibility
 # label. DocumentsUI includes partially clipped/preloaded rows in UIAutomator XML;
 # such rows may sit under the fixed "Use this folder" footer and cannot be tapped.
+picker_folder_row_fully_visible() {
+  local hierarchy_path="$1" folder_label="$2"
+  python3 - "$hierarchy_path" "$folder_label" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+def rect(raw):
+    try:
+        a, b = raw[1:-1].split("][")
+        x1, y1 = map(int, a.split(","))
+        x2, y2 = map(int, b.split(","))
+        return x1, y1, x2, y2
+    except (ValueError, IndexError):
+        return None
+footer = next((rect(n.attrib.get("bounds", "")) for n in nodes
+               if n.attrib.get("resource-id") == "com.android.documentsui:id/container_save"), None)
+directory = next((rect(n.attrib.get("bounds", "")) for n in nodes
+                  if n.attrib.get("resource-id") == "com.android.documentsui:id/dir_list"), None)
+if not footer or not directory:
+    raise SystemExit(1)
+for n in nodes:
+    if n.attrib.get("text", "").strip() != folder_label:
+        continue
+    current, row = n, None
+    while current is not None:
+        if current.attrib.get("resource-id") == "com.android.documentsui:id/item_root":
+            row = rect(current.attrib.get("bounds", ""))
+            break
+        current = parents.get(current)
+    if not row:
+        continue
+    left, top, right, bottom = row
+    if left >= 0 and right <= directory[2] and top >= directory[1] and bottom <= min(directory[3], footer[1] - 8):
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+}
+
+tap_ui_picker_folder_until_child() {
+  local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
+  # Open the real folder, not its parent/root selection. Try an explicit rapid
+  # double-tap on the full, fully-visible row, then on the title text.
+  if ! picker_folder_row_fully_visible "$hierarchy_path" "$folder_label"; then
+    echo "ERROR: target SAF folder is not fully visible above the picker footer: $folder_label"
+    return 1
+  fi
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double row; then
+    echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"; return 1
+  fi
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 8; then return 0; fi
+  if ! dump_device_ui "$remote_path" "$hierarchy_path"; then
+    echo "ERROR: could not refresh DocumentsUI after row activation"; return 1
+  fi
+  if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path"; then
+    echo "ERROR: DocumentsUI left the root without exposing $child_label"; return 1
+  fi
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double; then
+    echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"; return 1
+  fi
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then return 0; fi
+  adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png || true
+  echo "ERROR: tapping the actual DocumentsUI folder did not expose $child_label"
+  return 1
+}
+
 wait_for_ui_text_pair() {
   local hierarchy_path="$1" remote_path="$2" first="$3" second="$4" max_attempts="$5"
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
@@ -2996,21 +3064,28 @@ fi
 if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png; then
   echo "ERROR: could not capture initial document-tree picker screenshot"; exit 1
 fi
-# The app supplied a saved-but-ungranted EXTRA_INITIAL_URI for this real
-# fixture directory. DocumentsUI must open inside that directory and expose its
-# actual WAV child. This avoids provider-specific row-tap heuristics while still
-# requiring a real user-approved SAF grant below.
-if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 20; then
-  adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png || true
-  echo "ERROR: ACTION_OPEN_DOCUMENT_TREE did not honor EXTRA_INITIAL_URI for the fixture folder"
-  python3 - "$TREE_PICKER_XML" <<'PY'
-import sys, xml.etree.ElementTree as ET
-for n in ET.parse(sys.argv[1]).getroot().iter("node"):
-    t=n.attrib.get("text", "").strip()
-    d=n.attrib.get("content-desc", "").strip()
-    if t or d: print(f"text={t!r} desc={d!r}")
-PY
-  exit 1
+# First accept the direct initial-document URI when this provider honors it.
+# If DocumentsUI falls back to device root, navigate the real visible folder row.
+if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 4; then
+  if ! grep -Fq -- 'package="com.android.documentsui"' "$TREE_PICKER_XML"; then
+    echo "ERROR: DocumentsUI closed before exposing the selected-folder child"; exit 1
+  fi
+  # Current grid/list choice is persisted by DocumentsUI. Normalize to list mode
+  # so the whole row is a stable, non-clipped target; then inspect before tapping.
+  if grep -Fq -- 'content-desc="List view"' "$TREE_PICKER_XML"; then
+    if ! tap_ui_description "$TREE_PICKER_XML" "List view"; then
+      echo "ERROR: could not switch DocumentsUI to list mode"; exit 1
+    fi
+    if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
+      echo "ERROR: could not inspect DocumentsUI list mode"; exit 1
+    fi
+  fi
+  if ! picker_folder_row_fully_visible "$TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
+    echo "ERROR: target test folder is not fully visible in DocumentsUI"; exit 1
+  fi
+  if ! tap_ui_picker_folder_until_child "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" "$TREE_SAMPLE_NAME"; then
+    echo "ERROR: selected folder did not expose the actual tree-only WAV"; exit 1
+  fi
 fi
 TREE_USE_FOLDER_LABEL="USE THIS FOLDER"
 if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_USE_FOLDER_LABEL" 12; then
