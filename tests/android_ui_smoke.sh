@@ -2540,29 +2540,24 @@ PY
 
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  # On this DocumentsUI provider, the folder icon is the strongest
-  # navigation hit target. The fixture is alphabetically first and fully above
-  # the fixed footer, so activate the icon with a rapid double-tap.
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double icon; then
-    echo "ERROR: DocumentsUI folder icon is not actionable: $folder_label"
+  # The test folder is sorted first and picker_folder_row_fully_visible has
+  # verified its full item_root lies above the fixed footer. Target that row's
+  # center (not the nested TextView or icon) so the RecyclerView receives the
+  # normal directory click. Fall back to the existing focused-row route only
+  # if the child is still absent.
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" single row; then
+    echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"
     return 1
   fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 6; then
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 8; then
     return 0
   fi
-  # If the icon gesture only selected the row, try the actual title target while
-  # it is still fully visible. The child assertion prevents false success.
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double; then
-    echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"
+  if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path" || \
+     ! grep -Fq -- 'package="com.android.documentsui"' "$hierarchy_path"; then
+    echo "ERROR: DocumentsUI left the parent directory without exposing $child_label"
     return 1
-  fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
-    return 0
   fi
 
-  # On the emulator provider, touch events may leave the non-clickable row
-  # unfocused. Navigate using D-pad only until this exact folder's item_root is
-  # focused, then press Enter. Never send Enter against toolbar/other controls.
   local folder_focused=0
   for focus_attempt in {1..20}; do
     if python3 - "$hierarchy_path" "$folder_label" <<'PY'
