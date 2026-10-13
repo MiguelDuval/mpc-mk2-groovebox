@@ -5622,7 +5622,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
                 | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && browserUserTreeUri != null) {
-            intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, browserUserTreeUri);
+            // EXTRA_INITIAL_URI is a navigation hint, not the persisted tree grant.
+            // DocumentsUI implementations may ignore the raw /tree/... URI here;
+            // give the picker the corresponding document URI for the selected folder.
+            Uri initialUri = browserUserTreeUri;
+            try {
+                final String authority = browserUserTreeUri.getAuthority();
+                final String documentId = DocumentsContract.getTreeDocumentId(browserUserTreeUri);
+                if (authority != null && !authority.trim().isEmpty()
+                        && documentId != null && !documentId.trim().isEmpty()) {
+                    initialUri = DocumentsContract.buildDocumentUri(authority, documentId);
+                }
+            } catch (RuntimeException ignored) {
+                // Preserve the stored URI as best-effort fallback if a provider
+                // cannot expose its document ID; the SAF picker remains usable.
+            }
+            intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, initialUri);
         }
         try {
             startActivityForResult(intent, REQUEST_OPEN_DOCUMENT_TREE);
