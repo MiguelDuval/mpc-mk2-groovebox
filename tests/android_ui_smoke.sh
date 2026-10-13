@@ -2535,15 +2535,26 @@ PY
 
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  # The test folder is sorted first and picker_folder_row_fully_visible has
-  # verified its full item_root lies above the fixed footer. In this SAF tree
-  # picker, a single tap only leaves focus on the folder; use a true rapid
-  # double-tap on the full row to enter the directory.
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double row; then
-    echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"
+  # The folder is verified fully visible above the fixed footer. Try the
+  # provider's folder icon hit target, then the title, each as a genuine rapid
+  # double-tap in one shell session. Earlier row-center double-tap did not enter.
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double icon; then
+    echo "ERROR: DocumentsUI folder icon is not actionable: $folder_label"
     return 1
   fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 10; then
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 6; then
+    return 0
+  fi
+  if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path" || \
+     ! grep -Fq -- 'package="com.android.documentsui"' "$hierarchy_path"; then
+    echo "ERROR: DocumentsUI left the parent directory without exposing $child_label"
+    return 1
+  fi
+  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double; then
+    echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"
+    return 1
+  fi
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 8; then
     return 0
   fi
   if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path" || \
@@ -2552,6 +2563,9 @@ tap_ui_picker_folder_until_child() {
     return 1
   fi
 
+  # As a last resort use D-pad focus and DPAD_CENTER only while this exact
+  # item's item_root is focused. Do not send generic Enter or activate toolbar
+  # controls, and still require the real file child as proof of navigation.
   local folder_focused=0
   for focus_attempt in {1..20}; do
     if python3 - "$hierarchy_path" "$folder_label" <<'PY'
@@ -2587,7 +2601,7 @@ PY
     echo "ERROR: DocumentsUI never focused the intended folder row: $folder_label"
     return 1
   fi
-  if ! adb_bounded 5 shell input keyevent KEYCODE_ENTER; then
+  if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_CENTER; then
     echo "ERROR: could not activate focused DocumentsUI folder $folder_label"; return 1
   fi
   if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
