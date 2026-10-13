@@ -3127,7 +3127,6 @@ PY
         echo "ERROR: could not accept DocumentsUI storage permission confirmation"; exit 1
       fi
     fi
-    fi
   fi
   sleep 1
 done
