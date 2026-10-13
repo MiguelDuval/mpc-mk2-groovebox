@@ -1628,6 +1628,39 @@ if ! adb_bounded 120 install -r "$APK"; then
   exit 1
 fi
 
+# Prepare the real SAF tree fixture before Activity startup, then seed only the
+# app's saved *location hint* (not a grant). The normal ACTION_OPEN_DOCUMENT_TREE
+# flow must still grant access through Android's "Use this folder" action.
+TREE_FOLDER_NAME="AAA-MPC-Browser-Tree"
+TREE_SAMPLE_NAME="Browser-Tree-Only.wav"
+TREE_FOLDER_DEVICE="/sdcard/$TREE_FOLDER_NAME"
+TREE_SAMPLE_DEVICE="$TREE_FOLDER_DEVICE/$TREE_SAMPLE_NAME"
+TREE_MEDIA_QUERY="/tmp/mpc-browser-tree-not-in-mediastore.txt"
+TREE_PICKER_XML="/tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml"
+TREE_PICKER_REMOTE="/sdcard/mpc-groovebox-browser-tree-picker-uiautomator.xml"
+TREE_BROWSER_XML="/tmp/mpc-groovebox-browser-tree-results-uiautomator.xml"
+TREE_BROWSER_REMOTE="/sdcard/mpc-groovebox-browser-tree-results-uiautomator.xml"
+TREE_RESTORED_XML="/tmp/mpc-groovebox-browser-tree-restored-uiautomator.xml"
+TREE_RESTORED_REMOTE="/sdcard/mpc-groovebox-browser-tree-restored-uiautomator.xml"
+TREE_PREFS_HOST="/tmp/mpc-browser-storage-seed.xml"
+
+if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
+  echo "ERROR: could not create user-folder test fixture"; exit 1
+fi
+if ! adb_bounded 10 shell touch "$TREE_FOLDER_DEVICE/.nomedia"; then
+  echo "ERROR: could not protect the tree fixture from MediaStore indexing"; exit 1
+fi
+cat > "$TREE_PREFS_HOST" <<EOF
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+  <string name="user_tree_uri">content://com.android.externalstorage.documents/tree/primary%3A${TREE_FOLDER_NAME}</string>
+  <string name="user_tree_name">${TREE_FOLDER_NAME}</string>
+</map>
+EOF
+if ! adb_bounded 10 shell run-as "$PACKAGE" sh -c 'mkdir -p shared_prefs && cat > shared_prefs/mpc_browser_storage.xml' < "$TREE_PREFS_HOST"; then
+  echo "ERROR: could not seed the ungranted initial Browser tree location"; exit 1
+fi
+
 echo "Clearing logcat and launching MainActivity..."
 if ! adb_bounded 10 logcat -c; then
   echo "ERROR: adb logcat clear failed or timed out"
@@ -2475,142 +2508,6 @@ PY
 # Test the physical hit target, not merely the presence of an accessibility
 # label. DocumentsUI includes partially clipped/preloaded rows in UIAutomator XML;
 # such rows may sit under the fixed "Use this folder" footer and cannot be tapped.
-picker_folder_row_fully_visible() {
-  local hierarchy_path="$1" folder_label="$2"
-  python3 - "$hierarchy_path" "$folder_label" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
-
-path, label = sys.argv[1], sys.argv[2]
-root = ET.parse(path).getroot()
-nodes = list(root.iter("node"))
-parents = {child: parent for parent in nodes for child in list(parent)}
-
-def rect(raw):
-    try:
-        first, second = raw[1:-1].split("][")
-        left, top = map(int, first.split(","))
-        right, bottom = map(int, second.split(","))
-        return left, top, right, bottom
-    except (ValueError, IndexError):
-        return None
-
-footer = None
-directory = None
-for n in nodes:
-    rid = n.attrib.get("resource-id", "")
-    if rid == "com.android.documentsui:id/container_save":
-        footer = rect(n.attrib.get("bounds", ""))
-    elif rid == "com.android.documentsui:id/dir_list":
-        directory = rect(n.attrib.get("bounds", ""))
-
-if not footer or not directory:
-    raise SystemExit(1)
-footer_top = footer[1]
-list_top, _, list_right, list_bottom = directory
-
-for n in nodes:
-    if n.attrib.get("text", "").strip() != label:
-        continue
-    current = n
-    row = None
-    while current is not None:
-        if current.attrib.get("resource-id") == "com.android.documentsui:id/item_root":
-            candidate = rect(current.attrib.get("bounds", ""))
-            if candidate and candidate[2] > candidate[0] and candidate[3] > candidate[1]:
-                row = candidate
-                break
-        current = parents.get(current)
-    if not row:
-        continue
-    left, top, right, bottom = row
-    # The row must be fully inside the scrolling list and above the fixed footer.
-    if left >= 0 and right <= list_right and top >= list_top and bottom <= min(list_bottom, footer_top - 8):
-        label_rect = rect(n.attrib.get("bounds", ""))
-        if label_rect and label_rect[1] >= top and label_rect[3] <= bottom:
-            raise SystemExit(0)
-raise SystemExit(1)
-PY
-}
-
-tap_ui_picker_folder_until_child() {
-  local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  # The folder is verified fully visible above the fixed footer. Try the
-  # provider's folder icon hit target, then the title, each as a genuine rapid
-  # double-tap in one shell session. Earlier row-center double-tap did not enter.
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double icon; then
-    echo "ERROR: DocumentsUI folder icon is not actionable: $folder_label"
-    return 1
-  fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 6; then
-    return 0
-  fi
-  if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path" || \
-     ! grep -Fq -- 'package="com.android.documentsui"' "$hierarchy_path"; then
-    echo "ERROR: DocumentsUI left the parent directory without exposing $child_label"
-    return 1
-  fi
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double; then
-    echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"
-    return 1
-  fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 8; then
-    return 0
-  fi
-  if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path" || \
-     ! grep -Fq -- 'package="com.android.documentsui"' "$hierarchy_path"; then
-    echo "ERROR: DocumentsUI left the parent directory without exposing $child_label"
-    return 1
-  fi
-
-  # As a last resort use D-pad focus and DPAD_CENTER only while this exact
-  # item's item_root is focused. Do not send generic Enter or activate toolbar
-  # controls, and still require the real file child as proof of navigation.
-  local folder_focused=0
-  for focus_attempt in {1..20}; do
-    if python3 - "$hierarchy_path" "$folder_label" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
-path, label = sys.argv[1], sys.argv[2]
-root = ET.parse(path).getroot()
-nodes = list(root.iter("node"))
-parents = {child: parent for parent in nodes for child in list(parent)}
-for node in nodes:
-    if node.attrib.get("text", "").strip() != label:
-        continue
-    current = node
-    while current is not None:
-        if current.attrib.get("resource-id") == "com.android.documentsui:id/item_root":
-            raise SystemExit(0 if current.attrib.get("focused") == "true" else 1)
-        current = parents.get(current)
-raise SystemExit(1)
-PY
-    then
-      folder_focused=1
-      break
-    fi
-    if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_DOWN; then
-      echo "ERROR: could not move focus to DocumentsUI folder $folder_label"; return 1
-    fi
-    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then
-      echo "ERROR: could not inspect DocumentsUI while focusing $folder_label"; return 1
-    fi
-  done
-  if [[ "$folder_focused" != "1" ]]; then
-    adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png || true
-    echo "ERROR: DocumentsUI never focused the intended folder row: $folder_label"
-    return 1
-  fi
-  if ! adb_bounded 5 shell input keyevent KEYCODE_DPAD_CENTER; then
-    echo "ERROR: could not activate focused DocumentsUI folder $folder_label"; return 1
-  fi
-  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
-    adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png || true
-    echo "ERROR: focused folder $folder_label did not expose expected child $child_label"
-    return 1
-  fi
-}
-
 wait_for_ui_text_pair() {
   local hierarchy_path="$1" remote_path="$2" first="$3" second="$4" max_attempts="$5"
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
@@ -3030,18 +2927,6 @@ fi
 echo "Android Document Picker select → return → Pad/Layer assignment passed."
 
 echo "Running Android user document-tree → Browser results → persisted grant restoration..."
-TREE_FOLDER_NAME="AAA-MPC-Browser-Tree"
-TREE_SAMPLE_NAME="Browser-Tree-Only.wav"
-TREE_FOLDER_DEVICE="/sdcard/$TREE_FOLDER_NAME"
-TREE_SAMPLE_DEVICE="$TREE_FOLDER_DEVICE/$TREE_SAMPLE_NAME"
-TREE_MEDIA_QUERY="/tmp/mpc-browser-tree-not-in-mediastore.txt"
-TREE_PICKER_XML="/tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml"
-TREE_PICKER_REMOTE="/sdcard/mpc-groovebox-browser-tree-picker-uiautomator.xml"
-TREE_BROWSER_XML="/tmp/mpc-groovebox-browser-tree-results-uiautomator.xml"
-TREE_BROWSER_REMOTE="/sdcard/mpc-groovebox-browser-tree-results-uiautomator.xml"
-TREE_RESTORED_XML="/tmp/mpc-groovebox-browser-tree-restored-uiautomator.xml"
-TREE_RESTORED_REMOTE="/sdcard/mpc-groovebox-browser-tree-restored-uiautomator.xml"
-
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
   echo "ERROR: could not create user-folder test fixture"; exit 1
 fi
@@ -3104,92 +2989,21 @@ fi
 if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png; then
   echo "ERROR: could not capture initial document-tree picker screenshot"; exit 1
 fi
-# Grid cards exposed non-clickable text/icon nodes and taps never opened the
-# target directory. Switch to the provider's list-row layout where available.
-if grep -Fq -- 'content-desc="List view"' "$TREE_PICKER_XML"; then
-  if ! tap_ui_description "$TREE_PICKER_XML" "List view"; then
-    echo "ERROR: DocumentsUI List view control was visible but not actionable"; exit 1
-  fi
-  if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
-    echo "ERROR: could not inspect DocumentsUI list view"; exit 1
-  fi
-  if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png; then
-    echo "ERROR: could not capture DocumentsUI list view screenshot"; exit 1
-  fi
-fi
-# ACTION_OPEN_DOCUMENT_TREE starts at the internal-storage root on this
-# Android 16 emulator. Keep the isolated fixture as a direct child of that root
-# so this test doesn't depend on entering Download first (a provider-specific
-# navigation path). The storage root itself is intentionally not grantable.
-if ! grep -Fq -- "text=\"$TREE_FOLDER_NAME\"" "$TREE_PICKER_XML"; then
-  if ! grep -Fq -- 'text="Android SDK built for x86_64"' "$TREE_PICKER_XML" && \
-     ! grep -Fq -- 'text="Internal storage"' "$TREE_PICKER_XML" && \
-     ! grep -Fq -- 'text="Internal Storage"' "$TREE_PICKER_XML"; then
-    if ! tap_ui_description "$TREE_PICKER_XML" "Show roots"; then
-      if ! tap_ui_description "$TREE_PICKER_XML" "Show navigation drawer"; then
-        echo "ERROR: DocumentsUI exposed neither an internal-storage root nor an actionable roots drawer"
-        exit 1
-      fi
-    fi
-    if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
-      echo "ERROR: could not inspect DocumentsUI roots drawer"; exit 1
-    fi
-    tree_storage_root=""
-    for candidate in "Android SDK built for x86_64" "Internal storage" "Internal Storage"; do
-      if grep -Fq -- "text=\"$candidate\"" "$TREE_PICKER_XML"; then
-        tree_storage_root="$candidate"
-        break
-      fi
-    done
-    if [[ -z "$tree_storage_root" ]]; then
-      echo "ERROR: roots drawer did not expose the internal device-storage root"
-      python3 - "$TREE_PICKER_XML" <<'PY'
-import sys, xml.etree.ElementTree as ET
-for n in ET.parse(sys.argv[1]).getroot().iter("node"):
-    t=n.attrib.get("text","").strip(); d=n.attrib.get("content-desc","").strip()
-    if t or d: print(f"text={t!r} desc={d!r}")
-PY
-      exit 1
-    fi
-    if ! tap_ui_text "$TREE_PICKER_XML" "$tree_storage_root"; then
-      echo "ERROR: could not open the internal device-storage root"; exit 1
-    fi
-  fi
-fi
-
-# UIAutomator can report the next row before it is fully visible. Require
-# the complete item_root hit target above the fixed Use Folder footer; otherwise
-# scroll the directory list upward to bring the folder onto an actual tap area.
-tree_folder_visible=0
-for tree_folder_attempt in {1..8}; do
-  if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
-    echo "ERROR: could not refresh DocumentsUI while locating the test folder"; exit 1
-  fi
-  if picker_folder_row_fully_visible "$TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
-    tree_folder_visible=1
-    break
-  fi
-  if ! grep -Fq -- 'package="com.android.documentsui"' "$TREE_PICKER_XML"; then
-    echo "ERROR: Android DocumentsUI closed before the test folder appeared"; exit 1
-  fi
-  if ! adb_bounded 10 shell input swipe 800 1450 800 620 350; then
-    echo "ERROR: could not scroll DocumentsUI to the prepared test folder"; exit 1
-  fi
-  sleep 0.2
-done
-if [[ "$tree_folder_visible" != "1" ]]; then
-  echo "ERROR: internal-storage root did not expose the prepared test folder"
+# The app supplied a saved-but-ungranted EXTRA_INITIAL_URI for this real
+# fixture directory. DocumentsUI must open inside that directory and expose its
+# actual WAV child. This avoids provider-specific row-tap heuristics while still
+# requiring a real user-approved SAF grant below.
+if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 20; then
+  adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png || true
+  echo "ERROR: ACTION_OPEN_DOCUMENT_TREE did not honor EXTRA_INITIAL_URI for the fixture folder"
   python3 - "$TREE_PICKER_XML" <<'PY'
 import sys, xml.etree.ElementTree as ET
 for n in ET.parse(sys.argv[1]).getroot().iter("node"):
-    t=n.attrib.get("text","").strip(); d=n.attrib.get("content-desc","").strip()
+    t=n.attrib.get("text", "").strip()
+    d=n.attrib.get("content-desc", "").strip()
     if t or d: print(f"text={t!r} desc={d!r}")
 PY
   exit 1
-fi
-if ! tap_ui_picker_folder_until_child \
-    "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" "$TREE_SAMPLE_NAME"; then
-  echo "ERROR: selected folder did not expose the actual tree-only WAV"; exit 1
 fi
 TREE_USE_FOLDER_LABEL="USE THIS FOLDER"
 if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_USE_FOLDER_LABEL" 12; then
