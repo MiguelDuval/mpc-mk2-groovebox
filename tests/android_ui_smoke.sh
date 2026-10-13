@@ -390,6 +390,25 @@ if grep -Fq -- 'case "CLIP":' <<<"$track_type_map_block" || \
   exit 1
 fi
 
+mixer_track_type_map_start=$(grep -n -m1 'private MpcTrackTypeIconDrawable trackTypeIcon(String trackType)' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java" | cut -d: -f1)
+mixer_track_type_map_end=$(awk -v start="$mixer_track_type_map_start" 'NR > start && /^    private / { print NR; exit }' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java")
+if [[ -z "$mixer_track_type_map_start" || -z "$mixer_track_type_map_end" || "$mixer_track_type_map_end" -le "$mixer_track_type_map_start" ]]; then
+  echo "ERROR: XL mixer Track Type icon mapping source boundary is missing"
+  exit 1
+fi
+mixer_track_type_map_block=$(sed -n "${mixer_track_type_map_start},$((mixer_track_type_map_end - 1))p" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java")
+for required in 'case "AUDIO":' 'type = MpcTrackTypeIconDrawable.Type.AUDIO;' 'case "DRUM":' 'type = MpcTrackTypeIconDrawable.Type.DRUM;' 'case "CV":'; do
+  if ! grep -Fq -- "$required" <<<"$mixer_track_type_map_block"; then
+    echo "ERROR: XL mixer Track Type icon vocabulary mapping missing: $required"
+    exit 1
+  fi
+done
+if grep -Fq -- 'case "CLIP":' <<<"$mixer_track_type_map_block" || \
+   grep -Fq -- 'Type.CLIP' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+  echo "ERROR: XL mixer strip must not refer to the obsolete CLIP Track Type icon"
+  exit 1
+fi
+
 if grep -Fq -- 'findViewWithContentDescription(\n                content, "Main Mode track type selector")' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track Type must not retain a second selector lookup after unified field migration"
   exit 1

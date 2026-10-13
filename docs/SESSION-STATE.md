@@ -26,6 +26,13 @@
 
 The source/test update in this commit aligns Main Track Type icon vocabulary with native labels: `AUDIO` is explicitly mapped to an original waveform glyph; `DRUM` is explicit; `CLIP` is removed from the Track Type icon enum/mapping. Touch/controller selection now reports `TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation` instead of entering a fake selector state. No conversion backend is invented. This new source revision must pass its own Android Build before the correction is marked verified.
 
+### Failed validation attempt — Android Build #2703 — NOT ACCEPTED
+
+- Run [Android Build #2703](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38460600741) tested SHA `7a139ac0fc9d6ca95718b9c371c8309fa0558c07` and **FAILED** during Java compilation.
+- Exact compiler error: `MpcMainMixerStripView.java:590` still referenced `MpcTrackTypeIconDrawable.Type.CLIP` after the shared Track Type icon enum correctly removed `CLIP`. No APK was produced/uploaded; the visual-evidence upload step ran, but that does not establish a successful build.
+- Root cause is a second UI caller that the first source preflight did not audit. The minimal correction maps native `AUDIO` and `DRUM` labels explicitly in that XL Mixer Strip icon helper too, and extends smoke source checks to inspect that helper and reject the obsolete CLIP enum reference.
+- The fix remains pending until the complete Android Build succeeds on its new exact SHA. Do not describe #2703 as accepted.
+
 ### Remaining gaps
 
 - Favourite locations 1–5 are still **not** genuinely persisted/restored.
@@ -115,8 +122,9 @@ Do not dump/re-read all large docs every session. Read this state, the protocol 
 The implementation in this changeset:
 1. Explicitly maps `DRUM` and native `AUDIO` labels; the Audio icon uses original waveform strokes and the obsolete `CLIP` Main Track Type icon enum/route is removed.
 2. Touching the Main icon or requesting Track Type selection from the hardware reports `TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation`; it does not enter a fake selection subcontext.
-3. Smoke source checks require the AUDIO/DRUM/CV mapping, reject CLIP-as-Track-Type, and verify the rendered Main Track Type accessibility label truthfully reports conversion unavailable.
-4. No audio/MIDI/sampler/domain operation was rewritten. This correction is accepted only after the full Android workflow passes for the actual resulting HEAD SHA.
+3. Smoke source checks require AUDIO/DRUM/CV mapping both in MainActivity and in the second XL Mixer Strip icon consumer, reject CLIP-as-Track-Type across both, and verify the rendered Main Track Type accessibility label truthfully reports conversion unavailable.
+4. Android Build #2703 exposed the missed mixer-strip reference at compile time. The follow-up patch fixes that exact call site and adds a targeted preflight for it; the correction remains unaccepted until the full Android workflow passes for the actual resulting HEAD SHA.
+5. No audio/MIDI/sampler/domain operation was rewritten.
 
 ### Task 3 — high-value musical contexts
 

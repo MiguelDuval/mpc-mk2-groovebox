@@ -1281,3 +1281,8 @@ The Main Track Type icon enum now uses **AUDIO** rather than **CLIP**. `MainActi
 The current native `TrackKind` does not define CV and there is no operation for converting an existing Track's type. Accordingly, the icon describes the current type; touch or controller Track Type selection reports `TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation` rather than navigating to a nonfunctional chooser. Drum workflow is preserved; non-Drum editing/type conversion remain unavailable.
 
 The source smoke now checks the exact AUDIO/DRUM/CV mapping branches, rejects CLIP-as-Track-Type and verifies the Main accessibility description states that conversion is unavailable. Check the full Android Build tied to the resulting commit SHA before treating this correction as accepted. Physical MPC One / MPC Studio MkII validation remains separate.
+
+
+### Follow-up after Android Build #2703 compile failure
+
+The shared type-icon drawable is used by both Main's selected-Track icon and the XL Mixer Strip identity icon. Build #2703 found the latter still referenced the removed `CLIP` enum. `MpcMainMixerStripView.trackTypeIcon()` now maps native `AUDIO` and `DRUM` explicitly, and the smoke source preflight checks the helper's mapping/forbidden CLIP case directly. No Track conversion action is added; it remains RESERVED. Accept only after exact-SHA full CI.

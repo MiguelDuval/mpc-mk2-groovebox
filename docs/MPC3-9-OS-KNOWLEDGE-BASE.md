@@ -622,3 +622,10 @@ The Gen1 firmware evidence from Section 28 is now applied to the Main Track Type
 - The touch affordance and hardware `TRACK_TYPE_SELECTION_CONTEXT` now report `TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation`; neither enters a fake Track Type Select state. No type conversion is emulated using unrelated `addTrack` operations.
 - Smoke assertions verify the native AUDIO and DRUM mapping branches, keep CV visibly in the documented icon taxonomy, reject CLIP in Track Type mapping/icon vocabulary and inspect the actual Main accessibility description for an unavailable-conversion state.
 - No realtime audio callback, sampler engine, sequencer scheduler/clock, MIDI transport, raw MkII decoder or SysEx protocol was changed. Verify the full Android Build against the resulting new SHA before acceptance; physical controller testing remains pending.
+
+
+### Build #2703 compile-time regression and follow-up
+
+The first implementation commit's Android Build #2703 failed during Java compilation because `MpcMainMixerStripView.trackTypeIcon()` still referenced `MpcTrackTypeIconDrawable.Type.CLIP` after the shared drawable enum was changed. No APK was produced by that run. This identifies a second production consumer, not a reason to restore CLIP to the Main Track Type vocabulary.
+
+The follow-up correction maps native `AUDIO` and `DRUM` explicitly in the XL Mixer Strip icon helper and extends `tests/android_ui_smoke.sh` to require the correct Audio/Drum/CV mapping and reject the stale CLIP reference in that helper. The corrected slice remains pending until the full Android workflow succeeds on its exact new SHA. No audio/MIDI/domain operations were touched.

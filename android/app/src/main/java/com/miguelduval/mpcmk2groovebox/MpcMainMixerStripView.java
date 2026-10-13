@@ -577,6 +577,12 @@ final class MpcMainMixerStripView extends LinearLayout {
         String value = clean(trackType, "DRUM").toUpperCase(Locale.ROOT);
         MpcTrackTypeIconDrawable.Type type;
         switch (value) {
+            case "AUDIO":
+                type = MpcTrackTypeIconDrawable.Type.AUDIO;
+                break;
+            case "DRUM":
+                type = MpcTrackTypeIconDrawable.Type.DRUM;
+                break;
             case "KEYGROUP":
                 type = MpcTrackTypeIconDrawable.Type.KEYGROUP;
                 break;
@@ -585,9 +591,6 @@ final class MpcMainMixerStripView extends LinearLayout {
                 break;
             case "MIDI":
                 type = MpcTrackTypeIconDrawable.Type.MIDI;
-                break;
-            case "CLIP":
-                type = MpcTrackTypeIconDrawable.Type.CLIP;
                 break;
             case "CV":
                 type = MpcTrackTypeIconDrawable.Type.CV;
