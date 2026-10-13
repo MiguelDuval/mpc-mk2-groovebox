@@ -1657,7 +1657,14 @@ cat > "$TREE_PREFS_HOST" <<EOF
   <string name="user_tree_name">${TREE_FOLDER_NAME}</string>
 </map>
 EOF
-if ! adb_bounded 10 shell run-as "$PACKAGE" sh -c 'mkdir -p shared_prefs && cat > shared_prefs/mpc_browser_storage.xml' < "$TREE_PREFS_HOST"; then
+TREE_PREFS_B64="$(base64 < "$TREE_PREFS_HOST" | tr -d '\\r\\n')"
+if [[ -z "$TREE_PREFS_B64" ]]; then
+  echo "ERROR: could not encode the ungranted initial Browser tree location"; exit 1
+fi
+# adb shell joins its arguments into a remote command line. Pass the remote
+# shell script as one quoted argument; otherwise sh -c receives only "mkdir"
+# and treats "-p" as its positional argument, producing "mkdir: Needs 1 argument".
+if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'mkdir -p shared_prefs && echo $TREE_PREFS_B64 | base64 -d > shared_prefs/mpc_browser_storage.xml'"; then
   echo "ERROR: could not seed the ungranted initial Browser tree location"; exit 1
 fi
 
