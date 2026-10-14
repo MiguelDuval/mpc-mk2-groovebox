@@ -11482,8 +11482,106 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 this::runUiAuditAfterArrangement);
     }
 
+    private boolean verifyArrangeLoopDragAndRestoreForAudit() {
+        if (arrangementView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange loop gesture has no view");
+            return false;
+        }
+
+        final int originalStart = nativeSequenceGetLoopStartBar();
+        final int originalEnd = nativeSequenceGetLoopEndBar();
+        final int bars = Math.max(1, nativeSequenceGetBars());
+        final int targetEnd = originalEnd < bars
+                ? originalEnd + 1
+                : originalEnd > originalStart
+                        ? originalEnd - 1
+                        : originalEnd;
+        if (targetEnd == originalEnd || targetEnd < originalStart) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: no alternative valid loop end for gesture audit"
+                    + " | start=" + originalStart
+                    + " | end=" + originalEnd
+                    + " | bars=" + bars);
+            return false;
+        }
+
+        final float[] initialPoint =
+                arrangementView.loopEndHandlePointForAudit(originalEnd);
+        final float[] changedPoint =
+                arrangementView.loopEndHandlePointForAudit(targetEnd);
+        if (initialPoint == null || changedPoint == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: loop-end handle point is not visible"
+                    + " | start=" + originalStart
+                    + " | end=" + originalEnd
+                    + " | target=" + targetEnd
+                    + " | view=" + describeAuditView(arrangementView));
+            return false;
+        }
+        if (!dispatchArrangementLoopDragForAudit(
+                arrangementView, originalEnd, targetEnd)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not dispatch Arrange loop-end drag");
+            return false;
+        }
+
+        final int changedStart = nativeSequenceGetLoopStartBar();
+        final int changedEnd = nativeSequenceGetLoopEndBar();
+        if (changedStart != originalStart || changedEnd != targetEnd) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange loop drag did not commit native loop state"
+                    + " | expected=" + originalStart + ".." + targetEnd
+                    + " | actual=" + changedStart + ".." + changedEnd);
+            nativeSequenceSetLoopBars(originalStart, originalEnd);
+            refreshArrangeView();
+            return false;
+        }
+
+        // Restore through the same handle gesture to prove both the new state
+        // and return to the original state without leaving the test loop active.
+        if (!dispatchArrangementLoopDragForAudit(
+                arrangementView, targetEnd, originalEnd)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not restore Arrange loop via handle drag");
+            nativeSequenceSetLoopBars(originalStart, originalEnd);
+            refreshArrangeView();
+            return false;
+        }
+        final int restoredStart = nativeSequenceGetLoopStartBar();
+        final int restoredEnd = nativeSequenceGetLoopEndBar();
+        if (restoredStart != originalStart || restoredEnd != originalEnd) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange loop handle did not restore prior state"
+                    + " | expected=" + originalStart + ".." + originalEnd
+                    + " | actual=" + restoredStart + ".." + restoredEnd);
+            nativeSequenceSetLoopBars(originalStart, originalEnd);
+            refreshArrangeView();
+            return false;
+        }
+
+        Log.i(TAG, "UI_ARRANGE_LOOP_GESTURE_COMPLETE: original="
+                + originalStart + ".." + originalEnd
+                + " changed=" + changedStart + ".." + changedEnd
+                + " restored=" + restoredStart + ".." + restoredEnd);
+        return true;
+    }
+
+    private boolean dispatchArrangementLoopDragForAudit(
+            MpcArrangeView targetView, int fromEndBar, int toEndBar) {
+        if (targetView == null) return false;
+        final float[] from = targetView.loopEndHandlePointForAudit(fromEndBar);
+        final float[] to = targetView.loopEndHandlePointForAudit(toEndBar);
+        if (from == null || to == null) return false;
+        final long now = SystemClock.uptimeMillis();
+        return dispatchArrangementTouchForAudit(
+                    targetView, now - 60L, now - 60L,
+                    MotionEvent.ACTION_DOWN, from[0], from[1])
+                && dispatchArrangementTouchForAudit(
+                    targetView, now - 60L, now - 25L,
+                    MotionEvent.ACTION_MOVE, to[0], to[1])
+                && dispatchArrangementTouchForAudit(
+                    targetView, now - 60L, now,
+                    MotionEvent.ACTION_UP, to[0], to[1]);
+    }
+
     private void runUiAuditAfterArrangement() {
         if (destroyed) return;
+
+        if (!verifyArrangeLoopDragAndRestoreForAudit()) return;
 
         if (arrangementView == null
                 || arrangementAuditTrackIndex < 0

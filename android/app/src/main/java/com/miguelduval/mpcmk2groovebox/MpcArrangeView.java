@@ -149,6 +149,23 @@ final class MpcArrangeView extends View {
         invalidate();
     }
 
+    float[] loopEndHandlePointForAudit(int bar) {
+        if (getWidth() <= 0 || getHeight() <= 0
+                || bar < 1 || bar > barCount) {
+            return null;
+        }
+        final float headerWidth = dp(LEFT_HEADER_DP);
+        final float timelineWidth = Math.max(1f, getWidth() - headerWidth);
+        final float pxPerBar = timelineWidth / Math.max(1, visibleBars);
+        final float x = xForBar(
+                bar + 0.999f, headerWidth, timelineWidth, pxPerBar);
+        final float y = Math.max(1f, dp(4));
+        if (x < headerWidth || x >= getWidth() || y >= dp(TOP_RULER_DP)) {
+            return null;
+        }
+        return new float[] {x, y};
+    }
+
     float[] eventCenterForAudit(int trackIndex, long eventTick) {
         if (getWidth() <= 0 || getHeight() <= 0) return null;
 

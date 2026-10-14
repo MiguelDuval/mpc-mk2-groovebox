@@ -425,6 +425,10 @@ done
 
 echo "Running Arrangement event → Grid gesture integration preflight..."
 for required in \
+  'verifyArrangeLoopDragAndRestoreForAudit()' \
+  'dispatchArrangementLoopDragForAudit(' \
+  'loopEndHandlePointForAudit(' \
+  'UI_ARRANGE_LOOP_GESTURE_COMPLETE' \
   'prepareArrangementEventGestureAudit()' \
   'eventCenterForAudit(' \
   'dispatchArrangementEventDoubleTapForAudit(' \
