@@ -5,45 +5,43 @@
 
 > **Freshness rule:** This checkpoint will itself be committed after the pre-checkpoint SHA above. Therefore, it does **not** claim CI success for the commit containing this state refresh. On every session start, verify the live PR head, branch HEAD, latest Android Build and artifact files. Do not rely on remembered commit numbers or on this checkpoint instead of GitHub.
 
-## Last independently verified checkpoint — 2026-10-14
+## Last independently verified checkpoint — 2026-10-14 06:46 CEST
 
-**Verified source:** branch `feature/mpc-one-ui-fidelity`; PR #23 OPEN / not merged; base `fix/ui-shell-format-width-startup`; last fully verified SHA `be431ccef023466216ada643208b18dec98a6bc0`. The current follow-up commit adds runtime visual evidence for its already CI-tested Grid-focus behavior and requires a new exact-SHA build.
+**Live GitHub source of truth:** branch `feature/mpc-one-ui-fidelity`; PR #23 OPEN / not merged; base `fix/ui-shell-format-width-startup`; last fully tested code SHA `8c5bfcc114b5e2becfdf50a4cdf861bb0d57a623`. This checkpoint is being refreshed in a documentation-only commit, which must receive its own exact-SHA Android Build.
 
-### Android Build #2705 — SUCCESS
+### Android Build #2707 — SUCCESS, exact SHA verified
 
-- [Android Build #2705](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38503481144) tested `be431ccef023466216ada643208b18dec98a6bc0`; **57/57 workflow steps passed**.
-- The new Arrangement tick → quantized step → bounded Grid viewport policy and added edge/overflow unit tests compiled/passed; source preflight confirmed that Arrange double-tap passes its tick into the route. The overall emulator suite also passed, including Browser, Document Picker assignment, and persisted USER FOLDER restoration.
-- The smoke harness at #2705 visited Arrangement and Grid separately but did not yet capture the event-focus route itself. The current follow-up factors that route into a shared production method and extends the application-side audit to assert the selected absolute step/window, capture a Grid screenshot + accessibility XML, and compare their visible range to the runtime assertion. That extension is pending exact-SHA Android Build.
+- Run [Android Build #2707](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38505818432) tested `8c5bfcc114b5e2becfdf50a4cdf861bb0d57a623`; **57/57 workflow steps passed**. Android Build, emulator runtime smoke and UI visual-evidence upload all succeeded.
+- The fix after #2706 keeps the meaningful runtime check: Grid's visible step range exposes a semantic accessibility label and the validator compares the visible range, accessibility range and runtime target.
+- Runtime focus evidence: target step **33**, visible Grid range **25–40 / 64**. The actual screenshot and Android hierarchy were checked; the hierarchy contains `Grid visible step range: steps 25 through 40 of 64`.
+- Browser E2E still passes: real local WAV results/filter/search/selection/audition/assignment; Android Document Picker select → return → PAD 01 / LAYER 01 assignment; user document-tree filtering and persisted SAF read grant restored after app stop/relaunch.
+- Build #2706 is retained as a resolved historical test-harness false negative. Its screenshot already showed correct focus math; #2707 corrected the accessibility contract and passed the complete suite.
 
-### Verified artifacts for SHA `be431ccef023466216ada643208b18dec98a6bc0`
+### Verified APK and visual evidence for SHA `8c5bfcc114b5e2becfdf50a4cdf861bb0d57a623`
 
-- APK artifact ID `11867100675`, 8,211,869 bytes; SHA-256 `5529f668063f05f78e8c40b78673d657d036f3eaf9da033589023b4e259abc82`. Downloaded and ZIP-integrity checked.
-- Visual evidence artifact ID `11867460643`, 1,376,546 bytes; SHA-256 `c12adc1dde7b43e76b01f6171d876b606011e64688f91ec0df00b8566362454c`. Downloaded and ZIP-integrity checked; 21 files.
-- Inspected XML confirms Main `DRUM • Drum workflow available • type conversion unavailable`, Browser Picker assignment to `PAD 01 / LAYER 01`, and restored `USER FOLDER • 1 WAV FILE INDEXED` with `Browser-Tree-Only.wav`.
-- Physical MPC Studio MkII verification remains **PENDING**; these are Android emulator results.
+- APK artifact ID `11867684347`, `app-debug.apk`, 8,211,869 bytes; SHA-256 `38557fcdf0ac7b92d7a5b7ad0df9f8199dea67b59fbba44fd7955d04ab53e844`. Downloaded and ZIP-integrity checked.
+- Visual evidence artifact ID `11867864670`, 1,736,147 bytes; SHA-256 `7dae7d4c1b054cfa76ace4ce6744b5fbb82232b89e09aeb6f52bf01a4708f6cd`. Downloaded and ZIP-integrity checked: **23 entries**, including Main screenshot + UI XML, Arrangement→Grid focused screenshot + XML, Browser results, Picker assignment and restored USER FOLDER evidence.
+- Verified screenshots/XML: Main Track Type DRUM honestly reports type conversion unavailable; Picker assignment confirms `Browser-Picker-Return.wav → PAD 01 / LAYER 01`; restored folder confirms `USER FOLDER • 1 WAV FILE INDEXED` with `Browser-Tree-Only.wav`; Arrangement→Grid evidence confirms target 33 inside range 25–40/64.
+- Physical MPC Studio MkII verification remains **PENDING**; the above is emulator evidence only.
 
-### Completed feature slices
+### Completed implementation slices
 
-**Local Browser E2E:** actual MediaStore WAV search/filter/selection/audition/native assignment; Android Document Picker select → return → sampler assignment; selected document-tree results, filtering, and persistable SAF read-grant + USER FOLDER restoration after process stop/relaunch all pass on verified builds #2701–#2705.
+**Local Browser E2E:** real MediaStore and Android document-tree files, filters/search, selected file, audition, load/assignment, correct Pad/Layer, Picker return, and restored persisted SAF folder access were exercised by the full emulator workflow. Splice, paid stores, upsells and unnecessary vendor account/cloud flows remain excluded.
 
-**Main Track Type correctness:** native AUDIO/DRUM labels map to the shared type icon; the misleading CLIP Track Type enum/call sites are gone; the Audio glyph is a waveform; touch/controller requests for conversion honestly report RESERVED because no existing-track conversion operation exists. Build #2704 and #2705 pass.
+**Main Track Type correctness:** native AUDIO/DRUM labels map to the shared type icon; misleading CLIP enum/call sites are removed; Audio has its own waveform glyph; unavailable non-Drum workflows/type conversion truthfully report RESERVED. Build #2704 onward confirms compilation and runtime smoke.
 
-### Current implementation slice — Arrangement event → Grid focus
+**Arrangement event → Grid focus:** the production route maps incoming tick through the current quantize resolution to an absolute step and a centered/clamped Grid window. Build #2705 passed boundary/overflow policy tests; Build #2707 passed the emulator viewport/evidence assertion for step 33 in range 25–40/64. The audit invokes the shared production route with a synthetic non-zero tick; literal double-tap on a populated event item is not separately exercised yet.
 
-The live Arrange view already sends `onEventDoubleTapped(trackIndex, tick)`. Main now uses that exact tick to choose the quantized absolute step and center/clamp the Grid viewport; Math/source checks and full build #2705 passed. The current follow-up exercises the shared production route in the UI audit at a non-zero tick, verifies the on-device `SequenceGridView` starting step, captures screenshot/XML, and validates the visible STEPS range includes the focus target. Accept that extra runtime-evidence slice only after the new exact HEAD passes.
+### Current next task — prove the actual Arrange event gesture end-to-end
 
-### Android Build #2706 — UI evidence assertion correction required
-
-- Run [Android Build #2706](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38504895600) tested `b505b58a3e0dda61c3eb4dd41e49d682c4478ee1` and failed only in the new Arrangement→Grid evidence validator, after compilation, APK build/upload and earlier workflow steps succeeded.
-- The captured emulator screenshot shows Grid window **25–40 / 64**, with target step **33** visible. The script wrongly assumed the app’s bottom status message would appear as a separate Android accessibility node and that the range text included a literal `STEPS` prefix. The actual view displays `25–40/64`; the status message is not a separate node in this workspace hierarchy.
-- The follow-up gives the visible range field an explicit semantic accessibility description (“Grid visible step range: steps … through … of …”) and validates it against the displayed text and parsed runtime target. The fix improves accessibility and corrects the false-negative assertion. It remains unaccepted until the next exact-SHA Android Build and visual artifact inspection pass.
+Audit `MpcArrangeView` testability and hit testing. Add a focused test that drives a populated Arrangement event through the same double-tap listener path as the user gesture, verifies its exact `tick` reaches `openGridFromArrangementEvent`, and asserts Grid start step and visible range. Prefer a reliable component/instrumentation seam over coordinate-only sleeps. Keep changes limited to Arrange/Grid navigation; do not mutate pattern events or audio/MIDI paths. Full Android Build + fresh evidence remains required.
 
 ### Known remaining gaps
 
 - Favourite folders 1–5 are not genuinely persisted/restored.
-- Locations/content categories without real providers remain unavailable/no-result; Splice, paid stores, upsells and unnecessary vendor cloud/account dependencies stay excluded.
+- Locations/content categories without real providers remain unavailable/no-result.
 - Only Drum editing is fully supported in Grid/Step; other types must not silently route to Drum editing. Native `TrackKind` has no CV kind.
-- Existing-track type conversion remains RESERVED; a chooser needs a real semantic/backend operation.
+- Existing-track type conversion remains RESERVED until a real semantic/backend operation exists.
 - Physical MPC Studio MkII behavior remains unverified.
 
 ## 1. Repository and safety
@@ -129,9 +127,9 @@ Do not dump/re-read all large docs every session. Read this state, the protocol 
 2. Build #2703's missed `MpcMainMixerStripView` caller was fixed; Build #2704 passed 57/57 steps and produced inspected APK/evidence artifacts. The failed intermediate attempt remains recorded below as history, not as current state.
 3. Track conversion is still RESERVED. No sampler/audio/MIDI/domain operation was invented.
 
-### Task 3 — Arrangement event → Grid viewport focus — policy passed on #2705; visual evidence assertion being corrected
+### Task 3 — Arrangement event → Grid viewport focus — VERIFIED on Build #2707
 
-The production route converts the event tick to a quantized step and positions the visible Grid window. Build #2706 captured the screen with target 33 inside the shown range 25–40/64 but failed because the validator expected a non-existent status node and the wrong range text format. This fix adds a semantic content description for the visible range and checks its numbers against both the screenshot hierarchy and the runtime log target. Accept only after exact-SHA CI and artifact inspection.
+Build #2707 (SHA `8c5bfcc114b5e2becfdf50a4cdf861bb0d57a623`) passed all 57 workflow steps. The screenshot and XML confirm focused step 33 lies in visible range 25–40/64; the semantic accessibility range agrees with the displayed text and runtime log. APK and 23-entry evidence archive were downloaded, ZIP-integrity checked and inspected. The audit invokes the shared production route with a synthetic non-zero tick; direct double-tap on an actual populated event is not yet covered and is the next task.
 
 
 

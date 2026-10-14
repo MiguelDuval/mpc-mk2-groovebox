@@ -650,3 +650,10 @@ The event-tick/viewport math is now passed by the targeted JVM tests, and Main's
 Android Build #2706 on `b505b58a3e0dda61c3eb4dd41e49d682c4478ee1` built the APK and reached the new Arrangement→Grid screenshot point. The captured 1920×1080 image correctly displayed step range `25–40/64`, with target step 33 visible in the viewport. The run then failed because the XML assertion expected the app's status/LCD feedback to be its own accessibility node and assumed the visible label had a literal `STEPS` prefix; the actual UI hierarchy had neither.
 
 The fix does not weaken the functional check. It assigns the actual range TextView a semantic content description `Grid visible step range: steps NN through NN of NN`, and the smoke validator requires the runtime target to lie inside both the visible text range and that accessibility range. It also checks that the two representations agree. The new commit requires a full Android Build and fresh screenshot/XML inspection before this evidence slice is accepted.
+
+
+## 34. 2026-10-14 — Build #2707 accepts Grid focus runtime evidence
+
+Android Build #2707 verified SHA `8c5bfcc114b5e2becfdf50a4cdf861bb0d57a623` and passed 57/57 steps. APK artifact `11867684347` has SHA-256 `38557fcdf0ac7b92d7a5b7ad0df9f8199dea67b59fbba44fd7955d04ab53e844`. Visual evidence artifact `11867864670` has SHA-256 `7dae7d4c1b054cfa76ace4ce6744b5fbb82232b89e09aeb6f52bf01a4708f6cd`, with 23 files including the Arrangement→Grid screenshot and XML. The inspected screen and hierarchy agree: target step 33, visible range 25–40/64, semantic content description `Grid visible step range: steps 25 through 40 of 64`.
+
+The failed #2706 validator was a false negative: it assumed the status message was a standalone XML node and that the range label included a literal `STEPS` prefix. #2707 corrected the accessibility contract and passed the full emulator workflow. Direct double-tap on a populated Arrangement event remains separate untested interaction coverage; the UI audit calls the shared production route using a synthetic tick.

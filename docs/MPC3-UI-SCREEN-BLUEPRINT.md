@@ -1301,3 +1301,10 @@ The double-tap listener and UI audit share `openGridFromArrangementEvent(trackIn
 ### Build #2706 evidence-harness correction
 
 The failed #2706 audit image itself demonstrates the focus math is correct: target step 33 is within the displayed `25–40/64` window. The failure was a test expectation mismatch, not a navigation failure. The Grid range TextView now exposes a descriptive accessibility label with first/last/total steps; the emulator acceptance check compares that semantic label, compact visible range, and runtime focus target. Acceptance requires a fresh exact-SHA build and inspected artifacts.
+
+
+### Build #2707 — Arrangement→Grid runtime evidence accepted
+
+The corrected validator passed on exact SHA `8c5bfcc114b5e2becfdf50a4cdf861bb0d57a623`. APK artifact `11867684347` and visual-evidence artifact `11867864670` were downloaded and integrity checked; the archive contains the focus screenshot and XML. The UI visibly shows `25–40/64`, target step 33 is inside the viewport, and the range TextView's content description reports `Grid visible step range: steps 25 through 40 of 64`. Full CI and Browser/Picker evidence passed.
+
+Coverage caveat: UI audit invokes the shared production route with a synthetic tick; it does not yet double-tap a populated Arrangement event and verify Android hit testing and listener delivery of that event's actual tick. That is the next interaction-focused test.
