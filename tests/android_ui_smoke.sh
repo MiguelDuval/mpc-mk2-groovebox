@@ -422,6 +422,20 @@ for required in \
   fi
 done
 
+echo "Running shared Arrangement-event-to-Grid runtime route preflight..."
+for required in \
+  'openGridFromArrangementEvent(trackIndex, tick)' \
+  'private int openGridFromArrangementEvent(int trackIndex, long tick)' \
+  'UI_ARRANGEMENT_GRID_FOCUS_COMPLETE' \
+  'UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY' \
+  'mpc-arrange-grid-focus-capture-release' \
+  'firstStepForTest()'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Arrangement event focus runtime verification contract is missing: $required"
+    exit 1
+  fi
+done
+
 if grep -Fq -- 'findViewWithContentDescription(\n                content, "Main Mode track type selector")' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track Type must not retain a second selector lookup after unified field migration"
   exit 1
@@ -1755,6 +1769,7 @@ ui_audit_complete=0
 main_runtime_capture_done=0
 browser_runtime_capture_done=0
 storage_picker_capture_done=0
+arrangement_grid_focus_capture_done=0
 audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
 audit_poll=0
 while (( SECONDS < audit_deadline )); do
@@ -1936,6 +1951,110 @@ PY
       exit 1
     fi
     browser_runtime_capture_done=1
+  fi
+
+  if [ "$arrangement_grid_focus_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY" <<<"$log_snapshot"; then
+    echo "Capturing Arrangement-to-Grid focused-step screenshot and accessibility hierarchy..."
+    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-arrange-grid-focus.png; then
+      echo "ERROR: Arrangement-to-Grid focus screenshot capture failed"
+      exit 1
+    fi
+    if ! timeout --signal=TERM --kill-after=3s 30s \
+        adb shell uiautomator dump /sdcard/mpc-groovebox-arrange-grid-focus-uiautomator.xml \
+        > /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.log 2>&1; then
+      cat /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.log || true
+      echo "ERROR: Arrangement-to-Grid focus accessibility dump failed"
+      exit 1
+    fi
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-arrange-grid-focus-uiautomator.xml \
+        > /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml; then
+      echo "ERROR: Arrangement-to-Grid focus hierarchy retrieval failed"
+      exit 1
+    fi
+    if ! test -s /tmp/mpc-groovebox-arrange-grid-focus.png \
+        || ! test -s /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml; then
+      echo "ERROR: Arrangement-to-Grid focus screenshot or hierarchy is empty"
+      exit 1
+    fi
+
+    focus_line="$(grep -F -- 'UI_ARRANGEMENT_GRID_FOCUS_COMPLETE:' <<<"$log_snapshot" | tail -n 1 || true)"
+    if [[ -z "$focus_line" ]]; then
+      echo "ERROR: UI capture checkpoint has no matching focused-step assertion"
+      exit 1
+    fi
+    target_step="$(sed -nE 's/.*targetStep=([0-9]+).*/\1/p' <<<"$focus_line")"
+    first_visible_step="$(sed -nE 's/.*firstVisibleStep=([0-9]+).*/\1/p' <<<"$focus_line")"
+    last_visible_step="$(sed -nE 's/.*lastVisibleStep=([0-9]+).*/\1/p' <<<"$focus_line")"
+    if [[ -z "$target_step" || -z "$first_visible_step" || -z "$last_visible_step" ]]; then
+      echo "ERROR: cannot parse focused-step assertion values: $focus_line"
+      exit 1
+    fi
+
+    if ! python3 - /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml \
+        "$target_step" "$first_visible_step" "$last_visible_step" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, target_s, first_s, last_s = sys.argv[1:]
+target, first, last = map(int, (target_s, first_s, last_s))
+nodes = list(ET.parse(path).getroot().iter("node"))
+
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    if match is None:
+        raise AssertionError("invalid Android accessibility bounds: " + repr(node.attrib))
+    return tuple(map(int, match.groups()))
+
+def one_description(description):
+    found = [node for node in nodes if node.attrib.get("content-desc") == description]
+    if len(found) != 1:
+        raise AssertionError(f"expected one visible {description!r}, got {len(found)}")
+    node = found[0]
+    x1, y1, x2, y2 = bounds(node)
+    if x2 <= x1 or y2 <= y1 or node.attrib.get("visible-to-user") == "false":
+        raise AssertionError(f"not visible/hittable: {description!r}: {node.attrib}")
+    return node
+
+one_description("MPC Grid View workspace")
+one_description("MPC Grid View drum event grid")
+
+status_nodes = [
+    node for node in nodes
+    if "ARRANGE EVENT • GRID FOCUSED • STEP" in
+       (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", ""))
+]
+if not any(re.search(r"STEP\s+0*" + str(target) + r"(?:\D|$)", n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")) for n in status_nodes):
+    raise AssertionError(f"focused step {target} is not announced in Android hierarchy")
+
+ranges = []
+for node in nodes:
+    text = node.attrib.get("text", "")
+    match = re.fullmatch(r"STEPS\s+0*(\d+)[–-]0*(\d+)\s*/\s*0*(\d+)", text)
+    if match:
+        ranges.append(tuple(map(int, match.groups())))
+if len(ranges) != 1:
+    raise AssertionError(f"expected one visible Grid step-range label, got {ranges}")
+shown_first, shown_last, total = ranges[0]
+if (shown_first, shown_last) != (first, last):
+    raise AssertionError(f"Grid window disagrees with focused route: UI={(shown_first, shown_last)}, log={(first, last)}")
+if not shown_first <= target <= shown_last <= total:
+    raise AssertionError(f"focused step {target} is outside visible Grid window {ranges[0]}")
+print(f"Arrange-to-Grid focus evidence verified: step {target}, visible {first}–{last} of {total}")
+PY
+    then
+      echo "ERROR: Arrangement-to-Grid focus screenshot/accessibility hierarchy failed semantic checks"
+      cat /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml
+      exit 1
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" \
+        touch cache/mpc-arrange-grid-focus-capture-release; then
+      echo "ERROR: could not release app-side Arrangement-to-Grid capture checkpoint"
+      exit 1
+    fi
+    arrangement_grid_focus_capture_done=1
   fi
 
   if [ "$storage_picker_capture_done" -eq 0 ] \

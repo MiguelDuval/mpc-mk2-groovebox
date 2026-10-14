@@ -6081,13 +6081,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             @Override
             public void onEventDoubleTapped(int trackIndex, long tick) {
-                setBottomStatus(nativeSequenceSelectTrack(trackIndex));
-                navigationController.setSelectedTrack(trackIndex);
-                final int focusedStep = focusSequenceGridAtTick(tick);
-                showSequenceGridPage();
-                setBottomStatus(
-                        "ARRANGE EVENT • GRID FOCUSED • STEP "
-                                + String.format(Locale.ROOT, "%02d", focusedStep + 1));
+                openGridFromArrangementEvent(trackIndex, tick);
             }
 
             @Override
@@ -6141,6 +6135,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         loadArrangementLanes();
         refreshArrangeView();
         updateModeRailSelection();
+    }
+
+    private int openGridFromArrangementEvent(int trackIndex, long tick) {
+        setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+        navigationController.setSelectedTrack(trackIndex);
+        final int focusedStep = focusSequenceGridAtTick(tick);
+        showSequenceGridPage();
+        setBottomStatus(
+                "ARRANGE EVENT • GRID FOCUSED • STEP "
+                        + String.format(Locale.ROOT, "%02d", focusedStep + 1));
+        return focusedStep;
     }
 
     private void loadArrangementLanes() {
@@ -11401,16 +11406,45 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void runUiAuditAfterArrangement() {
         if (destroyed) return;
 
-        if (!clickMpcToolbarMenuForAudit()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after ARRANGE");
+        if (!"DRUM".equalsIgnoreCase(
+                nativeSequenceGetTrackType(nativeSequenceGetSelectedTrack()))) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement-to-Grid focus audit requires Drum Track");
             return;
         }
 
-        View grid = findViewWithExactText(getWindow().getDecorView(), "GRID");
-        if (grid == null || !grid.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: GRID editor");
+        final int totalSteps = sequenceGridTotalSteps();
+        final int visibleSteps = Math.max(
+                1, Math.min(sequenceGridVisibleSteps, totalSteps));
+        final int targetStep = Math.min(
+                totalSteps - 1, Math.max(3, visibleSteps * 2));
+        final long ticksPerStep = Math.max(1L, nativeSequenceGetQuantizeGrid());
+        final int expectedStart = MpcSequenceZoomPolicy.gridStartForStep(
+                targetStep, visibleSteps, totalSteps);
+        final int focusedStep = openGridFromArrangementEvent(
+                Math.max(0, nativeSequenceGetSelectedTrack()),
+                (long) targetStep * ticksPerStep);
+
+        if (focusedStep != targetStep
+                || sequenceGridView == null
+                || sequenceGridStartStep != expectedStart
+                || sequenceGridView.firstStepForTest() != expectedStart) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement-to-Grid did not focus target step"
+                    + " | target=" + targetStep
+                    + " | focused=" + focusedStep
+                    + " | expectedStart=" + expectedStart
+                    + " | actualStart=" + sequenceGridStartStep
+                    + " | GridView=" + describeAuditView(sequenceGridView));
             return;
         }
+
+        final int firstVisibleStep = sequenceGridStartStep + 1;
+        final int lastVisibleStep = Math.min(
+                totalSteps, sequenceGridStartStep + sequenceGridVisibleSteps);
+        Log.i(TAG, "UI_ARRANGEMENT_GRID_FOCUS_COMPLETE: targetStep="
+                + (focusedStep + 1)
+                + " firstVisibleStep=" + firstVisibleStep
+                + " lastVisibleStep=" + lastVisibleStep
+                + " totalSteps=" + totalSteps);
 
         final View gridView = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Grid View drum event grid");
@@ -11422,7 +11456,38 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 gridView,
                 dp(120),
                 "sequence grid editor",
-                this::runUiAuditAfterGrid);
+                this::awaitArrangementGridFocusEvidenceCapture);
+    }
+
+    private void awaitArrangementGridFocusEvidenceCapture() {
+        if (destroyed) return;
+        if (!uiAuditSmokeMode) {
+            runUiAuditAfterGrid();
+            return;
+        }
+
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-arrange-grid-focus-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY");
+
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] captureReleasePoll = new Runnable[1];
+        captureReleasePoll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                runUiAuditAfterGrid();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement-to-Grid screenshot/hierarchy "
+                        + "capture handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
     }
 
     private void runUiAuditAfterGrid() {

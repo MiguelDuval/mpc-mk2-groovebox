@@ -621,14 +621,14 @@ The Gen1 firmware evidence from Section 28 is now applied to the Main Track Type
 - The Main header continues to show one icon for the currently selected type, not a six-icon cluster. Drum editing remains supported. Other non-Drum editing workflows and conversion of an existing Track's type remain explicitly RESERVED until semantic backend operations exist.
 - The touch affordance and hardware `TRACK_TYPE_SELECTION_CONTEXT` now report `TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation`; neither enters a fake Track Type Select state. No type conversion is emulated using unrelated `addTrack` operations.
 - Smoke assertions verify the native AUDIO and DRUM mapping branches, keep CV visibly in the documented icon taxonomy, reject CLIP in Track Type mapping/icon vocabulary and inspect the actual Main accessibility description for an unavailable-conversion state.
-- No realtime audio callback, sampler engine, sequencer scheduler/clock, MIDI transport, raw MkII decoder or SysEx protocol was changed. Verify the full Android Build against the resulting new SHA before acceptance; physical controller testing remains pending.
+- No realtime audio callback, sampler engine, sequencer scheduler/clock, MIDI transport, raw MkII decoder or SysEx protocol was changed. Build #2704 accepted the icon correction; Build #2705 passed the additional Grid-focus policy tests. Physical controller testing remains pending.
 
 
 ### Build #2703 compile-time regression and follow-up
 
 The first implementation commit's Android Build #2703 failed during Java compilation because `MpcMainMixerStripView.trackTypeIcon()` still referenced `MpcTrackTypeIconDrawable.Type.CLIP` after the shared drawable enum was changed. No APK was produced by that run. This identifies a second production consumer, not a reason to restore CLIP to the Main Track Type vocabulary.
 
-The follow-up correction maps native `AUDIO` and `DRUM` explicitly in the XL Mixer Strip icon helper and extends `tests/android_ui_smoke.sh` to require the correct Audio/Drum/CV mapping and reject the stale CLIP reference in that helper. The corrected slice remains pending until the full Android workflow succeeds on its exact new SHA. No audio/MIDI/domain operations were touched.
+The follow-up correction maps native `AUDIO` and `DRUM` explicitly in the XL Mixer Strip icon helper and extends `tests/android_ui_smoke.sh` to require the correct Audio/Drum/CV mapping and reject the stale CLIP reference in that helper. The corrected slice was accepted by Android Build #2704 on SHA `8a9f5ecd2e7326d7b1f703c6aafc76a5b800bfcb` (57/57 steps); Build #2705 independently passed the additional Grid-focus math tests. No audio/MIDI/domain operations were touched.
 
 
 ## 31. 2026-10-14 — Track Type fix accepted; Arrangement-to-Grid navigation defect found
@@ -636,3 +636,10 @@ The follow-up correction maps native `AUDIO` and `DRUM` explicitly in the XL Mix
 Android Build #2704 on SHA `8a9f5ecd2e7326d7b1f703c6aafc76a5b800bfcb` completed successfully (57/57 steps). Its APK and visual evidence were downloaded, ZIP-integrity checked and inspected. The Main hierarchy reports the active DRUM workflow and explicitly reports type conversion unavailable. Picker assignment and process-restarted USER FOLDER restoration evidence remain valid at that exact SHA.
 
 A new code audit found that Arrangement event double-tap receives a real event tick but throws it away before opening Grid. The current implementation slice maps the supplied tick into the active quantize grid, selects a bounded absolute step and chooses a visible viewport that contains/centers that step where the sequence length permits. New unit tests cover negative/oversized ticks, sequence boundaries and narrow windows; source preflight verifies the live route. This source slice remains pending exact-SHA Android CI. No realtime audio, MIDI transport or sampler path is changed.
+
+
+## 32. 2026-10-14 — Build #2705 passes; Grid event-focus evidence upgraded
+
+Android Build #2705 on `be431ccef023466216ada643208b18dec98a6bc0` succeeded (57/57 steps). The APK and 21-file visual-evidence archive were downloaded, ZIP-integrity checked and inspected. Artifact IDs: APK `11867100675` (SHA-256 `5529f668063f05f78e8c40b78673d657d036f3eaf9da033589023b4e259abc82`), visual archive `11867460643` (SHA-256 `c12adc1dde7b43e76b01f6171d876b606011e64688f91ec0df00b8566362454c`). Browser assignment and SAF folder restoration remain verified; the Main hierarchy reports unavailable track conversion truthfully.
+
+The event-tick/viewport math is now passed by the targeted JVM tests, and Main's Arrange listener routes into it. To prove the interaction visually rather than rely on source assertions alone, the next validation adds a runtime audit at a non-zero tick, asserts `SequenceGridView.firstStepForTest()`, pauses for a Grid screenshot/accessibility dump and checks the displayed step-range includes the focus target. This evidence-harness change is not accepted until exact-SHA CI and artifact inspection pass.
