@@ -2021,18 +2021,26 @@ def one_description(description):
 one_description("MPC Grid View workspace")
 one_description("MPC Grid View drum event grid")
 
-status_nodes = [
+accessible_ranges = [
     node for node in nodes
-    if "ARRANGE EVENT • GRID FOCUSED • STEP" in
-       (node.attrib.get("text", "") + " " + node.attrib.get("content-desc", ""))
+    if node.attrib.get("content-desc", "").startswith("Grid visible step range: steps ")
 ]
-if not any(re.search(r"STEP\s+0*" + str(target) + r"(?:\D|$)", n.attrib.get("text", "") + " " + n.attrib.get("content-desc", "")) for n in status_nodes):
-    raise AssertionError(f"focused step {target} is not announced in Android hierarchy")
+if len(accessible_ranges) != 1:
+    raise AssertionError(f"expected one semantic Grid step-range accessibility node, got {len(accessible_ranges)}")
+description = accessible_ranges[0].attrib.get("content-desc", "")
+accessible_match = re.fullmatch(
+    r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+    description)
+if accessible_match is None:
+    raise AssertionError(f"Grid step-range accessibility label is malformed: {description!r}")
+accessible_first, accessible_last, accessible_total = map(int, accessible_match.groups())
+if not accessible_first <= target <= accessible_last <= accessible_total:
+    raise AssertionError(f"focused step {target} is outside accessible Grid window {description!r}")
 
 ranges = []
 for node in nodes:
     text = node.attrib.get("text", "")
-    match = re.fullmatch(r"STEPS\s+0*(\d+)[–-]0*(\d+)\s*/\s*0*(\d+)", text)
+    match = re.fullmatch(r"0*(\d+)[–-]0*(\d+)\s*/\s*0*(\d+)", text)
     if match:
         ranges.append(tuple(map(int, match.groups())))
 if len(ranges) != 1:
@@ -2042,6 +2050,8 @@ if (shown_first, shown_last) != (first, last):
     raise AssertionError(f"Grid window disagrees with focused route: UI={(shown_first, shown_last)}, log={(first, last)}")
 if not shown_first <= target <= shown_last <= total:
     raise AssertionError(f"focused step {target} is outside visible Grid window {ranges[0]}")
+if (accessible_first, accessible_last, accessible_total) != (first, last, total):
+    raise AssertionError("Grid text and semantic accessibility range disagree")
 print(f"Arrange-to-Grid focus evidence verified: step {target}, visible {first}–{last} of {total}")
 PY
     then

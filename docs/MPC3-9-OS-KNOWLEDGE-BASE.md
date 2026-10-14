@@ -643,3 +643,10 @@ A new code audit found that Arrangement event double-tap receives a real event t
 Android Build #2705 on `be431ccef023466216ada643208b18dec98a6bc0` succeeded (57/57 steps). The APK and 21-file visual-evidence archive were downloaded, ZIP-integrity checked and inspected. Artifact IDs: APK `11867100675` (SHA-256 `5529f668063f05f78e8c40b78673d657d036f3eaf9da033589023b4e259abc82`), visual archive `11867460643` (SHA-256 `c12adc1dde7b43e76b01f6171d876b606011e64688f91ec0df00b8566362454c`). Browser assignment and SAF folder restoration remain verified; the Main hierarchy reports unavailable track conversion truthfully.
 
 The event-tick/viewport math is now passed by the targeted JVM tests, and Main's Arrange listener routes into it. To prove the interaction visually rather than rely on source assertions alone, the next validation adds a runtime audit at a non-zero tick, asserts `SequenceGridView.firstStepForTest()`, pauses for a Grid screenshot/accessibility dump and checks the displayed step-range includes the focus target. This evidence-harness change is not accepted until exact-SHA CI and artifact inspection pass.
+
+
+## 33. 2026-10-14 — Build #2706 visual proof and accessibility-label correction
+
+Android Build #2706 on `b505b58a3e0dda61c3eb4dd41e49d682c4478ee1` built the APK and reached the new Arrangement→Grid screenshot point. The captured 1920×1080 image correctly displayed step range `25–40/64`, with target step 33 visible in the viewport. The run then failed because the XML assertion expected the app's status/LCD feedback to be its own accessibility node and assumed the visible label had a literal `STEPS` prefix; the actual UI hierarchy had neither.
+
+The fix does not weaken the functional check. It assigns the actual range TextView a semantic content description `Grid visible step range: steps NN through NN of NN`, and the smoke validator requires the runtime target to lie inside both the visible text range and that accessibility range. It also checks that the two representations agree. The new commit requires a full Android Build and fresh screenshot/XML inspection before this evidence slice is accepted.

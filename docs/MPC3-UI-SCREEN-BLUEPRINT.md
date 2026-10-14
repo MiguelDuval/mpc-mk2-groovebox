@@ -1296,3 +1296,8 @@ The Arrange workspace already emits `onEventDoubleTapped(trackIndex, tick)`. Mai
 ### Direct runtime acceptance of the Arrange → Grid focus behavior
 
 The double-tap listener and UI audit share `openGridFromArrangementEvent(trackIndex, tick)`. Runtime audit chooses a bounded non-zero target tick, invokes that production route, and asserts the quantized focus step, Activity viewport start and rendered `SequenceGridView.firstStepForTest()` agree. The emulator script pauses, captures a real Grid screenshot + accessibility XML and checks the announced focus step lies inside the visible `STEPS first–last / total` range. The #2705 policy tests are already green; this extra runtime-evidence harness needs its own full build and inspected artifacts.
+
+
+### Build #2706 evidence-harness correction
+
+The failed #2706 audit image itself demonstrates the focus math is correct: target step 33 is within the displayed `25–40/64` window. The failure was a test expectation mismatch, not a navigation failure. The Grid range TextView now exposes a descriptive accessibility label with first/last/total steps; the emulator acceptance check compares that semantic label, compact visible range, and runtime focus target. Acceptance requires a fresh exact-SHA build and inspected artifacts.

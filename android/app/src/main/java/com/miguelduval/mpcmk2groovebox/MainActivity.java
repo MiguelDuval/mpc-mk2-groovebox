@@ -7887,16 +7887,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 || !(header.getChildAt(2) instanceof TextView)) return;
 
         final TextView pageInfo = (TextView) header.getChildAt(2);
+        final int totalSteps = sequenceGridTotalSteps();
         final int first = sequenceGridStartStep + 1;
         final int last = Math.min(
-                sequenceGridTotalSteps(),
+                totalSteps,
                 sequenceGridStartStep + sequenceGridVisibleSteps);
         pageInfo.setText(String.format(
                 Locale.ROOT,
                 "%02d–%02d/%02d",
                 first,
                 last,
-                sequenceGridTotalSteps()));
+                totalSteps));
+        pageInfo.setContentDescription(String.format(
+                Locale.ROOT,
+                "Grid visible step range: steps %02d through %02d of %02d",
+                first,
+                last,
+                totalSteps));
     }
 
     private void zoomSequenceGridHorizontal(int delta) {

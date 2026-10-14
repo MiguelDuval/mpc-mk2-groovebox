@@ -32,6 +32,12 @@
 
 The live Arrange view already sends `onEventDoubleTapped(trackIndex, tick)`. Main now uses that exact tick to choose the quantized absolute step and center/clamp the Grid viewport; Math/source checks and full build #2705 passed. The current follow-up exercises the shared production route in the UI audit at a non-zero tick, verifies the on-device `SequenceGridView` starting step, captures screenshot/XML, and validates the visible STEPS range includes the focus target. Accept that extra runtime-evidence slice only after the new exact HEAD passes.
 
+### Android Build #2706 — UI evidence assertion correction required
+
+- Run [Android Build #2706](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38504895600) tested `b505b58a3e0dda61c3eb4dd41e49d682c4478ee1` and failed only in the new Arrangement→Grid evidence validator, after compilation, APK build/upload and earlier workflow steps succeeded.
+- The captured emulator screenshot shows Grid window **25–40 / 64**, with target step **33** visible. The script wrongly assumed the app’s bottom status message would appear as a separate Android accessibility node and that the range text included a literal `STEPS` prefix. The actual view displays `25–40/64`; the status message is not a separate node in this workspace hierarchy.
+- The follow-up gives the visible range field an explicit semantic accessibility description (“Grid visible step range: steps … through … of …”) and validates it against the displayed text and parsed runtime target. The fix improves accessibility and corrects the false-negative assertion. It remains unaccepted until the next exact-SHA Android Build and visual artifact inspection pass.
+
 ### Known remaining gaps
 
 - Favourite folders 1–5 are not genuinely persisted/restored.
@@ -123,9 +129,9 @@ Do not dump/re-read all large docs every session. Read this state, the protocol 
 2. Build #2703's missed `MpcMainMixerStripView` caller was fixed; Build #2704 passed 57/57 steps and produced inspected APK/evidence artifacts. The failed intermediate attempt remains recorded below as history, not as current state.
 3. Track conversion is still RESERVED. No sampler/audio/MIDI/domain operation was invented.
 
-### Task 3 — Arrangement event → Grid viewport focus — policy passed on #2705; visual runtime evidence is being added
+### Task 3 — Arrangement event → Grid viewport focus — policy passed on #2705; visual evidence assertion being corrected
 
-The production route converts the event tick to a quantized step and positions the visible Grid window. Build #2705 passed the policy tests and source preflight. This follow-up exercises the shared production route in emulator audit at a non-zero synthetic tick, checks Activity and rendered Grid viewport state, captures a screenshot and accessibility XML, and verifies the visible step range contains the focus target. Accept only after exact-SHA CI and inspection of both evidence files.
+The production route converts the event tick to a quantized step and positions the visible Grid window. Build #2706 captured the screen with target 33 inside the shown range 25–40/64 but failed because the validator expected a non-existent status node and the wrong range text format. This fix adds a semantic content description for the visible range and checks its numbers against both the screenshot hierarchy and the runtime log target. Accept only after exact-SHA CI and artifact inspection.
 
 
 
