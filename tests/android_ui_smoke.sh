@@ -8,6 +8,7 @@ DEVICE_DUMP="/sdcard/window_dump.xml"
 DUMP="/tmp/mpc-groovebox-ui.xml"
 SMOKE_MODE_EXTRA="mpc.groovebox.smoke.mode"
 MAIN_ACTIVITY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java"
+ARRANGE_VIEW_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcArrangeView.java"
 BROWSER_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"
 BROWSER_FILTER_ICON_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserFilterIconDrawable.java"
 UI_STATE_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"
@@ -422,19 +423,36 @@ for required in \
   fi
 done
 
-echo "Running shared Arrangement-event-to-Grid runtime route preflight..."
+echo "Running Arrangement event → Grid gesture integration preflight..."
 for required in \
+  'prepareArrangementEventGestureAudit()' \
+  'eventCenterForAudit(' \
+  'dispatchArrangementEventDoubleTapForAudit(' \
+  'dispatchArrangementTouchForAudit(' \
+  'UI_ARRANGEMENT_EVENT_SEEDED:' \
+  'UI_ARRANGEMENT_EVENT_GESTURE_DISPATCHED:' \
+  'lastArrangementFocusTick' \
   'openGridFromArrangementEvent(trackIndex, tick)' \
-  'private int openGridFromArrangementEvent(int trackIndex, long tick)' \
   'UI_ARRANGEMENT_GRID_FOCUS_COMPLETE' \
   'UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY' \
   'mpc-arrange-grid-focus-capture-release' \
   'firstStepForTest()'; do
-  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
-    echo "ERROR: Arrangement event focus runtime verification contract is missing: $required"
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" "$ARRANGE_VIEW_SOURCE"; then
+    echo "ERROR: Arrangement event gesture integration contract missing: $required"
     exit 1
   fi
 done
+arrange_audit_start=$(grep -n -m1 'private void runUiAuditAfterArrangement()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+arrange_audit_end=$(awk -v start="$arrange_audit_start" 'NR > start && /^    private / { print NR; exit }' "$MAIN_ACTIVITY_SOURCE")
+if [[ -z "$arrange_audit_start" || -z "$arrange_audit_end" || "$arrange_audit_end" -le "$arrange_audit_start" ]]; then
+  echo "ERROR: Arrange gesture audit source boundaries are missing"
+  exit 1
+fi
+arrange_audit_block=$(sed -n "${arrange_audit_start},$((arrange_audit_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if grep -Fq -- 'openGridFromArrangementEvent(' <<<"$arrange_audit_block"; then
+  echo "ERROR: Arrange gesture audit must dispatch the GestureDetector path, not call the focus route directly"
+  exit 1
+fi
 
 if grep -Fq -- 'findViewWithContentDescription(\n                content, "Main Mode track type selector")' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track Type must not retain a second selector lookup after unified field migration"

@@ -20,6 +20,7 @@ import android.os.Bundle;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.InputType;
 import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
@@ -236,6 +237,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceTimelineView sequenceTimeline;
     private SequenceTimelineView mainArrangementPreview;
     private MpcArrangeView arrangementView;
+    private int arrangementAuditTrackIndex = -1;
+    private int arrangementAuditTargetStep = -1;
+    private long arrangementAuditEventTick = -1L;
+    private int arrangementAuditGridTicks = 0;
+    private int lastArrangementFocusTrackIndex = -1;
+    private long lastArrangementFocusTick = -1L;
     private MpcBrowserView browserView;
     private AlertDialog browserOptionsDialog;
     private MediaPlayer browserPreviewPlayer;
@@ -6138,6 +6145,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private int openGridFromArrangementEvent(int trackIndex, long tick) {
+        lastArrangementFocusTrackIndex = trackIndex;
+        lastArrangementFocusTick = tick;
         setBottomStatus(nativeSequenceSelectTrack(trackIndex));
         navigationController.setSelectedTrack(trackIndex);
         final int focusedStep = focusSequenceGridAtTick(tick);
@@ -11376,6 +11385,68 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         wait[0].run();
     }
 
+    private boolean prepareArrangementEventGestureAudit() {
+        arrangementAuditTrackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
+        if (!"DRUM".equalsIgnoreCase(
+                nativeSequenceGetTrackType(arrangementAuditTrackIndex))) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange gesture seed requires selected Drum Track");
+            return false;
+        }
+
+        final int totalSteps = sequenceGridTotalSteps();
+        if (totalSteps < 8) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange gesture seed needs at least eight Grid steps");
+            return false;
+        }
+        final int visibleSteps = Math.max(
+                1, Math.min(sequenceGridVisibleSteps, totalSteps));
+        final int preferredStep = Math.min(
+                totalSteps - 1, Math.max(3, visibleSteps * 2));
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+
+        int freeStep = -1;
+        for (int step = preferredStep; step < totalSteps; step++) {
+            final int[] velocities = nativeSequenceGetGridVelocities(step, gridTicks);
+            if (velocities != null && velocities.length > 0 && velocities[0] <= 0) {
+                freeStep = step;
+                break;
+            }
+        }
+        if (freeStep < 0) {
+            for (int step = 3; step < preferredStep; step++) {
+                final int[] velocities = nativeSequenceGetGridVelocities(step, gridTicks);
+                if (velocities != null && velocities.length > 0 && velocities[0] <= 0) {
+                    freeStep = step;
+                    break;
+                }
+            }
+        }
+        if (freeStep < 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: no unused Pad 1 step available for Arrange gesture seed");
+            return false;
+        }
+
+        final String seeded = nativeSequenceToggleGridStep(0, freeStep, gridTicks);
+        if (seeded == null || !seeded.startsWith("STEP " + (freeStep + 1) + " ON")) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not seed Arrangement event"
+                    + " | step=" + (freeStep + 1)
+                    + " | result=" + seeded);
+            return false;
+        }
+
+        arrangementAuditTargetStep = freeStep;
+        arrangementAuditGridTicks = gridTicks;
+        arrangementAuditEventTick = (long) freeStep * gridTicks;
+        lastArrangementFocusTrackIndex = -1;
+        lastArrangementFocusTick = -1L;
+        Log.i(TAG, "UI_ARRANGEMENT_EVENT_SEEDED: trackIndex="
+                + arrangementAuditTrackIndex
+                + " targetStep=" + (freeStep + 1)
+                + " eventTick=" + arrangementAuditEventTick
+                + " gridTicks=" + gridTicks);
+        return true;
+    }
+
     private void runUiAuditAfterTrackView() {
         if (destroyed) return;
 
@@ -11384,6 +11455,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View track strips");
             return;
         }
+        if (!prepareArrangementEventGestureAudit()) return;
 
         if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU before ARRANGE");
@@ -11413,31 +11485,57 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void runUiAuditAfterArrangement() {
         if (destroyed) return;
 
-        if (!"DRUM".equalsIgnoreCase(
-                nativeSequenceGetTrackType(nativeSequenceGetSelectedTrack()))) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement-to-Grid focus audit requires Drum Track");
+        if (arrangementView == null
+                || arrangementAuditTrackIndex < 0
+                || arrangementAuditTargetStep < 0
+                || arrangementAuditGridTicks <= 0
+                || arrangementAuditEventTick < 0L) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement event gesture seed state missing");
             return;
         }
 
         final int totalSteps = sequenceGridTotalSteps();
         final int visibleSteps = Math.max(
                 1, Math.min(sequenceGridVisibleSteps, totalSteps));
-        final int targetStep = Math.min(
-                totalSteps - 1, Math.max(3, visibleSteps * 2));
-        final long ticksPerStep = Math.max(1L, nativeSequenceGetQuantizeGrid());
+        final int expectedStep = MpcSequenceZoomPolicy.stepIndexForTick(
+                arrangementAuditEventTick, arrangementAuditGridTicks, totalSteps);
         final int expectedStart = MpcSequenceZoomPolicy.gridStartForStep(
-                targetStep, visibleSteps, totalSteps);
-        final int focusedStep = openGridFromArrangementEvent(
-                Math.max(0, nativeSequenceGetSelectedTrack()),
-                (long) targetStep * ticksPerStep);
+                expectedStep, visibleSteps, totalSteps);
+        final float[] eventCenter = arrangementView.eventCenterForAudit(
+                arrangementAuditTrackIndex, arrangementAuditEventTick);
+        if (eventCenter == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: seeded Arrangement event has no hittable canvas location"
+                    + " | track=" + arrangementAuditTrackIndex
+                    + " | tick=" + arrangementAuditEventTick
+                    + " | view=" + describeAuditView(arrangementView));
+            return;
+        }
 
-        if (focusedStep != targetStep
+        if (!dispatchArrangementEventDoubleTapForAudit(
+                arrangementView, eventCenter[0], eventCenter[1])) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not dispatch Arrangement event double-tap");
+            return;
+        }
+
+        final boolean exactListenerEvent =
+                lastArrangementFocusTrackIndex == arrangementAuditTrackIndex
+                && lastArrangementFocusTick == arrangementAuditEventTick;
+        final int focusedStep = lastArrangementFocusTick < 0L
+                ? -1
+                : MpcSequenceZoomPolicy.stepIndexForTick(
+                        lastArrangementFocusTick, arrangementAuditGridTicks, totalSteps);
+        if (!exactListenerEvent
+                || focusedStep != expectedStep
                 || sequenceGridView == null
                 || sequenceGridStartStep != expectedStart
                 || sequenceGridView.firstStepForTest() != expectedStart) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement-to-Grid did not focus target step"
-                    + " | target=" + targetStep
-                    + " | focused=" + focusedStep
+            Log.e(TAG, "UI_INTERACTION_FAILED: real Arrange event double-tap did not focus its exact Grid step"
+                    + " | expectedTrack=" + arrangementAuditTrackIndex
+                    + " | listenerTrack=" + lastArrangementFocusTrackIndex
+                    + " | expectedTick=" + arrangementAuditEventTick
+                    + " | listenerTick=" + lastArrangementFocusTick
+                    + " | expectedStep=" + expectedStep
+                    + " | focusedStep=" + focusedStep
                     + " | expectedStart=" + expectedStart
                     + " | actualStart=" + sequenceGridStartStep
                     + " | GridView=" + describeAuditView(sequenceGridView));
@@ -11447,6 +11545,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int firstVisibleStep = sequenceGridStartStep + 1;
         final int lastVisibleStep = Math.min(
                 totalSteps, sequenceGridStartStep + sequenceGridVisibleSteps);
+        Log.i(TAG, "UI_ARRANGEMENT_EVENT_GESTURE_DISPATCHED: trackIndex="
+                + lastArrangementFocusTrackIndex
+                + " eventTick=" + lastArrangementFocusTick
+                + " targetStep=" + (focusedStep + 1));
         Log.i(TAG, "UI_ARRANGEMENT_GRID_FOCUS_COMPLETE: targetStep="
                 + (focusedStep + 1)
                 + " firstVisibleStep=" + firstVisibleStep
@@ -11464,6 +11566,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 dp(120),
                 "sequence grid editor",
                 this::awaitArrangementGridFocusEvidenceCapture);
+    }
+
+    private boolean dispatchArrangementEventDoubleTapForAudit(
+            MpcArrangeView targetView, float x, float y) {
+        if (targetView == null || targetView.getWidth() <= 0 || targetView.getHeight() <= 0) {
+            return false;
+        }
+        final long now = SystemClock.uptimeMillis();
+        final long firstDown = now - 120L;
+        final long firstUp = now - 80L;
+        final long secondDown = now - 40L;
+        final long secondUp = now;
+        return dispatchArrangementTouchForAudit(
+                    targetView, firstDown, firstDown, MotionEvent.ACTION_DOWN, x, y)
+                && dispatchArrangementTouchForAudit(
+                    targetView, firstDown, firstUp, MotionEvent.ACTION_UP, x, y)
+                && dispatchArrangementTouchForAudit(
+                    targetView, secondDown, secondDown, MotionEvent.ACTION_DOWN, x, y)
+                && dispatchArrangementTouchForAudit(
+                    targetView, secondDown, secondUp, MotionEvent.ACTION_UP, x, y);
+    }
+
+    private boolean dispatchArrangementTouchForAudit(
+            MpcArrangeView targetView,
+            long downTime,
+            long eventTime,
+            int action,
+            float x,
+            float y) {
+        final MotionEvent event = MotionEvent.obtain(
+                downTime, eventTime, action, x, y, 0);
+        try {
+            return targetView.dispatchTouchEvent(event);
+        } finally {
+            event.recycle();
+        }
     }
 
     private void awaitArrangementGridFocusEvidenceCapture() {
