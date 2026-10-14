@@ -657,3 +657,10 @@ The fix does not weaken the functional check. It assigns the actual range TextVi
 Android Build #2707 verified SHA `8c5bfcc114b5e2becfdf50a4cdf861bb0d57a623` and passed 57/57 steps. APK artifact `11867684347` has SHA-256 `38557fcdf0ac7b92d7a5b7ad0df9f8199dea67b59fbba44fd7955d04ab53e844`. Visual evidence artifact `11867864670` has SHA-256 `7dae7d4c1b054cfa76ace4ce6744b5fbb82232b89e09aeb6f52bf01a4708f6cd`, with 23 files including the Arrangement→Grid screenshot and XML. The inspected screen and hierarchy agree: target step 33, visible range 25–40/64, semantic content description `Grid visible step range: steps 25 through 40 of 64`.
 
 The failed #2706 validator was a false negative: it assumed the status message was a standalone XML node and that the range label included a literal `STEPS` prefix. #2707 corrected the accessibility contract and passed the full emulator workflow. Direct double-tap on a populated Arrangement event remains separate untested interaction coverage; the UI audit calls the shared production route using a synthetic tick.
+
+
+## 35. 2026-10-14 — Build #2709 validates Arrangement double-tap → Grid
+
+Android Build #2709 verified SHA `20ac2f54ca0075256a6b6534f5ffa7e06d358b77` and passed 57/57 steps. APK artifact `11871064482` has SHA-256 `e653b9b42b4ec971fed383dbb9a1dd033ec0285f50cb94f7b8d6fc369624eb6a`. Visual archive `11871970352` has SHA-256 `53f5e282f46e97e16ea399a1813bb8913192136385f06bb86f4541dd2fc0478e` and contains 23 entries including the focused Grid screenshot/XML. The UI seeded a note with the existing sequencer mutation, checked the exact event center through the production hit test, dispatched the double-tap down/up events through `MpcArrangeView` and its actual `GestureDetector`, and asserted the listener delivered the exact expected Track/tick. The screenshot shows step 33 as an active note within range 25–40/64; semantic accessibility agrees.
+
+This proves the app-side Android gesture/listener path under emulator MotionEvents. It does not claim finger testing on the MPC Studio MkII hardware. The Browser local WAV/SAF assignment and persisted folder restoration paths also passed unchanged.

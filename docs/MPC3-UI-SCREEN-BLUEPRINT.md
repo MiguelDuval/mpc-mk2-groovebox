@@ -1308,3 +1308,10 @@ The failed #2706 audit image itself demonstrates the focus math is correct: targ
 The corrected validator passed on exact SHA `8c5bfcc114b5e2becfdf50a4cdf861bb0d57a623`. APK artifact `11867684347` and visual-evidence artifact `11867864670` were downloaded and integrity checked; the archive contains the focus screenshot and XML. The UI visibly shows `25–40/64`, target step 33 is inside the viewport, and the range TextView's content description reports `Grid visible step range: steps 25 through 40 of 64`. Full CI and Browser/Picker evidence passed.
 
 Coverage caveat: UI audit invokes the shared production route with a synthetic tick; it does not yet double-tap a populated Arrangement event and verify Android hit testing and listener delivery of that event's actual tick. That is the next interaction-focused test.
+
+
+### Build #2709 — actual Arrangement event gesture verified
+
+On exact SHA `20ac2f54ca0075256a6b6534f5ffa7e06d358b77`, Android Build #2709 passed all 57 steps. The audit seeded a real note at an unused Pad 1 step via the existing semantic/native command, located that Arrangement event through the same hit-test used by the production gesture listener, dispatched the double tap through `MpcArrangeView` and `GestureDetector`, and compared listener-delivered Track/tick with the expected event. The resulting screenshot has the active step 33 in range `25–40/64`; XML range/accessibility metadata agree. APK artifact `11871064482`, SHA-256 `e653b9b42b4ec971fed383dbb9a1dd033ec0285f50cb94f7b8d6fc369624eb6a`; 23-file visual archive artifact `11871970352`, SHA-256 `53f5e282f46e97e16ea399a1813bb8913192136385f06bb86f4541dd2fc0478e`.
+
+The runtime gesture is synthetic Android MotionEvent dispatch to the real view path, not physical touch-controller verification. Next audit real Track selection and loop drag/commit state changes and return-context preservation, maintaining read-only event placement until a genuine placement domain model exists.
