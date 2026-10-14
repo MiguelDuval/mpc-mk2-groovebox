@@ -1286,3 +1286,8 @@ The source smoke now checks the exact AUDIO/DRUM/CV mapping branches, rejects CL
 ### Follow-up after Android Build #2703 compile failure
 
 The shared type-icon drawable is used by both Main's selected-Track icon and the XL Mixer Strip identity icon. Build #2703 found the latter still referenced the removed `CLIP` enum. `MpcMainMixerStripView.trackTypeIcon()` now maps native `AUDIO` and `DRUM` explicitly, and the smoke source preflight checks the helper's mapping/forbidden CLIP case directly. No Track conversion action is added; it remains RESERVED. Accept only after exact-SHA full CI.
+
+
+## 2026-10-14 — Arrangement event opens Grid at the event position
+
+The Arrange workspace already emits `onEventDoubleTapped(trackIndex, tick)`. Main must not discard the tick: select the Track, map tick to a step using the active quantize resolution, position the Grid's visible window around that absolute step (clamped to sequence bounds), and provide an explicit focused-step status. This is navigation, not a note mutation; it must not alter pattern events. Pure policy tests cover the tick/viewport math, and source smoke asserts the production callback uses it. This is implemented in the current pending change and requires exact-SHA CI plus emulator evidence.

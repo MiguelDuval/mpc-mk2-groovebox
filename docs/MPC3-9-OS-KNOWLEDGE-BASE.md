@@ -629,3 +629,10 @@ The Gen1 firmware evidence from Section 28 is now applied to the Main Track Type
 The first implementation commit's Android Build #2703 failed during Java compilation because `MpcMainMixerStripView.trackTypeIcon()` still referenced `MpcTrackTypeIconDrawable.Type.CLIP` after the shared drawable enum was changed. No APK was produced by that run. This identifies a second production consumer, not a reason to restore CLIP to the Main Track Type vocabulary.
 
 The follow-up correction maps native `AUDIO` and `DRUM` explicitly in the XL Mixer Strip icon helper and extends `tests/android_ui_smoke.sh` to require the correct Audio/Drum/CV mapping and reject the stale CLIP reference in that helper. The corrected slice remains pending until the full Android workflow succeeds on its exact new SHA. No audio/MIDI/domain operations were touched.
+
+
+## 31. 2026-10-14 — Track Type fix accepted; Arrangement-to-Grid navigation defect found
+
+Android Build #2704 on SHA `8a9f5ecd2e7326d7b1f703c6aafc76a5b800bfcb` completed successfully (57/57 steps). Its APK and visual evidence were downloaded, ZIP-integrity checked and inspected. The Main hierarchy reports the active DRUM workflow and explicitly reports type conversion unavailable. Picker assignment and process-restarted USER FOLDER restoration evidence remain valid at that exact SHA.
+
+A new code audit found that Arrangement event double-tap receives a real event tick but throws it away before opening Grid. The current implementation slice maps the supplied tick into the active quantize grid, selects a bounded absolute step and chooses a visible viewport that contains/centers that step where the sequence length permits. New unit tests cover negative/oversized ticks, sequence boundaries and narrow windows; source preflight verifies the live route. This source slice remains pending exact-SHA Android CI. No realtime audio, MIDI transport or sampler path is changed.

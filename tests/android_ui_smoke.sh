@@ -409,6 +409,19 @@ if grep -Fq -- 'case "CLIP":' <<<"$mixer_track_type_map_block" || \
   exit 1
 fi
 
+echo "Running Arrangement-event-to-Grid navigation preflight..."
+for required in \
+  'focusSequenceGridAtTick(tick)' \
+  'private int focusSequenceGridAtTick(long tick)' \
+  'MpcSequenceZoomPolicy.stepIndexForTick(' \
+  'MpcSequenceZoomPolicy.gridStartForStep(' \
+  'ARRANGE EVENT • GRID FOCUSED • STEP'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Arrangement event must open Grid at its corresponding tick/step: $required"
+    exit 1
+  fi
+done
+
 if grep -Fq -- 'findViewWithContentDescription(\n                content, "Main Mode track type selector")' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main Track Type must not retain a second selector lookup after unified field migration"
   exit 1

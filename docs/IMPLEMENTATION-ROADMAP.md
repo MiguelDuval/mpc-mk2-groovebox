@@ -699,8 +699,9 @@ MPC Standalone OS 3.9 remains the UI/interaction reference, but reproducing Akai
 4. **User-selected local folder / persisted SAF grant — VERIFIED:** real tree-backed WAV results and PROJECTS/SAMPLES/ALL filters passed; after app process stop/relaunch, the USER FOLDER destination, persisted URI permission and real WAV result were restored.
 5. **Still incomplete:** favourite folders are not yet genuinely persisted. MPC DOCUMENTS, CONNECTED STORAGE and other categories without a real provider remain unavailable/no-result, never fake populated.
 6. **Main Track Type vocabulary — implementation fix plus shared-consumer audit, exact-SHA CI required:** the Android Main icon maps native `AUDIO` and `DRUM` explicitly, uses an original Audio waveform glyph and removes `CLIP` from Track Type vocabulary. Build #2703 then found one remaining `Type.CLIP` reference in the XL Mixer Strip helper; the follow-up maps Audio/Drum there and adds direct smoke source assertions for both icon consumers. Touch/controller selection remains RESERVED until an actual track-conversion operation exists. Accept only after the full Android Build passes on the resulting commit SHA.
-7. **Next after that CI acceptance:** improve high-frequency Track, Arrange, Grid and Step musical scenarios through complete, tested workflows; then deepen mixer/project persistence according to real backend contracts.
-8. Physical MPC Studio MkII behavior remains pending; emulator success is not hardware verification.
+7. **Current next slice — Arrangement event → Grid viewport focus:** Arrangement double-tap already supplies an event tick but the callback discarded it. The source update converts that tick to a quantized step, centers/clamps the visible Grid window around it and reports the focused absolute step; unit/preflight coverage is added. Verify on the resulting exact-SHA Android Build.
+8. **Then:** continue high-frequency Track, Arrange, Grid and Step musical scenarios through complete, tested workflows; deepen mixer/project persistence only according to real backend contracts.
+9. Physical MPC Studio MkII behavior remains pending; emulator success is not hardware verification.
 
 ### Definition of done for a roadmap item
 
@@ -723,3 +724,8 @@ The second pass parsed Program Edit TUI JSON schema counts and Main/touch UI typ
 **New correctness lead:** both the firmware's six Track Type selector assets and the official v3.9 guide point to **Audio / Drum / Keygroup / Plugin / MIDI / CV**. The recent project selector vocabulary places CLIP where AUDIO should be audited. Treat this as a high-priority fidelity discrepancy: inspect the existing selector/enum/tests after completing the current Document Picker select-return-target-preservation workflow, and keep Clip/Arrangement and Mixer strip categories separate. No app code was changed by this research checkpoint.
 
 Full data and limitations: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`.
+
+
+### 2026-10-14 — Arrangement event navigation slice
+
+The current source review identified that `onEventDoubleTapped(trackIndex, tick)` discarded `tick` before entering Grid. Grid therefore opened at its stale viewport, a real workflow defect rather than a styling gap. The current changeset adds a pure tick→step/viewport policy, centers the target step when possible and clamps at the start/end of the sequence; boundary/overflow unit tests and source preflight cover the route. Exact-SHA Android CI is pending. The preceding Track Type correction is already verified on #2704.

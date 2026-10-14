@@ -6083,7 +6083,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             public void onEventDoubleTapped(int trackIndex, long tick) {
                 setBottomStatus(nativeSequenceSelectTrack(trackIndex));
                 navigationController.setSelectedTrack(trackIndex);
+                final int focusedStep = focusSequenceGridAtTick(tick);
                 showSequenceGridPage();
+                setBottomStatus(
+                        "ARRANGE EVENT • GRID FOCUSED • STEP "
+                                + String.format(Locale.ROOT, "%02d", focusedStep + 1));
             }
 
             @Override
@@ -7697,6 +7701,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
             }
         }
+    }
+
+    private int focusSequenceGridAtTick(long tick) {
+        final int totalSteps = sequenceGridTotalSteps();
+        final long gridTicks = Math.max(1L, nativeSequenceGetQuantizeGrid());
+        final int stepIndex = MpcSequenceZoomPolicy.stepIndexForTick(
+                tick, gridTicks, totalSteps);
+        sequenceGridVisibleSteps = Math.max(
+                1, Math.min(sequenceGridVisibleSteps, totalSteps));
+        sequenceGridStartStep = MpcSequenceZoomPolicy.gridStartForStep(
+                stepIndex, sequenceGridVisibleSteps, totalSteps);
+        return stepIndex;
     }
 
     private int sequenceGridTotalSteps() {

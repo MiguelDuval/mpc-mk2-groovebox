@@ -5,39 +5,36 @@
 
 > **Freshness rule:** This checkpoint will itself be committed after the pre-checkpoint SHA above. Therefore, it does **not** claim CI success for the commit containing this state refresh. On every session start, verify the live PR head, branch HEAD, latest Android Build and artifact files. Do not rely on remembered commit numbers or on this checkpoint instead of GitHub.
 
-## Last independently verified checkpoint — 2026-10-13 20:08 UTC
+## Last independently verified checkpoint — 2026-10-14 04:51 CEST
 
-**Live GitHub at checkpoint:** branch `feature/mpc-one-ui-fidelity`; PR #23 OPEN / not merged; base `fix/ui-shell-format-width-startup`; tested head `9eab8cc08cf0516473b5d276f98db039817064f0`.
+**Live GitHub source of truth:** branch `feature/mpc-one-ui-fidelity`; PR #23 OPEN / not merged; base `fix/ui-shell-format-width-startup`; exact verified head `8a9f5ecd2e7326d7b1f703c6aafc76a5b800bfcb`.
 
-### Android Build #2702 — SUCCESS
+### Android Build #2704 — SUCCESS
 
-- Exact tested SHA: `9eab8cc08cf0516473b5d276f98db039817064f0`.
-- Run: [Android Build #2702](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38459133415); **57/57 steps passed** (native/JVM checks, APK assembly/upload, emulator startup/runtime smoke, visual evidence upload).
-- The app code was unchanged from #2701; this run validates the Browser documentation checkpoint at its exact branch SHA.
-- Smoke reconfirmed MediaStore WAV search/filter, real selection, genuine audition/native assignment; Android Document Picker select → return → PAD 01 / LAYER 01 assignment; and user-selected document-tree results/filtering plus saved USER FOLDER/grant restoration after process stop/relaunch.
+- Run [Android Build #2704](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38461289881); tested SHA `8a9f5ecd2e7326d7b1f703c6aafc76a5b800bfcb`; **57/57 workflow steps passed**.
+- The workflow covered native/JVM checks, Android Java compilation and APK assembly/upload, emulator runtime smoke, and visual-evidence upload.
+- Browser E2E was reconfirmed: MediaStore WAV search/filter/selection/audition/native assignment; Document Picker select → return → PAD 01 / LAYER 01 assignment; user document-tree results/filtering and USER FOLDER + persistable SAF read grant restored after app process stop/relaunch.
+- Track Type vocabulary fix was compiled and source/runtime preflight passed: native AUDIO/DRUM labels map to the shared icon drawable; no CLIP enum reference remains in Main or XL Mixer Strip; non-Drum editing/conversion still reports RESERVED. This fixes the compile error from #2703 without inventing track-conversion behavior.
 
-### Verified artifacts for SHA `9eab8cc08cf0516473b5d276f98db039817064f0`
+### Verified APK and visual evidence for exact SHA `8a9f5ecd2e7326d7b1f703c6aafc76a5b800bfcb`
 
-- APK artifact ID `11845082881`, 8,211,869 bytes, SHA-256 `d98e535ccbf736bc7d56a9009e2a6640ba5984536b4750d42e6d0e0ea8f5a702`; downloaded and ZIP-integrity checked.
-- Visual evidence artifact ID `11844918520`, 1,377,272 bytes, SHA-256 `744fc676055cafc405d4563312c42986a194e7bd8f2db845b50f1a649a4c2a29`; downloaded and ZIP-integrity checked. It contains 21 files. Browser local-results, Picker assignment and restored USER FOLDER screenshots each have the corresponding real accessibility XML. The restored hierarchy confirms `USER FOLDER • 1 WAV FILE INDEXED`, `Browser-Tree-Only.wav` and `TARGET • PAD 01 / LAYER 01`; the picker hierarchy confirms `CURRENT SAMPLE • Browser-Picker-Return.wav` and `ASSIGNED • Browser-Picker-Return.wav → PAD 01 / LAYER 01`.
-- Physical MPC Studio MkII validation remains **PENDING**; these are emulator results.
+- APK artifact ID `11846651495`, 8,211,869 bytes, SHA-256 `41ac7bfb0827933371f581c5bea4b8a0b7334554dcefca2784a7e463d5dc997f`. Downloaded and ZIP-integrity checked.
+- Visual evidence artifact ID `11847511399`, 1,389,856 bytes, SHA-256 `e083029163e062c9b3ef120ecb9773b6e3116daf7f0d1c9c7175c7afa84beba4`. Downloaded and ZIP-integrity checked; 21 files, including Main screenshot/UI XML, Browser results, Document Picker assignment and restored USER FOLDER screenshot/XML.
+- Inspected Main hierarchy confirms `Main Track Type DRUM • Drum workflow available • type conversion unavailable`; Picker evidence confirms `CURRENT SAMPLE • Browser-Picker-Return.wav` and `ASSIGNED • Browser-Picker-Return.wav → PAD 01 / LAYER 01`; restored user-folder hierarchy confirms `USER FOLDER • 1 WAV FILE INDEXED`, `Browser-Tree-Only.wav` and target `PAD 01 / LAYER 01`.
+- Physical MPC Studio MkII validation remains **PENDING**; all these results are Android emulator evidence.
 
-### Current Track Type correction in this changeset — exact-SHA CI still required
+### Next implementation slice — Arrangement event → Grid focus
 
-The source/test update in this commit aligns Main Track Type icon vocabulary with native labels: `AUDIO` is explicitly mapped to an original waveform glyph; `DRUM` is explicit; `CLIP` is removed from the Track Type icon enum/mapping. Touch/controller selection now reports `TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation` instead of entering a fake selector state. No conversion backend is invented. This new source revision must pass its own Android Build before the correction is marked verified.
+Source audit found a concrete high-frequency navigation defect: `MpcArrangeView.Listener.onEventDoubleTapped(trackIndex, tick)` passed the event's actual tick, but `MainActivity` discarded it and always opened Grid at its previous viewport. This changes the next task from more cosmetic audit work to usable editor navigation.
 
-### Failed validation attempt — Android Build #2703 — NOT ACCEPTED
+The current changeset adds bounded tick → quantize-step and target-step → visible-window policy helpers, uses them before opening Grid on an Arrangement event double-tap, reports the focused absolute step, adds edge/overflow unit tests to `MpcSequenceZoomPolicyTest`, and checks the production route in `tests/android_ui_smoke.sh`. The full Android Build for the new HEAD is required before acceptance.
 
-- Run [Android Build #2703](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38460600741) tested SHA `7a139ac0fc9d6ca95718b9c371c8309fa0558c07` and **FAILED** during Java compilation.
-- Exact compiler error: `MpcMainMixerStripView.java:590` still referenced `MpcTrackTypeIconDrawable.Type.CLIP` after the shared Track Type icon enum correctly removed `CLIP`. No APK was produced/uploaded; the visual-evidence upload step ran, but that does not establish a successful build.
-- Root cause is a second UI caller that the first source preflight did not audit. The minimal correction maps native `AUDIO` and `DRUM` labels explicitly in that XL Mixer Strip icon helper too, and extends smoke source checks to inspect that helper and reject the obsolete CLIP enum reference.
-- The fix remains pending until the complete Android Build succeeds on its new exact SHA. Do not describe #2703 as accepted.
+### Known remaining gaps
 
-### Remaining gaps
-
-- Favourite locations 1–5 are still **not** genuinely persisted/restored.
-- Places/categories without real providers remain unavailable/no-result; no Splice, stores, upsells or unnecessary vendor cloud/account dependencies.
-- Non-Drum workflows and existing-track type conversion remain RESERVED. Native `TrackKind` exposes Audio, Drum, Keygroup, Plugin and MIDI; it currently has no CV kind even though CV is part of the documented reference taxonomy.
+- Favourite folders 1–5 are still **not** genuinely persisted/restored.
+- Locations/content categories without real providers remain unavailable/no-result. Splice, paid stores, upsells and unnecessary vendor cloud/account dependencies stay excluded.
+- Only Drum editing is fully supported in Grid/Step; AUDIO/CV/KEYGROUP/MIDI/PLUGIN must not silently route to Drum editing. Native `TrackKind` currently has no CV kind.
+- Existing-track type conversion remains RESERVED; a truthful chooser needs a real semantic/backend operation.
 - Do not claim physical MPC Studio MkII behavior without testing that hardware.
 
 ## 1. Repository and safety
@@ -117,16 +114,17 @@ Do not dump/re-read all large docs every session. Read this state, the protocol 
 3. Actual APK and visual-evidence artifacts for exact SHA `f325676ecd147426952bfda4c1e160cc620489bd` were downloaded and inspected. Run, IDs, hashes and evidence files are recorded in the current checkpoint above.
 4. Keep the storage workflow intact. Add favourite locations only when actual storage, persistence/restoration and tests are implemented.
 
-### Task 2 — Main Track Type vocabulary and honest reserved state — SOURCE CHANGE INCLUDED; CI REQUIRED
+### Task 2 — Main Track Type vocabulary and honest reserved state — ACCEPTED on Build #2704
 
-The implementation in this changeset:
-1. Explicitly maps `DRUM` and native `AUDIO` labels; the Audio icon uses original waveform strokes and the obsolete `CLIP` Main Track Type icon enum/route is removed.
-2. Touching the Main icon or requesting Track Type selection from the hardware reports `TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation`; it does not enter a fake selection subcontext.
-3. Smoke source checks require AUDIO/DRUM/CV mapping both in MainActivity and in the second XL Mixer Strip icon consumer, reject CLIP-as-Track-Type across both, and verify the rendered Main Track Type accessibility label truthfully reports conversion unavailable.
-4. Android Build #2703 exposed the missed mixer-strip reference at compile time. The follow-up patch fixes that exact call site and adds a targeted preflight for it; the correction remains unaccepted until the full Android workflow passes for the actual resulting HEAD SHA.
-5. No audio/MIDI/sampler/domain operation was rewritten.
+1. Native AUDIO/DRUM mapping, waveform glyph, obsolete CLIP icon removal and truthful reserved selection feedback are compiled and verified on exact SHA `8a9f5ecd2e7326d7b1f703c6aafc76a5b800bfcb`.
+2. Build #2703's missed `MpcMainMixerStripView` caller was fixed; Build #2704 passed 57/57 steps and produced inspected APK/evidence artifacts. The failed intermediate attempt remains recorded below as history, not as current state.
+3. Track conversion is still RESERVED. No sampler/audio/MIDI/domain operation was invented.
 
-### Task 3 — high-value musical contexts
+### Task 3 — Arrangement event → Grid viewport focus — CURRENT
+
+Implement the exact event tick → quantized step → bounded visible-window route. Keep selected Track and event location aligned; test sequence boundaries and out-of-range ticks. The change is included in the current pending commit and must pass the full Android workflow on its exact new SHA.
+
+
 
 
 
