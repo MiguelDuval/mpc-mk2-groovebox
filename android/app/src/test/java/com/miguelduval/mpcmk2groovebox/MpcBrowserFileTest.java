@@ -40,7 +40,9 @@ public final class MpcBrowserFileTest {
         MpcBrowserFile kick = sample("Kick_Main.wav");
         assertFalse(kick.matchesBrowserQuery("PLACES", "MPC DOCUMENTS", "ALL", ""));
         assertFalse(kick.matchesBrowserQuery("PLACES", "CONNECTED STORAGE", "SAMPLES", ""));
-        assertFalse(kick.matchesBrowserQuery("PLACES", "FAVORITE 1", "ALL", ""));
+        assertTrue(kick.matchesBrowserQuery("PLACES", "FAVORITE 1", "ALL", ""));
+        assertTrue(kick.matchesBrowserQuery("PLACES", "FAVORITE 5", "SAMPLES", "kick"));
+        assertFalse(kick.matchesBrowserQuery("PLACES", "FAVORITE 6", "ALL", ""));
         assertFalse(kick.matchesBrowserQuery("CONTENT", "DRUMS", "ALL", ""));
         assertFalse(kick.matchesBrowserQuery("CONTENT", "INSTRUMENTS", "SAMPLES", ""));
         assertFalse(kick.matchesBrowserQuery("EXPANSIONS", "USER CONTENT", "ALL", ""));

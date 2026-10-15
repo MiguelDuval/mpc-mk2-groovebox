@@ -81,6 +81,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final String BROWSER_STORAGE_PREFERENCES = "mpc_browser_storage";
     private static final String PREF_USER_TREE_URI = "user_tree_uri";
     private static final String PREF_USER_TREE_NAME = "user_tree_name";
+    private static final String PREF_FAVORITE_TREE_URI_PREFIX = "favorite_tree_uri_";
+    private static final String PREF_FAVORITE_TREE_NAME_PREFIX = "favorite_tree_name_";
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
     private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
     private static final boolean NATIVE_LIBRARY_LOADED;
@@ -249,6 +251,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private String browserPreviewUri = "";
     private Uri browserUserTreeUri;
     private String browserUserTreeName = "";
+    private int browserPickerTargetFavoriteSlot = -1;
     private int browserPickerTargetPad = -1;
     private int browserPickerTargetLayer = -1;
     private final ArrayList<MpcArrangeView.Lane> arrangementLanes = new ArrayList<>();
@@ -5486,12 +5489,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController.setDataDialFocus(
                         MpcUiState.DataDialFocus.BROWSER_ITEM);
                 setBottomStatus("BROWSER • " + locationKey);
-                if ("PLACES".equals(section) && "USER FOLDER".equals(item)) {
-                    if (browserUserTreeUri != null && hasPersistedReadPermission(browserUserTreeUri)) {
-                        loadBrowserDocumentTree(browserUserTreeUri, browserUserTreeName, browserView);
+                if ("PLACES".equals(section)
+                        && ("USER FOLDER".equals(item) || favoriteSlotForLocationKey(locationKey) > 0)) {
+                    final int favoriteSlot = favoriteSlotForLocationKey(locationKey);
+                    final String treeLabel = browserTreeLocationLabel(locationKey);
+                    final Uri treeUri = savedBrowserTreeUriForLocation(locationKey);
+                    final String treeName = savedBrowserTreeNameForLocation(locationKey, treeUri);
+                    if (treeUri == null) {
+                        if (favoriteSlot < 0) {
+                            browserUserTreeUri = null;
+                            browserUserTreeName = "";
+                        }
+                        browserView.setUserFolderState("", false, treeLabel + " • NOT CONFIGURED");
+                    } else if (!hasPersistedReadPermission(treeUri)) {
+                        browserView.setUserFolderState(treeName, false,
+                                treeLabel + " • ACCESS NEEDS RENEWAL • CHOOSE FOLDER");
                     } else {
-                        browserView.setUserFolderState(browserUserTreeName, false,
-                                "USER FOLDER • ACCESS NEEDS RENEWAL • CHOOSE FOLDER");
+                        if (favoriteSlot < 0) {
+                            browserUserTreeUri = treeUri;
+                            browserUserTreeName = treeName;
+                        }
+                        loadBrowserDocumentTree(treeUri, treeName, browserView, locationKey);
                     }
                 }
                 refreshMpcFunctionBar();
@@ -5621,16 +5639,98 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         updateModeRailSelection();
     }
 
+    private int favoriteSlotForLocationKey(String locationKey) {
+        if (locationKey == null) return -1;
+        for (int slot = 1; slot <= 5; slot++) {
+            if (("PLACES/FAVORITE " + slot).equals(locationKey)) return slot;
+        }
+        return -1;
+    }
+
+    private String browserTreeLocationLabel(String locationKey) {
+        final int favoriteSlot = favoriteSlotForLocationKey(locationKey);
+        return favoriteSlot > 0 ? "FAVORITE " + favoriteSlot : "USER FOLDER";
+    }
+
+    private String favoriteTreeUriPreferenceKey(int slot) {
+        return PREF_FAVORITE_TREE_URI_PREFIX + slot;
+    }
+
+    private String favoriteTreeNamePreferenceKey(int slot) {
+        return PREF_FAVORITE_TREE_NAME_PREFIX + slot;
+    }
+
+    private Uri savedBrowserTreeUriForLocation(String locationKey) {
+        final int favoriteSlot = favoriteSlotForLocationKey(locationKey);
+        final String preferenceKey;
+        if (favoriteSlot > 0) {
+            preferenceKey = favoriteTreeUriPreferenceKey(favoriteSlot);
+        } else if ("PLACES/USER FOLDER".equals(locationKey)) {
+            preferenceKey = PREF_USER_TREE_URI;
+        } else {
+            return null;
+        }
+        final String savedUri = getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
+                .getString(preferenceKey, "");
+        if (savedUri == null || savedUri.trim().isEmpty()) return null;
+        try {
+            return Uri.parse(savedUri);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private String savedBrowserTreeNameForLocation(String locationKey, Uri treeUri) {
+        final int favoriteSlot = favoriteSlotForLocationKey(locationKey);
+        final String preferenceKey;
+        if (favoriteSlot > 0) {
+            preferenceKey = favoriteTreeNamePreferenceKey(favoriteSlot);
+        } else if ("PLACES/USER FOLDER".equals(locationKey)) {
+            preferenceKey = PREF_USER_TREE_NAME;
+        } else {
+            return "";
+        }
+        final String savedName = getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
+                .getString(preferenceKey, "");
+        if (savedName != null && !savedName.trim().isEmpty()) return savedName.trim();
+        if (treeUri != null) {
+            try {
+                return MpcDocumentTreeCatalog.fallbackDisplayName(treeUri);
+            } catch (RuntimeException ignored) {
+                // If the URI is unusable, the Browser offers a fresh folder selection.
+            }
+        }
+        return "";
+    }
+
+    private void saveBrowserTreeNameForLocation(String locationKey, String name) {
+        final int favoriteSlot = favoriteSlotForLocationKey(locationKey);
+        final android.content.SharedPreferences.Editor editor =
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE).edit();
+        if (favoriteSlot > 0) {
+            editor.putString(favoriteTreeNamePreferenceKey(favoriteSlot), name);
+        } else if ("PLACES/USER FOLDER".equals(locationKey)) {
+            browserUserTreeName = name;
+            editor.putString(PREF_USER_TREE_NAME, name);
+        }
+        editor.apply();
+    }
+
     private void openBrowserDocumentTreePicker() {
+        final String locationKey = navigationController == null
+                ? "PLACES/USER FOLDER" : navigationController.state().browserLocation();
+        browserPickerTargetFavoriteSlot = favoriteSlotForLocationKey(locationKey);
+        final Uri pickerInitialTreeUri = savedBrowserTreeUriForLocation(locationKey);
+        final String pickerLocationLabel = browserTreeLocationLabel(locationKey);
         final Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
                 | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
                 | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && browserUserTreeUri != null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && pickerInitialTreeUri != null) {
             // EXTRA_INITIAL_URI is a navigation hint, not the persisted tree grant.
             // DocumentsUI implementations may ignore the raw /tree/... URI here;
             // give the picker the corresponding document URI for the selected folder.
-            Uri initialUri = browserUserTreeUri;
+            Uri initialUri = pickerInitialTreeUri;
             try {
                 final String authority = browserUserTreeUri.getAuthority();
                 final String documentId = DocumentsContract.getTreeDocumentId(browserUserTreeUri);
@@ -5654,7 +5754,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             try {
                 startActivityForResult(fallback, REQUEST_OPEN_DOCUMENT_TREE);
             } catch (RuntimeException fallbackError) {
-                final String status = "USER FOLDER • PICKER UNAVAILABLE • "
+                browserPickerTargetFavoriteSlot = -1;
+                final String status = pickerLocationLabel + " • PICKER UNAVAILABLE • "
                         + fallbackError.getClass().getSimpleName();
                 setBottomStatus(status);
                 if (browserView != null) browserView.setProviderStatus(status);
@@ -5699,20 +5800,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "USER FOLDER • ACCESS NEEDS RENEWAL • CHOOSE FOLDER");
             return;
         }
-        target.setUserFolderState(browserUserTreeName, true, "USER FOLDER • RESTORING…");
-        loadBrowserDocumentTree(browserUserTreeUri, browserUserTreeName, target);
+        target.setUserFolderState(browserUserTreeName, true, "USER FOLDER • READY • SELECT TO SCAN");
+        if (navigationController != null
+                && "PLACES/USER FOLDER".equals(navigationController.state().browserLocation())) {
+            loadBrowserDocumentTree(
+                    browserUserTreeUri, browserUserTreeName, target, "PLACES/USER FOLDER");
+        }
     }
 
-    private void loadBrowserDocumentTree(Uri treeUri, String fallbackName, MpcBrowserView target) {
-        if (treeUri == null || target == null || destroyed) return;
+    private void loadBrowserDocumentTree(
+            Uri treeUri, String fallbackName, MpcBrowserView target, String locationKey) {
+        if (treeUri == null || target == null || destroyed || locationKey == null) return;
+        final String treeLabel = browserTreeLocationLabel(locationKey);
+        if (!treeUri.equals(savedBrowserTreeUriForLocation(locationKey))) return;
         if (!hasPersistedReadPermission(treeUri)) {
             target.setUserFolderState(fallbackName, false,
-                    "USER FOLDER • ACCESS NEEDS RENEWAL • CHOOSE FOLDER");
+                    treeLabel + " • ACCESS NEEDS RENEWAL • CHOOSE FOLDER");
             return;
         }
         final String fallback = fallbackName == null || fallbackName.trim().isEmpty()
-                ? "USER FOLDER" : fallbackName.trim();
-        target.setUserFolderState(fallback, true, "USER FOLDER • SCANNING…");
+                ? treeLabel : fallbackName.trim();
+        target.setUserFolderState(fallback, true, treeLabel + " • SCANNING…");
         try {
             startupExecutor.execute(() -> {
                 final String folderName;
@@ -5722,40 +5830,52 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     files = MpcDocumentTreeCatalog.queryWavFiles(getContentResolver(), treeUri);
                 } catch (RuntimeException e) {
                     runOnUiThread(() -> {
-                        if (destroyed || browserView != target || !treeUri.equals(browserUserTreeUri)) return;
-                        final String status = "USER FOLDER • READ FAILED • "
+                        if (destroyed || browserView != target
+                                || !locationKey.equals(navigationController.state().browserLocation())
+                                || !treeUri.equals(savedBrowserTreeUriForLocation(locationKey))) return;
+                        final String status = treeLabel + " • READ FAILED • "
                                 + e.getClass().getSimpleName() + " • CHOOSE FOLDER AGAIN";
                         target.setUserFolderFailure(fallback, status);
-                        if ("BROWSE".equals(currentPage)
-                                && "PLACES/USER FOLDER".equals(navigationController.state().browserLocation())) setBottomStatus(status);
+                        if ("BROWSE".equals(currentPage)) setBottomStatus(status);
                     });
                     return;
                 }
                 runOnUiThread(() -> {
-                    if (destroyed || browserView != target || !treeUri.equals(browserUserTreeUri)) return;
+                    if (destroyed || browserView != target
+                            || !locationKey.equals(navigationController.state().browserLocation())
+                            || !treeUri.equals(savedBrowserTreeUriForLocation(locationKey))) return;
                     final String resolved = folderName == null || folderName.trim().isEmpty()
                             ? fallback : folderName.trim();
-                    browserUserTreeName = resolved;
-                    getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
-                            .edit().putString(PREF_USER_TREE_NAME, resolved).apply();
-                    final String label = files.size() == 1 ? "WAV FILE" : "WAV FILES";
-                    final String status = String.format(Locale.ROOT, "USER FOLDER • %d %s INDEXED", files.size(), label);
+                    saveBrowserTreeNameForLocation(locationKey, resolved);
+                    final String countLabel = files.size() == 1 ? "WAV FILE" : "WAV FILES";
+                    final String status = String.format(
+                            Locale.ROOT, "%s • %d %s INDEXED", treeLabel, files.size(), countLabel);
                     target.setUserFolderFiles(resolved, files, status);
-                    if ("BROWSE".equals(currentPage)
-                            && "PLACES/USER FOLDER".equals(navigationController.state().browserLocation())) setBottomStatus(status);
+                    if ("BROWSE".equals(currentPage)) setBottomStatus(status);
                 });
             });
         } catch (java.util.concurrent.RejectedExecutionException e) {
-            final String status = "USER FOLDER • SCAN UNAVAILABLE • REOPEN BROWSER";
+            final String status = treeLabel + " • SCAN UNAVAILABLE • REOPEN BROWSER";
             target.setUserFolderFailure(fallback, status);
-            if ("BROWSE".equals(currentPage)) setBottomStatus(status);
+            if ("BROWSE".equals(currentPage)
+                    && locationKey.equals(navigationController.state().browserLocation())) {
+                setBottomStatus(status);
+            }
         }
     }
 
     private void handleUserDocumentTreeResult(int resultCode, Intent data) {
+        final int favoriteSlot = browserPickerTargetFavoriteSlot;
+        browserPickerTargetFavoriteSlot = -1;
+        if (favoriteSlot > 0) {
+            handleFavoriteDocumentTreeResult(favoriteSlot, resultCode, data);
+            return;
+        }
         if (resultCode != RESULT_OK || data == null || data.getData() == null) {
             setBottomStatus("USER FOLDER • SELECTION CANCELLED");
-            if (browserView != null && browserUserTreeUri == null) browserView.setProviderStatus("USER FOLDER • NO FOLDER SELECTED");
+            if (browserView != null && browserUserTreeUri == null) {
+                browserView.setProviderStatus("USER FOLDER • NO FOLDER SELECTED");
+            }
             return;
         }
         final Uri treeUri = data.getData();
@@ -5766,7 +5886,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         try {
-            getContentResolver().takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getContentResolver().takePersistableUriPermission(
+                    treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
         } catch (SecurityException e) {
             final String status = "USER FOLDER • PERSISTENT ACCESS DENIED • CHOOSE FOLDER AGAIN";
             setBottomStatus(status);
@@ -5789,15 +5910,71 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         browserUserTreeUri = treeUri;
         browserUserTreeName = name;
         getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE).edit()
-                .putString(PREF_USER_TREE_URI, treeUri.toString()).putString(PREF_USER_TREE_NAME, name).apply();
+                .putString(PREF_USER_TREE_URI, treeUri.toString())
+                .putString(PREF_USER_TREE_NAME, name).apply();
         if (browserView != null && "BROWSE".equals(currentPage)) {
-            navigationController.setBrowser("PLACES/USER FOLDER",
-                    navigationController.state().browserFilter(), navigationController.state().browserSearch());
+            final String locationKey = "PLACES/USER FOLDER";
+            navigationController.setBrowser(locationKey,
+                    navigationController.state().browserFilter(),
+                    navigationController.state().browserSearch());
             browserView.setUserFolderState(name, true, "USER FOLDER • FOLDER SELECTED • SCANNING…");
-            browserView.setLocation("PLACES/USER FOLDER");
-            loadBrowserDocumentTree(treeUri, name, browserView);
+            browserView.setLocation(locationKey);
+            loadBrowserDocumentTree(treeUri, name, browserView, locationKey);
         }
         setBottomStatus("USER FOLDER • " + name + " • ACCESS SAVED");
+        refreshMpcFunctionBar();
+    }
+
+    private void handleFavoriteDocumentTreeResult(int slot, int resultCode, Intent data) {
+        final String favoriteLabel = "FAVORITE " + slot;
+        final String locationKey = "PLACES/" + favoriteLabel;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            setBottomStatus(favoriteLabel + " • SELECTION CANCELLED");
+            if (browserView != null) browserView.setProviderStatus(favoriteLabel + " • NO FOLDER SELECTED");
+            return;
+        }
+        final Uri treeUri = data.getData();
+        if ((data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION) == 0) {
+            final String status = favoriteLabel + " • READ ACCESS NOT GRANTED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState("", false, status);
+            return;
+        }
+        try {
+            getContentResolver().takePersistableUriPermission(
+                    treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (SecurityException e) {
+            final String status = favoriteLabel + " • PERSISTENT ACCESS DENIED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState("", false, status);
+            return;
+        }
+        if (!hasPersistedReadPermission(treeUri)) {
+            final String status = favoriteLabel + " • ACCESS COULD NOT BE PERSISTED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState("", false, status);
+            return;
+        }
+        final String name;
+        try {
+            name = MpcDocumentTreeCatalog.fallbackDisplayName(treeUri);
+        } catch (RuntimeException e) {
+            setBottomStatus(favoriteLabel + " • INVALID DOCUMENT TREE");
+            return;
+        }
+        getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE).edit()
+                .putString(favoriteTreeUriPreferenceKey(slot), treeUri.toString())
+                .putString(favoriteTreeNamePreferenceKey(slot), name).apply();
+        if (browserView != null && "BROWSE".equals(currentPage)) {
+            navigationController.setBrowser(locationKey,
+                    navigationController.state().browserFilter(),
+                    navigationController.state().browserSearch());
+            browserView.setLocation(locationKey);
+            browserView.setUserFolderState(
+                    name, true, favoriteLabel + " • FOLDER SELECTED • SCANNING…");
+            loadBrowserDocumentTree(treeUri, name, browserView, locationKey);
+        }
+        setBottomStatus(favoriteLabel + " • " + name + " • ACCESS SAVED");
         refreshMpcFunctionBar();
     }
 

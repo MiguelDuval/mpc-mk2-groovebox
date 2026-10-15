@@ -262,20 +262,21 @@ final class MpcBrowserView extends LinearLayout {
     void setProviderStatus(String status) {
         final String value = status == null || status.trim().isEmpty()
                 ? "LOCAL AUDIO • NOT SCANNED" : status;
-        if (isUserFolderLocation()) userFolderStatus = value;
+        if (isDocumentTreeLocation()) userFolderStatus = value;
         else localScanMessage = value;
         providerState.setText(value);
     }
 
     void setUserFolderState(String name, boolean accessReady, String status) {
         final String nextName = name == null ? "" : name.trim();
-        final boolean rootChanged = !nextName.equals(userFolderName);
         userFolderName = nextName;
         userFolderConfigured = !nextName.isEmpty();
         userFolderAccessReady = userFolderConfigured && accessReady;
         userFolderScanComplete = false;
         userFolderScanFailed = false;
-        if (rootChanged || !userFolderAccessReady) userFolderFiles = Collections.emptyList();
+        // Favorites can point to different URIs with the same display name.
+        // Never show a previous folder's cached WAVs while a new location scans.
+        userFolderFiles = Collections.emptyList();
         userFolderStatus = status == null || status.trim().isEmpty()
                 ? (userFolderConfigured ? "USER FOLDER • NOT SCANNED" : "USER FOLDER • NOT CONFIGURED")
                 : status;
@@ -485,10 +486,24 @@ final class MpcBrowserView extends LinearLayout {
                 && "USER FOLDER".equalsIgnoreCase(activeLocationItem);
     }
 
+    private boolean isFavoriteLocation() {
+        if (!"PLACES".equals(activeSection)) return false;
+        final String item = activeLocationItem.toUpperCase(Locale.ROOT);
+        return "FAVORITE 1".equals(item)
+                || "FAVORITE 2".equals(item)
+                || "FAVORITE 3".equals(item)
+                || "FAVORITE 4".equals(item)
+                || "FAVORITE 5".equals(item);
+    }
+
+    private boolean isDocumentTreeLocation() {
+        return isUserFolderLocation() || isFavoriteLocation();
+    }
+
     private boolean isCatalogLocationSupported() {
         if ("PLACES".equals(activeSection)) {
             if ("INTERNAL".equalsIgnoreCase(activeLocationItem)) return true;
-            return isUserFolderLocation() && userFolderConfigured && userFolderAccessReady;
+            return isDocumentTreeLocation() && userFolderConfigured && userFolderAccessReady;
         }
         if ("CONTENT".equals(activeSection)) {
             return "SAMPLES".equalsIgnoreCase(activeLocationItem)
@@ -502,8 +517,10 @@ final class MpcBrowserView extends LinearLayout {
         if ("PLACES".equals(activeSection)) {
             if (isUserFolderLocation()) return userFolderConfigured
                     ? "USER FOLDER ACCESS NEEDS RENEWAL" : "USER FOLDER NOT CONFIGURED";
-            if (activeLocationItem.toUpperCase(Locale.ROOT).startsWith("FAVORITE")) {
-                return "FAVORITE LOCATION NOT CONFIGURED";
+            if (isFavoriteLocation()) {
+                return userFolderConfigured
+                        ? activeLocationItem + " ACCESS NEEDS RENEWAL"
+                        : activeLocationItem + " NOT CONFIGURED";
             }
             return "PLACE PROVIDER UNAVAILABLE";
         }
@@ -518,8 +535,12 @@ final class MpcBrowserView extends LinearLayout {
                     || "CONNECTED STORAGE".equalsIgnoreCase(activeLocationItem)) {
                 return "Choose a local folder to browse real documents. Android file import remains available from LOAD.";
             }
-            if (activeLocationItem.toUpperCase(Locale.ROOT).startsWith("FAVORITE")) {
-                return "Favourite folders are not persisted yet; choose CHOOSE FOLDER instead.";
+            if (isFavoriteLocation()) {
+                return userFolderConfigured
+                        ? "Saved access to " + activeLocationItem
+                                + " needs renewal. Choose CHOOSE FOLDER to select it again."
+                        : "Choose CHOOSE FOLDER to assign a persistent local folder to "
+                                + activeLocationItem + ".";
             }
             return "This place is not backed by the local WAV catalog.";
         }
@@ -528,9 +549,9 @@ final class MpcBrowserView extends LinearLayout {
 
     private void renderResults() {
         results.removeAllViews();
-        providerState.setText(isUserFolderLocation() ? userFolderStatus : localScanMessage);
+        providerState.setText(isDocumentTreeLocation() ? userFolderStatus : localScanMessage);
         final List<MpcBrowserFile> sourceFiles =
-                isUserFolderLocation() ? userFolderFiles : localFiles;
+                isDocumentTreeLocation() ? userFolderFiles : localFiles;
         final List<MpcBrowserFile> visibleFiles = new ArrayList<>();
         for (MpcBrowserFile file : sourceFiles) {
             if (file.matchesBrowserQuery(
@@ -560,11 +581,13 @@ final class MpcBrowserView extends LinearLayout {
                 "INDEX ACCESSIBLE DEVICE WAV FILES",
                 "MPC Browser scan local audio files",
                 true);
-        if (isUserFolderLocation()) {
+        if (isDocumentTreeLocation()) {
             addActionRow(
-                    "CHOOSE FOLDER…",
-                    "PERSIST A LOCAL FOLDER FOR BROWSING",
-                    "MPC Browser choose a local folder for Browser results",
+                    isUserFolderLocation() ? "CHOOSE FOLDER…" : "CHANGE FOLDER…",
+                    isUserFolderLocation()
+                            ? "PERSIST A LOCAL FOLDER FOR BROWSING"
+                            : "PERSIST A LOCAL FOLDER FOR THIS FAVORITE",
+                    "MPC Browser choose a local folder for " + activeLocationItem,
                     false);
         } else {
             addActionRow(
@@ -577,18 +600,21 @@ final class MpcBrowserView extends LinearLayout {
             addInfoRow(unavailableLocationTitle(), unavailableLocationDetail());
             return;
         }
-        if (isUserFolderLocation()) {
+        if (isDocumentTreeLocation()) {
             if (userFolderScanFailed) {
-                addInfoRow("USER FOLDER READ FAILED", "Read access failed. Choose another local folder to retry.");
+                addInfoRow(activeLocationItem + " READ FAILED",
+                        "Read access failed. Choose another local folder to retry.");
                 return;
             }
             if (!userFolderScanComplete) {
-                addInfoRow("USER FOLDER SCANNING", "Indexing WAV files directly inside " + userFolderName + ".");
+                addInfoRow(activeLocationItem + " SCANNING",
+                        "Indexing WAV files directly inside " + userFolderName + ".");
                 return;
             }
             if (visibleFiles.isEmpty()) {
                 if (userFolderFiles.isEmpty()) {
-                    addInfoRow("NO WAV FILES IN USER FOLDER", "No WAV files were found directly inside " + userFolderName + ".");
+                    addInfoRow("NO WAV FILES IN " + activeLocationItem,
+                            "No WAV files were found directly inside " + userFolderName + ".");
                 } else {
                     addInfoRow("NO MATCHING WAV FILES", "Change Search or select SAMPLES / ALL to show folder WAV items.");
                 }

@@ -43,7 +43,8 @@ final class MpcBrowserFile {
         final boolean supportedPlace =
                 "PLACES".equals(normalizedSection)
                         && ("INTERNAL".equals(normalizedLocation)
-                                || "USER FOLDER".equals(normalizedLocation));
+                                || "USER FOLDER".equals(normalizedLocation)
+                                || isFavoriteLocation(normalizedLocation));
         final boolean supportedContent =
                 "CONTENT".equals(normalizedSection)
                         && ("SAMPLES".equals(normalizedLocation)
@@ -76,6 +77,15 @@ final class MpcBrowserFile {
         if (durationMs <= 0) return "DURATION UNKNOWN";
         final long seconds = durationMs / 1000L;
         return String.format(Locale.ROOT, "%d:%02d", seconds / 60L, seconds % 60L);
+    }
+
+    private static boolean isFavoriteLocation(String value) {
+        final String normalized = upper(value);
+        return "FAVORITE 1".equals(normalized)
+                || "FAVORITE 2".equals(normalized)
+                || "FAVORITE 3".equals(normalized)
+                || "FAVORITE 4".equals(normalized)
+                || "FAVORITE 5".equals(normalized);
     }
 
     private static String upper(String value) {
