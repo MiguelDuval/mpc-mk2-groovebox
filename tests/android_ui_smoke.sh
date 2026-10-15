@@ -1083,7 +1083,7 @@ if ! grep -Fq -- '"PROJECTS", "PATTERNS", "KITS", "PLUGIN PRESETS", "SAMPLES", "
   exit 1
 fi
 
-for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void onChooseFolder();'   'void onLocalScanRequested();'   'void onFileSelected(MpcBrowserFile file);'   'void onAuditionSelectedFile();'   'void setSection(String section)'   'void setLocalFiles(List<MpcBrowserFile> files, String status)'   'matchesBrowserQuery('   'addFileResult('   'MPC Browser scan local audio files'   'SCAN LOCAL AUDIO…'   'NO LOCAL WAV FILES'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'OPEN STORAGE…'   'CHOOSE FOLDER…'   'setUserFolderFiles('   'MPC Browser open Android storage picker'   'MPC Browser choose a local folder for Browser results'   'CURRENT SAMPLE'; do
+for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void onChooseFolder();'   'void onLocalScanRequested();'   'void onFileSelected(MpcBrowserFile file);'   'void onAuditionSelectedFile();'   'void setSection(String section)'   'void setLocalFiles(List<MpcBrowserFile> files, String status)'   'matchesBrowserQuery('   'addFileResult('   'MPC Browser scan local audio files'   'SCAN LOCAL AUDIO…'   'NO LOCAL WAV FILES'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'OPEN STORAGE…'   'CHOOSE FOLDER…'   'setUserFolderFiles('   'MPC Browser open Android storage picker'   'MPC Browser choose a local folder for " + activeLocationItem'   'CURRENT SAMPLE'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser information-architecture contract missing: $required"
     exit 1
@@ -1609,7 +1609,7 @@ require_source_contains "$BROWSER_SOURCE" 'listener.onOpenStorage();'
 require_source_contains "$BROWSER_SOURCE" 'MPC Browser open Android storage picker'
 require_source_contains "$BROWSER_SOURCE" 'ANDROID DOCUMENT PICKER • DIRECT WAV LOAD'
 require_source_contains "$BROWSER_SOURCE" 'listener.onChooseFolder();'
-require_source_contains "$BROWSER_SOURCE" 'MPC Browser choose a local folder for Browser results'
+require_source_contains "$BROWSER_SOURCE" 'MPC Browser choose a local folder for " + activeLocationItem'
 require_source_contains "$BROWSER_SOURCE" 'PERSIST A LOCAL FOLDER FOR BROWSING'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'public void onOpenStorage()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'public void onChooseFolder()'
@@ -3270,10 +3270,10 @@ if ! tap_ui_description "$TREE_BROWSER_XML" "MPC Browser navigation PLACES USER 
   echo "ERROR: USER FOLDER navigation row was not actionable"; exit 1
 fi
 if ! wait_for_ui_description "$TREE_BROWSER_XML" "$TREE_BROWSER_REMOTE" \
-    "MPC Browser choose a local folder for Browser results" 15; then
+    "MPC Browser choose a local folder for USER FOLDER" 15; then
   echo "ERROR: USER FOLDER did not expose its Choose Folder action"; exit 1
 fi
-if ! tap_ui_description "$TREE_BROWSER_XML" "MPC Browser choose a local folder for Browser results"; then
+if ! tap_ui_description "$TREE_BROWSER_XML" "MPC Browser choose a local folder for USER FOLDER"; then
   echo "ERROR: Choose Folder action could not launch Android DocumentsUI"; exit 1
 fi
 
@@ -3464,7 +3464,7 @@ for favorite_picker_attempt in {1..15}; do
 done
 if [[ -z "$favorite_picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$favorite_picker_activity"; then
   echo "ERROR: FAVORITE 1 did not launch an external document-tree picker"
-  printf '%s\\n' "$favorite_picker_activity"
+  printf '%s\n' "$favorite_picker_activity"
   exit 1
 fi
 if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
@@ -3537,7 +3537,7 @@ PY
 done
 if [[ "$favorite_app_resumed" != "1" ]]; then
   echo "ERROR: FAVORITE 1 folder selection did not return to the groovebox Activity"
-  printf '%s\\n' "$favorite_return_activity"
+  printf '%s\n' "$favorite_return_activity"
   exit 1
 fi
 if ! wait_for_ui_text "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" "$TREE_SAMPLE_NAME" 30; then
