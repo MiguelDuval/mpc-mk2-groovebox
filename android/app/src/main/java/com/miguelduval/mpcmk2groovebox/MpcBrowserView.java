@@ -674,7 +674,7 @@ final class MpcBrowserView extends LinearLayout {
         row.setOnClickListener(v -> {
             if (listener == null) return;
             if (scanAction) listener.onLocalScanRequested();
-            else if (isUserFolderLocation()) listener.onChooseFolder();
+            else if (isDocumentTreeLocation()) listener.onChooseFolder();
             else listener.onOpenStorage();
         });
 
