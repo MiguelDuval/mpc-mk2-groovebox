@@ -5732,8 +5732,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             // give the picker the corresponding document URI for the selected folder.
             Uri initialUri = pickerInitialTreeUri;
             try {
-                final String authority = browserUserTreeUri.getAuthority();
-                final String documentId = DocumentsContract.getTreeDocumentId(browserUserTreeUri);
+                final String authority = pickerInitialTreeUri.getAuthority();
+                final String documentId = DocumentsContract.getTreeDocumentId(pickerInitialTreeUri);
                 if (authority != null && !authority.trim().isEmpty()
                         && documentId != null && !documentId.trim().isEmpty()) {
                     initialUri = DocumentsContract.buildDocumentUri(authority, documentId);

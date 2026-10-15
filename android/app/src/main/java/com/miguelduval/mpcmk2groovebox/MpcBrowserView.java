@@ -538,8 +538,8 @@ final class MpcBrowserView extends LinearLayout {
             if (isFavoriteLocation()) {
                 return userFolderConfigured
                         ? "Saved access to " + activeLocationItem
-                                + " needs renewal. Choose CHOOSE FOLDER to select it again."
-                        : "Choose CHOOSE FOLDER to assign a persistent local folder to "
+                                + " needs renewal. Use CHANGE FOLDER to select it again."
+                        : "Use CHOOSE FOLDER to assign a persistent local folder to "
                                 + activeLocationItem + ".";
             }
             return "This place is not backed by the local WAV catalog.";
@@ -583,7 +583,8 @@ final class MpcBrowserView extends LinearLayout {
                 true);
         if (isDocumentTreeLocation()) {
             addActionRow(
-                    isUserFolderLocation() ? "CHOOSE FOLDER…" : "CHANGE FOLDER…",
+                    isUserFolderLocation() || !userFolderConfigured
+                            ? "CHOOSE FOLDER…" : "CHANGE FOLDER…",
                     isUserFolderLocation()
                             ? "PERSIST A LOCAL FOLDER FOR BROWSING"
                             : "PERSIST A LOCAL FOLDER FOR THIS FAVORITE",

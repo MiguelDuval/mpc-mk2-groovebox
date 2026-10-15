@@ -700,8 +700,9 @@ MPC Standalone OS 3.9 remains the UI/interaction reference, but reproducing Akai
 5. **Arrange loop handle — VERIFIED on #2713:** real handle drag changes native loop end; second handle drag restores the original loop; no pattern-event mutation is used for this check.
 6. **Arrange lane selection — PARTIAL, honest fixture limitation:** on the clean one-Track fixture, the real lane tap preserves native and View selection state and proves Arrangement event data is unchanged. Build #2712 first exposed that the fixture has only one Track. The code now does not fail or fabricate an extra Track; the multi-Track change-and-restore branch is present but has not been exercised by this fixture because there is no native Track-removal contract.
 7. **Next — Arrange ↔ Grid Back/context round-trip:** from the focused Grid open BACK, verify ARRANGE returns with the same native Track/lane/event tick/data and the event remains hit-testable, then double-tap that event again and verify the same absolute Grid step/window. Do not modify the note/pattern to simulate navigation; add runtime assertions and verify exact-SHA Android Build plus actual screenshot/XML.
-8. **Incomplete local storage convenience:** favourite folders 1–5 are not persisted. Content places without real providers remain truthful unavailable/no-result, never fake populated.
-9. Physical MPC Studio MkII behavior remains pending; emulator success is not hardware verification.
+8. **Favorite folders 1–5 — IMPLEMENTED, exact-current-SHA verification pending:** separate persisted SAF URI/name per slot, real WAV scan/results, reassignable folder, and Favorite-aware Browser filtering. Verify the newest exact-SHA Android Build and runtime evidence before promoting this to VERIFIED.
+9. **Other local-storage gaps remain:** Content places without real providers stay truthfully unavailable/no-result, never fake populated.
+10. Physical MPC Studio MkII behavior remains pending; emulator success is not hardware verification.
 
 ### Definition of done for a roadmap item
 
@@ -748,8 +749,12 @@ The remaining coverage gap is at the event boundary: runtime audit invokes the s
 Android Build #2709 tested SHA `20ac2f54ca0075256a6b6534f5ffa7e06d358b77` and passed all 57 steps. The emulator audit creates a real note via the current sequencer API, derives the rendered Arrangement event center and first validates that the view hit-test resolves to that exact event. It then dispatches Android down/up events into the actual view and GestureDetector, verifies the listener returns the exact seeded track/tick, and checks that Grid's visible range contains step 33. The captured screenshot shows the seeded note in the `25–40/64` window; XML semantic range agrees. APK artifact `11871064482` SHA-256 `e653b9b42b4ec971fed383dbb9a1dd033ec0285f50cb94f7b8d6fc369624eb6a`; 23-file evidence archive `11871970352` SHA-256 `53f5e282f46e97e16ea399a1813bb8913192136385f06bb86f4541dd2fc0478e`. Next focus is real Arrange state/loop interactions, without inventing clip-placement semantics.
 
 
-### 2026-10-15 — Build #2713 validates Arrange loop and single-lane contracts
+### 2026-10-15 — Build #2713 validates Arrange loop and single-lane contracts (historical checkpoint)
 
 Android Build #2713 on exact SHA `cdcfdfb2500b4c6eaebeab5018b4cdce33213462` passed all 57 workflow steps. The preceding #2712 failure was an invalid test-fixture assumption (the clean emulator starts with one Track); the follow-up validates the actual single-lane tap without adding a disposable Track or claiming an alternate Track change. The multi-Track change/restore branch remains for fixtures that truly contain multiple Tracks. The loop-end drag/commit/restore, seeded event double-tap → Grid focus (step 33 within 25–40/64), local Browser assignment, Android Document Picker assignment and SAF folder restoration all passed.
 
 APK artifact `11958217657` SHA-256 `4ca32dee06e76b69314446ab5a12b9ec8bf9a488d84c5d7487f1a4861783f960`; 23-entry visual archive `11958527786` SHA-256 `09fa5c463ee3f7449f4cf36907b89e38fae3ddafb057d4d1e3257bd99bbd10c5`. The next interaction slice is BACK from Grid to Arrange and re-entry through the same event, verifying Track/event context without mutating pattern data.
+
+### 2026-10-15 — Browser Favorite folders 1–5 implementation (verification pending)
+
+Added five independently persisted SAF folder targets to the Browser Places list. Each Favorite stores its own URI/name, requires the persisted read grant, loads actual WAV entries through the existing document-tree catalog and can be reassigned through the Android tree picker. The local WAV filter policy accepts Favorite 1–5 only; an old folder's cached rows are cleared while switching locations. This is a functional implementation, not yet a VERIFIED milestone: confirm the latest exact-head Android Build and inspect runtime evidence before declaring it passed.

@@ -1,15 +1,15 @@
 # Session State — MPC MkII Groovebox
 
-**Checkpoint refreshed:** 2026-10-14 (last independently verified Android Build #2705 is SHA `be431ccef023466216ada643208b18dec98a6bc0`; current evidence-harness follow-up requires its own exact-SHA check)  
+**Checkpoint refreshed:** 2026-10-15 (Android Build #2714 passed on exact SHA `13254a9e5839d3405f2a3a7ea46c377da95a83ac`; the newer Browser Favorite folders implementation and picker correction require exact-current-HEAD verification)  
 **Purpose:** Compact handoff for the next ChatGPT session. Read this first, then independently verify every mutable fact against GitHub.
 
 > **Freshness rule:** This checkpoint will itself be committed after the pre-checkpoint SHA above. Therefore, it does **not** claim CI success for the commit containing this state refresh. On every session start, verify the live PR head, branch HEAD, latest Android Build and artifact files. Do not rely on remembered commit numbers or on this checkpoint instead of GitHub.
 
-## Last independently verified checkpoint — 2026-10-15 10:38 CEST
+## Last verified full Android build before the current feature — 2026-10-15
 
-**Live GitHub source of truth:** branch `feature/mpc-one-ui-fidelity`; PR #23 OPEN / not merged; base `fix/ui-shell-format-width-startup`; last fully tested code SHA `cdcfdfb2500b4c6eaebeab5018b4cdce33213462`. This state refresh is a documentation-only commit and requires its own exact-SHA Android Build.
+**Verified build boundary:** Build #2714 succeeded on `13254a9e5839d3405f2a3a7ea46c377da95a83ac` (run [38707304218](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38707304218)). The subsequent Browser Favorite folders code landed in implementation commit `e65bfa4efa3bae0c5936c3791a3d9f87c2274994`; the picker-initial-URI correction below is newer still. Build #2714 does **not** validate this feature. Always fetch the current branch/PR head and its exact-SHA Actions result before making claims.
 
-### Android Build #2713 — SUCCESS
+### Android Build #2713 — SUCCESS (previous verified feature checkpoint)
 
 - Run [Android Build #2713](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38705685719) tested `cdcfdfb2500b4c6eaebeab5018b4cdce33213462`; **57/57 workflow steps passed**. APK assembly/upload, Android emulator runtime smoke and visual-evidence upload completed successfully.
 - #2712 (parent SHA `ae3261f299078f157747f9b3a55760ccf67c8725`) failed in the emulator audit because the fresh test fixture has one Track and the new selection check required two. This was a fixture assumption, not a product/compiler regression.
@@ -25,7 +25,7 @@
 
 ### Completed implementation slices
 
-**Local Browser E2E:** real MediaStore and SAF/document-tree local files, search/filter, selection, audition, load and assignment; Android Document Picker return preserves the correct Pad/Layer; the USER FOLDER URI/read grant and real WAV results restore after process stop/relaunch. Commercial Splice/stores/upsells/cloud-account dependencies stay excluded.
+**Local Browser E2E:** real MediaStore and SAF/document-tree local files, search/filter, selection, audition, load and assignment; Android Document Picker return preserves the correct Pad/Layer; USER FOLDER URI/read grant and real WAV results restore after process stop/relaunch. Favorite folders 1–5 now use independent saved SAF tree URI/name preferences and real WAV scans; validation of the current implementation is pending. Commercial Splice/stores/upsells/cloud-account dependencies stay excluded.
 
 **Main Track Type correctness:** native AUDIO/DRUM labels map to the shared type icon; misleading CLIP enum/call sites are gone; Audio has its waveform glyph; unsupported non-Drum conversion truthfully reports RESERVED. Accepted by Builds #2704 onward.
 
@@ -33,13 +33,20 @@
 
 **Arrangement loop and lane interaction contracts:** the real loop-end handle drag changes native loop state and restores the original range through the same handle gesture. The single-Track clean fixture now verifies an actual lane tap preserves native/View selection coherence and event data. Changing between two different Tracks is not covered in this one-Track fixture; no track-removal backend exists to safely create/clean up an alternate test Track.
 
-### Current next task — Arrange ↔ Grid Back/context preservation
+### Current iteration — Browser Favorite folders 1–5 (verification pending)
+
+- Implemented separate persistent folder targets for FAVORITE 1–5 using Android SAF tree URIs/read grants and independent SharedPreferences URI/name keys. Selecting a slot shows only WAV files scanned from that folder; CHOOSE/CHANGE FOLDER reassigns the active slot without replacing USER FOLDER.
+- Updated Browser filtering to accept only the five defined Favorite slot names, and added focused JVM assertions for slots 1 and 5 plus rejection of slot 6. The existing Document Provider, WAV loader, sampler assignment path and audio/MIDI layers are reused; no new storage provider or audio engine was added.
+- Folder-switch state clears the previous tree's cached rows so two distinct folders with the same display name cannot briefly show one another's WAVs. The picker initial-location hint now follows the selected Favorite's URI rather than the USER FOLDER field.
+- **Evidence boundary:** this code/checkpoint has not yet been validated by a completed Android Build for its exact current SHA. Do not claim Favorite persistence or picker behavior is emulator-verified until the latest Actions run and screenshot/UI evidence are inspected. Physical MPC Studio MkII behavior remains pending.
+
+### Current next task — Arrange ↔ Grid Back/context preservation (after Favorite folders pass verification)
 
 After the current Arrangement-event double-tap opens Grid, invoke the actual Function Bar BACK action and verify that navigation returns to ARRANGE with the selected native Track intact, the corresponding Arrangement lane selected, the same event still hit-testable at its original tick, and the event data unchanged. Then re-open that same event through the real hit-test/gesture route and confirm it returns to the same Grid absolute step/window. Do not mutate pattern events to simulate navigation. Add assertions to the existing emulator audit, then run full exact-SHA Android CI and inspect fresh screenshot/XML.
 
 ### Known remaining gaps
 
-- Favourite folders 1–5 are not genuinely persisted/restored.
+- Browser Favorite folders 1–5 now have an implementation path using separate persisted SAF URI/name values and real local WAV listing; exact-current-HEAD Actions and emulator persistence verification are still pending.
 - Locations/categories without real providers remain unavailable/no-result.
 - Only Drum editing is supported in Grid/Step; other Track Types must not silently route to Drum editing. Native `TrackKind` has no CV kind.
 - Existing-Track type conversion remains RESERVED until a true semantic/backend operation exists.
@@ -51,8 +58,8 @@ After the current Arrangement-event double-tap opens Grid, invoke the actual Fun
 - Repository: `MiguelDuval/mpc-mk2-groovebox`
 - Active branch: `feature/mpc-one-ui-fidelity`
 - Primary PR: [#23 — MPC One Main UI visual fidelity pass](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23)
-- Immediately before this documentation update, PR #23 was **OPEN, not merged**, base `fix/ui-shell-format-width-startup`, head branch `feature/mpc-one-ui-fidelity`, head SHA `dbfdac56802e1d7435ba1b4b7647e3a848917703`.
-- Live GitHub reported 472 commits and 40 changed files in PR #23 before this documentation-only commit. Verify fresh branch/PR refs on the next session; do not use these values as post-commit state.
+- At the beginning of this implementation cycle, PR #23 was **OPEN, not merged**, base `fix/ui-shell-format-width-startup`, branch `feature/mpc-one-ui-fidelity`, head SHA `13254a9e5839d3405f2a3a7ea46c377da95a83ac`. Feature commits have advanced since then; query live GitHub before the next change.
+- PR commit and file counts change as the migration advances; treat live GitHub metadata as authoritative rather than relying on older recorded counts.
 - Never work on `main` for this migration. Do not reset, rebase, rewrite history, force-push, merge or retarget PR #23 during routine UI development.
 - Protect: realtime audio callback; sampler engine; sequencer clock/scheduler; MIDI transport; raw MkII decoder; SysEx protocol; working domain operations. Only introduce lower-layer changes when needed for a real semantic prerequisite.
 - Physical MPC Studio MkII behavior stays **unverified/pending** unless a real device test report is available.
