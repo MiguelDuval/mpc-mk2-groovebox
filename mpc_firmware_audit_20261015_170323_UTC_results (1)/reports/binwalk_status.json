@@ -1,0 +1,14 @@
+[
+  {
+    "input_file": "/content/mpc_firmware_input_20261015_170323_UTC/MPC-3.9.1-Gen2-update.img",
+    "binwalk_available": true,
+    "signature_scan": "OK",
+    "entropy_scan": "OK",
+    "recursive_extraction": "EXIT_3",
+    "exit_codes": {
+      "signature_scan": 0,
+      "entropy_scan": 0,
+      "recursive_extraction": 3
+    }
+  }
+]

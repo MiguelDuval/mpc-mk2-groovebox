@@ -1,0 +1,42 @@
+  123f7 ,o|-+*
+  b5ef4 !2':g*
+  b6162 >LEh/x
+  b8394 #+3;CScs
+  b9195 u-boot
+  b91a4 EHCI Host Controller
+  b91cf U-Boot
+  b91de XHCI Host Controller
+ 17149a !8BNdoz
+ 171804 %)+/5;=CGIOSYaegkmq
+ 1b71af ,o|-+*
+ 25acac !2':g*
+ 25af1a >LEh/x
+ 25d14c #+3;CScs
+ 25df4d u-boot
+ 25df5c EHCI Host Controller
+ 25df87 U-Boot
+ 25df96 XHCI Host Controller
+ 316252 !8BNdoz
+ 3165bc %)+/5;=CGIOSYaegkmq
+ 35c0e7 ,o|-+*
+ 3ffbfc !2':g*
+ 3ffe6a >LEh/x
+ 40209c #+3;CScs
+ 402e9d u-boot
+ 402eac EHCI Host Controller
+ 402ed7 U-Boot
+ 402ee6 XHCI Host Controller
+ 4bb1e2 !8BNdoz
+ 4bb54c %)+/5;=CGIOSYaegkmq
+ 4fc807 ,o|-+*
+ 5a031c !2':g*
+ 5a058a >LEh/x
+ 5a27bc #+3;CScs
+ 5a35bd u-boot
+ 5a35cc EHCI Host Controller
+ 5a35f7 U-Boot
+ 5a3606 XHCI Host Controller
+ 65b902 !8BNdoz
+ 65bc6c %)+/5;=CGIOSYaegkmq
+c7ee6c1 #l=Y2D
+e541bf6 "3@NLbStaymo

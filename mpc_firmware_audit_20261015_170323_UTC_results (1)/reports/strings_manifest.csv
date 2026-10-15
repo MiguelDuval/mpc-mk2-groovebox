@@ -1,0 +1,3 @@
+﻿file,encoding,size_bytes,strings_seen,strings_saved,status,output
+/content/mpc_firmware_input_20261015_170323_UTC/MPC-3.9.1-Gen2-update.img,ASCII,366327168,649502,100000,OK,/content/mpc_firmware_audit_20261015_170323_UTC/reports/strings/00001_9d5e277cd2_MPC-3.9.1-Gen2-update.img_ASCII.txt
+/content/mpc_firmware_input_20261015_170323_UTC/MPC-3.9.1-Gen2-update.img,UTF16LE,366327168,42,42,OK,/content/mpc_firmware_audit_20261015_170323_UTC/reports/strings/00001_9d5e277cd2_MPC-3.9.1-Gen2-update.img_UTF16LE.txt

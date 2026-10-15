@@ -1,0 +1,2 @@
+﻿file,relative_to_run,is_original_input,size_bytes,header_type,sha256,sha1,whole_file_entropy_bits_per_byte,entropy_blocks_written,analysis_status,file_description
+/content/mpc_firmware_input_20261015_170323_UTC/MPC-3.9.1-Gen2-update.img,INPUT/MPC-3.9.1-Gen2-update.img,True,366327168,Не определён по заголовку (возможен контейнер/сырой образ/данные со смещением),95b694f5880ae905ff3caf927dce2642b2b69acbb0e869838f2e261d3a65c72b,e65423e793f4ac79a2967dbdbb954a486bb2b3e9,7.996139,350,FULL_HASH_AND_ENTROPY,data
