@@ -2601,7 +2601,17 @@ PY
   # can be interpreted as a selection gesture by DocumentsUI's touch handler.
   if [[ "$tap_mode" == "single" ]]; then
     echo "DocumentsUI tap: single $tap_kind '$expected_text' at $tap_x,$tap_y" >&2
-    if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+    if [[ "$tap_kind" == "row" ]]; then
+      # On API 30, `input tap` emits a MotionEvent with TOOL_TYPE_UNKNOWN.
+      # DocumentsUI directory activation can ignore that synthetic gesture
+      # even when its row bounds and the screenshot agree. API 31 exposes the
+      # system-server input command; name the touchscreen source explicitly
+      # so the event carries TOOL_TYPE_FINGER, like a real finger touch.
+      if ! adb_bounded 10 shell cmd input touchscreen tap "$tap_x" "$tap_y"; then
+        echo "ERROR: could not inject finger-type DocumentsUI row tap for $expected_text at $tap_x,$tap_y"
+        return 1
+      fi
+    elif ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
       echo "ERROR: could not tap DocumentsUI result row $expected_text at $tap_x,$tap_y"
       return 1
     fi
