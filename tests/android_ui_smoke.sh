@@ -1724,6 +1724,27 @@ adb_bounded() {
   timeout --signal=TERM --kill-after=3s "${seconds}s" adb "$@"
 }
 
+# Keep UI dumping available before startup checks run; Bash executes top-level
+# statements in order, so functions declared later cannot be called earlier.
+dump_device_ui() {
+  local remote_path="$1"
+  local host_path="$2"
+  local log_path="/tmp/mpc-groovebox-uiautomator-dump.log"
+  if ! adb_bounded 20 shell uiautomator dump "$remote_path" > "$log_path" 2>&1; then
+    cat "$log_path" || true
+    echo "ERROR: could not dump emulator UI hierarchy: $remote_path"
+    return 1
+  fi
+  if ! adb_bounded 10 exec-out cat "$remote_path" > "$host_path"; then
+    echo "ERROR: could not retrieve emulator UI hierarchy: $remote_path"
+    return 1
+  fi
+  if ! test -s "$host_path"; then
+    echo "ERROR: emulator UI hierarchy is empty: $host_path"
+    return 1
+  fi
+}
+
 echo "Installing debug APK (hard limit 120s)..."
 if ! adb_bounded 120 install -r "$APK"; then
   echo "ERROR: adb install failed or timed out after 120s"
@@ -2430,25 +2451,6 @@ if ! grep -Fq -- "$LOCAL_SAMPLE_NAME" "$MEDIASTORE_FIXTURE_QUERY"; then
   exit 1
 fi
 echo "MediaStore fixture indexed and verified: $LOCAL_SAMPLE_NAME (ID $MEDIA_ITEM_ID)"
-
-dump_device_ui() {
-  local remote_path="$1"
-  local host_path="$2"
-  local log_path="/tmp/mpc-groovebox-uiautomator-dump.log"
-  if ! adb_bounded 20 shell uiautomator dump "$remote_path" > "$log_path" 2>&1; then
-    cat "$log_path" || true
-    echo "ERROR: could not dump emulator UI hierarchy: $remote_path"
-    return 1
-  fi
-  if ! adb_bounded 10 exec-out cat "$remote_path" > "$host_path"; then
-    echo "ERROR: could not retrieve emulator UI hierarchy: $remote_path"
-    return 1
-  fi
-  if ! test -s "$host_path"; then
-    echo "ERROR: emulator UI hierarchy is empty: $host_path"
-    return 1
-  fi
-}
 
 ui_target_center() {
   local hierarchy_path="$1"
