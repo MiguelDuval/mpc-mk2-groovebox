@@ -449,6 +449,13 @@ for required in \
   'UI_ARRANGEMENT_GRID_FOCUS_COMPLETE' \
   'UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY' \
   'mpc-arrange-grid-focus-capture-release' \
+  'UI_ARRANGEMENT_BACK_CONTEXT_COMPLETE:' \\
+  'UI_ARRANGEMENT_BACK_CAPTURE_READY' \\
+  'mpc-arrange-back-capture-release' \\
+  'UI_ARRANGEMENT_GRID_BACK_REENTRY_COMPLETE:' \\
+  'UI_ARRANGEMENT_GRID_BACK_REENTRY_CAPTURE_READY' \\
+  'mpc-arrange-grid-reentry-capture-release' \\
+  'captureArrangeNavigationPatternSnapshot' \\
   'firstStepForTest()'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" "$ARRANGE_VIEW_SOURCE"; then
     echo "ERROR: Arrangement event gesture integration contract missing: $required"
@@ -1894,6 +1901,8 @@ main_runtime_capture_done=0
 browser_runtime_capture_done=0
 storage_picker_capture_done=0
 arrangement_grid_focus_capture_done=0
+arrangement_back_capture_done=0
+arrangement_grid_reentry_capture_done=0
 audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
 audit_poll=0
 while (( SECONDS < audit_deadline )); do
@@ -2191,6 +2200,93 @@ PY
     arrangement_grid_focus_capture_done=1
   fi
 
+
+  if [ "$arrangement_back_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_ARRANGEMENT_BACK_CAPTURE_READY" <<<"$log_snapshot"; then
+    echo "Capturing actual Arrangement after Grid BACK..."
+    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-arrange-back.png; then echo "ERROR: Arrange-after-BACK screenshot failed"; exit 1; fi
+    if ! timeout --signal=TERM --kill-after=3s 30s adb shell uiautomator dump /sdcard/mpc-groovebox-arrange-back-uiautomator.xml > /tmp/mpc-groovebox-arrange-back-uiautomator.log 2>&1; then cat /tmp/mpc-groovebox-arrange-back-uiautomator.log || true; echo "ERROR: Arrange-after-BACK hierarchy dump failed"; exit 1; fi
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-arrange-back-uiautomator.xml > /tmp/mpc-groovebox-arrange-back-uiautomator.xml; then echo "ERROR: Arrange-after-BACK hierarchy retrieval failed"; exit 1; fi
+    if ! test -s /tmp/mpc-groovebox-arrange-back.png || ! test -s /tmp/mpc-groovebox-arrange-back-uiautomator.xml; then echo "ERROR: Arrange-after-BACK evidence is empty"; exit 1; fi
+    back_line="$(grep -F -- 'UI_ARRANGEMENT_BACK_CONTEXT_COMPLETE:' <<<"$log_snapshot" | tail -n 1 || true)"
+    if [[ -z "$back_line" || "$back_line" != *"eventPresent=true"* || "$back_line" != *"patternDataUnchanged=true"* ]]; then echo "ERROR: Arrange-after-BACK lacks event/pattern assertion"; printf '%s\n' "$back_line"; exit 1; fi
+    if ! python3 - /tmp/mpc-groovebox-arrange-back-uiautomator.xml <<'PY'
+import re,sys,xml.etree.ElementTree as ET
+nodes=list(ET.parse(sys.argv[1]).getroot().iter("node"))
+def bounds(n):
+ m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",n.attrib.get("bounds",""))
+ if m is None: raise AssertionError("invalid bounds "+repr(n.attrib))
+ return tuple(map(int,m.groups()))
+def desc(value):
+ found=[n for n in nodes if n.attrib.get("content-desc")==value]
+ if len(found)!=1: raise AssertionError(f"expected one {value!r}, got {len(found)}")
+ n=found[0]; x1,y1,x2,y2=bounds(n)
+ if x2<=x1 or y2<=y1 or n.attrib.get("visible-to-user")=="false": raise AssertionError(f"not visible: {value!r}")
+desc("MPC linear arrangement editor"); desc("Arrangement editing guidance")
+if any(n.attrib.get("content-desc")=="MPC Grid View workspace" for n in nodes): raise AssertionError("Grid remains visible after BACK")
+buttons=[n for n in nodes if n.attrib.get("text","").strip()=="GRID" and n.attrib.get("clickable")=="true" and n.attrib.get("enabled")=="true"]
+if len(buttons)!=1: raise AssertionError(f"expected enabled Arrangement GRID action, got {len(buttons)}")
+x1,y1,x2,y2=bounds(buttons[0])
+if x2<=x1 or y2<=y1: raise AssertionError("GRID action has empty bounds")
+print("Arrange-after-BACK hierarchy confirms the Arrangement workspace and real GRID action.")
+PY
+    then echo "ERROR: Arrangement was not confirmed by hierarchy"; cat /tmp/mpc-groovebox-arrange-back-uiautomator.xml; exit 1; fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-arrange-back-capture-release; then echo "ERROR: release Arrange capture failed"; exit 1; fi
+    arrangement_back_capture_done=1
+  fi
+
+  if [ "$arrangement_grid_reentry_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_ARRANGEMENT_GRID_BACK_REENTRY_CAPTURE_READY" <<<"$log_snapshot"; then
+    echo "Capturing Grid after reopening same Arrangement event..."
+    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-arrange-grid-reentry.png; then echo "ERROR: Grid re-entry screenshot failed"; exit 1; fi
+    if ! timeout --signal=TERM --kill-after=3s 30s adb shell uiautomator dump /sdcard/mpc-groovebox-arrange-grid-reentry-uiautomator.xml > /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.log 2>&1; then cat /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.log || true; echo "ERROR: Grid re-entry hierarchy dump failed"; exit 1; fi
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-arrange-grid-reentry-uiautomator.xml > /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml; then echo "ERROR: Grid re-entry hierarchy retrieval failed"; exit 1; fi
+    if ! test -s /tmp/mpc-groovebox-arrange-grid-reentry.png || ! test -s /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml; then echo "ERROR: Grid re-entry evidence is empty"; exit 1; fi
+    reentry_line="$(grep -F -- 'UI_ARRANGEMENT_GRID_BACK_REENTRY_COMPLETE:' <<<"$log_snapshot" | tail -n 1 || true)"
+    if [[ -z "$reentry_line" || "$reentry_line" != *"eventPresent=true"* || "$reentry_line" != *"patternDataUnchanged=true"* ]]; then echo "ERROR: re-entry lacks event/pattern assertion"; printf '%s\n' "$reentry_line"; exit 1; fi
+    reentry_track="$(sed -nE 's/.*trackIndex=([0-9]+).*/\1/p' <<<"$reentry_line")"
+    reentry_step="$(sed -nE 's/.*targetStep=([0-9]+).*/\1/p' <<<"$reentry_line")"
+    reentry_first="$(sed -nE 's/.*firstVisibleStep=([0-9]+).*/\1/p' <<<"$reentry_line")"
+    reentry_last="$(sed -nE 's/.*lastVisibleStep=([0-9]+).*/\1/p' <<<"$reentry_line")"
+    reentry_total="$(sed -nE 's/.*totalSteps=([0-9]+).*/\1/p' <<<"$reentry_line")"
+    if [[ -z "$reentry_track" || -z "$reentry_step" || -z "$reentry_first" || -z "$reentry_last" || -z "$reentry_total" ]]; then echo "ERROR: invalid re-entry checkpoint: $reentry_line"; exit 1; fi
+    if ! python3 - /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml "$reentry_track" "$reentry_step" "$reentry_first" "$reentry_last" "$reentry_total" <<'PY'
+import re,sys,xml.etree.ElementTree as ET
+path,track_s,target_s,first_s,last_s,total_s=sys.argv[1:]
+track,target,first,last,total=map(int,(track_s,target_s,first_s,last_s,total_s))
+nodes=list(ET.parse(path).getroot().iter("node"))
+def bounds(n):
+ m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",n.attrib.get("bounds",""))
+ if m is None: raise AssertionError("invalid bounds "+repr(n.attrib))
+ return tuple(map(int,m.groups()))
+def desc(value):
+ found=[n for n in nodes if n.attrib.get("content-desc")==value]
+ if len(found)!=1: raise AssertionError(f"expected one {value!r}, got {len(found)}")
+ n=found[0]; x1,y1,x2,y2=bounds(n)
+ if x2<=x1 or y2<=y1 or n.attrib.get("visible-to-user")=="false": raise AssertionError(f"not visible: {value!r}")
+desc("MPC Grid View workspace"); desc("MPC Grid View drum event grid")
+if any(n.attrib.get("content-desc")=="MPC linear arrangement editor" for n in nodes): raise AssertionError("Arrangement remains visible")
+prefix=f"TRACK {track+1:02d} •"
+if not any(n.attrib.get("text","").startswith(prefix) for n in nodes): raise AssertionError(f"Track context not restored: {prefix}")
+ranges=[]
+for n in nodes:
+ m=re.fullmatch(r"STEPS\s+0*(\d+)[–-]0*(\d+)\s*/\s*0*(\d+)",n.attrib.get("text","").strip())
+ if m: ranges.append(tuple(map(int,m.groups())))
+if len(ranges)!=1: raise AssertionError(f"expected one Grid range, got {ranges}")
+shown=ranges[0]
+if shown!=(first,last,total): raise AssertionError(f"range {shown} disagrees with log {(first,last,total)}")
+if not first<=target<=last<=total: raise AssertionError(f"target step {target} outside {shown}")
+semantic=[n for n in nodes if n.attrib.get("content-desc","").startswith("Grid visible step range: steps ")]
+if len(semantic)!=1: raise AssertionError(f"expected one semantic Grid range, got {len(semantic)}")
+m=re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",semantic[0].attrib.get("content-desc",""))
+if m is None or tuple(map(int,m.groups()))!=shown: raise AssertionError("Grid range text and description disagree")
+print(f"Re-entered Grid evidence verified: Track {track+1}, step {target}, visible {first}–{last} of {total}.")
+PY
+    then echo "ERROR: Grid re-entry hierarchy failed"; cat /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml; exit 1; fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-arrange-grid-reentry-capture-release; then echo "ERROR: release Grid re-entry capture failed"; exit 1; fi
+    arrangement_grid_reentry_capture_done=1
+  fi
+
   if [ "$storage_picker_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_STORAGE_PICKER_LAUNCH_REQUESTED" <<<"$log_snapshot"; then
     echo "Verifying actual Android Document Picker launch and capturing evidence..."
@@ -2273,6 +2369,11 @@ PY
     exit 1
   fi
   if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
+    if [ "$arrangement_back_capture_done" -ne 1 ] \\
+        || [ "$arrangement_grid_reentry_capture_done" -ne 1 ]; then
+      echo "ERROR: UI audit completed without Arrange BACK and same-event re-entry evidence"
+      exit 1
+    fi
     ui_audit_complete=1
     break
   fi
@@ -2304,6 +2405,17 @@ if [ "$ui_audit_complete" -ne 1 ]; then
   adb_bounded 10 logcat -d -v threadtime > /tmp/mpc-groovebox-logcat.txt || true
   tail -n 350 /tmp/mpc-groovebox-logcat.txt || true
   exit 1
+fi
+
+if [ "$arrangement_back_capture_done" -ne 1 ] \\
+    || ! test -s /tmp/mpc-groovebox-arrange-back.png \\
+    || ! test -s /tmp/mpc-groovebox-arrange-back-uiautomator.xml; then
+  echo "ERROR: Arrange-after-BACK acceptance lacks screenshot/hierarchy evidence"; exit 1
+fi
+if [ "$arrangement_grid_reentry_capture_done" -ne 1 ] \\
+    || ! test -s /tmp/mpc-groovebox-arrange-grid-reentry.png \\
+    || ! test -s /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml; then
+  echo "ERROR: same-event Grid re-entry lacks screenshot/hierarchy evidence"; exit 1
 fi
 
 echo "Application-side UI audit completed; collecting app-side Browser layout evidence."

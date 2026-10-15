@@ -755,9 +755,9 @@ Android Build #2713 on exact SHA `cdcfdfb2500b4c6eaebeab5018b4cdce33213462` pass
 
 APK artifact `11958217657` SHA-256 `4ca32dee06e76b69314446ab5a12b9ec8bf9a488d84c5d7487f1a4861783f960`; 23-entry visual archive `11958527786` SHA-256 `09fa5c463ee3f7449f4cf36907b89e38fae3ddafb057d4d1e3257bd99bbd10c5`. The next interaction slice is BACK from Grid to Arrange and re-entry through the same event, verifying Track/event context without mutating pattern data.
 
-### 2026-10-15 — Browser Favorite folders 1–5 implementation (verification pending)
+### 2026-10-15 — Browser Favorite folders 1–5 implementation (original acceptance pending; later verified by #2732)
 
-Added five independently persisted SAF folder targets to the Browser Places list. Each Favorite stores its own URI/name, requires the persisted read grant, loads actual WAV entries through the existing document-tree catalog and can be reassigned through the Android tree picker. The local WAV filter policy accepts Favorite 1–5 only; an old folder's cached rows are cleared while switching locations. This is a functional implementation, not yet a VERIFIED milestone: confirm the latest exact-head Android Build and inspect runtime evidence before declaring it passed.
+Added five independently persisted SAF folder targets to the Browser Places list. Each Favorite stores its own URI/name, requires the persisted read grant, loads actual WAV entries through the existing document-tree catalog and can be reassigned through the Android tree picker. The local WAV filter policy accepts Favorite 1–5 only; an old folder's cached rows are cleared while switching locations. The later exact-HEAD acceptance result is recorded below.
 
 
 ### 2026-10-15 — Favorite picker runtime failure (#2721)
@@ -772,3 +772,12 @@ Android Build #2730 on exact SHA `004ab89c3e4041f36f8ebfaeca63fe8283c3d3d7` fail
 The smoke harness now inspects the initial hierarchy, taps the exact enabled OS `GOT IT` target through the API 31 system input injector, verifies the cling is gone, and only then captures startup/Main evidence. This is a bounded platform setup step and preserves strict Main assertions.
 
 The previous #2729 evidence establishes that coordinates are stable and that title, icon, row centre, and right-side row gutter taps do not enter the Favorite directory on API 30. The API 31 `cmd input touchscreen tap` folder-row correction is still untested because #2730 stopped earlier. Do not call Favorites fixed until a new exact-head run completes separate-folder assignment, distinct URI persistence, bidirectional WAV switching and Favorite restoration after process restart.
+
+
+### 2026-10-15 — Build #2732 verifies Browser Favorite 1 end to end
+
+Android Build #2732 passed all 57 workflow steps on exact SHA `b7cebdc73943b55dd5440c549ec40e2ca7cde1c8` ([Actions run](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38798857884)). The emulator opened the real DocumentsUI provider root, entered `BBB-MPC-Browser-Favorite`, confirmed the Android tree grant and showed the real `Browser-Favorite-Only.wav`. Saved preferences contained independent `user_tree_uri` and `favorite_tree_uri_1` values for `AAA-MPC-Browser-Tree` and `BBB-MPC-Browser-Favorite`. Switching both directions restored the distinct real WAV rows/status, and force-stop/relaunch restored FAVORITE 1 and its file. Screenshot/UI hierarchy evidence was inspected. This remains emulator-only; physical MPC Studio MkII testing is pending.
+
+### 2026-10-15 — Arrange → Grid → BACK → Arrange → same-event re-entry (runtime validation added; CI pending)
+
+The audit uses the actual Grid Function Bar `BACK` click, verifies Arrangement returns with the same native/UI Track, sequence index and tick-addressable event, then compares all Tracks' Arrangement projections and every quantized Pad velocity on the selected Drum Track before and after navigation. It clears the old callback result and dispatches a fresh double-tap through the real `MpcArrangeView` gesture/listener path to the same event, verifying exact Track/tick, step and viewport before comparing the pattern again. The Android smoke harness captures and validates screenshots and accessibility hierarchies for both Arrange-after-BACK and the re-entered Grid. These assertions are not accepted until the commit's exact-HEAD Android Build passes and its evidence is inspected.

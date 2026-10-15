@@ -1,9 +1,15 @@
 # Session State — MPC MkII Groovebox
 
-**Checkpoint refreshed:** 2026-10-15 (Android Build #2730 on exact SHA `004ab89c3e4041f36f8ebfaeca63fe8283c3d3d7` did not reach Favorite E2E: Android 12's first-run fullscreen confirmation covered Main. Added a bounded system-prompt dismissal; API31 finger-source folder activation remains untested)  
+**Checkpoint refreshed:** 2026-10-15 (Android Build #2732 passed Favorites E2E on exact SHA `b7cebdc73943b55dd5440c549ec40e2ca7cde1c8`; current Arrange BACK/re-entry runtime audit awaits its exact-HEAD run)  
 **Purpose:** Compact handoff for the next ChatGPT session. Read this first, then independently verify every mutable fact against GitHub.
 
 > **Freshness rule:** This checkpoint will itself be committed after the pre-checkpoint SHA above. Therefore, it does **not** claim CI success for the commit containing this state refresh. On every session start, verify the live PR head, branch HEAD, latest Android Build and artifact files. Do not rely on remembered commit numbers or on this checkpoint instead of GitHub.
+
+## Current verified state — Build #2732 / next interaction slice
+
+- PR #23 remains OPEN on `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`. Parent SHA `b7cebdc73943b55dd5440c549ec40e2ca7cde1c8` passed Android Build #2732 (57/57 steps): https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38798857884
+- Favorite E2E is verified on the emulator: `BBB-MPC-Browser-Favorite` grants its independent SAF URI; real `Browser-Favorite-Only.wav` appears; USER FOLDER and FAVORITE 1 have different saved URI keys and restore distinct WAV results in both switch directions and after force-stop/relaunch. Screenshot and hierarchy evidence were inspected. Physical MPC Studio MkII remains PENDING.
+- This commit adds Grid Function Bar BACK → Arrange → same-event double-tap validation, compares sequence/Track/tick/step and pattern snapshots before/after navigation, and captures screenshot + hierarchy for returned Arrange and re-entered Grid. CI on this commit is pending; source assertions alone are not acceptance.
 
 ## Last verified full Android build before the current feature — 2026-10-15
 

@@ -12069,6 +12069,259 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void runUiAuditAfterGrid() {
         if (destroyed) return;
+        beginArrangementBackReentryAudit();
+    }
+
+
+    private void beginArrangementBackReentryAudit() {
+        if (destroyed) return;
+        final MpcUiState initialState = navigationController == null ? null : navigationController.state();
+        final int expectedTrack = arrangementAuditTrackIndex;
+        final long expectedTick = arrangementAuditEventTick;
+        final int gridTicks = arrangementAuditGridTicks;
+        final int totalSteps = sequenceGridTotalSteps();
+        final int visibleSteps = Math.max(1, Math.min(sequenceGridVisibleSteps, totalSteps));
+        final int expectedStep = gridTicks <= 0 ? -1
+                : MpcSequenceZoomPolicy.stepIndexForTick(expectedTick, gridTicks, totalSteps);
+        final int expectedStart = expectedStep < 0 ? -1
+                : MpcSequenceZoomPolicy.gridStartForStep(expectedStep, visibleSteps, totalSteps);
+        final int expectedNavSequence = initialState == null ? -1 : initialState.selectedSequence();
+        final int expectedNativeSequence = nativeSequenceGetIndex();
+        if (initialState == null
+                || initialState.mode() != MpcUiState.Mode.GRID
+                || !"SEQ".equals(currentPage)
+                || expectedTrack < 0 || expectedTick < 0L || gridTicks <= 0
+                || expectedStep != arrangementAuditTargetStep
+                || nativeSequenceGetSelectedTrack() != expectedTrack
+                || initialState.selectedTrack() != expectedTrack
+                || lastArrangementFocusTrackIndex != expectedTrack
+                || lastArrangementFocusTick != expectedTick
+                || sequenceGridView == null
+                || sequenceGridStartStep != expectedStart
+                || sequenceGridView.firstStepForTest() != expectedStart
+                || expectedNativeSequence < 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: initial Arrange-to-Grid context is inconsistent"
+                    + " | expectedTrack=" + expectedTrack
+                    + " | listenerTrack=" + lastArrangementFocusTrackIndex
+                    + " | expectedTick=" + expectedTick
+                    + " | listenerTick=" + lastArrangementFocusTick
+                    + " | expectedStep=" + (expectedStep + 1)
+                    + " | gridStart=" + sequenceGridStartStep
+                    + " | currentPage=" + currentPage);
+            return;
+        }
+        final String patternSnapshot = captureArrangeNavigationPatternSnapshot(gridTicks);
+        final View back = findViewWithExactText(getWindow().getDecorView(), "BACK");
+        if (back == null || !back.isEnabled() || !back.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: actual Grid Function Bar BACK action");
+            return;
+        }
+        if (navigationController.state().mode() != MpcUiState.Mode.ARRANGE
+                || !"ARRANGE".equals(currentPage)
+                || nativeSequenceGetSelectedTrack() != expectedTrack
+                || navigationController.state().selectedTrack() != expectedTrack
+                || navigationController.state().selectedSequence() != expectedNavSequence
+                || nativeSequenceGetIndex() != expectedNativeSequence
+                || lastArrangementFocusTrackIndex != expectedTrack
+                || lastArrangementFocusTick != expectedTick
+                || arrangementView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Grid BACK did not restore Arrange context"
+                    + " | expectedTrack=" + expectedTrack
+                    + " | nativeTrack=" + nativeSequenceGetSelectedTrack()
+                    + " | navigationTrack=" + navigationController.state().selectedTrack()
+                    + " | expectedTick=" + expectedTick
+                    + " | lastTick=" + lastArrangementFocusTick
+                    + " | currentPage=" + currentPage);
+            return;
+        }
+        waitForMeasuredAuditView(arrangementView, dp(120), "Arrangement restored by Grid BACK",
+                () -> verifyArrangementBackContextForAudit(
+                        expectedNavSequence, expectedNativeSequence, expectedTrack, expectedTick,
+                        gridTicks, totalSteps, visibleSteps, expectedStep, expectedStart, patternSnapshot));
+    }
+
+    private String captureArrangeNavigationPatternSnapshot(int gridTicks) {
+        final StringBuilder snapshot = new StringBuilder(4096);
+        final int trackCount = Math.max(0, nativeSequenceGetTrackCount());
+        snapshot.append("trackCount=").append(trackCount);
+        for (int track = 0; track < trackCount; track++) {
+            snapshot.append("|arrange[").append(track).append("]=")
+                    .append(nativeSequenceGetTrackArrangementData(track));
+        }
+        final int totalSteps = sequenceGridTotalSteps();
+        snapshot.append("|gridTicks=").append(gridTicks).append("|steps=").append(totalSteps);
+        for (int step = 0; step < totalSteps; step++) {
+            final int[] velocities = nativeSequenceGetGridVelocities(step, gridTicks);
+            snapshot.append("|padVelocities[").append(step).append("]=")
+                    .append(velocities == null ? "<null>" : java.util.Arrays.toString(velocities));
+        }
+        return snapshot.toString();
+    }
+
+    private void verifyArrangementBackContextForAudit(
+            int expectedNavSequence, int expectedNativeSequence, int expectedTrack, long expectedTick,
+            int gridTicks, int totalSteps, int visibleSteps, int expectedStep, int expectedStart,
+            String patternSnapshot) {
+        if (destroyed) return;
+        final float[] eventCenter = arrangementView == null ? null
+                : arrangementView.eventCenterForAudit(expectedTrack, expectedTick);
+        final boolean eventPresent = eventCenter != null;
+        final boolean patternUnchanged = patternSnapshot.equals(captureArrangeNavigationPatternSnapshot(gridTicks));
+        if (navigationController.state().mode() != MpcUiState.Mode.ARRANGE
+                || !"ARRANGE".equals(currentPage)
+                || nativeSequenceGetSelectedTrack() != expectedTrack
+                || navigationController.state().selectedTrack() != expectedTrack
+                || navigationController.state().selectedSequence() != expectedNavSequence
+                || nativeSequenceGetIndex() != expectedNativeSequence
+                || lastArrangementFocusTrackIndex != expectedTrack
+                || lastArrangementFocusTick != expectedTick
+                || sequenceGridTotalSteps() != totalSteps
+                || sequenceGridVisibleSteps != visibleSteps
+                || !eventPresent || !patternUnchanged) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange did not preserve the same event/pattern after Grid BACK"
+                    + " | trackIndex=" + expectedTrack + " | eventTick=" + expectedTick
+                    + " | eventPresent=" + eventPresent + " | patternDataUnchanged=" + patternUnchanged
+                    + " | expectedGridStart=" + expectedStart);
+            return;
+        }
+        Log.i(TAG, "UI_ARRANGEMENT_BACK_CONTEXT_COMPLETE: selectedSequence=" + expectedNativeSequence
+                + " trackIndex=" + expectedTrack + " eventTick=" + expectedTick
+                + " targetStep=" + (expectedStep + 1) + " eventPresent=true patternDataUnchanged=true");
+        awaitArrangementBackEvidenceCapture(expectedNavSequence, expectedNativeSequence,
+                expectedTrack, expectedTick, gridTicks, totalSteps, visibleSteps,
+                expectedStep, expectedStart, patternSnapshot);
+    }
+
+    private void awaitArrangementBackEvidenceCapture(
+            int expectedNavSequence, int expectedNativeSequence, int expectedTrack, long expectedTick,
+            int gridTicks, int totalSteps, int visibleSteps, int expectedStep, int expectedStart,
+            String patternSnapshot) {
+        if (destroyed) return;
+        if (!uiAuditSmokeMode) {
+            reopenSameArrangementEventAfterBackForAudit(expectedNavSequence, expectedNativeSequence,
+                    expectedTrack, expectedTick, gridTicks, totalSteps, visibleSteps,
+                    expectedStep, expectedStart, patternSnapshot);
+            return;
+        }
+        final java.io.File releaseSignal = new java.io.File(getCacheDir(), "mpc-arrange-back-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_ARRANGEMENT_BACK_CAPTURE_READY");
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                reopenSameArrangementEventAfterBackForAudit(expectedNavSequence, expectedNativeSequence,
+                        expectedTrack, expectedTick, gridTicks, totalSteps, visibleSteps,
+                        expectedStep, expectedStart, patternSnapshot);
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Arrange-after-BACK evidence handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
+    }
+
+    private void reopenSameArrangementEventAfterBackForAudit(
+            int expectedNavSequence, int expectedNativeSequence, int expectedTrack, long expectedTick,
+            int gridTicks, int totalSteps, int visibleSteps, int expectedStep, int expectedStart,
+            String patternSnapshot) {
+        if (destroyed) return;
+        final float[] eventCenter = arrangementView == null ? null
+                : arrangementView.eventCenterForAudit(expectedTrack, expectedTick);
+        final boolean patternUnchanged = patternSnapshot.equals(captureArrangeNavigationPatternSnapshot(gridTicks));
+        if (navigationController.state().mode() != MpcUiState.Mode.ARRANGE
+                || !"ARRANGE".equals(currentPage)
+                || nativeSequenceGetSelectedTrack() != expectedTrack
+                || navigationController.state().selectedTrack() != expectedTrack
+                || navigationController.state().selectedSequence() != expectedNavSequence
+                || nativeSequenceGetIndex() != expectedNativeSequence
+                || !patternUnchanged || eventCenter == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: same Arrangement event unavailable for re-entry"
+                    + " | trackIndex=" + expectedTrack + " | eventTick=" + expectedTick
+                    + " | eventPresent=" + (eventCenter != null) + " | patternDataUnchanged=" + patternUnchanged);
+            return;
+        }
+        // Clear the prior callback result so only a fresh gesture can satisfy the re-entry check.
+        lastArrangementFocusTrackIndex = -1;
+        lastArrangementFocusTick = -1L;
+        if (!dispatchArrangementEventDoubleTapForAudit(arrangementView, eventCenter[0], eventCenter[1])) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: same Arrangement event double-tap after BACK");
+            return;
+        }
+        final int reTotal = sequenceGridTotalSteps();
+        final int reVisible = Math.max(1, Math.min(sequenceGridVisibleSteps, reTotal));
+        final int reStep = lastArrangementFocusTick < 0L ? -1
+                : MpcSequenceZoomPolicy.stepIndexForTick(lastArrangementFocusTick, gridTicks, reTotal);
+        final int reStart = reStep < 0 ? -1
+                : MpcSequenceZoomPolicy.gridStartForStep(reStep, reVisible, reTotal);
+        final boolean freshEvent = lastArrangementFocusTrackIndex == expectedTrack
+                && lastArrangementFocusTick == expectedTick;
+        final boolean sameGrid = navigationController.state().mode() == MpcUiState.Mode.GRID
+                && "SEQ".equals(currentPage)
+                && nativeSequenceGetSelectedTrack() == expectedTrack
+                && navigationController.state().selectedTrack() == expectedTrack
+                && navigationController.state().selectedSequence() == expectedNavSequence
+                && nativeSequenceGetIndex() == expectedNativeSequence
+                && reTotal == totalSteps && reVisible == visibleSteps
+                && sequenceGridVisibleSteps == visibleSteps
+                && reStep == expectedStep && reStart == expectedStart
+                && sequenceGridStartStep == expectedStart && sequenceGridView != null
+                && sequenceGridView.firstStepForTest() == expectedStart;
+        final boolean patternStillUnchanged = patternSnapshot.equals(captureArrangeNavigationPatternSnapshot(gridTicks));
+        if (!freshEvent || !sameGrid || !patternStillUnchanged) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange BACK/re-entry did not restore the same musical location"
+                    + " | expectedTrack=" + expectedTrack + " | listenerTrack=" + lastArrangementFocusTrackIndex
+                    + " | expectedTick=" + expectedTick + " | listenerTick=" + lastArrangementFocusTick
+                    + " | expectedStep=" + (expectedStep + 1) + " | actualStep=" + (reStep + 1)
+                    + " | expectedGridStart=" + expectedStart + " | actualGridStart=" + sequenceGridStartStep
+                    + " | patternDataUnchanged=" + patternStillUnchanged);
+            return;
+        }
+        final int firstVisible = reStart + 1;
+        final int lastVisible = Math.min(reTotal, reStart + reVisible);
+        Log.i(TAG, "UI_ARRANGEMENT_GRID_BACK_REENTRY_COMPLETE: trackIndex=" + expectedTrack
+                + " eventTick=" + lastArrangementFocusTick + " targetStep=" + (reStep + 1)
+                + " firstVisibleStep=" + firstVisible + " lastVisibleStep=" + lastVisible
+                + " totalSteps=" + reTotal + " eventPresent=true patternDataUnchanged=true");
+        waitForMeasuredAuditView(sequenceGridView, dp(120),
+                "Grid after reopening same Arrangement event", this::awaitArrangementGridBackReentryEvidenceCapture);
+    }
+
+    private void awaitArrangementGridBackReentryEvidenceCapture() {
+        if (destroyed) return;
+        if (!uiAuditSmokeMode) {
+            continueUiAuditAfterGrid();
+            return;
+        }
+        final java.io.File releaseSignal = new java.io.File(getCacheDir(), "mpc-arrange-grid-reentry-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_ARRANGEMENT_GRID_BACK_REENTRY_CAPTURE_READY");
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                Log.i(TAG, "UI_ARRANGEMENT_GRID_BACK_REENTRY_CAPTURE_VERIFIED");
+                continueUiAuditAfterGrid();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Grid re-entry evidence handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
+    }
+
+    private void continueUiAuditAfterGrid() {
+        if (destroyed) return;
 
         if (!drumGridAvailable()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: audit track is not Drum");

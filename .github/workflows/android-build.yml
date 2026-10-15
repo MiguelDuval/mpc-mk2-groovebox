@@ -515,6 +515,10 @@ jobs:
             /tmp/mpc-groovebox-main-ready-uiautomator.xml
             /tmp/mpc-groovebox-arrange-grid-focus.png
             /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-back.png
+            /tmp/mpc-groovebox-arrange-back-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-grid-reentry.png
+            /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml
             /tmp/mpc-groovebox-ui.xml
             /tmp/mpc-groovebox-browser.png
             /tmp/mpc-groovebox-browser-hierarchy.txt
