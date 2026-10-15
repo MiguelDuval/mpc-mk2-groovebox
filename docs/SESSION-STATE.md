@@ -35,7 +35,7 @@
 
 ### Current iteration — Browser Favorite folders 1–5 (verification pending)
 
-- Implemented separate persistent folder targets for FAVORITE 1–5 using Android SAF tree URIs/read grants and independent SharedPreferences URI/name keys. Selecting a slot shows only WAV files scanned from that folder; CHOOSE/CHANGE FOLDER reassigns the active slot without replacing USER FOLDER.
+- Implemented separate persistent folder targets for FAVORITE 1–5 using Android SAF tree URIs/read grants and independent SharedPreferences URI/name keys. The pending Favorite slot is also saved before opening the external picker so an Activity/process recreation does not silently redirect the returned folder into USER FOLDER. Selecting a slot shows only WAV files scanned from that folder; CHOOSE/CHANGE FOLDER reassigns the active slot without replacing USER FOLDER.
 - Updated Browser filtering to accept only the five defined Favorite slot names, and added focused JVM assertions for slots 1 and 5 plus rejection of slot 6. The existing Document Provider, WAV loader, sampler assignment path and audio/MIDI layers are reused; no new storage provider or audio engine was added.
 - Folder-switch state clears the previous tree's cached rows so two distinct folders with the same display name cannot briefly show one another's WAVs. The picker initial-location hint now follows the selected Favorite's URI rather than the USER FOLDER field.
 - **Evidence boundary:** this code/checkpoint has not yet been validated by a completed Android Build for its exact current SHA. Do not claim Favorite persistence or picker behavior is emulator-verified until the latest Actions run and screenshot/UI evidence are inspected. Physical MPC Studio MkII behavior remains pending.

@@ -83,6 +83,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final String PREF_USER_TREE_NAME = "user_tree_name";
     private static final String PREF_FAVORITE_TREE_URI_PREFIX = "favorite_tree_uri_";
     private static final String PREF_FAVORITE_TREE_NAME_PREFIX = "favorite_tree_name_";
+    private static final String PREF_PENDING_FAVORITE_SLOT = "pending_favorite_slot";
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
     private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
     private static final boolean NATIVE_LIBRARY_LOADED;
@@ -5720,6 +5721,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String locationKey = navigationController == null
                 ? "PLACES/USER FOLDER" : navigationController.state().browserLocation();
         browserPickerTargetFavoriteSlot = favoriteSlotForLocationKey(locationKey);
+        // The system document picker can outlive this Activity process; persist its target.
+        getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE).edit()
+                .putInt(PREF_PENDING_FAVORITE_SLOT, browserPickerTargetFavoriteSlot).apply();
         final Uri pickerInitialTreeUri = savedBrowserTreeUriForLocation(locationKey);
         final String pickerLocationLabel = browserTreeLocationLabel(locationKey);
         final Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
@@ -5755,6 +5759,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 startActivityForResult(fallback, REQUEST_OPEN_DOCUMENT_TREE);
             } catch (RuntimeException fallbackError) {
                 browserPickerTargetFavoriteSlot = -1;
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE).edit()
+                        .remove(PREF_PENDING_FAVORITE_SLOT).apply();
                 final String status = pickerLocationLabel + " • PICKER UNAVAILABLE • "
                         + fallbackError.getClass().getSimpleName();
                 setBottomStatus(status);
@@ -5865,8 +5871,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void handleUserDocumentTreeResult(int resultCode, Intent data) {
-        final int favoriteSlot = browserPickerTargetFavoriteSlot;
+        final android.content.SharedPreferences pickerPreferences =
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE);
+        int favoriteSlot = browserPickerTargetFavoriteSlot;
+        if (favoriteSlot < 0) {
+            favoriteSlot = pickerPreferences.getInt(PREF_PENDING_FAVORITE_SLOT, -1);
+        }
         browserPickerTargetFavoriteSlot = -1;
+        pickerPreferences.edit().remove(PREF_PENDING_FAVORITE_SLOT).apply();
         if (favoriteSlot > 0) {
             handleFavoriteDocumentTreeResult(favoriteSlot, resultCode, data);
             return;
