@@ -11482,6 +11482,111 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 this::runUiAuditAfterArrangement);
     }
 
+    private boolean verifyArrangeTrackSelectionAndRestoreForAudit() {
+        if (arrangementView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange track selection has no view");
+            return false;
+        }
+
+        final int originalTrack = Math.max(0, nativeSequenceGetSelectedTrack());
+        final int trackCount = Math.max(0, nativeSequenceGetTrackCount());
+        if (trackCount < 2 || originalTrack >= trackCount) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange track-selection audit needs two valid tracks"
+                    + " | selected=" + originalTrack
+                    + " | trackCount=" + trackCount);
+            return false;
+        }
+        // Use opposite ends of the lane list so consecutive audit taps cannot
+        // be mistaken for one double-tap by GestureDetector.
+        final int targetTrack = originalTrack == 0 ? trackCount - 1 : 0;
+        if (targetTrack == originalTrack) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange track-selection target equals original");
+            return false;
+        }
+
+        final String originalDataBefore = nativeSequenceGetTrackArrangementData(originalTrack);
+        final String targetDataBefore = nativeSequenceGetTrackArrangementData(targetTrack);
+        final float[] targetPoint = arrangementView.trackLanePointForAudit(targetTrack);
+        if (targetPoint == null
+                || !dispatchArrangementSingleTapForAudit(
+                        arrangementView, targetPoint[0], targetPoint[1])) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not tap target Arrangement lane"
+                    + " | targetTrack=" + targetTrack
+                    + " | view=" + describeAuditView(arrangementView));
+            restoreArrangeTrackSelectionAfterAudit(originalTrack);
+            return false;
+        }
+
+        final int changedTrack = nativeSequenceGetSelectedTrack();
+        final int viewChangedTrack = arrangementView.selectedTrackForAudit();
+        if (changedTrack != targetTrack || viewChangedTrack != targetTrack) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement lane tap did not change selected track"
+                    + " | expected=" + targetTrack
+                    + " | native=" + changedTrack
+                    + " | view=" + viewChangedTrack);
+            restoreArrangeTrackSelectionAfterAudit(originalTrack);
+            return false;
+        }
+
+        final float[] originalPoint = arrangementView.trackLanePointForAudit(originalTrack);
+        if (originalPoint == null
+                || !dispatchArrangementSingleTapForAudit(
+                        arrangementView, originalPoint[0], originalPoint[1])) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not restore original Arrangement track"
+                    + " | originalTrack=" + originalTrack
+                    + " | view=" + describeAuditView(arrangementView));
+            restoreArrangeTrackSelectionAfterAudit(originalTrack);
+            return false;
+        }
+
+        final int restoredTrack = nativeSequenceGetSelectedTrack();
+        final int viewRestoredTrack = arrangementView.selectedTrackForAudit();
+        final String originalDataAfter = nativeSequenceGetTrackArrangementData(originalTrack);
+        final String targetDataAfter = nativeSequenceGetTrackArrangementData(targetTrack);
+        if (restoredTrack != originalTrack
+                || viewRestoredTrack != originalTrack
+                || !java.util.Objects.equals(originalDataBefore, originalDataAfter)
+                || !java.util.Objects.equals(targetDataBefore, targetDataAfter)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement selection did not restore cleanly"
+                    + " | expectedOriginal=" + originalTrack
+                    + " | nativeRestored=" + restoredTrack
+                    + " | viewRestored=" + viewRestoredTrack
+                    + " | originalEventsUnchanged="
+                    + java.util.Objects.equals(originalDataBefore, originalDataAfter)
+                    + " | targetEventsUnchanged="
+                    + java.util.Objects.equals(targetDataBefore, targetDataAfter));
+            restoreArrangeTrackSelectionAfterAudit(originalTrack);
+            return false;
+        }
+
+        Log.i(TAG, "UI_ARRANGE_TRACK_SELECTION_COMPLETE: original="
+                + originalTrack
+                + " changed=" + changedTrack
+                + " restored=" + restoredTrack
+                + " arrangementDataUnchanged=true");
+        return true;
+    }
+
+    private void restoreArrangeTrackSelectionAfterAudit(int trackIndex) {
+        setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+        navigationController.setSelectedTrack(trackIndex);
+        loadArrangementLanes();
+        refreshArrangeView();
+    }
+
+    private boolean dispatchArrangementSingleTapForAudit(
+            MpcArrangeView targetView, float x, float y) {
+        if (targetView == null) return false;
+        final long now = SystemClock.uptimeMillis();
+        final long downTime = now - 40L;
+        return dispatchArrangementTouchForAudit(
+                    targetView, downTime, downTime,
+                    MotionEvent.ACTION_DOWN, x, y)
+                && dispatchArrangementTouchForAudit(
+                    targetView, downTime, now,
+                    MotionEvent.ACTION_UP, x, y);
+    }
+
     private boolean verifyArrangeLoopDragAndRestoreForAudit() {
         if (arrangementView == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Arrange loop gesture has no view");
@@ -11582,6 +11687,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (destroyed) return;
 
         if (!verifyArrangeLoopDragAndRestoreForAudit()) return;
+        if (!verifyArrangeTrackSelectionAndRestoreForAudit()) return;
 
         if (arrangementView == null
                 || arrangementAuditTrackIndex < 0

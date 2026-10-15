@@ -149,6 +149,35 @@ final class MpcArrangeView extends View {
         invalidate();
     }
 
+    float[] trackLanePointForAudit(int trackIndex) {
+        if (getWidth() <= 0 || getHeight() <= 0) {
+            return null;
+        }
+        final float headerX = Math.min(
+                dp(24f), Math.max(0f, getWidth() - dp(1f)));
+        final float rulerHeight = dp(TOP_RULER_DP);
+        final float laneHeight = dp(LANE_DP);
+        for (int laneIndex = 0; laneIndex < lanes.size(); laneIndex++) {
+            if (lanes.get(laneIndex).trackIndex != trackIndex) {
+                continue;
+            }
+            final float y = rulerHeight + laneIndex * laneHeight + laneHeight / 2f;
+            if (y < rulerHeight || y >= getHeight()) {
+                return null;
+            }
+            final Hit actual = hit(headerX, y);
+            if (actual.trackIndex != trackIndex) {
+                return null;
+            }
+            return new float[] {headerX, y};
+        }
+        return null;
+    }
+
+    int selectedTrackForAudit() {
+        return selectedTrack;
+    }
+
     float[] loopEndHandlePointForAudit(int bar) {
         if (getWidth() <= 0 || getHeight() <= 0
                 || bar < 1 || bar > barCount) {

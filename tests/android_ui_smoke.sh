@@ -429,6 +429,13 @@ for required in \
   'dispatchArrangementLoopDragForAudit(' \
   'loopEndHandlePointForAudit(' \
   'UI_ARRANGE_LOOP_GESTURE_COMPLETE' \
+  'verifyArrangeTrackSelectionAndRestoreForAudit()' \
+  'trackLanePointForAudit(' \
+  'selectedTrackForAudit()' \
+  'dispatchArrangementSingleTapForAudit(' \
+  'restoreArrangeTrackSelectionAfterAudit(' \
+  'UI_ARRANGE_TRACK_SELECTION_COMPLETE:' \
+  'arrangementDataUnchanged=true' \
   'prepareArrangementEventGestureAudit()' \
   'eventCenterForAudit(' \
   'dispatchArrangementEventDoubleTapForAudit(' \
