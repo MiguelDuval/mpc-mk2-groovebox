@@ -2270,7 +2270,7 @@ prefix=f"TRACK {track+1:02d} •"
 if not any(n.attrib.get("text","").startswith(prefix) for n in nodes): raise AssertionError(f"Track context not restored: {prefix}")
 ranges=[]
 for n in nodes:
- m=re.fullmatch(r"STEPS\s+0*(\d+)[–-]0*(\d+)\s*/\s*0*(\d+)",n.attrib.get("text","").strip())
+ m=re.fullmatch(r"(?:STEPS\s*)?0*(\d+)[–-]0*(\d+)\s*/\s*0*(\d+)",n.attrib.get("text","").strip())
  if m: ranges.append(tuple(map(int,m.groups())))
 if len(ranges)!=1: raise AssertionError(f"expected one Grid range, got {ranges}")
 shown=ranges[0]
