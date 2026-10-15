@@ -2873,7 +2873,7 @@ tap_ui_picker_folder_until_child() {
     return 1
   fi
 
-  if ! tap_ui_picker_result_row "$root_xml" "$folder_label" single; then
+  if ! tap_ui_picker_result_row "$root_xml" "$folder_label" single row; then
     echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"
     return 1
   fi
