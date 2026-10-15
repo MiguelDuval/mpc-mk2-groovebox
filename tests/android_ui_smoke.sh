@@ -1797,14 +1797,74 @@ if ! adb_bounded 60 shell am start -W -n "$ACTIVITY" --es "$SMOKE_MODE_EXTRA" "u
   exit 1
 fi
 
-echo "Capturing startup UI screenshot..."
+echo "Allowing startup path to settle..."
+sleep 5
+
+# Android 12+ shows a one-time system-owned immersive-mode confirmation over
+# fullscreen Activities. Dismiss it explicitly before startup/Main captures so
+# the product UI assertions and evidence inspect the app, not android:id/ok.
+IMMERSIVE_CLING_XML="/tmp/mpc-groovebox-immersive-cling-uiautomator.xml"
+IMMERSIVE_CLING_REMOTE="/sdcard/mpc-groovebox-immersive-cling-uiautomator.xml"
+if ! dump_device_ui "$IMMERSIVE_CLING_REMOTE" "$IMMERSIVE_CLING_XML"; then
+  echo "ERROR: could not inspect Android immersive-mode confirmation state"
+  exit 1
+fi
+if grep -Fq -- 'resource-id="android:id/immersive_cling_title"' "$IMMERSIVE_CLING_XML"; then
+  echo "Android immersive confirmation detected; acknowledging system-owned GOT IT action..."
+  immersive_ok_coordinates="$(python3 - "$IMMERSIVE_CLING_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    if (node.attrib.get("resource-id") == "android:id/ok"
+            and node.attrib.get("text", "").strip() == "GOT IT"
+            and node.attrib.get("clickable") == "true"
+            and node.attrib.get("enabled") == "true"):
+        raw = node.attrib.get("bounds", "")
+        try:
+            first, second = raw[1:-1].split("][")
+            left, top = map(int, first.split(","))
+            right, bottom = map(int, second.split(","))
+        except ValueError:
+            continue
+        if right > left and bottom > top:
+            print((left + right) // 2, (top + bottom) // 2)
+            raise SystemExit(0)
+raise SystemExit(2)
+PY
+  )" || {
+    echo "ERROR: immersive confirmation was present but its enabled GOT IT target was not found"
+    exit 1
+  }
+  read -r immersive_ok_x immersive_ok_y <<< "$immersive_ok_coordinates"
+  if ! adb_bounded 10 shell cmd input touchscreen tap "$immersive_ok_x" "$immersive_ok_y"; then
+    echo "ERROR: could not acknowledge Android immersive-mode confirmation"
+    exit 1
+  fi
+  immersive_cling_dismissed=0
+  for immersive_attempt in {1..6}; do
+    sleep 1
+    if ! dump_device_ui "$IMMERSIVE_CLING_REMOTE" "$IMMERSIVE_CLING_XML"; then
+      echo "ERROR: could not verify immersive-mode confirmation dismissal"
+      exit 1
+    fi
+    if ! grep -Fq -- 'resource-id="android:id/immersive_cling_title"' "$IMMERSIVE_CLING_XML"; then
+      immersive_cling_dismissed=1
+      break
+    fi
+  done
+  if [[ "$immersive_cling_dismissed" != "1" ]]; then
+    echo "ERROR: Android immersive-mode confirmation remained visible after GOT IT"
+    exit 1
+  fi
+  echo "Android immersive-mode confirmation dismissed and verified."
+fi
+
+echo "Capturing startup UI screenshot after the system-overlay check..."
 if ! adb_bounded 15 exec-out screencap -p > /tmp/mpc-groovebox-startup.png; then
   echo "ERROR: startup screenshot capture failed or timed out after 15s"
   exit 1
 fi
-
-echo "Allowing startup path to settle..."
-sleep 5
 
 echo "Waiting for application-side UI audit to complete..."
 UI_AUDIT_TIMEOUT_SECONDS=120
