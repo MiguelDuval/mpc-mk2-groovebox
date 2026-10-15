@@ -2794,18 +2794,62 @@ raise SystemExit(1)
 PY
 }
 
+picker_focus_folder_row() {
+  local hierarchy_path="$1" remote_path="$2" folder_label="$3" max_steps="${4:-16}"
+  local step
+  # These DocumentsUI rows are focusable but expose no clickable semantics.
+  # After the exact folder's focus state is observable in XML, Enter is the
+  # standard activation key handled by DocumentHolder; do not guess coordinates.
+  for ((step=0; step<=max_steps; step++)); do
+    if python3 - "$hierarchy_path" "$folder_label" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+for node in nodes:
+    if node.attrib.get("text", "").strip() != expected:
+        continue
+    candidate = node
+    while candidate is not None:
+        if candidate.attrib.get("resource-id") == "com.android.documentsui:id/item_root":
+            raise SystemExit(0 if candidate.attrib.get("focused") == "true" else 1)
+        candidate = parents.get(candidate)
+raise SystemExit(2)
+PY
+    then
+      echo "DocumentsUI folder focused: '$folder_label' after $step DPAD_DOWN event(s)"
+      return 0
+    fi
+    if (( step == max_steps )); then break; fi
+    if ! adb_bounded 10 shell input keyevent KEYCODE_DPAD_DOWN; then
+      echo "ERROR: failed to send DPAD_DOWN while focusing DocumentsUI folder: $folder_label"
+      return 1
+    fi
+    sleep 0.1
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then
+      echo "ERROR: could not inspect DocumentsUI focus after DPAD_DOWN"
+      return 1
+    fi
+  done
+  echo "ERROR: DocumentsUI did not focus the visible folder row after $max_steps DPAD_DOWN events: $folder_label"
+  return 1
+}
+
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
   local evidence_prefix="${5:-document-tree}"
   local root_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root.png"
   local root_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-uiautomator.xml"
-  local after_tap_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-tap.png"
-  local after_tap_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-tap-uiautomator.xml"
+  local after_enter_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-enter.png"
+  local after_enter_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-enter-uiautomator.xml"
 
-  # Build #2723 showed that two rapid touches are not a valid activation gesture
-  # for touchscreen DocumentsUI. Build #2724 showed that tapping the left icon
-  # area also did not enter the directory. Capture the actual provider root and
-  # activate the folder with one touch on its visible title text instead.
+  # Builds #2723–#2725 show that synthetic touch taps do not activate this
+  # non-clickable DocumentsUI row, even though it is visible. Its accessibility
+  # hierarchy explicitly marks item_root focusable=true; navigate focus by DPAD,
+  # verify the exact row is focused in XML, then activate it with Enter.
   if ! picker_folder_row_fully_visible "$hierarchy_path" "$folder_label"; then
     echo "ERROR: target SAF folder is not fully visible above the picker footer: $folder_label"
     return 1
@@ -2823,20 +2867,26 @@ tap_ui_picker_folder_until_child() {
     return 1
   fi
 
-  echo "DocumentsUI folder activation: single title tap '$folder_label'"
-  if ! tap_ui_picker_result_row "$root_xml" "$folder_label" single; then
-    echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"
+  if ! picker_focus_folder_row "$root_xml" "$remote_path" "$folder_label" 16; then
+    adb_bounded 10 exec-out screencap -p > "$after_enter_png" || true
+    dump_device_ui "$remote_path" "$after_enter_xml" || true
+    echo "ERROR: could not focus the actual DocumentsUI folder before activation: $folder_label"
+    return 1
+  fi
+  echo "DocumentsUI folder activation: KEYCODE_ENTER '$folder_label'"
+  if ! adb_bounded 10 shell input keyevent KEYCODE_ENTER; then
+    echo "ERROR: could not activate focused DocumentsUI folder: $folder_label"
     return 1
   fi
   if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
     return 0
   fi
 
-  # Preserve matching before/after evidence for diagnosis rather than layering
-  # on speculative taps when the real picker route does not respond.
-  adb_bounded 10 exec-out screencap -p > "$after_tap_png" || true
-  dump_device_ui "$remote_path" "$after_tap_xml" || true
-  echo "ERROR: single title tap in DocumentsUI did not expose $child_label"
+  # Preserve matching before/after evidence; do not add another speculative
+  # gesture if the standard focus/Enter path does not navigate.
+  adb_bounded 10 exec-out screencap -p > "$after_enter_png" || true
+  dump_device_ui "$remote_path" "$after_enter_xml" || true
+  echo "ERROR: Enter on focused DocumentsUI folder did not expose $child_label"
   return 1
 }
 
