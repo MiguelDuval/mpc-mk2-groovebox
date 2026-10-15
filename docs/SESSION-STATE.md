@@ -1,6 +1,6 @@
 # Session State — MPC MkII Groovebox
 
-**Checkpoint refreshed:** 2026-10-15 (Android Build #2714 passed on exact SHA `13254a9e5839d3405f2a3a7ea46c377da95a83ac`; the newer Browser Favorite folders implementation and picker correction require exact-current-HEAD verification)  
+**Checkpoint refreshed:** 2026-10-15 (Android Build #2723 failed on exact SHA `ca3defaf6204b1dd5e55fd74387292a6d8f7ed5a` during FAVORITE 1 folder entry; root-state diagnosis complete, single-icon-tap correction awaiting exact-HEAD CI)  
 **Purpose:** Compact handoff for the next ChatGPT session. Read this first, then independently verify every mutable fact against GitHub.
 
 > **Freshness rule:** This checkpoint will itself be committed after the pre-checkpoint SHA above. Therefore, it does **not** claim CI success for the commit containing this state refresh. On every session start, verify the live PR head, branch HEAD, latest Android Build and artifact files. Do not rely on remembered commit numbers or on this checkpoint instead of GitHub.
@@ -229,6 +229,10 @@ This checkpoint records the implementation SHA proven by Android Build #2637. Th
 - This is **not a passing Favorites milestone**. The next exact-HEAD Actions run must verify the app route, separate SAF preference keys/URIs, USER FOLDER ↔ FAVORITE 1 switching and process-restart restoration. Follow with a source fix if the tree-grant control still fails to appear.
 
 
-### 2026-10-15 — DocumentsUI breadcrumb escape correction
+### 2026-10-15 — Build #2723 root-state diagnosis
 
-The first smoke-harness navigation commit contained over-escaped newline literals in the small Python-to-shell breadcrumb handoff. Corrected those literals before using that run as evidence. Do not infer Favorites behavior from an intermediate run whose test harness did not execute the breadcrumb navigation reliably; the next exact-HEAD run is authoritative.
+- Android Build #2723 failed on exact SHA `ca3defaf6204b1dd5e55fd74387292a6d8f7ed5a` after USER FOLDER selection and process-restart restoration had passed.
+- Inspected the uploaded UI hierarchy. The breadcrumb had reached provider root `Android SDK built for x86_64`; `BBB-MPC-Browser-Favorite` was visible and fully above the footer. `USE THIS FOLDER` was correctly disabled at the root. The folder title and its parent `item_root` were reported non-clickable, while the row was focusable.
+- The failed harness used a double-tap at row/text center (540,487), then another title double-tap; DocumentsUI remained at root. Source tracing confirms Browser `CHOOSE FOLDER → openBrowserDocumentTreePicker() → ACTION_OPEN_DOCUMENT_TREE` and pending Favorite-slot dispatch. No product-side picker/result defect has yet been demonstrated.
+- Updated the smoke harness to save matching provider-root screenshot/XML, make one touch on the visible folder icon, and require the real Favorite-only WAV before proceeding. Added matching post-touch screenshot/XML paths so another failure is diagnosable without more speculative gestures.
+- **Favorites remain unverified** until exact-new-HEAD CI proves assignment, isolated USER/FAVORITE URIs, bidirectional switching, and process-restart restoration. If the icon touch does not enter the folder, inspect its matching before/after evidence before changing the app route.

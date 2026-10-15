@@ -530,10 +530,18 @@ jobs:
             /tmp/mpc-groovebox-browser-picker-assignment.png
             /tmp/mpc-groovebox-browser-picker-assignment-uiautomator.xml
             /tmp/mpc-groovebox-browser-tree-picker.png
+            /tmp/mpc-groovebox-browser-tree-root.png
+            /tmp/mpc-groovebox-browser-tree-root-uiautomator.xml
+            /tmp/mpc-groovebox-browser-tree-root-after-tap.png
+            /tmp/mpc-groovebox-browser-tree-root-after-tap-uiautomator.xml
             /tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml
             /tmp/mpc-groovebox-browser-tree-restored.png
             /tmp/mpc-groovebox-browser-tree-restored-uiautomator.xml
             /tmp/mpc-groovebox-browser-favorite-tree-picker.png
+            /tmp/mpc-groovebox-browser-favorite-tree-root.png
+            /tmp/mpc-groovebox-browser-favorite-tree-root-uiautomator.xml
+            /tmp/mpc-groovebox-browser-favorite-tree-root-after-tap.png
+            /tmp/mpc-groovebox-browser-favorite-tree-root-after-tap-uiautomator.xml
             /tmp/mpc-groovebox-browser-favorite-tree-picker-uiautomator.xml
             /tmp/mpc-groovebox-browser-favorite-tree-results.png
             /tmp/mpc-groovebox-browser-favorite-tree-results-uiautomator.xml

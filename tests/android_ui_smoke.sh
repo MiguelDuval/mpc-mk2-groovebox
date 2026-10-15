@@ -2796,28 +2796,47 @@ PY
 
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  # Open the real folder, not its parent/root selection. Try an explicit rapid
-  # double-tap on the full, fully-visible row, then on the title text.
+  local evidence_prefix="${5:-document-tree}"
+  local root_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root.png"
+  local root_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-uiautomator.xml"
+  local after_tap_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-tap.png"
+  local after_tap_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-tap-uiautomator.xml"
+
+  # Android 16's DocumentsUI exposes this SAF row as focusable, but not as a
+  # clickable row/title. Build #2723 showed that repeated double-taps at the
+  # text/row center did not open the folder. Capture the actual provider-root
+  # state, then send one touch to the folder icon rather than retrying gestures.
   if ! picker_folder_row_fully_visible "$hierarchy_path" "$folder_label"; then
     echo "ERROR: target SAF folder is not fully visible above the picker footer: $folder_label"
     return 1
   fi
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double row; then
-    echo "ERROR: DocumentsUI folder row is not actionable: $folder_label"; return 1
+  if ! adb_bounded 10 exec-out screencap -p > "$root_png"; then
+    echo "ERROR: could not capture DocumentsUI provider-root screenshot before folder activation"
+    return 1
   fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 8; then return 0; fi
-  if ! dump_device_ui "$remote_path" "$hierarchy_path"; then
-    echo "ERROR: could not refresh DocumentsUI after row activation"; return 1
+  if ! dump_device_ui "$remote_path" "$root_xml"; then
+    echo "ERROR: could not capture DocumentsUI provider-root hierarchy before folder activation"
+    return 1
   fi
-  if ! grep -Fq -- "text=\"$folder_label\"" "$hierarchy_path"; then
-    echo "ERROR: DocumentsUI left the root without exposing $child_label"; return 1
+  if ! picker_folder_row_fully_visible "$root_xml" "$folder_label"; then
+    echo "ERROR: folder row became unavailable in the captured provider-root evidence: $folder_label"
+    return 1
   fi
-  if ! tap_ui_picker_result_row "$hierarchy_path" "$folder_label" double; then
-    echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"; return 1
+
+  echo "DocumentsUI folder activation: single icon tap '$folder_label'"
+  if ! tap_ui_picker_result_row "$root_xml" "$folder_label" single icon; then
+    echo "ERROR: DocumentsUI folder icon is not actionable: $folder_label"
+    return 1
   fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then return 0; fi
-  adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png || true
-  echo "ERROR: tapping the actual DocumentsUI folder did not expose $child_label"
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
+    return 0
+  fi
+
+  # Preserve matching before/after evidence for diagnosis rather than layering
+  # on speculative taps when the real picker route does not respond.
+  adb_bounded 10 exec-out screencap -p > "$after_tap_png" || true
+  dump_device_ui "$remote_path" "$after_tap_xml" || true
+  echo "ERROR: single tap on the actual DocumentsUI folder icon did not expose $child_label"
   return 1
 }
 
@@ -3343,7 +3362,7 @@ if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAM
   if ! picker_folder_row_fully_visible "$TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
     echo "ERROR: target test folder is not fully visible in DocumentsUI"; exit 1
   fi
-  if ! tap_ui_picker_folder_until_child "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" "$TREE_SAMPLE_NAME"; then
+  if ! tap_ui_picker_folder_until_child "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" "$TREE_SAMPLE_NAME" "tree"; then
     echo "ERROR: selected folder did not expose the actual tree-only WAV"; exit 1
   fi
 fi
@@ -3586,7 +3605,7 @@ PY
     cat "$FAVORITE_TREE_PICKER_XML"
     exit 1
   fi
-  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME"; then
+  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME" "favorite-tree"; then
     echo "ERROR: FAVORITE 1 picker did not navigate into the actual Favorite-only WAV folder"; exit 1
   fi
 fi
