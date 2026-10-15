@@ -2802,10 +2802,10 @@ tap_ui_picker_folder_until_child() {
   local after_tap_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-tap.png"
   local after_tap_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-tap-uiautomator.xml"
 
-  # Android 16's DocumentsUI exposes this SAF row as focusable, but not as a
-  # clickable row/title. Build #2723 showed that repeated double-taps at the
-  # text/row center did not open the folder. Capture the actual provider-root
-  # state, then send one touch to the folder icon rather than retrying gestures.
+  # Build #2723 showed that two rapid touches are not a valid activation gesture
+  # for touchscreen DocumentsUI. Build #2724 showed that tapping the left icon
+  # area also did not enter the directory. Capture the actual provider root and
+  # activate the folder with one touch on its visible title text instead.
   if ! picker_folder_row_fully_visible "$hierarchy_path" "$folder_label"; then
     echo "ERROR: target SAF folder is not fully visible above the picker footer: $folder_label"
     return 1
@@ -2823,9 +2823,9 @@ tap_ui_picker_folder_until_child() {
     return 1
   fi
 
-  echo "DocumentsUI folder activation: single icon tap '$folder_label'"
-  if ! tap_ui_picker_result_row "$root_xml" "$folder_label" single icon; then
-    echo "ERROR: DocumentsUI folder icon is not actionable: $folder_label"
+  echo "DocumentsUI folder activation: single title tap '$folder_label'"
+  if ! tap_ui_picker_result_row "$root_xml" "$folder_label" single; then
+    echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"
     return 1
   fi
   if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
@@ -2836,7 +2836,7 @@ tap_ui_picker_folder_until_child() {
   # on speculative taps when the real picker route does not respond.
   adb_bounded 10 exec-out screencap -p > "$after_tap_png" || true
   dump_device_ui "$remote_path" "$after_tap_xml" || true
-  echo "ERROR: single tap on the actual DocumentsUI folder icon did not expose $child_label"
+  echo "ERROR: single title tap in DocumentsUI did not expose $child_label"
   return 1
 }
 
