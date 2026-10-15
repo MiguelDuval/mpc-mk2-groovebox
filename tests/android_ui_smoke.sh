@@ -449,13 +449,13 @@ for required in \
   'UI_ARRANGEMENT_GRID_FOCUS_COMPLETE' \
   'UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY' \
   'mpc-arrange-grid-focus-capture-release' \
-  'UI_ARRANGEMENT_BACK_CONTEXT_COMPLETE:' \\
-  'UI_ARRANGEMENT_BACK_CAPTURE_READY' \\
-  'mpc-arrange-back-capture-release' \\
-  'UI_ARRANGEMENT_GRID_BACK_REENTRY_COMPLETE:' \\
-  'UI_ARRANGEMENT_GRID_BACK_REENTRY_CAPTURE_READY' \\
-  'mpc-arrange-grid-reentry-capture-release' \\
-  'captureArrangeNavigationPatternSnapshot' \\
+  'UI_ARRANGEMENT_BACK_CONTEXT_COMPLETE:' \
+  'UI_ARRANGEMENT_BACK_CAPTURE_READY' \
+  'mpc-arrange-back-capture-release' \
+  'UI_ARRANGEMENT_GRID_BACK_REENTRY_COMPLETE:' \
+  'UI_ARRANGEMENT_GRID_BACK_REENTRY_CAPTURE_READY' \
+  'mpc-arrange-grid-reentry-capture-release' \
+  'captureArrangeNavigationPatternSnapshot' \
   'firstStepForTest()'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" "$ARRANGE_VIEW_SOURCE"; then
     echo "ERROR: Arrangement event gesture integration contract missing: $required"
@@ -2369,7 +2369,7 @@ PY
     exit 1
   fi
   if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
-    if [ "$arrangement_back_capture_done" -ne 1 ] \\
+    if [ "$arrangement_back_capture_done" -ne 1 ] \
         || [ "$arrangement_grid_reentry_capture_done" -ne 1 ]; then
       echo "ERROR: UI audit completed without Arrange BACK and same-event re-entry evidence"
       exit 1
@@ -2407,13 +2407,13 @@ if [ "$ui_audit_complete" -ne 1 ]; then
   exit 1
 fi
 
-if [ "$arrangement_back_capture_done" -ne 1 ] \\
-    || ! test -s /tmp/mpc-groovebox-arrange-back.png \\
+if [ "$arrangement_back_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-arrange-back.png \
     || ! test -s /tmp/mpc-groovebox-arrange-back-uiautomator.xml; then
   echo "ERROR: Arrange-after-BACK acceptance lacks screenshot/hierarchy evidence"; exit 1
 fi
-if [ "$arrangement_grid_reentry_capture_done" -ne 1 ] \\
-    || ! test -s /tmp/mpc-groovebox-arrange-grid-reentry.png \\
+if [ "$arrangement_grid_reentry_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-arrange-grid-reentry.png \
     || ! test -s /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml; then
   echo "ERROR: same-event Grid re-entry lacks screenshot/hierarchy evidence"; exit 1
 fi
