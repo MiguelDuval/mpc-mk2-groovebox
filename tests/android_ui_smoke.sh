@@ -435,6 +435,8 @@ for required in \
   'dispatchArrangementSingleTapForAudit(' \
   'restoreArrangeTrackSelectionAfterAudit(' \
   'UI_ARRANGE_TRACK_SELECTION_COMPLETE:' \
+  'UI_ARRANGE_TRACK_SELECTION_SINGLE_TRACK_COMPLETE:' \
+  'alternateTrackChangeUnavailable=true' \
   'arrangementDataUnchanged=true' \
   'prepareArrangementEventGestureAudit()' \
   'eventCenterForAudit(' \

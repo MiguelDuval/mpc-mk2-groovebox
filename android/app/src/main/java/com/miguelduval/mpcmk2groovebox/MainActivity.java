@@ -11490,12 +11490,52 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final int originalTrack = Math.max(0, nativeSequenceGetSelectedTrack());
         final int trackCount = Math.max(0, nativeSequenceGetTrackCount());
-        if (trackCount < 2 || originalTrack >= trackCount) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange track-selection audit needs two valid tracks"
+        if (trackCount < 1 || originalTrack >= trackCount) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange track-selection audit has no valid selected lane"
                     + " | selected=" + originalTrack
                     + " | trackCount=" + trackCount);
             return false;
         }
+
+        final String originalDataBefore =
+                nativeSequenceGetTrackArrangementData(originalTrack);
+        if (trackCount == 1) {
+            // The clean emulator fixture starts with one Track and there is no
+            // native Track-removal contract. Prove the actual lane tap remains
+            // coherent and non-mutating without manufacturing a second Track.
+            final float[] onlyLanePoint =
+                    arrangementView.trackLanePointForAudit(originalTrack);
+            if (onlyLanePoint == null
+                    || !dispatchArrangementSingleTapForAudit(
+                            arrangementView, onlyLanePoint[0], onlyLanePoint[1])) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: could not tap the only Arrangement lane");
+                restoreArrangeTrackSelectionAfterAudit(originalTrack);
+                return false;
+            }
+            final int nativeSelected = nativeSequenceGetSelectedTrack();
+            final int viewSelected = arrangementView.selectedTrackForAudit();
+            final String originalDataAfter =
+                    nativeSequenceGetTrackArrangementData(originalTrack);
+            if (nativeSelected != originalTrack
+                    || viewSelected != originalTrack
+                    || !java.util.Objects.equals(originalDataBefore, originalDataAfter)) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: single-lane Arrange tap changed selection/data"
+                        + " | expected=" + originalTrack
+                        + " | native=" + nativeSelected
+                        + " | view=" + viewSelected
+                        + " | arrangementDataUnchanged="
+                        + java.util.Objects.equals(originalDataBefore, originalDataAfter));
+                restoreArrangeTrackSelectionAfterAudit(originalTrack);
+                return false;
+            }
+            Log.i(TAG, "UI_ARRANGE_TRACK_SELECTION_SINGLE_TRACK_COMPLETE: selected="
+                    + originalTrack
+                    + " trackCount=1"
+                    + " arrangementDataUnchanged=true"
+                    + " alternateTrackChangeUnavailable=true");
+            return true;
+        }
+
         // Use opposite ends of the lane list so consecutive audit taps cannot
         // be mistaken for one double-tap by GestureDetector.
         final int targetTrack = originalTrack == 0 ? trackCount - 1 : 0;
@@ -11504,7 +11544,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return false;
         }
 
-        final String originalDataBefore = nativeSequenceGetTrackArrangementData(originalTrack);
         final String targetDataBefore = nativeSequenceGetTrackArrangementData(targetTrack);
         final float[] targetPoint = arrangementView.trackLanePointForAudit(targetTrack);
         if (targetPoint == null
