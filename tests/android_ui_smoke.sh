@@ -3469,8 +3469,8 @@ if ! dump_device_ui "$TREE_RESTORED_REMOTE" "$TREE_RESTORED_XML"; then
 fi
 echo "Android document-tree selection, real WAV results, filters and USER FOLDER restoration passed."
 
-# Assign FAVORITE 1 through the real Browser action and Android DocumentsUI picker.
-# Reuse the isolated tree-only WAV so this specifically tests favorite routing, not MediaStore.
+# Assign FAVORITE 1 through the real Browser action and Android DocumentsUI tree picker.
+# Use a separate Favorite-only WAV so isolation from USER FOLDER and MediaStore is proven.
 if ! tap_ui_description "$TREE_RESTORED_XML" "MPC Browser navigation PLACES FAVORITE 1"; then
   echo "ERROR: FAVORITE 1 navigation entry was not actionable"; exit 1
 fi
@@ -3504,19 +3504,90 @@ if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE"
   if ! grep -Fq -- 'package="com.android.documentsui"' "$FAVORITE_TREE_PICKER_XML"; then
     echo "ERROR: DocumentsUI closed before FAVORITE 1 could select a folder"; exit 1
   fi
+
+  # DocumentsUI remembers the last browsed directory across picker launches.
+  # In this flow that is USER FOLDER (AAA...), so explicitly navigate to the
+  # storage-provider root before looking for the distinct FAVORITE folder.
+  favorite_breadcrumbs="$(python3 - "$FAVORITE_TREE_PICKER_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+breadcrumb = next((n for n in root.iter("node")
+                   if n.attrib.get("resource-id") == "com.android.documentsui:id/horizontal_breadcrumb"), None)
+if breadcrumb is None:
+    raise SystemExit("DocumentsUI hierarchy has no directory breadcrumb")
+labels = []
+for item in list(breadcrumb):
+    for node in item.iter("node"):
+        if node.attrib.get("resource-id") == "com.android.documentsui:id/breadcrumb_text":
+            label = node.attrib.get("text", "").strip()
+            if label:
+                labels.append(label)
+                break
+if not labels:
+    raise SystemExit("DocumentsUI breadcrumb has no usable root label")
+print("\\n".join(labels))
+PY
+)"
+  favorite_root_label="$(head -n 1 <<< "$favorite_breadcrumbs")"
+  favorite_breadcrumb_count="$(printf '%s\\n' "$favorite_breadcrumbs" | wc -l | tr -d '[:space:]')"
+  if [[ -z "$favorite_root_label" || -z "$favorite_breadcrumb_count" ]]; then
+    echo "ERROR: could not identify the DocumentsUI storage-provider root for FAVORITE 1"; exit 1
+  fi
+  if (( favorite_breadcrumb_count > 1 )); then
+    echo "DocumentsUI reopened at a previous folder; returning to provider root '$favorite_root_label'..."
+    if ! tap_ui_text "$FAVORITE_TREE_PICKER_XML" "$favorite_root_label"; then
+      echo "ERROR: could not navigate DocumentsUI from USER FOLDER back to its provider root"; exit 1
+    fi
+    if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
+      echo "ERROR: could not inspect DocumentsUI at the FAVORITE 1 provider root"; exit 1
+    fi
+  fi
+
+  # This must be the folder-grant picker, not the direct WAV-open picker.
+  if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "USE THIS FOLDER" 6; then
+    if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "Use this folder" 3; then
+      echo "ERROR: FAVORITE 1 picker never exposed the Android Use This Folder tree-grant action"; exit 1
+    fi
+  fi
+
+  # Prefer list mode when DocumentsUI offers it; allow the view transition to settle.
   if grep -Fq -- 'content-desc="List view"' "$FAVORITE_TREE_PICKER_XML"; then
     if ! tap_ui_description "$FAVORITE_TREE_PICKER_XML" "List view"; then
       echo "ERROR: could not switch FAVORITE 1 DocumentsUI to list mode"; exit 1
     fi
-    if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
-      echo "ERROR: could not inspect FAVORITE 1 DocumentsUI list mode"; exit 1
-    fi
+    for favorite_view_attempt in {1..5}; do
+      if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
+        echo "ERROR: could not inspect FAVORITE 1 DocumentsUI after view switch"; exit 1
+      fi
+      if grep -Fq -- 'content-desc="Grid view"' "$FAVORITE_TREE_PICKER_XML"; then break; fi
+      sleep 1
+    done
   fi
-  if ! picker_folder_row_fully_visible "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_FOLDER_NAME"; then
-    echo "ERROR: tree fixture folder is not visible for FAVORITE 1 assignment"; exit 1
+
+  # The fixture may not be in the initial viewport; use bounded real swipes.
+  favorite_folder_visible=0
+  for favorite_folder_scroll in {1..10}; do
+    if picker_folder_row_fully_visible "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_FOLDER_NAME"; then
+      favorite_folder_visible=1
+      break
+    fi
+    if (( favorite_folder_scroll == 10 )); then break; fi
+    if ! adb_bounded 10 shell input swipe 540 1450 540 650 350; then
+      echo "ERROR: could not scroll DocumentsUI to the FAVORITE 1 folder fixture"; exit 1
+    fi
+    sleep 1
+    if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
+      echo "ERROR: could not inspect DocumentsUI while locating FAVORITE 1 folder"; exit 1
+    fi
+  done
+  if [[ "$favorite_folder_visible" != "1" ]]; then
+    echo "ERROR: Favorite-only fixture folder did not become fully visible at the DocumentsUI provider root"
+    cat "$FAVORITE_TREE_PICKER_XML"
+    exit 1
   fi
   if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME"; then
-    echo "ERROR: FAVORITE 1 picker did not navigate into the actual tree-only WAV folder"; exit 1
+    echo "ERROR: FAVORITE 1 picker did not navigate into the actual Favorite-only WAV folder"; exit 1
   fi
 fi
 

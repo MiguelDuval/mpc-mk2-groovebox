@@ -758,3 +758,8 @@ APK artifact `11958217657` SHA-256 `4ca32dee06e76b69314446ab5a12b9ec8bf9a488d84c
 ### 2026-10-15 — Browser Favorite folders 1–5 implementation (verification pending)
 
 Added five independently persisted SAF folder targets to the Browser Places list. Each Favorite stores its own URI/name, requires the persisted read grant, loads actual WAV entries through the existing document-tree catalog and can be reassigned through the Android tree picker. The local WAV filter policy accepts Favorite 1–5 only; an old folder's cached rows are cleared while switching locations. This is a functional implementation, not yet a VERIFIED milestone: confirm the latest exact-head Android Build and inspect runtime evidence before declaring it passed.
+
+
+### 2026-10-15 — Favorite picker runtime failure (#2721)
+
+Android Build #2721 compiled and uploaded an APK for exact SHA `829b006a5f9e8547d82ed341c772155215c008b2`, but the full emulator smoke failed during FAVORITE 1 assignment. Inspected screenshot evidence shows DocumentsUI reopened inside `AAA-MPC-Browser-Tree` (USER FOLDER) instead of at the provider root; the previous test required `BBB-MPC-Browser-Favorite` to already be visible and exited before assignment. The revised smoke flow navigates the visible breadcrumb to the provider root, requires the Android `Use this folder` tree-grant action, and locates the Favorite-only fixture using bounded scrolling. **Favorites E2E remains unverified** until an exact-HEAD run passes assignment, isolated URI preferences, bidirectional switching and process-restart restoration. If the tree-grant action is still missing after navigation, fix the runtime route rather than weakening the assertion.
