@@ -2512,19 +2512,28 @@ for node in nodes:
                 print((left + right) // 2, (top + bottom) // 2)
                 raise SystemExit(0)
         candidate = parents.get(candidate)
-    # In DocumentsUI list mode the child TextView is not clickable. For
-    # directory navigation tap the center of the full item_root row so the
-    # RecyclerView's row-level touch handler receives the event.
+    # A row-centre tap is not independent of the title hit area on this
+    # DocumentsUI layout: Build #2728's row centre (540,527) still landed
+    # inside the title bounds [189,499][697,556]. Choose the measured trailing
+    # gutter of item_root instead, outside the title TextView, and fail closed
+    # if this row has no such target rather than silently reusing label bounds.
     if tap_kind == "row" and row_bounds:
         try:
             first, second = row_bounds[1:-1].split("][")
             left, top = map(int, first.split(","))
             right, bottom = map(int, second.split(","))
-            if right > left and bottom > top:
-                print((left + right) // 2, (top + bottom) // 2)
+            label_first, label_second = node.attrib.get("bounds", "")[1:-1].split("][")
+            label_right = int(label_second.split(",")[0])
+            target_x = left + ((right - left) * 7 // 8)
+            if target_x <= label_right:
+                target_x = right - max(8, (right - left) // 32)
+            if right > left and bottom > top and target_x > label_right and target_x < right:
+                print(target_x, (top + bottom) // 2)
                 raise SystemExit(0)
         except ValueError:
             pass
+        print("ERROR: no trailing item_root hit area exists outside the folder title", file=sys.stderr)
+        raise SystemExit(3)
     # Folder activation and file selection use different hit targets on some
     # DocumentsUI grids. Keep each target explicit rather than guessing.
     if tap_kind == "icon" and row_node is not None:
