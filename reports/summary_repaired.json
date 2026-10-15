@@ -1,0 +1,34 @@
+{
+  "created_utc": "2026-10-15T18:46:50.782196+00:00",
+  "input": {
+    "run_utc": "2026-10-15T18:28:19.837247+00:00",
+    "input_name": "MPC-3.9.1-Gen2-update.img",
+    "input_path": "/content/mpc_firmware_audit_repaired/input/MPC-3.9.1-Gen2-update.img",
+    "size_bytes": 89128960,
+    "sha256": "2ef02e332e96c1b711e9eeff3b3e16bfb3049ae6ac1262d1019320e435717a48",
+    "expected_sha256_from_previous_audit": "95b694f5880ae905ff3caf927dce2642b2b69acbb0e869838f2e261d3a65c72b",
+    "hash_matches_previous_audit": false,
+    "effective_uid": 0
+  },
+  "main_extraction": {
+    "exit_code": -15,
+    "elapsed_seconds": 898.4,
+    "output_bytes": 13052463694,
+    "stop_reason": "TOTAL_OUTPUT_CAP"
+  },
+  "fallback_carving": {
+    "exit_code": -15,
+    "elapsed_seconds": 38.9,
+    "output_bytes": 4808997196,
+    "stop_reason": "TOTAL_OUTPUT_CAP"
+  },
+  "extracted_file_count": 51,
+  "carved_file_count": 55,
+  "interesting_file_count": 50,
+  "notes": [
+    "Сигнатура не гарантирует правильное распознавание файла: возможны ложные совпадения.",
+    "Carve-only режим вырезает сегменты, но не распаковывает контейнеры.",
+    "Нулевое число извлечённых файлов не доказывает шифрование; формат упаковки может быть нестандартным.",
+    "Бинарные файлы приложения не декомпилируются автоматически этим ноутбуком; ELF нужно отдельно исследовать в Ghidra после извлечения."
+  ]
+}

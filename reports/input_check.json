@@ -1,0 +1,10 @@
+{
+  "run_utc": "2026-10-15T18:28:19.837247+00:00",
+  "input_name": "MPC-3.9.1-Gen2-update.img",
+  "input_path": "/content/mpc_firmware_audit_repaired/input/MPC-3.9.1-Gen2-update.img",
+  "size_bytes": 89128960,
+  "sha256": "2ef02e332e96c1b711e9eeff3b3e16bfb3049ae6ac1262d1019320e435717a48",
+  "expected_sha256_from_previous_audit": "95b694f5880ae905ff3caf927dce2642b2b69acbb0e869838f2e261d3a65c72b",
+  "hash_matches_previous_audit": false,
+  "effective_uid": 0
+}

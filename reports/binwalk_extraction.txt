@@ -1,0 +1,67 @@
+
+Scan Time:     2026-10-15 18:28:58
+Target File:   /content/mpc_firmware_audit_repaired/input/MPC-3.9.1-Gen2-update.img
+MD5 Checksum:  644daa796fd9c35d2c5efa319c85867b
+Signatures:    411
+
+DECIMAL       HEXADECIMAL     DESCRIPTION
+--------------------------------------------------------------------------------
+458           0x1CA           LZMA compressed data, properties: 0xD8, dictionary size: 0 bytes, uncompressed size: 16640 bytes
+522           0x20A           LZMA compressed data, properties: 0xD8, dictionary size: 0 bytes, uncompressed size: 18944 bytes
+896           0x380           Flattened device tree, size: 2560 bytes, version: 17
+1186          0x4A2           LZMA compressed data, properties: 0x6D, dictionary size: 0 bytes, uncompressed size: 21474836483 bytes
+1390          0x56E           LZMA compressed data, properties: 0x6D, dictionary size: 0 bytes, uncompressed size: 21474836483 bytes
+2834          0xB12           LZMA compressed data, properties: 0x65, dictionary size: 0 bytes, uncompressed size: 16777219 bytes
+160497        0x272F1         Zlib compressed data, compressed
+161705        0x277A9         Zlib compressed data, compressed
+179889        0x2BEB1         LZMA compressed data, properties: 0xBD, dictionary size: 0 bytes, uncompressed size: 3166961664 bytes
+194289        0x2F6F1         LZMA compressed data, properties: 0x6E, dictionary size: 0 bytes, uncompressed size: 4294967296 bytes
+195168        0x2FA60         LZMA compressed data, properties: 0xC8, dictionary size: 33554432 bytes, uncompressed size: 16777216 bytes
+195232        0x2FAA0         LZMA compressed data, properties: 0xC6, dictionary size: 33554432 bytes, uncompressed size: 16777216 bytes
+196000        0x2FDA0         LZMA compressed data, properties: 0xC8, dictionary size: 33554432 bytes, uncompressed size: 33554432 bytes
+196064        0x2FDE0         LZMA compressed data, properties: 0xC6, dictionary size: 33554432 bytes, uncompressed size: 33554432 bytes
+198432        0x30720         LZMA compressed data, properties: 0x5D, dictionary size: 0 bytes, uncompressed size: 1646851522560 bytes
+199689        0x30C09         LZMA compressed data, properties: 0xBD, dictionary size: 0 bytes, uncompressed size: 6767771648 bytes
+200736        0x31020         LZMA compressed data, properties: 0x5D, dictionary size: 0 bytes, uncompressed size: 1530686078976 bytes
+201568        0x31360         Flattened device tree, size: 5868 bytes, version: 17
+203094        0x31956         LZMA compressed data, properties: 0xC0, dictionary size: 0 bytes, uncompressed size: 268435456 bytes
+203205        0x319C5         LZMA compressed data, properties: 0x5B, dictionary size: 0 bytes, uncompressed size: 68719476736 bytes
+203406        0x31A8E         LZMA compressed data, properties: 0x75, dictionary size: 0 bytes, uncompressed size: 68719476739 bytes
+203434        0x31AAA         LZMA compressed data, properties: 0xC0, dictionary size: 0 bytes, uncompressed size: 17179869187 bytes
+203582        0x31B3E         LZMA compressed data, properties: 0x63, dictionary size: 0 bytes, uncompressed size: 68719476739 bytes
+204042        0x31D0A         LZMA compressed data, properties: 0x63, dictionary size: 0 bytes, uncompressed size: 68719476739 bytes
+204423        0x31E87         LZMA compressed data, properties: 0x5E, dictionary size: -1627389952 bytes, uncompressed size: 50331648 bytes
+204585        0x31F29         LZMA compressed data, properties: 0xB5, dictionary size: 0 bytes, uncompressed size: 4294967296 bytes
+205070        0x3210E         LZMA compressed data, properties: 0x6C, dictionary size: 0 bytes, uncompressed size: 103079215107 bytes
+205289        0x321E9         LZMA compressed data, properties: 0x6E, dictionary size: 0 bytes, uncompressed size: 768 bytes
+205341        0x3221D         LZMA compressed data, properties: 0x65, dictionary size: 0 bytes, uncompressed size: 768 bytes
+206434        0x32662         LZMA compressed data, properties: 0x63, dictionary size: 0 bytes, uncompressed size: 85899345923 bytes
+206466        0x32682         LZMA compressed data, properties: 0x63, dictionary size: 0 bytes, uncompressed size: 8589934594 bytes
+208256        0x32D80         Flattened device tree, size: 2984 bytes, version: 17
+209558        0x33296         LZMA compressed data, properties: 0x65, dictionary size: 0 bytes, uncompressed size: 25769803779 bytes
+209594        0x332BA         LZMA compressed data, properties: 0x65, dictionary size: 0 bytes, uncompressed size: 17179869187 bytes
+210566        0x33686         LZMA compressed data, properties: 0x65, dictionary size: 0 bytes, uncompressed size: 16777219 bytes
+452081        0x6E5F1         Zlib compressed data, compressed
+453393        0x6EB11         Zlib compressed data, compressed
+574308        0x8C364         LZMA compressed data, properties: 0x5D, dictionary size: -1592524800 bytes, uncompressed size: 6850567704931612677 bytes
+725314        0xB1142         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2287495936 bytes
+725322        0xB114A         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2287499776 bytes
+725330        0xB1152         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290613760 bytes
+725338        0xB115A         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290296064 bytes
+725346        0xB1162         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290583552 bytes
+725354        0xB116A         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+725362        0xB1172         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290850560 bytes
+725370        0xB117A         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+725378        0xB1182         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+725386        0xB118A         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2291835136 bytes
+725394        0xB1192         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+725402        0xB119A         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+725410        0xB11A2         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+725418        0xB11AA         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+725426        0xB11B2         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+725434        0xB11BA         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+725442        0xB11C2         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+725450        0xB11CA         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+725458        0xB11D2         LZMA compressed data, properties: 0x88, dictionary size: 0 bytes, uncompressed size: 2290332928 bytes
+
+STOP_REASON=TOTAL_OUTPUT_CAP
