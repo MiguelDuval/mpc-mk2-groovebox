@@ -664,3 +664,12 @@ The failed #2706 validator was a false negative: it assumed the status message w
 Android Build #2709 verified SHA `20ac2f54ca0075256a6b6534f5ffa7e06d358b77` and passed 57/57 steps. APK artifact `11871064482` has SHA-256 `e653b9b42b4ec971fed383dbb9a1dd033ec0285f50cb94f7b8d6fc369624eb6a`. Visual archive `11871970352` has SHA-256 `53f5e282f46e97e16ea399a1813bb8913192136385f06bb86f4541dd2fc0478e` and contains 23 entries including the focused Grid screenshot/XML. The UI seeded a note with the existing sequencer mutation, checked the exact event center through the production hit test, dispatched the double-tap down/up events through `MpcArrangeView` and its actual `GestureDetector`, and asserted the listener delivered the exact expected Track/tick. The screenshot shows step 33 as an active note within range 25–40/64; semantic accessibility agrees.
 
 This proves the app-side Android gesture/listener path under emulator MotionEvents. It does not claim finger testing on the MPC Studio MkII hardware. The Browser local WAV/SAF assignment and persisted folder restoration paths also passed unchanged.
+
+
+## 37. 2026-10-15 — Build #2713 validates Arrange loop and single-lane contracts
+
+Android Build #2713 verified exact SHA `cdcfdfb2500b4c6eaebeab5018b4cdce33213462` and passed 57/57 steps. APK artifact `11958217657` has SHA-256 `4ca32dee06e76b69314446ab5a12b9ec8bf9a488d84c5d7487f1a4861783f960`; evidence archive `11958527786` has SHA-256 `09fa5c463ee3f7449f4cf36907b89e38fae3ddafb057d4d1e3257bd99bbd10c5` and contains 23 files, including the Arrangement→Grid focus screenshot/XML and Browser, picker and restored USER FOLDER evidence.
+
+Build #2712 failed because the new lane-selection audit assumed the clean fixture contained two Tracks. The fix validates the real single-lane tap, confirms native/View selection remain aligned and Arrangement data remains unchanged, and explicitly marks alternate-Track change unavailable in that fixture. No disposable Track was added and no Track-removal backend was invented. The multi-Track change/restore branch is present but is not claimed as covered by the one-Track fixture. The loop-end gesture changes the native loop then restores the original via the same handle drag.
+
+**Next:** test actual Grid BACK → Arrange return preservation (selected Track, original event tick and pattern data), then re-enter Grid via the same event gesture and verify the same absolute viewport. The focused note must not be modified to make navigation pass.

@@ -5,43 +5,45 @@
 
 > **Freshness rule:** This checkpoint will itself be committed after the pre-checkpoint SHA above. Therefore, it does **not** claim CI success for the commit containing this state refresh. On every session start, verify the live PR head, branch HEAD, latest Android Build and artifact files. Do not rely on remembered commit numbers or on this checkpoint instead of GitHub.
 
-## Last independently verified checkpoint — 2026-10-14 07:07 CEST
+## Last independently verified checkpoint — 2026-10-15 10:38 CEST
 
-**Live GitHub source of truth:** branch `feature/mpc-one-ui-fidelity`; PR #23 OPEN / not merged; base `fix/ui-shell-format-width-startup`; fully tested code SHA `20ac2f54ca0075256a6b6534f5ffa7e06d358b77`. This checkpoint will be committed as docs-only and must receive its own exact-SHA Android Build.
+**Live GitHub source of truth:** branch `feature/mpc-one-ui-fidelity`; PR #23 OPEN / not merged; base `fix/ui-shell-format-width-startup`; last fully tested code SHA `cdcfdfb2500b4c6eaebeab5018b4cdce33213462`. This state refresh is a documentation-only commit and requires its own exact-SHA Android Build.
 
-### Android Build #2709 — SUCCESS, exact SHA verified
+### Android Build #2713 — SUCCESS
 
-- [Android Build #2709](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38514032693) tested `20ac2f54ca0075256a6b6534f5ffa7e06d358b77`; **57/57 workflow steps passed**. APK assembly/upload, Android emulator smoke and visual-evidence upload all succeeded.
-- The Arrangement audit now seeds one currently unused Pad 1 note through the existing native sequencer operation, locates the corresponding rendered Arrangement event, verifies a touch point with the production hit-test, and dispatches down/up MotionEvents through the actual `MpcArrangeView` and `GestureDetector` path.
-- The route then asserts that the real listener delivered the expected Track and exact event tick to `openGridFromArrangementEvent`, and that the Grid viewport points at the right step. This is an automated Android gesture-path test, not a claim of finger testing on hardware.
-- Actual screenshot/XML inspected: the seeded note appears at step **33** and the visible range is **25–40/64**; XML includes `Grid visible step range: steps 25 through 40 of 64`. The test verifies target step is inside that range.
-- Local Browser regressions stayed green: MediaStore WAV scan/search/filter/selection/audition/assignment; Document Picker select → return → PAD 01 / LAYER 01; document-tree files, filtering, and persisted SAF access restored after app stop/relaunch.
+- Run [Android Build #2713](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38705685719) tested `cdcfdfb2500b4c6eaebeab5018b4cdce33213462`; **57/57 workflow steps passed**. APK assembly/upload, Android emulator runtime smoke and visual-evidence upload completed successfully.
+- #2712 (parent SHA `ae3261f299078f157747f9b3a55760ccf67c8725`) failed in the emulator audit because the fresh test fixture has one Track and the new selection check required two. This was a fixture assumption, not a product/compiler regression.
+- The fix adds a truthful single-Track branch: taps the real lane using the production View/touch path, verifies native and rendered selection remain aligned, and confirms the Arrangement data string is unchanged. It explicitly records that changing to an alternate Track is **unavailable in this fixture**; it does not add a temporary Track just for testing. The multi-Track change-and-restore branch remains present for future fixtures with two or more Tracks.
+- Full smoke passed again, including the actual seeded Arrangement event double-tap → Grid focus (step 33 inside visible range 25–40/64), loop-handle drag → native loop change → handle-driven restore, Browser local WAV audition/assignment, Android Document Picker assignment to PAD 01 / LAYER 01, and persisted USER FOLDER restoration after process stop/relaunch.
 
-### Verified APK and visual evidence for SHA `20ac2f54ca0075256a6b6534f5ffa7e06d358b77`
+### Verified APK and visual evidence for SHA `cdcfdfb2500b4c6eaebeab5018b4cdce33213462`
 
-- APK artifact ID `11871064482`, `app-debug.apk`, **8,211,869 bytes**; SHA-256 `e653b9b42b4ec971fed383dbb9a1dd033ec0285f50cb94f7b8d6fc369624eb6a`. Downloaded and ZIP-integrity checked.
-- Visual evidence artifact ID `11871970352`, **1,671,154 bytes**; SHA-256 `53f5e282f46e97e16ea399a1813bb8913192136385f06bb86f4541dd2fc0478e`. Downloaded and ZIP-integrity checked; **23 files**, including Main screenshot/XML, Arrangement→Grid focus screenshot/XML, Browser results, picker assignment and restored USER FOLDER evidence.
-- Inspected hierarchy confirms Main Track Type DRUM truthfully reports conversion unavailable; Picker assignment confirms `Browser-Picker-Return.wav → PAD 01 / LAYER 01`; restored folder confirms `USER FOLDER • 1 WAV FILE INDEXED` and `Browser-Tree-Only.wav`.
-- Physical MPC Studio MkII verification remains **PENDING**; runtime checks were performed on Android emulator.
+- APK artifact ID `11958217657`, `app-debug.apk`, **8,211,869 bytes**; SHA-256 `4ca32dee06e76b69314446ab5a12b9ec8bf9a488d84c5d7487f1a4861783f960`. Downloaded and ZIP-integrity checked.
+- Visual evidence artifact ID `11958527786`, **1,673,291 bytes**; SHA-256 `09fa5c463ee3f7449f4cf36907b89e38fae3ddafb057d4d1e3257bd99bbd10c5`. Downloaded and ZIP-integrity checked; **23 files** including Main screenshot/XML, Arrangement→Grid focus screenshot/XML, Browser results, Picker assignment and restored USER FOLDER screenshot/XML.
+- Inspected Arrangement→Grid screenshot shows range `25–40/64`, with the seeded note at step 33. The corresponding hierarchy reports `Grid visible step range: steps 25 through 40 of 64`. Browser and storage XML are present in the same evidence archive.
+- Physical MPC Studio MkII verification remains **PENDING**; these are emulator results.
 
 ### Completed implementation slices
 
-**Local Browser E2E:** genuine MediaStore and SAF/document-tree local files, filters/search, selection, audition, loading and sampler assignment to the correct Pad/Layer; Android picker return; persisted document-tree folder access after app process restart. Splice, paid stores, upsells and unnecessary account/cloud flows remain excluded.
+**Local Browser E2E:** real MediaStore and SAF/document-tree local files, search/filter, selection, audition, load and assignment; Android Document Picker return preserves the correct Pad/Layer; the USER FOLDER URI/read grant and real WAV results restore after process stop/relaunch. Commercial Splice/stores/upsells/cloud-account dependencies stay excluded.
 
-**Main Track Type correctness:** native AUDIO/DRUM labels map to the shared icon drawable; misleading CLIP call sites are gone; Audio uses a waveform glyph; unsupported type changes honestly report RESERVED. Verified on #2704–#2709.
+**Main Track Type correctness:** native AUDIO/DRUM labels map to the shared type icon; misleading CLIP enum/call sites are gone; Audio has its waveform glyph; unsupported non-Drum conversion truthfully reports RESERVED. Accepted by Builds #2704 onward.
 
-**Arrangement event → Grid focus:** policy maps an event tick to its quantized absolute step and centers/clamps the Grid viewport. #2705 passed pure boundary/overflow tests; #2707 checked runtime viewport + screenshot/XML; #2709 drives a seeded populated event through the actual Android View/GestureDetector double-tap path and verifies exact listener track/tick plus focused Grid state.
+**Arrangement event → Grid focus:** the emulator seeds a real Pad 1 note through the existing sequencer command, resolves the actual rendered event through production hit-testing, dispatches Android down/up events through `MpcArrangeView` / `GestureDetector`, verifies exact Track/tick listener delivery, and confirms the Grid viewport includes the event's step. Screenshot/XML show step 33 in range 25–40/64.
 
-### Current next task — continue functional musical workflows
+**Arrangement loop and lane interaction contracts:** the real loop-end handle drag changes native loop state and restores the original range through the same handle gesture. The single-Track clean fixture now verifies an actual lane tap preserves native/View selection coherence and event data. Changing between two different Tracks is not covered in this one-Track fixture; no track-removal backend exists to safely create/clean up an alternate test Track.
 
-The actual Arrangement event gesture route is now covered. Audit the remaining Arrange contract next: selected-track changes, visible clips/events, loop-handle drag/commit and preservation of Grid/Track context on return. Keep changes tied to real pattern/domain semantics; event placement remains read-only while the backend lacks a placement model. Add assertions for actual state change and no unintended note mutation, then run full exact-SHA Android CI and inspect fresh evidence.
+### Current next task — Arrange ↔ Grid Back/context preservation
+
+After the current Arrangement-event double-tap opens Grid, invoke the actual Function Bar BACK action and verify that navigation returns to ARRANGE with the selected native Track intact, the corresponding Arrangement lane selected, the same event still hit-testable at its original tick, and the event data unchanged. Then re-open that same event through the real hit-test/gesture route and confirm it returns to the same Grid absolute step/window. Do not mutate pattern events to simulate navigation. Add assertions to the existing emulator audit, then run full exact-SHA Android CI and inspect fresh screenshot/XML.
 
 ### Known remaining gaps
 
 - Favourite folders 1–5 are not genuinely persisted/restored.
 - Locations/categories without real providers remain unavailable/no-result.
-- Only Drum editing is supported in Grid/Step; other types must not silently route to Drum editing. Native `TrackKind` has no CV kind.
-- Existing-track type conversion remains RESERVED until a real semantic/backend operation exists.
+- Only Drum editing is supported in Grid/Step; other Track Types must not silently route to Drum editing. Native `TrackKind` has no CV kind.
+- Existing-Track type conversion remains RESERVED until a true semantic/backend operation exists.
+- Multi-Track Arrange selection change/restore is not exercised by the current single-Track fixture.
 - Physical MPC Studio MkII behavior remains unverified.
 
 ## 1. Repository and safety
@@ -127,15 +129,15 @@ Do not dump/re-read all large docs every session. Read this state, the protocol 
 2. Build #2703's missed `MpcMainMixerStripView` caller was fixed; Build #2704 passed 57/57 steps and produced inspected APK/evidence artifacts. The failed intermediate attempt remains recorded below as history, not as current state.
 3. Track conversion is still RESERVED. No sampler/audio/MIDI/domain operation was invented.
 
-### Task 3 — Arrangement event → Grid focus — VERIFIED on Build #2709
+### Task 3 — Arrangement gestures — VERIFIED on Build #2713
 
-Build #2709 (SHA `20ac2f54ca0075256a6b6534f5ffa7e06d358b77`) passed 57/57 steps. The emulator audit seeded a genuine Grid note, found its Arrangement event via the view hit-test, dispatched a double-tap gesture through the actual `GestureDetector`, and confirmed that listener delivery preserved the expected track and exact tick. The screenshot/XML shows the note at step 33 within the 25–40/64 viewport; APK and 23-entry evidence archive were downloaded, integrity-checked and inspected. This is emulator MotionEvent coverage, not physical controller testing.
-
-
-
-
+Android Build #2713 tested `cdcfdfb2500b4c6eaebeab5018b4cdce33213462` and passed all 57 steps. It retains the actual populated-event double-tap → Grid route and exact Track/tick assertion, the loop-end handle change/restore check, and Browser E2E. It also validates the real lane-tap path without creating a test Track in the one-Track fresh fixture; multi-Track selection remains untested because the current fixture exposes one Track and there is no native Track-removal operation. APK/evidence artifacts for #2713 are recorded in the checkpoint above.
 
 After Browser's core local workflow is verified, improve real Track, Arrange, Grid and Step scenarios; then increase mixer depth and project persistence according to existing semantic/domain APIs. Do not prioritize another long decorative-only pass over a broken high-frequency workflow.
+
+### Task 4 — Arrange ↔ Grid Back/context preservation — NEXT
+
+After the populated Arrangement event opens Grid, invoke the actual Function Bar BACK action. Verify return to ARRANGE preserves the native selected Track, selected lane, original event tick and event data; confirm that the same event remains hittable; re-dispatch its real event gesture; and verify the same absolute Grid step/window. No pattern mutation may be used to fake a navigation result. Full Android Build + fresh screenshot/XML required.
 
 ## 7. Required test/evidence ladder
 

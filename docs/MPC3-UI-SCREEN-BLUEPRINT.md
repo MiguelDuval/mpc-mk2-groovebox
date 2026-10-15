@@ -1315,3 +1315,10 @@ Coverage caveat: UI audit invokes the shared production route with a synthetic t
 On exact SHA `20ac2f54ca0075256a6b6534f5ffa7e06d358b77`, Android Build #2709 passed all 57 steps. The audit seeded a real note at an unused Pad 1 step via the existing semantic/native command, located that Arrangement event through the same hit-test used by the production gesture listener, dispatched the double tap through `MpcArrangeView` and `GestureDetector`, and compared listener-delivered Track/tick with the expected event. The resulting screenshot has the active step 33 in range `25–40/64`; XML range/accessibility metadata agree. APK artifact `11871064482`, SHA-256 `e653b9b42b4ec971fed383dbb9a1dd033ec0285f50cb94f7b8d6fc369624eb6a`; 23-file visual archive artifact `11871970352`, SHA-256 `53f5e282f46e97e16ea399a1813bb8913192136385f06bb86f4541dd2fc0478e`.
 
 The runtime gesture is synthetic Android MotionEvent dispatch to the real view path, not physical touch-controller verification. Next audit real Track selection and loop drag/commit state changes and return-context preservation, maintaining read-only event placement until a genuine placement domain model exists.
+
+
+### Build #2713 — Arrangement loop and lane-state audit
+
+Build #2713 passed all 57 workflow steps on `cdcfdfb2500b4c6eaebeab5018b4cdce33213462`. APK artifact `11958217657` has SHA-256 `4ca32dee06e76b69314446ab5a12b9ec8bf9a488d84c5d7487f1a4861783f960`; 23-entry visual archive `11958527786` has SHA-256 `09fa5c463ee3f7449f4cf36907b89e38fae3ddafb057d4d1e3257bd99bbd10c5`. The actual Grid image shows the seeded note at step 33 in the visible range 25–40/64, with matching accessibility range.
+
+The loop handle gesture changes the native loop endpoint and restores the original through the same handle gesture. The one-Track fixture's real lane tap verifies selection stays coherent and Arrangement data is unchanged; this does not claim a multi-Track switch. The next audit must exercise Grid BACK → Arrange with selected Track/event/tick/data preserved, then reopen the same event through the real gesture and confirm the same Grid step/window.
