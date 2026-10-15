@@ -1744,6 +1744,13 @@ TREE_BROWSER_XML="/tmp/mpc-groovebox-browser-tree-results-uiautomator.xml"
 TREE_BROWSER_REMOTE="/sdcard/mpc-groovebox-browser-tree-results-uiautomator.xml"
 TREE_RESTORED_XML="/tmp/mpc-groovebox-browser-tree-restored-uiautomator.xml"
 TREE_RESTORED_REMOTE="/sdcard/mpc-groovebox-browser-tree-restored-uiautomator.xml"
+FAVORITE_TREE_PICKER_XML="/tmp/mpc-groovebox-browser-favorite-tree-picker-uiautomator.xml"
+FAVORITE_TREE_PICKER_REMOTE="/sdcard/mpc-groovebox-browser-favorite-tree-picker-uiautomator.xml"
+FAVORITE_TREE_RESULTS_XML="/tmp/mpc-groovebox-browser-favorite-tree-results-uiautomator.xml"
+FAVORITE_TREE_RESULTS_REMOTE="/sdcard/mpc-groovebox-browser-favorite-tree-results-uiautomator.xml"
+FAVORITE_TREE_RESTORED_XML="/tmp/mpc-groovebox-browser-favorite-tree-restored-uiautomator.xml"
+FAVORITE_TREE_RESTORED_REMOTE="/sdcard/mpc-groovebox-browser-favorite-tree-restored-uiautomator.xml"
+FAVORITE_PREFS_HOST="/tmp/mpc-browser-favorite-prefs.xml"
 TREE_PREFS_HOST="/tmp/mpc-browser-storage-seed.xml"
 
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
@@ -3433,6 +3440,167 @@ fi
 if ! dump_device_ui "$TREE_RESTORED_REMOTE" "$TREE_RESTORED_XML"; then
   echo "ERROR: could not capture restored document-tree Browser hierarchy"; exit 1
 fi
-echo "Android document-tree selection, real WAV results, filters and persisted access restoration passed."
+echo "Android document-tree selection, real WAV results, filters and USER FOLDER restoration passed."
+
+# Assign FAVORITE 1 through the real Browser action and Android DocumentsUI picker.
+# Reuse the isolated tree-only WAV so this specifically tests favorite routing, not MediaStore.
+if ! tap_ui_description "$TREE_RESTORED_XML" "MPC Browser navigation PLACES FAVORITE 1"; then
+  echo "ERROR: FAVORITE 1 navigation entry was not actionable"; exit 1
+fi
+if ! wait_for_ui_description "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" \
+    "MPC Browser choose a local folder for FAVORITE 1" 15; then
+  echo "ERROR: unconfigured FAVORITE 1 did not expose its Choose Folder action"; exit 1
+fi
+if ! tap_ui_description "$FAVORITE_TREE_RESULTS_XML" "MPC Browser choose a local folder for FAVORITE 1"; then
+  echo "ERROR: FAVORITE 1 Choose Folder did not launch Android DocumentsUI"; exit 1
+fi
+
+favorite_picker_activity=""
+for favorite_picker_attempt in {1..15}; do
+  favorite_picker_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if [[ -n "$favorite_picker_activity" ]] && ! grep -Fq -- "$PACKAGE" <<<"$favorite_picker_activity"; then break; fi
+  sleep 1
+done
+if [[ -z "$favorite_picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$favorite_picker_activity"; then
+  echo "ERROR: FAVORITE 1 did not launch an external document-tree picker"
+  printf '%s\\n' "$favorite_picker_activity"
+  exit 1
+fi
+if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
+  echo "ERROR: could not inspect the FAVORITE 1 document-tree picker"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-favorite-tree-picker.png; then
+  echo "ERROR: could not capture FAVORITE 1 picker screenshot"; exit 1
+fi
+if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 4; then
+  if ! grep -Fq -- 'package="com.android.documentsui"' "$FAVORITE_TREE_PICKER_XML"; then
+    echo "ERROR: DocumentsUI closed before FAVORITE 1 could select a folder"; exit 1
+  fi
+  if grep -Fq -- 'content-desc="List view"' "$FAVORITE_TREE_PICKER_XML"; then
+    if ! tap_ui_description "$FAVORITE_TREE_PICKER_XML" "List view"; then
+      echo "ERROR: could not switch FAVORITE 1 DocumentsUI to list mode"; exit 1
+    fi
+    if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
+      echo "ERROR: could not inspect FAVORITE 1 DocumentsUI list mode"; exit 1
+    fi
+  fi
+  if ! picker_folder_row_fully_visible "$FAVORITE_TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
+    echo "ERROR: tree fixture folder is not visible for FAVORITE 1 assignment"; exit 1
+  fi
+  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" "$TREE_SAMPLE_NAME"; then
+    echo "ERROR: FAVORITE 1 picker did not navigate into the actual tree-only WAV folder"; exit 1
+  fi
+fi
+
+FAVORITE_USE_FOLDER_LABEL="USE THIS FOLDER"
+if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_USE_FOLDER_LABEL" 12; then
+  FAVORITE_USE_FOLDER_LABEL="Use this folder"
+  if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_USE_FOLDER_LABEL" 3; then
+    echo "ERROR: FAVORITE 1 selected directory did not expose Use this folder"; exit 1
+  fi
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-favorite-tree-picker.png; then
+  echo "ERROR: could not capture selected FAVORITE 1 folder"; exit 1
+fi
+if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
+  echo "ERROR: could not capture selected FAVORITE 1 folder hierarchy"; exit 1
+fi
+if ! tap_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_USE_FOLDER_LABEL"; then
+  echo "ERROR: could not confirm the FAVORITE 1 folder selection"; exit 1
+fi
+
+favorite_app_resumed=0
+for favorite_return_attempt in {1..25}; do
+  favorite_return_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if grep -Fq -- "$PACKAGE" <<<"$favorite_return_activity"; then favorite_app_resumed=1; break; fi
+  if dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
+    favorite_allow_label="$(python3 - "$FAVORITE_TREE_PICKER_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    label = node.attrib.get("text", "").strip()
+    if label.casefold() == "allow":
+        print(label)
+        break
+PY
+)"
+    if [[ -n "$favorite_allow_label" ]]; then
+      if ! tap_ui_text "$FAVORITE_TREE_PICKER_XML" "$favorite_allow_label"; then
+        echo "ERROR: could not accept DocumentsUI permission confirmation for FAVORITE 1"; exit 1
+      fi
+    fi
+  fi
+  sleep 1
+done
+if [[ "$favorite_app_resumed" != "1" ]]; then
+  echo "ERROR: FAVORITE 1 folder selection did not return to the groovebox Activity"
+  printf '%s\\n' "$favorite_return_activity"
+  exit 1
+fi
+if ! wait_for_ui_text "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" "$TREE_SAMPLE_NAME" 30; then
+  echo "ERROR: FAVORITE 1 did not return its real WAV as a Browser row"; exit 1
+fi
+if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" \
+    "FAVORITE 1 • 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
+  echo "ERROR: FAVORITE 1 provider status did not match its real tree scan"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-favorite-tree-results.png; then
+  echo "ERROR: could not capture FAVORITE 1 real WAV results"; exit 1
+fi
+if ! dump_device_ui "$FAVORITE_TREE_RESULTS_REMOTE" "$FAVORITE_TREE_RESULTS_XML"; then
+  echo "ERROR: could not capture FAVORITE 1 real WAV hierarchy"; exit 1
+fi
+
+# Prove this slot writes its own keys and does not replace USER FOLDER's saved target.
+if ! adb_bounded 10 shell "run-as $PACKAGE cat shared_prefs/mpc_browser_storage.xml" > "$FAVORITE_PREFS_HOST"; then
+  echo "ERROR: could not inspect the saved Browser favorite preferences"; exit 1
+fi
+for required_key in 'name="user_tree_uri"' 'name="favorite_tree_uri_1"' 'name="favorite_tree_name_1"'; do
+  if ! grep -Fq -- "$required_key" "$FAVORITE_PREFS_HOST"; then
+    echo "ERROR: Browser storage preferences lack independent key $required_key"; exit 1
+  fi
+done
+
+# Force-stop and recreate the process again; Favorite 1 must restore its own folder grant.
+if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
+  echo "ERROR: could not stop the app for FAVORITE 1 persistence verification"; exit 1
+fi
+if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
+    --es "$SMOKE_MODE_EXTRA" "ui-only"; then
+  echo "ERROR: could not restart app for FAVORITE 1 persistence verification"; exit 1
+fi
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Browser" 40; then
+  echo "ERROR: Main did not return before Favorite 1 restoration verification"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
+  echo "ERROR: could not inspect Main before Favorite 1 restoration"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "MPC Project Browser"; then
+  echo "ERROR: could not reopen Browser for Favorite 1 restoration"; exit 1
+fi
+if ! wait_for_ui_description "$FAVORITE_TREE_RESTORED_XML" "$FAVORITE_TREE_RESTORED_REMOTE" \
+    "MPC Browser navigation PLACES FAVORITE 1" 30; then
+  echo "ERROR: FAVORITE 1 destination was not restored after process restart"; exit 1
+fi
+if ! tap_ui_description "$FAVORITE_TREE_RESTORED_XML" "MPC Browser navigation PLACES FAVORITE 1"; then
+  echo "ERROR: restored FAVORITE 1 destination was not actionable"; exit 1
+fi
+if ! wait_for_ui_text "$FAVORITE_TREE_RESTORED_XML" "$FAVORITE_TREE_RESTORED_REMOTE" "$TREE_SAMPLE_NAME" 30; then
+  echo "ERROR: Favorite 1's saved SAF grant did not restore its actual WAV row"; exit 1
+fi
+if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESTORED_XML" "$FAVORITE_TREE_RESTORED_REMOTE" \
+    "FAVORITE 1 • 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
+  echo "ERROR: restored FAVORITE 1 provider status did not match the real scan"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-favorite-tree-restored.png; then
+  echo "ERROR: could not capture restored FAVORITE 1 Browser screenshot"; exit 1
+fi
+if ! dump_device_ui "$FAVORITE_TREE_RESTORED_REMOTE" "$FAVORITE_TREE_RESTORED_XML"; then
+  echo "ERROR: could not capture restored FAVORITE 1 Browser hierarchy"; exit 1
+fi
+echo "Browser Favorite 1 assignment, isolated preferences and process-restart restoration passed."
 
 echo "Android runtime startup and local Browser workflow smoke passed."

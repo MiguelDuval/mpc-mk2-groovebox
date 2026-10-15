@@ -533,5 +533,12 @@ jobs:
             /tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml
             /tmp/mpc-groovebox-browser-tree-restored.png
             /tmp/mpc-groovebox-browser-tree-restored-uiautomator.xml
+            /tmp/mpc-groovebox-browser-favorite-tree-picker.png
+            /tmp/mpc-groovebox-browser-favorite-tree-picker-uiautomator.xml
+            /tmp/mpc-groovebox-browser-favorite-tree-results.png
+            /tmp/mpc-groovebox-browser-favorite-tree-results-uiautomator.xml
+            /tmp/mpc-groovebox-browser-favorite-tree-restored.png
+            /tmp/mpc-groovebox-browser-favorite-tree-restored-uiautomator.xml
+            /tmp/mpc-browser-favorite-prefs.xml
           if-no-files-found: warn
           archive: true
