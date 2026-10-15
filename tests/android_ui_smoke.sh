@@ -1738,6 +1738,11 @@ TREE_SAMPLE_NAME="Browser-Tree-Only.wav"
 TREE_FOLDER_DEVICE="/sdcard/$TREE_FOLDER_NAME"
 TREE_SAMPLE_DEVICE="$TREE_FOLDER_DEVICE/$TREE_SAMPLE_NAME"
 TREE_MEDIA_QUERY="/tmp/mpc-browser-tree-not-in-mediastore.txt"
+FAVORITE_FOLDER_NAME="BBB-MPC-Browser-Favorite"
+FAVORITE_SAMPLE_NAME="Browser-Favorite-Only.wav"
+FAVORITE_FOLDER_DEVICE="/sdcard/$FAVORITE_FOLDER_NAME"
+FAVORITE_SAMPLE_DEVICE="$FAVORITE_FOLDER_DEVICE/$FAVORITE_SAMPLE_NAME"
+FAVORITE_MEDIA_QUERY="/tmp/mpc-browser-favorite-not-in-mediastore.txt"
 TREE_PICKER_XML="/tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml"
 TREE_PICKER_REMOTE="/sdcard/mpc-groovebox-browser-tree-picker-uiautomator.xml"
 TREE_BROWSER_XML="/tmp/mpc-groovebox-browser-tree-results-uiautomator.xml"
@@ -3242,19 +3247,41 @@ if ! adb_bounded 10 shell touch "$TREE_FOLDER_DEVICE/.nomedia"; then
   echo "ERROR: could not protect the tree fixture from MediaStore indexing"; exit 1
 fi
 if ! adb_bounded 30 push "$LOCAL_SAMPLE_HOST" "$TREE_SAMPLE_DEVICE"; then
-  echo "ERROR: could not copy tree-only WAV fixture"; exit 1
+  echo "ERROR: could not copy USER FOLDER-only WAV fixture"; exit 1
+fi
+if ! adb_bounded 10 shell mkdir -p "$FAVORITE_FOLDER_DEVICE"; then
+  echo "ERROR: could not create separate FAVORITE 1 fixture folder"; exit 1
+fi
+if ! adb_bounded 10 shell touch "$FAVORITE_FOLDER_DEVICE/.nomedia"; then
+  echo "ERROR: could not protect FAVORITE 1 fixture from MediaStore indexing"; exit 1
+fi
+if ! adb_bounded 30 push "$LOCAL_SAMPLE_HOST" "$FAVORITE_SAMPLE_DEVICE"; then
+  echo "ERROR: could not copy FAVORITE 1-only WAV fixture"; exit 1
 fi
 if ! adb_bounded 10 shell content query \
     --uri content://media/external/audio/media \
     --projection _display_name \
     --where "_display_name='$TREE_SAMPLE_NAME'" > "$TREE_MEDIA_QUERY" 2>&1; then
-  echo "ERROR: could not verify MediaStore exclusion for tree fixture"
+  echo "ERROR: could not verify MediaStore exclusion for USER FOLDER fixture"
   cat "$TREE_MEDIA_QUERY" || true
   exit 1
 fi
 if grep -Fq -- "$TREE_SAMPLE_NAME" "$TREE_MEDIA_QUERY"; then
-  echo "ERROR: tree-only WAV appeared in MediaStore, so provider isolation cannot be proven"
+  echo "ERROR: USER FOLDER-only WAV appeared in MediaStore, so provider isolation cannot be proven"
   cat "$TREE_MEDIA_QUERY" || true
+  exit 1
+fi
+if ! adb_bounded 10 shell content query \
+    --uri content://media/external/audio/media \
+    --projection _display_name \
+    --where "_display_name='$FAVORITE_SAMPLE_NAME'" > "$FAVORITE_MEDIA_QUERY" 2>&1; then
+  echo "ERROR: could not verify MediaStore exclusion for FAVORITE 1 fixture"
+  cat "$FAVORITE_MEDIA_QUERY" || true
+  exit 1
+fi
+if grep -Fq -- "$FAVORITE_SAMPLE_NAME" "$FAVORITE_MEDIA_QUERY"; then
+  echo "ERROR: FAVORITE 1-only WAV appeared in MediaStore, so provider isolation cannot be proven"
+  cat "$FAVORITE_MEDIA_QUERY" || true
   exit 1
 fi
 
@@ -3473,7 +3500,7 @@ fi
 if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-favorite-tree-picker.png; then
   echo "ERROR: could not capture FAVORITE 1 picker screenshot"; exit 1
 fi
-if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 4; then
+if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_SAMPLE_NAME" 4; then
   if ! grep -Fq -- 'package="com.android.documentsui"' "$FAVORITE_TREE_PICKER_XML"; then
     echo "ERROR: DocumentsUI closed before FAVORITE 1 could select a folder"; exit 1
   fi
@@ -3485,10 +3512,10 @@ if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE"
       echo "ERROR: could not inspect FAVORITE 1 DocumentsUI list mode"; exit 1
     fi
   fi
-  if ! picker_folder_row_fully_visible "$FAVORITE_TREE_PICKER_XML" "$TREE_FOLDER_NAME"; then
+  if ! picker_folder_row_fully_visible "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_FOLDER_NAME"; then
     echo "ERROR: tree fixture folder is not visible for FAVORITE 1 assignment"; exit 1
   fi
-  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$TREE_FOLDER_NAME" "$TREE_SAMPLE_NAME"; then
+  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME"; then
     echo "ERROR: FAVORITE 1 picker did not navigate into the actual tree-only WAV folder"; exit 1
   fi
 fi
@@ -3540,7 +3567,7 @@ if [[ "$favorite_app_resumed" != "1" ]]; then
   printf '%s\n' "$favorite_return_activity"
   exit 1
 fi
-if ! wait_for_ui_text "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" "$TREE_SAMPLE_NAME" 30; then
+if ! wait_for_ui_text "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" "$FAVORITE_SAMPLE_NAME" 30; then
   echo "ERROR: FAVORITE 1 did not return its real WAV as a Browser row"; exit 1
 fi
 if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" \
@@ -3563,6 +3590,46 @@ for required_key in 'name="user_tree_uri"' 'name="favorite_tree_uri_1"' 'name="f
     echo "ERROR: Browser storage preferences lack independent key $required_key"; exit 1
   fi
 done
+if ! python3 - "$FAVORITE_PREFS_HOST" "$TREE_FOLDER_NAME" "$FAVORITE_FOLDER_NAME" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, user_folder, favorite_folder = sys.argv[1:]
+root = ET.parse(path).getroot()
+values = {node.attrib.get("name", ""): node.text or ""
+          for node in root.findall("string")}
+user_uri = values.get("user_tree_uri", "")
+favorite_uri = values.get("favorite_tree_uri_1", "")
+if not user_uri or not favorite_uri or user_uri == favorite_uri:
+    raise SystemExit("USER FOLDER and FAVORITE 1 must persist different tree URIs")
+if user_folder not in user_uri or favorite_folder not in favorite_uri:
+    raise SystemExit("Saved tree URIs do not point to their respective folder fixtures")
+print("Independent USER FOLDER / FAVORITE 1 SAF URI preferences verified.")
+PY
+then
+  echo "ERROR: USER FOLDER and FAVORITE 1 do not retain different folder assignments"; exit 1
+fi
+
+# Switch away and back before process death, proving each slot reads its own WAV list.
+if ! tap_ui_description "$FAVORITE_TREE_RESULTS_XML" "MPC Browser navigation PLACES USER FOLDER"; then
+  echo "ERROR: USER FOLDER navigation was not available after Favorite assignment"; exit 1
+fi
+if ! wait_for_ui_text "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" "$TREE_SAMPLE_NAME" 20; then
+  echo "ERROR: assigning FAVORITE 1 replaced the USER FOLDER results"; exit 1
+fi
+if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" \
+    "USER FOLDER • 1 WAV FILE INDEXED" "MPC Browser provider status" 15; then
+  echo "ERROR: USER FOLDER was not independently restored after switching from Favorite"; exit 1
+fi
+if ! tap_ui_description "$FAVORITE_TREE_RESULTS_XML" "MPC Browser navigation PLACES FAVORITE 1"; then
+  echo "ERROR: FAVORITE 1 navigation was not available after returning to USER FOLDER"; exit 1
+fi
+if ! wait_for_ui_text "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" "$FAVORITE_SAMPLE_NAME" 20; then
+  echo "ERROR: returning to FAVORITE 1 did not restore its distinct WAV result"; exit 1
+fi
+if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" \
+    "FAVORITE 1 • 1 WAV FILE INDEXED" "MPC Browser provider status" 15; then
+  echo "ERROR: Favorite result/status was not restored after switching back"; exit 1
+fi
 
 # Force-stop and recreate the process again; Favorite 1 must restore its own folder grant.
 if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
@@ -3588,7 +3655,7 @@ fi
 if ! tap_ui_description "$FAVORITE_TREE_RESTORED_XML" "MPC Browser navigation PLACES FAVORITE 1"; then
   echo "ERROR: restored FAVORITE 1 destination was not actionable"; exit 1
 fi
-if ! wait_for_ui_text "$FAVORITE_TREE_RESTORED_XML" "$FAVORITE_TREE_RESTORED_REMOTE" "$TREE_SAMPLE_NAME" 30; then
+if ! wait_for_ui_text "$FAVORITE_TREE_RESTORED_XML" "$FAVORITE_TREE_RESTORED_REMOTE" "$FAVORITE_SAMPLE_NAME" 30; then
   echo "ERROR: Favorite 1's saved SAF grant did not restore its actual WAV row"; exit 1
 fi
 if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESTORED_XML" "$FAVORITE_TREE_RESTORED_REMOTE" \
