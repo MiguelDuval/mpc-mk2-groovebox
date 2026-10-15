@@ -763,3 +763,6 @@ Added five independently persisted SAF folder targets to the Browser Places list
 ### 2026-10-15 — Favorite picker runtime failure (#2721)
 
 Android Build #2721 compiled and uploaded an APK for exact SHA `829b006a5f9e8547d82ed341c772155215c008b2`, but the full emulator smoke failed during FAVORITE 1 assignment. Inspected screenshot evidence shows DocumentsUI reopened inside `AAA-MPC-Browser-Tree` (USER FOLDER) instead of at the provider root; the previous test required `BBB-MPC-Browser-Favorite` to already be visible and exited before assignment. The revised smoke flow navigates the visible breadcrumb to the provider root, requires the Android `Use this folder` tree-grant action, and locates the Favorite-only fixture using bounded scrolling. **Favorites E2E remains unverified** until an exact-HEAD run passes assignment, isolated URI preferences, bidirectional switching and process-restart restoration. If the tree-grant action is still missing after navigation, fix the runtime route rather than weakening the assertion.
+
+
+Harness follow-up: corrected the newline escaping in the DocumentsUI breadcrumb handoff before accepting any result. The exact-head Android emulator run after this correction remains the acceptance signal.

@@ -3526,11 +3526,11 @@ for item in list(breadcrumb):
                 break
 if not labels:
     raise SystemExit("DocumentsUI breadcrumb has no usable root label")
-print("\\n".join(labels))
+print("\n".join(labels))
 PY
 )"
   favorite_root_label="$(head -n 1 <<< "$favorite_breadcrumbs")"
-  favorite_breadcrumb_count="$(printf '%s\\n' "$favorite_breadcrumbs" | wc -l | tr -d '[:space:]')"
+  favorite_breadcrumb_count="$(printf '%s\n' "$favorite_breadcrumbs" | wc -l | tr -d '[:space:]')"
   if [[ -z "$favorite_root_label" || -z "$favorite_breadcrumb_count" ]]; then
     echo "ERROR: could not identify the DocumentsUI storage-provider root for FAVORITE 1"; exit 1
   fi

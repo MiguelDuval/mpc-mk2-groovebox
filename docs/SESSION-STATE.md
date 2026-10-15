@@ -227,3 +227,8 @@ This checkpoint records the implementation SHA proven by Android Build #2637. Th
 - Inspected the uploaded emulator evidence artifact (run #2721). The real DocumentsUI screenshot shows the picker reopened inside `AAA-MPC-Browser-Tree` (the already configured USER FOLDER), with `Browser-Tree-Only.wav`; `Browser-Favorite-Only.wav` and `BBB-MPC-Browser-Favorite` were not in that directory. The test had assumed the Favorite-only folder was immediately visible and aborted before assignment. The first capture also lacked the visible “Use this folder” control, so the next run must confirm the picker has reached the tree-grant UI rather than presuming the route is correct.
 - Corrected the smoke harness to read the actual DocumentsUI breadcrumb, navigate back to its provider root when Android restores the previous folder, confirm the “Use this folder” tree-grant action, then search the root viewport with bounded real swipes before selecting the separate Favorite-only fixture. Corrected the stale comment that described the Favorite sample as reused.
 - This is **not a passing Favorites milestone**. The next exact-HEAD Actions run must verify the app route, separate SAF preference keys/URIs, USER FOLDER ↔ FAVORITE 1 switching and process-restart restoration. Follow with a source fix if the tree-grant control still fails to appear.
+
+
+### 2026-10-15 — DocumentsUI breadcrumb escape correction
+
+The first smoke-harness navigation commit contained over-escaped newline literals in the small Python-to-shell breadcrumb handoff. Corrected those literals before using that run as evidence. Do not infer Favorites behavior from an intermediate run whose test harness did not execute the breadcrumb navigation reliably; the next exact-HEAD run is authoritative.
