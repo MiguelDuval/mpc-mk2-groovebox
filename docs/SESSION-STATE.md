@@ -1,6 +1,6 @@
 # Session State — MPC MkII Groovebox
 
-**Checkpoint refreshed:** 2026-10-15 (Android Build #2725 failed on exact SHA `167b50bba5ace0084472f194398e2259a4d26838`; root evidence confirms touch attempts leave the folder row unchanged, focus/Enter path awaiting exact-HEAD CI)  
+**Checkpoint refreshed:** 2026-10-15 (Android Build #2726 failed on exact SHA `15fcb134d06d2e0ea1797d09b3646a08e2fad3bf`; XML focus traversal did not focus the Favorite row; hierarchy/screenshot synchronization correction awaiting exact-HEAD CI)  
 **Purpose:** Compact handoff for the next ChatGPT session. Read this first, then independently verify every mutable fact against GitHub.
 
 > **Freshness rule:** This checkpoint will itself be committed after the pre-checkpoint SHA above. Therefore, it does **not** claim CI success for the commit containing this state refresh. On every session start, verify the live PR head, branch HEAD, latest Android Build and artifact files. Do not rely on remembered commit numbers or on this checkpoint instead of GitHub.
@@ -229,10 +229,10 @@ This checkpoint records the implementation SHA proven by Android Build #2637. Th
 - This is **not a passing Favorites milestone**. The next exact-HEAD Actions run must verify the app route, separate SAF preference keys/URIs, USER FOLDER ↔ FAVORITE 1 switching and process-restart restoration. Follow with a source fix if the tree-grant control still fails to appear.
 
 
-### 2026-10-15 — Favorite picker root interaction (#2723–#2725)
+### 2026-10-15 — Favorite picker viewport mismatch (#2723–#2726)
 
-- Build #2723 failed after double-taps on the root row/text; Build #2724 failed after a single tap in the folder's left icon region; Build #2725 failed after a single title-text tap. USER FOLDER selection, actual WAV results, filters and process-restart restoration passed in each relevant run.
-- The paired #2725 screenshots show no visible state change before/after the single title tap. Its XML confirms the provider root `Android SDK built for x86_64`, the visible `BBB-MPC-Browser-Favorite` row, disabled root-level `USE THIS FOLDER`, and row semantics `item_root focusable=true, clickable=false, focused=false`.
-- Stop changing touch coordinates. The test now navigates using the picker’s explicit keyboard focus semantics: send bounded `KEYCODE_DPAD_DOWN` events, inspect each fresh XML until the exact folder's `item_root` reports `focused=true`, then send `KEYCODE_ENTER`. It records before/after screenshot and hierarchy; if focus or navigation fails, do not add further speculative gestures.
-- Source tracing confirms the app route `CHOOSE FOLDER → openBrowserDocumentTreePicker() → ACTION_OPEN_DOCUMENT_TREE`, persisted pending Favorite-slot dispatch, and distinct preference keys. A product-side issue is not yet ruled out.
-- **Favorites E2E remains unverified** until exact-new-HEAD CI proves selection of the separate folder, distinct USER/FAVORITE URIs, bidirectional real-WAV switching, and process-restart restoration.
+- Builds #2723–#2725 failed to open `BBB-MPC-Browser-Favorite` after different taps; #2726 failed before any tap because the target `item_root` never became focused during DPAD traversal. USER FOLDER scan, real WAV results, filters, and process-restart restoration all passed in #2726.
+- Inspection of #2726's paired evidence revealed a more basic issue: the screenshot captured before the fresh UI dump showed `BBB-MPC-Browser-Favorite` near the top of the list, while the following hierarchy put it at bounds `[0,1124][1080,1313]` beneath `AAA-MPC-Browser-Tree`, Alarms, Android and Audiobooks. The post-keyboard screenshot matched the later hierarchy. The UI viewport was not stable across evidence captures.
+- Removed the unproven DPAD/Enter path. The harness now requires two consecutive identical DocumentsUI hierarchy signatures, captures the screenshot, then requires a third matching hierarchy before taking a single title tap. It logs exact coordinates and captures a stable post-action screenshot/XML pair on failure.
+- The app's `CHOOSE FOLDER → openBrowserDocumentTreePicker() → ACTION_OPEN_DOCUMENT_TREE` path and persisted Favorite-slot result dispatch were traced in source, but Favorites UI E2E is still not passing.
+- **Favorites remain unverified** until current-HEAD CI proves separate-folder assignment, independent USER/FAVORITE URI settings, bidirectional real-WAV switching, and process-restart restoration. Do not add another gesture variant until the stable-state evidence resolves the viewport discrepancy.

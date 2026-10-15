@@ -2591,6 +2591,7 @@ PY
   # Explicit "single" is used for directory activation: a second rapid touch
   # can be interpreted as a selection gesture by DocumentsUI's touch handler.
   if [[ "$tap_mode" == "single" ]]; then
+    echo "DocumentsUI tap: single $tap_kind '$expected_text' at $tap_x,$tap_y" >&2
     if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
       echo "ERROR: could not tap DocumentsUI result row $expected_text at $tap_x,$tap_y"
       return 1
@@ -2794,47 +2795,60 @@ raise SystemExit(1)
 PY
 }
 
-picker_focus_folder_row() {
-  local hierarchy_path="$1" remote_path="$2" folder_label="$3" max_steps="${4:-16}"
-  local step
-  # These DocumentsUI rows are focusable but expose no clickable semantics.
-  # After the exact folder's focus state is observable in XML, Enter is the
-  # standard activation key handled by DocumentHolder; do not guess coordinates.
-  for ((step=0; step<=max_steps; step++)); do
-    if python3 - "$hierarchy_path" "$folder_label" <<'PY'
+picker_hierarchy_signature() {
+  local hierarchy_path="$1"
+  python3 - "$hierarchy_path" <<'PY'
+import json
 import sys
 import xml.etree.ElementTree as ET
 
-path, expected = sys.argv[1], sys.argv[2]
-root = ET.parse(path).getroot()
-nodes = list(root.iter("node"))
-parents = {child: parent for parent in nodes for child in list(parent)}
-for node in nodes:
-    if node.attrib.get("text", "").strip() != expected:
-        continue
-    candidate = node
-    while candidate is not None:
-        if candidate.attrib.get("resource-id") == "com.android.documentsui:id/item_root":
-            raise SystemExit(0 if candidate.attrib.get("focused") == "true" else 1)
-        candidate = parents.get(candidate)
-raise SystemExit(2)
+root = ET.parse(sys.argv[1]).getroot()
+fields = (
+    "text", "content-desc", "resource-id", "class", "bounds",
+    "clickable", "enabled", "focused", "focusable", "scrollable", "selected"
+)
+signature = [
+    [node.attrib.get(field, "") for field in fields]
+    for node in root.iter("node")
+]
+print(json.dumps(signature, ensure_ascii=False, separators=(",", ":")))
 PY
-    then
-      echo "DocumentsUI folder focused: '$folder_label' after $step DPAD_DOWN event(s)"
+}
+
+# DocumentsUI can change its scroll/focus layout between a screencap and an
+# accessibility dump. Require two identical hierarchy snapshots, capture the
+# screenshot, then require a third matching snapshot before using any bounds.
+capture_stable_picker_state() {
+  local remote_path="$1" hierarchy_path="$2" screenshot_path="$3"
+  local max_attempts="${4:-6}"
+  local check_path="${hierarchy_path%.xml}-stability-check.xml"
+  local before_signature check_signature final_signature
+  local attempt
+  for ((attempt=1; attempt<=max_attempts; attempt++)); do
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    before_signature="$(picker_hierarchy_signature "$hierarchy_path")" || return 1
+    sleep 0.25
+    if ! dump_device_ui "$remote_path" "$check_path"; then return 1; fi
+    check_signature="$(picker_hierarchy_signature "$check_path")" || return 1
+    if [[ "$before_signature" != "$check_signature" ]]; then
+      sleep 0.25
+      continue
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$screenshot_path"; then
+      echo "ERROR: could not capture stable DocumentsUI screenshot"
+      return 1
+    fi
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    final_signature="$(picker_hierarchy_signature "$hierarchy_path")" || return 1
+    if [[ "$final_signature" == "$check_signature" ]]; then
+      echo "DocumentsUI state stabilized after $attempt attempt(s): $hierarchy_path"
       return 0
     fi
-    if (( step == max_steps )); then break; fi
-    if ! adb_bounded 10 shell input keyevent KEYCODE_DPAD_DOWN; then
-      echo "ERROR: failed to send DPAD_DOWN while focusing DocumentsUI folder: $folder_label"
-      return 1
-    fi
-    sleep 0.1
-    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then
-      echo "ERROR: could not inspect DocumentsUI focus after DPAD_DOWN"
-      return 1
-    fi
+    sleep 0.25
   done
-  echo "ERROR: DocumentsUI did not focus the visible folder row after $max_steps DPAD_DOWN events: $folder_label"
+  echo "ERROR: DocumentsUI screenshot and accessibility hierarchy did not stabilize"
+  echo "Hierarchy: $hierarchy_path"
+  cat "$hierarchy_path" || true
   return 1
 }
 
@@ -2843,50 +2857,36 @@ tap_ui_picker_folder_until_child() {
   local evidence_prefix="${5:-document-tree}"
   local root_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root.png"
   local root_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-uiautomator.xml"
-  local after_enter_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-enter.png"
-  local after_enter_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-enter-uiautomator.xml"
+  local after_activation_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-activation.png"
+  local after_activation_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-activation-uiautomator.xml"
+  local after_activation_remote="${remote_path%.xml}-after-activation.xml"
 
-  # Builds #2723–#2725 show that synthetic touch taps do not activate this
-  # non-clickable DocumentsUI row, even though it is visible. Its accessibility
-  # hierarchy explicitly marks item_root focusable=true; navigate focus by DPAD,
-  # verify the exact row is focused in XML, then activate it with Enter.
-  if ! picker_folder_row_fully_visible "$hierarchy_path" "$folder_label"; then
-    echo "ERROR: target SAF folder is not fully visible above the picker footer: $folder_label"
-    return 1
-  fi
-  if ! adb_bounded 10 exec-out screencap -p > "$root_png"; then
-    echo "ERROR: could not capture DocumentsUI provider-root screenshot before folder activation"
-    return 1
-  fi
-  if ! dump_device_ui "$remote_path" "$root_xml"; then
-    echo "ERROR: could not capture DocumentsUI provider-root hierarchy before folder activation"
+  # Builds #2723–#2726 produced incompatible viewport positions between a
+  # screenshot and the next UI dump. Do not guess another tap or keyboard path:
+  # first prove the hierarchy remains unchanged around a fresh screenshot.
+  if ! capture_stable_picker_state "$remote_path" "$root_xml" "$root_png" 6; then
+    echo "ERROR: could not establish a stable DocumentsUI provider-root state"
     return 1
   fi
   if ! picker_folder_row_fully_visible "$root_xml" "$folder_label"; then
-    echo "ERROR: folder row became unavailable in the captured provider-root evidence: $folder_label"
+    echo "ERROR: target SAF folder is not fully visible above the picker footer: $folder_label"
     return 1
   fi
 
-  if ! picker_focus_folder_row "$root_xml" "$remote_path" "$folder_label" 16; then
-    adb_bounded 10 exec-out screencap -p > "$after_enter_png" || true
-    dump_device_ui "$remote_path" "$after_enter_xml" || true
-    echo "ERROR: could not focus the actual DocumentsUI folder before activation: $folder_label"
-    return 1
-  fi
-  echo "DocumentsUI folder activation: KEYCODE_ENTER '$folder_label'"
-  if ! adb_bounded 10 shell input keyevent KEYCODE_ENTER; then
-    echo "ERROR: could not activate focused DocumentsUI folder: $folder_label"
+  if ! tap_ui_picker_result_row "$root_xml" "$folder_label" single; then
+    echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"
     return 1
   fi
   if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
     return 0
   fi
 
-  # Preserve matching before/after evidence; do not add another speculative
-  # gesture if the standard focus/Enter path does not navigate.
-  adb_bounded 10 exec-out screencap -p > "$after_enter_png" || true
-  dump_device_ui "$remote_path" "$after_enter_xml" || true
-  echo "ERROR: Enter on focused DocumentsUI folder did not expose $child_label"
+  # Preserve a stable post-action screenshot/XML pair. If navigation fails,
+  # diagnose from matched evidence instead of layering on speculative gestures.
+  if ! capture_stable_picker_state "$after_activation_remote" "$after_activation_xml" "$after_activation_png" 6; then
+    echo "ERROR: could not capture stable DocumentsUI state after folder activation"
+  fi
+  echo "ERROR: single folder-title tap did not expose $child_label"
   return 1
 }
 
