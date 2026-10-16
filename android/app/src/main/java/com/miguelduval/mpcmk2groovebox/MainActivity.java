@@ -7382,10 +7382,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshSequenceStepPage();
             refreshMpcCompactContext();
         }), new LinearLayout.LayoutParams(dp(62), dp(38)));
-        header.addView(actionButton("◀", v -> moveSequenceStepPage(-1)),
-                new LinearLayout.LayoutParams(dp(50), dp(38)));
-        header.addView(actionButton("▶", v -> moveSequenceStepPage(1)),
-                new LinearLayout.LayoutParams(dp(50), dp(38)));
+        Button previousPage = actionButton("◀", v -> moveSequenceStepPage(-1));
+        previousPage.setContentDescription("MPC Step Sequencer previous 16-step page");
+        header.addView(previousPage, new LinearLayout.LayoutParams(dp(50), dp(38)));
+        Button nextPage = actionButton("▶", v -> moveSequenceStepPage(1));
+        nextPage.setContentDescription("MPC Step Sequencer next 16-step page");
+        header.addView(nextPage, new LinearLayout.LayoutParams(dp(50), dp(38)));
         page.addView(header);
 
         sequenceStepEventInfo = label(
@@ -7669,10 +7671,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void moveSequenceStepPage(int delta) {
         final int count = sequenceStepPageCount();
-        sequenceStepPage = Math.max(
-                0, Math.min(count - 1, sequenceStepPage + delta));
+        final int previousPage = sequenceStepPage;
+        final int nextPage = Math.max(
+                0, Math.min(count - 1, previousPage + delta));
+        if (nextPage == previousPage) {
+            return;
+        }
+
+        sequenceStepPage = nextPage;
+        selectedSequenceStep = MpcSequenceStepPagePolicy.selectedStepForPageChange(
+                selectedSequenceStep,
+                previousPage,
+                nextPage,
+                sequenceGridTotalSteps(),
+                SEQUENCE_GRID_PAGE_STEPS);
         nativeSequenceSetStepEditContext(true, sequenceStepPage);
         refreshSequenceStepPage();
+        syncStepEditPadLeds();
     }
 
 
@@ -12364,6 +12379,203 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 this::runUiAuditAfterStep);
     }
 
+    private boolean hasStepEventForAudit(int[] parameters) {
+        return parameters != null
+                && parameters.length >= 3
+                && parameters[0] > 0;
+    }
+
+    private boolean stepEventInfoMatchesForAudit(int absoluteStep, boolean empty) {
+        if (sequenceStepEventInfo == null) return false;
+        final String text = sequenceStepEventInfo.getText().toString();
+        return text.contains(String.format(
+                        Locale.ROOT, "STEP %02d", absoluteStep + 1))
+                && (empty
+                        ? text.contains("EMPTY")
+                        : !text.contains("EMPTY") && text.contains("•"));
+    }
+
+    private boolean verifyStepPageNavigationAndRestoreForAudit() {
+        final int pageCount = sequenceStepPageCount();
+        final int originalPage = sequenceStepPage;
+        final int pad = selectedPad;
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        if (pageCount < 2 || originalPage != 0 || selectedSequenceStep != 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step paging fixture is not at page 1"
+                    + " | pages=" + pageCount
+                    + " | page=" + originalPage
+                    + " | selectedStep=" + selectedSequenceStep);
+            return false;
+        }
+
+        final int[] stepOneBefore = nativeSequenceGetStepParameters(pad, 0, gridTicks);
+        if (!hasStepEventForAudit(stepOneBefore)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step paging fixture lost the existing Pad 1 step 1 event");
+            return false;
+        }
+        final int[] stepOneSnapshot = stepOneBefore.clone();
+
+        // Find the same relative column empty on both pages so the navigation test
+        // neither overwrites the Arrangement focus fixture nor assumes an unused cell.
+        int testColumn = -1;
+        for (int column = 0; column < SEQUENCE_GRID_PAGE_STEPS; column++) {
+            final int[] source = nativeSequenceGetStepParameters(pad, column, gridTicks);
+            final int[] target = nativeSequenceGetStepParameters(
+                    pad, SEQUENCE_GRID_PAGE_STEPS + column, gridTicks);
+            if (!hasStepEventForAudit(source) && !hasStepEventForAudit(target)) {
+                testColumn = column;
+                break;
+            }
+        }
+        if (testColumn < 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: no matching empty Step column on pages 1 and 2");
+            return false;
+        }
+
+        final View sourceEmptyCell = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Pad " + (pad + 1) + " step " + (testColumn + 1) + " off");
+        if (sourceEmptyCell == null || !sourceEmptyCell.performLongClick()
+                || selectedSequenceStep != testColumn
+                || !stepEventInfoMatchesForAudit(testColumn, true)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step page source-column long press"
+                    + " | column=" + testColumn
+                    + " | selected=" + selectedSequenceStep
+                    + " | info=" + (sequenceStepEventInfo == null
+                            ? "missing" : sequenceStepEventInfo.getText()));
+            return false;
+        }
+
+        View nextPage = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Step Sequencer next 16-step page");
+        if (nextPage == null || !nextPage.isShown() || !nextPage.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: next Step page control");
+            return false;
+        }
+        final int targetStep = SEQUENCE_GRID_PAGE_STEPS + testColumn;
+        if (sequenceStepPage != 1
+                || selectedSequenceStep != targetStep
+                || !stepEventInfoMatchesForAudit(targetStep, true)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step page change did not keep the visible column selected"
+                    + " | page=" + sequenceStepPage
+                    + " | selected=" + selectedSequenceStep
+                    + " | expected=" + targetStep
+                    + " | info=" + sequenceStepEventInfo.getText());
+            return false;
+        }
+
+        View targetEmptyCell = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Pad " + (pad + 1) + " step " + (testColumn + 1) + " off");
+        if (targetEmptyCell == null || !targetEmptyCell.performClick()
+                || selectedSequenceStep != targetStep) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: target-page step toggle"
+                    + " | target=" + targetStep
+                    + " | selected=" + selectedSequenceStep);
+            return false;
+        }
+
+        final int[] targetAfterAdd = nativeSequenceGetStepParameters(
+                pad, targetStep, gridTicks);
+        if (!hasStepEventForAudit(targetAfterAdd)
+                || !stepEventInfoMatchesForAudit(targetStep, false)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: second-page step did not become an active event"
+                    + " | target=" + targetStep
+                    + " | info=" + sequenceStepEventInfo.getText());
+            return false;
+        }
+
+        // Adjust through the same selected-step operation used by the hardware +/- path.
+        // The visible target must change while the pre-existing first-step parameters remain intact.
+        final int probabilityDelta = targetAfterAdd[1] >= 127 ? -1 : 1;
+        final int expectedProbability = Math.max(
+                0, Math.min(127, targetAfterAdd[1] + probabilityDelta));
+        adjustSelectedStepProbability(probabilityDelta);
+        final int[] targetAfterEdit = nativeSequenceGetStepParameters(
+                pad, targetStep, gridTicks);
+        if (!hasStepEventForAudit(targetAfterEdit)
+                || targetAfterEdit[1] != expectedProbability
+                || hasStepEventForAudit(
+                        nativeSequenceGetStepParameters(pad, testColumn, gridTicks))
+                || !java.util.Arrays.equals(stepOneSnapshot,
+                        nativeSequenceGetStepParameters(pad, 0, gridTicks))) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step page parameter edit hit the wrong absolute step"
+                    + " | target=" + targetStep
+                    + " | expectedProbability=" + expectedProbability
+                    + " | actual=" + (targetAfterEdit == null || targetAfterEdit.length < 2
+                            ? -1 : targetAfterEdit[1])
+                    + " | firstStepPreserved="
+                    + java.util.Arrays.equals(stepOneSnapshot,
+                            nativeSequenceGetStepParameters(pad, 0, gridTicks)));
+            return false;
+        }
+
+        View previousPage = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Step Sequencer previous 16-step page");
+        if (previousPage == null || !previousPage.isShown() || !previousPage.performClick()
+                || sequenceStepPage != 0
+                || selectedSequenceStep != testColumn
+                || !hasStepEventForAudit(nativeSequenceGetStepParameters(pad, targetStep, gridTicks))
+                || !java.util.Arrays.equals(stepOneSnapshot,
+                        nativeSequenceGetStepParameters(pad, 0, gridTicks))
+                || !stepEventInfoMatchesForAudit(testColumn, true)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: returning to Step page 1 changed the cursor or note state"
+                    + " | page=" + sequenceStepPage
+                    + " | selected=" + selectedSequenceStep);
+            return false;
+        }
+
+        nextPage = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Step Sequencer next 16-step page");
+        if (nextPage == null || !nextPage.performClick()
+                || sequenceStepPage != 1
+                || selectedSequenceStep != targetStep
+                || !stepEventInfoMatchesForAudit(targetStep, false)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: re-entering Step page 2 lost target cursor");
+            return false;
+        }
+
+        final String targetOnDescription =
+                "Pad " + (pad + 1) + " step " + (testColumn + 1) + " on";
+        View targetActiveCell = findViewWithContentDescription(
+                getWindow().getDecorView(), targetOnDescription);
+        if (targetActiveCell == null || !targetActiveCell.performClick()
+                || selectedSequenceStep != targetStep
+                || hasStepEventForAudit(
+                        nativeSequenceGetStepParameters(pad, targetStep, gridTicks))
+                || !java.util.Arrays.equals(stepOneSnapshot,
+                        nativeSequenceGetStepParameters(pad, 0, gridTicks))) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: removing the test event changed another step"
+                    + " | target=" + targetStep);
+            return false;
+        }
+
+        previousPage = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Step Sequencer previous 16-step page");
+        if (previousPage == null || !previousPage.performClick()
+                || sequenceStepPage != 0
+                || selectedSequenceStep != testColumn
+                || hasStepEventForAudit(
+                        nativeSequenceGetStepParameters(pad, targetStep, gridTicks))
+                || !java.util.Arrays.equals(stepOneSnapshot,
+                        nativeSequenceGetStepParameters(pad, 0, gridTicks))
+                || !stepEventInfoMatchesForAudit(testColumn, true)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step paging cleanup did not restore the original pattern");
+            return false;
+        }
+
+        Log.i(TAG, "UI_STEP_PAGE_NAVIGATION_COMPLETE: page1↔page2"
+                + " | column=" + (testColumn + 1)
+                + " | targetStep=" + (targetStep + 1)
+                + " | parameterEditRoutedToVisibleStep=true"
+                + " | originalStepAndPatternRestored=true");
+        return true;
+    }
+
     private void runUiAuditAfterStep() {
         if (destroyed) return;
 
@@ -12428,6 +12640,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 || !((TextView) stepEventView).getText().toString()
                         .contains("STEP 01")) {
             Log.e(TAG, "UI_INTERACTION_FAILED: step event parameters");
+            return;
+        }
+
+        if (!verifyStepPageNavigationAndRestoreForAudit()) {
             return;
         }
 
