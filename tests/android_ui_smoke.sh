@@ -412,8 +412,10 @@ fi
 
 echo "Running Track View mute round-trip preflight..."
 for required in \
-  'verifyTrackViewMuteToggleAndRestoreForAudit()' \
-  'captureTrackViewGridNoteSnapshotForAudit(' \
+  'verifyTrackViewMuteToggleAndRestoreForAudit(' \
+  'completeTrackViewMuteToggleAndRestoreForAudit(' \
+  'UI_TRACK_VIEW_MUTED_CAPTURE_READY:' \
+  'mpc-track-view-muted-capture-release' \
   'UI_TRACK_VIEW_MUTE_ROUNDTRIP_COMPLETE:'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Track View mute round-trip contract missing: $required"
@@ -469,6 +471,10 @@ for required in \
   'lastArrangementFocusTick' \
   'openGridFromArrangementEvent(trackIndex, tick)' \
   'UI_ARRANGEMENT_GRID_FOCUS_COMPLETE' \
+  'UI_TRACK_VIEW_MUTED_CAPTURE_READY:' \
+  'mpc-track-view-muted-capture-release' \
+  'mpc-groovebox-track-view-muted.png' \
+  'mpc-groovebox-track-view-muted-uiautomator.xml' \
   'UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY' \
   'mpc-arrange-grid-focus-capture-release' \
   'UI_ARRANGEMENT_BACK_CONTEXT_COMPLETE:' \
@@ -1925,6 +1931,7 @@ storage_picker_capture_done=0
 arrangement_grid_focus_capture_done=0
 arrangement_back_capture_done=0
 arrangement_grid_reentry_capture_done=0
+track_view_mute_capture_done=0
 audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
 audit_poll=0
 while (( SECONDS < audit_deadline )); do
@@ -2106,6 +2113,72 @@ PY
       exit 1
     fi
     browser_runtime_capture_done=1
+  fi
+
+  if [ "$track_view_mute_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_TRACK_VIEW_MUTED_CAPTURE_READY:" <<<"$log_snapshot"; then
+    echo "Capturing Track View mute state and Android accessibility hierarchy..."
+    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-track-view-muted.png; then
+      echo "ERROR: Track View mute-state screenshot capture failed"; exit 1
+    fi
+    if ! timeout --signal=TERM --kill-after=3s 30s \
+        adb shell uiautomator dump /sdcard/mpc-groovebox-track-view-muted-uiautomator.xml \
+        > /tmp/mpc-groovebox-track-view-muted-uiautomator.log 2>&1; then
+      cat /tmp/mpc-groovebox-track-view-muted-uiautomator.log || true
+      echo "ERROR: Track View mute-state accessibility dump failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-track-view-muted-uiautomator.xml \
+        > /tmp/mpc-groovebox-track-view-muted-uiautomator.xml; then
+      echo "ERROR: Track View mute-state hierarchy retrieval failed"; exit 1
+    fi
+    track_view_mute_state_line=$(grep -F -- "UI_TRACK_VIEW_MUTED_CAPTURE_READY:" <<<"$log_snapshot" | tail -n 1)
+    case "$track_view_mute_state_line" in
+      *mutedAfterToggle=true*) track_view_mute_target=true ;;
+      *mutedAfterToggle=false*) track_view_mute_target=false ;;
+      *) echo "ERROR: Track View mute capture marker omitted its target state"; exit 1 ;;
+    esac
+    if ! python3 - /tmp/mpc-groovebox-track-view-muted-uiautomator.xml "$track_view_mute_target" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected_muted = sys.argv[1], sys.argv[2]
+if expected_muted not in ("true", "false"):
+    raise SystemExit(f"Track View mute capture marker lacks target state: {expected_muted!r}")
+root = ET.parse(path).getroot()
+nodes = [
+    node for node in root.iter("node")
+    if re.fullmatch(r"Track View track \d+ mute", node.attrib.get("content-desc", ""))
+]
+if len(nodes) != 1:
+    raise SystemExit(f"expected one actionable Track View mute node, found {len(nodes)}")
+node = nodes[0]
+expected_text = "MUTE" if expected_muted == "true" else "M"
+actual_text = node.attrib.get("text", "")
+if actual_text != expected_text:
+    raise SystemExit(f"Track View native mute target is {expected_muted}, but UI label is {actual_text!r}")
+if node.attrib.get("enabled") != "true" or node.attrib.get("clickable") != "true":
+    raise SystemExit("Track View mute state is visible but not actionable")
+bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+if not bounds:
+    raise SystemExit(f"Track View mute control has invalid bounds: {node.attrib.get('bounds')!r}")
+x1, y1, x2, y2 = map(int, bounds.groups())
+if x2 <= x1 or y2 <= y1:
+    raise SystemExit(f"Track View mute control has empty bounds: {node.attrib.get('bounds')!r}")
+print(f"Track View mute state captured: label={actual_text} expectedMuted={expected_muted} bounds={(x1, y1, x2, y2)}")
+PY
+    then
+      echo "ERROR: captured Track View mute state does not match the actual native model"
+      cat /tmp/mpc-groovebox-track-view-muted-uiautomator.xml
+      exit 1
+    fi
+    if ! test -s /tmp/mpc-groovebox-track-view-muted.png; then
+      echo "ERROR: Track View mute-state screenshot is empty"; exit 1
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-track-view-muted-capture-release; then
+      echo "ERROR: could not release app-side Track View mute capture checkpoint"; exit 1
+    fi
+    track_view_mute_capture_done=1
   fi
 
   if [ "$arrangement_grid_focus_capture_done" -eq 0 ] \
@@ -2392,8 +2465,9 @@ PY
   fi
   if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
     if [ "$arrangement_back_capture_done" -ne 1 ] \
-        || [ "$arrangement_grid_reentry_capture_done" -ne 1 ]; then
-      echo "ERROR: UI audit completed without Arrange BACK and same-event re-entry evidence"
+        || [ "$arrangement_grid_reentry_capture_done" -ne 1 ] \
+        || [ "$track_view_mute_capture_done" -ne 1 ]; then
+      echo "ERROR: UI audit completed without Track View mute and Arrange navigation evidence"
       exit 1
     fi
     ui_audit_complete=1
@@ -2427,6 +2501,12 @@ if [ "$ui_audit_complete" -ne 1 ]; then
   adb_bounded 10 logcat -d -v threadtime > /tmp/mpc-groovebox-logcat.txt || true
   tail -n 350 /tmp/mpc-groovebox-logcat.txt || true
   exit 1
+fi
+
+if [ "$track_view_mute_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-track-view-muted.png \
+    || ! test -s /tmp/mpc-groovebox-track-view-muted-uiautomator.xml; then
+  echo "ERROR: Track View mute acceptance lacks screenshot/hierarchy evidence"; exit 1
 fi
 
 if [ "$arrangement_back_capture_done" -ne 1 ] \

@@ -11674,48 +11674,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 && view.isEnabled();
     }
 
-    private boolean verifyTrackViewMuteToggleAndRestoreForAudit() {
+    private void verifyTrackViewMuteToggleAndRestoreForAudit(
+            Runnable continuation) {
         if (!startupComplete || navigationController == null
                 || !"TRACK_VIEW".equals(currentPage)
                 || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute test has no active Track View context");
-            return false;
+            return;
         }
-
         final int trackCount = nativeSequenceGetTrackCount();
         final int trackIndex = nativeSequenceGetSelectedTrack();
         if (trackCount <= 0 || trackIndex < 0 || trackIndex >= trackCount) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute test has an invalid selected Track"
                     + " | count=" + trackCount + " | selected=" + trackIndex);
-            return false;
+            return;
         }
-
         final MpcUiState stateBefore = navigationController.state();
         final int sequenceBefore = nativeSequenceGetIndex();
         final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
         final boolean mutedBefore = nativeSequenceIsTrackMuted(trackIndex);
-        final String noteSnapshotBefore =
-                captureTrackViewGridNoteSnapshotForAudit(gridTicks);
-        final String muteDescription =
-                "Track View track " + (trackIndex + 1) + " mute";
-
-        View muteButton = findViewWithContentDescription(
-                getWindow().getDecorView(), muteDescription);
+        final String noteSnapshotBefore = captureTrackViewGridNoteSnapshotForAudit(gridTicks);
+        final String muteDescription = "Track View track " + (trackIndex + 1) + " mute";
+        View muteButton = findViewWithContentDescription(getWindow().getDecorView(), muteDescription);
         if (!trackViewMuteButtonShowsStateForAudit(muteButton, mutedBefore)
                 || !muteButton.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute control was not actionable"
-                    + " | trackIndex=" + trackIndex
-                    + " | mutedBefore=" + mutedBefore
+                    + " | trackIndex=" + trackIndex + " | mutedBefore=" + mutedBefore
                     + " | view=" + describeAuditView(muteButton));
-            return false;
+            return;
         }
-
         final boolean mutedAfterToggle = nativeSequenceIsTrackMuted(trackIndex);
-        View mutedButton = findViewWithContentDescription(
-                getWindow().getDecorView(), muteDescription);
+        View mutedButton = findViewWithContentDescription(getWindow().getDecorView(), muteDescription);
         if (mutedAfterToggle == mutedBefore
-                || !trackViewMuteButtonShowsStateForAudit(
-                        mutedButton, mutedAfterToggle)
+                || !trackViewMuteButtonShowsStateForAudit(mutedButton, mutedAfterToggle)
                 || nativeSequenceGetSelectedTrack() != trackIndex
                 || nativeSequenceGetIndex() != sequenceBefore
                 || navigationController.state().selectedTrack() != stateBefore.selectedTrack()
@@ -11723,26 +11714,90 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
                 || !"TRACK_VIEW".equals(currentPage)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute tap did not update visible/model state"
-                    + " | trackIndex=" + trackIndex
-                    + " | mutedBefore=" + mutedBefore
+                    + " | trackIndex=" + trackIndex + " | mutedBefore=" + mutedBefore
                     + " | mutedAfter=" + mutedAfterToggle
                     + " | button=" + describeAuditView(mutedButton));
-            return false;
+            return;
         }
 
+        if (!uiAuditSmokeMode) {
+            completeTrackViewMuteToggleAndRestoreForAudit(trackIndex, sequenceBefore, gridTicks,
+                    stateBefore, mutedBefore, mutedAfterToggle, muteDescription,
+                    noteSnapshotBefore, continuation);
+            return;
+        }
+
+        // Keep the actual post-click state visible while CI captures pixels and
+        // accessibility, then restore the state that existed before this audit.
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-track-view-muted-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_TRACK_VIEW_MUTED_CAPTURE_READY: trackIndex=" + (trackIndex + 1)
+                + " mutedBefore=" + mutedBefore + " mutedAfterToggle=" + mutedAfterToggle);
+        final long deadline = System.currentTimeMillis() + 60_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                final View capturedButton = findViewWithContentDescription(
+                        getWindow().getDecorView(), muteDescription);
+                if (nativeSequenceIsTrackMuted(trackIndex) != mutedAfterToggle
+                        || !trackViewMuteButtonShowsStateForAudit(capturedButton, mutedAfterToggle)
+                        || !"TRACK_VIEW".equals(currentPage)
+                        || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute state changed during evidence capture"
+                            + " | trackIndex=" + trackIndex + " | expectedMuted=" + mutedAfterToggle
+                            + " | actualMuted=" + nativeSequenceIsTrackMuted(trackIndex)
+                            + " | button=" + describeAuditView(capturedButton));
+                    return;
+                }
+                completeTrackViewMuteToggleAndRestoreForAudit(trackIndex, sequenceBefore, gridTicks,
+                        stateBefore, mutedBefore, mutedAfterToggle, muteDescription,
+                        noteSnapshotBefore, continuation);
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Track View muted screenshot/accessibility capture timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
+    }
+
+    private void completeTrackViewMuteToggleAndRestoreForAudit(
+            int trackIndex,
+            int sequenceBefore,
+            int gridTicks,
+            MpcUiState stateBefore,
+            boolean mutedBefore,
+            boolean mutedAfterToggle,
+            String muteDescription,
+            String noteSnapshotBefore,
+            Runnable continuation) {
+        View mutedButton = findViewWithContentDescription(getWindow().getDecorView(), muteDescription);
+        if (nativeSequenceIsTrackMuted(trackIndex) != mutedAfterToggle
+                || !trackViewMuteButtonShowsStateForAudit(mutedButton, mutedAfterToggle)
+                || !"TRACK_VIEW".equals(currentPage)
+                || navigationController == null
+                || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute state was not retained for restoration"
+                    + " | trackIndex=" + trackIndex + " | expectedMuted=" + mutedAfterToggle
+                    + " | actualMuted=" + nativeSequenceIsTrackMuted(trackIndex)
+                    + " | button=" + describeAuditView(mutedButton));
+            return;
+        }
         if (!mutedButton.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute control could not restore its initial state");
-            return false;
+            return;
         }
-
         final boolean mutedAfterRestore = nativeSequenceIsTrackMuted(trackIndex);
-        View restoredButton = findViewWithContentDescription(
-                getWindow().getDecorView(), muteDescription);
+        View restoredButton = findViewWithContentDescription(getWindow().getDecorView(), muteDescription);
         final boolean notesUnchanged = noteSnapshotBefore.equals(
                 captureTrackViewGridNoteSnapshotForAudit(gridTicks));
         if (mutedAfterRestore != mutedBefore
-                || !trackViewMuteButtonShowsStateForAudit(
-                        restoredButton, mutedBefore)
+                || !trackViewMuteButtonShowsStateForAudit(restoredButton, mutedBefore)
                 || !notesUnchanged
                 || nativeSequenceGetSelectedTrack() != trackIndex
                 || nativeSequenceGetIndex() != sequenceBefore
@@ -11751,60 +11806,50 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
                 || !"TRACK_VIEW".equals(currentPage)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute round-trip did not restore the original state"
-                    + " | trackIndex=" + trackIndex
-                    + " | mutedBefore=" + mutedBefore
+                    + " | trackIndex=" + trackIndex + " | mutedBefore=" + mutedBefore
                     + " | mutedAfterRestore=" + mutedAfterRestore
                     + " | notesUnchanged=" + notesUnchanged
                     + " | button=" + describeAuditView(restoredButton));
-            return false;
+            return;
         }
-
-        Log.i(TAG, "UI_TRACK_VIEW_MUTE_ROUNDTRIP_COMPLETE: trackIndex="
-                + trackIndex
-                + " mutedBefore=" + mutedBefore
-                + " toggledTo=" + mutedAfterToggle
-                + " restored=" + mutedAfterRestore
-                + " visibleButtonVerified=true"
-                + " notesUnchanged=true"
-                + " trackSequencePreserved=true");
-        return true;
+        Log.i(TAG, "UI_TRACK_VIEW_MUTE_ROUNDTRIP_COMPLETE: trackIndex=" + trackIndex
+                + " mutedBefore=" + mutedBefore + " toggledTo=" + mutedAfterToggle
+                + " restored=" + mutedAfterRestore + " visibleButtonVerified=true"
+                + " notesUnchanged=true trackSequencePreserved=true");
+        continuation.run();
     }
 
     private void runUiAuditAfterTrackView() {
         if (destroyed) return;
-
         if (findViewWithContentDescription(
                 getWindow().getDecorView(), "Track View track 1") == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View track strips");
             return;
         }
-        if (!verifyTrackViewMuteToggleAndRestoreForAudit()) {
-            return;
-        }
-        if (!prepareArrangementEventGestureAudit()) return;
+        verifyTrackViewMuteToggleAndRestoreForAudit(
+                this::continueUiAuditAfterTrackViewMute);
+    }
 
+    private void continueUiAuditAfterTrackViewMute() {
+        if (destroyed) return;
+        if (!prepareArrangementEventGestureAudit()) return;
         if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU before ARRANGE");
             return;
         }
         View arrangeFromTrackView = findViewWithExactText(
                 getWindow().getDecorView(), "ARRANGE");
-        if (arrangeFromTrackView == null
-                || !arrangeFromTrackView.performClick()) {
+        if (arrangeFromTrackView == null || !arrangeFromTrackView.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: ARRANGE from Track View");
             return;
         }
-
         final View arrangementSurface = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC linear arrangement editor");
         if (arrangementSurface == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement surface");
             return;
         }
-        waitForMeasuredAuditView(
-                arrangementSurface,
-                dp(160),
-                "Arrangement surface",
+        waitForMeasuredAuditView(arrangementSurface, dp(160), "Arrangement surface",
                 this::runUiAuditAfterArrangement);
     }
 
