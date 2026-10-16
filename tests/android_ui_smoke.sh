@@ -3547,6 +3547,37 @@ if grep -Fq -- "$FAVORITE_SAMPLE_NAME" "$FAVORITE_MEDIA_QUERY"; then
   exit 1
 fi
 
+# The earlier UI audit deliberately exercised a non-matching Search query. Clear it
+# again after returning from the real Android file picker, then inspect the actual
+# EditText state before navigating to USER FOLDER. Picker return can recreate the
+# Activity and restore an older navigation snapshot, so the earlier Browser reset
+# is not sufficient proof that this later folder scan starts unfiltered.
+if ! tap_ui_description "$PICKER_RETURN_XML" "MPC Browser clear search"; then
+  echo "ERROR: could not clear Browser Search after Android Document Picker return"; exit 1
+fi
+if ! dump_device_ui "$PICKER_RETURN_REMOTE" "$PICKER_RETURN_XML"; then
+  echo "ERROR: could not inspect Browser Search after picker return"; exit 1
+fi
+if ! python3 - "$PICKER_RETURN_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+fields = [
+    node for node in root.iter("node")
+    if node.attrib.get("content-desc", "") == "MPC Browser search files"
+]
+if len(fields) != 1:
+    raise SystemExit(f"expected one Browser Search EditText, found {len(fields)}")
+query = fields[0].attrib.get("text", "").strip()
+if query:
+    raise SystemExit(f"Browser Search retained stale query after CLEAR: {query!r}")
+print("Browser Search reset verified after Android Document Picker return.")
+PY
+then
+  echo "ERROR: Browser Search was not empty before USER FOLDER scan"; exit 1
+fi
+
 # Enter Places > User Folder. The folder action should only appear in this location.
 if ! tap_ui_description "$PICKER_RETURN_XML" "Browser PLACES tab"; then
   echo "ERROR: Browser Places tab is not actionable"; exit 1
