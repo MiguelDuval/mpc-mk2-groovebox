@@ -473,8 +473,6 @@ for required in \
   'UI_ARRANGEMENT_GRID_FOCUS_COMPLETE' \
   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:' \
   'mpc-track-view-muted-capture-release' \
-  'mpc-groovebox-track-view-muted.png' \
-  'mpc-groovebox-track-view-muted-uiautomator.xml' \
   'UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY' \
   'mpc-arrange-grid-focus-capture-release' \
   'UI_ARRANGEMENT_BACK_CONTEXT_COMPLETE:' \
@@ -1747,7 +1745,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=120'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
