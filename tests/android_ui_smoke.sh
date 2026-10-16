@@ -3570,7 +3570,10 @@ fields = [
 if len(fields) != 1:
     raise SystemExit(f"expected one Browser Search EditText, found {len(fields)}")
 query = fields[0].attrib.get("text", "").strip()
-if query:
+# Android UIAutomator reports EditText's hint as its "text" attribute when
+# the actual text is empty. MpcBrowserView explicitly uses "Search files" as
+# that hint; accept it, but reject any other non-empty query.
+if query not in ("", "Search files"):
     raise SystemExit(f"Browser Search retained stale query after CLEAR: {query!r}")
 print("Browser Search reset verified after Android Document Picker return.")
 PY
