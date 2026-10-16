@@ -25,6 +25,7 @@ Every coding agent working on this repository must read that document before mak
 Use these documents together:
 
 - `docs/PROJECT_MASTER_PROMPT.md` — master operating brief.
+- `docs/SESSION-STATE.md` — concise continuation state; verify current GitHub state before acting.
 - `docs/FIRMWARE-RESEARCH.md` — current firmware handoff findings, relevance, inconsistencies and next validation steps.
 - `docs/ARCHITECTURE.md` — layer boundaries.
 - `docs/IMPLEMENTATION-ROADMAP.md` — stage sequence.
