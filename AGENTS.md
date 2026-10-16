@@ -18,12 +18,14 @@ Every coding agent working on this repository must read that document before mak
 8. **Physical hardware is the authority.** Reverse-engineered mappings remain unconfirmed until tested on the actual MPC Studio MkII.
 9. **Do not copy proprietary Akai code, firmware resources or artwork.** Use documented behavior and original implementation/graphics.
 10. **Keep changes small and traceable.** Prefer one coherent objective per branch/commit.
+11. **Treat firmware reverse-engineering reports as evidence with a confidence level, not as unquestioned truth.** Resolve the input image identity and validate binary claims before using them to drive application changes.
 
 ## Project source hierarchy
 
 Use these documents together:
 
 - `docs/PROJECT_MASTER_PROMPT.md` — master operating brief.
+- `docs/FIRMWARE-RESEARCH.md` — current firmware handoff findings, relevance, inconsistencies and next validation steps.
 - `docs/ARCHITECTURE.md` — layer boundaries.
 - `docs/IMPLEMENTATION-ROADMAP.md` — stage sequence.
 - `docs/HARDWARE-MPC-STUDIO-MK2.md` — controller protocol research.
