@@ -429,7 +429,7 @@ if [[ -z "$track_view_audit_start" || -z "$track_view_audit_end" || "$track_view
   exit 1
 fi
 track_view_audit_block=$(sed -n "${track_view_audit_start},$((track_view_audit_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
-if ! grep -Fq -- 'verifyTrackViewMuteToggleAndRestoreForAudit()' <<<"$track_view_audit_block"; then
+if ! grep -Fq -- 'verifyTrackViewMuteToggleAndRestoreForAudit(' <<<"$track_view_audit_block"; then
   echo "ERROR: Track View audit must invoke the mute round-trip on its real workspace"
   exit 1
 fi
