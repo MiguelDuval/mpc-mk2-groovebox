@@ -11,6 +11,22 @@ Primary software reference is the official MPC Standalone OS v3.9 guide. Current
 
 ---
 
+## Firmware UI static evidence — added 2026-10-16
+
+A targeted static investigation of the user-supplied `MPC-3.9.1-Gen1-update.img` was completed. The internal version is **3.9.1.2**; image size **162,220,784 bytes**; SHA-256 `4c0f7797a006313fad206f9513eca8b3823e834c9e0941a6b5f088386cb835d6`. This is the **Gen1** image, not confirmation that the separately mentioned Gen2 image was analysed.
+
+Full text-only findings, exact resource paths, UI-relevant binary string offsets, configured geometry, high-confidence help semantics, confidence limits, unresolved questions and a copy/paste next-session prompt are in [MPC3-FIRMWARE-UI-RESEARCH.md](MPC3-FIRMWARE-UI-RESEARCH.md).
+
+Highest-value evidence:
+- ACVS layout/help resources under `/usr/share/Akai/SME0/Resources/ACVS/layout/` describe shared shell geometry, Browser click-to-select vs double-click-to-load, Grid event editing, context-dependent bottom-panel behavior, toolbar/Follow Now, Inspector, bank selection, mixer scope and Q-Link Learn/Momentary/Inspector.
+- Program Edit TUI resources under `/usr/share/Akai/SME0/Resources/Pages/Program Edit/` contain structured Drum (11 tabs) and Keygroup (24 tabs) parameter/editor descriptions; the MIDI TUI is explicitly partial.
+- The stripped `/usr/bin/MPC` contains mode, transport, Arrange, Track View, Grid View and Step Sequencer strings. These are search anchors, not a proven runtime transition graph.
+- Resource geometry values are configuration units, **not verified physical screen pixels**. No full live-firmware screenshots or runtime input traces were recovered in this pass.
+
+Implementation rule: use this research to guide original Android UI and transition tests; do not copy firmware code/artwork or publish extracted proprietary resources. Preserve the existing audio, sequencer, MIDI, hardware-adapter and persistence boundaries. Do not repeat the full firmware crawl; investigate a binary handler only when a specific UI implementation question is blocked.
+
+Confidence note: direct help/layout/TUI content is stronger than a string-only inference. Never present an asset name or string as proof of the runtime action it might represent.
+
 ## 1. Official MPC 3.9 manual
 
 MPC Standalone OS User Guide v3.9
