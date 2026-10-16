@@ -410,6 +410,28 @@ if grep -Fq -- 'case "CLIP":' <<<"$mixer_track_type_map_block" || \
   exit 1
 fi
 
+echo "Running Track View mute round-trip preflight..."
+for required in \
+  'verifyTrackViewMuteToggleAndRestoreForAudit()' \
+  'captureTrackViewGridNoteSnapshotForAudit(' \
+  'UI_TRACK_VIEW_MUTE_ROUNDTRIP_COMPLETE:'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Track View mute round-trip contract missing: $required"
+    exit 1
+  fi
+done
+track_view_audit_start=$(grep -n -m1 'private void runUiAuditAfterTrackView()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+track_view_audit_end=$(awk -v start="$track_view_audit_start" 'NR > start && /^    private / { print NR; exit }' "$MAIN_ACTIVITY_SOURCE")
+if [[ -z "$track_view_audit_start" || -z "$track_view_audit_end" || "$track_view_audit_end" -le "$track_view_audit_start" ]]; then
+  echo "ERROR: Track View audit source boundary is missing"
+  exit 1
+fi
+track_view_audit_block=$(sed -n "${track_view_audit_start},$((track_view_audit_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if ! grep -Fq -- 'verifyTrackViewMuteToggleAndRestoreForAudit()' <<<"$track_view_audit_block"; then
+  echo "ERROR: Track View audit must invoke the mute round-trip on its real workspace"
+  exit 1
+fi
+
 echo "Running Arrangement-event-to-Grid navigation preflight..."
 for required in \
   'focusSequenceGridAtTick(tick)' \
