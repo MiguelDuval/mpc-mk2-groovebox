@@ -1,0 +1,113 @@
+# Filesystem Map — MPC Firmware 3.9.1 Gen2
+
+## Original Firmware Image
+Path: input/MPC-3.9.1-Gen2-update.img
+Size: 366,327,168 bytes (349.4 MB)
+Format: Custom Akai update image with 4-partition table
+
+### Partition Table (offset 0x38, 4 entries × 96 bytes)
+| # | Name | Offset | Size | Description |
+|---|------|--------|------|-------------|
+| 1 | xz_stream_0 | 0x380 | 0x38A7C00 (59,793,408) | XZ-compressed rootfs.ext4 |
+| 2 | xz_stream_1 | 0x38A7F80 | 0x1C71800 (29,802,496) | XZ-compressed boot_recovery.ext4 |
+| 3 | dtb | 0x5519780 | 0x17E4 (6,116) | FIT image header (DTB) |
+| 4 | unknown | 0x551AF64 | 0x0 | Empty |
+
+---
+
+## Decompressed Streams
+
+### Stream 0 → rootfs.ext4
+- Compressed: Firmware Research Extracted/xz_stream_0_decompressed.bin (59,793,408)
+- Decompressed: Firmware Research Extracted/rootfs.ext4 (59,792,384)
+- Padded: Firmware Research Extracted/rootfs_padded.ext4 (59,793,408)
+- Filesystem: ext4 (magic 0xEF53 at offset 1024)
+- Mount point: / (root filesystem)
+- Status: NOT MOUNTED — contains main MPC application
+
+### Stream 1 → boot_recovery.ext4
+- Compressed: Firmware Research Extracted/xz_stream_1_decompressed.bin (29,802,496)
+- Decompressed: Firmware Research Extracted/boot_recovery.ext4 (29,801,472)
+- Padded: Firmware Research Extracted/boot_recovery_padded.ext4 (29,802,496)
+- Filesystem: ext4
+- Mount point: /boot or /recovery
+- Status: NOT MOUNTED — likely kernel modules, recovery UI
+
+---
+
+## FIT Image (kernel.fit)
+Path: Firmware Research Extracted/kernel.fit (27,193,344 bytes)
+DTS: Firmware Research Extracted/kernel.fit.dts (9,438 bytes)
+Format: U-Boot Flattened Image Tree (DTB-based)
+
+### FIT Components (extracted to fit_components/)
+| Component | File | Size | Format | Load Addr |
+|-----------|------|------|--------|-----------|
+| kernel | kernel.bin | 20,817,928 | Raw AArch64 | 0x02000000 |
+| ramdisk (zstd) | ramdisk.zst | 6,369,300 | Zstd compressed | 0x12180000 |
+| ramdisk (decomp) | ramdisk.decompressed | 15,466,496 | CPIO newc | — |
+| fdt-rk3588-az04-acvc | fdt-rk3588-az04-acvc.bin | 113,497 | DTB | 0x12000000 |
+| fdt-rk3588-az04-acvg | fdt-rk3588-az04-acvg.bin | 113,776 | DTB | 0x12000000 |
+| fdt-rk3588s-az04b-acva3 | fdt-rk3588s-az04b-acva3.bin | 98,648 | DTB | 0x12000000 |
+| fdt-rk3588s-az04b-acvr2 | fdt-rk3588s-az04b-acvr2.bin | 98,668 | DTB | 0x12000000 |
+| fdt-cmdline | fdt-cmdline.bin | 437 | DTB | 0x12100000 |
+
+### FIT Configurations (4 board variants + cmdline)
+1. conf-rk3588-az04-acvc (default) — RK3588 ACVC
+2. conf-rk3588-az04-acvg — RK3588 ACVG
+3. conf-rk3588s-az04b-acva3 — RK3588S ACVA3
+4. conf-rk3588s-az04b-acvr2 — RK3588S ACVR2
+5. cmdline — kernel commandline only
+
+All configurations: signed with RSA-2048 (key: akai-1), covering kernel + fdt + ramdisk
+
+---
+
+## Ramdisk Contents (CPIO newc, extracted to ramdisk_root/)
+
+### Directory Structure
+ramdisk_root/
+├── init (67,552) — init binary (ELF AArch64)
+├── shutdown (133,776) — shutdown binary (ELF AArch64)
+├── etc/
+│   ├── busybox.links.nosuid (2,792)
+│   ├── busybox.links.suid (107)
+│   ├── group (493)
+│   ├── ld.so.cache (1,878)
+│   ├── ld.so.conf (33)
+│   ├── passwd (837)
+│   ├── timestamp (15)
+│   ├── version (15)
+│   └── systemd/system/sysinit.target.wants/
+├── mnt/ (empty)
+└── usr/
+    ├── bin/
+    │   ├── az01-image (67,632) — firmware image tool
+    │   ├── az0x-migrate (67,640) — boot migration tool
+    │   ├── az0x-splash (133,776) — boot splash tool
+    │   ├── busybox.nosuid (723,608) — BusyBox
+    │   ├── busybox.suid (67,648) — BusyBox (suid)
+    │   ├── dtc (204,368) — Device Tree Compiler
+    │   ├── fdtdump (67,632)
+    │   ├── fdtget (67,632)
+    │   ├── fdtoverlay (67,632)
+    │   ├── fdtput (67,632)
+    │   └── update-alternatives (4,679) — shell script
+    └── lib/
+        ├── ld-linux-aarch64.so.1 (202,768)
+        ├── libaio.so.1.0.2 (67,408)
+        ├── libanl.so.1 (67,488)
+        ├── libaz01-prog.so.1.3 (133,096) — **Akai firmware logic**
+        ├── libblkid.so.1.1.0 (461,824)
+        ├── libBrokenLocale.so.1 (67,568)
+        ├── libcares.so.2.12.0 (198,584)
+        ├── libcrypto.so.3 (4,624,896)
+        └── az0x/pubkeys/akai-1.pub (451) — RSA-2048 public key
+
+---
+
+## Target Hardware (from DTBs)
+- SoC: Rockchip RK3588 (2 variants) / RK3588S (2 variants)
+- CPU: 4× Cortex-A76 + 4× Cortex-A55 (RK3588) or 4× Cortex-A76 (RK3588S)
+- Board IDs: az04-acvc, az04-acvg, az04b-acva3, az04b-acvr2
+- Architecture: ARM64 (AArch64)

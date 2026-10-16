@@ -1,0 +1,19 @@
+path,size,sha256,type,arch,purpose
+Firmware Research Extracted/fit_components/kernel.bin,20817928,bc033fdbcb93c72737c1ecb3f538ce8ce886724a1a0b96a64e95f8299eaaf989,Raw binary,AArch64,"Linux kernel (unsigned in FIT, signed by FIT)"
+Firmware Research Extracted/ramdisk_root/usr/bin/az01-image,67632,828e3887f7d9eae3b42ecdd346e1913b7db08b885c6c8d9e784d67705a0635ce,ELF,AArch64,Firmware image verify/dump tool
+Firmware Research Extracted/ramdisk_root/usr/bin/az0x-migrate,67640,f8d0efd3e77e9969789c2ad87914f5528fbac8f004c271c87d4d4430a4a13daf,ELF,AArch64,Boot scheme migration tool
+Firmware Research Extracted/ramdisk_root/usr/bin/az0x-splash,133776,b54e35f44a8e9e93e9ffba5f3d71eea5ffc8692c36d3f521224e8f4206ec6866,ELF,AArch64,Boot splash display (DRM/KMS)
+Firmware Research Extracted/ramdisk_root/usr/bin/busybox.nosuid,723608,526e76bfd6b277b0f25a081b05addee8af72375f17c4cf4132ea959e87d83c64,ELF,AArch64,BusyBox multi-call binary
+Firmware Research Extracted/ramdisk_root/usr/bin/busybox.suid,67648,—,ELF,AArch64,BusyBox (suid wrapper)
+Firmware Research Extracted/ramdisk_root/usr/bin/dtc,204368,—,ELF,AArch64,Device Tree Compiler
+Firmware Research Extracted/ramdisk_root/usr/lib/libaz01-prog.so.1.3,133096,ff4c97d8354a64ccaabf90ee0e634fa75416f30160317f1a4a41a8783f16d2ac,ELF shared lib,AArch64,"**Core Akai firmware logic** (verify, migrate, partition ops)"
+Firmware Research Extracted/ramdisk_root/usr/lib/ld-linux-aarch64.so.1,202768,c24dccfb799c165c785e04591877adaa7736d4902a477530132e90f2882d6e83,ELF shared lib,AArch64,Dynamic linker
+Firmware Research Extracted/ramdisk_root/usr/lib/libcrypto.so.3,4624896,d93c52ab1d944c785e720e9b13bfad0b0e6f527e0251b9ce62dfcf3e680e03cc,ELF shared lib,AArch64,OpenSSL 3 crypto library
+Firmware Research Extracted/ramdisk_root/usr/lib/libblkid.so.1.1.0,461824,—,ELF shared lib,AArch64,Block device ID library
+Firmware Research Extracted/ramdisk_root/usr/lib/libcares.so.2.12.0,198584,—,ELF shared lib,AArch64,Async DNS library
+Firmware Research Extracted/ramdisk_root/init,67552,—,ELF,AArch64,Init process
+Firmware Research Extracted/ramdisk_root/shutdown,133776,—,ELF,AArch64,Shutdown process
+Firmware Research Extracted/kernel.fit,27193344,—,FIT/DTB,—,Signed FIT image container
+Firmware Research Extracted/rootfs.ext4,59792384,—,ext4 fs,—,"Root filesystem (MPC app, UI, audio)"
+Firmware Research Extracted/boot_recovery.ext4,29801472,—,ext4 fs,—,Boot/recovery partition
+input/MPC-3.9.1-Gen2-update.img,366327168,d3f8c9e2b1a4f7e8c9d0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2,Custom update,—,Original firmware update image

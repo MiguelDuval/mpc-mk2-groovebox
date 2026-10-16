@@ -1,0 +1,158 @@
+# Important Strings — MPC Firmware 3.9.1 Gen2
+
+## From az01-image (Firmware Research Extracted/ramdisk_root/usr/bin/az01-image)
+=== Firmware Image Handling ===
+az01_image_for_each_compatible
+az01_image_for_each_dt_compatible
+az01_image_for_each_signature
+az01_image_for_each_compatible_device
+az01_image_v2_ops
+az01_image_version
+az01_load_public_key_file
+az01_image_for_each_partition_compatible
+az01_image_v3_ops
+az01_open_image
+az01_close_image
+az01_image_for_each_partition_hash
+az01_verify_image
+az01_set_image_key_provider
+az01_image_description
+az01_image_fdt_ops
+az01_image_for_each_partition
+
+=== CLI Options ===
+usage: az01-image [options] <file>
+  --usb-ids          Print the USB IDs to which the image applies
+  --signing-keys     Print the names of the signing keys applied to the file
+  --verify           Verify checksums in the image file
+  --key-dir <DIR>    Look for public keys in this directory
+  --dump <PART>      Dump the contents of the named partition (use ':boot' for boot partition)
+
+=== Error Messages ===
+unknown: key not found
+signature: %s (%s)
+verify: success%s
+boot
+failed to initialise decompressor
+ (no valid signature found)
+--key-dir may only be specified once
+
+## From az0x-migrate (Firmware Research Extracted/ramdisk_root/usr/bin/az0x-migrate)
+=== Migration Logic ===
+az01_image_partition_is_compatible_model
+az01_image_is_compatible_current_machine
+az01_image_set_onboard_key_lookup
+bootimg appears corrupt
+image is unusable: compressed bootimg!
+failed to write new bootloader
+usage: az0x-migrate <image>
+verifying image...
+You are about to migrate this device to the new boot scheme.
+u-boot
+fastboot
+failed to reboot
+
+## From az0x-splash (Firmware Research Extracted/ramdisk_root/usr/bin/az0x-splash)
+=== Splash Screen / DRM ===
+drmCrtcGetSequence
+vblank handler: sequence %u at %u.%06u
+DRM sequence handler: sequence %lu at %luns
+timer added for %p(%p) expiring %lu.%09lu at index %zu (total %zu timers)
+pthread_cond_signal
+pthread_mutex_init
+pthread_cond_init
+
+=== Crypto (OpenSSL) ===
+SHA1_Init, SHA1_Update, SHA1_Final
+SHA256_Init, SHA256_Update, SHA256_Final
+EVP_sha256, EVP_sha512
+EVP_DigestVerifyInit, EVP_DigestVerifyUpdate, EVP_DigestVerifyFinal
+EVP_PKEY_free, EVP_PKEY_CTX_set_rsa_padding
+PEM_read_PUBKEY
+
+=== Filesystem / Mount ===
+mnt_context_mount
+fdisk_assign_device
+umount
+mount
+libmount.so.1
+MOUNT_2.30, MOUNT_2.19
+
+=== Image Validation ===
+invalid bootimg: trailing tags
+invalid bootimg: unnamed property
+invalid bootimg: too much nesting
+invalid bootimg: root node is named
+invalid bootimg: path is too deep
+invalid bootimg: trailing end tag
+invalid bootimg: early end
+invalid bootimg: trailing data
+failed to seek to initial write offset
+
+## From libaz01-prog.so.1.3 (Firmware Research Extracted/ramdisk_root/usr/lib/libaz01-prog.so.1.3)
+=== Core Exports ===
+az01_open_image
+az01_close_image
+az01_verify_image
+az01_strerror
+az01_image_partition_is_compatible_model
+az01_image_is_compatible_current_machine
+az01_image_set_onboard_key_lookup
+az01_load_public_key_file
+az01_image_for_each_partition
+az01_image_for_each_signature
+az01_image_for_each_compatible
+az01_image_for_each_dt_compatible
+az01_image_for_each_partition_compatible
+az01_image_for_each_partition_hash
+az01_image_v2_ops
+az01_image_v3_ops
+az01_image_description
+az01_set_image_key_provider
+az01_image_fdt_ops
+
+=== Dependencies ===
+libaz01-prog.so.0 (SONAME)
+libcrypto.so.3
+libblkid.so.1
+libmount.so.1
+libcares.so.2
+libaio.so.1
+
+## From kernel.fit.dts (Firmware Research Extracted/kernel.fit.dts)
+=== Board Variants ===
+rk3588-az04-acvc
+rk3588-az04-acvg
+rk3588s-az04b-acva3
+rk3588s-az04b-acvr2
+
+=== Signatures ===
+algo = "sha256,rsa2048"
+signer-version = "2024.01"
+signer-name = "mkimage"
+key-name-hint = "akai-1"
+sign-images = "kernel", "fdt", "ramdisk"
+
+=== Hashes (SHA256) ===
+kernel: bc033fdbcb93c72737c1ecb3f538ce8ce886724a1a0b96a64e95f8299eaaf989
+ramdisk: 1f13e625893dc7da6958670b711cc4a7c21ec3cd7e2d31144982b426e25b48ec
+fdt-acvc: b690d6864354ebf39325b9596efb0f994670352f9d6ca0c08cb3c28a1554eb3a
+fdt-acvg: a64e0504dbd2226cfb718fe5c0a309163aa53ece101153f3a41b3e18c1f8ef4c
+fdt-acva3: abec719fb05e9763ad17822465f612325b2ee1b4f10f52c11f8f90c1b89399f
+fdt-acvr2: ee3e13818369c4c312e3a781e508e85b0992c814d6291f54bd1a0cc6d88d2d0
+
+## From Ramdisk CPIO (Firmware Research Extracted/fit_components/ramdisk.decompressed)
+=== System Files ===
+etc/passwd, etc/group, etc/shadow (standard Linux users)
+etc/ld.so.conf, etc/ld.so.cache
+etc/systemd/system/sysinit.target.wants/run-postinsts.service
+init, shutdown (binaries)
+
+=== Audio Group ===
+audio:*:29: (group entry in /etc/group)
+
+## Hardware-Related Strings (from DTBs - inferred)
+- rk3588, rk3588s (SoC family)
+- az04, az04b (board revisions)
+- acvc, acvg, acva3, acvr2 (variant codes)
+- load addresses: 0x02000000 (kernel), 0x12000000 (DTB), 0x12100000 (cmdline), 0x12180000 (ramdisk)

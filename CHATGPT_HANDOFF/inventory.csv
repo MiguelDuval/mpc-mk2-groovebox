@@ -1,0 +1,58 @@
+path,size,extension,type,sha256
+Firmware Research Extracted\xz_stream_0_decompressed.bin,59793408,.bin,Unknown binary,SKIPPED (>50MB)
+Firmware Research Extracted\xz_stream_1_decompressed.bin,29802496,.bin,Unknown binary,00b1ed2e325ceeefa0d2629c283038ffdecb618ad210828496279b1e9edd3479
+Firmware Research Extracted\rootfs.ext4,59792384,.ext4,Unknown binary,SKIPPED (>50MB)
+Firmware Research Extracted\boot_recovery.ext4,29801472,.ext4,Unknown binary,3252bbd6024ff8e3a79ef95df1b1837e03d8ca006cb075650804ff9d84eaa6e5
+Firmware Research Extracted\rootfs_padded.ext4,59793408,.ext4,Unknown binary,SKIPPED (>50MB)
+Firmware Research Extracted\boot_recovery_padded.ext4,29802496,.ext4,Unknown binary,247ec7f6bff12ead5e53657abd9d8dfe8ea30961c9d214cdadf6234f8f80183f
+Firmware Research Extracted\kernel.fit,27193344,.fit,DTB (Device Tree Blob),463809dbf106a6de55e234d0ac3d472b8015235757355659cf722f2574dbe594
+Firmware Research Extracted\kernel.fit.dts,9438,.dts,DTS (Device Tree Source),5ee992264c684cf084bcc26831ae116f9bc8aa9eaed0bc339f08d9bc2fa203f1
+Firmware Research Extracted\fit_components\kernel.bin,20817928,.bin,Unknown binary,bc033fdbcb93c72737c1ecb3f538ce8ce886724a1a0b96a64e95f8299eaaf989
+Firmware Research Extracted\fit_components\ramdisk.zst,6369300,.zst,Zstandard compressed,09aceab56576ed4d1a0422e6b05c3f75339b3ee7b7a76e39a7639ac183ba7978
+Firmware Research Extracted\fit_components\ramdisk.decompressed,15466496,.decompressed,Text file,55c09b131a3565a394867df82bde87b5d977df7f7d6e85e0f335f6e918feeb8b
+Firmware Research Extracted\ramdisk_root\init,67552,(none),ELF binary (AArch64),8482ac71648d6be871985deaba849916b98c8609c9cd30ffdae9157b8b702f68
+Firmware Research Extracted\ramdisk_root\shutdown,133776,(none),ELF binary (AArch64),b54e35f44a8e9e93e9ffba5f3d71eea5ffc8692c36d3f521224e8f4206ec6866
+Firmware Research Extracted\ramdisk_root\etc\busybox.links.nosuid,2792,.nosuid,DTS (Device Tree Source),82aa26cf749ec253dc9d43f4aa426b31591e1f9cf30e6a6ff72c64cb10e0c45a
+Firmware Research Extracted\ramdisk_root\etc\busybox.links.suid,107,.suid,DTS (Device Tree Source),e496cf8273de6daa3ffb85d7cc6cfeabf4f05ca90264ed6c1786f93e19b74667
+Firmware Research Extracted\ramdisk_root\etc\group,493,(none),Text file,fa2fc2b2587c40168093723c8e45b08292f2cf6ef5b7f59cf6b5ee2b8510a323
+Firmware Research Extracted\ramdisk_root\etc\ld.so.cache,1878,.cache,Text file,efa6e6e713baed33c338edd5d9fb392c76961483da5916a785e2ca55d65095e8
+Firmware Research Extracted\ramdisk_root\etc\ld.so.conf,33,.conf,Text file,27d7ebd402e1b9a20fd3a0663ccc10e1b1feff2d9dfb1ad7dd12bb76cfe0880a
+Firmware Research Extracted\ramdisk_root\etc\passwd,837,(none),Text file,43a75b645f4d04bfbf50f8a47c93b78358b0f65d525d0d6a3e79cb96c9ab56c4
+Firmware Research Extracted\ramdisk_root\etc\timestamp,15,(none),Text file,4dd52aa0f6ee7671033f1509d17dd6144b93b841416f0fd069ffe76a743f005d
+Firmware Research Extracted\ramdisk_root\etc\version,15,(none),Text file,4dd52aa0f6ee7671033f1509d17dd6144b93b841416f0fd069ffe76a743f005d
+Firmware Research Extracted\ramdisk_root\usr\bin\az01-image,67632,(none),ELF binary (AArch64),828e3887f7d9eae3b42ecdd346e1913b7db08b885c6c8d9e784d67705a0635ce
+Firmware Research Extracted\ramdisk_root\usr\bin\az0x-migrate,67640,(none),ELF binary (AArch64),f8d0efd3e77e9969789c2ad87914f5528fbac8f004c271c87d4d4430a4a13daf
+Firmware Research Extracted\ramdisk_root\usr\bin\az0x-splash,133776,(none),ELF binary (AArch64),b54e35f44a8e9e93e9ffba5f3d71eea5ffc8692c36d3f521224e8f4206ec6866
+Firmware Research Extracted\ramdisk_root\usr\bin\busybox.nosuid,723608,.nosuid,ELF binary (AArch64),526e76bfd6b277b0f25a081b05addee8af72375f17c4cf4132ea959e87d83c64
+Firmware Research Extracted\ramdisk_root\usr\bin\busybox.suid,67648,.suid,ELF binary (AArch64),1eec62db6e7218224aec1a446358b7d344543ee26f8785d6eca9975bfb8b8271
+Firmware Research Extracted\ramdisk_root\usr\bin\dtc,204368,(none),ELF binary (AArch64),47e834c99414f27ea69e28683dde28de8f775e83e0eed371fe65484a3c6b8a0f
+Firmware Research Extracted\ramdisk_root\usr\bin\fdtdump,67632,(none),ELF binary (AArch64),dbdb7351ce11f6cc26b35c55fba1fa2450633a46f2ef71f062bb5ac8f1abc64b
+Firmware Research Extracted\ramdisk_root\usr\bin\fdtget,67632,(none),ELF binary (AArch64),d4eca9844929243c4eec2e7ba3cf4913475963030a54e5df40dc1c28dd21aba9
+Firmware Research Extracted\ramdisk_root\usr\bin\fdtoverlay,67632,(none),ELF binary (AArch64),8871a5c460035c7b889a0b42388755a3555c86b9877406cbdcc28cf63acbe80f
+Firmware Research Extracted\ramdisk_root\usr\bin\fdtput,67632,(none),ELF binary (AArch64),793f04156884424c3a74dc1c7938b566a8352fc7b037797aff5ea10cc2f93813
+Firmware Research Extracted\ramdisk_root\usr\bin\update-alternatives,4679,(none),DTS (Device Tree Source),9cc31bda94d3fd2787732a77b00be50bf2f45680f08aa3420724285c0e01c4f4
+Firmware Research Extracted\ramdisk_root\usr\lib\ld-linux-aarch64.so.1,202768,.1,ELF binary (AArch64),c24dccfb799c165c785e04591877adaa7736d4902a477530132e90f2882d6e83
+Firmware Research Extracted\ramdisk_root\usr\lib\libaio.so.1.0.2,67408,.2,ELF binary (AArch64),149f24bf1c63e11a7855128518635d74756f7cbc3021b51bfe5a4bbebde21f29
+Firmware Research Extracted\ramdisk_root\usr\lib\libanl.so.1,67488,.1,ELF binary (AArch64),397227da7ea16db9023f083967110b90ccff45db43f71296efccce83c3329e1a
+Firmware Research Extracted\ramdisk_root\usr\lib\libaz01-prog.so.1.3,133096,.3,ELF binary (AArch64),ff4c97d8354a64ccaabf90ee0e634fa75416f30160317f1a4a41a8783f16d2ac
+Firmware Research Extracted\ramdisk_root\usr\lib\libblkid.so.1.1.0,461824,.0,ELF binary (AArch64),c85aab542ba78e4541f3db748abcfb5d0f6a98d84a18101c907566bcb4edeb7a
+Firmware Research Extracted\ramdisk_root\usr\lib\libBrokenLocale.so.1,67568,.1,ELF binary (AArch64),ffb26c22af9a600bf621834848d86950fa7347938b63e9f6d007c43ba181dc57
+Firmware Research Extracted\ramdisk_root\usr\lib\libcares.so.2.12.0,198584,.0,ELF binary (AArch64),238e5f953d205ba813a404ee16f36f671b5ef2586fb90b4eefaf3ee28ae37e43
+Firmware Research Extracted\ramdisk_root\usr\lib\libcrypto.so.3,4624896,.3,ELF binary (AArch64),d93c52ab1d944c785e720e9b13bfad0b0e6f527e0251b9ce62dfcf3e680e03cc
+Firmware Research Extracted\ramdisk_root\usr\lib\az0x\pubkeys\akai-1.pub,451,.pub,Text file,06f10149361742596846c6f7b41b111a74cc7271b2f52a7b52cdfae56e8c7c41
+input\MPC-3.9.1-Gen2-update.img,366327168,.img,Unknown binary,SKIPPED (>50MB)
+scripts\analyze_firmware.py,6756,.py,DTS (Device Tree Source),a40102973d0cacb8585d58c8896e84fb7e598d6c654fab66c1645d1ddb8bf5c3
+scripts\find_boot.py,404,.py,DTS (Device Tree Source),22376ab1cb6a2f0301137c4f0b5b7277242a19287b385a83655c51b0fb536a97
+scripts\parse_partitions.py,1260,.py,DTS (Device Tree Source),db8766464b8ab6517ebacb7fdc933e1f7b5fa6fda48da3492058d30dbd868c87
+scripts\check_dtbs.py,2558,.py,DTS (Device Tree Source),3bc5487760cdebdc4e8227d4153e6c8d3a69c59897871b4bcc1d77b50825f860
+scripts\analyze_dtbs_xz.py,1735,.py,DTS (Device Tree Source),1bb64fa9b39ed77f37b58037f9deaf8508491b7625b890abf4116275780817a4
+scripts\parse_dtb_structure.py,4061,.py,DTS (Device Tree Source),30fc45b424d64f5720f349ce38e8621d4b1f7e4408acacfc75d5d7b2f19dfc4f
+scripts\extract_xz.py,3474,.py,DTS (Device Tree Source),cd3a304766f3bb0f53bb9cb9c9e29baee2aba4fcecdc4c0e2900d06152856e6c
+scripts\save_ext4.py,2221,.py,DTS (Device Tree Source),8ccf037e9e243da71bf784f3b72a8f3a2ca41e1bb66fe22ef87ef16cbc64b75b
+scripts\extract_fit.py,1629,.py,DTS (Device Tree Source),02fc23b8f6c0555aefcaaa82a9d42728e676cd7d3288378a425108cdf9330eea
+scripts\extract_fit2.py,3681,.py,DTS (Device Tree Source),d2ef7a5e6b6158a0c03308d31b80261db0c09a19ef49863037afce02783cb460
+scripts\extract_kernel_ramdisk.py,2967,.py,DTS (Device Tree Source),350038c259bb485329019b5cf6879d84d74a7ab6fb5486530e103843cae556eb
+scripts\extract_kernel_ramdisk2.py,3302,.py,DTS (Device Tree Source),84ad173bffa4c93b8e68a35deb5f813bce055d3c0b8e4c15a5e42fa45d1270c9
+scripts\analyze_binaries.py,3186,.py,DTS (Device Tree Source),14eb3bc6b18bdd09733eb80c3925b2df19b0f943d0fe12d6482fe5240cd11256
+scripts\extract_strings.py,2721,.py,DTS (Device Tree Source),c4685a958399e94196ec8b5e2a8266200b8013e2aeed5465d001146aa1b68e6e
+scripts\inventory.py,5719,.py,DTS (Device Tree Source),06a6d3a8a552f5c7752cbc0abdb9856a4585433922acb728343f400ebec96176
