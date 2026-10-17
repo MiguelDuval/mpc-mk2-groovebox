@@ -103,6 +103,101 @@ int main() {
     assert(placementSequence.tracks[0].patterns[0].notes[0].ratchet == 3);
     assert(placementSequence.tracks[0].patterns[0].notes[0].nudgeTicks == -11);
 
+    // Split an existing timeline placement without changing its Pattern data.
+    mpc::domain::Sequence splitSequence;
+    splitSequence.id = "split-placement-sequence";
+    splitSequence.lengthTicks = 3840;
+    mpc::domain::Track splitTrack;
+    splitTrack.id = "split-placement-track";
+    mpc::domain::Pattern splitPattern;
+    splitPattern.id = "split-placement-pattern";
+    splitPattern.lengthTicks = 3840;
+    splitPattern.notes = {{240, 120, 36, 97, 88, 3, -11}};
+    splitTrack.patterns.push_back(splitPattern);
+    splitSequence.tracks.push_back(splitTrack);
+    assert(mpc::sequencer::addPatternPlacement(
+            splitSequence, 0, "clip-left", "split-placement-pattern", 0, 3840));
+    assert(!mpc::sequencer::splitPatternPlacement(
+            splitSequence, 0, "clip-left", 0, "clip-right"));
+    assert(!mpc::sequencer::splitPatternPlacement(
+            splitSequence, 0, "clip-left", 3840, "clip-right"));
+    assert(!mpc::sequencer::splitPatternPlacement(
+            splitSequence, 0, "missing-clip", 1920, "clip-right"));
+    assert(mpc::sequencer::splitPatternPlacement(
+            splitSequence, 0, "clip-left", 1920, "clip-right"));
+    assert(splitSequence.tracks[0].placements.size() == 2);
+    assert(splitSequence.tracks[0].placements[0].id == "clip-left");
+    assert(splitSequence.tracks[0].placements[0].startTick == 0);
+    assert(splitSequence.tracks[0].placements[0].lengthTicks == 1920);
+    assert(splitSequence.tracks[0].placements[0].sourceOffsetTicks == 0);
+    assert(splitSequence.tracks[0].placements[1].id == "clip-right");
+    assert(splitSequence.tracks[0].placements[1].startTick == 1920);
+    assert(splitSequence.tracks[0].placements[1].lengthTicks == 1920);
+    assert(splitSequence.tracks[0].placements[1].sourceOffsetTicks == 1920);
+    assert(splitSequence.tracks[0].patterns.size() == 1);
+    assert(splitSequence.tracks[0].patterns[0].notes.size() == 1);
+    assert(splitSequence.tracks[0].patterns[0].notes[0].tick == 240);
+    assert(splitSequence.tracks[0].patterns[0].notes[0].velocity == 97);
+    const auto splitUndo = [&splitSequence]() {
+        if (!mpc::sequencer::erasePatternPlacement(
+                splitSequence, 0, "clip-right")) return false;
+        return mpc::sequencer::resizePatternPlacement(
+                splitSequence, 0, "clip-left", 3840);
+    };
+    const auto splitRedo = [&splitSequence]() {
+        return mpc::sequencer::splitPatternPlacement(
+                splitSequence, 0, "clip-left", 1920, "clip-right");
+    };
+    mpc::MpcEditHistory splitHistory;
+    assert(splitHistory.record({"Split Arrangement Pattern placement", splitUndo, splitRedo}));
+    assert(splitHistory.undo());
+    assert(splitSequence.tracks[0].placements.size() == 1);
+    assert(splitSequence.tracks[0].placements[0].id == "clip-left");
+    assert(splitSequence.tracks[0].placements[0].startTick == 0);
+    assert(splitSequence.tracks[0].placements[0].lengthTicks == 3840);
+    assert(splitHistory.redo());
+    assert(splitSequence.tracks[0].placements.size() == 2);
+    assert(splitSequence.tracks[0].placements[1].sourceOffsetTicks == 1920);
+    assert(splitHistory.undo());
+    assert(splitSequence.tracks[0].placements.size() == 1);
+    assert(splitSequence.tracks[0].placements[0].lengthTicks == 3840);
+    assert(splitSequence.tracks[0].patterns[0].notes.size() == 1);
+
+    // Playback projection follows the placement model without mutating shared Pattern notes.
+    splitSequence.tracks[0].patterns[0].notes.push_back({2400, 180, 38, 71, 91, 2, 9});
+    assert(mpc::sequencer::splitPatternPlacement(
+            splitSequence, 0, "clip-left", 1920, "clip-right"));
+    mpc::domain::Pattern renderedArrangement;
+    assert(mpc::sequencer::buildArrangementPlaybackPattern(
+            splitSequence, splitSequence.tracks[0], renderedArrangement));
+    assert(renderedArrangement.lengthTicks == splitSequence.lengthTicks);
+    assert(renderedArrangement.notes.size() == 2);
+    assert(renderedArrangement.notes[0].tick == 240);
+    assert(renderedArrangement.notes[0].durationTicks == 120);
+    assert(renderedArrangement.notes[0].note == 36);
+    assert(renderedArrangement.notes[0].velocity == 97);
+    assert(renderedArrangement.notes[0].probability == 88);
+    assert(renderedArrangement.notes[0].ratchet == 3);
+    assert(renderedArrangement.notes[0].nudgeTicks == -11);
+    assert(renderedArrangement.notes[1].tick == 2400);
+    assert(renderedArrangement.notes[1].durationTicks == 180);
+    assert(renderedArrangement.notes[1].note == 38);
+    assert(renderedArrangement.notes[1].velocity == 71);
+    assert(renderedArrangement.notes[1].probability == 91);
+    assert(renderedArrangement.notes[1].ratchet == 2);
+    assert(renderedArrangement.notes[1].nudgeTicks == 9);
+    splitSequence.tracks[0].placements[1].startTick = 2160;
+    splitSequence.tracks[0].placements[1].lengthTicks = 1680;
+    assert(mpc::sequencer::buildArrangementPlaybackPattern(
+            splitSequence, splitSequence.tracks[0], renderedArrangement));
+    assert(renderedArrangement.notes.size() == 2);
+    assert(renderedArrangement.notes[1].tick == 2640);
+    splitSequence.tracks[0].placements[1].sourceOffsetTicks = 3000;
+    assert(!mpc::sequencer::buildArrangementPlaybackPattern(
+            splitSequence, splitSequence.tracks[0], renderedArrangement));
+    assert(splitSequence.tracks[0].patterns[0].notes[1].tick == 2400);
+    assert(splitSequence.tracks[0].patterns[0].notes[1].nudgeTicks == 9);
+
     mpc::domain::Pattern pattern;
     pattern.lengthTicks = 3840;
     pattern.notes = {

@@ -2202,6 +2202,12 @@ PY
         | grep -F -- "UI_ARRANGE_EVENT_STATE: action=${action} " \
         | tail -n 1 || true
     }
+    arrangement_placement_state_line() {
+      local action="$1"
+      adb_bounded 5 logcat -d -v brief 2>/dev/null \
+        | grep -F -- "UI_ARRANGE_PLACEMENT_STATE: action=${action} " \
+        | tail -n 1 || true
+    }
     arrangement_insertion_target_line() {
       adb_bounded 5 logcat -d -v brief 2>/dev/null \
         | grep -F -- "UI_ARRANGE_INSERTION_TARGET: " \
@@ -2680,7 +2686,7 @@ visible_start=max(0,(viewport-1)*tpb)
 visible_end=min(length,(viewport+visible-1)*tpb)
 target=None
 for candidate in range(0,length,grid):
-    if candidate==source or candidate+grid>length:
+    if candidate<=0 or candidate==source or candidate+grid>=length:
         continue
     if not(visible_start <= candidate < visible_end):
         continue
@@ -2753,7 +2759,191 @@ PY
       echo "ERROR: insertion cursor label, native state, or Function Bar enablement failed"; exit 1
     fi
 
+    # A strict interior cursor splits the real native clip placement into two adjacent
+    # source ranges, without changing MIDI notes. Undo/Redo must reproduce exact clip state.
+    arrangement_placement_target_line="$(arrangement_placement_state_line TARGET)"
+    if [[ -z "$arrangement_placement_target_line" ]]; then
+      echo "ERROR: insertion cursor did not capture the native Pattern placement baseline"; exit 1
+    fi
     if ! tap_visible_description_early "$ARRANGE_PASTE_CURSOR_XML" \
+      "Arrangement split Pattern placement at target tick $arrange_cursor_tick"; then
+      echo "ERROR: Pattern clip SPLIT Function Bar action not actionable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PLACEMENT_SPLIT_PNG="/tmp/mpc-groovebox-arrange-placement-split.png"
+    ARRANGE_PLACEMENT_SPLIT_XML="/tmp/mpc-groovebox-arrange-placement-split-uiautomator.xml"
+    ARRANGE_PLACEMENT_SPLIT_REMOTE="/sdcard/mpc-groovebox-arrange-placement-split-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_SPLIT_REMOTE" "$ARRANGE_PLACEMENT_SPLIT_XML"; then
+      echo "ERROR: placement split accessibility hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_SPLIT_PNG"; then
+      echo "ERROR: placement split screenshot failed"; exit 1
+    fi
+    arrangement_placement_split_line="$(arrangement_placement_state_line SPLIT)"
+    if [[ -z "$arrangement_placement_split_line" ]]; then
+      echo "ERROR: SPLIT did not log authoritative native placement state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_target_line" "$arrangement_placement_split_line" \
+      "$arrange_event_track" "$arrange_cursor_tick" <<'PY'
+import re, sys
+target_line, split_line, track_s, tick_s = sys.argv[1:]
+track, tick = map(int, (track_s, tick_s))
+pattern = re.compile(
+    r"UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT) track=(\d+) tick=(\d+) "
+    r"placements=(.*?) pattern=(.*)$")
+before=pattern.search(target_line)
+after=pattern.search(split_line)
+if not before or not after or before.group(1)!="TARGET" or after.group(1)!="SPLIT":
+    raise AssertionError("placement state log format/action mismatch")
+if tuple(map(int,before.group(2,3)))!=(track,tick) or tuple(map(int,after.group(2,3)))!=(track,tick):
+    raise AssertionError("placement cursor identity mismatch")
+if before.group(5)!=after.group(5):
+    raise AssertionError("splitting a Pattern placement mutated authoritative MIDI notes")
+def decode(value):
+    length_s, sep, rest = value.partition("|")
+    if not sep: raise AssertionError(f"invalid placement projection: {value!r}")
+    rows=[]
+    for item in rest.split(";"):
+        if not item: continue
+        fields=item.split(",")
+        if len(fields)!=5: raise AssertionError(f"invalid placement row: {item!r}")
+        rows.append((fields[0],fields[1],*map(int,fields[2:])))
+    return int(length_s),rows
+before_len, base=decode(before.group(4))
+after_len, split=decode(after.group(4))
+if before_len!=after_len or len(split)!=len(base)+1:
+    raise AssertionError(f"SPLIT must add exactly one clip placement: {base!r} -> {split!r}")
+containing=[p for p in base if p[2] < tick < p[2]+p[3]]
+if len(containing)!=1: raise AssertionError(f"target must lie inside exactly one original clip: {containing!r}")
+source=containing[0]
+left=[p for p in split if p[0]==source[0]]
+right=[p for p in split if p[0]!=source[0] and p[2]==tick]
+if len(left)!=1 or len(right)!=1: raise AssertionError("split source/right placement identities are ambiguous")
+left,right=left[0],right[0]
+if left[1]!=source[1] or left[2]!=source[2] or left[3]!=tick-source[2] or left[4]!=source[4]:
+    raise AssertionError(f"left clip source range incorrect: {source!r} -> {left!r}")
+if right[1]!=source[1] or right[3]!=source[2]+source[3]-tick:
+    raise AssertionError(f"right clip source range incorrect: {source!r} -> {right!r}")
+if right[4]!=source[4]+tick-source[2] or right[0] in {p[0] for p in base}:
+    raise AssertionError(f"right clip must use a unique id and continuous source offset: {right!r}")
+expected=[p for p in base if p!=source]+[left,right]
+expected.sort(key=lambda p:(p[2],p[0]))
+if split!=expected: raise AssertionError(f"unrelated placements changed: {base!r} -> {split!r}")
+for i,p in enumerate(split):
+    for q in split[i+1:]:
+        if p[2] < q[2]+q[3] and q[2] < p[2]+p[3]:
+            raise AssertionError(f"split placements overlap: {p!r}, {q!r}")
+print(f"Native Pattern placement split at tick {tick}; source Pattern data remained unchanged.")
+PY
+    then
+      echo "ERROR: clip split changed unrelated placement or Pattern state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_SPLIT_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: placement split UNDO action unavailable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PLACEMENT_UNDO_PNG="/tmp/mpc-groovebox-arrange-placement-split-undo.png"
+    ARRANGE_PLACEMENT_UNDO_XML="/tmp/mpc-groovebox-arrange-placement-split-undo-uiautomator.xml"
+    ARRANGE_PLACEMENT_UNDO_REMOTE="/sdcard/mpc-groovebox-arrange-placement-split-undo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_UNDO_REMOTE" "$ARRANGE_PLACEMENT_UNDO_XML"; then
+      echo "ERROR: placement split UNDO hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_UNDO_PNG"; then
+      echo "ERROR: placement split UNDO screenshot failed"; exit 1
+    fi
+    arrangement_placement_undo_line="$(arrangement_placement_state_line UNDO)"
+    if [[ -z "$arrangement_placement_undo_line" ]]; then
+      echo "ERROR: placement split UNDO did not log native state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_target_line" "$arrangement_placement_undo_line" \
+      "$ARRANGE_PLACEMENT_UNDO_XML" "$arrange_event_track" "$arrange_cursor_tick" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+target_line, undo_line, path, track_s, tick_s = sys.argv[1:]
+track,tick=map(int,(track_s,tick_s))
+pat=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|UNDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+base=pat.search(target_line); undo=pat.search(undo_line)
+if not base or not undo or base.group(4)!=undo.group(4) or base.group(5)!=undo.group(5):
+    raise AssertionError("UNDO must restore exact placement and MIDI Pattern serialization")
+if tuple(map(int,undo.group(2,3)))!=(track,tick): raise AssertionError("UNDO target identity mismatch")
+nodes=list(ET.parse(path).getroot().iter("node"))
+split=[n for n in nodes if n.attrib.get("content-desc")==f"Arrangement split Pattern placement at target tick {tick}"]
+if len(split)!=1 or split[0].attrib.get("enabled")!="true":
+    raise AssertionError("UNDO should restore SPLIT on the original unsplit clip")
+print("Placement split UNDO restored exact clip/Patterndata and enabled SPLIT again.")
+PY
+    then
+      echo "ERROR: placement split UNDO did not restore baseline and target action"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_UNDO_XML" \
+      "Arrangement redo latest sequencer edit"; then
+      echo "ERROR: placement split REDO action unavailable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PLACEMENT_REDO_PNG="/tmp/mpc-groovebox-arrange-placement-split-redo.png"
+    ARRANGE_PLACEMENT_REDO_XML="/tmp/mpc-groovebox-arrange-placement-split-redo-uiautomator.xml"
+    ARRANGE_PLACEMENT_REDO_REMOTE="/sdcard/mpc-groovebox-arrange-placement-split-redo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_REDO_REMOTE" "$ARRANGE_PLACEMENT_REDO_XML"; then
+      echo "ERROR: placement split REDO hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_REDO_PNG"; then
+      echo "ERROR: placement split REDO screenshot failed"; exit 1
+    fi
+    arrangement_placement_redo_line="$(arrangement_placement_state_line REDO)"
+    if [[ -z "$arrangement_placement_redo_line" ]]; then
+      echo "ERROR: placement split REDO did not log native state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_split_line" "$arrangement_placement_redo_line" \
+      "$arrange_event_track" "$arrange_cursor_tick" <<'PY'
+import re, sys
+split_line,redo_line,track_s,tick_s=sys.argv[1:]
+track,tick=map(int,(track_s,tick_s))
+pat=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(SPLIT|REDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+split=pat.search(split_line); redo=pat.search(redo_line)
+if not split or not redo or split.group(4)!=redo.group(4) or split.group(5)!=redo.group(5):
+    raise AssertionError("REDO must reproduce exact split placement and source Pattern state")
+if tuple(map(int,redo.group(2,3)))!=(track,tick): raise AssertionError("REDO target identity mismatch")
+print("Placement split REDO reproduced the exact two-clip state.")
+PY
+    then
+      echo "ERROR: placement split REDO was not deterministic"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_REDO_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: final placement split UNDO unavailable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PLACEMENT_RESTORED_PNG="/tmp/mpc-groovebox-arrange-placement-split-restored.png"
+    ARRANGE_PLACEMENT_RESTORED_XML="/tmp/mpc-groovebox-arrange-placement-split-restored-uiautomator.xml"
+    ARRANGE_PLACEMENT_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-placement-split-restored-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_RESTORED_REMOTE" "$ARRANGE_PLACEMENT_RESTORED_XML"; then
+      echo "ERROR: final placement split restoration hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_RESTORED_PNG"; then
+      echo "ERROR: final placement split restoration screenshot failed"; exit 1
+    fi
+    arrangement_placement_restored_line="$(arrangement_placement_state_line UNDO)"
+    if [[ -z "$arrangement_placement_restored_line" ]]; then
+      echo "ERROR: final placement split UNDO did not log native state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_target_line" "$arrangement_placement_restored_line" <<'PY'
+import re, sys
+target_line,restored_line=sys.argv[1:]
+pat=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|UNDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+base=pat.search(target_line); restored=pat.search(restored_line)
+if not base or not restored or base.group(4)!=restored.group(4) or base.group(5)!=restored.group(5):
+    raise AssertionError("final UNDO did not restore exact original Arrangement placement state")
+print("Arrangement clip split → UNDO → REDO → UNDO restored exact native placement state.")
+PY
+    then
+      echo "ERROR: final placement state differs from its original baseline"; exit 1
+    fi
+    echo "Arrangement clip SPLIT → UNDO → REDO → UNDO passed."
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_RESTORED_XML" \
       "Arrangement paste copied event at target tick $arrange_cursor_tick"; then
       echo "ERROR: Function Bar PASTE did not accept its explicit target cursor"; exit 1
     fi

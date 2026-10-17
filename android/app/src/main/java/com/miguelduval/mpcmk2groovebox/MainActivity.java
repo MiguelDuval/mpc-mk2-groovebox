@@ -526,6 +526,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int trackIndex, int programIndex);
     private static native String nativeSequenceGetTrackType(int trackIndex);
     private static native String nativeSequenceGetTrackArrangementData(int trackIndex);
+    private static native String nativeSequenceGetTrackArrangementPlacements(int trackIndex);
+    private static native String nativeSequenceSplitPatternPlacement(int trackIndex, long splitTick);
     private static native String nativeSequenceMoveArrangementEvent(
             int trackIndex, long sourceTick, int noteNumber, long targetTick);
     private static native String nativeSequenceCutArrangementEvent(
@@ -1961,7 +1963,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 duplicate.setContentDescription(
                         "Arrangement duplicate selected event one grid later");
                 addFunction("GRID", true, v -> showSequenceGridPage());
-                addFunction("TRACK VIEW", true, v -> showTrackViewPage());
+                if (canSplitArrangementPlacementAtTarget()) {
+                    Button split = addFunction(
+                            "SPLIT", true, v -> splitArrangementPlacementAtCursor());
+                    split.setContentDescription(String.format(
+                            Locale.ROOT, "Arrangement split Pattern placement at target tick %d",
+                            arrangementInsertionTick));
+                } else {
+                    addFunction("TRACK VIEW", true, v -> showTrackViewPage());
+                }
                 break;
             }
 
@@ -6398,6 +6408,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus(String.format(
                         Locale.ROOT, "ARRANGE PASTE TARGET • TRACK %02d • TICK %d",
                         trackIndex + 1, tick));
+                logArrangementPlacementState("TARGET", trackIndex, tick);
                 if (uiAuditSmokeMode) {
                     Log.i(TAG, "UI_ARRANGE_INSERTION_TARGET: track=" + trackIndex
                             + " tick=" + tick
@@ -6547,6 +6558,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
                 eventData = data.substring(separator + 1);
             }
+            final String placementData =
+                    nativeSequenceGetTrackArrangementPlacements(trackIndex);
+            final int timelineLength =
+                    MpcArrangeView.decodePlacementTimelineLength(placementData);
+            final List<MpcArrangeView.Placement> placements =
+                    MpcArrangeView.decodePlacementData(placementData);
 
             arrangementLanes.add(new MpcArrangeView.Lane(
                     trackIndex,
@@ -6555,8 +6572,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     program,
                     muted,
                     armed,
-                    lengthTicks,
-                    MpcArrangeView.decodeEventData(eventData)));
+                    timelineLength,
+                    MpcArrangeView.decodeEventData(eventData),
+                    placements));
         }
 
         arrangementView.setLanes(arrangementLanes, selected);
@@ -6823,6 +6841,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         loadArrangementLanes();
+        final boolean splitPlacementHistoryAction =
+                result.contains("Split Arrangement Pattern placement")
+                && arrangementInsertionTrackIndex >= 0;
         final boolean cutHistoryAction = result.contains("Cut Arrangement event")
                 && lastArrangementCutTrack >= 0;
         final boolean duplicateHistoryAction = result.contains("Duplicate Arrangement event")
@@ -6906,6 +6927,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     redo ? lastArrangementPasteTargetTick : lastArrangementPasteSourceTick,
                     lastArrangementPasteNote);
         }
+        if (splitPlacementHistoryAction) {
+            logArrangementPlacementState(redo ? "REDO" : "UNDO",
+                    arrangementInsertionTrackIndex, arrangementInsertionTick);
+        }
         refreshArrangeView();
     }
 
@@ -6928,6 +6953,81 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (kindSeparator >= 0 && kindSeparator + 2 < withoutEvents.length()) {
             return withoutEvents.substring(kindSeparator + 2).trim();        }
         return withoutEvents.trim();
+    }
+
+    private boolean canSplitArrangementPlacementAtTarget() {
+        if (!hasArrangementInsertionTarget()) return false;
+        for (MpcArrangeView.Lane lane : arrangementLanes) {
+            if (lane.trackIndex != arrangementInsertionTrackIndex) continue;
+            for (MpcArrangeView.Placement placement : lane.placements) {
+                final long end = placement.startTick + placement.lengthTicks;
+                if (arrangementInsertionTick > placement.startTick
+                        && arrangementInsertionTick < end) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean hasArrangementPlacementBoundary(int trackIndex, long tick) {
+        MpcArrangeView.Placement left = null;
+        MpcArrangeView.Placement right = null;
+        for (MpcArrangeView.Lane lane : arrangementLanes) {
+            if (lane.trackIndex != trackIndex) continue;
+            for (MpcArrangeView.Placement placement : lane.placements) {
+                if (placement.startTick + placement.lengthTicks == tick) left = placement;
+                if (placement.startTick == tick) right = placement;
+            }
+        }
+        return left != null && right != null
+                && left.patternId.equals(right.patternId)
+                && left.sourceOffsetTicks + left.lengthTicks == right.sourceOffsetTicks;
+    }
+
+    private void splitArrangementPlacementAtCursor() {
+        if (!canSplitArrangementPlacementAtTarget()) {
+            setBottomStatus("ARRANGE PLACEMENT SPLIT • choose a tick inside an existing clip");
+            updateArrangementEventControls();
+            return;
+        }
+        final int trackIndex = arrangementInsertionTrackIndex;
+        final long splitTick = arrangementInsertionTick;
+        final String result = nativeSequenceSplitPatternPlacement(trackIndex, splitTick);
+        if (result == null || !result.startsWith("ARRANGE PLACEMENT SPLIT •")) {
+            setBottomStatus(result == null
+                    ? "ARRANGE PLACEMENT SPLIT • native operation returned no result" : result);
+            updateArrangementEventControls();
+            return;
+        }
+        loadArrangementLanes();
+        if (!hasArrangementPlacementBoundary(trackIndex, splitTick)) {
+            final String rollback = nativeSequenceUndo();
+            loadArrangementLanes();
+            if (arrangementView != null) {
+                arrangementView.setInsertionTarget(trackIndex, splitTick);
+            }
+            updateArrangementEventControls();
+            setBottomStatus("ARRANGE PLACEMENT SPLIT • projection check failed | rollback="
+                    + rollback);
+            refreshArrangeView();
+            return;
+        }
+        if (arrangementView != null) {
+            arrangementView.setInsertionTarget(trackIndex, splitTick);
+        }
+        updateArrangementEventControls();
+        setBottomStatus(result);
+        logArrangementPlacementState("SPLIT", trackIndex, splitTick);
+        refreshArrangeView();
+    }
+
+    private void logArrangementPlacementState(String action, int trackIndex, long tick) {
+        if (!uiAuditSmokeMode || trackIndex < 0) return;
+        Log.i(TAG, "UI_ARRANGE_PLACEMENT_STATE: action=" + action
+                + " track=" + trackIndex + " tick=" + tick
+                + " placements=" + nativeSequenceGetTrackArrangementPlacements(trackIndex)
+                + " pattern=" + nativeSequenceGetTrackArrangementData(trackIndex));
     }
 
     private void clearArrangementInsertionTarget() {

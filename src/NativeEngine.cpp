@@ -15,6 +15,7 @@
 
 #include "MPC/MpcCore.h"
 #include "MPC/Sequencer/MpcPatternOps.h"
+#include "MPC/Sequencer/MpcArrangementOps.h"
 #include "MPC/Sequencer/MpcSequenceLauncher.h"
 #include "MPC/Sequencer/MpcSequencePlaybackSession.h"
 #include "MPC/Sequencer/MpcSequenceSettings.h"
@@ -2130,6 +2131,134 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackArrangem
         result += std::to_string(static_cast<unsigned int>(note.note));
     }
     return toJString(env, result);
+}
+
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackArrangementPlacements(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    const auto& sequence = mpc::MpcCore::instance().projectState().activeSequence();
+    if (trackIndex < 0
+            || static_cast<std::size_t>(trackIndex) >= sequence.tracks.size()) {
+        return toJString(env, "1|");
+    }
+
+    const auto& track = sequence.tracks[static_cast<std::size_t>(trackIndex)];
+    std::string result = std::to_string(std::max<std::int32_t>(
+            1, sequence.lengthTicks));
+    result.push_back('|');
+    for (std::size_t i = 0; i < track.placements.size(); ++i) {
+        const auto& placement = track.placements[i];
+        if (i > 0) result.push_back(';');
+        result += placement.id;
+        result.push_back(',');
+        result += placement.patternId;
+        result.push_back(',');
+        result += std::to_string(placement.startTick);
+        result.push_back(',');
+        result += std::to_string(placement.lengthTicks);
+        result.push_back(',');
+        result += std::to_string(placement.sourceOffsetTicks);
+    }
+    return toJString(env, result);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSplitPatternPlacement(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jlong splitTick)
+{
+    if (trackIndex < 0 || splitTick < 0
+            || splitTick > std::numeric_limits<std::int32_t>::max()) {
+        return toJString(env, "ARRANGE PLACEMENT SPLIT failed: invalid track or tick");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "ARRANGE PLACEMENT SPLIT blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& state = core.projectState();
+    auto& sequence = state.activeSequence();
+    const auto trackIndexValue = static_cast<std::size_t>(trackIndex);
+    if (trackIndexValue >= sequence.tracks.size()) {
+        return toJString(env, "ARRANGE PLACEMENT SPLIT failed: no such track");
+    }
+    auto& track = sequence.tracks[trackIndexValue];
+
+    const mpc::domain::PatternPlacement* containing = nullptr;
+    for (const auto& placement : track.placements) {
+        const auto end = static_cast<std::int64_t>(placement.startTick)
+                + placement.lengthTicks;
+        if (splitTick > placement.startTick && splitTick < end) {
+            if (containing != nullptr) {
+                return toJString(env, "ARRANGE PLACEMENT SPLIT failed: ambiguous target");
+            }
+            containing = &placement;
+        }
+    }
+    if (containing == nullptr) {
+        return toJString(env, "ARRANGE PLACEMENT SPLIT failed: cursor is not inside a clip");
+    }
+
+    const auto sequenceIndex = state.activeSequenceIndex();
+    const auto originalPlacementId = containing->id;
+    const auto originalLength = containing->lengthTicks;
+    std::string rightPlacementId;
+    for (std::uint32_t suffix = 1; suffix <= 10000; ++suffix) {
+        const auto candidate = track.id + "-placement-" + std::to_string(suffix);
+        if (mpc::sequencer::patternPlacementMatches(track, candidate) == 0) {
+            rightPlacementId = candidate;
+            break;
+        }
+    }
+    if (rightPlacementId.empty()) {
+        return toJString(env, "ARRANGE PLACEMENT SPLIT failed: could not allocate clip identity");
+    }
+
+    if (!mpc::sequencer::splitPatternPlacement(
+            sequence, trackIndexValue, originalPlacementId,
+            splitTick, rightPlacementId)) {
+        return toJString(env, "ARRANGE PLACEMENT SPLIT failed: invalid source range or collision");
+    }
+
+    const auto undoSplit = [sequenceIndex, trackIndexValue,
+            originalPlacementId, originalLength, splitTick, rightPlacementId]() -> bool {
+        auto& project = mpc::MpcCore::instance().projectState().project();
+        if (sequenceIndex >= project.sequences.size()) return false;
+        auto& storedSequence = project.sequences[sequenceIndex];
+        if (trackIndexValue >= storedSequence.tracks.size()) return false;
+        if (!mpc::sequencer::erasePatternPlacement(
+                storedSequence, trackIndexValue, rightPlacementId)) {
+            return false;
+        }
+        if (!mpc::sequencer::resizePatternPlacement(
+                storedSequence, trackIndexValue, originalPlacementId, originalLength)) {
+            (void) mpc::sequencer::splitPatternPlacement(
+                    storedSequence, trackIndexValue, originalPlacementId,
+                    splitTick, rightPlacementId);
+            return false;
+        }
+        return true;
+    };
+    const auto redoSplit = [sequenceIndex, trackIndexValue,
+            originalPlacementId, splitTick, rightPlacementId]() -> bool {
+        auto& project = mpc::MpcCore::instance().projectState().project();
+        if (sequenceIndex >= project.sequences.size()) return false;
+        return mpc::sequencer::splitPatternPlacement(
+                project.sequences[sequenceIndex], trackIndexValue,
+                originalPlacementId, splitTick, rightPlacementId);
+    };
+
+    if (!core.editHistory().record({
+            "Split Arrangement Pattern placement", undoSplit, redoSplit})) {
+        (void) undoSplit();
+        return toJString(env, "ARRANGE PLACEMENT SPLIT failed: history registration failed");
+    }
+    syncSequenceTransportStopped();
+    return toJString(env, std::string("ARRANGE PLACEMENT SPLIT • track ")
+            + std::to_string(trackIndex) + " • tick " + std::to_string(splitTick)
+            + " • clips " + originalPlacementId + " / " + rightPlacementId);
 }
 
 extern "C" JNIEXPORT jstring JNICALL
