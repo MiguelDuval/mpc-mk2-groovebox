@@ -241,6 +241,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceTimelineView sequenceTimeline;
     private SequenceTimelineView mainArrangementPreview;
     private MpcArrangeView arrangementView;
+    private TextView arrangementEventSelectionView;
+    private Button arrangementMoveEarlierButton;
+    private Button arrangementMoveLaterButton;
+    private int selectedArrangementEventTrack = -1;
+    private long selectedArrangementEventTick = -1L;
+    private int selectedArrangementEventNote = -1;
     private int arrangementAuditTrackIndex = -1;
     private int arrangementAuditTargetStep = -1;
     private long arrangementAuditEventTick = -1L;
@@ -503,6 +509,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int trackIndex, int programIndex);
     private static native String nativeSequenceGetTrackType(int trackIndex);
     private static native String nativeSequenceGetTrackArrangementData(int trackIndex);
+    private static native String nativeSequenceMoveArrangementEvent(
+            int trackIndex, long sourceTick, int noteNumber, long targetTick);
     private static native boolean nativeSequenceIsTrackMuted(int trackIndex);
     private static native String nativeSequenceGetTrackProgram(int trackIndex);
     private static native String nativeSequenceSelectTrack(int trackIndex);
@@ -6274,14 +6282,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.setZoomFocus(MpcUiState.ZoomFocus.HORIZONTAL);
         pageTitle.setText("ARRANGE");
         content.removeAllViews();
+        selectedArrangementEventTrack = -1;
+        selectedArrangementEventTick = -1L;
+        selectedArrangementEventNote = -1;
+        arrangementEventSelectionView = null;
+        arrangementMoveEarlierButton = null;
+        arrangementMoveLaterButton = null;
         arrangementView = new MpcArrangeView(this);
         arrangementView.setListener(new MpcArrangeView.Listener() {
             @Override
             public void onTrackSelected(int trackIndex) {
+                if (selectedArrangementEventTrack >= 0
+                        && selectedArrangementEventTrack != trackIndex) {
+                    selectedArrangementEventTrack = -1;
+                    selectedArrangementEventTick = -1L;
+                    selectedArrangementEventNote = -1;
+                    updateArrangementEventControls();
+                }
                 setBottomStatus(nativeSequenceSelectTrack(trackIndex));
                 navigationController.setSelectedTrack(trackIndex);
                 loadArrangementLanes();
                 refreshArrangeView();
+            }
+
+            @Override
+            public void onEventSelected(int trackIndex, long tick, int noteNumber) {
+                selectedArrangementEventTrack = trackIndex;
+                selectedArrangementEventTick = tick;
+                selectedArrangementEventNote = noteNumber;
+                updateArrangementEventControls();
+            }
+            @Override
+            public void onEventSelectionCleared() {
+                selectedArrangementEventTrack = -1;
+                selectedArrangementEventTick = -1L;
+                selectedArrangementEventNote = -1;
+                updateArrangementEventControls();
             }
 
             @Override
@@ -6331,12 +6367,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     refreshArrangeView();
                 }),
                 new LinearLayout.LayoutParams(dp(66), dp(34)));
+        arrangementMoveEarlierButton = actionButton("EVENT −", v -> moveSelectedArrangementEvent(-1));
+        arrangementMoveEarlierButton.setTextSize(9);
+        arrangementMoveEarlierButton.setContentDescription("Arrangement move selected event one grid earlier");
+        arrangementMoveEarlierButton.setEnabled(false);
+        header.addView(arrangementMoveEarlierButton, new LinearLayout.LayoutParams(dp(76), dp(34)));
+        arrangementMoveLaterButton = actionButton("EVENT +", v -> moveSelectedArrangementEvent(1));
+        arrangementMoveLaterButton.setTextSize(9);
+        arrangementMoveLaterButton.setContentDescription("Arrangement move selected event one grid later");
+        arrangementMoveLaterButton.setEnabled(false);
+        header.addView(arrangementMoveLaterButton, new LinearLayout.LayoutParams(dp(76), dp(34)));
         page.addView(header);
 
         TextView info = label(
-                "LOOP BRACE edits Sequence loop • event placement is read-only in the current pattern model • double-tap an event for Grid",
+                "Tap an event to select • EVENT −/+ moves by one grid • double-tap opens Grid",
                 9, MUTED);
         info.setContentDescription("Arrangement editing guidance");
+        arrangementEventSelectionView = info;
+        updateArrangementEventControls();
         page.addView(info, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
 
@@ -6406,6 +6454,77 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         arrangementView.setLanes(arrangementLanes, selected);
+    }
+
+    private void updateArrangementEventControls() {
+        final boolean selected = selectedArrangementEventTrack >= 0
+                && selectedArrangementEventTick >= 0L
+                && selectedArrangementEventNote >= 0;
+        if (arrangementMoveEarlierButton != null) arrangementMoveEarlierButton.setEnabled(selected);
+        if (arrangementMoveLaterButton != null) arrangementMoveLaterButton.setEnabled(selected);
+        if (arrangementEventSelectionView != null) arrangementEventSelectionView.setText(
+                selected ? String.format(Locale.ROOT, "EVENT • TRACK %02d • TICK %d • NOTE %03d",
+                        selectedArrangementEventTrack + 1, selectedArrangementEventTick,
+                        selectedArrangementEventNote)
+                : "Tap an event to select • EVENT −/+ moves by one grid • double-tap opens Grid");
+    }
+
+    private boolean hasArrangementEventInProjection(int trackIndex, long tick, int noteNumber) {
+        for (MpcArrangeView.Lane lane : arrangementLanes) {
+            if (lane.trackIndex != trackIndex) continue;
+            for (MpcArrangeView.Event event : lane.events) {
+                if (event.tick == tick && event.noteNumber == noteNumber) return true;
+            }
+            return false;
+        }
+        return false;
+    }
+
+    private int arrangementEventNoteForAudit(int trackIndex, long tick) {
+        for (MpcArrangeView.Lane lane : arrangementLanes) {
+            if (lane.trackIndex != trackIndex) continue;
+            for (MpcArrangeView.Event event : lane.events) {
+                if (event.tick == tick && event.noteNumber >= 0) return event.noteNumber;
+            }
+            return -1;
+        }
+        return -1;
+    }
+
+    private void moveSelectedArrangementEvent(int direction) {
+        if ((direction != -1 && direction != 1) || selectedArrangementEventTrack < 0
+                || selectedArrangementEventTick < 0L || selectedArrangementEventNote < 0) {
+            setBottomStatus("ARRANGE EVENT MOVE • select an event first");
+            return;
+        }
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final long sourceTick = selectedArrangementEventTick;
+        final long targetTick = sourceTick + (long) direction * gridTicks;
+        if (targetTick < 0L) {
+            setBottomStatus("ARRANGE EVENT MOVE • already at sequence start");
+            return;
+        }
+        final String result = nativeSequenceMoveArrangementEvent(
+                selectedArrangementEventTrack, sourceTick, selectedArrangementEventNote, targetTick);
+        if (result == null || !result.startsWith("ARRANGE EVENT MOVED")) {
+            setBottomStatus(result == null ? "ARRANGE EVENT MOVE • native operation returned no result" : result);
+            return;
+        }
+        loadArrangementLanes();
+        if (!hasArrangementEventInProjection(
+                selectedArrangementEventTrack, targetTick, selectedArrangementEventNote)) {
+            final String rollback = nativeSequenceMoveArrangementEvent(
+                    selectedArrangementEventTrack, targetTick, selectedArrangementEventNote, sourceTick);
+            loadArrangementLanes();
+            setBottomStatus("ARRANGE EVENT MOVE • native projection check failed | rollback=" + rollback);
+            updateArrangementEventControls();
+            refreshArrangeView();
+            return;
+        }
+        selectedArrangementEventTick = targetTick;
+        updateArrangementEventControls();
+        setBottomStatus(result);
+        refreshArrangeView();
     }
 
     private String arrangementTrackName(String status, int trackIndex) {
@@ -12165,6 +12284,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int originalStart = nativeSequenceGetLoopStartBar();
         final int originalEnd = nativeSequenceGetLoopEndBar();
         final int bars = Math.max(1, nativeSequenceGetBars());
+        final int eventNote = arrangementEventNoteForAudit(
+                arrangementAuditTrackIndex, arrangementAuditEventTick);
+        if (arrangementAuditTrackIndex < 0 || arrangementAuditEventTick < 0L
+                || eventNote < 0 || arrangementAuditGridTicks <= 0
+                || arrangementView.ticksPerBarForAudit() <= 0L) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement event move acceptance has no seeded event");
+            return;
+        }
         final int targetEnd = originalEnd < bars
                 ? originalEnd + 1
                 : originalEnd > originalStart ? originalEnd - 1 : originalEnd;
@@ -12192,7 +12319,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 + " visibleBars=" + arrangementView.visibleBarsForAudit()
                 + " viewportStart=" + arrangementView.viewportStartBarForAudit()
                 + " viewWidth=" + arrangementView.getWidth()
-                + " viewHeight=" + arrangementView.getHeight());
+                + " viewHeight=" + arrangementView.getHeight()
+                + " eventTrack=" + arrangementAuditTrackIndex
+                + " eventTick=" + arrangementAuditEventTick
+                + " eventNote=" + eventNote
+                + " gridTicks=" + arrangementAuditGridTicks
+                + " ticksPerBar=" + arrangementView.ticksPerBarForAudit());
 
         final long deadline = System.currentTimeMillis() + 75_000L;
         final Runnable[] poll = new Runnable[1];

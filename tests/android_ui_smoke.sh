@@ -467,6 +467,9 @@ for required in \
   'dispatchArrangementEventDoubleTapForAudit(' \
   'dispatchArrangementTouchForAudit(' \
   'UI_ARRANGEMENT_EVENT_SEEDED:' \
+  'nativeSequenceMoveArrangementEvent(' \
+  'Arrangement move selected event one grid earlier' \
+  'Arrangement move selected event one grid later' \
   'UI_ARRANGEMENT_EVENT_GESTURE_DISPATCHED:' \
   'lastArrangementFocusTick' \
   'openGridFromArrangementEvent(trackIndex, tick)' \
@@ -2073,6 +2076,124 @@ while (( SECONDS < audit_deadline )); do
     arrange_density="$(adb_bounded 10 shell wm density)" || {
       echo "ERROR: could not read Android density for Arrange loop hit testing"; exit 1;
     }
+    read -r arrange_event_track arrange_event_tick arrange_event_note arrange_event_grid arrange_ticks_per_bar \
+      < <(sed -nE 's/.*eventTrack=([0-9]+) eventTick=([0-9]+) eventNote=([0-9]+) gridTicks=([0-9]+) ticksPerBar=([0-9]+).*/\1 \2 \3 \4 \5/p' <<<"$loop_ready_line")
+    if [[ -z "$arrange_event_track" || -z "$arrange_event_tick" || -z "$arrange_event_note" \
+        || -z "$arrange_event_grid" || -z "$arrange_ticks_per_bar" ]]; then
+      echo "ERROR: cannot parse seeded Arrangement event: $loop_ready_line"; exit 1
+    fi
+    ARRANGE_EVENT_SELECTED_PNG="/tmp/mpc-groovebox-arrange-event-selected.png"
+    ARRANGE_EVENT_SELECTED_XML="/tmp/mpc-groovebox-arrange-event-selected-uiautomator.xml"
+    ARRANGE_EVENT_SELECTED_REMOTE="/sdcard/mpc-groovebox-arrange-event-selected-uiautomator.xml"
+    arrange_event_points="$(python3 - \
+      "$ARRANGE_LOOP_BEFORE_XML" "$arrange_density" "$arrange_event_track" \
+      "$arrange_event_tick" "$arrange_event_grid" "$arrange_ticks_per_bar" \
+      "$loop_visible_bars" "$loop_viewport_start" <<'PY'
+import re, sys
+import xml.etree.ElementTree as ET
+path, density_text, track_s, tick_s, grid_s, tpb_s, visible_s, viewport_s = sys.argv[1:]
+track,tick,grid,tpb,visible,viewport=map(int,(track_s,tick_s,grid_s,tpb_s,visible_s,viewport_s))
+nodes=list(ET.parse(path).getroot().iter("node"))
+views=[n for n in nodes if n.attrib.get("content-desc")=="MPC linear arrangement editor"]
+if len(views)!=1: raise AssertionError(f"expected one Arrangement canvas, got {len(views)}")
+m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",views[0].attrib.get("bounds",""))
+if m is None: raise AssertionError("invalid Arrangement canvas bounds")
+left,top,right,bottom=map(int,m.groups())
+ds=re.findall(r"Override density:\s*(\d+)",density_text)
+if not ds: ds=re.findall(r"Physical density:\s*(\d+)",density_text)
+if not ds: raise AssertionError("could not parse Android density")
+density=int(ds[-1])/160.0
+width,height=right-left,bottom-top
+header,ruler,lane=138*density,34*density,46*density
+if track<0 or visible<1 or tpb<1 or grid<1: raise AssertionError("invalid Arrangement hit-test input")
+bar_width=(width-header)/visible
+sbar=tick/tpb-(viewport-1); ebar=(tick+grid)/tpb-(viewport-1)
+x1=max(header+1*density,header+sbar*bar_width)
+x2=min(width-1*density,max(header+sbar*bar_width+2*density,header+ebar*bar_width))
+x=round(left+(x1+x2)/2); y=round(top+ruler+track*lane+21.5*density)
+if not(left<x<right and top<y<bottom and ruler+track*lane+21.5*density<height):
+ raise AssertionError(f"event tap {(x,y)} outside Arrangement canvas")
+print(x,y)
+PY
+    )" || { echo "ERROR: could not derive event touch from live hierarchy"; exit 1; }
+    read -r arrange_event_x arrange_event_y <<< "$arrange_event_points"
+    if ! adb_bounded 10 shell input tap "$arrange_event_x" "$arrange_event_y"; then
+      echo "ERROR: could not select seeded Arrangement event"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui "$ARRANGE_EVENT_SELECTED_REMOTE" "$ARRANGE_EVENT_SELECTED_XML"; then
+      echo "ERROR: Arrangement selected-event hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_SELECTED_PNG"; then
+      echo "ERROR: Arrangement selected-event screenshot failed"; exit 1
+    fi
+    if ! python3 - "$ARRANGE_EVENT_SELECTED_XML" "$arrange_event_track" "$arrange_event_tick" "$arrange_event_note" <<'PY'
+import sys, xml.etree.ElementTree as ET
+path,track_s,tick_s,note_s=sys.argv[1:]; track,tick,note=map(int,(track_s,tick_s,note_s))
+nodes=list(ET.parse(path).getroot().iter("node"))
+info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
+expected=f"EVENT • TRACK {track+1:02d} • TICK {tick} • NOTE {note:03d}"
+if len(info)!=1 or info[0].attrib.get("text")!=expected: raise AssertionError(f"selected event mismatch: {[n.attrib.get('text') for n in info]!r}, expected={expected!r}")
+for desc in ("Arrangement move selected event one grid earlier","Arrangement move selected event one grid later"):
+ found=[n for n in nodes if n.attrib.get("content-desc")==desc]
+ if len(found)!=1 or found[0].attrib.get("enabled")!="true" or found[0].attrib.get("clickable")!="true": raise AssertionError(f"move button unavailable: {desc}")
+print(f"Arrangement event selected: track={track+1}, tick={tick}, note={note}.")
+PY
+    then
+      echo "ERROR: Arrangement selection did not expose native event identity"; cat "$ARRANGE_EVENT_SELECTED_XML"; exit 1
+    fi
+    if ! tap_visible_description_early "$ARRANGE_EVENT_SELECTED_XML" "Arrangement move selected event one grid later"; then
+      echo "ERROR: EVENT + control not actionable"; exit 1
+    fi
+    sleep 0.35
+    ARRANGE_EVENT_MOVED_PNG="/tmp/mpc-groovebox-arrange-event-moved.png"
+    ARRANGE_EVENT_MOVED_XML="/tmp/mpc-groovebox-arrange-event-moved-uiautomator.xml"
+    ARRANGE_EVENT_MOVED_REMOTE="/sdcard/mpc-groovebox-arrange-event-moved-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_MOVED_REMOTE" "$ARRANGE_EVENT_MOVED_XML"; then
+      echo "ERROR: Arrangement moved-state hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_MOVED_PNG"; then
+      echo "ERROR: Arrangement moved-state screenshot failed"; exit 1
+    fi
+    if ! python3 - "$ARRANGE_EVENT_MOVED_XML" "$arrange_event_track" "$((arrange_event_tick + arrange_event_grid))" "$arrange_event_note" <<'PY'
+import sys, xml.etree.ElementTree as ET
+path,track_s,tick_s,note_s=sys.argv[1:]; track,tick,note=map(int,(track_s,tick_s,note_s))
+nodes=list(ET.parse(path).getroot().iter("node"))
+info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
+expected=f"EVENT • TRACK {track+1:02d} • TICK {tick} • NOTE {note:03d}"
+if len(info)!=1 or info[0].attrib.get("text")!=expected: raise AssertionError(f"native event did not move: {[n.attrib.get('text') for n in info]!r}, expected={expected!r}")
+print(f"Arrangement MOVE + GRID verified at tick {tick}, note {note}.")
+PY
+    then
+      echo "ERROR: MOVE + GRID did not change native event"; cat "$ARRANGE_EVENT_MOVED_XML"; exit 1
+    fi
+    if ! tap_visible_description_early "$ARRANGE_EVENT_MOVED_XML" "Arrangement move selected event one grid earlier"; then
+      echo "ERROR: EVENT − control not actionable"; exit 1
+    fi
+    sleep 0.35
+    ARRANGE_EVENT_RESTORED_PNG="/tmp/mpc-groovebox-arrange-event-restored.png"
+    ARRANGE_EVENT_RESTORED_XML="/tmp/mpc-groovebox-arrange-event-restored-uiautomator.xml"
+    ARRANGE_EVENT_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-event-restored-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_RESTORED_REMOTE" "$ARRANGE_EVENT_RESTORED_XML"; then
+      echo "ERROR: Arrangement restored-state hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_RESTORED_PNG"; then
+      echo "ERROR: Arrangement restored-state screenshot failed"; exit 1
+    fi
+    if ! python3 - "$ARRANGE_EVENT_RESTORED_XML" "$arrange_event_track" "$arrange_event_tick" "$arrange_event_note" <<'PY'
+import sys, xml.etree.ElementTree as ET
+path,track_s,tick_s,note_s=sys.argv[1:]; track,tick,note=map(int,(track_s,tick_s,note_s))
+nodes=list(ET.parse(path).getroot().iter("node"))
+info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
+expected=f"EVENT • TRACK {track+1:02d} • TICK {tick} • NOTE {note:03d}"
+if len(info)!=1 or info[0].attrib.get("text")!=expected: raise AssertionError(f"native event not restored: {[n.attrib.get('text') for n in info]!r}, expected={expected!r}")
+print(f"Arrangement MOVE + GRID → MOVE − GRID restored tick {tick}, note {note}.")
+PY
+    then
+      echo "ERROR: original native event position was not restored"; cat "$ARRANGE_EVENT_RESTORED_XML"; exit 1
+    fi
+    echo "Arrangement single-event MOVE ± GRID → native-position restoration passed."
+
     arrange_loop_drag_points="$(python3 - \
       "$ARRANGE_LOOP_BEFORE_XML" "$arrange_density" \
       "$loop_original_end" "$loop_target_end" \

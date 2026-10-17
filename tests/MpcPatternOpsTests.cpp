@@ -154,6 +154,34 @@ int main() {
     assert(!mpc::sequencer::setStepNote(
             stepPattern, 1, 120, 40, 0));
 
+    // Arrangement moves change only event position and reject collisions.
+    mpc::domain::Pattern arrangementPattern;
+    arrangementPattern.lengthTicks = 1920;
+    arrangementPattern.notes = {
+            {240, 120, 36, 100, 73, 2, -12},
+            {480, 240, 38, 91, 64, 3, 24},
+            {960, 120, 42, 88, 127, 1, 0}};
+    assert(mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, 360));
+    assert(arrangementPattern.notes.size() == 3);
+    assert(arrangementPattern.notes[0].tick == 360);
+    assert(arrangementPattern.notes[0].note == 36);
+    assert(arrangementPattern.notes[0].durationTicks == 120);
+    assert(arrangementPattern.notes[0].velocity == 100);
+    assert(arrangementPattern.notes[0].probability == 73);
+    assert(arrangementPattern.notes[0].ratchet == 2);
+    assert(arrangementPattern.notes[0].nudgeTicks == -12);
+    assert(mpc::sequencer::movePatternNoteTick(arrangementPattern, 360, 36, 240));
+    assert(arrangementPattern.notes[0].tick == 240);
+    arrangementPattern.notes[1].note = 36;
+    assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, 480));
+    assert(arrangementPattern.notes[0].tick == 240);
+    assert(arrangementPattern.notes[1].tick == 480);
+    arrangementPattern.notes[1].note = 38;
+    assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, 240));
+    assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 999, 36, 720));
+    assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, -120));
+    assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, 1920));
+
     mpc::domain::MidiNoteEvent probabilityNote{0, 120, 36, 100, 64, 4};
     assert(mpc::sequencer::shouldTriggerNote(probabilityNote, 1234u) ==
            mpc::sequencer::shouldTriggerNote(probabilityNote, 1234u));

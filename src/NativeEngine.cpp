@@ -2124,8 +2124,73 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackArrangem
         result.push_back(',');
         result += std::to_string(std::max<std::int32_t>(
                 1, note.durationTicks));
+        result.push_back(',');
+        result += std::to_string(static_cast<unsigned int>(note.note));
     }
     return toJString(env, result);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveArrangementEvent(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex,
+        jlong sourceTick, jint noteNumber, jlong targetTick)
+{
+    if (trackIndex < 0 || noteNumber < 0 || noteNumber > 127
+            || sourceTick < 0 || targetTick < 0 || sourceTick == targetTick) {
+        return toJString(env, "ARRANGE EVENT MOVE failed: invalid event or target");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "ARRANGE EVENT MOVE blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& state = core.projectState();
+    auto& sequence = state.activeSequence();
+    const auto trackIndexValue = static_cast<std::size_t>(trackIndex);
+    if (trackIndexValue >= sequence.tracks.size()) {
+        return toJString(env, "ARRANGE EVENT MOVE failed: no such track");
+    }
+    auto& track = sequence.tracks[trackIndexValue];
+    if (track.patterns.empty()) {
+        return toJString(env, "ARRANGE EVENT MOVE failed: track has no Pattern");
+    }
+    auto& pattern = track.patterns.front();
+    if (sourceTick >= pattern.lengthTicks || targetTick >= pattern.lengthTicks) {
+        return toJString(env, "ARRANGE EVENT MOVE failed: target outside Pattern");
+    }
+    const auto sequenceIndex = state.activeSequenceIndex();
+    const auto note = static_cast<std::uint8_t>(noteNumber);
+    if (!mpc::sequencer::movePatternNoteTick(pattern, sourceTick, note, targetTick)) {
+        return toJString(env, "ARRANGE EVENT MOVE failed: event missing or destination occupied");
+    }
+    const auto moveStoredEvent = [](
+            std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::uint8_t storedNote, std::int64_t fromTick,
+            std::int64_t toTick) -> bool {
+        auto& storedState = mpc::MpcCore::instance().projectState();
+        auto& project = storedState.project();
+        if (storedSequenceIndex >= project.sequences.size()) return false;
+        auto& storedSequence = project.sequences[storedSequenceIndex];
+        if (storedTrackIndex >= storedSequence.tracks.size()) return false;
+        auto& storedTrack = storedSequence.tracks[storedTrackIndex];
+        if (storedTrack.patterns.empty()) return false;
+        return mpc::sequencer::movePatternNoteTick(
+                storedTrack.patterns.front(), fromTick, storedNote, toTick);
+    };
+    if (!core.editHistory().record({
+            "Move Arrangement event",
+            [moveStoredEvent, sequenceIndex, trackIndexValue, note, sourceTick, targetTick]() {
+                return moveStoredEvent(sequenceIndex, trackIndexValue, note, targetTick, sourceTick);
+            },
+            [moveStoredEvent, sequenceIndex, trackIndexValue, note, sourceTick, targetTick]() {
+                return moveStoredEvent(sequenceIndex, trackIndexValue, note, sourceTick, targetTick);
+            }})) {
+        mpc::sequencer::movePatternNoteTick(pattern, targetTick, note, sourceTick);
+        return toJString(env, "ARRANGE EVENT MOVE failed: history recording failed");
+    }
+    syncSequenceTransportStopped();
+    return toJString(env, std::string("ARRANGE EVENT MOVED • ")
+            + std::to_string(sourceTick) + " → " + std::to_string(targetTick) + " ticks");
 }
 
 extern "C" JNIEXPORT jstring JNICALL

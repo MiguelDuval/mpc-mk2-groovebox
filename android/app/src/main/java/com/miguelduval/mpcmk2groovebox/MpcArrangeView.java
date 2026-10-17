@@ -26,10 +26,12 @@ final class MpcArrangeView extends View {
     static final class Event {
         final long tick;
         final int durationTicks;
-
-        Event(long tick, int durationTicks) {
+        final int noteNumber;
+        Event(long tick, int durationTicks) { this(tick, durationTicks, -1); }
+        Event(long tick, int durationTicks, int noteNumber) {
             this.tick = Math.max(0L, tick);
             this.durationTicks = Math.max(1, durationTicks);
+            this.noteNumber = noteNumber >= 0 && noteNumber <= 127 ? noteNumber : -1;
         }
     }
 
@@ -67,6 +69,8 @@ final class MpcArrangeView extends View {
 
     interface Listener {
         void onTrackSelected(int trackIndex);
+        void onEventSelected(int trackIndex, long tick, int noteNumber);
+        void onEventSelectionCleared();
         void onEventDoubleTapped(int trackIndex, long tick);
         void onLoopCommitted(int startBar, int endBar);
     }
@@ -611,7 +615,9 @@ final class MpcArrangeView extends View {
             try {
                 final long tick = Long.parseLong(fields[0]);
                 final int duration = Integer.parseInt(fields[1]);
-                result.add(new Event(tick, duration));
+                final int noteNumber = fields.length >= 3
+                        ? Integer.parseInt(fields[2]) : -1;
+                result.add(new Event(tick, duration, noteNumber));
             } catch (NumberFormatException ignored) {
                 // Malformed UI projection entries are ignored rather than
                 // becoming a UI crash or feeding invalid data back to native.
@@ -697,10 +703,24 @@ final class MpcArrangeView extends View {
             } else {
                 loopHandle = -1;
                 final Hit hit = hit(event.getX(), event.getY());
-                if (hit.trackIndex >= 0
-                        && listener != null) {
+                if (hit.trackIndex >= 0 && listener != null) {
+                    Event hitEvent = null;
+                    if (hit.eventIndex >= 0) {
+                        for (Lane lane : lanes) {
+                            if (lane.trackIndex == hit.trackIndex
+                                    && hit.eventIndex < lane.events.size()) {
+                                hitEvent = lane.events.get(hit.eventIndex);
+                                break;
+                            }
+                        }
+                    }
                     selectedTrack = hit.trackIndex;
                     listener.onTrackSelected(hit.trackIndex);
+                    if (hitEvent != null && hitEvent.noteNumber >= 0) {
+                        listener.onEventSelected(hit.trackIndex, hitEvent.tick, hitEvent.noteNumber);
+                    } else {
+                        listener.onEventSelectionCleared();
+                    }
                     invalidate();
                 }
             }
@@ -803,6 +823,8 @@ final class MpcArrangeView extends View {
                 + (float) (bars - (viewportStartBar - 1))
                 * pxPerBar;
     }
+
+    long ticksPerBarForAudit() { return ticksPerBar(); }
 
     private long ticksPerBar() {
         final long ticksPerBeat = Math.max(

@@ -131,6 +131,32 @@ inline std::size_t ratchetCount(
     return std::clamp<std::size_t>(note.ratchet, 1, 8);
 }
 
+inline bool movePatternNoteTick(
+        domain::Pattern& pattern, std::int64_t sourceTick,
+        std::uint8_t noteNumber, std::int64_t targetTick) {
+    if (pattern.lengthTicks <= 0 || sourceTick < 0 || targetTick < 0
+            || sourceTick >= pattern.lengthTicks
+            || targetTick >= pattern.lengthTicks || sourceTick == targetTick) return false;
+    auto source = std::find_if(
+            pattern.notes.begin(), pattern.notes.end(),
+            [sourceTick, noteNumber](const domain::MidiNoteEvent& note) {
+                return note.tick == sourceTick && note.note == noteNumber;
+            });
+    if (source == pattern.notes.end()) return false;
+    const auto collision = std::find_if(
+            pattern.notes.begin(), pattern.notes.end(),
+            [targetTick, noteNumber](const domain::MidiNoteEvent& note) {
+                return note.tick == targetTick && note.note == noteNumber;
+            });
+    if (collision != pattern.notes.end()) return false;
+    source->tick = static_cast<std::int32_t>(targetTick);
+    std::stable_sort(
+            pattern.notes.begin(), pattern.notes.end(),
+            [](const domain::MidiNoteEvent& lhs,
+               const domain::MidiNoteEvent& rhs) { return lhs.tick < rhs.tick; });
+    return true;
+}
+
 inline bool setStepNote(
         domain::Pattern& pattern,
         std::int32_t stepIndex,
