@@ -3504,7 +3504,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_CONTEXT_BEFORE_REMOTE" "$TRACK_EDIT_CONTEXT_BEFORE_XML"; then
   echo "ERROR: Track Edit initial Pad/Layer/sample context hierarchy failed"; exit 1
 fi
-read -r track_edit_pad_before track_edit_layer_before track_edit_sample_before \
+IFS=$'\t' read -r track_edit_pad_before track_edit_layer_before track_edit_sample_before \
   < <(read_track_edit_context_values "$TRACK_EDIT_CONTEXT_BEFORE_XML") || {
     echo "ERROR: Track Edit initial Pad/Layer/sample context snapshot was invalid"; exit 1;
   }
@@ -3585,7 +3585,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_CONTEXT_REOPENED_REMOTE" "$TRACK_EDIT_CONTEXT_REOPENED_XML"; then
   echo "ERROR: Track Edit re-entry Pad/Layer/sample context hierarchy failed"; exit 1
 fi
-read -r track_edit_pad_reopened track_edit_layer_reopened track_edit_sample_reopened \
+IFS=$'\t' read -r track_edit_pad_reopened track_edit_layer_reopened track_edit_sample_reopened \
   < <(read_track_edit_context_values "$TRACK_EDIT_CONTEXT_REOPENED_XML") || {
     echo "ERROR: Track Edit re-entry Pad/Layer/sample context snapshot was invalid"; exit 1;
   }
