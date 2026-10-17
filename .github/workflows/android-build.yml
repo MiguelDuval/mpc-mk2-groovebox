@@ -539,6 +539,14 @@ jobs:
             /tmp/mpc-groovebox-arrange-event-moved-uiautomator.xml
             /tmp/mpc-groovebox-arrange-event-restored.png
             /tmp/mpc-groovebox-arrange-event-restored-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-event-duplicated.png
+            /tmp/mpc-groovebox-arrange-event-duplicated-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-event-duplicate-undo.png
+            /tmp/mpc-groovebox-arrange-event-duplicate-undo-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-event-duplicate-redo.png
+            /tmp/mpc-groovebox-arrange-event-duplicate-redo-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-event-duplicate-restored.png
+            /tmp/mpc-groovebox-arrange-event-duplicate-restored-uiautomator.xml
             /tmp/mpc-groovebox-arrange-loop-before.png
             /tmp/mpc-groovebox-arrange-loop-before-uiautomator.xml
             /tmp/mpc-groovebox-arrange-loop-changed.png

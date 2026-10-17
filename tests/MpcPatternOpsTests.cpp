@@ -182,6 +182,49 @@ int main() {
     assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, -120));
     assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, 1920));
 
+    // Arrangement duplicate is non-destructive, preserves every musical field,
+    // rejects same-pitch collisions/boundaries, and can be undone/redone exactly.
+    mpc::domain::Pattern duplicatePattern;
+    duplicatePattern.lengthTicks = 1920;
+    duplicatePattern.notes = {
+            {240, 180, 36, 97, 88, 3, -11},
+            {480, 120, 36, 80, 127, 1, 0},
+            {720, 90, 38, 75, 66, 2, 12}};
+    assert(mpc::sequencer::duplicatePatternNoteTick(duplicatePattern, 240, 36, 360));
+    assert(duplicatePattern.notes.size() == 4);
+    const auto sourceAt = std::find_if(
+            duplicatePattern.notes.begin(), duplicatePattern.notes.end(),
+            [](const mpc::domain::MidiNoteEvent& event) {
+                return event.tick == 240 && event.note == 36;
+            });
+    const auto duplicateAt = std::find_if(
+            duplicatePattern.notes.begin(), duplicatePattern.notes.end(),
+            [](const mpc::domain::MidiNoteEvent& event) {
+                return event.tick == 360 && event.note == 36;
+            });
+    assert(sourceAt != duplicatePattern.notes.end());
+    assert(duplicateAt != duplicatePattern.notes.end());
+    assert(sourceAt->durationTicks == duplicateAt->durationTicks);
+    assert(sourceAt->note == duplicateAt->note);
+    assert(sourceAt->velocity == duplicateAt->velocity);
+    assert(sourceAt->probability == duplicateAt->probability);
+    assert(sourceAt->ratchet == duplicateAt->ratchet);
+    assert(sourceAt->nudgeTicks == duplicateAt->nudgeTicks);
+    assert(sourceAt->velocity == 97 && sourceAt->probability == 88);
+    assert(sourceAt->ratchet == 3 && sourceAt->nudgeTicks == -11);
+    assert(!mpc::sequencer::duplicatePatternNoteTick(duplicatePattern, 240, 36, 480));
+    assert(!mpc::sequencer::duplicatePatternNoteTick(duplicatePattern, 240, 36, 240));
+    assert(!mpc::sequencer::duplicatePatternNoteTick(duplicatePattern, 240, 36, -120));
+    assert(!mpc::sequencer::duplicatePatternNoteTick(duplicatePattern, 240, 36, 1920));
+    assert(!mpc::sequencer::duplicatePatternNoteTick(duplicatePattern, 999, 36, 1080));
+    assert(mpc::sequencer::erasePatternNoteTick(duplicatePattern, 360, 36));
+    assert(duplicatePattern.notes.size() == 3);
+    assert(!mpc::sequencer::erasePatternNoteTick(duplicatePattern, 360, 36));
+    assert(mpc::sequencer::duplicatePatternNoteTick(duplicatePattern, 240, 36, 360));
+    assert(duplicatePattern.notes.size() == 4);
+    assert(mpc::sequencer::erasePatternNoteTick(duplicatePattern, 360, 36));
+    assert(duplicatePattern.notes.size() == 3);
+
     mpc::domain::MidiNoteEvent probabilityNote{0, 120, 36, 100, 64, 4};
     assert(mpc::sequencer::shouldTriggerNote(probabilityNote, 1234u) ==
            mpc::sequencer::shouldTriggerNote(probabilityNote, 1234u));

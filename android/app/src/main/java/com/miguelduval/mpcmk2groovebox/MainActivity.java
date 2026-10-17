@@ -244,9 +244,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView arrangementEventSelectionView;
     private Button arrangementMoveEarlierButton;
     private Button arrangementMoveLaterButton;
+    private Button arrangementDuplicateButton;
+    private Button arrangementUndoButton;
+    private Button arrangementRedoButton;
     private int selectedArrangementEventTrack = -1;
     private long selectedArrangementEventTick = -1L;
     private int selectedArrangementEventNote = -1;
+    private int lastArrangementDuplicateTrack = -1;
+    private long lastArrangementDuplicateSourceTick = -1L;
+    private long lastArrangementDuplicateTargetTick = -1L;
+    private int lastArrangementDuplicateNote = -1;
     private int arrangementAuditTrackIndex = -1;
     private int arrangementAuditTargetStep = -1;
     private long arrangementAuditEventTick = -1L;
@@ -510,6 +517,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceGetTrackType(int trackIndex);
     private static native String nativeSequenceGetTrackArrangementData(int trackIndex);
     private static native String nativeSequenceMoveArrangementEvent(
+            int trackIndex, long sourceTick, int noteNumber, long targetTick);
+    private static native String nativeSequenceDuplicateArrangementEvent(
             int trackIndex, long sourceTick, int noteNumber, long targetTick);
     private static native boolean nativeSequenceIsTrackMuted(int trackIndex);
     private static native String nativeSequenceGetTrackProgram(int trackIndex);
@@ -6288,6 +6297,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementEventSelectionView = null;
         arrangementMoveEarlierButton = null;
         arrangementMoveLaterButton = null;
+        arrangementDuplicateButton = null;
+        arrangementUndoButton = null;
+        arrangementRedoButton = null;
         arrangementView = new MpcArrangeView(this);
         arrangementView.setListener(new MpcArrangeView.Listener() {
             @Override
@@ -6311,6 +6323,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 selectedArrangementEventTick = tick;
                 selectedArrangementEventNote = noteNumber;
                 updateArrangementEventControls();
+                logArrangementEventState("SELECT", trackIndex, tick, noteNumber);
             }
             @Override
             public void onEventSelectionCleared() {
@@ -6377,6 +6390,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementMoveLaterButton.setContentDescription("Arrangement move selected event one grid later");
         arrangementMoveLaterButton.setEnabled(false);
         header.addView(arrangementMoveLaterButton, new LinearLayout.LayoutParams(dp(76), dp(34)));
+        arrangementDuplicateButton = actionButton(
+                "DUP", v -> duplicateSelectedArrangementEvent());
+        arrangementDuplicateButton.setTextSize(9);
+        arrangementDuplicateButton.setContentDescription(
+                "Arrangement duplicate selected event one grid later");
+        arrangementDuplicateButton.setEnabled(false);
+        header.addView(arrangementDuplicateButton,
+                new LinearLayout.LayoutParams(dp(56), dp(34)));
+        arrangementUndoButton = actionButton(
+                "UNDO", v -> applyArrangementHistory(false));
+        arrangementUndoButton.setTextSize(9);
+        arrangementUndoButton.setContentDescription("Arrangement undo latest sequencer edit");
+        arrangementUndoButton.setEnabled(nativeSequenceCanUndo());
+        header.addView(arrangementUndoButton,
+                new LinearLayout.LayoutParams(dp(58), dp(34)));
+        arrangementRedoButton = actionButton(
+                "REDO", v -> applyArrangementHistory(true));
+        arrangementRedoButton.setTextSize(9);
+        arrangementRedoButton.setContentDescription("Arrangement redo latest sequencer edit");
+        arrangementRedoButton.setEnabled(nativeSequenceCanRedo());
+        header.addView(arrangementRedoButton,
+                new LinearLayout.LayoutParams(dp(58), dp(34)));
         page.addView(header);
 
         TextView info = label(
@@ -6462,6 +6497,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 && selectedArrangementEventNote >= 0;
         if (arrangementMoveEarlierButton != null) arrangementMoveEarlierButton.setEnabled(selected);
         if (arrangementMoveLaterButton != null) arrangementMoveLaterButton.setEnabled(selected);
+        if (arrangementDuplicateButton != null) arrangementDuplicateButton.setEnabled(selected);
+        if (arrangementUndoButton != null) arrangementUndoButton.setEnabled(nativeSequenceCanUndo());
+        if (arrangementRedoButton != null) arrangementRedoButton.setEnabled(nativeSequenceCanRedo());
         if (arrangementEventSelectionView != null) arrangementEventSelectionView.setText(
                 selected ? String.format(Locale.ROOT, "EVENT • TRACK %02d • TICK %d • NOTE %03d",
                         selectedArrangementEventTrack + 1, selectedArrangementEventTick,
@@ -6524,7 +6562,95 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         selectedArrangementEventTick = targetTick;
         updateArrangementEventControls();
         setBottomStatus(result);
+        logArrangementEventState("MOVE", selectedArrangementEventTrack, targetTick,
+                selectedArrangementEventNote);
         refreshArrangeView();
+    }
+
+    private void duplicateSelectedArrangementEvent() {
+        if (selectedArrangementEventTrack < 0 || selectedArrangementEventTick < 0L
+                || selectedArrangementEventNote < 0) {
+            setBottomStatus("ARRANGE EVENT DUPLICATE • select an event first");
+            return;
+        }
+        final int trackIndex = selectedArrangementEventTrack;
+        final long sourceTick = selectedArrangementEventTick;
+        final int noteNumber = selectedArrangementEventNote;
+        final long targetTick = sourceTick + Math.max(1, nativeSequenceGetQuantizeGrid());
+        final String result = nativeSequenceDuplicateArrangementEvent(
+                trackIndex, sourceTick, noteNumber, targetTick);
+        if (result == null || !result.startsWith("ARRANGE EVENT DUPLICATED")) {
+            setBottomStatus(result == null
+                    ? "ARRANGE EVENT DUPLICATE • native operation returned no result"
+                    : result);
+            return;
+        }
+        loadArrangementLanes();
+        if (!hasArrangementEventInProjection(trackIndex, sourceTick, noteNumber)
+                || !hasArrangementEventInProjection(trackIndex, targetTick, noteNumber)) {
+            final String rollback = nativeSequenceUndo();
+            loadArrangementLanes();
+            setBottomStatus("ARRANGE EVENT DUPLICATE • native projection check failed | rollback="
+                    + rollback);
+            updateArrangementEventControls();
+            refreshArrangeView();
+            return;
+        }
+        selectedArrangementEventTrack = trackIndex;
+        selectedArrangementEventTick = targetTick;
+        selectedArrangementEventNote = noteNumber;
+        lastArrangementDuplicateTrack = trackIndex;
+        lastArrangementDuplicateSourceTick = sourceTick;
+        lastArrangementDuplicateTargetTick = targetTick;
+        lastArrangementDuplicateNote = noteNumber;
+        updateArrangementEventControls();
+        setBottomStatus(result);
+        logArrangementEventState("DUPLICATE", trackIndex, targetTick, noteNumber);
+        refreshArrangeView();
+    }
+
+    private void applyArrangementHistory(boolean redo) {
+        final String result = redo ? nativeSequenceRedo() : nativeSequenceUndo();
+        final String unavailable = redo ? "nothing to redo" : "nothing to undo";
+        if (result == null || result.toLowerCase(Locale.ROOT).contains(unavailable)
+                || result.contains("unavailable while playback is running")) {
+            setBottomStatus(result == null
+                    ? "ARRANGEMENT HISTORY • native operation returned no result" : result);
+            updateArrangementEventControls();
+            return;
+        }
+        loadArrangementLanes();
+        final boolean duplicateHistoryAction = result.contains("Duplicate Arrangement event")
+                && selectedArrangementEventTrack == lastArrangementDuplicateTrack
+                && selectedArrangementEventNote == lastArrangementDuplicateNote
+                && ((redo && selectedArrangementEventTick == lastArrangementDuplicateSourceTick)
+                    || (!redo && selectedArrangementEventTick == lastArrangementDuplicateTargetTick));
+        if (duplicateHistoryAction) {
+            selectedArrangementEventTick = redo
+                    ? lastArrangementDuplicateTargetTick : lastArrangementDuplicateSourceTick;
+        }
+        if (selectedArrangementEventTrack >= 0 && !hasArrangementEventInProjection(
+                selectedArrangementEventTrack, selectedArrangementEventTick,
+                selectedArrangementEventNote)) {
+            selectedArrangementEventTrack = -1;
+            selectedArrangementEventTick = -1L;
+            selectedArrangementEventNote = -1;
+        }
+        updateArrangementEventControls();
+        setBottomStatus(result);
+        if (selectedArrangementEventTrack >= 0) {
+            logArrangementEventState(redo ? "REDO" : "UNDO", selectedArrangementEventTrack,
+                    selectedArrangementEventTick, selectedArrangementEventNote);
+        }
+        refreshArrangeView();
+    }
+
+    private void logArrangementEventState(
+            String action, int trackIndex, long tick, int noteNumber) {
+        if (!uiAuditSmokeMode || trackIndex < 0 || noteNumber < 0) return;
+        Log.i(TAG, "UI_ARRANGE_EVENT_STATE: action=" + action
+                + " track=" + trackIndex + " tick=" + tick + " note=" + noteNumber
+                + " data=" + nativeSequenceGetTrackArrangementData(trackIndex));
     }
 
     private String arrangementTrackName(String status, int trackIndex) {

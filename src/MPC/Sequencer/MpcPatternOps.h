@@ -157,6 +157,54 @@ inline bool movePatternNoteTick(
     return true;
 }
 
+// Duplicate one uniquely identified Arrangement event without disturbing its source.
+// Targets must remain inside the Pattern; identical-pitch events may not share a tick.
+inline bool duplicatePatternNoteTick(
+        domain::Pattern& pattern, std::int64_t sourceTick,
+        std::uint8_t noteNumber, std::int64_t targetTick) {
+    if (pattern.lengthTicks <= 0 || sourceTick < 0 || targetTick < 0
+            || sourceTick >= pattern.lengthTicks
+            || targetTick >= pattern.lengthTicks || sourceTick == targetTick) return false;
+    const auto matchesSource = [sourceTick, noteNumber](const domain::MidiNoteEvent& note) {
+        return note.tick == sourceTick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matchesSource) != 1) {
+        return false;
+    }
+    const auto collision = std::find_if(
+            pattern.notes.begin(), pattern.notes.end(),
+            [targetTick, noteNumber](const domain::MidiNoteEvent& note) {
+                return note.tick == targetTick && note.note == noteNumber;
+            });
+    if (collision != pattern.notes.end()) return false;
+    const auto source = std::find_if(
+            pattern.notes.begin(), pattern.notes.end(), matchesSource);
+    auto duplicate = *source;
+    duplicate.tick = static_cast<std::int32_t>(targetTick);
+    pattern.notes.push_back(duplicate);
+    std::stable_sort(
+            pattern.notes.begin(), pattern.notes.end(),
+            [](const domain::MidiNoteEvent& lhs,
+               const domain::MidiNoteEvent& rhs) { return lhs.tick < rhs.tick; });
+    return true;
+}
+
+// Remove exactly one Arrangement event. Used by the duplicate command's undo path.
+inline bool erasePatternNoteTick(
+        domain::Pattern& pattern, std::int64_t tick,
+        std::uint8_t noteNumber) {
+    if (pattern.lengthTicks <= 0 || tick < 0 || tick >= pattern.lengthTicks) return false;
+    const auto matches = [tick, noteNumber](const domain::MidiNoteEvent& note) {
+        return note.tick == tick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matches) != 1) {
+        return false;
+    }
+    const auto event = std::find_if(pattern.notes.begin(), pattern.notes.end(), matches);
+    pattern.notes.erase(event);
+    return true;
+}
+
 inline bool setStepNote(
         domain::Pattern& pattern,
         std::int32_t stepIndex,

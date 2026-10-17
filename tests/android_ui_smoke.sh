@@ -2194,6 +2194,176 @@ PY
     fi
     echo "Arrangement single-event MOVE ± GRID → native-position restoration passed."
 
+    # Duplicate the selected event through a real UI touch; validate the native Pattern
+    # projection on every step and restore the original fixture using the real Undo action.
+    arrangement_event_state_line() {
+      local action="$1"
+      adb_bounded 5 logcat -d -v brief 2>/dev/null \
+        | grep -F -- "UI_ARRANGE_EVENT_STATE: action=\${action} " \
+        | tail -n 1 || true
+    }
+    arrange_event_target_tick=$((arrange_event_tick + arrange_event_grid))
+    arrange_event_baseline_line="$(arrangement_event_state_line MOVE)"
+    if [[ -z "$arrange_event_baseline_line" ]]; then
+      echo "ERROR: no native Arrangement snapshot was logged after restoring MOVE ± GRID"; exit 1
+    fi
+    arrange_event_baseline_data="$(python3 - "$arrange_event_baseline_line" \
+      "$arrange_event_track" "$arrange_event_tick" "$arrange_event_note" \
+      "$arrange_event_target_tick" <<'PY'
+import re, sys
+line, track_s, source_s, note_s, target_s = sys.argv[1:]
+track, source, note, target = map(int, (track_s, source_s, note_s, target_s))
+m = re.search(r"UI_ARRANGE_EVENT_STATE: action=MOVE track=(\d+) tick=(\d+) note=(\d+) data=(.*)$", line)
+if not m or tuple(map(int, m.group(1,2,3))) != (track,source,note):
+    raise AssertionError(f"baseline native state mismatch: {line!r}")
+data = m.group(4)
+length_text, sep, rest = data.partition("|")
+if not sep or int(length_text) <= target:
+    raise AssertionError(f"target tick is outside the native Pattern: {data!r}")
+events = [tuple(map(int, item.split(","))) for item in rest.split(";") if item]
+if sum(1 for t,_,n in events if t == source and n == note) != 1:
+    raise AssertionError("source event is not unique in native Pattern state")
+if any(t == target and n == note for t,_,n in events):
+    raise AssertionError("target event is already occupied in the baseline fixture")
+print(data)
+PY
+    )" || { echo "ERROR: baseline native Arrangement Pattern validation failed"; exit 1; }
+
+    # Reusable validator: all musical events must match baseline except for one clone
+    # at source+grid; undo must restore the serialized Pattern exactly.
+    validate_arrangement_duplicate_state() {
+      local action="$1" xml_path="$2" native_line="$3" selection_tick="$4"
+      if ! python3 - "$action" "$xml_path" "$native_line" "$arrange_event_baseline_data" \
+          "$arrange_event_track" "$arrange_event_tick" "$arrange_event_target_tick" \
+          "$arrange_event_note" "$selection_tick" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+action, path, line, baseline, track_s, source_s, target_s, note_s, selected_s = sys.argv[1:]
+track,source,target,note,selected = map(int,(track_s,source_s,target_s,note_s,selected_s))
+m = re.search(r"UI_ARRANGE_EVENT_STATE: action=(\w+) track=(\d+) tick=(\d+) note=(\d+) data=(.*)$", line)
+if not m or m.group(1) != action:
+    raise AssertionError(f"missing authoritative {action} state marker: {line!r}")
+if tuple(map(int,m.group(2,3,4))) != (track,selected,note):
+    raise AssertionError(f"{action} selected identity mismatch: {m.groups()[1:4]}")
+data = m.group(5)
+def decode(value):
+    length_s, sep, rest = value.partition("|")
+    if not sep: raise AssertionError(f"invalid native Pattern serialization {value!r}")
+    return int(length_s), [tuple(map(int,e.split(","))) for e in rest.split(";") if e]
+base_len, base_events = decode(baseline)
+current_len, events = decode(data)
+if base_len != current_len: raise AssertionError("Pattern length changed during event duplication")
+if action == "UNDO":
+    if data != baseline: raise AssertionError("Undo did not restore exact native Pattern serialization")
+else:
+    if len(events) != len(base_events)+1:
+        raise AssertionError(f"{action} should add exactly one event: {len(base_events)}→{len(events)}")
+    source_events=[e for e in events if e[0]==source and e[2]==note]
+    clones=[e for e in events if e[0]==target and e[2]==note]
+    if len(source_events)!=1 or len(clones)!=1:
+        raise AssertionError(f"{action} source/clone mismatch: source={source_events}, clone={clones}")
+    if source_events[0][1] != clones[0][1]:
+        raise AssertionError("duplicated event duration differs from source")
+    if [e for e in events if e != clones[0]] != base_events:
+        raise AssertionError(f"{action} changed other native Pattern events")
+nodes=list(ET.parse(path).getroot().iter("node"))
+info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
+expected=f"EVENT • TRACK {track+1:02d} • TICK {selected} • NOTE {note:03d}"
+if len(info)!=1 or info[0].attrib.get("text") != expected:
+    raise AssertionError(f"{action} accessibility selection mismatch: expected {expected!r}")
+print(f"Arrangement {action}: authoritative Pattern and selected UI event verified.")
+PY
+      then
+        echo "ERROR: Arrangement \${action} state failed validation"
+        cat "$xml_path"
+        return 1
+      fi
+    }
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_RESTORED_XML" \
+      "Arrangement duplicate selected event one grid later"; then
+      echo "ERROR: Arrangement DUP control not actionable"; exit 1
+    fi
+    sleep 0.35
+    ARRANGE_EVENT_DUPLICATED_PNG="/tmp/mpc-groovebox-arrange-event-duplicated.png"
+    ARRANGE_EVENT_DUPLICATED_XML="/tmp/mpc-groovebox-arrange-event-duplicated-uiautomator.xml"
+    ARRANGE_EVENT_DUPLICATED_REMOTE="/sdcard/mpc-groovebox-arrange-event-duplicated-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_DUPLICATED_REMOTE" "$ARRANGE_EVENT_DUPLICATED_XML"; then
+      echo "ERROR: duplicated Arrangement hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_DUPLICATED_PNG"; then
+      echo "ERROR: duplicated Arrangement screenshot failed"; exit 1
+    fi
+    arrangement_event_duplicate_line="$(arrangement_event_state_line DUPLICATE)"
+    if [[ -z "$arrangement_event_duplicate_line" ]]; then
+      echo "ERROR: DUP did not log its authoritative native Pattern state"; exit 1
+    fi
+    validate_arrangement_duplicate_state DUPLICATE "$ARRANGE_EVENT_DUPLICATED_XML" \
+      "$arrangement_event_duplicate_line" "$arrange_event_target_tick" || exit 1
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_DUPLICATED_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: Arrangement UNDO control not actionable"; exit 1
+    fi
+    sleep 0.35
+    ARRANGE_EVENT_DUP_UNDO_PNG="/tmp/mpc-groovebox-arrange-event-duplicate-undo.png"
+    ARRANGE_EVENT_DUP_UNDO_XML="/tmp/mpc-groovebox-arrange-event-duplicate-undo-uiautomator.xml"
+    ARRANGE_EVENT_DUP_UNDO_REMOTE="/sdcard/mpc-groovebox-arrange-event-duplicate-undo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_DUP_UNDO_REMOTE" "$ARRANGE_EVENT_DUP_UNDO_XML"; then
+      echo "ERROR: duplicate-UNDO Arrangement hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_DUP_UNDO_PNG"; then
+      echo "ERROR: duplicate-UNDO Arrangement screenshot failed"; exit 1
+    fi
+    arrangement_event_undo_line="$(arrangement_event_state_line UNDO)"
+    if [[ -z "$arrangement_event_undo_line" ]]; then
+      echo "ERROR: UNDO did not log native Pattern state"; exit 1
+    fi
+    validate_arrangement_duplicate_state UNDO "$ARRANGE_EVENT_DUP_UNDO_XML" \
+      "$arrangement_event_undo_line" "$arrange_event_tick" || exit 1
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_DUP_UNDO_XML" \
+      "Arrangement redo latest sequencer edit"; then
+      echo "ERROR: Arrangement REDO control not actionable"; exit 1
+    fi
+    sleep 0.35
+    ARRANGE_EVENT_DUP_REDO_PNG="/tmp/mpc-groovebox-arrange-event-duplicate-redo.png"
+    ARRANGE_EVENT_DUP_REDO_XML="/tmp/mpc-groovebox-arrange-event-duplicate-redo-uiautomator.xml"
+    ARRANGE_EVENT_DUP_REDO_REMOTE="/sdcard/mpc-groovebox-arrange-event-duplicate-redo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_DUP_REDO_REMOTE" "$ARRANGE_EVENT_DUP_REDO_XML"; then
+      echo "ERROR: duplicate-REDO Arrangement hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_DUP_REDO_PNG"; then
+      echo "ERROR: duplicate-REDO Arrangement screenshot failed"; exit 1
+    fi
+    arrangement_event_redo_line="$(arrangement_event_state_line REDO)"
+    if [[ -z "$arrangement_event_redo_line" ]]; then
+      echo "ERROR: REDO did not log native Pattern state"; exit 1
+    fi
+    validate_arrangement_duplicate_state REDO "$ARRANGE_EVENT_DUP_REDO_XML" \
+      "$arrangement_event_redo_line" "$arrange_event_target_tick" || exit 1
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_DUP_REDO_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: final duplicate restore UNDO control not actionable"; exit 1
+    fi
+    sleep 0.35
+    ARRANGE_EVENT_DUP_RESTORED_PNG="/tmp/mpc-groovebox-arrange-event-duplicate-restored.png"
+    ARRANGE_EVENT_DUP_RESTORED_XML="/tmp/mpc-groovebox-arrange-event-duplicate-restored-uiautomator.xml"
+    ARRANGE_EVENT_DUP_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-event-duplicate-restored-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_DUP_RESTORED_REMOTE" "$ARRANGE_EVENT_DUP_RESTORED_XML"; then
+      echo "ERROR: final duplicate-restore Arrangement hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_DUP_RESTORED_PNG"; then
+      echo "ERROR: final duplicate-restore Arrangement screenshot failed"; exit 1
+    fi
+    arrangement_event_final_undo_line="$(arrangement_event_state_line UNDO)"
+    if [[ -z "$arrangement_event_final_undo_line" ]]; then
+      echo "ERROR: final duplicate-restore UNDO did not log native Pattern state"; exit 1
+    fi
+    validate_arrangement_duplicate_state UNDO "$ARRANGE_EVENT_DUP_RESTORED_XML" \
+      "$arrangement_event_final_undo_line" "$arrange_event_tick" || exit 1
+    echo "Arrangement duplicate touch → native Pattern → UNDO → REDO → exact restoration passed."
+
     arrange_loop_drag_points="$(python3 - \
       "$ARRANGE_LOOP_BEFORE_XML" "$arrange_density" \
       "$loop_original_end" "$loop_target_end" \
