@@ -5,40 +5,40 @@
 
 ## Latest verified implementation state
 
-- Repository: `MiguelDuval/mpc-mk2-groovebox`.
-- Branch: `feature/mpc-one-ui-fidelity`; PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) is **OPEN**, base `fix/ui-shell-format-width-startup`, HEAD `57744f9eed12a34076f2b5911c2ad7e9c7d1c4a6`.
-- [Android Build #2766](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39048036076) completed **SUCCESS** on that exact HEAD: source checks, JVM/native checks, debug APK assembly/upload, emulator UI smoke and visual-evidence upload all passed.
-- APK artifact: `app-debug.apk`, artifact ID `12106627441`, 8,228,253 bytes, digest `sha256:4c1ee5d06ba16ef67db2ee1694f53d1ec6aee26e149b41c30c1bf6f66e56ccb5`.
-- UI-evidence artifact: `mpc-ui-visual-evidence`, artifact ID `12106253584`, 4,085,397 bytes, digest `sha256:38a349063dee27a194f5ca8742724b690c5d0a55967f82b58ec57b7bbc5a6d25`. Downloaded and inspected the real Main screenshot/hierarchy, Track Edit before/changed/reopened/restored screenshots and hierarchies, Arrangement→Grid focused-step capture, plus Grid DRAW and ERASE screenshots/hierarchies.
-- Physical MPC Studio MkII verification remains **PENDING**. These results are from Android Emulator only.
+- Repository: `MiguelDuval/mpc-mk2-groovebox`; branch `feature/mpc-one-ui-fidelity`.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains **OPEN**, base `fix/ui-shell-format-width-startup`, HEAD `4e149cbd60284a77473998514ab73c1991f9b1bb`.
+- [Android Build #2774](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39055094110) completed **SUCCESS** on that exact SHA: compile/native/JVM checks, debug APK assembly/upload, emulator smoke and visual evidence upload all passed.
+- APK artifact: `app-debug.apk`, artifact ID `12108214550`, 8,228,253 bytes, digest `sha256:ec433f166113ecea04e51ad5c2305ba3e7837743cb9318d5d27e1a19b4f7cfd6`.
+- UI evidence artifact: `mpc-ui-visual-evidence`, artifact ID `12109427682`, 4,766,965 bytes, digest `sha256:4902b9e91dd18c20f3e6d5a50ab69aab1bd4d9ca4845f4f535bc91fd52de25a7`. Downloaded and inspected the real Main screenshot/hierarchy, all four Track Edit tuning snapshots, Arrangement→Grid focus/back/re-entry, Grid DRAW/ERASE, and Step Sequencer before/add/parameter/erase screenshots plus matching accessibility hierarchies.
+- Physical MPC Studio MkII verification remains **PENDING**. All results cited above are Android Emulator evidence.
 
 ## Completed in this session
 
-### 1. Track Edit sample-layer tuning acceptance — VERIFIED
+### 1. Track Edit layer tuning — VERIFIED
 
-The TUNE row is below the initial viewport in the real Track Edit Samples `ScrollView`; it was not a missing or inaccessible backend parameter. The smoke test scrolls inside the live container using accessibility-derived bounds and waits for the actionable TUNE+ control. It retains the real +1-semitone check, comparison to native sampler state, leave/re-entry persistence and safe restoration of the original value. The actual entry route (Main or MPC Menu TRACK EDIT) is preserved during re-entry.
+The Tune control is below the initial viewport inside the real Samples ScrollView. The smoke scrolls using live container bounds, taps TUNE+ once, confirms `+0.00 st → +1.00 st` against native sampler state, leaves/reopens the actual entry route, verifies persistence, and restores the original tuning.
 
-Build #2766 repeated the acceptance: baseline `+0.00 st`, one real TUNE+ tap to `+1.00 st`, persistence after leaving/reopening Track Edit, then restoration to `+0.00 st`.
+### 2. Main left Channel Strip geometry — FIXED / VERIFIED
 
-### 2. Main left Channel Strip geometry — FIXED AND VERIFIED
+The old condensed mixer was a duplicate weighted child re-exposed from saved Mixer visibility. It remains mounted but GONE, preserving dependencies, while the intended XL strip fills the Main context region. Build #2774 continues to pass live relative-geometry assertions and the canonical shell hierarchy check.
 
-The old condensed Mixer view was a duplicate weighted child: `applyCompactMixerVisibility()` re-exposed it from the saved Mixer state, splitting the shell's left region in half. It was not an Android-insets or firmware-coordinate problem. The legacy view remains mounted but `GONE`, preserving state/refresh dependencies and the shell show/hide control. The smoke test validates live relative geometry.
+### 3. Grid DRAW/ERASE — VERIFIED
 
-Build #2766 hierarchy reports `MPC Main XL Mixer Strips [137,135][666,1069]` and no legacy condensed-mixer content panel. The XL mixer passes the height/width fill thresholds and its toggle hit target remains contained.
+The custom-canvas Grid projects native note presence/velocity to the selected-cell accessibility label. A real Android device tap added Pad 01 / Step 34 at velocity 100; a second real tap with ERASE removed it. The seeded Step 33 event was preserved. Captured DRAW/ERASE screenshots and hierarchies agree with the native-state projection.
 
-### 3. Grid DRAW/ERASE native-state round-trip — VERIFIED
+### 4. Step Sequencer touch/edit/remove — VERIFIED
 
-The Grid cells are custom-drawn on a Canvas and do not expose per-cell Android views. `MainActivity` now sets the selected-cell accessibility description from `nativeSequenceGetGridVelocities()`, reporting real note presence and velocity rather than inventing UI state.
+The emulator test touched Pad 01 / Step 02, verified native-backed velocity 100 and probability 127, used the real Function Bar PARAM and minus controls to change probability to 126, then removed the temporary event with a real touch. Step 01 remained unchanged, and the app-side audit verified native cleanup and restored the parameter selector.
 
-The smoke test derives the touch coordinate from the live Grid canvas bounds and Android `wm density`. Starting from the actual Arrangement→Grid route, it touched Pad 01 / Step 34; the native projection reported velocity 100. It then selected the enabled ERASE control from the real accessibility hierarchy, touched the same cell, and confirmed “no note.” The seeded Step 33 note was preserved and DRAW mode restored. No assertion was weakened.
+### 5. Step Sequencer header geometry / control identity — FIXED / VERIFIED
 
-In Build #2766, the captured DRAW screenshot visibly shows the seeded Step 33 note plus Step 34; the ERASE screenshot shows Step 34 removed and Step 33 retained. The related accessibility XML agrees with the actual selected-cell state.
+The previous accessibility evidence and screenshot showed the track label wrapping vertically and the PAD− button being overwritten because refresh code updated a child by numeric index. The patch uses explicit pad/context references, a single-line context label, smaller fixed slots, and concise `TRACK 01 • DRUM` text. The PAD status label and PAD−/PAD+ remain separate controls. Build #2774 passes the live-width and label/control identity assertions, and the captured post-fix screenshot/hierarchy were inspected.
 
 ## Current execution order
 
-1. Add an external-emulator touchscreen acceptance for Step Sequencer: use the live hierarchy to tap a visible step, verify the real native note parameters, alter a parameter through an actual visible control, then remove the temporary note without changing the seeded fixture note. The existing in-app audit already covers paging and state-preservation; retain it rather than duplicating another synthetic-only flow.
-2. Run the full Android workflow at the exact resulting SHA, inspect its conclusion and downloadable APK/evidence. Keep physical MPC Studio MkII testing separately marked pending.
-3. Re-check live PR #23 HEAD/base and Actions again before the next implementation slice.
+1. Add external emulator acceptance for dragging an Arrangement loop handle through the real canvas touch path. Assert the committed loop start/end bars in native state, capture screenshot/hierarchy, and safely restore the original loop range.
+2. Re-run the full workflow on exact HEAD and inspect the actual conclusion and artifacts. Keep physical MPC Studio MkII validation marked pending.
+3. Re-check PR #23 HEAD/base and Actions before starting the next implementation slice.
 
 ## Mandatory operating rules
 
