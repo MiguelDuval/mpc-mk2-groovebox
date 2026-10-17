@@ -6728,9 +6728,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     || (!redo && selectedArrangementEventTick == lastArrangementDuplicateTargetTick));
         final boolean pasteHistoryAction = result.contains("Paste Arrangement event")
                 && selectedArrangementEventTrack == lastArrangementPasteTrack
-                && selectedArrangementEventNote == lastArrangementPasteNote
-                && ((redo && selectedArrangementEventTick == lastArrangementPasteSourceTick)
-                    || (!redo && selectedArrangementEventTick == lastArrangementPasteTargetTick));
+                && ((redo
+                        && selectedArrangementEventNote == lastArrangementPasteSourceNote
+                        && selectedArrangementEventTick == lastArrangementPasteSourceTick)
+                    || (!redo
+                        && selectedArrangementEventNote == lastArrangementPasteNote
+                        && selectedArrangementEventTick == lastArrangementPasteTargetTick));
         if (duplicateHistoryAction) {
             selectedArrangementEventTick = redo
                     ? lastArrangementDuplicateTargetTick : lastArrangementDuplicateSourceTick;
