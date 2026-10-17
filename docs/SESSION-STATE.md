@@ -6,35 +6,39 @@
 ## Latest verified implementation state
 
 - Repository: `MiguelDuval/mpc-mk2-groovebox`.
-- Branch: `feature/mpc-one-ui-fidelity`.
-- PR [#23 — MPC One Main UI visual fidelity pass](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains OPEN; base `fix/ui-shell-format-width-startup`.
-- Last code-changing source commit verified by the full workflow: [`11bc2de28d1af93c0165375791b19400c794a937`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/11bc2de28d1af93c0165375791b19400c794a937).
-- [Android Build #2761](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39043633365) completed **SUCCESS** on that exact SHA: compilation, JVM/native checks, debug APK assembly/upload, emulator UI smoke, and visual-evidence upload all passed.
-- APK artifact: `app-debug.apk`, artifact ID `12105011775`, 8,228,253 bytes, digest `sha256:10cb2425522458c8c11ff4e040f593f2000e7ddf0dfdfe6f2f028849119dbc74`.
-- UI-evidence artifact: `mpc-ui-visual-evidence`, artifact ID `12105227341`, 3,462,105 bytes, digest `sha256:f2c9f3ce8ea2843cdf31e947a553cec699924c3bd41877bc70b49e1b65dbc1f6`. The post-fix Main screenshot/hierarchy and all four Track Edit tuning snapshots were downloaded and inspected.
-- Physical MPC Studio MkII verification remains **PENDING**. Emulator success is not physical-controller validation.
+- Branch: `feature/mpc-one-ui-fidelity`; PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) is **OPEN**, base `fix/ui-shell-format-width-startup`, HEAD `57744f9eed12a34076f2b5911c2ad7e9c7d1c4a6`.
+- [Android Build #2766](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39048036076) completed **SUCCESS** on that exact HEAD: source checks, JVM/native checks, debug APK assembly/upload, emulator UI smoke and visual-evidence upload all passed.
+- APK artifact: `app-debug.apk`, artifact ID `12106627441`, 8,228,253 bytes, digest `sha256:4c1ee5d06ba16ef67db2ee1694f53d1ec6aee26e149b41c30c1bf6f66e56ccb5`.
+- UI-evidence artifact: `mpc-ui-visual-evidence`, artifact ID `12106253584`, 4,085,397 bytes, digest `sha256:38a349063dee27a194f5ca8742724b690c5d0a55967f82b58ec57b7bbc5a6d25`. Downloaded and inspected the real Main screenshot/hierarchy, Track Edit before/changed/reopened/restored screenshots and hierarchies, Arrangement→Grid focused-step capture, plus Grid DRAW and ERASE screenshots/hierarchies.
+- Physical MPC Studio MkII verification remains **PENDING**. These results are from Android Emulator only.
 
 ## Completed in this session
 
 ### 1. Track Edit sample-layer tuning acceptance — VERIFIED
 
-The TUNE field was not missing or inaccessible. The Samples body is a real vertical `ScrollView` with bounds `[693,251][1778,849]`; the layer Gain/Tune/Pan controls follow the waveform, region controls and Gain row, so TUNE is below the initial viewport. The failure came from the smoke test expecting an off-screen node to be immediately discoverable. The helper now uses the live hierarchy to calculate a safe swipe inside the actual ScrollView and waits for the actionable control to appear. The test also preserves the original navigation entry route (Main or MPC Menu) when leaving and re-entering.
+The TUNE row is below the initial viewport in the real Track Edit Samples `ScrollView`; it was not a missing or inaccessible backend parameter. The smoke test scrolls inside the live container using accessibility-derived bounds and waits for the actionable TUNE+ control. It retains the real +1-semitone check, comparison to native sampler state, leave/re-entry persistence and safe restoration of the original value. The actual entry route (Main or MPC Menu TRACK EDIT) is preserved during re-entry.
 
-On Android Build #2761, the acceptance log and evidence confirmed baseline `+0.00 st`, one real TUNE+ tap to `+1.00 st`, persistence after leaving/re-entering Track Edit, and restoration to the original `+0.00 st`. The test retains the one-semitone, state round-trip and restore assertions.
+Build #2766 repeated the acceptance: baseline `+0.00 st`, one real TUNE+ tap to `+1.00 st`, persistence after leaving/reopening Track Edit, then restoration to `+0.00 st`.
 
 ### 2. Main left Channel Strip geometry — FIXED AND VERIFIED
 
-The fresh pre-fix capture from successful Build #2760 showed the same shell bounds `MPC shell mixer strips [126,124][677,1080]`, but two competing weighted children: legacy `MPC condensed Mixer Strip [137,135][666,602]` and the intended `MPC Main XL Mixer Strips [137,602][666,1069]`. The oversized upper panel was the old condensed mixer view, not a system inset or firmware-unit scaling problem. `buildCompactContext()` initially hid it, but `applyCompactMixerVisibility()` subsequently re-exposed it whenever the saved Mixer Strip state was visible.
+The old condensed Mixer view was a duplicate weighted child: `applyCompactMixerVisibility()` re-exposed it from the saved Mixer state, splitting the shell's left region in half. It was not an Android-insets or firmware-coordinate problem. The legacy view remains mounted but `GONE`, preserving state/refresh dependencies and the shell show/hide control. The smoke test validates live relative geometry.
 
-Commit `11bc2de28d1af93c0165375791b19400c794a937` now keeps that legacy view mounted but `GONE`, retaining existing refresh/state dependencies and preserving `mpcShell.setChannelStripVisible(visible)` plus the show/hide control. The smoke preflight protects against re-exposing the duplicate panel. The new Main runtime acceptance also measures the mixer/context bounds from accessibility, requires the legacy panel to be absent, and checks that the show/hide hit target remains inside the XL mixer.
+Build #2766 hierarchy reports `MPC Main XL Mixer Strips [137,135][666,1069]` and no legacy condensed-mixer content panel. The XL mixer passes the height/width fill thresholds and its toggle hit target remains contained.
 
-The post-fix Main hierarchy from Build #2761 confirms that `MPC condensed Mixer Strip` is absent and the intended `MPC Main XL Mixer Strips` expands to `[137,135][666,1069]`. The screenshot visibly shows the XL channel strips filling the left region while the canonical Toolbar → five Shortcuts → XL Channel Strip region → Workspace → Function Bar shell remains intact.
+### 3. Grid DRAW/ERASE native-state round-trip — VERIFIED
+
+The Grid cells are custom-drawn on a Canvas and do not expose per-cell Android views. `MainActivity` now sets the selected-cell accessibility description from `nativeSequenceGetGridVelocities()`, reporting real note presence and velocity rather than inventing UI state.
+
+The smoke test derives the touch coordinate from the live Grid canvas bounds and Android `wm density`. Starting from the actual Arrangement→Grid route, it touched Pad 01 / Step 34; the native projection reported velocity 100. It then selected the enabled ERASE control from the real accessibility hierarchy, touched the same cell, and confirmed “no note.” The seeded Step 33 note was preserved and DRAW mode restored. No assertion was weakened.
+
+In Build #2766, the captured DRAW screenshot visibly shows the seeded Step 33 note plus Step 34; the ERASE screenshot shows Step 34 removed and Step 33 retained. The related accessibility XML agrees with the actual selected-cell state.
 
 ## Current execution order
 
-1. Continue with the next high-value, complete musical workflow in the existing Track/Arrange/Grid/Step areas. Start from live source, the current roadmap, and targeted test gaps; do not repeat firmware research or cosmetic passes.
-2. Keep physical MPC Studio MkII verification explicitly separate from Android emulator verification.
-3. On the next session, re-check live PR #23 HEAD/base and Actions before editing; this file is a handoff checkpoint, not a replacement for live GitHub state.
+1. Add an external-emulator touchscreen acceptance for Step Sequencer: use the live hierarchy to tap a visible step, verify the real native note parameters, alter a parameter through an actual visible control, then remove the temporary note without changing the seeded fixture note. The existing in-app audit already covers paging and state-preservation; retain it rather than duplicating another synthetic-only flow.
+2. Run the full Android workflow at the exact resulting SHA, inspect its conclusion and downloadable APK/evidence. Keep physical MPC Studio MkII testing separately marked pending.
+3. Re-check live PR #23 HEAD/base and Actions again before the next implementation slice.
 
 ## Mandatory operating rules
 
