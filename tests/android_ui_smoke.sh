@@ -2238,7 +2238,7 @@ PY
       echo "ERROR: Arrange loop restored-state screenshot failed"; exit 1
     fi
 
-    if ! adb_bounded 10 shell run-as "$PACKAGE" sh -c "echo $loop_original_start $loop_original_end $loop_target_end > cache/mpc-arrange-loop-touch-result"; then
+    if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'echo $loop_original_start $loop_original_end $loop_target_end > cache/mpc-arrange-loop-touch-result'"; then
       echo "ERROR: could not write Arrange loop acceptance result"; exit 1
     fi
     if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-arrange-loop-touch-capture-release; then
