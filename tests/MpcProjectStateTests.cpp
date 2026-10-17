@@ -37,6 +37,12 @@ int main() {
     assert(sequence.loopEndTicks == sequence.lengthTicks);
     assert(sequence.tracks.size() == 1);
     assert(sequence.tracks[0].kind == mpc::domain::TrackKind::Drum);
+    assert(sequence.tracks[0].patterns.size() == 1);
+    assert(sequence.tracks[0].placements.size() == 1);
+    assert(sequence.tracks[0].placements.front().patternId
+            == sequence.tracks[0].patterns.front().id);
+    assert(sequence.tracks[0].placements.front().startTick == 0);
+    assert(sequence.tracks[0].placements.front().lengthTicks == sequence.lengthTicks);
 
     auto& pattern = state.activeSequence().tracks[0].patterns.front();
     assert(mpc::sequencer::setStepNote(
@@ -62,6 +68,7 @@ int main() {
 
     assert(state.setSequenceBars(8));
     assert(state.activeSequence().lengthTicks == 30720);
+    assert(state.activeSequence().tracks[0].placements.front().lengthTicks == 30720);
     assert(state.activeSequence().loopEndTicks == 30720);
 
     assert(state.setSequenceLoop(true, 3, 6));
@@ -72,6 +79,7 @@ int main() {
 
     assert(state.setSequenceTimeSignature(3, 4));
     assert(state.activeSequence().lengthTicks == 23040);
+    assert(state.activeSequence().tracks[0].placements.front().lengthTicks == 23040);
     assert(state.activeSequence().loopStartTicks == 5760);
     assert(state.activeSequence().loopEndTicks == 17280);
 
@@ -85,6 +93,12 @@ int main() {
     assert(state.addTrack(mpc::domain::TrackKind::Audio));
     assert(state.activeSequence().tracks.size() == 2);
     assert(state.activeTrackIndex() == 1);
+    assert(state.activeSequence().tracks[1].placements.size() == 1);
+    assert(state.activeSequence().tracks[1].placements.front().patternId
+            == state.activeSequence().tracks[1].patterns.front().id);
+    assert(state.activeSequence().tracks[1].placements.front().startTick == 0);
+    assert(state.activeSequence().tracks[1].placements.front().lengthTicks
+            == state.activeSequence().lengthTicks);
     assert(state.selectTrack(0));
     assert(state.activeTrackIndex() == 0);
     assert(state.activeProgramIndexForTrack(0) == 0);
@@ -125,6 +139,13 @@ int main() {
     assert(state.activeSequence().name == "Sequence 02");
     assert(state.activeSequence().tracks.size() == 1);
     assert(state.activeSequence().tracks[0].kind == mpc::domain::TrackKind::Drum);
+    assert(state.activeSequence().tracks[0].patterns.size() == 1);
+    assert(state.activeSequence().tracks[0].placements.size() == 1);
+    assert(state.activeSequence().tracks[0].placements.front().patternId
+            == state.activeSequence().tracks[0].patterns.front().id);
+    assert(state.activeSequence().tracks[0].placements.front().startTick == 0);
+    assert(state.activeSequence().tracks[0].placements.front().lengthTicks
+            == state.activeSequence().lengthTicks);
     assert(state.activeSequence().tempoBpm == 120.0);
     assert(state.activeSequence().lengthTicks == 15360);
 

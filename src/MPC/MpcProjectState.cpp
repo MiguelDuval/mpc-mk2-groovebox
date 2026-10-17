@@ -39,6 +39,12 @@ domain::Sequence makeDefaultSequence(std::size_t sequenceNumber) {
     pattern.name = "Pattern 01";
     pattern.lengthTicks = sequence.lengthTicks;
     drumTrack.patterns.push_back(std::move(pattern));
+    domain::PatternPlacement initialPlacement;
+    initialPlacement.id = drumTrack.id + "-placement-1";
+    initialPlacement.patternId = drumTrack.patterns.front().id;
+    initialPlacement.startTick = 0;
+    initialPlacement.lengthTicks = sequence.lengthTicks;
+    drumTrack.placements.push_back(std::move(initialPlacement));
     sequence.tracks.push_back(std::move(drumTrack));
 
     return sequence;
@@ -227,6 +233,7 @@ bool MpcProjectState::setSequenceBars(std::int32_t bars) noexcept {
         return false;
     }
 
+    const auto previousLength = sequence.lengthTicks;
     const bool loopWasFullLength =
             sequence.loopStartTicks == 0
             && sequence.loopEndTicks == sequence.lengthTicks;
@@ -246,6 +253,13 @@ bool MpcProjectState::setSequenceBars(std::int32_t bars) noexcept {
         for (auto& pattern : track.patterns) {
             pattern.lengthTicks = length;
         }
+        // Keep only the legacy full-sequence placement coupled to sequence length.
+        // Explicit shorter clip placements remain independent of later sequence resizing.
+        for (auto& placement : track.placements) {
+            if (placement.startTick == 0 && placement.lengthTicks == previousLength) {
+                placement.lengthTicks = length;
+            }
+        }
     }
 
     if (activeTrackIndex_ >= mutableSequence.tracks.size()) {
@@ -264,6 +278,7 @@ bool MpcProjectState::setSequenceTimeSignature(
     }
 
     const auto& oldSequence = activeSequence();
+    const auto previousLength = oldSequence.lengthTicks;
     const auto bars = sequencer::sequenceBars(oldSequence);
     const auto oldPerBar = std::max(
             1,
@@ -299,6 +314,13 @@ bool MpcProjectState::setSequenceTimeSignature(
     for (auto& track : sequence.tracks) {
         for (auto& pattern : track.patterns) {
             pattern.lengthTicks = length;
+        }
+        // Preserve a full-sequence placement as the sequence's length changes,
+        // while keeping intentional short/offset placements unchanged.
+        for (auto& placement : track.placements) {
+            if (placement.startTick == 0 && placement.lengthTicks == previousLength) {
+                placement.lengthTicks = length;
+            }
         }
     }
     return true;
@@ -403,6 +425,12 @@ bool MpcProjectState::addTrack(
     pattern.name = "Pattern 01";
     pattern.lengthTicks = sequence.lengthTicks;
     track.patterns.push_back(std::move(pattern));
+    domain::PatternPlacement initialPlacement;
+    initialPlacement.id = track.id + "-placement-1";
+    initialPlacement.patternId = track.patterns.front().id;
+    initialPlacement.startTick = 0;
+    initialPlacement.lengthTicks = sequence.lengthTicks;
+    track.placements.push_back(std::move(initialPlacement));
 
     sequence.tracks.push_back(std::move(track));
     activeTrackIndex_ = sequence.tracks.size() - 1;

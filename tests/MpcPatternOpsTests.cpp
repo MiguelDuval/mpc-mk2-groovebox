@@ -1,9 +1,108 @@
+#include "MPC/MpcEditHistory.h"
+#include "MPC/Sequencer/MpcArrangementOps.h"
 #include "MPC/Sequencer/MpcPatternOps.h"
 
 #include <array>
 #include <cassert>
 
 int main() {
+    // Explicit Arrangement Pattern placements reference Pattern data without copying it.
+    mpc::domain::Sequence placementSequence;
+    placementSequence.id = "sequence-placement-test";
+    placementSequence.lengthTicks = 3840;
+    mpc::domain::Track placementTrack;
+    placementTrack.id = "track-placement-test";
+    mpc::domain::Pattern placementPattern;
+    placementPattern.id = "pattern-placement-test";
+    placementPattern.lengthTicks = 1920;
+    placementPattern.notes = {{0, 120, 36, 97, 88, 3, -11}};
+    placementTrack.patterns.push_back(placementPattern);
+    placementSequence.tracks.push_back(placementTrack);
+
+    assert(mpc::sequencer::addPatternPlacement(
+            placementSequence, 0, "clip-01", "pattern-placement-test", 0, 960));
+    assert(mpc::sequencer::addPatternPlacement(
+            placementSequence, 0, "clip-02", "pattern-placement-test", 960, 960));
+    assert(mpc::sequencer::addPatternPlacement(
+            placementSequence, 0, "clip-03", "pattern-placement-test", 1920, 960, 960));
+    const auto& placementTrackAfterAdd = placementSequence.tracks[0];
+    assert(placementTrackAfterAdd.placements.size() == 3);
+    assert(placementTrackAfterAdd.placements[0].id == "clip-01");
+    assert(placementTrackAfterAdd.placements[0].startTick == 0);
+    assert(placementTrackAfterAdd.placements[1].id == "clip-02");
+    assert(placementTrackAfterAdd.placements[1].startTick == 960);
+    assert(placementTrackAfterAdd.placements[2].id == "clip-03");
+    assert(placementTrackAfterAdd.placements[2].sourceOffsetTicks == 960);
+
+    // Invalid Pattern references, duplicate ids, overlaps and out-of-range clips fail
+    // without changing the placement list.
+    assert(!mpc::sequencer::addPatternPlacement(
+            placementSequence, 0, "clip-04", "missing-pattern", 2880, 960));
+    assert(!mpc::sequencer::addPatternPlacement(
+            placementSequence, 0, "clip-01", "pattern-placement-test", 2880, 960));
+    assert(!mpc::sequencer::addPatternPlacement(
+            placementSequence, 0, "clip-overlap", "pattern-placement-test", 480, 240));
+    assert(!mpc::sequencer::addPatternPlacement(
+            placementSequence, 0, "clip-negative", "pattern-placement-test", -240, 240));
+    assert(!mpc::sequencer::addPatternPlacement(
+            placementSequence, 0, "clip-outside", "pattern-placement-test", 3360, 960));
+    assert(!mpc::sequencer::addPatternPlacement(
+            placementSequence, 0, "clip-too-long", "pattern-placement-test", 2880, 1200));
+    assert(!mpc::sequencer::addPatternPlacement(
+            placementSequence, 0, "clip-bad-offset", "pattern-placement-test", 2880, 240, 1800));
+    assert(placementSequence.tracks[0].placements.size() == 3);
+
+    // Move and resize operations reject collisions atomically and preserve identity.
+    assert(!mpc::sequencer::movePatternPlacement(
+            placementSequence, 0, "clip-02", 0));
+    assert(!mpc::sequencer::movePatternPlacement(
+            placementSequence, 0, "clip-02", 1440));
+    assert(placementSequence.tracks[0].placements[1].startTick == 960);
+    assert(!mpc::sequencer::resizePatternPlacement(
+            placementSequence, 0, "clip-02", 1920));
+    assert(placementSequence.tracks[0].placements[1].lengthTicks == 960);
+
+    // Editing a placement never duplicates/removes the underlying note data.
+    assert(mpc::sequencer::erasePatternPlacement(placementSequence, 0, "clip-03"));
+    assert(placementSequence.tracks[0].patterns.size() == 1);
+    assert(placementSequence.tracks[0].patterns[0].notes.size() == 1);
+    assert(mpc::sequencer::movePatternPlacement(
+            placementSequence, 0, "clip-02", 1920));
+    assert(placementSequence.tracks[0].placements[1].id == "clip-02");
+    assert(placementSequence.tracks[0].placements[1].patternId
+            == "pattern-placement-test");
+    assert(placementSequence.tracks[0].placements[1].startTick == 1920);
+
+    // The existing history mechanism restores exact placement state on Undo/Redo.
+    mpc::MpcEditHistory placementHistory;
+    assert(placementHistory.record({
+            "Move Pattern placement",
+            [&placementSequence]() {
+                return mpc::sequencer::movePatternPlacement(
+                        placementSequence, 0, "clip-02", 960);
+            },
+            [&placementSequence]() {
+                return mpc::sequencer::movePatternPlacement(
+                        placementSequence, 0, "clip-02", 1920);
+            }}));
+    assert(placementHistory.undo());
+    assert(placementSequence.tracks[0].placements[1].startTick == 960);
+    assert(placementHistory.redo());
+    assert(placementSequence.tracks[0].placements[1].startTick == 1920);
+
+    assert(mpc::sequencer::resizePatternPlacement(
+            placementSequence, 0, "clip-02", 1920));
+    assert(placementSequence.tracks[0].placements[1].lengthTicks == 1920);
+    assert(!mpc::sequencer::movePatternPlacement(
+            placementSequence, 0, "clip-02", 2880));
+    assert(placementSequence.tracks[0].placements[1].startTick == 1920);
+    assert(placementSequence.tracks[0].patterns[0].notes[0].tick == 0);
+    assert(placementSequence.tracks[0].patterns[0].notes[0].durationTicks == 120);
+    assert(placementSequence.tracks[0].patterns[0].notes[0].velocity == 97);
+    assert(placementSequence.tracks[0].patterns[0].notes[0].probability == 88);
+    assert(placementSequence.tracks[0].patterns[0].notes[0].ratchet == 3);
+    assert(placementSequence.tracks[0].patterns[0].notes[0].nudgeTicks == -11);
+
     mpc::domain::Pattern pattern;
     pattern.lengthTicks = 3840;
     pattern.notes = {
