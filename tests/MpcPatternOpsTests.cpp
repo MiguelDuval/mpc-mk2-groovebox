@@ -225,6 +225,49 @@ int main() {
     assert(mpc::sequencer::erasePatternNoteTick(duplicatePattern, 360, 36));
     assert(duplicatePattern.notes.size() == 3);
 
+    // Arrangement clipboard copies a complete event and pastes it non-destructively.
+    mpc::domain::Pattern clipboardPattern;
+    clipboardPattern.lengthTicks = 1920;
+    clipboardPattern.notes = {
+            {240, 180, 36, 97, 88, 3, -11},
+            {720, 90, 38, 75, 66, 2, 12}};
+    mpc::domain::MidiNoteEvent copiedEvent{};
+    assert(mpc::sequencer::copyPatternNoteTick(
+            clipboardPattern, 240, 36, copiedEvent));
+    assert(copiedEvent.tick == 240 && copiedEvent.note == 36);
+    assert(!mpc::sequencer::copyPatternNoteTick(
+            clipboardPattern, 480, 36, copiedEvent));
+    clipboardPattern.notes.push_back({240, 60, 36, 80, 64, 1, 0});
+    assert(!mpc::sequencer::copyPatternNoteTick(
+            clipboardPattern, 240, 36, copiedEvent));
+    clipboardPattern.notes.pop_back();
+    assert(copiedEvent.tick == 240 && copiedEvent.velocity == 97
+            && copiedEvent.probability == 88 && copiedEvent.ratchet == 3
+            && copiedEvent.nudgeTicks == -11);
+    assert(mpc::sequencer::pastePatternNoteTick(clipboardPattern, copiedEvent, 360));
+    assert(clipboardPattern.notes.size() == 3);
+    const auto clipboardPasted = std::find_if(
+            clipboardPattern.notes.begin(), clipboardPattern.notes.end(),
+            [](const mpc::domain::MidiNoteEvent& event) {
+                return event.tick == 360 && event.note == 36;
+            });
+    assert(clipboardPasted != clipboardPattern.notes.end());
+    assert(clipboardPasted->durationTicks == copiedEvent.durationTicks);
+    assert(clipboardPasted->note == copiedEvent.note);
+    assert(clipboardPasted->velocity == copiedEvent.velocity);
+    assert(clipboardPasted->probability == copiedEvent.probability);
+    assert(clipboardPasted->ratchet == copiedEvent.ratchet);
+    assert(clipboardPasted->nudgeTicks == copiedEvent.nudgeTicks);
+    assert(!mpc::sequencer::pastePatternNoteTick(clipboardPattern, copiedEvent, 360));
+    assert(!mpc::sequencer::pastePatternNoteTick(clipboardPattern, copiedEvent, -1));
+    assert(!mpc::sequencer::pastePatternNoteTick(clipboardPattern, copiedEvent, 1920));
+    assert(clipboardPattern.notes.size() == 3);
+    assert(mpc::sequencer::erasePatternNoteTick(clipboardPattern, 360, 36));
+    assert(clipboardPattern.notes.size() == 2);
+    assert(mpc::sequencer::pastePatternNoteTick(clipboardPattern, copiedEvent, 360));
+    assert(clipboardPattern.notes.size() == 3);
+    assert(mpc::sequencer::erasePatternNoteTick(clipboardPattern, 360, 36));
+
     mpc::domain::MidiNoteEvent probabilityNote{0, 120, 36, 100, 64, 4};
     assert(mpc::sequencer::shouldTriggerNote(probabilityNote, 1234u) ==
            mpc::sequencer::shouldTriggerNote(probabilityNote, 1234u));

@@ -9,6 +9,7 @@
 #include <span>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,7 @@
 namespace {
 
 std::unique_ptr<mpc::sequencer::MpcSequencePlaybackSession> sequencePlayback;
+std::optional<mpc::domain::MidiNoteEvent> arrangementEventClipboard;
 
 mpc::sequencer::MpcSequencePlaybackSession& sequenceSession() {
     if (!sequencePlayback) {
@@ -2193,6 +2195,135 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveArrangementE
             + std::to_string(sourceTick) + " → " + std::to_string(targetTick) + " ticks");
 }
 
+
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetArrangementClipboardNote(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return arrangementEventClipboard.has_value()
+            ? static_cast<jint>(arrangementEventClipboard->note) : -1;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceHasArrangementClipboard(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return arrangementEventClipboard.has_value() ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCopyArrangementEvent(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jlong sourceTick, jint noteNumber)
+{
+    if (trackIndex < 0 || noteNumber < 0 || noteNumber > 127 || sourceTick < 0) {
+        return toJString(env, "ARRANGE EVENT COPY failed: invalid event");
+    }
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "ARRANGE EVENT COPY blocked: stop playback first");
+    }
+    const auto& state = mpc::MpcCore::instance().projectState();
+    const auto& sequence = state.activeSequence();
+    const auto trackIndexValue = static_cast<std::size_t>(trackIndex);
+    if (trackIndexValue >= sequence.tracks.size()) {
+        return toJString(env, "ARRANGE EVENT COPY failed: no such track");
+    }
+    const auto& track = sequence.tracks[trackIndexValue];
+    if (track.patterns.empty()) {
+        return toJString(env, "ARRANGE EVENT COPY failed: track has no Pattern");
+    }
+    mpc::domain::MidiNoteEvent copiedEvent{};
+    if (!mpc::sequencer::copyPatternNoteTick(
+            track.patterns.front(), sourceTick,
+            static_cast<std::uint8_t>(noteNumber), copiedEvent)) {
+        return toJString(env, "ARRANGE EVENT COPY failed: event missing or ambiguous");
+    }
+    arrangementEventClipboard = copiedEvent;
+    return toJString(env, std::string("ARRANGE EVENT COPIED • tick ")
+            + std::to_string(sourceTick) + " • note " + std::to_string(noteNumber));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePasteArrangementEvent(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jlong targetTick)
+{
+    if (trackIndex < 0 || targetTick < 0) {
+        return toJString(env, "ARRANGE EVENT PASTE failed: invalid target");
+    }
+    if (!arrangementEventClipboard.has_value()) {
+        return toJString(env, "ARRANGE EVENT PASTE failed: clipboard is empty");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "ARRANGE EVENT PASTE blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& state = core.projectState();
+    auto& sequence = state.activeSequence();
+    const auto trackIndexValue = static_cast<std::size_t>(trackIndex);
+    if (trackIndexValue >= sequence.tracks.size()) {
+        return toJString(env, "ARRANGE EVENT PASTE failed: no such track");
+    }
+    auto& track = sequence.tracks[trackIndexValue];
+    if (track.patterns.empty()) {
+        return toJString(env, "ARRANGE EVENT PASTE failed: track has no Pattern");
+    }
+    auto& pattern = track.patterns.front();
+    if (targetTick >= pattern.lengthTicks) {
+        return toJString(env, "ARRANGE EVENT PASTE failed: target outside Pattern");
+    }
+
+    const auto sequenceIndex = state.activeSequenceIndex();
+    const auto copiedEvent = *arrangementEventClipboard;
+    auto pastedEvent = copiedEvent;
+    pastedEvent.tick = static_cast<std::int32_t>(targetTick);
+    if (!mpc::sequencer::pastePatternNoteTick(pattern, copiedEvent, targetTick)) {
+        return toJString(env,
+                "ARRANGE EVENT PASTE failed: same-pitch destination occupied");
+    }
+    const auto eraseStoredEvent = [](
+            std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::uint8_t storedNote, std::int64_t tick) -> bool {
+        auto& storedState = mpc::MpcCore::instance().projectState();
+        auto& project = storedState.project();
+        if (storedSequenceIndex >= project.sequences.size()) return false;
+        auto& storedSequence = project.sequences[storedSequenceIndex];
+        if (storedTrackIndex >= storedSequence.tracks.size()) return false;
+        auto& storedTrack = storedSequence.tracks[storedTrackIndex];
+        if (storedTrack.patterns.empty()) return false;
+        return mpc::sequencer::erasePatternNoteTick(
+                storedTrack.patterns.front(), tick, storedNote);
+    };
+    const auto insertStoredEvent = [](
+            std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            const mpc::domain::MidiNoteEvent& event) -> bool {
+        auto& storedState = mpc::MpcCore::instance().projectState();
+        auto& project = storedState.project();
+        if (storedSequenceIndex >= project.sequences.size()) return false;
+        auto& storedSequence = project.sequences[storedSequenceIndex];
+        if (storedTrackIndex >= storedSequence.tracks.size()) return false;
+        auto& storedTrack = storedSequence.tracks[storedTrackIndex];
+        if (storedTrack.patterns.empty()) return false;
+        return mpc::sequencer::pastePatternNoteTick(
+                storedTrack.patterns.front(), event, event.tick);
+    };
+    if (!core.editHistory().record({
+            "Paste Arrangement event",
+            [eraseStoredEvent, sequenceIndex, trackIndexValue,
+                    note = pastedEvent.note, tick = targetTick]() {
+                return eraseStoredEvent(sequenceIndex, trackIndexValue, note, tick);
+            },
+            [insertStoredEvent, sequenceIndex, trackIndexValue, pastedEvent]() {
+                return insertStoredEvent(sequenceIndex, trackIndexValue, pastedEvent);
+            }})) {
+        mpc::sequencer::erasePatternNoteTick(pattern, targetTick, pastedEvent.note);
+        return toJString(env, "ARRANGE EVENT PASTE failed: history recording failed");
+    }
+    syncSequenceTransportStopped();
+    return toJString(env, std::string("ARRANGE EVENT PASTED • ")
+            + std::to_string(targetTick) + " ticks • note "
+            + std::to_string(static_cast<unsigned int>(pastedEvent.note)));
+}
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDuplicateArrangementEvent(

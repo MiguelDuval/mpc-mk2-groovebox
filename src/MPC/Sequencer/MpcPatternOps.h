@@ -157,6 +157,42 @@ inline bool movePatternNoteTick(
     return true;
 }
 
+// Capture a uniquely identified note as a complete, value-owned clipboard event.
+inline bool copyPatternNoteTick(
+        const domain::Pattern& pattern, std::int64_t sourceTick,
+        std::uint8_t noteNumber, domain::MidiNoteEvent& copiedEvent) {
+    if (sourceTick < 0 || sourceTick >= pattern.lengthTicks) return false;
+    const auto matches = [sourceTick, noteNumber](const domain::MidiNoteEvent& note) {
+        return note.tick == sourceTick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matches) != 1) {
+        return false;
+    }
+    copiedEvent = *std::find_if(pattern.notes.begin(), pattern.notes.end(), matches);
+    return true;
+}
+
+// Paste a captured event at a new tick, preserving its complete MIDI edit state.
+inline bool pastePatternNoteTick(
+        domain::Pattern& pattern, const domain::MidiNoteEvent& copiedEvent,
+        std::int64_t targetTick) {
+    if (pattern.lengthTicks <= 0 || targetTick < 0
+            || targetTick >= pattern.lengthTicks) return false;
+    if (std::any_of(
+            pattern.notes.begin(), pattern.notes.end(),
+            [targetTick, &copiedEvent](const domain::MidiNoteEvent& note) {
+                return note.tick == targetTick && note.note == copiedEvent.note;
+            })) return false;
+    auto pastedEvent = copiedEvent;
+    pastedEvent.tick = static_cast<std::int32_t>(targetTick);
+    pattern.notes.push_back(pastedEvent);
+    std::stable_sort(
+            pattern.notes.begin(), pattern.notes.end(),
+            [](const domain::MidiNoteEvent& lhs,
+               const domain::MidiNoteEvent& rhs) { return lhs.tick < rhs.tick; });
+    return true;
+}
+
 // Duplicate one uniquely identified Arrangement event without disturbing its source.
 // Targets must remain inside the Pattern; identical-pitch events may not share a tick.
 inline bool duplicatePatternNoteTick(

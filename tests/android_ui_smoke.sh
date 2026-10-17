@@ -2364,6 +2364,131 @@ PY
       "$arrangement_event_final_undo_line" "$arrange_event_tick" || exit 1
     echo "Arrangement duplicate touch → native Pattern → UNDO → REDO → exact restoration passed."
 
+    # Copy and paste the selected event into the next grid cell through real UI actions.
+    # The native clipboard owns the full event value; copy itself must not mutate the Pattern.
+    if ! tap_visible_description_early "$ARRANGE_EVENT_DUP_RESTORED_XML" \
+      "Arrangement copy selected event"; then
+      echo "ERROR: Arrangement COPY control not actionable"; exit 1
+    fi
+    sleep 0.25
+    ARRANGE_EVENT_COPIED_PNG="/tmp/mpc-groovebox-arrange-event-copied.png"
+    ARRANGE_EVENT_COPIED_XML="/tmp/mpc-groovebox-arrange-event-copied-uiautomator.xml"
+    ARRANGE_EVENT_COPIED_REMOTE="/sdcard/mpc-groovebox-arrange-event-copied-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_COPIED_REMOTE" "$ARRANGE_EVENT_COPIED_XML"; then
+      echo "ERROR: Arrangement copied-state hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_COPIED_PNG"; then
+      echo "ERROR: Arrangement copied-state screenshot failed"; exit 1
+    fi
+    arrangement_event_copy_line="$(arrangement_event_state_line COPY)"
+    if [[ -z "$arrangement_event_copy_line" ]]; then
+      echo "ERROR: COPY did not log native Pattern state"; exit 1
+    fi
+    python3 - "$ARRANGE_EVENT_COPIED_XML" "$arrangement_event_copy_line" \
+      "$arrange_event_baseline_data" "$arrange_event_track" "$arrange_event_tick" \
+      "$arrange_event_note" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+path,line,baseline,track_s,tick_s,note_s=sys.argv[1:]
+m=re.search(r"UI_ARRANGE_EVENT_STATE: action=COPY track=(\d+) tick=(\d+) note=(\d+) data=(.*)$",line)
+if not m or m.group(4)!=baseline: raise AssertionError("COPY mutated the native Arrangement Pattern")
+track,tick,note=map(int,(track_s,tick_s,note_s))
+if tuple(map(int,m.group(1,2,3)))!=(track,tick,note): raise AssertionError("COPY identity mismatch")
+nodes=list(ET.parse(path).getroot().iter("node"))
+copy=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement copy selected event"]
+paste=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement paste copied event one grid later"]
+if len(copy)!=1 or copy[0].attrib.get("enabled")!="true": raise AssertionError("COPY is no longer actionable")
+if len(paste)!=1 or paste[0].attrib.get("enabled")!="true": raise AssertionError("successful COPY did not enable PASTE")
+print("Arrangement COPY captured the selected event without mutating the native Pattern.")
+PY
+    then
+      echo "ERROR: Arrangement COPY did not preserve the source Pattern or enable PASTE"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_COPIED_XML" \
+      "Arrangement paste copied event one grid later"; then
+      echo "ERROR: Arrangement PASTE control not actionable after COPY"; exit 1
+    fi
+    sleep 0.35
+    ARRANGE_EVENT_PASTED_PNG="/tmp/mpc-groovebox-arrange-event-pasted.png"
+    ARRANGE_EVENT_PASTED_XML="/tmp/mpc-groovebox-arrange-event-pasted-uiautomator.xml"
+    ARRANGE_EVENT_PASTED_REMOTE="/sdcard/mpc-groovebox-arrange-event-pasted-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_PASTED_REMOTE" "$ARRANGE_EVENT_PASTED_XML"; then
+      echo "ERROR: Arrangement pasted-state hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_PASTED_PNG"; then
+      echo "ERROR: Arrangement pasted-state screenshot failed"; exit 1
+    fi
+    arrangement_event_paste_line="$(arrangement_event_state_line PASTE)"
+    if [[ -z "$arrangement_event_paste_line" ]]; then
+      echo "ERROR: PASTE did not log authoritative native Pattern state"; exit 1
+    fi
+    validate_arrangement_duplicate_state PASTE "$ARRANGE_EVENT_PASTED_XML" \
+      "$arrangement_event_paste_line" "$arrange_event_target_tick" || exit 1
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_PASTED_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: PASTE UNDO control not actionable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_EVENT_PASTE_UNDO_PNG="/tmp/mpc-groovebox-arrange-event-paste-undo.png"
+    ARRANGE_EVENT_PASTE_UNDO_XML="/tmp/mpc-groovebox-arrange-event-paste-undo-uiautomator.xml"
+    ARRANGE_EVENT_PASTE_UNDO_REMOTE="/sdcard/mpc-groovebox-arrange-event-paste-undo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_PASTE_UNDO_REMOTE" "$ARRANGE_EVENT_PASTE_UNDO_XML"; then
+      echo "ERROR: PASTE UNDO hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_PASTE_UNDO_PNG"; then
+      echo "ERROR: PASTE UNDO screenshot failed"; exit 1
+    fi
+    arrangement_event_paste_undo_line="$(arrangement_event_state_line UNDO)"
+    if [[ -z "$arrangement_event_paste_undo_line" ]]; then
+      echo "ERROR: PASTE UNDO did not log native Pattern state"; exit 1
+    fi
+    validate_arrangement_duplicate_state UNDO "$ARRANGE_EVENT_PASTE_UNDO_XML" \
+      "$arrangement_event_paste_undo_line" "$arrange_event_tick" || exit 1
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_PASTE_UNDO_XML" \
+      "Arrangement redo latest sequencer edit"; then
+      echo "ERROR: PASTE REDO control not actionable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_EVENT_PASTE_REDO_PNG="/tmp/mpc-groovebox-arrange-event-paste-redo.png"
+    ARRANGE_EVENT_PASTE_REDO_XML="/tmp/mpc-groovebox-arrange-event-paste-redo-uiautomator.xml"
+    ARRANGE_EVENT_PASTE_REDO_REMOTE="/sdcard/mpc-groovebox-arrange-event-paste-redo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_PASTE_REDO_REMOTE" "$ARRANGE_EVENT_PASTE_REDO_XML"; then
+      echo "ERROR: PASTE REDO hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_PASTE_REDO_PNG"; then
+      echo "ERROR: PASTE REDO screenshot failed"; exit 1
+    fi
+    arrangement_event_paste_redo_line="$(arrangement_event_state_line REDO)"
+    if [[ -z "$arrangement_event_paste_redo_line" ]]; then
+      echo "ERROR: PASTE REDO did not log native Pattern state"; exit 1
+    fi
+    validate_arrangement_duplicate_state REDO "$ARRANGE_EVENT_PASTE_REDO_XML" \
+      "$arrangement_event_paste_redo_line" "$arrange_event_target_tick" || exit 1
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_PASTE_REDO_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: final PASTE cleanup UNDO not actionable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_EVENT_PASTE_RESTORED_PNG="/tmp/mpc-groovebox-arrange-event-paste-restored.png"
+    ARRANGE_EVENT_PASTE_RESTORED_XML="/tmp/mpc-groovebox-arrange-event-paste-restored-uiautomator.xml"
+    ARRANGE_EVENT_PASTE_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-event-paste-restored-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_PASTE_RESTORED_REMOTE" "$ARRANGE_EVENT_PASTE_RESTORED_XML"; then
+      echo "ERROR: final PASTE cleanup hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_PASTE_RESTORED_PNG"; then
+      echo "ERROR: final PASTE cleanup screenshot failed"; exit 1
+    fi
+    arrangement_event_paste_final_undo_line="$(arrangement_event_state_line UNDO)"
+    if [[ -z "$arrangement_event_paste_final_undo_line" ]]; then
+      echo "ERROR: final PASTE cleanup UNDO did not log native Pattern state"; exit 1
+    fi
+    validate_arrangement_duplicate_state UNDO "$ARRANGE_EVENT_PASTE_RESTORED_XML" \
+      "$arrangement_event_paste_final_undo_line" "$arrange_event_tick" || exit 1
+    echo "Arrangement COPY → PASTE → UNDO → REDO → exact restoration passed."
+
     arrange_loop_drag_points="$(python3 - \
       "$ARRANGE_LOOP_BEFORE_XML" "$arrange_density" \
       "$loop_original_end" "$loop_target_end" \
