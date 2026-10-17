@@ -11826,13 +11826,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View track strips");
             return;
         }
+        // Seed a real Drum note before the Track View action. The mute round-trip
+        // must prove it preserves populated musical data, not an empty pattern.
+        if (!prepareArrangementEventGestureAudit()) return;
         verifyTrackViewMuteToggleAndRestoreForAudit(
                 this::continueUiAuditAfterTrackViewMute);
     }
 
     private void continueUiAuditAfterTrackViewMute() {
         if (destroyed) return;
-        if (!prepareArrangementEventGestureAudit()) return;
         if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU before ARRANGE");
             return;
