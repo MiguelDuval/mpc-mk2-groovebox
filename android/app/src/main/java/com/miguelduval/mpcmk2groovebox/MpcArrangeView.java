@@ -174,6 +174,26 @@ final class MpcArrangeView extends View {
         return null;
     }
 
+    int loopStartBarForAudit() {
+        return loopStartBar;
+    }
+
+    int loopEndBarForAudit() {
+        return loopEndBar;
+    }
+
+    int totalBarsForAudit() {
+        return barCount;
+    }
+
+    int visibleBarsForAudit() {
+        return visibleBars;
+    }
+
+    int viewportStartBarForAudit() {
+        return viewportStartBar;
+    }
+
     int selectedTrackForAudit() {
         return selectedTrack;
     }

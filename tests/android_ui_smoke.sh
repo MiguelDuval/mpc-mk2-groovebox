@@ -2036,10 +2036,206 @@ arrangement_grid_reentry_capture_done=0
 track_view_mute_capture_done=0
 step_touch_capture_done=0
 step_touch_acceptance_complete=0
+arrangement_loop_touch_capture_done=0
+arrangement_loop_touch_acceptance_complete=0
 audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
 audit_poll=0
 while (( SECONDS < audit_deadline )); do
   log_snapshot="$(adb_bounded 5 logcat -d -v brief 2>/dev/null || true)"
+
+  if grep -Fq -- "UI_ARRANGE_LOOP_TOUCH_ACCEPTANCE_COMPLETE:" <<<"$log_snapshot"; then
+    arrangement_loop_touch_acceptance_complete=1
+  fi
+
+  if [ "$arrangement_loop_touch_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_ARRANGE_LOOP_TOUCH_CAPTURE_READY:" <<<"$log_snapshot"; then
+    echo "Capturing live Arrangement loop-brace state before external touch..."
+    ARRANGE_LOOP_BEFORE_PNG="/tmp/mpc-groovebox-arrange-loop-before.png"
+    ARRANGE_LOOP_BEFORE_XML="/tmp/mpc-groovebox-arrange-loop-before-uiautomator.xml"
+    ARRANGE_LOOP_BEFORE_REMOTE="/sdcard/mpc-groovebox-arrange-loop-before-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_LOOP_BEFORE_REMOTE" "$ARRANGE_LOOP_BEFORE_XML"; then
+      echo "ERROR: Arrange loop initial accessibility hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_LOOP_BEFORE_PNG"; then
+      echo "ERROR: Arrange loop initial screenshot failed"; exit 1
+    fi
+    loop_ready_line="$(grep -F -- 'UI_ARRANGE_LOOP_TOUCH_CAPTURE_READY:' <<<"$log_snapshot" | tail -n 1)"
+    read -r loop_original_start loop_original_end loop_target_end loop_bars loop_visible_bars loop_viewport_start \
+      < <(sed -nE 's/.*start=([0-9]+) end=([0-9]+) targetEnd=([0-9]+) bars=([0-9]+) visibleBars=([0-9]+) viewportStart=([0-9]+).*/\1 \2 \3 \4 \5 \6/p' <<<"$loop_ready_line")
+    if [[ -z "$loop_original_start" || -z "$loop_original_end" || -z "$loop_target_end" \
+        || -z "$loop_bars" || -z "$loop_visible_bars" || -z "$loop_viewport_start" ]]; then
+      echo "ERROR: could not parse live Arrangement loop baseline: $loop_ready_line"; exit 1
+    fi
+    if (( loop_target_end == loop_original_end || loop_target_end < loop_original_start \
+        || loop_target_end > loop_bars )); then
+      echo "ERROR: app reported an invalid Arrangement loop drag target: $loop_ready_line"; exit 1
+    fi
+    arrange_density="$(adb_bounded 10 shell wm density)" || {
+      echo "ERROR: could not read Android density for Arrange loop hit testing"; exit 1;
+    }
+    arrange_loop_drag_points="$(python3 - \
+      "$ARRANGE_LOOP_BEFORE_XML" "$arrange_density" \
+      "$loop_original_end" "$loop_target_end" \
+      "$loop_visible_bars" "$loop_viewport_start" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, density_text, end_s, target_s, visible_s, viewport_s = sys.argv[1:]
+end_bar, target_bar, visible_bars, viewport_start = map(
+    int, (end_s, target_s, visible_s, viewport_s))
+nodes = list(ET.parse(path).getroot().iter("node"))
+view_nodes = [n for n in nodes
+              if n.attrib.get("content-desc") == "MPC linear arrangement editor"]
+if len(view_nodes) != 1:
+    raise AssertionError(f"expected one live Arrangement canvas, got {len(view_nodes)}")
+m = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                 view_nodes[0].attrib.get("bounds", ""))
+if m is None:
+    raise AssertionError(f"invalid Arrangement canvas bounds {view_nodes[0].attrib}")
+left, top, right, bottom = map(int, m.groups())
+if right <= left or bottom <= top:
+    raise AssertionError("Arrangement canvas bounds are not positive")
+density_values = re.findall(r"Override density:\s*(\d+)", density_text)
+if not density_values:
+    density_values = re.findall(r"Physical density:\s*(\d+)", density_text)
+if not density_values:
+    raise AssertionError("could not parse Android wm density: " + repr(density_text))
+density = int(density_values[-1]) / 160.0
+header = 138.0 * density
+ruler = 34.0 * density
+width = right-left
+height = bottom-top
+if visible_bars < 1 or header >= width or ruler >= height:
+    raise AssertionError("Arrangement canvas cannot contain its timeline ruler")
+bar_width = (width-header)/visible_bars
+start_x = left + header + (end_bar + 0.999 - viewport_start)*bar_width
+target_x = left + header + (target_bar - viewport_start + 0.5)*bar_width
+y = top + 4.0*density
+sx, tx, yy = round(start_x), round(target_x), round(y)
+if not (left < sx < right and left < tx < right and top < yy < top+ruler):
+    raise AssertionError(f"derived end-handle swipe escaped ruler: {(sx,yy,tx,yy)} bounds={(left,top,right,bottom)}")
+if abs(tx-sx) < 22*density:
+    raise AssertionError("target bar movement is too small for an unambiguous handle drag")
+print(sx, yy, tx, yy)
+PY
+    )" || { echo "ERROR: could not derive a valid live loop-brace swipe from the accessibility hierarchy"; exit 1; }
+    read -r loop_start_x loop_y loop_changed_x loop_changed_y <<< "$arrange_loop_drag_points"
+    if ! adb_bounded 10 shell input swipe "$loop_start_x" "$loop_y" "$loop_changed_x" "$loop_changed_y" 550; then
+      echo "ERROR: external touch did not execute Arrange loop-brace drag"; exit 1
+    fi
+
+    loop_changed_line=""
+    for loop_poll in {1..20}; do
+      log_snapshot="$(adb_bounded 5 logcat -d -v brief 2>/dev/null || true)"
+      loop_changed_line="$(grep -F -- 'UI_ARRANGE_LOOP_TOUCH_COMMITTED:' <<<"$log_snapshot" | tail -n 1 || true)"
+      loop_state="$(sed -nE 's/.*start=([0-9]+) end=([0-9]+).*/\1 \2/p' <<<"$loop_changed_line")"
+      read -r loop_changed_start loop_changed_end <<<"$loop_state"
+      if [[ "$loop_changed_start" == "$loop_original_start" \
+          && "$loop_changed_end" == "$loop_target_end" ]]; then
+        break
+      fi
+      sleep 0.35
+    done
+    if [[ "$loop_changed_start" != "$loop_original_start" \
+        || "$loop_changed_end" != "$loop_target_end" ]]; then
+      echo "ERROR: real Arrange loop-handle touch did not commit expected native range $loop_original_start..$loop_target_end"
+      echo "Last callback: $loop_changed_line"; exit 1
+    fi
+    echo "Arrange loop-brace native state changed by real touchscreen drag: $loop_original_start..$loop_target_end"
+
+    ARRANGE_LOOP_CHANGED_PNG="/tmp/mpc-groovebox-arrange-loop-changed.png"
+    ARRANGE_LOOP_CHANGED_XML="/tmp/mpc-groovebox-arrange-loop-changed-uiautomator.xml"
+    ARRANGE_LOOP_CHANGED_REMOTE="/sdcard/mpc-groovebox-arrange-loop-changed-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_LOOP_CHANGED_REMOTE" "$ARRANGE_LOOP_CHANGED_XML"; then
+      echo "ERROR: Arrange loop changed-state hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_LOOP_CHANGED_PNG"; then
+      echo "ERROR: Arrange loop changed-state screenshot failed"; exit 1
+    fi
+
+    arrange_loop_restore_points="$(python3 - \
+      "$ARRANGE_LOOP_CHANGED_XML" "$arrange_density" \
+      "$loop_target_end" "$loop_original_end" \
+      "$(sed -nE 's/.*visibleBars=([0-9]+).*/\1/p' <<<"$loop_changed_line")" \
+      "$(sed -nE 's/.*viewportStart=([0-9]+).*/\1/p' <<<"$loop_changed_line")" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, density_text, end_s, target_s, visible_s, viewport_s = sys.argv[1:]
+end_bar, target_bar, visible_bars, viewport_start = map(
+    int, (end_s, target_s, visible_s, viewport_s))
+nodes = list(ET.parse(path).getroot().iter("node"))
+views = [n for n in nodes
+         if n.attrib.get("content-desc") == "MPC linear arrangement editor"]
+if len(views) != 1:
+    raise AssertionError(f"expected one Arrangement view after loop drag, got {len(views)}")
+m = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", views[0].attrib.get("bounds", ""))
+if m is None: raise AssertionError("invalid live Arrangement bounds")
+left, top, right, bottom = map(int, m.groups())
+dens = re.findall(r"Override density:\s*(\d+)", density_text)
+if not dens: dens = re.findall(r"Physical density:\s*(\d+)", density_text)
+if not dens: raise AssertionError("could not parse Android density")
+density = int(dens[-1])/160.0
+header, ruler = 138.0*density, 34.0*density
+bar_width = (right-left-header)/visible_bars
+sx = left + header + (end_bar + 0.999 - viewport_start)*bar_width
+tx = left + header + (target_bar - viewport_start + 0.5)*bar_width
+y = top + 4.0*density
+sx,tx,y = round(sx),round(tx),round(y)
+if not (left < sx < right and left < tx < right and top < y < top+ruler):
+    raise AssertionError("restore swipe would leave the Arrangement ruler")
+if abs(tx-sx) < 22*density:
+    raise AssertionError("restore drag target is too close to current handle")
+print(sx,y,tx,y)
+PY
+    )" || { echo "ERROR: could not derive live loop-handle restore gesture"; exit 1; }
+    read -r loop_restore_start_x loop_restore_y loop_restore_end_x loop_restore_end_y <<< "$arrange_loop_restore_points"
+    if ! adb_bounded 10 shell input swipe "$loop_restore_start_x" "$loop_restore_y" "$loop_restore_end_x" "$loop_restore_end_y" 550; then
+      echo "ERROR: external touch could not restore original Arrange loop range"; exit 1
+    fi
+
+    loop_restored_line=""
+    loop_commit_count=0
+    for loop_poll in {1..20}; do
+      log_snapshot="$(adb_bounded 5 logcat -d -v brief 2>/dev/null || true)"
+      loop_restored_line="$(grep -F -- 'UI_ARRANGE_LOOP_TOUCH_COMMITTED:' <<<"$log_snapshot" | tail -n 1 || true)"
+      loop_commit_count="$(grep -Fc -- 'UI_ARRANGE_LOOP_TOUCH_COMMITTED:' <<<"$log_snapshot" || true)"
+      loop_state="$(sed -nE 's/.*start=([0-9]+) end=([0-9]+).*/\1 \2/p' <<<"$loop_restored_line")"
+      read -r loop_restored_start loop_restored_end <<<"$loop_state"
+      if (( loop_commit_count >= 2 )) \
+          && [[ "$loop_restored_start" == "$loop_original_start" \
+             && "$loop_restored_end" == "$loop_original_end" ]]; then
+        break
+      fi
+      sleep 0.35
+    done
+    if (( loop_commit_count < 2 )) \
+        || [[ "$loop_restored_start" != "$loop_original_start" \
+           || "$loop_restored_end" != "$loop_original_end" ]]; then
+      echo "ERROR: Arrange loop-brace restore did not return to native range $loop_original_start..$loop_original_end"
+      echo "Last callback: $loop_restored_line"; exit 1
+    fi
+
+    ARRANGE_LOOP_RESTORED_PNG="/tmp/mpc-groovebox-arrange-loop-restored.png"
+    ARRANGE_LOOP_RESTORED_XML="/tmp/mpc-groovebox-arrange-loop-restored-uiautomator.xml"
+    ARRANGE_LOOP_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-loop-restored-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_LOOP_RESTORED_REMOTE" "$ARRANGE_LOOP_RESTORED_XML"; then
+      echo "ERROR: Arrange loop restored-state hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_LOOP_RESTORED_PNG"; then
+      echo "ERROR: Arrange loop restored-state screenshot failed"; exit 1
+    fi
+
+    if ! adb_bounded 10 shell run-as "$PACKAGE" sh -c "echo $loop_original_start $loop_original_end $loop_target_end > cache/mpc-arrange-loop-touch-result"; then
+      echo "ERROR: could not write Arrange loop acceptance result"; exit 1
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-arrange-loop-touch-capture-release; then
+      echo "ERROR: could not release Arrange loop app-side acceptance checkpoint"; exit 1
+    fi
+    arrangement_loop_touch_capture_done=1
+    echo "Arrange loop-brace real-touch → native commit → real-touch restore round-trip passed."
+  fi
 
   if grep -Fq -- "UI_STEP_TOUCH_ACCEPTANCE_COMPLETE:" <<<"$log_snapshot"; then
     step_touch_acceptance_complete=1
@@ -3005,6 +3201,11 @@ PY
     exit 1
   fi
   if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
+    if [ "$arrangement_loop_touch_capture_done" -ne 1 ] \
+        || [ "$arrangement_loop_touch_acceptance_complete" -ne 1 ]; then
+      echo "ERROR: UI audit completed without verified real Arrangement loop-brace touch/restore acceptance"
+      exit 1
+    fi
     if [ "$step_touch_capture_done" -ne 1 ] \
         || [ "$step_touch_acceptance_complete" -ne 1 ]; then
       echo "ERROR: UI audit completed without verified Step Sequencer real-touch acceptance"

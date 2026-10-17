@@ -6293,6 +6293,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             public void onLoopCommitted(int startBar, int endBar) {
                 setBottomStatus(nativeSequenceSetLoopBars(startBar, endBar));
                 refreshArrangeView();
+                if (uiAuditSmokeMode) {
+                    Log.i(TAG, "UI_ARRANGE_LOOP_TOUCH_COMMITTED: start="
+                            + nativeSequenceGetLoopStartBar()
+                            + " end=" + nativeSequenceGetLoopEndBar()
+                            + " visibleBars=" + arrangementView.visibleBarsForAudit()
+                            + " viewportStart=" + arrangementView.viewportStartBarForAudit());
+                }
             }
         });
 
@@ -12139,6 +12146,110 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void runUiAuditAfterArrangement() {
+        if (destroyed) return;
+        if (uiAuditSmokeMode) {
+            awaitArrangeLoopTouchAcceptance();
+            return;
+        }
+        runUiAuditAfterArrangementChecks();
+    }
+
+    private void awaitArrangeLoopTouchAcceptance() {
+        if (destroyed) return;
+        if (arrangementView == null || arrangementView.getWidth() <= 0
+                || arrangementView.getHeight() <= 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange loop touch capture has no measured view");
+            return;
+        }
+
+        final int originalStart = nativeSequenceGetLoopStartBar();
+        final int originalEnd = nativeSequenceGetLoopEndBar();
+        final int bars = Math.max(1, nativeSequenceGetBars());
+        final int targetEnd = originalEnd < bars
+                ? originalEnd + 1
+                : originalEnd > originalStart ? originalEnd - 1 : originalEnd;
+        if (targetEnd == originalEnd || targetEnd < originalStart
+                || arrangementView.loopStartBarForAudit() != originalStart
+                || arrangementView.loopEndBarForAudit() != originalEnd) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: no valid external Arrange loop target"
+                    + " | native=" + originalStart + ".." + originalEnd
+                    + " | view=" + arrangementView.loopStartBarForAudit()
+                    + ".." + arrangementView.loopEndBarForAudit()
+                    + " | bars=" + bars);
+            return;
+        }
+
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-arrange-loop-touch-capture-release");
+        final java.io.File resultFile = new java.io.File(
+                getCacheDir(), "mpc-arrange-loop-touch-result");
+        releaseSignal.delete();
+        resultFile.delete();
+        Log.i(TAG, "UI_ARRANGE_LOOP_TOUCH_CAPTURE_READY: start=" + originalStart
+                + " end=" + originalEnd
+                + " targetEnd=" + targetEnd
+                + " bars=" + bars
+                + " visibleBars=" + arrangementView.visibleBarsForAudit()
+                + " viewportStart=" + arrangementView.viewportStartBarForAudit()
+                + " viewWidth=" + arrangementView.getWidth()
+                + " viewHeight=" + arrangementView.getHeight());
+
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                final String reported = readArrangeLoopTouchResult(resultFile);
+                final String expectedReport = originalStart + " " + originalEnd
+                        + " " + targetEnd;
+                final int restoredStart = nativeSequenceGetLoopStartBar();
+                final int restoredEnd = nativeSequenceGetLoopEndBar();
+                final boolean restored = reported.equals(expectedReport)
+                        && restoredStart == originalStart
+                        && restoredEnd == originalEnd
+                        && arrangementView != null
+                        && "ARRANGE".equals(currentPage)
+                        && arrangementView.loopStartBarForAudit() == originalStart
+                        && arrangementView.loopEndBarForAudit() == originalEnd;
+                if (!restored) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: external Arrange loop restore rejected"
+                            + " | report=" + reported
+                            + " | expectedReport=" + expectedReport
+                            + " | native=" + restoredStart + ".." + restoredEnd
+                            + " | page=" + currentPage);
+                    return;
+                }
+                resultFile.delete();
+                Log.i(TAG, "UI_ARRANGE_LOOP_TOUCH_ACCEPTANCE_COMPLETE: original="
+                        + originalStart + ".." + originalEnd
+                        + " changedEnd=" + targetEnd
+                        + " restored=" + restoredStart + ".." + restoredEnd);
+                runUiAuditAfterArrangementChecks();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: external Arrange loop touch handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
+    }
+
+    private String readArrangeLoopTouchResult(java.io.File resultFile) {
+        if (!resultFile.isFile()) return "";
+        try (java.io.BufferedReader reader =
+                     new java.io.BufferedReader(new java.io.FileReader(resultFile))) {
+            final String line = reader.readLine();
+            return line == null ? "" : line.trim();
+        } catch (java.io.IOException error) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not read Arrange loop result", error);
+            return "";
+        }
+    }
+
+    private void runUiAuditAfterArrangementChecks() {
         if (destroyed) return;
 
         if (!verifyArrangeLoopDragAndRestoreForAudit()) return;
