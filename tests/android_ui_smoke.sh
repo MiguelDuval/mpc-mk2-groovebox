@@ -1787,6 +1787,45 @@ adb_bounded() {
 
 # Keep UI dumping available before startup checks run; Bash executes top-level
 # statements in order, so functions declared later cannot be called earlier.
+
+# The Arrangement/Grid capture handshake calls this before generic UI helpers
+# are declared later in the script. Use the real hierarchy, and require one
+# enabled clickable target with positive bounds before issuing a device tap.
+tap_visible_description_early() {
+  local hierarchy_path="$1"
+  local expected_description="$2"
+  local coordinates tap_x tap_y
+  if ! coordinates="$(python3 - "$hierarchy_path" "$expected_description" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1], sys.argv[2]
+nodes = list(ET.parse(path).getroot().iter("node"))
+found = [n for n in nodes if n.attrib.get("content-desc", "") == expected]
+if len(found) != 1:
+    raise SystemExit(f"expected exactly one accessibility target {expected!r}, got {len(found)}")
+node = found[0]
+if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
+    raise SystemExit(f"accessibility target is not enabled/clickable: {node.attrib}")
+parts = node.attrib.get("bounds", "").replace("[", "").replace("]", "").split(",")
+if len(parts) != 4 or not all(p.isdigit() for p in parts):
+    raise SystemExit(f"invalid accessibility target bounds: {node.attrib}")
+left, top, right, bottom = map(int, parts)
+if right <= left or bottom <= top:
+    raise SystemExit(f"non-positive accessibility target bounds: {node.attrib}")
+print((left + right) // 2, (top + bottom) // 2)
+PY
+)"; then
+    echo "ERROR: could not derive a valid early UI target: $expected_description"
+    return 1
+  fi
+  read -r tap_x tap_y <<< "$coordinates"
+  if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+    echo "ERROR: could not tap $expected_description at $tap_x,$tap_y"
+    return 1
+  fi
+}
+
 dump_device_ui() {
   local remote_path="$1"
   local host_path="$2"
@@ -2468,7 +2507,7 @@ PY
       echo "ERROR: Grid DRAW screenshot capture failed"; exit 1
     fi
 
-    if ! tap_ui_description "$GRID_EDIT_DRAW_XML" "Grid Erase tool"; then
+    if ! tap_visible_description_early "$GRID_EDIT_DRAW_XML" "Grid Erase tool"; then
       echo "ERROR: Grid ERASE tool was not actionable after DRAW"; exit 1
     fi
     sleep 0.2
@@ -2500,7 +2539,7 @@ PY
     if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_ERASE_PNG"; then
       echo "ERROR: Grid ERASE screenshot capture failed"; exit 1
     fi
-    if ! tap_ui_description "$GRID_EDIT_ERASE_XML" "Grid Draw tool"; then
+    if ! tap_visible_description_early "$GRID_EDIT_ERASE_XML" "Grid Draw tool"; then
       echo "ERROR: Grid DRAW tool state could not be restored after round-trip"; exit 1
     fi
     echo "Grid DRAW → native note state → ERASE → empty-state round-trip passed."
