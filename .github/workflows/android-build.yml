@@ -513,6 +513,14 @@ jobs:
             /tmp/mpc-groovebox-startup.png
             /tmp/mpc-groovebox-main-ready.png
             /tmp/mpc-groovebox-main-ready-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-before.png
+            /tmp/mpc-groovebox-step-touch-before-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-after-add.png
+            /tmp/mpc-groovebox-step-touch-after-add-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-after-parameter.png
+            /tmp/mpc-groovebox-step-touch-after-parameter-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-after-erase.png
+            /tmp/mpc-groovebox-step-touch-after-erase-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-tuning-before.png
             /tmp/mpc-groovebox-track-edit-tuning-before-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-tuning-changed.png

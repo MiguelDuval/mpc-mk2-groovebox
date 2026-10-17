@@ -351,6 +351,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final long[] hardwareTapIntervalsNanos = new long[4];
     private int hardwareTapIntervalCount = 0;
     private int selectedSequenceStep = -1;
+    private int stepTouchAuditPad = -1;
+    private int stepTouchAuditGridTicks = 0;
+    private int stepTouchAuditOriginalParameter = STEP_EDIT_PARAMETER_VELOCITY;
+    private int[] stepTouchAuditStepOneSnapshot;
     private boolean hardwareLocateActive;
     private String currentPage = "MAIN";
     private volatile boolean destroyed;
@@ -12790,6 +12794,111 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void runUiAuditAfterStep() {
+        if (destroyed) return;
+        if (!uiAuditSmokeMode) {
+            runUiAuditAfterStepChecks();
+            return;
+        }
+
+        stepTouchAuditPad = Math.max(0, Math.min(15, selectedPad));
+        stepTouchAuditGridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int[] stepOne = nativeSequenceGetStepParameters(
+                stepTouchAuditPad, 0, stepTouchAuditGridTicks);
+        stepTouchAuditStepOneSnapshot = stepOne == null ? null : stepOne.clone();
+        stepTouchAuditOriginalParameter = stepEditParameter;
+
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-step-touch-capture-release");
+        final java.io.File targetFile = new java.io.File(
+                getCacheDir(), "mpc-step-touch-target");
+        releaseSignal.delete();
+        targetFile.delete();
+        Log.i(TAG, "UI_STEP_TOUCH_CAPTURE_READY: pad=" + (stepTouchAuditPad + 1)
+                + " | stepOneInitiallyActive="
+                + hasStepEventForAudit(stepTouchAuditStepOneSnapshot));
+
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] captureReleasePoll = new Runnable[1];
+        captureReleasePoll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                final int targetStepNumber = readStepTouchAuditTarget(targetFile);
+                if (targetStepNumber < 2 || targetStepNumber > 16
+                        || !validateStepTouchAcceptanceForAudit(targetStepNumber - 1)) {
+                    targetFile.delete();
+                    return;
+                }
+                targetFile.delete();
+                // The external UI test temporarily advances VEL → PROB; restore
+                // the selector before the established Step audit continues.
+                stepEditParameter = stepTouchAuditOriginalParameter;
+                Log.i(TAG, "UI_STEP_TOUCH_ACCEPTANCE_COMPLETE: targetStep="
+                        + targetStepNumber
+                        + " | nativeEventRemoved=true"
+                        + " | fixtureStepOnePreserved=true"
+                        + " | parameterSelectorRestored=true");
+                runUiAuditAfterStepChecks();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Step Sequencer touch evidence handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
+    }
+
+    private int readStepTouchAuditTarget(java.io.File targetFile) {
+        if (!targetFile.isFile()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step touch target file is missing");
+            return -1;
+        }
+        try (java.io.BufferedReader reader =
+                     new java.io.BufferedReader(new java.io.FileReader(targetFile))) {
+            final String value = reader.readLine();
+            final int target = value == null ? -1 : Integer.parseInt(value.trim());
+            if (target < 2 || target > 16) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Step touch target is out of range: "
+                        + target);
+                return -1;
+            }
+            return target;
+        } catch (java.io.IOException | NumberFormatException error) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not read Step touch target", error);
+            return -1;
+        }
+    }
+
+    private boolean validateStepTouchAcceptanceForAudit(int targetStep) {
+        final int[] targetParameters = nativeSequenceGetStepParameters(
+                stepTouchAuditPad, targetStep, stepTouchAuditGridTicks);
+        final int[] stepOneNow = nativeSequenceGetStepParameters(
+                stepTouchAuditPad, 0, stepTouchAuditGridTicks);
+        final boolean targetIsEmpty = !hasStepEventForAudit(targetParameters);
+        final boolean stepOnePreserved = Arrays.equals(
+                stepTouchAuditStepOneSnapshot, stepOneNow);
+        final boolean stepContextRestored = !destroyed
+                && "SEQ".equals(currentPage)
+                && navigationController != null
+                && navigationController.state().mode() == MpcUiState.Mode.STEP
+                && selectedPad == stepTouchAuditPad
+                && sequenceStepPage == targetStep / SEQUENCE_GRID_PAGE_STEPS
+                && selectedSequenceStep == targetStep
+                && stepEventInfoMatchesForAudit(targetStep, true);
+        if (!targetIsEmpty || !stepOnePreserved || !stepContextRestored) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: external Step touch acceptance cleanup"
+                    + " | targetStep=" + (targetStep + 1)
+                    + " | targetIsEmpty=" + targetIsEmpty
+                    + " | stepOnePreserved=" + stepOnePreserved
+                    + " | stepContextRestored=" + stepContextRestored);
+            return false;
+        }
+        return true;
+    }
+
+    private void runUiAuditAfterStepChecks() {
         if (destroyed) return;
 
         View stepCell = findViewWithContentDescription(
