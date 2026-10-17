@@ -2489,6 +2489,126 @@ PY
       "$arrangement_event_paste_final_undo_line" "$arrange_event_tick" || exit 1
     echo "Arrangement COPY → PASTE → UNDO → REDO → exact restoration passed."
 
+    # CUT must remove only the selected native Pattern event, then Undo/Redo must be reversible.
+    validate_arrangement_cut_state() {
+      local action="$1" xml_path="$2" native_line="$3"
+      if ! python3 - "$action" "$xml_path" "$native_line" "$arrange_event_baseline_data" \
+          "$arrange_event_track" "$arrange_event_tick" "$arrange_event_note" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+action,path,line,baseline,track_s,tick_s,note_s=sys.argv[1:]
+track,tick,note=map(int,(track_s,tick_s,note_s))
+m=re.search(r"UI_ARRANGE_EVENT_STATE: action=(CUT|REDO) track=(\d+) tick=(\d+) note=(\d+) data=(.*)$",line)
+if not m or m.group(1)!=action or tuple(map(int,m.group(2,3,4)))!=(track,tick,note):
+    raise AssertionError(f"{action} native-state identity mismatch: {line!r}")
+def decode(value):
+    length_s,sep,rest=value.partition("|")
+    if not sep: raise AssertionError(f"invalid Pattern serialization: {value!r}")
+    return int(length_s),[tuple(map(int,e.split(","))) for e in rest.split(";") if e]
+base_len,base=decode(baseline); current_len,current=decode(m.group(5))
+removed=[e for e in base if e[0]==tick and e[2]==note]
+expected=[e for e in base if not(e[0]==tick and e[2]==note)]
+if len(removed)!=1 or current_len!=base_len or current!=expected:
+    raise AssertionError(f"{action} must remove only the unique source: {base!r} -> {current!r}")
+nodes=list(ET.parse(path).getroot().iter("node"))
+info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
+if len(info)!=1 or info[0].attrib.get("text")!="Select event • −/+ move • double-tap Grid":
+    raise AssertionError(f"{action} should clear selection of the deleted event")
+for desc in ("Arrangement cut selected event","Arrangement copy selected event",
+             "Arrangement duplicate selected event one grid later"):
+    found=[n for n in nodes if n.attrib.get("content-desc")==desc]
+    if len(found)!=1 or found[0].attrib.get("enabled")!="false":
+        raise AssertionError(f"{action} left an edit action enabled without a selection: {desc}")
+print(f"Arrangement {action}: exact source deletion and cleared selection verified.")
+PY
+      then
+        echo "ERROR: Arrangement $action native-state/hierarchy verification failed"
+        return 1
+      fi
+    }
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_PASTE_RESTORED_XML" \
+      "Arrangement cut selected event"; then
+      echo "ERROR: Arrangement CUT Function Bar action not actionable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_EVENT_CUT_PNG="/tmp/mpc-groovebox-arrange-event-cut.png"
+    ARRANGE_EVENT_CUT_XML="/tmp/mpc-groovebox-arrange-event-cut-uiautomator.xml"
+    ARRANGE_EVENT_CUT_REMOTE="/sdcard/mpc-groovebox-arrange-event-cut-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_CUT_REMOTE" "$ARRANGE_EVENT_CUT_XML"; then
+      echo "ERROR: Arrangement CUT hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_CUT_PNG"; then
+      echo "ERROR: Arrangement CUT screenshot failed"; exit 1
+    fi
+    arrangement_event_cut_line="$(arrangement_event_state_line CUT)"
+    if [[ -z "$arrangement_event_cut_line" ]]; then
+      echo "ERROR: CUT did not log authoritative native Pattern state"; exit 1
+    fi
+    validate_arrangement_cut_state CUT "$ARRANGE_EVENT_CUT_XML" "$arrangement_event_cut_line" || exit 1
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_CUT_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: CUT UNDO action not available"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_EVENT_CUT_UNDO_PNG="/tmp/mpc-groovebox-arrange-event-cut-undo.png"
+    ARRANGE_EVENT_CUT_UNDO_XML="/tmp/mpc-groovebox-arrange-event-cut-undo-uiautomator.xml"
+    ARRANGE_EVENT_CUT_UNDO_REMOTE="/sdcard/mpc-groovebox-arrange-event-cut-undo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_CUT_UNDO_REMOTE" "$ARRANGE_EVENT_CUT_UNDO_XML"; then
+      echo "ERROR: CUT UNDO hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_CUT_UNDO_PNG"; then
+      echo "ERROR: CUT UNDO screenshot failed"; exit 1
+    fi
+    arrangement_event_cut_undo_line="$(arrangement_event_state_line UNDO)"
+    if [[ -z "$arrangement_event_cut_undo_line" ]]; then
+      echo "ERROR: CUT UNDO did not log native Pattern state"; exit 1
+    fi
+    validate_arrangement_duplicate_state UNDO "$ARRANGE_EVENT_CUT_UNDO_XML" \
+      "$arrangement_event_cut_undo_line" "$arrange_event_tick" || exit 1
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_CUT_UNDO_XML" \
+      "Arrangement redo latest sequencer edit"; then
+      echo "ERROR: CUT REDO action not available"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_EVENT_CUT_REDO_PNG="/tmp/mpc-groovebox-arrange-event-cut-redo.png"
+    ARRANGE_EVENT_CUT_REDO_XML="/tmp/mpc-groovebox-arrange-event-cut-redo-uiautomator.xml"
+    ARRANGE_EVENT_CUT_REDO_REMOTE="/sdcard/mpc-groovebox-arrange-event-cut-redo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_CUT_REDO_REMOTE" "$ARRANGE_EVENT_CUT_REDO_XML"; then
+      echo "ERROR: CUT REDO hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_CUT_REDO_PNG"; then
+      echo "ERROR: CUT REDO screenshot failed"; exit 1
+    fi
+    arrangement_event_cut_redo_line="$(arrangement_event_state_line REDO)"
+    if [[ -z "$arrangement_event_cut_redo_line" ]]; then
+      echo "ERROR: CUT REDO did not log native Pattern state"; exit 1
+    fi
+    validate_arrangement_cut_state REDO "$ARRANGE_EVENT_CUT_REDO_XML" "$arrangement_event_cut_redo_line" || exit 1
+
+    if ! tap_visible_description_early "$ARRANGE_EVENT_CUT_REDO_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: final CUT restoration UNDO action not available"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_EVENT_CUT_RESTORED_PNG="/tmp/mpc-groovebox-arrange-event-cut-restored.png"
+    ARRANGE_EVENT_CUT_RESTORED_XML="/tmp/mpc-groovebox-arrange-event-cut-restored-uiautomator.xml"
+    ARRANGE_EVENT_CUT_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-event-cut-restored-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_EVENT_CUT_RESTORED_REMOTE" "$ARRANGE_EVENT_CUT_RESTORED_XML"; then
+      echo "ERROR: final CUT restoration hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_CUT_RESTORED_PNG"; then
+      echo "ERROR: final CUT restoration screenshot failed"; exit 1
+    fi
+    arrangement_event_cut_final_undo_line="$(arrangement_event_state_line UNDO)"
+    if [[ -z "$arrangement_event_cut_final_undo_line" ]]; then
+      echo "ERROR: final CUT UNDO did not log native Pattern state"; exit 1
+    fi
+    validate_arrangement_duplicate_state UNDO "$ARRANGE_EVENT_CUT_RESTORED_XML" \
+      "$arrangement_event_cut_final_undo_line" "$arrange_event_tick" || exit 1
+    echo "Arrangement CUT → UNDO → REDO → UNDO restored exact native Pattern state."
+
     arrange_loop_drag_points="$(python3 - \
       "$ARRANGE_LOOP_BEFORE_XML" "$arrange_density" \
       "$loop_original_end" "$loop_target_end" \

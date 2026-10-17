@@ -241,6 +241,17 @@ inline bool erasePatternNoteTick(
     return true;
 }
 
+// Cut exactly one uniquely identified event, returning the full event value for clipboard/history.
+inline bool cutPatternNoteTick(
+        domain::Pattern& pattern, std::int64_t tick,
+        std::uint8_t noteNumber, domain::MidiNoteEvent& cutEvent) {
+    domain::MidiNoteEvent candidate{};
+    if (!copyPatternNoteTick(pattern, tick, noteNumber, candidate)) return false;
+    if (!erasePatternNoteTick(pattern, tick, noteNumber)) return false;
+    cutEvent = candidate;
+    return true;
+}
+
 inline bool setStepNote(
         domain::Pattern& pattern,
         std::int32_t stepIndex,

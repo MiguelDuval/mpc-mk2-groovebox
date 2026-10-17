@@ -268,6 +268,38 @@ int main() {
     assert(clipboardPattern.notes.size() == 3);
     assert(mpc::sequencer::erasePatternNoteTick(clipboardPattern, 360, 36));
 
+    // CUT returns the full source event while deleting only its unique Pattern entry.
+    mpc::domain::Pattern cutPattern;
+    cutPattern.lengthTicks = 1920;
+    cutPattern.notes = {
+            {240, 180, 36, 97, 88, 3, -11},
+            {720, 90, 38, 75, 66, 2, 12}};
+    mpc::domain::MidiNoteEvent cutEvent{};
+    assert(mpc::sequencer::cutPatternNoteTick(cutPattern, 240, 36, cutEvent));
+    assert(cutPattern.notes.size() == 1);
+    assert(cutEvent.tick == 240 && cutEvent.durationTicks == 180);
+    assert(cutEvent.note == 36 && cutEvent.velocity == 97
+            && cutEvent.probability == 88 && cutEvent.ratchet == 3
+            && cutEvent.nudgeTicks == -11);
+    assert(!mpc::sequencer::cutPatternNoteTick(cutPattern, 240, 36, cutEvent));
+    assert(!mpc::sequencer::cutPatternNoteTick(cutPattern, 1920, 36, cutEvent));
+    assert(cutPattern.notes.size() == 1);
+    assert(mpc::sequencer::pastePatternNoteTick(cutPattern, cutEvent, cutEvent.tick));
+    assert(cutPattern.notes.size() == 2);
+    const auto cutRestored = std::find_if(
+            cutPattern.notes.begin(), cutPattern.notes.end(),
+            [](const mpc::domain::MidiNoteEvent& event) {
+                return event.tick == 240 && event.note == 36;
+            });
+    assert(cutRestored != cutPattern.notes.end());
+    assert(cutRestored->durationTicks == 180 && cutRestored->velocity == 97
+            && cutRestored->probability == 88 && cutRestored->ratchet == 3
+            && cutRestored->nudgeTicks == -11);
+    cutPattern.notes.push_back({240, 60, 36, 80, 64, 1, 0});
+    assert(!mpc::sequencer::cutPatternNoteTick(cutPattern, 240, 36, cutEvent));
+    assert(cutPattern.notes.size() == 3);
+    cutPattern.notes.pop_back();
+
     mpc::domain::MidiNoteEvent probabilityNote{0, 120, 36, 100, 64, 4};
     assert(mpc::sequencer::shouldTriggerNote(probabilityNote, 1234u) ==
            mpc::sequencer::shouldTriggerNote(probabilityNote, 1234u));

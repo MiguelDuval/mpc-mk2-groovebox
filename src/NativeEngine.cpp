@@ -2205,6 +2205,85 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetArrangementCl
             ? static_cast<jint>(arrangementEventClipboard->note) : -1;
 }
 
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCutArrangementEvent(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jlong sourceTick, jint noteNumber)
+{
+    if (trackIndex < 0 || noteNumber < 0 || noteNumber > 127 || sourceTick < 0) {
+        return toJString(env, "ARRANGE EVENT CUT failed: invalid event");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "ARRANGE EVENT CUT blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& state = core.projectState();
+    auto& sequence = state.activeSequence();
+    const auto trackIndexValue = static_cast<std::size_t>(trackIndex);
+    if (trackIndexValue >= sequence.tracks.size()) {
+        return toJString(env, "ARRANGE EVENT CUT failed: no such track");
+    }
+    auto& track = sequence.tracks[trackIndexValue];
+    if (track.patterns.empty()) {
+        return toJString(env, "ARRANGE EVENT CUT failed: track has no Pattern");
+    }
+    auto& pattern = track.patterns.front();
+    if (sourceTick >= pattern.lengthTicks) {
+        return toJString(env, "ARRANGE EVENT CUT failed: source outside Pattern");
+    }
+    const auto sequenceIndex = state.activeSequenceIndex();
+    const auto note = static_cast<std::uint8_t>(noteNumber);
+    mpc::domain::MidiNoteEvent cutEvent{};
+    if (!mpc::sequencer::cutPatternNoteTick(pattern, sourceTick, note, cutEvent)) {
+        return toJString(env, "ARRANGE EVENT CUT failed: event missing or ambiguous");
+    }
+    const auto restoreStoredEvent = [](
+            std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            const mpc::domain::MidiNoteEvent& event) -> bool {
+        auto& storedState = mpc::MpcCore::instance().projectState();
+        auto& project = storedState.project();
+        if (storedSequenceIndex >= project.sequences.size()) return false;
+        auto& storedSequence = project.sequences[storedSequenceIndex];
+        if (storedTrackIndex >= storedSequence.tracks.size()) return false;
+        auto& storedTrack = storedSequence.tracks[storedTrackIndex];
+        if (storedTrack.patterns.empty()) return false;
+        return mpc::sequencer::pastePatternNoteTick(
+                storedTrack.patterns.front(), event, event.tick);
+    };
+    const auto removeStoredEvent = [](
+            std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::uint8_t storedNote, std::int64_t tick) -> bool {
+        auto& storedState = mpc::MpcCore::instance().projectState();
+        auto& project = storedState.project();
+        if (storedSequenceIndex >= project.sequences.size()) return false;
+        auto& storedSequence = project.sequences[storedSequenceIndex];
+        if (storedTrackIndex >= storedSequence.tracks.size()) return false;
+        auto& storedTrack = storedSequence.tracks[storedTrackIndex];
+        if (storedTrack.patterns.empty()) return false;
+        return mpc::sequencer::erasePatternNoteTick(
+                storedTrack.patterns.front(), tick, storedNote);
+    };
+    if (!core.editHistory().record({
+            "Cut Arrangement event",
+            [restoreStoredEvent, sequenceIndex, trackIndexValue, cutEvent]() {
+                return restoreStoredEvent(sequenceIndex, trackIndexValue, cutEvent);
+            },
+            [removeStoredEvent, sequenceIndex, trackIndexValue, note, sourceTick]() {
+                return removeStoredEvent(sequenceIndex, trackIndexValue, note, sourceTick);
+            }})) {
+        mpc::sequencer::pastePatternNoteTick(pattern, cutEvent, sourceTick);
+        return toJString(env, "ARRANGE EVENT CUT failed: history recording failed");
+    }
+    // Only publish the new clipboard value after both the Pattern mutation and
+    // history registration have succeeded. A failed cut leaves the old clipboard intact.
+    arrangementEventClipboard = cutEvent;
+    syncSequenceTransportStopped();
+    return toJString(env, std::string("ARRANGE EVENT CUT • ")
+            + std::to_string(sourceTick) + " ticks • note "
+            + std::to_string(static_cast<unsigned int>(note)));
+}
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceHasArrangementClipboard(
         JNIEnv* /* env */, jobject /* thiz */)

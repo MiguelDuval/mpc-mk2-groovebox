@@ -244,9 +244,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView arrangementEventSelectionView;
     private Button arrangementMoveEarlierButton;
     private Button arrangementMoveLaterButton;
-    private Button arrangementDuplicateButton;
-    private Button arrangementCopyButton;
-    private Button arrangementPasteButton;
     private Button arrangementUndoButton;
     private Button arrangementRedoButton;
     private int selectedArrangementEventTrack = -1;
@@ -261,6 +258,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private long lastArrangementPasteTargetTick = -1L;
     private int lastArrangementPasteNote = -1;
     private int lastArrangementPasteSourceNote = -1;
+    private int lastArrangementCutTrack = -1;
+    private long lastArrangementCutTick = -1L;
+    private int lastArrangementCutNote = -1;
     private int arrangementAuditTrackIndex = -1;
     private int arrangementAuditTargetStep = -1;
     private long arrangementAuditEventTick = -1L;
@@ -525,6 +525,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceGetTrackArrangementData(int trackIndex);
     private static native String nativeSequenceMoveArrangementEvent(
             int trackIndex, long sourceTick, int noteNumber, long targetTick);
+    private static native String nativeSequenceCutArrangementEvent(
+            int trackIndex, long sourceTick, int noteNumber);
     private static native String nativeSequenceDuplicateArrangementEvent(
             int trackIndex, long sourceTick, int noteNumber, long targetTick);
     private static native boolean nativeSequenceHasArrangementClipboard();
@@ -1924,14 +1926,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 browserBack.setContentDescription(
                         "MPC Browser BACK to previous workspace");
                 break;
-            case ARRANGE:
-                addFunction("CUT", false, null);
-                addFunction("COPY", false, null);
-                addFunction("PASTE", false, null);
-                addFunction("DUP", false, null);
+            case ARRANGE: {
+                final boolean arrangementEventSelected =
+                        selectedArrangementEventTrack >= 0
+                                && selectedArrangementEventTick >= 0L
+                                && selectedArrangementEventNote >= 0;
+                Button cut = addFunction(
+                        "CUT", arrangementEventSelected,
+                        v -> cutSelectedArrangementEvent());
+                cut.setContentDescription("Arrangement cut selected event");
+                Button copy = addFunction(
+                        "COPY", arrangementEventSelected,
+                        v -> copySelectedArrangementEvent());
+                copy.setContentDescription("Arrangement copy selected event");
+                final boolean arrangementClipboardReady =
+                        nativeSequenceHasArrangementClipboard()
+                                && nativeSequenceGetArrangementClipboardNote() >= 0;
+                Button paste = addFunction(
+                        "PASTE", arrangementEventSelected && arrangementClipboardReady,
+                        v -> pasteArrangementClipboard());
+                paste.setContentDescription("Arrangement paste copied event one grid later");
+                Button duplicate = addFunction(
+                        "DUP", arrangementEventSelected,
+                        v -> duplicateSelectedArrangementEvent());
+                duplicate.setContentDescription(
+                        "Arrangement duplicate selected event one grid later");
                 addFunction("GRID", true, v -> showSequenceGridPage());
                 addFunction("TRACK VIEW", true, v -> showTrackViewPage());
                 break;
+            }
 
             case GRID:
                 addFunction("STEP", drumGridAvailable(), v -> {
@@ -6309,9 +6332,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementEventSelectionView = null;
         arrangementMoveEarlierButton = null;
         arrangementMoveLaterButton = null;
-        arrangementDuplicateButton = null;
-        arrangementCopyButton = null;
-        arrangementPasteButton = null;
         arrangementUndoButton = null;
         arrangementRedoButton = null;
         arrangementView = new MpcArrangeView(this);
@@ -6417,28 +6437,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementEventSelectionView = info;
         eventActionRow.addView(info, new LinearLayout.LayoutParams(
                 0, dp(34), 1));
-        arrangementCopyButton = actionButton(
-                "COPY", v -> copySelectedArrangementEvent());
-        arrangementCopyButton.setTextSize(9);
-        arrangementCopyButton.setContentDescription("Arrangement copy selected event");
-        arrangementCopyButton.setEnabled(false);
-        eventActionRow.addView(arrangementCopyButton,
-                new LinearLayout.LayoutParams(dp(48), dp(34)));
-        arrangementPasteButton = actionButton(
-                "PASTE", v -> pasteArrangementClipboard());
-        arrangementPasteButton.setTextSize(9);
-        arrangementPasteButton.setContentDescription("Arrangement paste copied event one grid later");
-        arrangementPasteButton.setEnabled(false);
-        eventActionRow.addView(arrangementPasteButton,
-                new LinearLayout.LayoutParams(dp(48), dp(34)));
-        arrangementDuplicateButton = actionButton(
-                "DUP", v -> duplicateSelectedArrangementEvent());
-        arrangementDuplicateButton.setTextSize(9);
-        arrangementDuplicateButton.setContentDescription(
-                "Arrangement duplicate selected event one grid later");
-        arrangementDuplicateButton.setEnabled(false);
-        eventActionRow.addView(arrangementDuplicateButton,
-                new LinearLayout.LayoutParams(dp(48), dp(34)));
         arrangementUndoButton = actionButton(
                 "UNDO", v -> applyArrangementHistory(false));
         arrangementUndoButton.setTextSize(9);
@@ -6531,11 +6529,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 && selectedArrangementEventNote >= 0;
         if (arrangementMoveEarlierButton != null) arrangementMoveEarlierButton.setEnabled(selected);
         if (arrangementMoveLaterButton != null) arrangementMoveLaterButton.setEnabled(selected);
-        if (arrangementDuplicateButton != null) arrangementDuplicateButton.setEnabled(selected);
-        if (arrangementCopyButton != null) arrangementCopyButton.setEnabled(selected);
-        if (arrangementPasteButton != null) arrangementPasteButton.setEnabled(
-                selected && nativeSequenceHasArrangementClipboard()
-                        && nativeSequenceGetArrangementClipboardNote() >= 0);
         if (arrangementUndoButton != null) arrangementUndoButton.setEnabled(nativeSequenceCanUndo());
         if (arrangementRedoButton != null) arrangementRedoButton.setEnabled(nativeSequenceCanRedo());
         if (arrangementEventSelectionView != null) arrangementEventSelectionView.setText(
@@ -6543,6 +6536,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         selectedArrangementEventTrack + 1, selectedArrangementEventTick,
                         selectedArrangementEventNote)
                 : "Select event • −/+ move • double-tap Grid");
+        if (navigationController != null
+                && navigationController.state().mode() == MpcUiState.Mode.ARRANGE) {
+            refreshMpcFunctionBar();
+        }
     }
 
     private boolean hasArrangementEventInProjection(int trackIndex, long tick, int noteNumber) {
@@ -6602,6 +6599,44 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setBottomStatus(result);
         logArrangementEventState("MOVE", selectedArrangementEventTrack, targetTick,
                 selectedArrangementEventNote);
+        refreshArrangeView();
+    }
+
+    private void cutSelectedArrangementEvent() {
+        if (selectedArrangementEventTrack < 0 || selectedArrangementEventTick < 0L
+                || selectedArrangementEventNote < 0) {
+            setBottomStatus("ARRANGE EVENT CUT • select an event first");
+            return;
+        }
+        final int trackIndex = selectedArrangementEventTrack;
+        final long sourceTick = selectedArrangementEventTick;
+        final int noteNumber = selectedArrangementEventNote;
+        final String result = nativeSequenceCutArrangementEvent(
+                trackIndex, sourceTick, noteNumber);
+        if (result == null || !result.startsWith("ARRANGE EVENT CUT •")) {
+            setBottomStatus(result == null
+                    ? "ARRANGE EVENT CUT • native operation returned no result" : result);
+            return;
+        }
+        loadArrangementLanes();
+        if (hasArrangementEventInProjection(trackIndex, sourceTick, noteNumber)) {
+            final String rollback = nativeSequenceUndo();
+            loadArrangementLanes();
+            setBottomStatus("ARRANGE EVENT CUT • native projection check failed | rollback="
+                    + rollback);
+            updateArrangementEventControls();
+            refreshArrangeView();
+            return;
+        }
+        lastArrangementCutTrack = trackIndex;
+        lastArrangementCutTick = sourceTick;
+        lastArrangementCutNote = noteNumber;
+        selectedArrangementEventTrack = -1;
+        selectedArrangementEventTick = -1L;
+        selectedArrangementEventNote = -1;
+        updateArrangementEventControls();
+        setBottomStatus(result);
+        logArrangementEventState("CUT", trackIndex, sourceTick, noteNumber);
         refreshArrangeView();
     }
 
@@ -6721,6 +6756,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         loadArrangementLanes();
+        final boolean cutHistoryAction = result.contains("Cut Arrangement event")
+                && lastArrangementCutTrack >= 0;
         final boolean duplicateHistoryAction = result.contains("Duplicate Arrangement event")
                 && selectedArrangementEventTrack == lastArrangementDuplicateTrack
                 && selectedArrangementEventNote == lastArrangementDuplicateNote
@@ -6734,7 +6771,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     || (!redo
                         && selectedArrangementEventNote == lastArrangementPasteNote
                         && selectedArrangementEventTick == lastArrangementPasteTargetTick));
-        if (duplicateHistoryAction) {
+        if (cutHistoryAction) {
+            if (redo) {
+                selectedArrangementEventTrack = -1;
+                selectedArrangementEventTick = -1L;
+                selectedArrangementEventNote = -1;
+            } else {
+                selectedArrangementEventTrack = lastArrangementCutTrack;
+                selectedArrangementEventTick = lastArrangementCutTick;
+                selectedArrangementEventNote = lastArrangementCutNote;
+            }
+        } else if (duplicateHistoryAction) {
             selectedArrangementEventTick = redo
                     ? lastArrangementDuplicateTargetTick : lastArrangementDuplicateSourceTick;
         } else if (pasteHistoryAction) {
@@ -6755,6 +6802,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (selectedArrangementEventTrack >= 0) {
             logArrangementEventState(redo ? "REDO" : "UNDO", selectedArrangementEventTrack,
                     selectedArrangementEventTick, selectedArrangementEventNote);
+        } else if (cutHistoryAction && redo) {
+            logArrangementEventState("REDO", lastArrangementCutTrack,
+                    lastArrangementCutTick, lastArrangementCutNote);
         }
         refreshArrangeView();
     }
