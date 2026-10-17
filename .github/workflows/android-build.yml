@@ -525,6 +525,10 @@ jobs:
             /tmp/mpc-groovebox-track-view-muted-uiautomator.xml
             /tmp/mpc-groovebox-arrange-grid-focus.png
             /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml
+            /tmp/mpc-groovebox-grid-edit-after-draw.png
+            /tmp/mpc-groovebox-grid-edit-after-draw-uiautomator.xml
+            /tmp/mpc-groovebox-grid-edit-after-erase.png
+            /tmp/mpc-groovebox-grid-edit-after-erase-uiautomator.xml
             /tmp/mpc-groovebox-arrange-back.png
             /tmp/mpc-groovebox-arrange-back-uiautomator.xml
             /tmp/mpc-groovebox-arrange-grid-reentry.png

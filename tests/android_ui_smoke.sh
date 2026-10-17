@@ -2377,6 +2377,134 @@ PY
       cat /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml
       exit 1
     fi
+    echo "Running real Grid DRAW → native note state → ERASE → empty-state round-trip..."
+    grid_density_info="$(adb_bounded 10 shell wm density)" || {
+      echo "ERROR: could not read Android density for Grid cell hit testing"; exit 1;
+    }
+    grid_edit_coordinates="$(python3 - \
+      /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml \
+      "$grid_density_info" "$target_step" "$first_visible_step" "$last_visible_step" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, density_text, target_s, first_s, last_s = sys.argv[1:]
+target, first, last = map(int, (target_s, first_s, last_s))
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    if match is None: raise AssertionError("invalid bounds " + repr(node.attrib))
+    return tuple(map(int, match.groups()))
+grid = [n for n in nodes if n.attrib.get("content-desc") == "MPC Grid View drum event grid"]
+if len(grid) != 1: raise AssertionError(f"expected one Grid canvas, got {len(grid)}")
+left, top, right, bottom = bounds(grid[0])
+density_matches = re.findall(r"Override density:\s*(\d+)", density_text)
+if not density_matches: density_matches = re.findall(r"Physical density:\s*(\d+)", density_text)
+if not density_matches: raise AssertionError("unparseable Android density: " + repr(density_text))
+density = int(density_matches[-1]) / 160.0
+range_nodes = [n for n in nodes if n.attrib.get("content-desc", "").startswith("Grid visible step range: steps ")]
+if len(range_nodes) != 1: raise AssertionError(f"expected one Grid range, got {len(range_nodes)}")
+m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                 range_nodes[0].attrib.get("content-desc", ""))
+if m is None: raise AssertionError("malformed Grid range")
+shown_first, shown_last, total = map(int, m.groups())
+if (shown_first, shown_last) != (first, last): raise AssertionError("Grid range disagrees with route")
+visible_steps = shown_last - shown_first + 1
+if visible_steps != 16: raise AssertionError(f"expected 16 visible step columns, got {visible_steps}")
+event_counts = [int(m.group(1)) for n in nodes
+                for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
+if not event_counts or any(count != 1 for count in event_counts):
+    raise AssertionError(f"fixture must have exactly one seeded note, got {event_counts}")
+edit_step = target + 1 if target < shown_last else target - 1
+if edit_step == target or not shown_first <= edit_step <= shown_last:
+    raise AssertionError("no adjacent empty step is available")
+# Grid launches at its default 16-pad view; Pad 01 is the bottom row.
+visible_pads = 16
+column, row = edit_step - shown_first, visible_pads - 1
+left_inset, top_inset, end_inset = 42*density, 24*density, 6*density
+plot_width = max(1.0, (right-left)-left_inset-end_inset)
+plot_height = max(1.0, (bottom-top)-top_inset-end_inset)
+x = round(left + left_inset + (column+0.5)*plot_width/visible_steps)
+y = round(top + top_inset + (row+0.5)*plot_height/visible_pads)
+if not (left < x < right and top < y < bottom): raise AssertionError(f"Grid cell tap {(x,y)} escaped bounds")
+print(x, y, edit_step)
+PY
+    )" || {
+      echo "ERROR: could not derive a valid adjacent empty Grid cell from live bounds"; exit 1;
+    }
+    read -r grid_edit_x grid_edit_y grid_edit_step <<< "$grid_edit_coordinates"
+    echo "Grid round-trip target: PAD 01 STEP $grid_edit_step at $grid_edit_x,$grid_edit_y"
+    if ! adb_bounded 10 shell input tap "$grid_edit_x" "$grid_edit_y"; then
+      echo "ERROR: real Grid DRAW cell tap failed"; exit 1
+    fi
+    sleep 0.35
+    GRID_EDIT_DRAW_XML="/tmp/mpc-groovebox-grid-edit-after-draw-uiautomator.xml"
+    GRID_EDIT_DRAW_REMOTE="/sdcard/mpc-groovebox-grid-edit-after-draw-uiautomator.xml"
+    GRID_EDIT_DRAW_PNG="/tmp/mpc-groovebox-grid-edit-after-draw.png"
+    if ! dump_device_ui "$GRID_EDIT_DRAW_REMOTE" "$GRID_EDIT_DRAW_XML"; then
+      echo "ERROR: could not read Grid state after drawing an empty cell"; exit 1
+    fi
+    if ! python3 - "$GRID_EDIT_DRAW_XML" "$grid_edit_step" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, step_s = sys.argv[1:]
+step = int(step_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+prefix = f"Grid selection: PAD 01, STEP {step:02d}, note present, velocity "
+found = [n for n in nodes if n.attrib.get("content-desc", "").startswith(prefix)]
+if len(found) != 1:
+    raise AssertionError(f"DRAW did not expose native note state {prefix!r}; selected labels={[n.attrib.get('content-desc') for n in nodes if 'Grid selection:' in n.attrib.get('content-desc','')]}")
+m = re.fullmatch(re.escape(prefix) + r"(\d+)", found[0].attrib.get("content-desc", ""))
+if m is None or not 1 <= int(m.group(1)) <= 127:
+    raise AssertionError("Grid DRAW reported invalid native MIDI velocity")
+print(f"Grid DRAW verified: PAD 01 STEP {step:02d}, velocity {m.group(1)}")
+PY
+    then
+      echo "ERROR: Grid DRAW did not produce a native note"; cat "$GRID_EDIT_DRAW_XML"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_DRAW_PNG"; then
+      echo "ERROR: Grid DRAW screenshot capture failed"; exit 1
+    fi
+
+    if ! tap_ui_description "$GRID_EDIT_DRAW_XML" "Grid Erase tool"; then
+      echo "ERROR: Grid ERASE tool was not actionable after DRAW"; exit 1
+    fi
+    sleep 0.2
+    if ! adb_bounded 10 shell input tap "$grid_edit_x" "$grid_edit_y"; then
+      echo "ERROR: real Grid ERASE cell tap failed"; exit 1
+    fi
+    sleep 0.35
+    GRID_EDIT_ERASE_XML="/tmp/mpc-groovebox-grid-edit-after-erase-uiautomator.xml"
+    GRID_EDIT_ERASE_REMOTE="/sdcard/mpc-groovebox-grid-edit-after-erase-uiautomator.xml"
+    GRID_EDIT_ERASE_PNG="/tmp/mpc-groovebox-grid-edit-after-erase.png"
+    if ! dump_device_ui "$GRID_EDIT_ERASE_REMOTE" "$GRID_EDIT_ERASE_XML"; then
+      echo "ERROR: could not read Grid state after erasing the drawn cell"; exit 1
+    fi
+    if ! python3 - "$GRID_EDIT_ERASE_XML" "$grid_edit_step" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, step_s = sys.argv[1:]
+step = int(step_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+expected = f"Grid selection: PAD 01, STEP {step:02d}, no note"
+found = [n for n in nodes if n.attrib.get("content-desc") == expected]
+if len(found) != 1:
+    raise AssertionError(f"ERASE did not restore empty state {expected!r}; selected labels={[n.attrib.get('content-desc') for n in nodes if 'Grid selection:' in n.attrib.get('content-desc','')]}")
+print(f"Grid ERASE verified: {expected}")
+PY
+    then
+      echo "ERROR: Grid ERASE failed to restore empty native state"; cat "$GRID_EDIT_ERASE_XML"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_ERASE_PNG"; then
+      echo "ERROR: Grid ERASE screenshot capture failed"; exit 1
+    fi
+    if ! tap_ui_description "$GRID_EDIT_ERASE_XML" "Grid Draw tool"; then
+      echo "ERROR: Grid DRAW tool state could not be restored after round-trip"; exit 1
+    fi
+    echo "Grid DRAW → native note state → ERASE → empty-state round-trip passed."
+
     if ! adb_bounded 10 shell run-as "$PACKAGE" \
         touch cache/mpc-arrange-grid-focus-capture-release; then
       echo "ERROR: could not release app-side Arrangement-to-Grid capture checkpoint"

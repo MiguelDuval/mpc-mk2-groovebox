@@ -7069,12 +7069,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (tool == MpcUiState.EditorTool.SELECT) {
                 selectedPad = padIndex;
                 navigationController.setSelectedPad(padIndex);
-                gridSelectionStateView.setText(
-                        String.format(
-                                Locale.ROOT,
-                                "PAD %02d • STEP %02d",
-                                padIndex + 1,
-                                absoluteStep + 1));
+                updateGridSelectionState(padIndex, absoluteStep);
                 refreshMpcCompactContext();
                 sequenceGridView.invalidate();
                 setBottomStatus(
@@ -7113,13 +7108,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     tool == MpcUiState.EditorTool.ERASE
                             ? MpcUiState.DataDialFocus.PAD
                             : MpcUiState.DataDialFocus.PAD);
-            gridSelectionStateView.setText(
-                    String.format(
-                            Locale.ROOT,
-                            "PAD %02d • STEP %02d",
-                            padIndex + 1,
-                            absoluteStep + 1));
             refreshSequenceGrid();
+            updateGridSelectionState(padIndex, absoluteStep);
             refreshMpcCompactContext();
         });
 
@@ -7186,11 +7176,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeSequenceIsGridEditable()
                         ? "EDIT READY"
                         : "STOP TO EDIT");
-        gridSelectionStateView.setText(
-                String.format(
-                        Locale.ROOT,
-                        "PAD %02d",
-                        selectedPad + 1));
+        updateGridPadSelectionState(selectedPad);
         refreshGridToolState();
         refreshSequenceGrid();
         refreshSequencePlayhead();
@@ -7986,6 +7972,65 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSequenceGrid();
     }
 
+    private void updateGridPadSelectionState(int padIndex) {
+        if (gridSelectionStateView == null) {
+            return;
+        }
+        final int safePad = Math.max(0, Math.min(15, padIndex));
+        gridSelectionStateView.setText(String.format(
+                Locale.ROOT,
+                "PAD %02d",
+                safePad + 1));
+        gridSelectionStateView.setContentDescription(String.format(
+                Locale.ROOT,
+                "Grid selection: PAD %02d",
+                safePad + 1));
+    }
+
+    /**
+     * Publishes the selected Grid cell's actual sequencer projection to
+     * accessibility. The custom-drawn canvas has no child View for each cell,
+     * so this label exposes the selected pad/step and current native note state.
+     */
+    private void updateGridSelectionState(int padIndex, int absoluteStep) {
+        if (gridSelectionStateView == null) {
+            return;
+        }
+        final int safePad = Math.max(0, Math.min(15, padIndex));
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int localColumn = absoluteStep - sequenceGridStartStep;
+        int velocity = 0;
+        if (localColumn >= 0 && localColumn < 16) {
+            final int[] velocities = nativeSequenceGetGridVelocities(
+                    sequenceGridStartStep,
+                    gridTicks);
+            final int localIndex = safePad * 16 + localColumn;
+            if (velocities != null && localIndex >= 0
+                    && localIndex < velocities.length) {
+                velocity = Math.max(0, velocities[localIndex]);
+            }
+        }
+
+        gridSelectionStateView.setText(String.format(
+                Locale.ROOT,
+                "PAD %02d • STEP %02d",
+                safePad + 1,
+                absoluteStep + 1));
+        gridSelectionStateView.setContentDescription(
+                velocity > 0
+                        ? String.format(
+                                Locale.ROOT,
+                                "Grid selection: PAD %02d, STEP %02d, note present, velocity %d",
+                                safePad + 1,
+                                absoluteStep + 1,
+                                velocity)
+                        : String.format(
+                                Locale.ROOT,
+                                "Grid selection: PAD %02d, STEP %02d, no note",
+                                safePad + 1,
+                                absoluteStep + 1));
+    }
+
     private void refreshGridHeaderState() {
         if (sequenceGridView == null || navigationController == null) {
             return;
@@ -7999,10 +8044,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int track = Math.max(0, nativeSequenceGetSelectedTrack());
 
         if (gridSelectionStateView != null) {
-            gridSelectionStateView.setText(String.format(
-                    Locale.ROOT,
-                    "PAD %02d",
-                    selectedPad + 1));
+            updateGridPadSelectionState(selectedPad);
         }
 
         if (gridToolStateView != null) {
