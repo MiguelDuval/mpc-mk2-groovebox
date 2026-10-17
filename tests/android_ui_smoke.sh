@@ -3389,6 +3389,7 @@ TRACK_EDIT_RESTORED_XML="/tmp/mpc-groovebox-track-edit-tuning-restored-uiautomat
 # assuming off-screen children remain accessible after scrolling.
 read_track_edit_context_values() {
   python3 - "$1" <<'PY'
+import re
 import sys
 import xml.etree.ElementTree as ET
 
@@ -3401,8 +3402,10 @@ def one(description):
         raise SystemExit(f"expected one node {description!r}, found {len(found)}")
     return found[0]
 
-pad = one("Track Edit Pad context").attrib.get("text", "").strip()
-layer = one("Track Edit selected layer").attrib.get("text", "").strip()
+pad_text = one("Track Edit Pad context").attrib.get("text", "")
+layer_text = one("Track Edit selected layer").attrib.get("text", "")
+pad = re.sub(r"\s+", " ", pad_text).strip()
+layer = re.sub(r"\s+", " ", layer_text).strip()
 sample_text = one("Track Edit sample").attrib.get("text", "")
 sample = sample_text.splitlines()[-1].strip() if sample_text.strip() else ""
 if not sample or "NO SAMPLE" in sample.upper():
