@@ -249,6 +249,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int selectedArrangementEventTrack = -1;
     private long selectedArrangementEventTick = -1L;
     private int selectedArrangementEventNote = -1;
+    private int arrangementInsertionTrackIndex = -1;
+    private long arrangementInsertionTick = -1L;
     private int lastArrangementDuplicateTrack = -1;
     private long lastArrangementDuplicateSourceTick = -1L;
     private long lastArrangementDuplicateTargetTick = -1L;
@@ -258,6 +260,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private long lastArrangementPasteTargetTick = -1L;
     private int lastArrangementPasteNote = -1;
     private int lastArrangementPasteSourceNote = -1;
+    private boolean lastArrangementPasteFromCursor;
     private int lastArrangementCutTrack = -1;
     private long lastArrangementCutTick = -1L;
     private int lastArrangementCutNote = -1;
@@ -1942,10 +1945,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final boolean arrangementClipboardReady =
                         nativeSequenceHasArrangementClipboard()
                                 && nativeSequenceGetArrangementClipboardNote() >= 0;
+                final boolean pasteTargetAvailable =
+                        arrangementEventSelected || hasArrangementInsertionTarget();
                 Button paste = addFunction(
-                        "PASTE", arrangementEventSelected && arrangementClipboardReady,
+                        "PASTE", pasteTargetAvailable && arrangementClipboardReady,
                         v -> pasteArrangementClipboard());
-                paste.setContentDescription("Arrangement paste copied event one grid later");
+                paste.setContentDescription(hasArrangementInsertionTarget()
+                        ? String.format(Locale.ROOT,
+                                "Arrangement paste copied event at target tick %d",
+                                arrangementInsertionTick)
+                        : "Arrangement paste copied event one grid later");
                 Button duplicate = addFunction(
                         "DUP", arrangementEventSelected,
                         v -> duplicateSelectedArrangementEvent());
@@ -6329,6 +6338,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         selectedArrangementEventTrack = -1;
         selectedArrangementEventTick = -1L;
         selectedArrangementEventNote = -1;
+        arrangementInsertionTrackIndex = -1;
+        arrangementInsertionTick = -1L;
         arrangementEventSelectionView = null;
         arrangementMoveEarlierButton = null;
         arrangementMoveLaterButton = null;
@@ -6338,6 +6349,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementView.setListener(new MpcArrangeView.Listener() {
             @Override
             public void onTrackSelected(int trackIndex) {
+                if (arrangementInsertionTrackIndex >= 0
+                        && arrangementInsertionTrackIndex != trackIndex) {
+                    clearArrangementInsertionTarget();
+                }
                 if (selectedArrangementEventTrack >= 0
                         && selectedArrangementEventTrack != trackIndex) {
                     selectedArrangementEventTrack = -1;
@@ -6353,6 +6368,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             @Override
             public void onEventSelected(int trackIndex, long tick, int noteNumber) {
+                clearArrangementInsertionTarget();
                 selectedArrangementEventTrack = trackIndex;
                 selectedArrangementEventTick = tick;
                 selectedArrangementEventNote = noteNumber;
@@ -6361,10 +6377,33 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             @Override
             public void onEventSelectionCleared() {
+                clearArrangementInsertionTarget();
                 selectedArrangementEventTrack = -1;
                 selectedArrangementEventTick = -1L;
                 selectedArrangementEventNote = -1;
                 updateArrangementEventControls();
+            }
+
+            @Override
+            public void onInsertionTargetSelected(int trackIndex, long tick) {
+                selectedArrangementEventTrack = -1;
+                selectedArrangementEventTick = -1L;
+                selectedArrangementEventNote = -1;
+                arrangementInsertionTrackIndex = trackIndex;
+                arrangementInsertionTick = tick;
+                if (arrangementView != null) {
+                    arrangementView.setInsertionTarget(trackIndex, tick);
+                }
+                updateArrangementEventControls();
+                setBottomStatus(String.format(
+                        Locale.ROOT, "ARRANGE PASTE TARGET • TRACK %02d • TICK %d",
+                        trackIndex + 1, tick));
+                if (uiAuditSmokeMode) {
+                    Log.i(TAG, "UI_ARRANGE_INSERTION_TARGET: track=" + trackIndex
+                            + " tick=" + tick
+                            + " grid=" + Math.max(1, nativeSequenceGetQuantizeGrid())
+                            + " data=" + nativeSequenceGetTrackArrangementData(trackIndex));
+                }
             }
 
             @Override
@@ -6531,11 +6570,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (arrangementMoveLaterButton != null) arrangementMoveLaterButton.setEnabled(selected);
         if (arrangementUndoButton != null) arrangementUndoButton.setEnabled(nativeSequenceCanUndo());
         if (arrangementRedoButton != null) arrangementRedoButton.setEnabled(nativeSequenceCanRedo());
-        if (arrangementEventSelectionView != null) arrangementEventSelectionView.setText(
-                selected ? String.format(Locale.ROOT, "EVENT • TRACK %02d • TICK %d • NOTE %03d",
+        if (arrangementEventSelectionView != null) {
+            if (selected) {
+                arrangementEventSelectionView.setText(String.format(
+                        Locale.ROOT, "EVENT • TRACK %02d • TICK %d • NOTE %03d",
                         selectedArrangementEventTrack + 1, selectedArrangementEventTick,
-                        selectedArrangementEventNote)
-                : "Select event • −/+ move • double-tap Grid");
+                        selectedArrangementEventNote));
+                arrangementEventSelectionView.setContentDescription("Arrangement editing guidance");
+            } else if (hasArrangementInsertionTarget()) {
+                final String targetLabel = String.format(
+                        Locale.ROOT, "PASTE TARGET • TRACK %02d • TICK %d",
+                        arrangementInsertionTrackIndex + 1, arrangementInsertionTick);
+                arrangementEventSelectionView.setText(targetLabel);
+                arrangementEventSelectionView.setContentDescription(String.format(
+                        Locale.ROOT, "Arrangement paste target Track %02d tick %d",
+                        arrangementInsertionTrackIndex + 1, arrangementInsertionTick));
+            } else {
+                arrangementEventSelectionView.setText(
+                        "Select event • tap empty timeline to set PASTE target");
+                arrangementEventSelectionView.setContentDescription("Arrangement editing guidance");
+            }
+        }
         if (navigationController != null
                 && navigationController.state().mode() == MpcUiState.Mode.ARRANGE) {
             refreshMpcFunctionBar();
@@ -6661,17 +6716,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void pasteArrangementClipboard() {
-        if (selectedArrangementEventTrack < 0 || selectedArrangementEventTick < 0L
+        final boolean cursorTarget = hasArrangementInsertionTarget();
+        final boolean eventTarget = selectedArrangementEventTrack >= 0
+                && selectedArrangementEventTick >= 0L
+                && selectedArrangementEventNote >= 0;
+        if ((!cursorTarget && !eventTarget)
                 || !nativeSequenceHasArrangementClipboard()
                 || nativeSequenceGetArrangementClipboardNote() < 0) {
-            setBottomStatus("ARRANGE EVENT PASTE • select a target event and copy a source first");
+            setBottomStatus(
+                    "ARRANGE EVENT PASTE • tap an empty timeline position and copy a source first");
             updateArrangementEventControls();
             return;
         }
-        final int trackIndex = selectedArrangementEventTrack;
-        final long sourceTick = selectedArrangementEventTick;
-        final int sourceSelectionNote = selectedArrangementEventNote;
-        final long targetTick = sourceTick + Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int trackIndex = cursorTarget
+                ? arrangementInsertionTrackIndex : selectedArrangementEventTrack;
+        final long sourceTick = cursorTarget
+                ? arrangementInsertionTick : selectedArrangementEventTick;
+        final int sourceSelectionNote = cursorTarget
+                ? -1 : selectedArrangementEventNote;
+        final long targetTick = cursorTarget
+                ? arrangementInsertionTick
+                : sourceTick + Math.max(1, nativeSequenceGetQuantizeGrid());
         final int pastedNote = nativeSequenceGetArrangementClipboardNote();
         final String result = nativeSequencePasteArrangementEvent(trackIndex, targetTick);
         if (result == null || !result.startsWith("ARRANGE EVENT PASTED")) {
@@ -6689,6 +6754,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshArrangeView();
             return;
         }
+        clearArrangementInsertionTarget();
         selectedArrangementEventTrack = trackIndex;
         selectedArrangementEventTick = targetTick;
         selectedArrangementEventNote = pastedNote;
@@ -6697,6 +6763,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         lastArrangementPasteTargetTick = targetTick;
         lastArrangementPasteNote = pastedNote;
         lastArrangementPasteSourceNote = sourceSelectionNote;
+        lastArrangementPasteFromCursor = cursorTarget;
         updateArrangementEventControls();
         setBottomStatus(result);
         logArrangementEventState("PASTE", trackIndex, targetTick, pastedNote);
@@ -6764,14 +6831,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 && ((redo && selectedArrangementEventTick == lastArrangementDuplicateSourceTick)
                     || (!redo && selectedArrangementEventTick == lastArrangementDuplicateTargetTick));
         final boolean pasteHistoryAction = result.contains("Paste Arrangement event")
-                && selectedArrangementEventTrack == lastArrangementPasteTrack
-                && ((redo
-                        && selectedArrangementEventNote == lastArrangementPasteSourceNote
-                        && selectedArrangementEventTick == lastArrangementPasteSourceTick)
-                    || (!redo
-                        && selectedArrangementEventNote == lastArrangementPasteNote
-                        && selectedArrangementEventTick == lastArrangementPasteTargetTick));
+                && (lastArrangementPasteFromCursor
+                    ? ((redo
+                            && selectedArrangementEventTrack < 0
+                            && arrangementInsertionTrackIndex == lastArrangementPasteTrack
+                            && arrangementInsertionTick == lastArrangementPasteSourceTick)
+                        || (!redo
+                            && selectedArrangementEventTrack == lastArrangementPasteTrack
+                            && selectedArrangementEventNote == lastArrangementPasteNote
+                            && selectedArrangementEventTick == lastArrangementPasteTargetTick))
+                    : (selectedArrangementEventTrack == lastArrangementPasteTrack
+                        && ((redo
+                                && selectedArrangementEventNote == lastArrangementPasteSourceNote
+                                && selectedArrangementEventTick == lastArrangementPasteSourceTick)
+                            || (!redo
+                                && selectedArrangementEventNote == lastArrangementPasteNote
+                                && selectedArrangementEventTick == lastArrangementPasteTargetTick))));
         if (cutHistoryAction) {
+            clearArrangementInsertionTarget();
             if (redo) {
                 selectedArrangementEventTrack = -1;
                 selectedArrangementEventTick = -1L;
@@ -6785,10 +6862,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             selectedArrangementEventTick = redo
                     ? lastArrangementDuplicateTargetTick : lastArrangementDuplicateSourceTick;
         } else if (pasteHistoryAction) {
-            selectedArrangementEventTick = redo
-                    ? lastArrangementPasteTargetTick : lastArrangementPasteSourceTick;
-            selectedArrangementEventNote = redo
-                    ? lastArrangementPasteNote : lastArrangementPasteSourceNote;
+            if (lastArrangementPasteFromCursor) {
+                if (redo) {
+                    clearArrangementInsertionTarget();
+                    selectedArrangementEventTrack = lastArrangementPasteTrack;
+                    selectedArrangementEventTick = lastArrangementPasteTargetTick;
+                    selectedArrangementEventNote = lastArrangementPasteNote;
+                } else {
+                    selectedArrangementEventTrack = -1;
+                    selectedArrangementEventTick = -1L;
+                    selectedArrangementEventNote = -1;
+                    arrangementInsertionTrackIndex = lastArrangementPasteTrack;
+                    arrangementInsertionTick = lastArrangementPasteSourceTick;
+                    if (arrangementView != null) {
+                        arrangementView.setInsertionTarget(
+                                arrangementInsertionTrackIndex, arrangementInsertionTick);
+                    }
+                }
+            } else {
+                selectedArrangementEventTick = redo
+                        ? lastArrangementPasteTargetTick : lastArrangementPasteSourceTick;
+                selectedArrangementEventNote = redo
+                        ? lastArrangementPasteNote : lastArrangementPasteSourceNote;
+            }
         }
         if (selectedArrangementEventTrack >= 0 && !hasArrangementEventInProjection(
                 selectedArrangementEventTrack, selectedArrangementEventTick,
@@ -6805,6 +6901,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         } else if (cutHistoryAction && redo) {
             logArrangementEventState("REDO", lastArrangementCutTrack,
                     lastArrangementCutTick, lastArrangementCutNote);
+        } else if (pasteHistoryAction && lastArrangementPasteFromCursor) {
+            logArrangementEventState(redo ? "REDO" : "UNDO", lastArrangementPasteTrack,
+                    redo ? lastArrangementPasteTargetTick : lastArrangementPasteSourceTick,
+                    lastArrangementPasteNote);
         }
         refreshArrangeView();
     }
@@ -6830,6 +6930,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return withoutEvents.trim();
     }
 
+    private void clearArrangementInsertionTarget() {
+        arrangementInsertionTrackIndex = -1;
+        arrangementInsertionTick = -1L;
+        if (arrangementView != null) {
+            arrangementView.clearInsertionTarget();
+        }
+    }
+
+    private boolean hasArrangementInsertionTarget() {
+        if (arrangementInsertionTrackIndex < 0 || arrangementInsertionTick < 0L) {
+            return false;
+        }
+        for (MpcArrangeView.Lane lane : arrangementLanes) {
+            if (lane.trackIndex == arrangementInsertionTrackIndex) {
+                return arrangementInsertionTick < lane.lengthTicks
+                        && arrangementInsertionTick
+                                % Math.max(1, nativeSequenceGetQuantizeGrid()) == 0L;
+            }
+        }
+        return false;
+    }
+
     private void refreshArrangeView() {
         if (arrangementView == null || !startupComplete) {
             return;
@@ -6840,6 +6962,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         final int bars = Math.max(1, nativeSequenceGetBars());
+        arrangementView.setQuantizeGridTicks(Math.max(1, nativeSequenceGetQuantizeGrid()));
         arrangementView.setTimeline(
                 bars,
                 nativeSequenceGetLoopStartBar(),

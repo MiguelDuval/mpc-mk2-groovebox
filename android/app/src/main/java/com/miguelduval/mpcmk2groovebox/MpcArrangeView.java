@@ -71,6 +71,7 @@ final class MpcArrangeView extends View {
         void onTrackSelected(int trackIndex);
         void onEventSelected(int trackIndex, long tick, int noteNumber);
         void onEventSelectionCleared();
+        void onInsertionTargetSelected(int trackIndex, long tick);
         void onEventDoubleTapped(int trackIndex, long tick);
         void onLoopCommitted(int startBar, int endBar);
     }
@@ -84,6 +85,7 @@ final class MpcArrangeView extends View {
     private static final int PLAYHEAD = 0xffffffff;
     private static final int EVENT = 0xff56646d;
     private static final int EVENT_SELECTED = 0xffffb448;
+    private static final int INSERTION_TARGET = 0xff4dd0e1;
     private static final float LEFT_HEADER_DP = 138f;
     private static final float TOP_RULER_DP = 34f;
     private static final float LANE_DP = 46f;
@@ -98,6 +100,9 @@ final class MpcArrangeView extends View {
     private Listener listener;
     private boolean eventDoubleTapDispatched;
     private int selectedTrack = 0;
+    private int insertionTargetTrackIndex = -1;
+    private long insertionTargetTick = -1L;
+    private long quantizeGridTicks = 240L;
     private int barCount = 1;
     private int loopStartBar = 1;
     private int loopEndBar = 1;
@@ -150,7 +155,41 @@ final class MpcArrangeView extends View {
             lanes.addAll(values);
         }
         this.selectedTrack = Math.max(0, selectedTrack);
+        if (!hasInsertionTarget(insertionTargetTrackIndex, insertionTargetTick)) {
+            insertionTargetTrackIndex = -1;
+            insertionTargetTick = -1L;
+        }
         invalidate();
+    }
+
+    void setQuantizeGridTicks(long ticks) {
+        quantizeGridTicks = Math.max(1L, ticks);
+    }
+
+    void setInsertionTarget(int trackIndex, long tick) {
+        if (!hasInsertionTarget(trackIndex, tick)) {
+            clearInsertionTarget();
+            return;
+        }
+        insertionTargetTrackIndex = trackIndex;
+        insertionTargetTick = tick;
+        invalidate();
+    }
+
+    void clearInsertionTarget() {
+        insertionTargetTrackIndex = -1;
+        insertionTargetTick = -1L;
+        invalidate();
+    }
+
+    private boolean hasInsertionTarget(int trackIndex, long tick) {
+        if (trackIndex < 0 || tick < 0L) return false;
+        for (Lane lane : lanes) {
+            if (lane.trackIndex == trackIndex) {
+                return tick < lane.lengthTicks && tick % Math.max(1L, quantizeGridTicks) == 0L;
+            }
+        }
+        return false;
     }
 
     float[] trackLanePointForAudit(int trackIndex) {
@@ -379,6 +418,7 @@ final class MpcArrangeView extends View {
 
         drawRuler(canvas, headerWidth, rulerHeight, timelineWidth, pxPerBar);
         drawLanes(canvas, headerWidth, rulerHeight, laneHeight, timelineWidth, pxPerBar);
+        drawInsertionTarget(canvas, headerWidth, rulerHeight, laneHeight, timelineWidth, pxPerBar);
         drawLoopBrace(canvas, headerWidth, rulerHeight, timelineWidth, pxPerBar);
         drawPlayhead(canvas, headerWidth, rulerHeight, timelineWidth, pxPerBar);
     }
@@ -555,6 +595,35 @@ final class MpcArrangeView extends View {
         }
     }
 
+    private void drawInsertionTarget(
+            Canvas canvas,
+            float headerWidth,
+            float rulerHeight,
+            float laneHeight,
+            float timelineWidth,
+            float pxPerBar) {
+        if (!hasInsertionTarget(insertionTargetTrackIndex, insertionTargetTick)) return;
+        int laneIndex = -1;
+        for (int i = 0; i < lanes.size(); i++) {
+            if (lanes.get(i).trackIndex == insertionTargetTrackIndex) {
+                laneIndex = i;
+                break;
+            }
+        }
+        if (laneIndex < 0) return;
+        final float x = xForTick(
+                insertionTargetTick, headerWidth, timelineWidth, pxPerBar, 0L);
+        if (x < headerWidth || x >= getWidth()) return;
+        final float top = rulerHeight + laneIndex * laneHeight;
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(dp(2));
+        paint.setColor(INSERTION_TARGET);
+        canvas.drawLine(x, top + dp(3), x, top + laneHeight - dp(3), paint);
+        paint.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(x, top + dp(7), dp(4), paint);
+        canvas.drawCircle(x, top + laneHeight - dp(7), dp(2), paint);
+    }
+
     private void drawLoopBrace(
             Canvas canvas,
             float headerWidth,
@@ -624,6 +693,13 @@ final class MpcArrangeView extends View {
             }
         }
         return result;
+    }
+
+    private Lane laneForTrack(int trackIndex) {
+        for (Lane lane : lanes) {
+            if (lane.trackIndex == trackIndex) return lane;
+        }
+        return null;
     }
 
     private Hit hit(float x, float y) {
@@ -717,8 +793,29 @@ final class MpcArrangeView extends View {
                     selectedTrack = hit.trackIndex;
                     listener.onTrackSelected(hit.trackIndex);
                     if (hitEvent != null && hitEvent.noteNumber >= 0) {
-                        listener.onEventSelected(hit.trackIndex, hitEvent.tick, hitEvent.noteNumber);
+                        clearInsertionTarget();
+                        listener.onEventSelected(
+                                hit.trackIndex, hitEvent.tick, hitEvent.noteNumber);
+                    } else if (event.getX() >= headerWidth) {
+                        final Lane hitLane = laneForTrack(hit.trackIndex);
+                        listener.onEventSelectionCleared();
+                        if (hitLane != null) {
+                            final float timelineWidth = Math.max(1f, getWidth() - headerWidth);
+                            final float pxPerBar = timelineWidth / Math.max(1, visibleBars);
+                            final long rawTick = Math.max(0L, Math.round(
+                                    (viewportStartBar - 1
+                                            + (event.getX() - headerWidth)
+                                                    / Math.max(1f, pxPerBar))
+                                            * ticksPerBar()));
+                            final long grid = Math.max(1L, quantizeGridTicks);
+                            final long nearestGrid = Math.round(rawTick / (double) grid) * grid;
+                            final long lastValidGrid = ((hitLane.lengthTicks - 1L) / grid) * grid;
+                            final long targetTick = Math.max(
+                                    0L, Math.min(nearestGrid, lastValidGrid));
+                            listener.onInsertionTargetSelected(hit.trackIndex, targetTick);
+                        }
                     } else {
+                        clearInsertionTarget();
                         listener.onEventSelectionCleared();
                     }
                     invalidate();

@@ -2202,6 +2202,11 @@ PY
         | grep -F -- "UI_ARRANGE_EVENT_STATE: action=${action} " \
         | tail -n 1 || true
     }
+    arrangement_insertion_target_line() {
+      adb_bounded 5 logcat -d -v brief 2>/dev/null \
+        | grep -F -- "UI_ARRANGE_INSERTION_TARGET: " \
+        | tail -n 1 || true
+    }
     arrange_event_target_tick=$((arrange_event_tick + arrange_event_grid))
     arrange_event_baseline_line="$(arrangement_event_state_line MOVE)"
     if [[ -z "$arrange_event_baseline_line" ]]; then
@@ -2511,7 +2516,7 @@ if len(removed)!=1 or current_len!=base_len or current!=expected:
     raise AssertionError(f"{action} must remove only the unique source: {base!r} -> {current!r}")
 nodes=list(ET.parse(path).getroot().iter("node"))
 info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
-if len(info)!=1 or info[0].attrib.get("text")!="Select event • −/+ move • double-tap Grid":
+if len(info)!=1 or info[0].attrib.get("text")!="Select event • tap empty timeline to set PASTE target":
     raise AssertionError(f"{action} should clear selection of the deleted event")
 for desc in ("Arrangement cut selected event","Arrangement copy selected event",
              "Arrangement duplicate selected event one grid later"):
@@ -2608,6 +2613,353 @@ PY
     validate_arrangement_duplicate_state UNDO "$ARRANGE_EVENT_CUT_RESTORED_XML" \
       "$arrangement_event_cut_final_undo_line" "$arrange_event_tick" || exit 1
     echo "Arrangement CUT → UNDO → REDO → UNDO restored exact native Pattern state."
+
+    # Repeat CUT, choose a genuine empty timeline point, and PASTE exactly at that
+    # snapped cursor. Undo/Redo must return to the cut Pattern/cursor and then restore
+    # the original Pattern by undoing CUT. No event selection is fabricated at the cursor.
+    if ! tap_visible_description_early "$ARRANGE_EVENT_CUT_RESTORED_XML" \
+      "Arrangement cut selected event"; then
+      echo "ERROR: second Arrangement CUT not actionable after fixture restoration"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_CURSOR_CUT_PNG="/tmp/mpc-groovebox-arrange-event-cursor-cut.png"
+    ARRANGE_CURSOR_CUT_XML="/tmp/mpc-groovebox-arrange-event-cursor-cut-uiautomator.xml"
+    ARRANGE_CURSOR_CUT_REMOTE="/sdcard/mpc-groovebox-arrange-event-cursor-cut-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_CURSOR_CUT_REMOTE" "$ARRANGE_CURSOR_CUT_XML"; then
+      echo "ERROR: second CUT hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_CUT_PNG"; then
+      echo "ERROR: second CUT screenshot failed"; exit 1
+    fi
+    arrangement_cursor_cut_line="$(arrangement_event_state_line CUT)"
+    if [[ -z "$arrangement_cursor_cut_line" ]]; then
+      echo "ERROR: second CUT did not log authoritative Pattern state"; exit 1
+    fi
+    validate_arrangement_cut_state CUT "$ARRANGE_CURSOR_CUT_XML" \
+      "$arrangement_cursor_cut_line" || exit 1
+    if ! python3 - "$ARRANGE_CURSOR_CUT_XML" <<'PY'
+import sys, xml.etree.ElementTree as ET
+nodes=list(ET.parse(sys.argv[1]).getroot().iter("node"))
+paste=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement paste copied event one grid later"]
+if len(paste)!=1 or paste[0].attrib.get("enabled")!="false":
+    raise AssertionError("PASTE must stay disabled after CUT until an empty target is chosen")
+print("CUT clears event selection; PASTE remains disabled without a target cursor.")
+PY
+    then
+      echo "ERROR: PASTE enabled without an event selection or insertion cursor"; exit 1
+    fi
+
+    arrange_cursor_target="$(python3 - "$ARRANGE_CURSOR_CUT_XML" \
+      "$arrange_density" "$arrange_event_baseline_data" "$arrange_event_track" \
+      "$arrange_event_tick" "$arrange_event_note" "$arrange_event_grid" \
+      "$arrange_ticks_per_bar" "$loop_visible_bars" "$loop_viewport_start" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+path,density_text,data,track_s,source_s,note_s,grid_s,tpb_s,visible_s,viewport_s=sys.argv[1:]
+track,source,note,grid,tpb,visible,viewport=map(int,(track_s,source_s,note_s,grid_s,tpb_s,visible_s,viewport_s))
+length_s,sep,rest=data.partition("|")
+if not sep: raise AssertionError("invalid Pattern snapshot")
+length=int(length_s)
+events=[tuple(map(int,e.split(","))) for e in rest.split(";") if e]
+source_events=[e for e in events if e[0]==source and e[2]==note]
+if len(source_events)!=1: raise AssertionError(f"source event not unique: {source_events!r}")
+occupied=[e for e in events if not(e[0]==source and e[2]==note)]
+ds=re.findall(r"Override density:\s*(\d+)",density_text)
+if not ds: ds=re.findall(r"Physical density:\s*(\d+)",density_text)
+if not ds: raise AssertionError("cannot read display density")
+density=int(ds[-1])/160.0
+nodes=list(ET.parse(path).getroot().iter("node"))
+views=[n for n in nodes if n.attrib.get("content-desc")=="MPC linear arrangement editor"]
+if len(views)!=1: raise AssertionError("Arrangement canvas missing")
+m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",views[0].attrib.get("bounds",""))
+if not m: raise AssertionError("Arrangement bounds invalid")
+left,top,right,bottom=map(int,m.groups())
+width=right-left
+header,ruler,lane=138*density,34*density,46*density
+bar_width=(width-header)/visible
+visible_start=max(0,(viewport-1)*tpb)
+visible_end=min(length,(viewport+visible-1)*tpb)
+target=None
+for candidate in range(0,length,grid):
+    if candidate==source or candidate+grid>length:
+        continue
+    if not(visible_start <= candidate < visible_end):
+        continue
+    # Leave half a grid of clearance so pixel rounding cannot hit an adjacent note.
+    if any(et <= candidate+grid/2 and et+dur >= candidate-grid/2
+           for et,dur,*_ in occupied):
+        continue
+    x=round(left+header+(candidate/tpb-(viewport-1))*bar_width)
+    y=round(top+ruler+track*lane+21.5*density)
+    if not(left+header < x < right and top+ruler+track*lane < y < top+ruler+(track+1)*lane):
+        continue
+    target=candidate
+    break
+if target is None: raise AssertionError("no visible, grid-snapped empty Pattern target found")
+x=round(left+header+(target/tpb-(viewport-1))*bar_width)
+y=round(top+ruler+track*lane+21.5*density)
+print(target,x,y)
+PY
+    )" || { echo "ERROR: no valid empty snapped Pattern position for cursor paste"; exit 1; }
+    read -r arrange_cursor_tick arrange_cursor_x arrange_cursor_y <<< "$arrange_cursor_target"
+    if ! adb_bounded 10 shell input tap "$arrange_cursor_x" "$arrange_cursor_y"; then
+      echo "ERROR: empty-timeline paste target touch failed"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PASTE_CURSOR_PNG="/tmp/mpc-groovebox-arrange-event-paste-cursor.png"
+    ARRANGE_PASTE_CURSOR_XML="/tmp/mpc-groovebox-arrange-event-paste-cursor-uiautomator.xml"
+    ARRANGE_PASTE_CURSOR_REMOTE="/sdcard/mpc-groovebox-arrange-event-paste-cursor-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PASTE_CURSOR_REMOTE" "$ARRANGE_PASTE_CURSOR_XML"; then
+      echo "ERROR: paste cursor hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PASTE_CURSOR_PNG"; then
+      echo "ERROR: paste cursor screenshot failed"; exit 1
+    fi
+    arrangement_cursor_line="$(arrangement_insertion_target_line)"
+    if [[ -z "$arrangement_cursor_line" ]]; then
+      echo "ERROR: empty timeline touch did not create native-addressed insertion cursor"; exit 1
+    fi
+    if ! python3 - "$ARRANGE_PASTE_CURSOR_XML" "$arrangement_cursor_line" \
+      "$arrange_event_baseline_data" "$arrange_event_track" "$arrange_event_tick" \
+      "$arrange_event_note" "$arrange_cursor_tick" "$arrange_event_grid" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+path,line,baseline,track_s,source_s,note_s,target_s,grid_s=sys.argv[1:]
+track,source,note,target,grid=map(int,(track_s,source_s,note_s,target_s,grid_s))
+m=re.search(r"UI_ARRANGE_INSERTION_TARGET: track=(\d+) tick=(\d+) grid=(\d+) data=(.*)$",line)
+if not m or tuple(map(int,m.group(1,2,3)))!=(track,target,grid):
+    raise AssertionError(f"cursor state mismatch: {line!r}")
+def decode(value):
+    length_s,sep,rest=value.partition("|")
+    if not sep: raise AssertionError(f"invalid Pattern serialization: {value!r}")
+    return int(length_s),[tuple(map(int,e.split(","))) for e in rest.split(";") if e]
+base_len,base=decode(baseline); current_len,current=decode(m.group(4))
+expected=[e for e in base if not(e[0]==source and e[2]==note)]
+if current_len!=base_len or current!=expected:
+    raise AssertionError("setting insertion cursor mutated native Pattern state")
+nodes=list(ET.parse(path).getroot().iter("node"))
+info=[n for n in nodes if n.attrib.get("content-desc")==f"Arrangement paste target Track {track+1:02d} tick {target}"]
+if len(info)!=1 or info[0].attrib.get("text")!=f"PASTE TARGET • TRACK {track+1:02d} • TICK {target}":
+    raise AssertionError("cursor target is not exposed with a truthful accessible target label")
+paste=[n for n in nodes if n.attrib.get("content-desc")==f"Arrangement paste copied event at target tick {target}"]
+if len(paste)!=1 or paste[0].attrib.get("enabled")!="true" or paste[0].attrib.get("clickable")!="true":
+    raise AssertionError("clipboard + valid cursor did not enable Function Bar PASTE")
+for desc in ("Arrangement cut selected event","Arrangement copy selected event",
+             "Arrangement duplicate selected event one grid later"):
+    found=[n for n in nodes if n.attrib.get("content-desc")==desc]
+    if len(found)!=1 or found[0].attrib.get("enabled")!="false":
+        raise AssertionError(f"event-only action was enabled for insertion cursor: {desc}")
+print(f"Empty target cursor is snapped to tick {target}; Pattern is unchanged and PASTE is enabled.")
+PY
+    then
+      echo "ERROR: insertion cursor label, native state, or Function Bar enablement failed"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PASTE_CURSOR_XML" \
+      "Arrangement paste copied event at target tick $arrange_cursor_tick"; then
+      echo "ERROR: Function Bar PASTE did not accept its explicit target cursor"; exit 1
+    fi
+    sleep 0.35
+    ARRANGE_CURSOR_PASTED_PNG="/tmp/mpc-groovebox-arrange-event-cursor-pasted.png"
+    ARRANGE_CURSOR_PASTED_XML="/tmp/mpc-groovebox-arrange-event-cursor-pasted-uiautomator.xml"
+    ARRANGE_CURSOR_PASTED_REMOTE="/sdcard/mpc-groovebox-arrange-event-cursor-pasted-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_CURSOR_PASTED_REMOTE" "$ARRANGE_CURSOR_PASTED_XML"; then
+      echo "ERROR: cursor-pasted hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_PASTED_PNG"; then
+      echo "ERROR: cursor-pasted screenshot failed"; exit 1
+    fi
+    arrangement_cursor_paste_line="$(arrangement_event_state_line PASTE)"
+    if [[ -z "$arrangement_cursor_paste_line" ]]; then
+      echo "ERROR: cursor PASTE did not log authoritative Pattern state"; exit 1
+    fi
+    if ! python3 - "$ARRANGE_CURSOR_PASTED_XML" "$arrangement_cursor_paste_line" \
+      "$arrange_event_baseline_data" "$arrange_event_track" "$arrange_event_tick" \
+      "$arrange_event_note" "$arrange_cursor_tick" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+path,line,baseline,track_s,source_s,note_s,target_s=sys.argv[1:]
+track,source,note,target=map(int,(track_s,source_s,note_s,target_s))
+m=re.search(r"UI_ARRANGE_EVENT_STATE: action=PASTE track=(\d+) tick=(\d+) note=(\d+) data=(.*)$",line)
+if not m or tuple(map(int,m.group(1,2,3)))!=(track,target,note):
+    raise AssertionError(f"PASTE target event identity mismatch: {line!r}")
+def decode(value):
+    length_s,sep,rest=value.partition("|")
+    if not sep: raise AssertionError(f"invalid Pattern serialization: {value!r}")
+    return int(length_s),[tuple(map(int,e.split(","))) for e in rest.split(";") if e]
+base_len,base=decode(baseline); actual_len,actual=decode(m.group(4))
+source_events=[e for e in base if e[0]==source and e[2]==note]
+if len(source_events)!=1: raise AssertionError("source event missing/ambiguous in baseline")
+source_event=source_events[0]
+expected=[e for e in base if not(e[0]==source and e[2]==note)]
+pasted=list(source_event); pasted[0]=target
+expected=sorted(expected+[tuple(pasted)],key=lambda e:e[0])
+if actual_len!=base_len or actual!=expected:
+    raise AssertionError(f"cursor PASTE must add a full-fidelity clone at the cursor: {expected!r} != {actual!r}")
+nodes=list(ET.parse(path).getroot().iter("node"))
+info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
+if len(info)!=1 or info[0].attrib.get("text")!=f"EVENT • TRACK {track+1:02d} • TICK {target} • NOTE {note:03d}":
+    raise AssertionError("PASTE should select the inserted event, not leave stale cursor selection")
+print("Explicit-target PASTE preserved duration, pitch, velocity, probability, ratchet and nudge.")
+PY
+    then
+      echo "ERROR: explicit-target PASTE changed unrelated Pattern state or event parameters"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_CURSOR_PASTED_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: cursor PASTE UNDO action unavailable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_CURSOR_UNDO_PNG="/tmp/mpc-groovebox-arrange-event-cursor-undo.png"
+    ARRANGE_CURSOR_UNDO_XML="/tmp/mpc-groovebox-arrange-event-cursor-undo-uiautomator.xml"
+    ARRANGE_CURSOR_UNDO_REMOTE="/sdcard/mpc-groovebox-arrange-event-cursor-undo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_CURSOR_UNDO_REMOTE" "$ARRANGE_CURSOR_UNDO_XML"; then
+      echo "ERROR: cursor PASTE UNDO hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_UNDO_PNG"; then
+      echo "ERROR: cursor PASTE UNDO screenshot failed"; exit 1
+    fi
+    arrangement_cursor_undo_line="$(arrangement_event_state_line UNDO)"
+    if [[ -z "$arrangement_cursor_undo_line" ]]; then
+      echo "ERROR: cursor PASTE UNDO did not log native Pattern state"; exit 1
+    fi
+    if ! python3 - "$ARRANGE_CURSOR_UNDO_XML" "$arrangement_cursor_undo_line" \
+      "$arrange_event_baseline_data" "$arrange_event_track" "$arrange_event_tick" \
+      "$arrange_event_note" "$arrange_cursor_tick" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+path,line,baseline,track_s,source_s,note_s,target_s=sys.argv[1:]
+track,source,note,target=map(int,(track_s,source_s,note_s,target_s))
+m=re.search(r"UI_ARRANGE_EVENT_STATE: action=UNDO track=(\d+) tick=(\d+) note=(\d+) data=(.*)$",line)
+if not m or tuple(map(int,m.group(1,2,3)))!=(track,target,note):
+    raise AssertionError(f"cursor Undo identity mismatch: {line!r}")
+def decode(value):
+    length_s,sep,rest=value.partition("|")
+    if not sep: raise AssertionError(f"invalid Pattern serialization: {value!r}")
+    return int(length_s),[tuple(map(int,e.split(","))) for e in rest.split(";") if e]
+base_len,base=decode(baseline); actual_len,actual=decode(m.group(4))
+expected=[e for e in base if not(e[0]==source and e[2]==note)]
+if actual_len!=base_len or actual!=expected:
+    raise AssertionError("UNDO should return to the prior CUT Pattern")
+nodes=list(ET.parse(path).getroot().iter("node"))
+info=[n for n in nodes if n.attrib.get("content-desc")==f"Arrangement paste target Track {track+1:02d} tick {target}"]
+if len(info)!=1: raise AssertionError("Undo did not restore the insertion cursor")
+paste=[n for n in nodes if n.attrib.get("content-desc")==f"Arrangement paste copied event at target tick {target}"]
+if len(paste)!=1 or paste[0].attrib.get("enabled")!="true":
+    raise AssertionError("Undo did not restore a usable PASTE cursor")
+print("PASTE UNDO restored the empty snapped cursor and exact pre-paste CUT Pattern.")
+PY
+    then
+      echo "ERROR: cursor PASTE UNDO did not restore cursor and cut Pattern"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_CURSOR_UNDO_XML" \
+      "Arrangement redo latest sequencer edit"; then
+      echo "ERROR: cursor PASTE REDO action unavailable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_CURSOR_REDO_PNG="/tmp/mpc-groovebox-arrange-event-cursor-redo.png"
+    ARRANGE_CURSOR_REDO_XML="/tmp/mpc-groovebox-arrange-event-cursor-redo-uiautomator.xml"
+    ARRANGE_CURSOR_REDO_REMOTE="/sdcard/mpc-groovebox-arrange-event-cursor-redo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_CURSOR_REDO_REMOTE" "$ARRANGE_CURSOR_REDO_XML"; then
+      echo "ERROR: cursor PASTE REDO hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_REDO_PNG"; then
+      echo "ERROR: cursor PASTE REDO screenshot failed"; exit 1
+    fi
+    arrangement_cursor_redo_line="$(arrangement_event_state_line REDO)"
+    if [[ -z "$arrangement_cursor_redo_line" ]]; then
+      echo "ERROR: cursor PASTE REDO did not log native Pattern state"; exit 1
+    fi
+    if ! python3 - "$ARRANGE_CURSOR_REDO_XML" "$arrangement_cursor_redo_line" \
+      "$arrange_event_baseline_data" "$arrange_event_track" "$arrange_event_tick" \
+      "$arrange_event_note" "$arrange_cursor_tick" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+path,line,baseline,track_s,source_s,note_s,target_s=sys.argv[1:]
+track,source,note,target=map(int,(track_s,source_s,note_s,target_s))
+m=re.search(r"UI_ARRANGE_EVENT_STATE: action=REDO track=(\d+) tick=(\d+) note=(\d+) data=(.*)$",line)
+if not m or tuple(map(int,m.group(1,2,3)))!=(track,target,note):
+    raise AssertionError(f"cursor Redo identity mismatch: {line!r}")
+def decode(value):
+    length_s,sep,rest=value.partition("|")
+    if not sep: raise AssertionError(f"invalid Pattern serialization: {value!r}")
+    return int(length_s),[tuple(map(int,e.split(","))) for e in rest.split(";") if e]
+base_len,base=decode(baseline); actual_len,actual=decode(m.group(4))
+source_events=[e for e in base if e[0]==source and e[2]==note]
+if len(source_events)!=1: raise AssertionError("source event missing from baseline")
+pasted=list(source_events[0]); pasted[0]=target
+expected=sorted([e for e in base if not(e[0]==source and e[2]==note)]+[tuple(pasted)],key=lambda e:e[0])
+if actual_len!=base_len or actual!=expected: raise AssertionError("cursor REDO did not reproduce PASTE state")
+nodes=list(ET.parse(path).getroot().iter("node"))
+info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
+if len(info)!=1 or info[0].attrib.get("text")!=f"EVENT • TRACK {track+1:02d} • TICK {target} • NOTE {note:03d}":
+    raise AssertionError("Redo did not select the recreated event")
+print("Cursor PASTE REDO reproduced the exact event and selected it.")
+PY
+    then
+      echo "ERROR: cursor PASTE REDO failed exact Pattern verification"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_CURSOR_REDO_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: final cursor PASTE UNDO action unavailable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_CURSOR_RESTORED_PNG="/tmp/mpc-groovebox-arrange-event-cursor-restored.png"
+    ARRANGE_CURSOR_RESTORED_XML="/tmp/mpc-groovebox-arrange-event-cursor-restored-uiautomator.xml"
+    ARRANGE_CURSOR_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-event-cursor-restored-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_CURSOR_RESTORED_REMOTE" "$ARRANGE_CURSOR_RESTORED_XML"; then
+      echo "ERROR: cursor PASTE final-undo hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_RESTORED_PNG"; then
+      echo "ERROR: cursor PASTE final-undo screenshot failed"; exit 1
+    fi
+    arrangement_cursor_final_undo_line="$(arrangement_event_state_line UNDO)"
+    if [[ -z "$arrangement_cursor_final_undo_line" ]]; then
+      echo "ERROR: cursor PASTE final UNDO did not log native Pattern state"; exit 1
+    fi
+    if ! python3 - "$ARRANGE_CURSOR_RESTORED_XML" "$arrangement_cursor_final_undo_line" \
+      "$arrange_event_baseline_data" "$arrange_event_track" "$arrange_event_tick" \
+      "$arrange_event_note" "$arrange_cursor_tick" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+path,line,baseline,track_s,source_s,note_s,target_s=sys.argv[1:]
+track,source,note,target=map(int,(track_s,source_s,note_s,target_s))
+m=re.search(r"UI_ARRANGE_EVENT_STATE: action=UNDO track=(\d+) tick=(\d+) note=(\d+) data=(.*)$",line)
+if not m or tuple(map(int,m.group(1,2,3)))!=(track,target,note): raise AssertionError("final cursor Undo identity mismatch")
+def decode(value):
+    length_s,sep,rest=value.partition("|")
+    if not sep: raise AssertionError(f"invalid Pattern serialization: {value!r}")
+    return int(length_s),[tuple(map(int,e.split(","))) for e in rest.split(";") if e]
+base_len,base=decode(baseline); actual_len,actual=decode(m.group(4))
+expected=[e for e in base if not(e[0]==source and e[2]==note)]
+if actual_len!=base_len or actual!=expected: raise AssertionError("final paste Undo is not the exact CUT Pattern")
+nodes=list(ET.parse(path).getroot().iter("node"))
+info=[n for n in nodes if n.attrib.get("content-desc")==f"Arrangement paste target Track {track+1:02d} tick {target}"]
+if len(info)!=1: raise AssertionError("final paste Undo lost insertion cursor")
+print("Second PASTE undo restored the exact CUT state and retained the insertion cursor.")
+PY
+    then
+      echo "ERROR: second cursor PASTE undo did not restore CUT state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_CURSOR_RESTORED_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: final CUT restoration UNDO action unavailable after cursor-paste cycle"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_CURSOR_FINAL_PNG="/tmp/mpc-groovebox-arrange-event-cursor-final.png"
+    ARRANGE_CURSOR_FINAL_XML="/tmp/mpc-groovebox-arrange-event-cursor-final-uiautomator.xml"
+    ARRANGE_CURSOR_FINAL_REMOTE="/sdcard/mpc-groovebox-arrange-event-cursor-final-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_CURSOR_FINAL_REMOTE" "$ARRANGE_CURSOR_FINAL_XML"; then
+      echo "ERROR: final CUT undo hierarchy failed after cursor-paste cycle"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_FINAL_PNG"; then
+      echo "ERROR: final CUT undo screenshot failed after cursor-paste cycle"; exit 1
+    fi
+    arrangement_cursor_final_cut_undo_line="$(arrangement_event_state_line UNDO)"
+    if [[ -z "$arrangement_cursor_final_cut_undo_line" ]]; then
+      echo "ERROR: final CUT undo did not log the restored source"; exit 1
+    fi
+    validate_arrangement_duplicate_state UNDO "$ARRANGE_CURSOR_FINAL_XML" \
+      "$arrangement_cursor_final_cut_undo_line" "$arrange_event_tick" || exit 1
+    echo "Arrangement CUT → empty target → PASTE → UNDO → REDO → UNDO → undo CUT restored exact native Pattern."
 
     arrange_loop_drag_points="$(python3 - \
       "$ARRANGE_LOOP_BEFORE_XML" "$arrange_density" \
