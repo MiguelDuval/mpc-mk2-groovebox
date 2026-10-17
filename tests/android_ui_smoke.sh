@@ -2240,7 +2240,7 @@ PY
       echo "ERROR: Step Sequencer did not restore the native empty-step state"; cat "$STEP_TOUCH_ERASED_XML"; exit 1
     fi
 
-    if ! adb_bounded 10 shell run-as "$PACKAGE" sh -c "echo $step_touch_target_number > cache/mpc-step-touch-target"; then
+    if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'echo $step_touch_target_number > cache/mpc-step-touch-target'"; then
       echo "ERROR: could not report the Step target to the native audit"; exit 1
     fi
     if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-step-touch-capture-release; then
