@@ -3280,44 +3280,62 @@ print("\t".join((pad, layer, sample.replace("\t", " "), f"{float(match.group(1))
 PY
 }
 
-# The preceding app-side audit restores the Main workspace. Enter Track Edit
-# through its real pencil control, not through a direct state mutation.
+# The app-side audit may leave the navigation shell on Main, Menu, Browser or
+# Sampler. Resolve the actual entry target from accessibility, return through the
+# foreground workspace's real BACK action if required, then preserve that exact
+# context for the Track Edit exit assertion. No coordinate guesses or state hacks.
+wait_for_track_edit_entry() {
+  local remote_path="$1" host_path="$2" attempts="$3"
+  for ((entry_attempt=1; entry_attempt<=attempts; entry_attempt++)); do
+    if ! dump_device_ui "$remote_path" "$host_path"; then return 1; fi
+    if grep -Fq -- 'content-desc="Main Track Edit"' "$host_path"; then
+      printf '%s\n' "Main Track Edit"
+      return 0
+    fi
+    if grep -Fq -- 'content-desc="MPC Menu TRACK EDIT"' "$host_path"; then
+      printf '%s\n' "MPC Menu TRACK EDIT"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "ERROR: neither Main Track Edit nor MPC Menu TRACK EDIT appeared"
+  cat "$host_path" || true
+  return 1
+}
+
 if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
   echo "ERROR: could not inspect the workspace before Track Edit tuning acceptance"; exit 1
 fi
-
-# The app-side visual audit can finish while Browser is still the foreground
-# workspace. Return through its real Function Bar BACK action before requiring
-# Main's Track Edit pencil; never click coordinates or mutate navigation state.
-if ! grep -Fq -- 'content-desc="Main Track Edit"' "$DUMP"; then
-  if grep -Fq -- 'content-desc="MPC Browser BACK to previous workspace"' "$DUMP"; then
-    echo "Post-audit workspace is Browser; returning to Main before Track Edit acceptance..."
-    if ! tap_ui_description "$DUMP" "MPC Browser BACK to previous workspace"; then
-      echo "ERROR: Browser BACK could not restore Main before Track Edit acceptance"; exit 1
-    fi
-  elif grep -Fq -- 'content-desc="MPC Sampler recording workspace"' "$DUMP" \
-      && grep -Fq -- 'text="BACK"' "$DUMP"; then
-    echo "Post-audit workspace is Sampler; using its real BACK action before Track Edit acceptance..."
-    if ! tap_ui_text "$DUMP" "BACK"; then
-      echo "ERROR: Sampler BACK could not restore Main before Track Edit acceptance"; exit 1
-    fi
-  else
-    echo "ERROR: post-audit hierarchy contains neither Main Track Edit nor a supported Browser/Sampler return action"
-    cat "$DUMP" || true
-    exit 1
+track_edit_entry_description=""
+if grep -Fq -- 'content-desc="Main Track Edit"' "$DUMP"; then
+  track_edit_entry_description="Main Track Edit"
+elif grep -Fq -- 'content-desc="MPC Menu TRACK EDIT"' "$DUMP"; then
+  track_edit_entry_description="MPC Menu TRACK EDIT"
+elif grep -Fq -- 'content-desc="MPC Browser BACK to previous workspace"' "$DUMP"; then
+  echo "Post-audit workspace is Browser; using its real BACK action before Track Edit acceptance..."
+  if ! tap_ui_description "$DUMP" "MPC Browser BACK to previous workspace"; then
+    echo "ERROR: Browser BACK failed before Track Edit acceptance"; exit 1
   fi
-  if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "Main Track Edit" 25; then
-    echo "ERROR: workspace BACK did not restore Main's Track Edit entry control"
-    cat "$DUMP" || true
-    exit 1
+elif grep -Fq -- 'content-desc="MPC Sampler recording workspace"' "$DUMP" \
+    && grep -Fq -- 'text="BACK"' "$DUMP"; then
+  echo "Post-audit workspace is Sampler; using its real BACK action before Track Edit acceptance..."
+  if ! tap_ui_text "$DUMP" "BACK"; then
+    echo "ERROR: Sampler BACK failed before Track Edit acceptance"; exit 1
   fi
-  if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
-    echo "ERROR: could not inspect Main after returning from the post-audit workspace"; exit 1
+else
+  echo "ERROR: post-audit hierarchy exposes no known route to Track Edit"
+  cat "$DUMP" || true
+  exit 1
+fi
+if [[ -z "$track_edit_entry_description" ]]; then
+  if ! track_edit_entry_description="$(wait_for_track_edit_entry "$DEVICE_DUMP" "$DUMP" 25)"; then
+    echo "ERROR: could not resolve Track Edit entry after returning from the post-audit workspace"; exit 1
   fi
 fi
-
-if ! tap_ui_description "$DUMP" "Main Track Edit"; then
-  echo "ERROR: Main Track Edit entry control was not actionable"; exit 1
+track_edit_return_description="$track_edit_entry_description"
+echo "Track Edit entry route selected from live hierarchy: $track_edit_entry_description"
+if ! tap_ui_description "$DUMP" "$track_edit_entry_description"; then
+  echo "ERROR: selected Track Edit entry control was not actionable: $track_edit_entry_description"; exit 1
 fi
 if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit Samples tab" 25; then
   echo "ERROR: Track Edit workspace did not open"; exit 1
@@ -3450,8 +3468,10 @@ done
 if ! tap_ui_description "$TRACK_EDIT_RESTORED_XML" "Track Edit back"; then
   echo "ERROR: Track Edit BACK could not return to Main after restoring tuning"; exit 1
 fi
-if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "Main Track Edit" 25; then
-  echo "ERROR: Main was not restored after Track Edit acceptance"; exit 1
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "$track_edit_return_description" 25; then
+  echo "ERROR: original navigation context was not restored after Track Edit acceptance: $track_edit_return_description"
+  cat "$DUMP" || true
+  exit 1
 fi
 echo "Track Edit layer tuning → native state → leave/re-enter persistence → original value restore passed."
 
