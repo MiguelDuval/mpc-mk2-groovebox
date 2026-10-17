@@ -2821,6 +2821,11 @@ PY
     exit 1
   fi
   if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
+    if [ "$step_touch_capture_done" -ne 1 ] \
+        || [ "$step_touch_acceptance_complete" -ne 1 ]; then
+      echo "ERROR: UI audit completed without verified Step Sequencer real-touch acceptance"
+      exit 1
+    fi
     if [ "$arrangement_back_capture_done" -ne 1 ] \
         || [ "$arrangement_grid_reentry_capture_done" -ne 1 ] \
         || [ "$track_view_mute_capture_done" -ne 1 ]; then
@@ -5780,11 +5785,7 @@ PY
     exit 1
   fi
   if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
-    if [ "$step_touch_capture_done" -ne 1 ] \
-        || [ "$step_touch_acceptance_complete" -ne 1 ]; then
-      echo "ERROR: UI audit completed without verified Step Sequencer real-touch acceptance"
-      exit 1
-    fi
+
     if [ "$arrangement_back_capture_done" -ne 1 ] \
         || [ "$arrangement_grid_reentry_capture_done" -ne 1 ] \
         || [ "$track_view_mute_capture_done" -ne 1 ]; then
