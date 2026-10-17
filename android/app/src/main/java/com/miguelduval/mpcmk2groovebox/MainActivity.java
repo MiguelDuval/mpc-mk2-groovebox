@@ -6356,72 +6356,78 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.setPadding(dp(6), dp(5), dp(6), dp(2));
 
         LinearLayout header = row();
-        header.addView(sectionLabelView(
-                "ARRANGEMENT",
-                new LinearLayout.LayoutParams(0, dp(34), 1)));
-        header.addView(actionButton(
+        TextView zoomOutButton = actionButton(
                 "ZOOM −",
                 v -> {
                     arrangementView.zoomOut();
                     refreshArrangeView();
-                }),
-                new LinearLayout.LayoutParams(dp(72), dp(34)));
-        header.addView(actionButton(
+                });
+        zoomOutButton.setTextSize(9);
+        header.addView(sectionLabelView(
+                "ARRANGEMENT",
+                new LinearLayout.LayoutParams(0, dp(34), 1)));
+        header.addView(zoomOutButton, new LinearLayout.LayoutParams(dp(48), dp(34)));
+        TextView zoomInButton = actionButton(
                 "ZOOM +",
                 v -> {
                     arrangementView.zoomIn();
                     refreshArrangeView();
-                }),
-                new LinearLayout.LayoutParams(dp(72), dp(34)));
-        header.addView(actionButton(
+                });
+        zoomInButton.setTextSize(9);
+        header.addView(zoomInButton, new LinearLayout.LayoutParams(dp(48), dp(34)));
+        Button resetZoomButton = actionButton(
                 "RESET",
                 v -> {
                     arrangementView.resetZoom();
                     refreshArrangeView();
-                }),
-                new LinearLayout.LayoutParams(dp(66), dp(34)));
+                });
+        resetZoomButton.setTextSize(9);
+        header.addView(resetZoomButton, new LinearLayout.LayoutParams(dp(42), dp(34)));
         arrangementMoveEarlierButton = actionButton("EVENT −", v -> moveSelectedArrangementEvent(-1));
         arrangementMoveEarlierButton.setTextSize(9);
         arrangementMoveEarlierButton.setContentDescription("Arrangement move selected event one grid earlier");
         arrangementMoveEarlierButton.setEnabled(false);
-        header.addView(arrangementMoveEarlierButton, new LinearLayout.LayoutParams(dp(76), dp(34)));
+        header.addView(arrangementMoveEarlierButton, new LinearLayout.LayoutParams(dp(50), dp(34)));
         arrangementMoveLaterButton = actionButton("EVENT +", v -> moveSelectedArrangementEvent(1));
         arrangementMoveLaterButton.setTextSize(9);
         arrangementMoveLaterButton.setContentDescription("Arrangement move selected event one grid later");
         arrangementMoveLaterButton.setEnabled(false);
-        header.addView(arrangementMoveLaterButton, new LinearLayout.LayoutParams(dp(76), dp(34)));
+        header.addView(arrangementMoveLaterButton, new LinearLayout.LayoutParams(dp(50), dp(34)));
+        page.addView(header);
+
+        LinearLayout eventActionRow = row();
+        TextView info = label(
+                "Select event • −/+ move • double-tap Grid",
+                9, MUTED);
+        info.setContentDescription("Arrangement editing guidance");
+        arrangementEventSelectionView = info;
+        eventActionRow.addView(info, new LinearLayout.LayoutParams(
+                0, dp(34), 1));
         arrangementDuplicateButton = actionButton(
                 "DUP", v -> duplicateSelectedArrangementEvent());
         arrangementDuplicateButton.setTextSize(9);
         arrangementDuplicateButton.setContentDescription(
                 "Arrangement duplicate selected event one grid later");
         arrangementDuplicateButton.setEnabled(false);
-        header.addView(arrangementDuplicateButton,
-                new LinearLayout.LayoutParams(dp(56), dp(34)));
+        eventActionRow.addView(arrangementDuplicateButton,
+                new LinearLayout.LayoutParams(dp(48), dp(34)));
         arrangementUndoButton = actionButton(
                 "UNDO", v -> applyArrangementHistory(false));
         arrangementUndoButton.setTextSize(9);
         arrangementUndoButton.setContentDescription("Arrangement undo latest sequencer edit");
         arrangementUndoButton.setEnabled(nativeSequenceCanUndo());
-        header.addView(arrangementUndoButton,
-                new LinearLayout.LayoutParams(dp(58), dp(34)));
+        eventActionRow.addView(arrangementUndoButton,
+                new LinearLayout.LayoutParams(dp(48), dp(34)));
         arrangementRedoButton = actionButton(
                 "REDO", v -> applyArrangementHistory(true));
         arrangementRedoButton.setTextSize(9);
         arrangementRedoButton.setContentDescription("Arrangement redo latest sequencer edit");
         arrangementRedoButton.setEnabled(nativeSequenceCanRedo());
-        header.addView(arrangementRedoButton,
-                new LinearLayout.LayoutParams(dp(58), dp(34)));
-        page.addView(header);
-
-        TextView info = label(
-                "Tap an event to select • EVENT −/+ moves by one grid • double-tap opens Grid",
-                9, MUTED);
-        info.setContentDescription("Arrangement editing guidance");
-        arrangementEventSelectionView = info;
+        eventActionRow.addView(arrangementRedoButton,
+                new LinearLayout.LayoutParams(dp(48), dp(34)));
         updateArrangementEventControls();
-        page.addView(info, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+        page.addView(eventActionRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
         page.addView(arrangementView, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
@@ -6504,7 +6510,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 selected ? String.format(Locale.ROOT, "EVENT • TRACK %02d • TICK %d • NOTE %03d",
                         selectedArrangementEventTrack + 1, selectedArrangementEventTick,
                         selectedArrangementEventNote)
-                : "Tap an event to select • EVENT −/+ moves by one grid • double-tap opens Grid");
+                : "Select event • −/+ move • double-tap Grid");
     }
 
     private boolean hasArrangementEventInProjection(int trackIndex, long tick, int noteNumber) {
