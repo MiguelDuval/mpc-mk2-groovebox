@@ -3011,6 +3011,135 @@ PY
   return 1
 }
 
+
+# Scroll a real, currently visible editor container until a named actionable
+# accessibility target is fully present. The swipe starts on a visible static
+# TextView inside that ScrollView (never on the editable waveform), and its
+# coordinates are derived from the live UI hierarchy rather than guessed.
+scroll_ui_until_description() {
+  local hierarchy_path="$1" remote_path="$2" expected_description="$3" max_swipes="${4:-8}"
+  local coordinates swipe_x swipe_from swipe_to
+  for ((attempt=1; attempt<=max_swipes; attempt++)); do
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    if python3 - "$hierarchy_path" "$expected_description" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+if any(n.attrib.get("content-desc", "") == expected
+       and n.attrib.get("clickable") == "true"
+       and n.attrib.get("enabled") == "true"
+       for n in root.iter("node")):
+    raise SystemExit(0)
+raise SystemExit(1)
+PY
+    then
+      echo "Track Edit control is exposed after $((attempt - 1)) scroll gesture(s): $expected_description"
+      return 0
+    fi
+
+    if ! coordinates="$(python3 - "$hierarchy_path" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path = sys.argv[1]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+
+def rect(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+def intersection(a, b):
+    if a is None or b is None:
+        return None
+    result = (max(a[0], b[0]), max(a[1], b[1]),
+              min(a[2], b[2]), min(a[3], b[3]))
+    return result if result[0] < result[2] and result[1] < result[3] else None
+
+waveform = next((n for n in nodes
+                 if n.attrib.get("content-desc") == "Track Edit Samples waveform"), None)
+if waveform is None:
+    raise SystemExit("Track Edit Samples waveform is not yet in the hierarchy")
+
+scroll = parents.get(waveform)
+while scroll is not None and not (
+        scroll.attrib.get("class") == "android.widget.ScrollView"
+        and scroll.attrib.get("scrollable") == "true"):
+    scroll = parents.get(scroll)
+if scroll is None:
+    raise SystemExit("Track Edit waveform has no scrollable ancestor")
+
+viewport = rect(scroll)
+if viewport is None:
+    raise SystemExit("Track Edit ScrollView has no valid bounds")
+left, top, right, bottom = viewport
+height = bottom - top
+destination_y = top + max(40, min(100, height // 6))
+
+# Choose a visible, non-clickable TextView in this ScrollView whose center is
+# far enough below the destination to produce a meaningful upward drag.
+candidates = []
+for node in scroll.iter("node"):
+    if node.attrib.get("class") != "android.widget.TextView":
+        continue
+    if node.attrib.get("clickable") == "true":
+        continue
+    if not node.attrib.get("text", "").strip():
+        continue
+    visible = intersection(rect(node), viewport)
+    if visible is None:
+        continue
+    x1, y1, x2, y2 = visible
+    cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+    if cx <= left or cx >= right or cy < destination_y + 85 or cy >= bottom - 35:
+        continue
+    candidates.append((cy, cx))
+
+if not candidates:
+    raise SystemExit("No safe visible static TextView is available as a scroll gesture origin")
+start_y, swipe_x = max(candidates)
+if start_y - destination_y < 85:
+    raise SystemExit("Available scroll gesture is too short to move the Track Edit content")
+print(swipe_x, start_y, destination_y)
+PY
+)"; then
+      echo "ERROR: could not derive a safe Track Edit scroll gesture from live UI bounds"
+      return 1
+    fi
+    read -r swipe_x swipe_from swipe_to <<< "$coordinates"
+    echo "Scrolling Track Edit content using live bounds: x=$swipe_x y=$swipe_from->$swipe_to"
+    if ! adb_bounded 10 shell input swipe "$swipe_x" "$swipe_from" "$swipe_x" "$swipe_to" 350; then
+      echo "ERROR: Track Edit ScrollView gesture failed"
+      return 1
+    fi
+    sleep 0.35
+  done
+
+  if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+  if python3 - "$hierarchy_path" "$expected_description" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, expected = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+raise SystemExit(0 if any(n.attrib.get("content-desc", "") == expected
+                          and n.attrib.get("clickable") == "true"
+                          and n.attrib.get("enabled") == "true"
+                          for n in root.iter("node")) else 1)
+PY
+  then
+    echo "Track Edit control is exposed after $max_swipes scroll gesture(s): $expected_description"
+    return 0
+  fi
+  echo "ERROR: actionable Track Edit control remained outside the visible ScrollView after $max_swipes scroll gesture(s): $expected_description"
+  cat "$hierarchy_path" || true
+  return 1
+}
+
 wait_for_successful_audition() {
   local hierarchy_path="$1" remote_path="$2" expected_name="$3" max_attempts="$4"
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
@@ -3343,8 +3472,11 @@ fi
 if ! tap_ui_description "$TRACK_EDIT_XML" "Track Edit Samples tab"; then
   echo "ERROR: Track Edit Samples tab was not actionable"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning value" 20; then
-  echo "ERROR: Track Edit did not expose the layer tuning value"; exit 1
+if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit Samples waveform" 20; then
+  echo "ERROR: Track Edit Samples editor body did not render"; exit 1
+fi
+if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning increase" 8; then
+  echo "ERROR: Track Edit layer tuning control did not become actionable after scrolling"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_BEFORE_XML"; then
   echo "ERROR: Track Edit initial tuning hierarchy failed"; exit 1
@@ -3411,8 +3543,11 @@ fi
 if ! tap_ui_description "$TRACK_EDIT_XML" "Track Edit Samples tab"; then
   echo "ERROR: Track Edit Samples tab was not actionable after re-entry"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning value" 20; then
-  echo "ERROR: Track Edit tuning field missing after re-entry"; exit 1
+if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit Samples waveform" 20; then
+  echo "ERROR: Track Edit Samples editor body did not render after re-entry"; exit 1
+fi
+if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning increase" 8; then
+  echo "ERROR: Track Edit tuning control did not become actionable after re-entry scrolling"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_REOPENED_XML"; then
   echo "ERROR: Track Edit re-entry hierarchy failed"; exit 1
