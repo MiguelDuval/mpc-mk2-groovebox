@@ -3283,8 +3283,33 @@ PY
 # The preceding app-side audit restores the Main workspace. Enter Track Edit
 # through its real pencil control, not through a direct state mutation.
 if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
-  echo "ERROR: could not inspect Main before Track Edit tuning acceptance"; exit 1
+  echo "ERROR: could not inspect the workspace before Track Edit tuning acceptance"; exit 1
 fi
+
+# The app-side visual audit can finish while Browser is still the foreground
+# workspace. Return through its real Function Bar BACK action before requiring
+# Main's Track Edit pencil; never click coordinates or mutate navigation state.
+if ! grep -Fq -- 'content-desc="Main Track Edit"' "$DUMP"; then
+  if grep -Fq -- 'content-desc="MPC Browser BACK to previous workspace"' "$DUMP"; then
+    echo "Post-audit workspace is Browser; returning to Main before Track Edit acceptance..."
+    if ! tap_ui_description "$DUMP" "MPC Browser BACK to previous workspace"; then
+      echo "ERROR: Browser BACK could not restore Main before Track Edit acceptance"; exit 1
+    fi
+    if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "Main Track Edit" 25; then
+      echo "ERROR: Browser BACK did not restore Main's Track Edit entry control"
+      cat "$DUMP" || true
+      exit 1
+    fi
+    if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
+      echo "ERROR: could not inspect Main after Browser BACK"; exit 1
+    fi
+  else
+    echo "ERROR: post-audit hierarchy contains neither Main Track Edit nor Browser BACK"
+    cat "$DUMP" || true
+    exit 1
+  fi
+fi
+
 if ! tap_ui_description "$DUMP" "Main Track Edit"; then
   echo "ERROR: Main Track Edit entry control was not actionable"; exit 1
 fi
