@@ -3295,18 +3295,24 @@ if ! grep -Fq -- 'content-desc="Main Track Edit"' "$DUMP"; then
     if ! tap_ui_description "$DUMP" "MPC Browser BACK to previous workspace"; then
       echo "ERROR: Browser BACK could not restore Main before Track Edit acceptance"; exit 1
     fi
-    if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "Main Track Edit" 25; then
-      echo "ERROR: Browser BACK did not restore Main's Track Edit entry control"
-      cat "$DUMP" || true
-      exit 1
-    fi
-    if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
-      echo "ERROR: could not inspect Main after Browser BACK"; exit 1
+  elif grep -Fq -- 'content-desc="MPC Sampler recording workspace"' "$DUMP" \
+      && grep -Fq -- 'text="BACK"' "$DUMP"; then
+    echo "Post-audit workspace is Sampler; using its real BACK action before Track Edit acceptance..."
+    if ! tap_ui_text "$DUMP" "BACK"; then
+      echo "ERROR: Sampler BACK could not restore Main before Track Edit acceptance"; exit 1
     fi
   else
-    echo "ERROR: post-audit hierarchy contains neither Main Track Edit nor Browser BACK"
+    echo "ERROR: post-audit hierarchy contains neither Main Track Edit nor a supported Browser/Sampler return action"
     cat "$DUMP" || true
     exit 1
+  fi
+  if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "Main Track Edit" 25; then
+    echo "ERROR: workspace BACK did not restore Main's Track Edit entry control"
+    cat "$DUMP" || true
+    exit 1
+  fi
+  if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
+    echo "ERROR: could not inspect Main after returning from the post-audit workspace"; exit 1
   fi
 fi
 
