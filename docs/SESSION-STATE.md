@@ -6,39 +6,41 @@
 ## Latest verified implementation state
 
 - Repository: `MiguelDuval/mpc-mk2-groovebox`; branch `feature/mpc-one-ui-fidelity`.
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains **OPEN**, base `fix/ui-shell-format-width-startup`, HEAD `4e149cbd60284a77473998514ab73c1991f9b1bb`.
-- [Android Build #2774](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39055094110) completed **SUCCESS** on that exact SHA: compile/native/JVM checks, debug APK assembly/upload, emulator smoke and visual evidence upload all passed.
-- APK artifact: `app-debug.apk`, artifact ID `12108214550`, 8,228,253 bytes, digest `sha256:ec433f166113ecea04e51ad5c2305ba3e7837743cb9318d5d27e1a19b4f7cfd6`.
-- UI evidence artifact: `mpc-ui-visual-evidence`, artifact ID `12109427682`, 4,766,965 bytes, digest `sha256:4902b9e91dd18c20f3e6d5a50ab69aab1bd4d9ca4845f4f535bc91fd52de25a7`. Downloaded and inspected the real Main screenshot/hierarchy, all four Track Edit tuning snapshots, Arrangement→Grid focus/back/re-entry, Grid DRAW/ERASE, and Step Sequencer before/add/parameter/erase screenshots plus matching accessibility hierarchies.
-- Physical MPC Studio MkII verification remains **PENDING**. All results cited above are Android Emulator evidence.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains **OPEN**, base `fix/ui-shell-format-width-startup`, HEAD `f9d27bd418d279d5cb76f00e1f1ead7e13fb0a41`.
+- [Android Build #2779](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39059031605) completed **SUCCESS** on that exact SHA: compilation/native/JVM checks, debug APK assembly/upload, full emulator smoke and visual-evidence upload passed.
+- APK artifact: `app-debug.apk`, artifact ID `12109844469`, 8,244,637 bytes, digest `sha256:cf04913a32641ba22c7b91cd0e1c6898ca70028cfdb7af2326665f294504552b`.
+- UI-evidence artifact: `mpc-ui-visual-evidence`, artifact ID `12110627619`, 5,222,001 bytes, digest `sha256:55def79d6f8ad0fed90a60e753a8e5d9e8a70ec31e97cbd07b7fe616dc0e659a`. The evidence ZIP was downloaded, unpacked and visually inspected: Main landscape, Arrangement loop before/changed/restored, Grid DRAW/ERASE, Step Sequencer before/add/parameter/erase, Track Edit tuning before/changed/reopened/restored, and their accessibility hierarchies.
+- Physical MPC Studio MkII verification remains **PENDING**. All results cited here are Android Emulator evidence.
 
 ## Completed in this session
 
-### 1. Track Edit layer tuning — VERIFIED
+### 1. Track Edit sample-layer tuning — VERIFIED
 
-The Tune control is below the initial viewport inside the real Samples ScrollView. The smoke scrolls using live container bounds, taps TUNE+ once, confirms `+0.00 st → +1.00 st` against native sampler state, leaves/reopens the actual entry route, verifies persistence, and restores the original tuning.
+The TUNE row is below the initial viewport in the real Samples `ScrollView`; it is not a missing backend parameter. The test uses live accessibility bounds to scroll to the action, performs one real TUNE+ tap, verifies `+0.00 st → +1.00 st` against sampler-backed state, leaves/reopens the original navigation route, checks persistence, and safely restores the initial value. Build #2779 logged a successful full round-trip.
 
 ### 2. Main left Channel Strip geometry — FIXED / VERIFIED
 
-The old condensed mixer was a duplicate weighted child re-exposed from saved Mixer visibility. It remains mounted but GONE, preserving dependencies, while the intended XL strip fills the Main context region. Build #2774 continues to pass live relative-geometry assertions and the canonical shell hierarchy check.
+The legacy condensed mixer panel was a duplicate weighted child re-exposed by saved Mixer visibility. It remains mounted but GONE to preserve state/refresh dependencies; the intended XL strips now fill the region. Build #2779's live hierarchy test measured 0.977 vertical and 0.960 horizontal fill, confirmed the legacy panel absent, and confirmed the visibility hit target inside the mixer.
 
 ### 3. Grid DRAW/ERASE — VERIFIED
 
-The custom-canvas Grid projects native note presence/velocity to the selected-cell accessibility label. A real Android device tap added Pad 01 / Step 34 at velocity 100; a second real tap with ERASE removed it. The seeded Step 33 event was preserved. Captured DRAW/ERASE screenshots and hierarchies agree with the native-state projection.
+The custom-canvas Grid exposes selected-cell accessibility from the native sequencer model. In the emulator, a real touch added Pad 01 / Step 34 at velocity 100; a real ERASE-mode touch removed it; the seeded Step 33 note stayed unchanged. Captured DRAW/ERASE screenshots and hierarchies agree with the native note projection.
 
-### 4. Step Sequencer touch/edit/remove — VERIFIED
+### 4. Step Sequencer touch/edit/remove and header — VERIFIED
 
-The emulator test touched Pad 01 / Step 02, verified native-backed velocity 100 and probability 127, used the real Function Bar PARAM and minus controls to change probability to 126, then removed the temporary event with a real touch. Step 01 remained unchanged, and the app-side audit verified native cleanup and restored the parameter selector.
+Real emulator touches added Pad 01 / Step 02, showed native-backed `VEL=100` and `PROB=127`, used the actual Function Bar PARAM and minus buttons to change probability to 126, and removed the temporary event. Step 01 remained unchanged. The app-side audit verified native cleanup and restored the parameter selector. The header screenshot/hierarchy confirms a single-line `TRACK 01 • DRUM` context and distinct PAD status, PAD−, and PAD+ controls.
 
-### 5. Step Sequencer header geometry / control identity — FIXED / VERIFIED
+### 5. Arrangement loop-brace native commit/restore — VERIFIED
 
-The previous accessibility evidence and screenshot showed the track label wrapping vertically and the PAD− button being overwritten because refresh code updated a child by numeric index. The patch uses explicit pad/context references, a single-line context label, smaller fixed slots, and concise `TRACK 01 • DRUM` text. The PAD status label and PAD−/PAD+ remain separate controls. Build #2774 passes the live-width and label/control identity assertions, and the captured post-fix screenshot/hierarchy were inspected.
+Build #2776 exposed an exclusive-right-boundary issue when the calculated touch started at x=1778, exactly on the view's right edge. The gesture derivation now clamps touch coordinates inside the live canvas and uses Android density for geometry. Build #2778 then proved the native loop changed but exposed a separate test-harness bug: unquoted `adb shell run-as ... sh -c "echo ... > cache/file"` let redirection execute outside the app UID and failed with “Permission denied.” Commit [`f9d27bd418d279d5cb76f00e1f1ead7e13fb0a41`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/f9d27bd418d279d5cb76f00e1f1ead7e13fb0a41) fixed the quoting without weakening loop assertions.
+
+On Build #2779, the actual touchscreen drag changed the native loop end from bar 4 to bar 3; the test then restored bar 4 and verified the native model, application-side acknowledgement, before/changed/restored screenshots and accessibility captures. The success marker was `Arrange loop-brace real-touch → native commit → real-touch restore round-trip passed.`
 
 ## Current execution order
 
-1. Add external emulator acceptance for dragging an Arrangement loop handle through the real canvas touch path. Assert the committed loop start/end bars in native state, capture screenshot/hierarchy, and safely restore the original loop range.
-2. Re-run the full workflow on exact HEAD and inspect the actual conclusion and artifacts. Keep physical MPC Studio MkII validation marked pending.
-3. Re-check PR #23 HEAD/base and Actions before starting the next implementation slice.
+1. Implement the first real Arrangement event-editing operation. Start from the current `MpcArrangeView`, native sequence/track model, and existing CUT/COPY/PASTE/DUP actions. Confirm the model can represent the operation; add domain/native tests before UI wiring. Preserve current event-to-Grid navigation and the newly verified loop workflow. Avoid adding mock event state.
+2. Validate one real operation through the emulator, including native-state round-trip and safe fixture restoration; inspect screenshots/hierarchies.
+3. Recheck live PR #23 HEAD/base and run the full Android workflow on the exact final SHA. Keep physical-controller validation separately marked pending.
 
 ## Mandatory operating rules
 

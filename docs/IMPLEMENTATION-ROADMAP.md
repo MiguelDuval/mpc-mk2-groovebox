@@ -2,42 +2,46 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-17 (authoritative over older dated task notes)
 
-Older dated “next task” notes below retain history only. Start each implementation slice from live HEAD, workflow results, current source and targeted acceptance gaps.
+Older dated “next task” sections below retain history only. Start each implementation slice from live HEAD, workflow results, current source and targeted acceptance gaps.
 
-### 1. Track Edit sample-layer tuning acceptance — COMPLETE / VERIFIED
+### 1. Track Edit sample-layer tuning — COMPLETE / VERIFIED
 
-- The Samples body is a real vertical `ScrollView`; layer Gain/Tune/Pan are below the initial viewport. The test uses the live hierarchy to scroll inside the container and locate the actionable TUNE+ control.
-- Acceptance remains intact: a real UI tap changes TUNE by exactly one semitone, the displayed result matches sampler-backed state, exit/re-entry preserves it, and the test restores the original value. The actual entry route (Main or MPC Menu TRACK EDIT) is preserved.
-- Reverified as part of the successful exact-HEAD [Android Build #2774](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39055094110).
+- TUNE is below the initial viewport inside the real Samples ScrollView. The smoke derives swipe bounds from live accessibility, taps TUNE+ once, verifies a one-semitone change against the sampler's authoritative value, checks leave/re-entry persistence, and restores the original value.
+- The entry route (Main or MPC Menu TRACK EDIT) is preserved.
+- Reverified in successful exact-HEAD [Android Build #2779](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39059031605), commit [`f9d27bd418d279d5cb76f00e1f1ead7e13fb0a41`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/f9d27bd418d279d5cb76f00e1f1ead7e13fb0a41).
 
-### 2. Main XL Channel Strip region — FIXED / VERIFIED
+### 2. Main XL Channel Strip geometry — COMPLETE / VERIFIED
 
-- Root cause was a duplicate weighted legacy condensed mixer child that `applyCompactMixerVisibility()` re-exposed from saved Mixer state. It was not an insets or firmware-coordinate scaling issue.
-- The legacy child stays mounted but GONE so state/refresh dependencies remain; the canonical Toolbar → five Shortcuts → XL Channel Strip region → Workspace → Function Bar shell and show/hide control are preserved.
-- Runtime hierarchy acceptance validates relative geometry: the XL mixer fills at least 75% of the context height and 85% of its width, the legacy panel is absent, and the show/hide hit target is inside the mixer.
-- The landscape Main hierarchy/screenshot was included in the successful exact-HEAD [Build #2774](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39055094110).
+- The duplicate legacy weighted mixer is held GONE while the shell show/hide wiring remains active.
+- Build #2779's live accessibility geometry measured vertical fill 0.977 and horizontal fill 0.960, found the legacy panel absent, and confirmed the visibility hit target contained within the XL mixer.
+- The landscape Main screenshot and hierarchy are in the Build #2779 visual-evidence artifact above.
 
 ### 3. Grid DRAW/ERASE native-state round-trip — COMPLETE / VERIFIED
 
-- Grid cells are custom-drawn; the selected-cell accessibility description now projects actual sequencer state from `nativeSequenceGetGridVelocities()`, including note presence and velocity, without introducing duplicate UI state.
-- From the real Arrangement → Grid path, the smoke derives a cell target from the live canvas bounds and Android density, touches Pad 01 / Step 34, verifies native velocity 100, switches to ERASE and touches the same cell, verifies “no note,” and restores DRAW. The seeded Step 33 event is preserved.
-- Build #2774 is green on exact HEAD [`4e149cbd60284a77473998514ab73c1991f9b1bb`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/4e149cbd60284a77473998514ab73c1991f9b1bb). The DRAW/ERASE screenshots and hierarchies were included in its downloadable visual-evidence artifact.
+- Grid's custom Canvas exposes its selected cell's actual native note presence/velocity to accessibility; no duplicate sequencer state is introduced.
+- The smoke touches Pad 01 / Step 34 to draw velocity 100, switches to ERASE and touches the same cell, then verifies “no note.” The seeded Step 33 event remains untouched.
+- Build #2779 includes the before/after screenshots and matching hierarchies, plus a successful full workflow.
 
 ### 4. Step Sequencer touch/edit/remove and header — COMPLETE / VERIFIED
 
-- External emulator touch acceptance now derives the visible step cell from the real accessibility hierarchy, taps Pad 01 / Step 02, verifies native-backed `VEL=100` and `PROB=127`, taps the actual Function Bar `PARAM` and `−` controls to change probability to 126, then touches the same step to remove it. The step-1 fixture remains unchanged, and the app-side audit verifies native cleanup and restores the parameter selector.
-- The captured baseline exposed two actual header defects: `trackContext` had too little horizontal space and wrapped `TRACK 01` vertically; an index-based `header.getChildAt(3)` update overwrote the `PAD −` button label with the pad status.
-- The Step header now uses smaller fixed slots, a single-line/ellipsized context label, explicit `sequenceStepTrackContext` / `sequenceStepPadInfo` fields, and direct updates rather than a magic child index. Track text is now the concise `TRACK 01 • DRUM`; PAD status, PAD −, and PAD + are distinct.
-- The emulator smoke checks the live track-context width relative to the workspace, exact track text, and distinct enabled PAD controls before exercising Step touch/edit/remove.
-- Successful exact-HEAD [Android Build #2774](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39055094110) passed the full Android workflow, including JVM/native tests, APK assembly, emulator smoke and visual evidence upload.
+- A real emulator tap creates Pad 01 / Step 02 with VEL 100 / PROB 127. Real PARAM and minus touches set probability to 126, then a real touch erases the temporary note. Step 01 remains unchanged; the app-side native cleanup acknowledgement passes.
+- The header fixes preserve readable `TRACK 01 • DRUM`, PAD status, PAD− and PAD+ as distinct controls.
+- Build #2779 passed its Step header geometry and full real-touch acceptance.
 
-### 5. Next implementation slice — Arrange loop-brace touch round-trip
+### 5. Arrangement loop-brace touch/restore — COMPLETE / VERIFIED
 
-- Add an external emulator gesture test for the Arrangement loop handles. Derive the visible loop-handle hit region from the current canvas bounds and UI state, drag one handle to a different bar, and verify the committed bar range against the native sequence loop model and rendered/accessibility evidence.
-- Restore the original loop range in the same test and verify restoration before exit. Do not introduce model state solely for testing; use the real `MpcArrangeView.Listener.onLoopCommitted` → `nativeSequenceSetLoopBars` path.
-- Preserve the existing Arrange → Grid focus/re-entry assertions and keep Emulator results separate from physical MPC Studio MkII validation.
+- The coordinate derivation now clamps the start/target strictly inside the measured Arrangement canvas and compares the result with native loop state instead of relying on a gesture-distance assertion.
+- Build #2776 showed an exclusive-boundary problem at x=1778; Build #2778 then reached the correct changed loop range but exposed faulty shell quoting for the handoff result file. Commit [`f9d27bd418d279d5cb76f00e1f1ead7e13fb0a41`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/f9d27bd418d279d5cb76f00e1f1ead7e13fb0a41) fixed the redirection to execute inside `run-as`, preserving all change/restore assertions.
+- Build #2779 passed the real touch round-trip: loop end 4 → 3, then restore 3 → 4, with native-state assertions and before/changed/restored screenshots plus accessibility hierarchies.
+- Verified by successful exact-HEAD [Android Build #2779](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39059031605).
 
-Physical MPC Studio MkII verification remains pending. Do not repeat firmware research unless a specific unresolved interaction requires it.
+### 6. Next slice — model-backed Arrangement event editing
+
+- Current Arrangement guidance explicitly says event placement is read-only; loop-range editing is now separately verified. Inspect the current native Sequence/Track/event model and existing CUT/COPY/PASTE/DUP controls before touching UI.
+- Implement one smallest useful real event edit supported by the model; add native/domain tests first, wire the actual control to the authoritative state, and verify the changed state plus restoration through an emulator action.
+- Keep the existing double-tap event → Grid navigation and loop-touch tests intact. Do not introduce UI-only/mock musical state.
+
+Physical MPC Studio MkII verification remains pending. Do not repeat firmware research unless this specific interaction requires it.
 
 ## Stage 0 — Foundation
 - Android shell.
