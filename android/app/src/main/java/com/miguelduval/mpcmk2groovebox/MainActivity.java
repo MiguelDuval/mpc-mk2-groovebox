@@ -4,6 +4,9 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.UriPermission;
+import android.media.AudioAttributes;
+import android.media.MediaPlayer;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
@@ -17,14 +20,19 @@ import android.os.Bundle;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.InputType;
+import android.text.TextUtils;
+import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -67,6 +75,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int REQUEST_OPEN_WAV = 1001;
     private static final int REQUEST_RECORD_AUDIO = 1002;
     private static final int REQUEST_MONITOR_AUDIO = 1003;
+    private static final int REQUEST_SCAN_LOCAL_AUDIO = 1004;
+    private static final int REQUEST_OPEN_DOCUMENT_TREE = 1005;
+    private static final String TRACK_TYPE_CHANGE_RESERVED_STATUS =
+            "TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation";
+    private static final String BROWSER_STORAGE_PREFERENCES = "mpc_browser_storage";
+    private static final String PREF_USER_TREE_URI = "user_tree_uri";
+    private static final String PREF_USER_TREE_NAME = "user_tree_name";
+    private static final String PREF_FAVORITE_TREE_URI_PREFIX = "favorite_tree_uri_";
+    private static final String PREF_FAVORITE_TREE_NAME_PREFIX = "favorite_tree_name_";
+    private static final String PREF_PENDING_FAVORITE_SLOT = "pending_favorite_slot";
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
     private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
     private static final boolean NATIVE_LIBRARY_LOADED;
@@ -86,6 +104,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int ACCENT = Color.rgb(69, 211, 255);
     private static final int ACCENT_2 = Color.rgb(255, 180, 72);
     private static final int DANGER = Color.rgb(236, 83, 83);
+    // MPC One / MPC3 visual language: vivid transport header over graphite UI.
+    // These are presentation constants only; semantic state continues to use
+    // the existing domain/UI-state model.
+    // MPC3 Toolbar is dark graphite; red is a selection/accent, not the
+    // persistent full-width Toolbar background.
+    private static final int MPC_TOOLBAR_BG = Color.rgb(17, 19, 22);
+    private static final int MPC_TOOLBAR_TEXT = Color.WHITE;
+    private static final int MPC_SELECTION_RED = Color.rgb(224, 30, 61);
+    private static final int MPC_PANEL = Color.rgb(39, 43, 47);
+    private static final int MPC_PANEL_DARK = Color.rgb(28, 31, 34);
+    private static final int MPC_PANEL_BORDER = Color.rgb(75, 82, 88);
+    private static final int MPC_SELECTED = Color.rgb(235, 42, 68);
     private static final int MPC_TIME_SIGNATURE_HIGHLIGHT = Color.rgb(240, 194, 48);
     private static final int ACTIVE = Color.rgb(63, 207, 117);
     // MPC3 Toolbar geometry: fixed hit-target zones, with only the transport clock expanding.
@@ -93,11 +123,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int MPC_TOOLBAR_CONTROL_HEIGHT_DP = 34;
     private static final int MPC_TOOLBAR_GAP_DP = 2;
     private static final int MPC_TOOLBAR_MENU_WIDTH_DP = 38;
-    private static final int MPC_TOOLBAR_PROJECT_WIDTH_DP = 132;
+    private static final int MPC_TOOLBAR_PROJECT_IDENTITY_WIDTH_DP = 106;
+    private static final int MPC_TOOLBAR_PROJECT_BROWSER_WIDTH_DP = 26;
     private static final int MPC_TOOLBAR_TIMING_WIDTH_DP = 60;
     private static final int MPC_TOOLBAR_METRO_WIDTH_DP = 58;
     private static final int MPC_TOOLBAR_AUTO_WIDTH_DP = 48;
-    private static final int MPC_TOOLBAR_TRANSPORT_WIDTH_DP = 40;
+    private static final int MPC_TOOLBAR_IO_WIDTH_DP = 40;
 
     // MPC One Main geometry: dense, edge-tight, and independent of legacy page spacing.
     private static final int MPC_MAIN_CONTENT_GUTTER_DP = 4;
@@ -105,7 +136,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int MPC_MAIN_FIELD_HEIGHT_DP = 40;
     private static final int MPC_MAIN_METRIC_HEIGHT_DP = 36;
     private static final int MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40;
+    private static final int MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36;
+    private static final int MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP = 38;
+    private static final int MPC_SHORTCUT_SELECTION_WIDTH_DP = 3;
+    private static final int MPC_MAIN_PROGRAM_HEIGHT_DP = 32;
+    private static final float MPC_MAIN_WORKSPACE_WEIGHT = 1.0f;
     private static final int MPC_MAIN_RADIUS_DP = 0;
+    // Thin MPC-style red boundary between the Sequence and Track zones.
+    private static final int MPC_MAIN_SECTION_DIVIDER_DP = 2;
 
 
     static {
@@ -166,8 +204,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Button timingCorrectTopButton;
     private Button metronomeTopButton;
     private Button automationTopButton;
-    private final Button[] shortcutButtons =
-            new Button[MpcNavigationController.SHORTCUT_COUNT];
+    private TextView midiInTopStatus;
+    private TextView midiOutTopStatus;
+    private MpcPullDownPanelView pullDownPanel;
+    private View pullDownScrim;
+    private final MpcShortcutRailItemView[] shortcutButtons =
+            new MpcShortcutRailItemView[MpcNavigationController.SHORTCUT_COUNT];
     private TextView pageTitle;
     private TextView audioState;
     private TextView midiState;
@@ -189,13 +231,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private WaveformView mainTrackWaveform;
     private Button mainTrackSamplePrimaryButton;
     private Button mainTrackSampleActionButton;
+    private Button mainTrackSampleAuditionButton;
+    private LinearLayout mainTrackSampleEmptyActions;
     private MpcTrackEditView mainTrackEditView;
+    private MpcPadMixerView padMixerView;
+    private MpcMainMixerStripView mainMixerStripView;
     private WaveformView recordingWaveform;
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
     private SequenceTimelineView mainArrangementPreview;
     private MpcArrangeView arrangementView;
+    private int arrangementAuditTrackIndex = -1;
+    private int arrangementAuditTargetStep = -1;
+    private long arrangementAuditEventTick = -1L;
+    private int arrangementAuditGridTicks = 0;
+    private int lastArrangementFocusTrackIndex = -1;
+    private long lastArrangementFocusTick = -1L;
     private MpcBrowserView browserView;
+    private AlertDialog browserOptionsDialog;
+    private MediaPlayer browserPreviewPlayer;
+    private String browserPreviewUri = "";
+    private Uri browserUserTreeUri;
+    private String browserUserTreeName = "";
+    private int browserPickerTargetFavoriteSlot = -1;
+    private int browserPickerTargetPad = -1;
+    private int browserPickerTargetLayer = -1;
     private final ArrayList<MpcArrangeView.Lane> arrangementLanes = new ArrayList<>();
     private SequenceOverviewView sequenceOverviewView;
     private SequenceGridView sequenceGridView;
@@ -217,6 +277,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceLauncherView sequenceLauncherView;
     private final Button[] sequenceStepButtons = new Button[16];
     private TextView sequenceStepEventInfo;
+    private TextView sequenceStepTrackContext;
+    private TextView sequenceStepPadInfo;
     private TextView sequenceTransportView;
     private int sequenceGridStartStep = 0;
     private int sequenceGridVisibleSteps =
@@ -292,12 +354,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final long[] hardwareTapIntervalsNanos = new long[4];
     private int hardwareTapIntervalCount = 0;
     private int selectedSequenceStep = -1;
+    private int stepTouchAuditPad = -1;
+    private int stepTouchAuditGridTicks = 0;
+    private int stepTouchAuditOriginalParameter = STEP_EDIT_PARAMETER_VELOCITY;
+    private int[] stepTouchAuditStepOneSnapshot;
     private boolean hardwareLocateActive;
     private String currentPage = "MAIN";
     private volatile boolean destroyed;
     private volatile boolean startupComplete;
     private boolean uiOnlySmokeMode;
     private boolean uiAuditSmokeMode;
+    private boolean uiAuditAwaitingBrowserStoragePickerResult;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
     private static native String nativeEngineInfo();
@@ -562,7 +629,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             if ("MAIN".equals(currentPage)) {
                                 refreshMainTrackQuickSample();
                             }
-                            startSequenceUiUpdater();
+                            if (!uiAuditSmokeMode) {
+                                startSequenceUiUpdater();
+                            }
                             refreshSequenceOverview();
 
                             Log.i(TAG, "MIDI_BRIDGE_BEGIN");
@@ -573,10 +642,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 Log.e(TAG, "MIDI_BRIDGE_STARTUP_FAILED", error);
                                 setBottomStatus("MIDI unavailable • " + error.getClass().getSimpleName());
                             }
+
+                            // Native state and MIDI readiness changed while the
+                            // shell was showing honest startup placeholders.
+                            // Refresh the persistent Main shell now so the XL
+                            // strip, Toolbar and Function Bar expose live state.
+                            updateMpcShellState();
                             Log.i(TAG, "STARTUP_COMPLETE");
 
                             if (uiAuditSmokeMode) {
-                                runUiAudit();
+                                scheduleUiAuditAfterFirstLayout();
                             }
                         } catch (Throwable error) {
                             Log.e(TAG, "UI_STARTUP_FINALIZATION_FAILED", error);
@@ -600,6 +675,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         buildShortcutRail(mpcShell.shortcuts());
         buildCompactContext(mpcShell.contextArea());
+        mpcShell.setChannelStripRestoreListener(v -> {
+            final MpcUiState state = navigationController.state();
+            navigationController.setCompactMixerState(
+                    true,
+                    state.compactMixerPadMode());
+        });
 
         content = mpcShell.workspace();
         functionBar = mpcShell.functionBar();
@@ -633,23 +714,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          * Keep them available only to UI-audit runs and pin them to the bottom
          * as an overlay so they cannot participate in shell measurement.
          */
-        hardwareFeedbackView.setVisibility(
-                uiAuditSmokeMode ? View.VISIBLE : View.GONE);
-        bottomStatus.setVisibility(
-                uiAuditSmokeMode ? View.VISIBLE : View.GONE);
+        /*
+         * Audit diagnostics are intentionally not part of the visual surface.
+         * Runtime assertions are emitted to logcat, while the startup capture
+         * must remain a truthful Main screenshot.
+         */
+        hardwareFeedbackView.setVisibility(View.GONE);
+        bottomStatus.setVisibility(View.GONE);
 
         FrameLayout.LayoutParams feedbackLp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                uiAuditSmokeMode ? dp(24) : 0,
-                Gravity.BOTTOM);
-        feedbackLp.bottomMargin = uiAuditSmokeMode ? dp(28) : 0;
-        root.addView(hardwareFeedbackView, feedbackLp);
-
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.BOTTOM);
         FrameLayout.LayoutParams statusLp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                uiAuditSmokeMode ? dp(28) : 0,
-                Gravity.BOTTOM);
-        root.addView(bottomStatus, statusLp);
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, Gravity.BOTTOM);
+
+        buildPullDownOverlay(root);
+        installPullDownGesture();
 
         refreshMpcFunctionBar();
         showMainPage();
@@ -658,16 +737,252 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return root;
     }
 
+    private void buildPullDownOverlay(FrameLayout root) {
+        pullDownScrim = new View(this);
+        pullDownScrim.setBackgroundColor(Color.argb(150, 0, 0, 0));
+        pullDownScrim.setContentDescription("MPC Pull-Down Menu dismiss");
+        pullDownScrim.setVisibility(View.GONE);
+        pullDownScrim.setOnClickListener(v -> hidePullDown());
+        root.addView(pullDownScrim, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+
+        pullDownPanel = new MpcPullDownPanelView(this);
+        pullDownPanel.setListener(new MpcPullDownPanelView.Listener() {
+            @Override
+            public void onClose() {
+                hidePullDown();
+            }
+
+            @Override
+            public void onReservedAction(String label) {
+                setBottomStatus(label);
+            }
+
+            @Override
+            public void onTimeCounter() {
+                showPullDownLocateDialog();
+            }
+
+            @Override
+            public void onTempo() {
+                showPullDownTempoDialog();
+            }
+        });
+        pullDownPanel.setVisibility(View.GONE);
+        root.addView(pullDownPanel, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(236),
+                Gravity.TOP));
+    }
+
+    private void refreshPullDownContext() {
+        if (pullDownPanel == null) {
+            return;
+        }
+        final int sequence = navigationController == null
+                ? 1
+                : navigationController.state().selectedSequence() + 1;
+        final double tempo = startupComplete
+                ? nativeSequenceGetTempo()
+                : 120.0;
+        final boolean midiReady = midiBridge != null;
+        final boolean audioReady = startupComplete && NATIVE_LIBRARY_LOADED;
+        pullDownPanel.setContext(
+                "UNTITLED",
+                sequence,
+                tempo,
+                midiReady,
+                audioReady);
+    }
+
+    private void showPullDownLocateDialog() {
+        if (!startupComplete) {
+            setBottomStatus("LOCATE • waiting for sequencer");
+            return;
+        }
+
+        final long position = nativeSequencePositionTicks();
+        final EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        input.setText(formatMpcToolbarPosition(position)
+                .replace("BAR ", "")
+                .replace("  BEAT ", ":")
+                .replace("  TICK ", ":"));
+        input.setSelectAllOnFocus(true);
+        input.setContentDescription("Pull-Down Locate position");
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("LOCATE")
+                .setMessage("Enter BAR:BEAT:TICK")
+                .setView(input)
+                .setNegativeButton("CANCEL", null)
+                .setPositiveButton("DO IT", null)
+                .create();
+
+        dialog.setOnShowListener(v -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(button -> {
+                    final String raw = input.getText() == null
+                            ? ""
+                            : input.getText().toString().trim();
+                    final String[] parts = raw.split(":");
+                    if (parts.length != 3) {
+                        input.setError("Use BAR:BEAT:TICK");
+                        return;
+                    }
+
+                    try {
+                        final long bar = Long.parseLong(parts[0].trim());
+                        final long beat = Long.parseLong(parts[1].trim());
+                        final long tick = Long.parseLong(parts[2].trim());
+                        final long ticksPerBeat =
+                                Math.max(1L, Math.round(getSequenceTicksPerBeat()));
+                        final long ticksPerBar =
+                                Math.max(ticksPerBeat, Math.round(getSequenceTicksPerBar()));
+
+                        if (bar < 1
+                                || beat < 1
+                                || beat > Math.max(1, nativeSequenceGetNumerator())
+                                || tick < 0
+                                || tick >= ticksPerBeat) {
+                            input.setError("Position is outside the active time signature");
+                            return;
+                        }
+
+                        final long target =
+                                Math.max(0L, (bar - 1L) * ticksPerBar
+                                        + (beat - 1L) * ticksPerBeat + tick);
+                        final long current = nativeSequencePositionTicks();
+                        final long delta = target - current;
+                        setBottomStatus(nativeSequenceLocateMoveTicks(delta));
+                        refreshSequenceControls();
+                        refreshMpcToolbarState();
+                        refreshMpcCompactContext();
+                        dialog.dismiss();
+                    } catch (NumberFormatException error) {
+                        input.setError("Use numeric BAR:BEAT:TICK");
+                    }
+                }));
+        dialog.show();
+    }
+
+    private void showPullDownTempoDialog() {
+        if (!startupComplete) {
+            setBottomStatus("TEMPO • waiting for sequencer");
+            return;
+        }
+
+        final EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(
+                android.text.InputType.TYPE_CLASS_NUMBER
+                        | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setText(String.format(
+                Locale.ROOT, "%.1f", nativeSequenceGetTempo()));
+        input.setSelectAllOnFocus(true);
+        input.setContentDescription("Pull-Down Tempo value");
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("TEMPO")
+                .setMessage("20–300 BPM")
+                .setView(input)
+                .setNegativeButton("CANCEL", null)
+                .setPositiveButton("DO IT", null)
+                .create();
+
+        dialog.setOnShowListener(v -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(button -> {
+                    try {
+                        final double bpm = Double.parseDouble(
+                                input.getText() == null
+                                        ? ""
+                                        : input.getText().toString().trim());
+                        if (!Double.isFinite(bpm) || bpm < 20.0 || bpm > 300.0) {
+                            input.setError("Tempo must be 20–300 BPM");
+                            return;
+                        }
+                        setBottomStatus(nativeSequenceSetTempo(bpm));
+                        refreshSequenceControls();
+                        refreshMpcToolbarState();
+                        refreshMpcCompactContext();
+                        dialog.dismiss();
+                    } catch (NumberFormatException error) {
+                        input.setError("Enter a valid BPM");
+                    }
+                }));
+        dialog.show();
+    }
+
+    private void showPullDown() {
+        if (pullDownPanel == null || pullDownScrim == null) {
+            return;
+        }
+        refreshPullDownContext();
+        pullDownPanel.setPage(0);
+        pullDownScrim.setVisibility(View.VISIBLE);
+        pullDownPanel.setVisibility(View.VISIBLE);
+        pullDownScrim.bringToFront();
+        pullDownPanel.bringToFront();
+    }
+
+    private void hidePullDown() {
+        if (pullDownPanel == null || pullDownScrim == null) {
+            return;
+        }
+        pullDownPanel.setVisibility(View.GONE);
+        pullDownScrim.setVisibility(View.GONE);
+    }
+
+    private void installPullDownGesture() {
+        if (sequenceTransportView == null) {
+            return;
+        }
+        sequenceTransportView.setContentDescription(
+                "Sequence position and tempo • swipe down for MPC Pull-Down Menu");
+        final GestureDetector detector = new GestureDetector(
+                this,
+                new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onDown(MotionEvent event) {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onFling(
+                            MotionEvent e1,
+                            MotionEvent e2,
+                            float velocityX,
+                            float velocityY) {
+                        if (e1 == null || e2 == null) {
+                            return false;
+                        }
+                        final float deltaY = e2.getY() - e1.getY();
+                        if (deltaY > dp(48)
+                                && velocityY > dp(100)) {
+                            showPullDown();
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+        sequenceTransportView.setOnTouchListener((v, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                detector.onTouchEvent(event);
+                return false;
+            }
+            detector.onTouchEvent(event);
+            return false;
+        });
+    }
+
     private void buildShortcutRail(LinearLayout rail) {
         rail.removeAllViews();
         MpcUiState.Mode[] modes = navigationController.shortcuts();
         for (int i = 0; i < modes.length; i++) {
             final MpcUiState.Mode mode = modes[i];
-            Button shortcut = mpcShortcutButton(
+            MpcShortcutRailItemView shortcut = mpcShortcutButton(
                     mpcShortcutLabel(mode), mode);
-            shortcut.setContentDescription("MPC shortcut " + mode.label());
-            shortcut.setTextSize(18);
-            shortcut.setTypeface(Typeface.DEFAULT_BOLD);
             shortcutButtons[i] = shortcut;
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
@@ -707,6 +1022,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactContextPanel.setContentDescription(
                 "MPC shell compact track program context");
         compactContextPanel.setPadding(dp(2), dp(2), dp(2), dp(2));
+        compactContextPanel.setBackgroundColor(MPC_PANEL_DARK);
 
         compactContextPanel.addView(compactContextCaption("SEQUENCE"),
                 new LinearLayout.LayoutParams(
@@ -802,6 +1118,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactMixerPanel.setContentDescription(
                 "MPC condensed Mixer Strip");
         compactMixerPanel.setPadding(dp(2), dp(2), dp(2), dp(2));
+        compactMixerPanel.setBackgroundColor(MPC_PANEL);
 
         LinearLayout trackTabs = buildCompactMixerTabs();
         compactTrackTabs = trackTabs;
@@ -907,8 +1224,50 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
+        /*
+         * Fidelity correction: the visible Main left workspace is the MPC
+         * XL Mixer Strip region, not a persistent Android-style sequence /
+         * track / program / dial context card. The legacy views stay mounted
+         * but hidden during migration so their semantic refresh dependencies
+         * can be retired safely in a later cleanup pass.
+         */
+        header.setVisibility(View.GONE);
+        compactContextPanel.setVisibility(View.GONE);
+        compactMixerPanel.setVisibility(View.GONE);
+
+        mainMixerStripView = new MpcMainMixerStripView(this,
+                new MpcMainMixerStripView.Listener() {
+                    @Override
+                    public boolean isStartupReady() {
+                        return startupComplete;
+                    }
+
+                    @Override
+                    public boolean mixerStripVisible() {
+                        return navigationController != null
+                                && navigationController.state().compactMixerVisible();
+                    }
+
+                    @Override
+                    public void toggleTrackMute() {
+                        toggleSelectedTrackMute();
+                    }
+
+                    @Override
+                    public void onMixerStripVisibilityChanged(boolean visible) {
+                        final boolean padMode =
+                                navigationController != null
+                                        && navigationController.state().compactMixerPadMode();
+                        navigationController.setCompactMixerState(visible, padMode);
+                    }
+                });
+        area.addView(mainMixerStripView,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
         applyCompactMixerVisibility();
         applyCompactMixerStripMode();
+        refreshMpcMainMixerStripView();
     }
 
     private boolean compactMixerStripModeAvailable() {
@@ -933,7 +1292,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         final boolean padMode = compactMixerPadModeForDisplay();
-        compactMixerStripModeToggle.setText(padMode ? "□  ▦" : "■  ▦");
+        compactMixerStripModeToggle.setText("");
+        compactMixerStripModeToggle.setForeground(new MpcMixerStripIconDrawable(
+                MpcMixerStripIconDrawable.Mode.TRACK_PAD_SELECTOR, padMode));
         compactMixerStripModeToggle.setContentDescription(
                 padMode
                         ? "MPC condensed Mixer Strip showing Pad"
@@ -984,12 +1345,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         field.setTypeface(Typeface.DEFAULT_BOLD);
         field.setContentDescription(contentDescription);
         field.setBackground(strokeBackground(
-                SURFACE_2,
-                LINE,
-                MPC_FLAT_RADIUS_DP));
-        if (listener != null) {
-            field.setOnClickListener(listener);
-            field.setFocusable(true);
+                MPC_PANEL,
+                MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));        if (listener != null) {            field.setOnClickListener(listener);            field.setFocusable(true);
             field.setClickable(true);
         }
         return field;
@@ -1024,6 +1382,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return "TRACK TYPE";
             case PAD:
                 return "PAD";
+            case PAD_MIXER_LEVEL:
+                return "MIX LEVEL";
+            case PAD_MIXER_PAN:
+                return "MIX PAN";
+            case PAD_MIXER_TUNE:
+                return "MIX TUNE";
             case SAMPLE_LAYER:
                 return "LAYER";
             default:
@@ -1081,6 +1445,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showAudioSettingsPage();
                 break;
             default:
+                navigationController.navigate(mode);
                 navigationController.setActionAvailable(false);
                 setBottomStatus(
                         mode.label() + " • RESERVED / UNAVAILABLE");
@@ -1107,9 +1472,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ? "TC " + sequenceGridLabel(
                                 nativeSequenceGetQuantizeGrid()).replace("Q ", "")
                         : "TC OFF");
+        timingCorrectTopButton.setTextColor(MPC_TOOLBAR_TEXT);
         timingCorrectTopButton.setBackground(strokeBackground(
-                enabled ? Color.rgb(74, 124, 88) : SURFACE_2,
-                enabled ? ACTIVE : LINE,
+                enabled ? Color.rgb(183, 35, 57) : Color.TRANSPARENT,
+                enabled ? Color.WHITE : Color.TRANSPARENT,
                 MPC_FLAT_RADIUS_DP));
 
         if (metronomeTopButton != null) {
@@ -1118,6 +1484,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (automationTopButton != null) {
             automationTopButton.setText("AUTO");
         }
+
+        final boolean midiReady = midiBridge != null;
+        updateTopMidiStatus(midiInTopStatus, midiReady);
+        updateTopMidiStatus(midiOutTopStatus, midiReady);
     }
 
     private void applyCompactMixerVisibility() {
@@ -1127,8 +1497,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final boolean visible = navigationController != null
                 && navigationController.state().compactMixerVisible();
-        compactMixerPanel.setVisibility(
-                visible ? View.VISIBLE : View.GONE);
+        // The legacy condensed panel was superseded by MpcMainMixerStripView.
+        // Keep its views mounted for refresh dependencies, but never re-expose
+        // this duplicate panel from the persisted Mixer Strip visibility state.
+        compactMixerPanel.setVisibility(View.GONE);
+        if (mpcShell != null) {
+            mpcShell.setChannelStripVisible(visible);
+        }
         compactMixerToggle.setText(
                 visible ? "◉" : "○");
         compactMixerToggle.setTextSize(12);
@@ -1185,8 +1560,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         compactDialContext.setContentDescription(
                 "MPC shell Data Dial focus • " + dialLabel
                         + (subcontextLabel.isEmpty()
-                                ? ""
-                                : " • " + subcontextLabel));
+                                ? ""                                : " • " + subcontextLabel));
 
         final boolean sequenceFocus =
                 dialFocus == MpcUiState.DataDialFocus.SEQUENCE
@@ -1209,6 +1583,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setCompactContextFocus(
                 compactDialContext,
                 dialFocus != MpcUiState.DataDialFocus.NONE);
+
+        // In MPC Main the selected channel/track strip is a strong visual
+        // anchor. Keep the persistent Track context visibly selected while
+        // retaining a white focus border when Data Dial is on Track.
+        compactTrackContext.setTextColor(MPC_TOOLBAR_TEXT);
+        compactTrackContext.setBackground(strokeBackground(
+                MPC_SELECTION_RED,
+                trackFocus ? Color.WHITE : Color.rgb(183, 35, 57),
+                MPC_FLAT_RADIUS_DP));
 
         if (nativeStateReady) {
             final String trackType = nativeSequenceGetTrackType(trackIndex);
@@ -1331,6 +1714,56 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             compactOutputLevelLabel.setText("LEVEL —  •  RESERVED");
         }
         applyCompactMixerStripMode();
+        refreshMpcMainMixerStripView();
+    }
+
+    private void refreshMpcMainMixerStripView() {
+        if (mainMixerStripView == null || navigationController == null) {
+            return;
+        }
+
+        final boolean visible =
+                navigationController.state().compactMixerVisible();
+        if (mpcShell != null) {
+            mpcShell.setChannelStripVisible(visible);
+        }
+
+        final boolean ready = startupComplete;
+        final int track = ready
+                ? Math.max(0, nativeSequenceGetSelectedTrack())
+                : 0;
+        final String trackType = ready
+                ? nativeSequenceGetTrackType(track)
+                : "DRUM";
+        final String program = ready
+                ? nativeSequenceGetTrackProgram(track)
+                : "—";
+        final boolean padMode = navigationController.state().compactMixerPadMode()
+                && "DRUM".equalsIgnoreCase(trackType);
+        final int pad = selectedPadIndexForUi();
+        final float level = ready ? nativeAudioGetPadLevel(pad) : 1.0f;
+        final float pan = ready ? nativeAudioGetPadPan(pad) : 0.0f;
+        final float tuning = ready ? nativeAudioGetPadTuning(pad) : 0.0f;
+        final String sample = ready
+                ? nativeAudioGetPadSampleName(pad, selectedLayer)
+                : "NO SAMPLE";
+        final boolean muted = ready && nativeSequenceIsTrackMuted(track);
+
+        mainMixerStripView.setState(
+                navigationController.state().compactMixerVisible(),
+                padMode,
+                compactDialFocusLabel(navigationController.state().dataDialFocus()),
+                track,
+                trackType,
+                cleanTrackDisplayName(
+                        ready ? nativeSequenceTrackStatus(track) : "Track"),
+                program,
+                pad,
+                level,
+                pan,
+                tuning,
+                sample,
+                muted);
     }
 
     private void refreshMpcFunctionBar() {
@@ -1377,6 +1810,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        if (mode == MpcUiState.Mode.MENU) {
+            // Keep all Menu system commands on the global shell Function Bar.
+            addFunction("NEW PROJECT", false, null);
+            addFunction("SAVE", false, null);
+            addFunction("PREFERENCES", true, v -> showAudioSettingsPage());
+            addFunction("MIDI / CONTROL", true, v -> showMidiPage());
+            addFunction("EDIT SHORTCUTS", true, v -> showShortcutConfigPage());
+            addFunction("BACK", true, v -> navigateBackFromShell());
+            return;
+        }
+
         if (mode == MpcUiState.Mode.TRACK_EDIT) {
             final boolean drumTrack = startupComplete
                     && "DRUM".equalsIgnoreCase(
@@ -1393,11 +1837,63 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         switch (mode) {
             case BROWSER:
-                addFunction("LOAD", true, v -> openWavPicker());
-                addFunction("UP", true, v -> showBrowserPage());
-                addFunction("FAV", false, null);
-                addFunction("SEARCH", false, null);
-                addFunction("BACK", true, v -> navigateBackFromShell());
+                // Sample Assign consumes a selected, real Browser result. LOAD
+                // remains the direct Document Provider import path.
+                final MpcBrowserFile selectedBrowserFile =
+                        browserView == null ? null : browserView.selectedFile();
+                final boolean browserHasSelectedFile = selectedBrowserFile != null;
+                Button sampleAssign = addFunction(
+                        "SAMPLE ASSIGN", browserHasSelectedFile,
+                        v -> assignSelectedBrowserFile());
+                sampleAssign.setContentDescription(browserHasSelectedFile
+                        ? "MPC Browser assign selected local WAV to target Pad/Layer"
+                        : "MPC Browser Sample Assign unavailable: no source item selected");
+                Button audition = addFunction("AUDITION", browserHasSelectedFile,
+                        v -> {
+                            if (browserView != null) browserView.auditionSelectedFile();
+                        });
+                audition.setContentDescription(browserHasSelectedFile
+                        ? "MPC Browser audition selected local WAV file"
+                        : "MPC Browser audition unavailable: no source item selected");
+                Button load = addFunction("LOAD", true, v -> openWavPicker());
+                load.setContentDescription("MPC Browser LOAD source file with Android Document Picker");
+                final String browserLocation =
+                        navigationController.state().browserLocation();
+                final boolean browserHasParent =
+                        !browserLocation.isEmpty()
+                                && !"PLACES".equals(browserLocation);
+                Button up = addFunction("UP", browserHasParent,
+                        v -> {
+                            if (browserView != null) {
+                                browserView.setVisibility(View.VISIBLE);
+                            }
+                            final String currentLocation =
+                                    navigationController.state().browserLocation();
+                            final int separator =
+                                    currentLocation.lastIndexOf('/');
+                            final String parent;
+                            if (separator > 0) {
+                                parent = currentLocation.substring(0, separator);
+                            } else {
+                                parent = "PLACES";
+                            }
+                            navigationController.setBrowser(
+                                    parent,
+                                    navigationController.state().browserFilter(),
+                                    navigationController.state().browserSearch());
+                            navigationController.setDataDialFocus(
+                                    MpcUiState.DataDialFocus.BROWSER_ITEM);
+                            if (browserView != null) {
+                                browserView.setLocation(parent);
+                            }
+                            setBottomStatus("BROWSER • UP • " + parent);
+                            refreshMpcFunctionBar();
+                        });
+                up.setContentDescription("Browser UP from " + browserLocation);
+                Button browserBack = addFunction(
+                        "BACK", true, v -> navigateBackFromShell());
+                browserBack.setContentDescription(
+                        "MPC Browser BACK to previous workspace");
                 break;
             case ARRANGE:
                 addFunction("CUT", false, null);
@@ -1447,6 +1943,34 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         showSequenceGridPage();
                     }
                 });
+                break;
+            }
+
+            case PAD_MIXER: {
+                final int currentPad = selectedPadIndexForUi();
+                addFunction("PAD −", currentPad > 0, v -> {
+                    selectedPad = Math.max(0, selectedPad - 1);
+                    navigationController.setSelectedPad(selectedPad);
+                    navigationController.setDataDialFocus(
+                            MpcUiState.DataDialFocus.PAD);
+                    showMixPage();
+                });
+                addFunction("PAD +", currentPad < 15, v -> {
+                    selectedPad = Math.min(15, selectedPad + 1);
+                    navigationController.setSelectedPad(selectedPad);
+                    navigationController.setDataDialFocus(
+                            MpcUiState.DataDialFocus.PAD);
+                    showMixPage();
+                });
+                addFunction("TRACK EDIT",
+                        startupComplete
+                                && "DRUM".equalsIgnoreCase(
+                                        nativeSequenceGetTrackType(
+                                                Math.max(0, nativeSequenceGetSelectedTrack()))),
+                        v -> openMainTrackEditContext());
+                addFunction("MAIN", true, v -> showMainPage());
+                addFunction("BROWSER", true, v -> showBrowserPage());
+                addFunction("BACK", true, v -> navigateBackFromShell());
                 break;
             }
 
@@ -1546,13 +2070,55 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
     }
 
-    private void addFunction(String text, boolean enabled, View.OnClickListener listener) {
+    private Button addFunction(String text, boolean enabled, View.OnClickListener listener) {
         Button b = actionButton(text, listener);
         b.setEnabled(enabled);
         b.setAlpha(enabled ? 1.0f : 0.45f);
         b.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        b.setTextColor(TEXT);
+        b.setBackground(strokeBackground(
+                MPC_PANEL_DARK,
+                MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));
+        b.setTypeface(Typeface.DEFAULT_BOLD);
         functionBar.addView(b, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        normalizeMpcFunctionBarLayout();
+        return b;
+    }
+
+    /**
+     * Reassert equal contextual slots after rebuilding the Function Bar.
+     * Explicit weights prevent a context transition from leaving a narrow slot.
+     */
+    private void normalizeMpcFunctionBarLayout() {
+        if (functionBar == null) return;
+
+        int visibleChildren = 0;
+        for (int i = 0; i < functionBar.getChildCount(); i++) {
+            if (functionBar.getChildAt(i).getVisibility() != View.GONE) {
+                visibleChildren++;
+            }
+        }
+        if (visibleChildren == 0) return;
+
+        functionBar.setMeasureWithLargestChildEnabled(false);
+        functionBar.setWeightSum(visibleChildren);
+        for (int i = 0; i < functionBar.getChildCount(); i++) {
+            final View child = functionBar.getChildAt(i);
+            if (child.getVisibility() == View.GONE) continue;
+            final ViewGroup.LayoutParams existing = child.getLayoutParams();
+            final LinearLayout.LayoutParams params =
+                    existing instanceof LinearLayout.LayoutParams
+                            ? (LinearLayout.LayoutParams) existing
+                            : new LinearLayout.LayoutParams(
+                                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
+            params.width = 0;
+            params.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            params.weight = 1.0f;
+            child.setLayoutParams(params);
+        }
+        functionBar.requestLayout();
     }
 
     private void navigateBackFromShell() {
@@ -1640,40 +2206,54 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bar.setPadding(
                 dp(MPC_TOOLBAR_INSET_DP), dp(3),
                 dp(MPC_TOOLBAR_INSET_DP), dp(3));
-        bar.setBackgroundColor(SURFACE);
-        bar.setContentDescription("MPC Main Toolbar");
+        bar.setBackgroundColor(MPC_TOOLBAR_BG);
+        bar.setContentDescription("MPC One Main Toolbar");
 
-        Button menu = topButton("▦");
+        Button menu = topButton("");
+        menu.setText("");
+        menu.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.MENU, false));
         menu.setContentDescription("MPC Toolbar Menu");
         menu.setOnClickListener(v -> showMenuPage());
         bar.addView(menu, new LinearLayout.LayoutParams(
                 dp(MPC_TOOLBAR_MENU_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
 
-        projectState = label("PROJECT\nUNTITLED", 9, TEXT);
+        projectState = label("PROJECT\nUNTITLED", 9, MPC_TOOLBAR_TEXT);
         projectState.setTypeface(Typeface.DEFAULT_BOLD);
         projectState.setGravity(Gravity.CENTER_VERTICAL);
-        projectState.setPadding(dp(6), 0, dp(6), 0);
+        projectState.setPadding(dp(6), 0, dp(2), 0);
         projectState.setContentDescription("MPC Project");
         bar.addView(projectState, new LinearLayout.LayoutParams(
-                dp(MPC_TOOLBAR_PROJECT_WIDTH_DP),
+                dp(MPC_TOOLBAR_PROJECT_IDENTITY_WIDTH_DP),
+                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
+
+        // MPC One keeps a direct project/browser affordance next to project
+        // identity. It is deliberately a compact entry point rather than a
+        // second navigation surface.
+        Button projectBrowser = topButton("");
+        projectBrowser.setContentDescription("MPC Project Browser");
+        projectBrowser.setForeground(new MpcFolderIconDrawable());
+        projectBrowser.setOnClickListener(v -> showBrowserPage());
+        bar.addView(projectBrowser, new LinearLayout.LayoutParams(
+                dp(MPC_TOOLBAR_PROJECT_BROWSER_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
 
         // showMainPage() is part of shell construction, so the current-page
         // field must exist before the first page render. Keep it in the MPC
         // toolbar instead of leaving the legacy field uninitialized.
-        pageTitle = label("MAIN", 9, ACCENT);
+        pageTitle = label("MAIN", 9, MPC_TOOLBAR_TEXT);
         pageTitle.setGravity(Gravity.CENTER);
         pageTitle.setTypeface(Typeface.DEFAULT_BOLD);
         pageTitle.setContentDescription("MPC current page");
-        bar.addView(pageTitle, new LinearLayout.LayoutParams(
-                dp(62),
-                dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
+        // MPC One's Toolbar is status-oriented; the active page is communicated
+        // by the left shortcut/context system, not by a duplicate title chip.
+        pageTitle.setVisibility(View.GONE);
 
         sequenceTransportView = label(
-                "BAR 001  BEAT 1  TICK 000",
+                "BAR  001    BEAT  1    TICK  000",
                 9,
-                TEXT);
+                MPC_TOOLBAR_TEXT);
         sequenceTransportView.setGravity(Gravity.CENTER);
         sequenceTransportView.setTypeface(Typeface.DEFAULT_BOLD);
         sequenceTransportView.setContentDescription("Sequence position and tempo");
@@ -1717,34 +2297,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         autoLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
         bar.addView(automationTopButton, autoLp);
 
-        Button play = topButton("▶");
-        play.setContentDescription("Play");
-        play.setTextSize(12);
-        play.setOnClickListener(v -> {
-            final String result = nativeSequenceStart();
-            setAudioStateFromResult(result);
-            setBottomStatus(result);
-        });
-        LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams(
-                dp(MPC_TOOLBAR_TRANSPORT_WIDTH_DP),
+        /*
+         * MPC 3.9 keeps the Toolbar status-oriented. Transport remains a
+         * hardware-first operation, while the final cells show MIDI In/Out
+         * status and open the MIDI monitor/context when tapped.
+         */
+        midiInTopStatus = topStatusCell("IN");
+        midiInTopStatus.setTag("IN");
+        midiInTopStatus.setContentDescription("MPC Toolbar MIDI IN");
+        midiInTopStatus.setOnClickListener(v -> showMidiPage());
+        LinearLayout.LayoutParams midiInLp = new LinearLayout.LayoutParams(
+                dp(MPC_TOOLBAR_IO_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP));
-        playLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
-        bar.addView(play, playLp);
+        midiInLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
+        bar.addView(midiInTopStatus, midiInLp);
 
-        Button stop = topButton("■");
-        stop.setContentDescription("Stop");
-        stop.setTextSize(12);
-        stop.setOnClickListener(v -> {
-            final String sequenceResult = nativeSequenceStop();
-            final String audioResult = nativeAudioStop();
-            setAudioStateFromResult(audioResult);
-            setBottomStatus(sequenceResult + " | " + audioResult);
-        });
-        LinearLayout.LayoutParams stopLp = new LinearLayout.LayoutParams(
-                dp(MPC_TOOLBAR_TRANSPORT_WIDTH_DP),
+        midiOutTopStatus = topStatusCell("OUT");
+        midiOutTopStatus.setTag("OUT");
+        midiOutTopStatus.setContentDescription("MPC Toolbar MIDI OUT");
+        midiOutTopStatus.setOnClickListener(v -> showMidiPage());
+        LinearLayout.LayoutParams midiOutLp = new LinearLayout.LayoutParams(
+                dp(MPC_TOOLBAR_IO_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP));
-        stopLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
-        bar.addView(stop, stopLp);
+        midiOutLp.leftMargin = dp(MPC_TOOLBAR_GAP_DP);
+        bar.addView(midiOutTopStatus, midiOutLp);
 
         // Keep diagnostic state objects alive for existing refresh logic, but do
         // not duplicate them in the MPC-facing toolbar.
@@ -1980,12 +2556,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Time Signature")
                 .setView(root)
-                .setNegativeButton("CANCEL", null)
-                .setPositiveButton("DO IT", (d, which) -> {
-                    setBottomStatus(
-                            nativeSequenceSetTimeSignature(
-                                    numeratorState[0], denominatorState[0]));
-                    refreshMainModeFields();
+                .setNegativeButton("CANCEL", null)                .setPositiveButton("DO IT", (d, which) -> {
+                    setBottomStatus(                            nativeSequenceSetTimeSignature(
+                                    numeratorState[0], denominatorState[0]));                    refreshMainModeFields();
                     refreshSequenceControls();
                     setBottomStatus(
                             "TIME SIGNATURE • "
@@ -2016,17 +2589,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return rail;
     }
 
-    private Button mpcShortcutButton(String text, MpcUiState.Mode mode) {
-        Button b = button(text);
-        b.setTextSize(9);
-        b.setTypeface(Typeface.DEFAULT_BOLD);
-        b.setMinHeight(0);
-        b.setMinimumHeight(0);
-        b.setPadding(dp(2), 0, dp(2), 0);
-        b.setGravity(Gravity.CENTER);
-        b.setTag(mode);
-        b.setOnClickListener(v -> navigateToMode(mode));
-        return b;
+    private MpcShortcutRailItemView mpcShortcutButton(
+            String text,
+            MpcUiState.Mode mode) {
+        MpcShortcutRailItemView item = new MpcShortcutRailItemView(
+                this,
+                mode,
+                text,
+                mpcShortcutAccessibleLabel(mode),
+                dp(MPC_SHORTCUT_SELECTION_WIDTH_DP));
+        item.setRailClickListener(v -> navigateToMode(mode));
+        return item;
     }
 
     private LinearLayout buildCompactMixerTabs() {
@@ -2049,27 +2622,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return tabs;
     }
 
+    private String mpcShortcutAccessibleLabel(MpcUiState.Mode mode) {
+        if (mode == null) return "unknown";
+        return mode == MpcUiState.Mode.XYFX ? "XY" : mode.label();
+    }
+
     private String mpcShortcutLabel(MpcUiState.Mode mode) {
-        if (mode == null) return "□";
+        if (mode == null) return "";
         switch (mode) {
-            case MAIN: return "⌂";
-            case TRACK_VIEW: return "☷";
-            case BROWSER: return "⌕";
-            case GRID: return "▦";
-            case STEP: return "▥";
-            case TRACK_EDIT: return "✎";
-            case SAMPLE_EDIT: return "∿";
-            case SAMPLER: return "●";
-            case CHANNEL_MIXER: return "≡";
-            case PAD_MIXER: return "▤";
-            case LEVELS_16: return "16";
-            case PAD_PERFORM: return "✣";
-            case NEXT_SEQUENCE: return "▶";
-            case ARRANGE: return "╬";
-            case LIST_EDIT: return "☰";
-            case PROJECT: return "P";
-            case MENU: return "▦";
-            default: return "□";
+            case BROWSER: return "BROWSER";
+            case CHANNEL_MIXER: return "CH MIX";
+            case PAD_MIXER: return "PAD MIX";
+            case SOUNDS: return "SOUNDS";
+            case XYFX: return "XY";
+            default: return mode.label();
         }
     }
 
@@ -2102,17 +2668,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         final MpcUiState.Mode active = navigationController.state().mode();
-        for (Button button : shortcutButtons) {
-            if (button == null) {
+        for (MpcShortcutRailItemView item : shortcutButtons) {
+            if (item == null) {
                 continue;
             }
-            final Object tag = button.getTag();
-            final boolean selected = tag == active;
-            button.setTextColor(selected ? TEXT : MUTED);
-            button.setBackground(strokeBackground(
-                    selected ? SURFACE_2 : BG,
-                    selected ? DANGER : LINE,
-                    MPC_FLAT_RADIUS_DP));
+            item.setSelectedState(item.mode() == active);
         }
     }
 
@@ -2129,6 +2689,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 controller.setSystemBarsBehavior(
                         WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
                 controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+            }
+
+            /*
+             * Keep the workstation inside the Android navigation-bar safe area.
+             * In landscape, drawing edge-to-edge can leave right-edge controls
+             * visible in screenshots but clipped to zero-width accessibility
+             * bounds. Insets remain relevant while system bars are hidden.
+             */
+            // Use the stable Window content parent for every invocation. The
+            // policy runs both before and after shell creation; padding both
+            // the parent and shell would reserve the same nav inset twice.
+            View appContent = findViewById(android.R.id.content);
+            if (appContent != null) {
+                appContent.setOnApplyWindowInsetsListener((view, insets) -> {
+                    final int left;
+                    final int right;
+                    final int bottom;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        final android.graphics.Insets navigationInsets =
+                                insets.getInsetsIgnoringVisibility(
+                                        WindowInsets.Type.navigationBars());
+                        left = navigationInsets.left;
+                        right = navigationInsets.right;
+                        bottom = navigationInsets.bottom;
+                    } else {
+                        left = insets.getStableInsetLeft();
+                        right = insets.getStableInsetRight();
+                        bottom = insets.getStableInsetBottom();
+                    }
+                    view.setPadding(left, 0, right, bottom);
+                    return insets;
+                });
+                appContent.requestApplyInsets();
             }
             return;
         }
@@ -2195,7 +2788,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceCard.setContentDescription("Main Mode Sequence section");
         sequenceCard.setPadding(dp(4), dp(4), dp(4), dp(MPC_MAIN_SECTION_GAP_DP));
         sequenceCard.setBackground(strokeBackground(
-                SURFACE, LINE, MPC_MAIN_RADIUS_DP));
+                MPC_PANEL_DARK, Color.TRANSPARENT, MPC_MAIN_RADIUS_DP));
 
         LinearLayout sequenceHeader = row();
         sequenceHeader.setContentDescription("Main Mode sequence header");
@@ -2213,7 +2806,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(0, dp(MPC_MAIN_FIELD_HEIGHT_DP), 1));
 
         TextView bpm = mainHeaderMetric("BPM");
-        bpm.setContentDescription("Main Mode BPM");
+        bpm.setContentDescription("MPC Main BPM field • double-tap for numeric entry");
         sequenceHeader.addView(bpm,
                 new LinearLayout.LayoutParams(dp(82), dp(MPC_MAIN_METRIC_HEIGHT_DP)));
 
@@ -2232,7 +2825,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceHeader.addView(timeSig,
                 new LinearLayout.LayoutParams(dp(56), dp(MPC_MAIN_METRIC_HEIGHT_DP)));
 
-        Button sequenceEdit = mainActionButton("✎", null);
+        Button sequenceEdit = mainActionButton("", null);
+        sequenceEdit.setText("");
+        sequenceEdit.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.PENCIL, false));
         sequenceEdit.setEnabled(false);
         sequenceEdit.setAlpha(0.42f);
         sequenceEdit.setBackground(strokeBackground(
@@ -2248,10 +2844,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout sequenceFields = row();
         TextView bars = mainMetric("BARS");
+        bars.setContentDescription("MPC Main BARS field • double-tap for numeric entry");
         TextView start = mainMetric("START");
+        start.setContentDescription("MPC Main LOOP START field • double-tap for numeric entry");
         TextView end = mainMetric("END");
+        end.setContentDescription("MPC Main LOOP END field • double-tap for numeric entry");
         TextView transpose = mainMetric("TRANSPOSE");
-        Button loop = mainActionButton("↻", v -> {
+        Button loop = mainActionButton("", v -> {
             if (!startupComplete) {
                 setBottomStatus("LOOP • waiting for sequencer");
                 return;
@@ -2260,6 +2859,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     !nativeSequenceIsLoopEnabled()));
             refreshMainModeFields();
         });
+        loop.setText("");
+        loop.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.LOOP, true));
         loop.setTextSize(15);
         loop.setTypeface(Typeface.DEFAULT_BOLD);
         loop.setContentDescription("Main Sequence Loop button");
@@ -2276,7 +2878,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout trackProgramSection = mainSection();
         trackProgramSection.setContentDescription("Main Mode Track Program section");
         trackProgramSection.setBackground(strokeBackground(
-                SURFACE, LINE, MPC_MAIN_RADIUS_DP));
+                MPC_PANEL_DARK, Color.TRANSPARENT, MPC_MAIN_RADIUS_DP));
         trackProgramSection.setPadding(
                 dp(4), dp(MPC_MAIN_SECTION_GAP_DP), dp(4), 0);
 
@@ -2295,8 +2897,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
          */
         LinearLayout trackContextHeader = row();
         trackContextHeader.setContentDescription(
-                "Main Mode Track / Arrangement context header");
-        trackContextHeader.setPadding(dp(4), dp(2), dp(4), dp(2));
+                "Main Track visual hierarchy • Track / Program / workspace header");
+        trackContextHeader.setPadding(dp(4), dp(1), dp(4), dp(1));
+
+        mainTrackTypeField = buildMainTrackTypeIconStrip();
+        trackContextHeader.addView(
+                mainTrackTypeField,
+                new LinearLayout.LayoutParams(
+                        dp(MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP),
+                        dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
         TextView trackName = mainField("TRACK");
         trackName.setTypeface(Typeface.DEFAULT_BOLD);
@@ -2304,46 +2913,123 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         trackName.setContentDescription("Main Mode selected track");
         trackName.setOnClickListener(v -> focusMainTrackField());
         trackContextHeader.addView(trackName,
-                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_FIELD_HEIGHT_DP), 1.0f));
+                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP), 1.0f));
 
         mainTrackField = trackName;
-        mainTrackTypeField = buildMainTrackTypeSelector();
-        trackContextHeader.addView(
-                mainTrackTypeField,
-                new LinearLayout.LayoutParams(dp(68), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
 
-        Button trackEditHeader = mainActionButton("✎", v -> openMainTrackEditContext());
+        Button trackEditHeader = mainActionButton("", v -> openMainTrackEditContext());
+        trackEditHeader.setText("");
+        trackEditHeader.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.PENCIL, false));
         trackEditHeader.setTextSize(15);
         trackEditHeader.setContentDescription("Main Track Edit");
         trackEditHeader.setBackground(strokeBackground(
                 SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
         trackContextHeader.addView(trackEditHeader,
-                new LinearLayout.LayoutParams(dp(38), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+                new LinearLayout.LayoutParams(dp(34), dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
-        mainTrackViewButton = mainActionButton(
+        LinearLayout trackArrangementToggle = row();
+        trackArrangementToggle.setContentDescription(
+                "Main Track Arrangement segmented control");
+        trackArrangementToggle.setPadding(dp(1), dp(1), dp(1), dp(1));
+        mainTrackViewButton = mainSectionToggle(
                 "TRACK",
                 v -> setMainTrackArrangementView(false));
         mainTrackViewButton.setContentDescription("Main Track View header");
-        trackContextHeader.addView(mainTrackViewButton,
-                new LinearLayout.LayoutParams(dp(74), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+        trackArrangementToggle.addView(mainTrackViewButton,
+                new LinearLayout.LayoutParams(0, dp(32), 1));
 
-        mainArrangementViewButton = mainActionButton(
+        mainArrangementViewButton = mainSectionToggle(
                 "ARRANGEMENT",
                 v -> setMainTrackArrangementView(true));
         mainArrangementViewButton.setContentDescription("Main Arrangement View header");
-        trackContextHeader.addView(mainArrangementViewButton,
-                new LinearLayout.LayoutParams(dp(112), dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+        trackArrangementToggle.addView(mainArrangementViewButton,
+                new LinearLayout.LayoutParams(0, dp(32), 1));
+        trackContextHeader.addView(trackArrangementToggle,
+                new LinearLayout.LayoutParams(dp(150), dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
 
         trackProgramSection.addView(trackContextHeader,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_FIELD_HEIGHT_DP)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP)));
+
+        // MPC One keeps the selected Track's Program visible directly below
+        // the Track identity band. This is the same semantic Program context
+        // exposed by the persistent left rail, not a second state model.
+        LinearLayout programContextRow = row();
+        programContextRow.setContentDescription("Main Mode Track Program context");
+        programContextRow.setPadding(dp(4), dp(2), dp(4), dp(2));
+
+        Button programCreateButton = mainActionButton("+", null);
+        programCreateButton.setTextSize(14);
+        programCreateButton.setTypeface(Typeface.DEFAULT_BOLD);
+        programCreateButton.setEnabled(false);
+        programCreateButton.setAlpha(0.42f);
+        programCreateButton.setContentDescription("Main Program create button reserved");
+        programCreateButton.setBackground(strokeBackground(
+                MPC_PANEL_DARK, MPC_PANEL_BORDER, MPC_FLAT_RADIUS_DP));
+        programCreateButton.setGravity(Gravity.CENTER);
+        programContextRow.addView(
+                programCreateButton,
+                new LinearLayout.LayoutParams(dp(28), dp(MPC_MAIN_PROGRAM_HEIGHT_DP)));
+
+        TextView programCaption = label("DRUM PROGRAM", 9, MUTED);
+        programCaption.setTypeface(Typeface.DEFAULT_BOLD);
+        programCaption.setGravity(Gravity.CENTER_VERTICAL);
+        programCaption.setPadding(dp(4), 0, dp(8), 0);
+        programContextRow.addView(
+                programCaption,
+                new LinearLayout.LayoutParams(dp(62), dp(MPC_MAIN_PROGRAM_HEIGHT_DP)));
+
+        Button programField = mainActionButton(
+                "—",
+                v -> {
+                    if (!startupComplete) {
+                        setBottomStatus("PROGRAM SELECT • waiting for sequencer");
+                        return;
+                    }
+                    final int selectedTrack = Math.max(
+                            0, nativeSequenceGetSelectedTrack());
+                    final String trackType = nativeSequenceGetTrackType(selectedTrack);
+                    if ("DRUM".equalsIgnoreCase(trackType)) {
+                        showProgramSelectPage();
+                    } else {
+                        setBottomStatus(
+                                "PROGRAM SELECT • TRACK TYPE IS NOT DRUM");
+                    }
+                });
+        programField.setContentDescription("Main Mode selected program");
+        programField.setGravity(Gravity.CENTER_VERTICAL);
+        programField.setTypeface(Typeface.DEFAULT_BOLD);
+        programField.setTextSize(11);
+        programField.setPadding(dp(8), 0, dp(8), 0);
+        programField.setBackground(strokeBackground(
+                MPC_PANEL_DARK,
+                MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));
+        programContextRow.addView(
+                programField,
+                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_PROGRAM_HEIGHT_DP), 1));
+
+        TextView programStatus = label("TRACK-OWNED", 8, MUTED);
+        programStatus.setGravity(Gravity.CENTER);
+        programStatus.setTypeface(Typeface.DEFAULT_BOLD);
+        programStatus.setContentDescription(
+                "Main Mode program ownership status");
+        programContextRow.addView(
+                programStatus,
+                new LinearLayout.LayoutParams(dp(78), dp(MPC_MAIN_PROGRAM_HEIGHT_DP)));
+
+        trackProgramSection.addView(
+                programContextRow,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
         mainTrackArrangementHost = new FrameLayout(this);
         mainTrackArrangementHost.setContentDescription(
                 "Main Track and Arrangement workspace");
 
         LinearLayout trackWorkspace = column();
-        trackWorkspace.setContentDescription("Main Mode Track View workspace");
+        trackWorkspace.setContentDescription("Main Mode Track workspace");
         trackWorkspace.setPadding(dp(6), dp(2), dp(6), dp(4));
         trackWorkspace.setBackgroundColor(BG);
 
@@ -2371,15 +3057,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         velocityDetail.setText("VELOCITY\n—");
         trackDetailRow.addView(velocityDetail, weight());
 
-        LinearLayout layerControls = row();
-        Button layerDownButton = mainActionButton("−", v -> adjustMainLayer(-1));
-        layerDownButton.setTextSize(13);
-        layerDownButton.setContentDescription("Main Track View previous sample layer");
-        layerControls.addView(layerDownButton,
-                new LinearLayout.LayoutParams(dp(24), dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
-
+        /*
+         * Track-state order is fixed by the MPC Main workflow:
+         * MONITOR / LENGTH / VELOCITY / LAYER.
+         * TRANSPOSE belongs to the Sequence section, not this Track row.
+         */
         TextView layerDetail = mainMetric("LAYER");
-        layerDetail.setContentDescription("Main Track View selected layer • tap to focus Layer");
+        layerDetail.setContentDescription(
+                "Main Track View selected layer • tap to focus Layer");
         layerDetail.setOnClickListener(v -> {
             navigationController.setSubcontext(MpcUiState.Subcontext.SAMPLE_SELECT);
             navigationController.setDataDialFocus(MpcUiState.DataDialFocus.SAMPLE_LAYER);
@@ -2389,55 +3074,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         });
         layerDetail.setText(String.format(
                 Locale.ROOT,
-                "LAYER\n%d/8",
+                "LAYER\n%d",
                 selectedLayer + 1));
-        layerControls.addView(layerDetail,
-                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
-
-        Button layerUpButton = mainActionButton("+", v -> adjustMainLayer(1));
-        layerUpButton.setTextSize(13);
-        layerUpButton.setContentDescription("Main Track View next sample layer");
-        layerControls.addView(layerUpButton,
-                new LinearLayout.LayoutParams(dp(24), dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
-        trackDetailRow.addView(layerControls,
-                new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
-
-        compactMixerStripModeToggle = mainActionButton("□  ▦", v -> {
-            final MpcUiState state = navigationController.state();
-            if (!compactMixerStripModeAvailable()) {
-                setBottomStatus("TRACK/PAD CONTEXT • DRUM TRACK REQUIRED");
-                return;
-            }
-            navigationController.setCompactMixerState(
-                    state.compactMixerVisible(),
-                    !state.compactMixerPadMode());
-        });
-        compactMixerStripModeToggle.setTextSize(11);
-        compactMixerStripModeToggle.setContentDescription(
-                "MPC condensed Mixer Strip Track or Pad selector");
-        compactMixerStripModeToggle.setGravity(Gravity.CENTER);
-        compactMixerStripModeToggle.setBackground(strokeBackground(
-                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
-        trackDetailRow.addView(compactMixerStripModeToggle,
-                new LinearLayout.LayoutParams(dp(46), dp(40)));
+        trackDetailRow.addView(
+                layerDetail,
+                new LinearLayout.LayoutParams(
+                        0, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP), 1));
 
         LinearLayout quickTrack = row();
 
-        LinearLayout padColumn = column();
-        padColumn.setContentDescription("Main Track View performance pad surface");
-        padColumn.addView(buildMiniMainPadGrid(),
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-        /* The touch pad fallback stays compact so the waveform remains the
-         * dominant Main Track canvas, while four rows of pads retain usable
-         * near-square hit targets on the MPC One-sized landscape display. */
-        quickTrack.addView(padColumn,
-                new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.36f));
-
+        /*
+         * MPC 3.9 Main is controller-first here: the selected Pad is chosen
+         * on the physical MPC surface, while the phone Main workspace is the
+         * Track/Arrangement waveform surface. Do not embed an Android 4x4 pad
+         * grid into the canonical Main composition.
+         */
         LinearLayout sampleColumn = column();
-        sampleColumn.setPadding(dp(6), 0, 0, 0);
-        sampleColumn.setContentDescription("Main Track View quick sample editor");
+        sampleColumn.setPadding(0, 0, 0, 0);
+        sampleColumn.setContentDescription("Main Track View quick sample editor • controller-first selected Pad");
 
         LinearLayout sampleHeader = row();
         TextView sampleTitle = label("", 10, TEXT);
@@ -2453,6 +3107,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
         mainTrackWaveform = new WaveformView(this);
+        mainTrackWaveform.setLayerIndicator(selectedLayer);
         mainTrackWaveform.setContentDescription(
                 "Main Track View quick sample waveform");
         mainTrackWaveform.setEditable(true);
@@ -2462,55 +3117,100 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         startNormalized, endNormalized));
         mainTrackWaveform.setOnDoubleTapListener(
                 this::openMainTrackEditContext);
-        sampleColumn.addView(mainTrackWaveform,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        /*
+         * MPC Main uses the Track/Arrangement canvas itself for the sample
+         * interaction. Empty pads expose two large, centered loading choices;
+         * loaded samples keep one compact audition control on the canvas.
+         */
+        FrameLayout sampleSurface = new FrameLayout(this);
+        sampleSurface.setBackgroundColor(BG);
+        sampleSurface.addView(mainTrackWaveform,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+
+        mainTrackSampleEmptyActions = row();
+        mainTrackSampleEmptyActions.setGravity(Gravity.CENTER);
+        mainTrackSampleEmptyActions.setContentDescription(
+                "Main Track View empty sample actions");
+
+        mainTrackSamplePrimaryButton = mainActionButton(
+                "BROWSE",
+                v -> showBrowserPage());
+        mainTrackSamplePrimaryButton.setContentDescription(
+                "Main Track View browse samples");
+        mainTrackSamplePrimaryButton.setTextSize(12);
+        mainTrackSamplePrimaryButton.setTypeface(Typeface.DEFAULT_BOLD);
+        mainTrackSampleEmptyActions.addView(
+                mainTrackSamplePrimaryButton,
+                new LinearLayout.LayoutParams(dp(122), dp(44)));
+
+        mainTrackSampleActionButton = mainActionButton(
+                "RECORD",
+                v -> showRecordPage());
+        mainTrackSampleActionButton.setContentDescription(
+                "Main Track View record sample");
+        mainTrackSampleActionButton.setTextSize(12);
+        mainTrackSampleActionButton.setTypeface(Typeface.DEFAULT_BOLD);
+        mainTrackSampleEmptyActions.addView(
+                mainTrackSampleActionButton,
+                new LinearLayout.LayoutParams(dp(122), dp(44)));
+
+        sampleSurface.addView(
+                mainTrackSampleEmptyActions,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        dp(44),
+                        Gravity.CENTER));
+
+        mainTrackSampleAuditionButton = mainActionButton(
+                "",
+                v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
+        mainTrackSampleAuditionButton.setText("");
+        mainTrackSampleAuditionButton.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.PLAY, false));
+        mainTrackSampleAuditionButton.setContentDescription(
+                "Main Track View audition selected Pad");
+        mainTrackSampleAuditionButton.setTextSize(14);
+        mainTrackSampleAuditionButton.setTypeface(Typeface.DEFAULT_BOLD);
+        mainTrackSampleAuditionButton.setVisibility(View.GONE);
+        FrameLayout.LayoutParams auditionLp = new FrameLayout.LayoutParams(
+                dp(40), dp(34),
+                Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        auditionLp.rightMargin = dp(6);
+        sampleSurface.addView(mainTrackSampleAuditionButton, auditionLp);
 
         TextView quickSampleInfo = label("", 9, MUTED);
         quickSampleInfo.setContentDescription(
                 "Main Track View quick sample info");
         quickSampleInfo.setGravity(Gravity.CENTER_VERTICAL);
+        quickSampleInfo.setVisibility(View.GONE);
         sampleColumn.addView(quickSampleInfo,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(24)));
+        sampleHeader.setVisibility(View.GONE);
 
-        LinearLayout sampleActions = row();
-        mainTrackSamplePrimaryButton = mainActionButton(
-                "AUDITION",
-                v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
-        mainTrackSamplePrimaryButton.setContentDescription(
-                "Main Track View sample primary action");
-        sampleActions.addView(
-                mainTrackSamplePrimaryButton,
-                new LinearLayout.LayoutParams(0, dp(34), 1));
-
-        mainTrackSampleActionButton = mainActionButton(
-                "BROWSE",
-                v -> showBrowserPage());
-        mainTrackSampleActionButton.setContentDescription(
-                "Main Track View sample secondary action");
-        sampleActions.addView(mainTrackSampleActionButton,
-                new LinearLayout.LayoutParams(0, dp(34), 1));
-        sampleColumn.addView(sampleActions,
+        sampleColumn.addView(sampleSurface,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         quickTrack.addView(sampleColumn,
                 new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.MATCH_PARENT, 0.64f));
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
 
         /*
-         * MPC Main places the compact Track-state controls immediately above
-         * the Track canvas. Layer +/- stays inside this same row so Layer is
-         * one coherent high-frequency semantic control.
+         * MPC Main keeps the waveform/canvas as the visual center of the Track
+         * section. The compact Track-state fields live directly below it:
+         * MONITOR / LENGTH / VELOCITY / LAYER.
          */
+        trackWorkspace.addView(quickTrack,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, MPC_MAIN_WORKSPACE_WEIGHT));
+
         trackWorkspace.addView(trackDetailRow,
                 new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(MPC_MAIN_TRACK_STATE_HEIGHT_DP)));
-
-        trackWorkspace.addView(quickTrack,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         LinearLayout arrangement = column();
         arrangement.setPadding(dp(6), dp(4), dp(6), dp(4));
@@ -2544,11 +3244,46 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT));
+
+        /*
+         * MPC 3.9 places the Track/Pad channel-strip selector in the
+         * lower-right corner of the Track/Arrangement section. It is a
+         * context switch for the adjacent XL/channel-strip surface, not
+         * another Track-state field. Keep one shared selector over both
+         * sibling views so the intent has one stable physical/touch location.
+         */
+        compactMixerStripModeToggle = mainActionButton("", v -> {
+            final MpcUiState state = navigationController.state();
+            if (!compactMixerStripModeAvailable()) {
+                setBottomStatus("TRACK/PAD CONTEXT • DRUM TRACK REQUIRED");
+                return;
+            }
+            navigationController.setCompactMixerState(
+                    state.compactMixerVisible(),
+                    !state.compactMixerPadMode());
+        });
+        compactMixerStripModeToggle.setText("");
+        compactMixerStripModeToggle.setTextSize(11);
+        compactMixerStripModeToggle.setForeground(new MpcMixerStripIconDrawable(
+                MpcMixerStripIconDrawable.Mode.TRACK_PAD_SELECTOR, false));
+        compactMixerStripModeToggle.setContentDescription(
+                "MPC condensed Mixer Strip Track or Pad selector");
+        compactMixerStripModeToggle.setGravity(Gravity.CENTER);
+        compactMixerStripModeToggle.setBackground(strokeBackground(
+                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        FrameLayout.LayoutParams mixerSelectorLp = new FrameLayout.LayoutParams(
+                dp(46), dp(32), Gravity.RIGHT | Gravity.BOTTOM);
+        mixerSelectorLp.rightMargin = dp(4);
+        // Keep the selector in the lower-right of the waveform/canvas area,
+        // above the dedicated Track-state row and shell Function Bar.
+        mixerSelectorLp.bottomMargin = dp(44);
+        mainTrackArrangementHost.addView(compactMixerStripModeToggle, mixerSelectorLp);
+
         trackProgramSection.addView(mainTrackArrangementHost,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+                        ViewGroup.LayoutParams.MATCH_PARENT, 0, MPC_MAIN_WORKSPACE_WEIGHT));
         trackProgramSection.setContentDescription(
-                "Main Mode Track / Arrangement workspace section");
+                "Main Track visual hierarchy • Track / Program / workspace section");
 
         // Rebuilding Main must preserve the prior Track/Arrangement presentation.
         setMainTrackArrangementView(previousMainArrangementView);
@@ -2561,6 +3296,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(sequenceCard, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        // MPC Main uses a thin red zone boundary rather than a heavy outer
+        // card frame between Sequence and Track/Arrangement.
+        View mainSectionDivider = new View(this);
+        mainSectionDivider.setBackgroundColor(MPC_SELECTION_RED);
+        mainSectionDivider.setContentDescription(
+                "MPC Main Sequence / Track section divider");
+        page.addView(mainSectionDivider, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                dp(MPC_MAIN_SECTION_DIVIDER_DP)));
+
         page.addView(trackProgramSection, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
@@ -2615,6 +3361,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             showTimeSignatureDialog();
         });
+        transpose.setContentDescription("Main Sequence transpose state");
         transpose.setOnClickListener(v -> setBottomStatus(
                 "TRANSPOSE • unavailable in current Sequence backend"));
 
@@ -2895,6 +3642,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void refreshMainTrackQuickSample() {
         if (mainTrackWaveform == null || !startupComplete) return;
 
+        mainTrackWaveform.setLayerIndicator(selectedLayer);
+
         final long frames = nativeAudioGetPadSampleFrameCount(
                 selectedPad, selectedLayer);
         final int sampleRate = nativeAudioGetPadSampleRate(
@@ -2912,13 +3661,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     selectedPad, selectedLayer);
             final long end = nativeAudioGetPadSampleRegionEnd(
                     selectedPad, selectedLayer);
-            mainTrackWaveform.setSelection(
-                    start / (float) frames,
-                    end / (float) frames);
-            mainTrackWaveform.setDurationMs(
+            mainTrackWaveform.setSelection(                    start / (float) frames,
+                    end / (float) frames);            mainTrackWaveform.setDurationMs(
                     sampleRate > 0
-                            ? frames * 1000.0f / sampleRate
-                            : 0.0f);
+                            ? frames * 1000.0f / sampleRate                            : 0.0f);
         }
         mainTrackWaveform.setRecording(false);
 
@@ -2933,33 +3679,34 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (mainTrackSamplePrimaryButton != null
                 && mainTrackSampleActionButton != null) {
             if (frames <= 0) {
-                // MPC Main's empty-pad state exposes the two loading paths:
-                // Browse an existing sample or Record a new one.
+                // MPC Main empty state: two large loading choices inside the
+                // sample canvas itself.
+                mainTrackSampleEmptyActions.setVisibility(View.VISIBLE);
+                mainTrackSamplePrimaryButton.setVisibility(View.VISIBLE);
                 mainTrackSamplePrimaryButton.setText("BROWSE");
                 mainTrackSamplePrimaryButton.setOnClickListener(
                         v -> showBrowserPage());
                 mainTrackSamplePrimaryButton.setContentDescription(
                         "Main Track View browse samples");
 
+                mainTrackSampleActionButton.setVisibility(View.VISIBLE);
                 mainTrackSampleActionButton.setText("RECORD");
                 mainTrackSampleActionButton.setOnClickListener(
                         v -> showRecordPage());
                 mainTrackSampleActionButton.setContentDescription(
                         "Main Track View record sample");
-            } else {
-                // Once loaded, the waveform becomes the primary surface;
-                // keep Audition first and expose the semantic Sample Edit action.
-                mainTrackSamplePrimaryButton.setText("AUDITION");
-                mainTrackSamplePrimaryButton.setOnClickListener(
-                        v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
-                mainTrackSamplePrimaryButton.setContentDescription(
-                        "Main Track View sample primary action");
 
-                mainTrackSampleActionButton.setText("SAMPLE EDIT");
-                mainTrackSampleActionButton.setOnClickListener(
-                        v -> showSamplePage());
-                mainTrackSampleActionButton.setContentDescription(
-                        "Main Track View sample edit");
+                mainTrackSampleAuditionButton.setVisibility(View.GONE);
+            } else {
+                // Loaded state: keep waveform dominant and expose one compact
+                // audition/play control. Track Edit remains the waveform
+                // double-tap destination.
+                mainTrackSampleEmptyActions.setVisibility(View.GONE);
+                mainTrackSampleAuditionButton.setVisibility(View.VISIBLE);
+                mainTrackSampleAuditionButton.setOnClickListener(
+                        v -> selectAndTriggerPad(selectedPadIndexForUi(), 112));
+                mainTrackSampleAuditionButton.setContentDescription(
+                        "Main Track View audition selected Pad");
             }
         }
 
@@ -3000,7 +3747,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final TextView layerDetail = findTextByContentDescription(
                 content,
-                "Main Track View selected layer");
+                "Main Track View selected layer • tap to focus Layer");
         if (layerDetail != null) {
             final String trackType = startupComplete
                     ? nativeSequenceGetTrackType(
@@ -3011,7 +3758,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     drum
                             ? String.format(
                                     Locale.ROOT,
-                                    "LAYER\n%d/8",
+                                    "LAYER\n%d",
                                     selectedLayer + 1)
                             : "LAYER\n—");
         }
@@ -3031,21 +3778,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementView.setVisibility(trackVisible ? View.GONE : View.VISIBLE);
 
         /*
-         * MPC presents Track / Arrangement as contextual headers, not as
-         * large rounded Android cards. Keep the active context flat and use
-         * the MPC red focus accent for the selected header.
+         * MPC presents Track / Arrangement as a compact segmented context
+         * control. The active segment is filled with the MPC selection red;
+         * the inactive segment remains flat and quiet so the workspace keeps
+         * the dominant visual weight.
          */
-        mainTrackViewButton.setTextColor(
-                trackVisible ? TEXT : MUTED);
+        mainTrackViewButton.setTextColor(trackVisible ? TEXT : MUTED);
         mainTrackViewButton.setBackground(strokeBackground(
-                trackVisible ? SURFACE_2 : BG,
-                trackVisible ? DANGER : LINE,
+                trackVisible ? MPC_SELECTED : MPC_PANEL_DARK,
+                trackVisible ? MPC_SELECTED : MPC_PANEL_BORDER,
                 MPC_FLAT_RADIUS_DP));
-        mainArrangementViewButton.setTextColor(
-                trackVisible ? MUTED : TEXT);
+        mainArrangementViewButton.setTextColor(trackVisible ? MUTED : TEXT);
         mainArrangementViewButton.setBackground(strokeBackground(
-                trackVisible ? BG : SURFACE_2,
-                trackVisible ? LINE : DANGER,
+                trackVisible ? MPC_PANEL_DARK : MPC_SELECTED,
+                trackVisible ? MPC_PANEL_BORDER : MPC_SELECTED,
                 MPC_FLAT_RADIUS_DP));
 
         if (trackVisible) {
@@ -3345,6 +4091,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return b;
     }
 
+    private Button mainSectionToggle(String text, View.OnClickListener listener) {
+        Button b = mainActionButton(text, listener);
+        b.setTextSize(8);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setAllCaps(true);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(2), 0, dp(2), 0);
+        b.setMinWidth(0);
+        b.setMinimumWidth(0);
+        b.setContentDescription("Main Track Arrangement segmented control • " + text);
+        return b;
+    }
+
     private TextView mainHeaderMetric(String title) {
         TextView view = label("", 10, TEXT);
         view.setTypeface(Typeface.DEFAULT_BOLD);
@@ -3464,8 +4223,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setMainFieldFocus(mainTrackField, focus == 2);
         setMainFieldFocus(mainTrackLayerField, focus == 10);
         if (mainTrackTypeField != null) {
-            mainTrackTypeField.setBackground(strokeBackground(
-                    SURFACE_2, focus == 5 ? DANGER : LINE, 2));
+            refreshMainTrackTypeVisuals();
         }
     }
 
@@ -3510,8 +4268,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 || mainSequenceTransposeField == null) {
             return;
         }
-        refreshMainModeState(
-                mainSequenceNameField,
+        refreshMainModeState(                mainSequenceNameField,
                 mainSequenceTypeField,
                 mainSequenceBpmField,
                 mainSequenceBarsField,
@@ -3544,6 +4301,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceName.setText(String.format(
                 Locale.ROOT, "%d  Sequence %02d",
                 sequenceIndex + 1, sequenceIndex + 1));
+        sequenceName.setBackground(strokeBackground(
+                SURFACE_2,
+                DANGER,
+                MPC_MAIN_RADIUS_DP));
+        sequenceName.setContentDescription(
+                "Main Mode selected sequence • MPC selected field");
         sequenceType.setText("SEQ");
         transpose.setText("TRANSPOSE\n—");
         final double tempo = nativeStateReady
@@ -3563,7 +4326,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         timeSig.setText(String.format(
                 Locale.ROOT, "%d/%d",
                 numerator, denominator));
-        loop.setText("↻");
+        loop.setText("");
+        loop.setForeground(new MpcMainIconDrawable(
+                MpcMainIconDrawable.Mode.LOOP, loopEnabled));
         loop.setContentDescription(
                 "Main Sequence Loop button • " + (loopEnabled ? "ON" : "OFF"));
         loop.setTextColor(loopEnabled ? BG : TEXT);
@@ -3623,21 +4388,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return "EVENTS • " + status.substring(start, end);
     }
 
-    private Button buildMainTrackTypeSelector() {
-        final Button typeField = mainInfoButton(
-                "DRUM • TYPE",
-                "TRACKTYPE_DRUM");
-        typeField.setContentDescription("Main Mode track type selector");
-        typeField.setOnClickListener(v -> {
-            navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK_TYPE);
-            setBottomStatus(
-                    "TRACK TYPE • DRUM is the only implemented Main Track type");
-            navigationController.setSubcontext(
-                    MpcUiState.Subcontext.TRACK_TYPE_SELECT);
-            navigationController.setDataDialFocus(
-                    MpcUiState.DataDialFocus.TRACK_TYPE);
-        });
-        return typeField;
+    private LinearLayout buildMainTrackTypeIconStrip() {
+        final LinearLayout strip = row();
+        strip.setGravity(Gravity.CENTER);
+        strip.setPadding(dp(1), dp(1), dp(1), dp(1));
+        strip.setContentDescription("Main Mode selected Track Type icon");
+
+        final Button iconButton = new Button(this);
+        iconButton.setTag("TRACKTYPE_ICON");
+        iconButton.setText("");
+        iconButton.setGravity(Gravity.CENTER);
+        iconButton.setMinWidth(0);
+        iconButton.setMinimumWidth(0);
+        iconButton.setMinHeight(0);
+        iconButton.setMinimumHeight(0);
+        iconButton.setPadding(0, 0, 0, 0);
+        iconButton.setBackground(strokeBackground(
+                MPC_PANEL_DARK, MPC_PANEL_BORDER, MPC_FLAT_RADIUS_DP));
+        iconButton.setOnClickListener(v ->
+                setBottomStatus(TRACK_TYPE_CHANGE_RESERVED_STATUS));
+        strip.addView(
+                iconButton,
+                new LinearLayout.LayoutParams(dp(34), dp(34)));
+        return strip;
     }
 
     private Button mainInfoButton(String text, String tag) {
@@ -3648,7 +4421,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         b.setPadding(dp(4), 0, dp(4), 0);
         b.setGravity(Gravity.CENTER);
         b.setBackground(strokeBackground(
-                SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+                MPC_PANEL_DARK, MPC_PANEL_BORDER, MPC_FLAT_RADIUS_DP));
         return b;
     }
 
@@ -3667,10 +4440,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void refreshMainTrackTypeVisuals() {
-        if (content == null) return;
-        final View selector = findViewWithContentDescription(
-                content, "Main Mode track type selector");
-        if (!(selector instanceof Button)) return;
+        if (!(mainTrackTypeField instanceof LinearLayout)) return;
 
         String active = "DRUM";
         if (startupComplete) {
@@ -3681,21 +4451,74 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
         }
 
-        final Button button = (Button) selector;
-        final Object tag = button.getTag();
-        final String type = tag instanceof String
-                ? ((String) tag).replace("TRACKTYPE_", "") : "";
-        final boolean selected = type.equals(active);
-        final boolean editable = "DRUM".equalsIgnoreCase(active);
-        button.setText(active + (editable ? "" : " • RESERVED"));
-        button.setEnabled(editable);
-        button.setAlpha(editable ? 1.0f : 0.45f);
-        button.setTextColor(selected && editable ? BG : TEXT);
-        final boolean focused = editable && hardwareFocusId() == 5;
-        button.setBackground(strokeBackground(
+        final LinearLayout strip = (LinearLayout) mainTrackTypeField;
+        final boolean focused =
+                navigationController != null
+                        && navigationController.state().dataDialFocus()
+                                == MpcUiState.DataDialFocus.TRACK_TYPE;
+
+        strip.setContentDescription(
+                "Main Mode selected Track Type icon • " + active
+                        + (focused ? " • DATA DIAL" : ""));
+        strip.setBackground(strokeBackground(
                 SURFACE_2,
-                focused ? DANGER : LINE,
+                focused ? MPC_SELECTION_RED : MPC_PANEL_BORDER,
                 MPC_FLAT_RADIUS_DP));
+
+        if (strip.getChildCount() == 0
+                || !(strip.getChildAt(0) instanceof Button)) {
+            return;
+        }
+
+        final Button iconButton = (Button) strip.getChildAt(0);
+        final boolean supported = "DRUM".equalsIgnoreCase(active);
+        final MpcTrackTypeIconDrawable icon =
+                trackTypeIconDrawable(active);
+        icon.setSelected(true);
+        icon.setEnabledState(supported);
+
+        iconButton.setForeground(icon);
+        iconButton.setEnabled(supported);
+        iconButton.setAlpha(supported ? 1.0f : 0.58f);
+        iconButton.setContentDescription(
+                "Main Track Type " + active
+                        + (supported ? " • Drum workflow available" : " • workflow reserved")
+                        + " • type conversion unavailable"
+                        + (supported ? " • tap for status" : ""));
+        iconButton.setBackground(strokeBackground(
+                focused ? MPC_SELECTED : MPC_PANEL_DARK,
+                focused ? MPC_SELECTION_RED : MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));
+    }
+
+    private MpcTrackTypeIconDrawable trackTypeIconDrawable(String active) {
+        final String value =
+                active == null ? "DRUM" : active.trim().toUpperCase(Locale.ROOT);
+        final MpcTrackTypeIconDrawable.Type type;
+        switch (value) {
+            case "DRUM":
+                type = MpcTrackTypeIconDrawable.Type.DRUM;
+                break;
+            case "KEYGROUP":
+                type = MpcTrackTypeIconDrawable.Type.KEYGROUP;
+                break;
+            case "PLUGIN":
+                type = MpcTrackTypeIconDrawable.Type.PLUGIN;
+                break;
+            case "MIDI":
+                type = MpcTrackTypeIconDrawable.Type.MIDI;
+                break;
+            case "AUDIO":
+                type = MpcTrackTypeIconDrawable.Type.AUDIO;
+                break;
+            case "CV":
+                type = MpcTrackTypeIconDrawable.Type.CV;
+                break;
+            default:
+                type = MpcTrackTypeIconDrawable.Type.DRUM;
+                break;
+        }
+        return new MpcTrackTypeIconDrawable(type);
     }
 
     private String normalizeProgramLabel(String status) {
@@ -3756,11 +4579,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (trackType != null) trackType.setText(
                 "TYPE\n" + (backendType == null || backendType.isEmpty()
                         ? "—" : backendType));
+        final String programStatus = startupComplete
+                ? nativeSequenceGetTrackProgram(trackIndex)
+                : "PROGRAM • NONE";
+        final String normalizedProgram = normalizeProgramLabel(programStatus);
         if (program != null) {
-            final String programStatus = startupComplete
-                    ? nativeSequenceGetTrackProgram(trackIndex)
-                    : "PROGRAM • NONE";
-            program.setText(normalizeProgramLabel(programStatus));
+            program.setText(normalizedProgram);
+        }
+
+        final TextView centralProgram = findTextByContentDescription(
+                root, "Main Mode selected program");
+        if (centralProgram != null) {
+            centralProgram.setText(normalizedProgram);
+        }
+
+        final TextView programOwnership = findTextByContentDescription(
+                root, "Main Mode program ownership status");
+        if (programOwnership != null) {
+            final boolean drumTrack = "DRUM".equalsIgnoreCase(backendType);
+            programOwnership.setText(
+                    drumTrack ? "TRACK-OWNED" : "UNAVAILABLE");
+            programOwnership.setTextColor(
+                    drumTrack ? MUTED : DANGER);
         }
         if (record != null) record.setText(
                 "REC\n" + (startupComplete && nativeSequenceIsSelectedTrackArmed()
@@ -3819,6 +4659,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Button b = button(String.format(Locale.ROOT, "%02d", pad + 1));
                 b.setTextSize(11);
                 b.setTypeface(Typeface.DEFAULT_BOLD);
+                b.setPadding(0, 0, 0, 0);
+                b.setGravity(Gravity.CENTER);
+                b.setBackground(strokeBackground(
+                        MPC_PANEL_DARK,
+                        MPC_PANEL_BORDER,
+                        MPC_FLAT_RADIUS_DP));
                 b.setContentDescription("Main Mode pad " + (pad + 1));
                 b.setOnClickListener(v -> {
                     selectAndTriggerPad(pad, 112);
@@ -3829,8 +4675,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 lp.width = 0;
                 lp.height = 0;
                 lp.columnSpec = GridLayout.spec(displayColumn, 1f);
-                lp.rowSpec = GridLayout.spec(displayRow, 1f);
-                grid.addView(b, lp);
+                lp.rowSpec = GridLayout.spec(displayRow, 1f);                grid.addView(b, lp);
             }
         }
         return grid;
@@ -3845,9 +4690,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (v == null) continue;
             final boolean selected = pad == selectedPad;
             v.setBackground(strokeBackground(
-                    selected ? Color.rgb(45, 72, 82) : SURFACE_2,
-                    selected ? ACCENT : LINE,
-                    6));
+                    selected ? MPC_SELECTED : MPC_PANEL_DARK,
+                    selected ? MPC_SELECTED : MPC_PANEL_BORDER,
+                    MPC_FLAT_RADIUS_DP));
+            if (v instanceof TextView) {
+                ((TextView) v).setTextColor(
+                        selected ? MPC_TOOLBAR_TEXT : TEXT);
+            }
         }
 
         if (mainTrackArrangementHost != null) {
@@ -3859,14 +4708,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         Locale.ROOT,
                         "PAD %02d • BANK %s • Track %02d",
                         selectedPadIndexForUi() + 1,
-                        (char) ('A' + Math.max(
-                                0,
+                        (char) ('A' + Math.max(                                0,
                                 Math.min(7, navigationController.state().padBank()))),
                         Math.max(0, nativeSequenceGetSelectedTrack()) + 1));
             }
         }
     }
-
     private View buildPadGrid() {
         LinearLayout grid = column();
         for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
@@ -4179,35 +5026,40 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
+        // Keep the recording surface compact so the waveform retains its full
+        // MPC-style minimum presentation height on high-density displays.
+        page.setPadding(dp(10), dp(0), dp(10), 0);
 
         LinearLayout sampleHeader = row();
         sampleHeader.addView(sectionLabelView(
                 "SAMPLE WORKSPACE  •  RECORD / MONITOR",
-                new LinearLayout.LayoutParams(0, dp(34), 1)));
+                new LinearLayout.LayoutParams(0, dp(28), 1)));
         sampleHeader.addView(actionButton("EDIT", v -> showSamplePage()),
-                new LinearLayout.LayoutParams(dp(62), dp(34)));
+                new LinearLayout.LayoutParams(dp(62), dp(28)));
         sampleHeader.addView(actionButton("BROWSER", v -> showBrowserPage()),
-                new LinearLayout.LayoutParams(dp(82), dp(34)));
+                new LinearLayout.LayoutParams(dp(82), dp(28)));
         page.addView(sampleHeader);
 
         recordingInfo = label("", 13, TEXT);
         recordingInfo.setBackground(strokeBackground(SURFACE_2, LINE, 8));
         recordingInfo.setPadding(dp(12), 0, dp(12), 0);
         page.addView(recordingInfo, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
         recordingWaveform = new WaveformView(this);
         recordingWaveform.setContentDescription("Recording waveform monitor");
         recordingWaveform.setEditable(false);
         recordingWaveform.setRecording(false);
         recordingWaveform.setMinimumHeight(dp(144));
+        // Keep the sampler waveform independently measurable; the surrounding
+        // recording controls can scroll on compact/high-density screens.
         page.addView(recordingWaveform, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(148)));
 
         recordingTelemetry = label("No recorded audio", 11, MUTED);
         recordingTelemetry.setGravity(Gravity.CENTER_VERTICAL);
         page.addView(recordingTelemetry, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(16)));
 
         LinearLayout controls1 = row();
         Button record = actionButton("RECORD", v -> {
@@ -4242,7 +5094,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
         }), weight());
         page.addView(controls1, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
         LinearLayout controls2 = row();
         controls2.addView(actionButton("MONITOR ON", v -> startMonitor()), weight());
@@ -4264,9 +5116,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 });
         controls2.addView(threshold, weight());
         page.addView(controls2, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
-        content.addView(page);
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(false);
+        scroll.setContentDescription("MPC Sampler recording workspace");
+        scroll.addView(page, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+        content.addView(scroll, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
         refreshRecordingInfo();
         startRecordingWaveformUpdates();
     }
@@ -4413,6 +5273,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         scroll.setContentDescription("Main Track Select 4x4 grid");
         LinearLayout grid = column();
         grid.setPadding(0, dp(2), 0, dp(2));
+        grid.setContentDescription("Main Track Select list");
 
         if (count == 0) {
             grid.addView(label("NO TRACKS", 12, MUTED));
@@ -4625,6 +5486,68 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController.setDataDialFocus(
                         MpcUiState.DataDialFocus.BROWSER_ITEM);
                 setBottomStatus("BROWSER • " + section);
+                refreshMpcFunctionBar();
+            }
+
+            @Override
+            public void onNavigationItemSelected(String section, String item) {
+                final String locationKey = section + "/" + item;
+                navigationController.setBrowser(
+                        locationKey,
+                        navigationController.state().browserFilter(),
+                        navigationController.state().browserSearch());
+                navigationController.setDataDialFocus(
+                        MpcUiState.DataDialFocus.BROWSER_ITEM);
+                setBottomStatus("BROWSER • " + locationKey);
+                if ("PLACES".equals(section)
+                        && ("USER FOLDER".equals(item) || favoriteSlotForLocationKey(locationKey) > 0)) {
+                    final int favoriteSlot = favoriteSlotForLocationKey(locationKey);
+                    final String treeLabel = browserTreeLocationLabel(locationKey);
+                    final Uri treeUri = savedBrowserTreeUriForLocation(locationKey);
+                    final String treeName = savedBrowserTreeNameForLocation(locationKey, treeUri);
+                    if (treeUri == null) {
+                        if (favoriteSlot < 0) {
+                            browserUserTreeUri = null;
+                            browserUserTreeName = "";
+                        }
+                        browserView.setUserFolderState("", false, treeLabel + " • NOT CONFIGURED");
+                    } else if (!hasPersistedReadPermission(treeUri)) {
+                        browserView.setUserFolderState(treeName, false,
+                                treeLabel + " • ACCESS NEEDS RENEWAL • CHOOSE FOLDER");
+                    } else {
+                        if (favoriteSlot < 0) {
+                            browserUserTreeUri = treeUri;
+                            browserUserTreeName = treeName;
+                        }
+                        loadBrowserDocumentTree(treeUri, treeName, browserView, locationKey);
+                    }
+                }
+                refreshMpcFunctionBar();
+            }
+
+            @Override
+            public void onNavigateUp() {
+                final String currentLocation =
+                        navigationController.state().browserLocation();
+                final int separator = currentLocation.lastIndexOf('/');
+                final String parent;
+                if (separator > 0) {
+                    parent = currentLocation.substring(0, separator);
+                } else if (!currentLocation.isEmpty()
+                        && !"PLACES".equals(currentLocation)) {
+                    parent = "PLACES";
+                } else {
+                    parent = "PLACES";
+                }
+                navigationController.setBrowser(
+                        parent,
+                        navigationController.state().browserFilter(),
+                        navigationController.state().browserSearch());
+                navigationController.setDataDialFocus(
+                        MpcUiState.DataDialFocus.BROWSER_ITEM);
+                browserView.setLocation(parent);
+                setBottomStatus("BROWSER • UP • " + parent);
+                refreshMpcFunctionBar();
             }
 
             @Override
@@ -4642,12 +5565,33 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
 
             @Override
-            public void onPlayCurrent() {
-                selectAndTriggerPad(selectedPad, 112);
-                setBottomStatus(String.format(
-                        Locale.ROOT,
-                        "PLAY CURRENT • PAD %02d / LAYER %02d",
-                        selectedPad + 1, selectedLayer + 1));
+            public void onChooseFolder() {
+                openBrowserDocumentTreePicker();
+            }
+
+            @Override
+            public void onLocalScanRequested() {
+                requestLocalAudioScan();
+            }
+
+            @Override
+            public void onFileSelected(MpcBrowserFile file) {
+                if (file == null) {
+                    stopBrowserPreview();
+                    setBottomStatus("BROWSER • no visible local WAV selected");
+                } else {
+                    stopBrowserPreview();
+                    setBottomStatus(String.format(
+                            Locale.ROOT,
+                            "SELECTED • %s • TARGET PAD %02d / LAYER %02d",
+                            file.displayName(), selectedPad + 1, selectedLayer + 1));
+                }
+                refreshMpcFunctionBar();
+            }
+
+            @Override
+            public void onAuditionSelectedFile() {
+                auditionBrowserFile(browserView == null ? null : browserView.selectedFile());
             }
 
             @Override
@@ -4659,6 +5603,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController.setDataDialFocus(
                         MpcUiState.DataDialFocus.BROWSER_ITEM);
             }
+            @Override
+            public void onOptionsRequested() {
+                showBrowserOptionsDialog();
+            }
+
         });
 
         LinearLayout page = page();
@@ -4691,9 +5640,627 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             browserView.setCurrentSampleName("NONE");
         }
         browserView.setTarget(selectedPad, selectedLayer);
+        restoreUserDocumentTree(browserView);
 
-        content.addView(page);
+        content.addView(page, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        refreshMpcFunctionBar();
         updateModeRailSelection();
+    }
+
+    private int favoriteSlotForLocationKey(String locationKey) {
+        if (locationKey == null) return -1;
+        for (int slot = 1; slot <= 5; slot++) {
+            if (("PLACES/FAVORITE " + slot).equals(locationKey)) return slot;
+        }
+        return -1;
+    }
+
+    private String browserTreeLocationLabel(String locationKey) {
+        final int favoriteSlot = favoriteSlotForLocationKey(locationKey);
+        return favoriteSlot > 0 ? "FAVORITE " + favoriteSlot : "USER FOLDER";
+    }
+
+    private String favoriteTreeUriPreferenceKey(int slot) {
+        return PREF_FAVORITE_TREE_URI_PREFIX + slot;
+    }
+
+    private String favoriteTreeNamePreferenceKey(int slot) {
+        return PREF_FAVORITE_TREE_NAME_PREFIX + slot;
+    }
+
+    private Uri savedBrowserTreeUriForLocation(String locationKey) {
+        final int favoriteSlot = favoriteSlotForLocationKey(locationKey);
+        final String preferenceKey;
+        if (favoriteSlot > 0) {
+            preferenceKey = favoriteTreeUriPreferenceKey(favoriteSlot);
+        } else if ("PLACES/USER FOLDER".equals(locationKey)) {
+            preferenceKey = PREF_USER_TREE_URI;
+        } else {
+            return null;
+        }
+        final String savedUri = getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
+                .getString(preferenceKey, "");
+        if (savedUri == null || savedUri.trim().isEmpty()) return null;
+        try {
+            return Uri.parse(savedUri);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private String savedBrowserTreeNameForLocation(String locationKey, Uri treeUri) {
+        final int favoriteSlot = favoriteSlotForLocationKey(locationKey);
+        final String preferenceKey;
+        if (favoriteSlot > 0) {
+            preferenceKey = favoriteTreeNamePreferenceKey(favoriteSlot);
+        } else if ("PLACES/USER FOLDER".equals(locationKey)) {
+            preferenceKey = PREF_USER_TREE_NAME;
+        } else {
+            return "";
+        }
+        final String savedName = getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
+                .getString(preferenceKey, "");
+        if (savedName != null && !savedName.trim().isEmpty()) return savedName.trim();
+        if (treeUri != null) {
+            try {
+                return MpcDocumentTreeCatalog.fallbackDisplayName(treeUri);
+            } catch (RuntimeException ignored) {
+                // If the URI is unusable, the Browser offers a fresh folder selection.
+            }
+        }
+        return "";
+    }
+
+    private void saveBrowserTreeNameForLocation(String locationKey, String name) {
+        final int favoriteSlot = favoriteSlotForLocationKey(locationKey);
+        final android.content.SharedPreferences.Editor editor =
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE).edit();
+        if (favoriteSlot > 0) {
+            editor.putString(favoriteTreeNamePreferenceKey(favoriteSlot), name);
+        } else if ("PLACES/USER FOLDER".equals(locationKey)) {
+            browserUserTreeName = name;
+            editor.putString(PREF_USER_TREE_NAME, name);
+        }
+        editor.apply();
+    }
+
+    private void openBrowserDocumentTreePicker() {
+        final String locationKey = navigationController == null
+                ? "PLACES/USER FOLDER" : navigationController.state().browserLocation();
+        browserPickerTargetFavoriteSlot = favoriteSlotForLocationKey(locationKey);
+        // The system document picker can outlive this Activity process; persist its target.
+        getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE).edit()
+                .putInt(PREF_PENDING_FAVORITE_SLOT, browserPickerTargetFavoriteSlot).apply();
+        final Uri pickerInitialTreeUri = savedBrowserTreeUriForLocation(locationKey);
+        final String pickerLocationLabel = browserTreeLocationLabel(locationKey);
+        final Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && pickerInitialTreeUri != null) {
+            // EXTRA_INITIAL_URI is a navigation hint, not the persisted tree grant.
+            // DocumentsUI implementations may ignore the raw /tree/... URI here;
+            // give the picker the corresponding document URI for the selected folder.
+            Uri initialUri = pickerInitialTreeUri;
+            try {
+                final String authority = pickerInitialTreeUri.getAuthority();
+                final String documentId = DocumentsContract.getTreeDocumentId(pickerInitialTreeUri);
+                if (authority != null && !authority.trim().isEmpty()
+                        && documentId != null && !documentId.trim().isEmpty()) {
+                    initialUri = DocumentsContract.buildDocumentUri(authority, documentId);
+                }
+            } catch (RuntimeException ignored) {
+                // Preserve the stored URI as best-effort fallback if a provider
+                // cannot expose its document ID; the SAF picker remains usable.
+            }
+            intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, initialUri);
+        }
+        try {
+            startActivityForResult(intent, REQUEST_OPEN_DOCUMENT_TREE);
+        } catch (RuntimeException e) {
+            final Intent fallback = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            fallback.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                    | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+            try {
+                startActivityForResult(fallback, REQUEST_OPEN_DOCUMENT_TREE);
+            } catch (RuntimeException fallbackError) {
+                browserPickerTargetFavoriteSlot = -1;
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE).edit()
+                        .remove(PREF_PENDING_FAVORITE_SLOT).apply();
+                final String status = pickerLocationLabel + " • PICKER UNAVAILABLE • "
+                        + fallbackError.getClass().getSimpleName();
+                setBottomStatus(status);
+                if (browserView != null) browserView.setProviderStatus(status);
+            }
+        }
+    }
+
+    private boolean hasPersistedReadPermission(Uri treeUri) {
+        if (treeUri == null) return false;
+        try {
+            for (UriPermission permission : getContentResolver().getPersistedUriPermissions()) {
+                if (treeUri.equals(permission.getUri()) && permission.isReadPermission()) return true;
+            }
+        } catch (RuntimeException ignored) { }
+        return false;
+    }
+
+    private void restoreUserDocumentTree(MpcBrowserView target) {
+        final android.content.SharedPreferences prefs =
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE);
+        final String savedUri = prefs.getString(PREF_USER_TREE_URI, "");
+        final String savedName = prefs.getString(PREF_USER_TREE_NAME, "");
+        if (savedUri == null || savedUri.trim().isEmpty()) {
+            browserUserTreeUri = null;
+            browserUserTreeName = "";
+            target.setUserFolderState("", false, "USER FOLDER • NOT CONFIGURED");
+            return;
+        }
+        try {
+            browserUserTreeUri = Uri.parse(savedUri);
+            browserUserTreeName = savedName == null || savedName.trim().isEmpty()
+                    ? MpcDocumentTreeCatalog.fallbackDisplayName(browserUserTreeUri) : savedName.trim();
+        } catch (RuntimeException e) {
+            browserUserTreeUri = null;
+            browserUserTreeName = savedName == null ? "" : savedName.trim();
+            target.setUserFolderState(browserUserTreeName, false,
+                    "USER FOLDER • SAVED LOCATION INVALID • CHOOSE FOLDER");
+            return;
+        }
+        if (!hasPersistedReadPermission(browserUserTreeUri)) {
+            target.setUserFolderState(browserUserTreeName, false,
+                    "USER FOLDER • ACCESS NEEDS RENEWAL • CHOOSE FOLDER");
+            return;
+        }
+        target.setUserFolderState(browserUserTreeName, true, "USER FOLDER • READY • SELECT TO SCAN");
+        if (navigationController != null
+                && "PLACES/USER FOLDER".equals(navigationController.state().browserLocation())) {
+            loadBrowserDocumentTree(
+                    browserUserTreeUri, browserUserTreeName, target, "PLACES/USER FOLDER");
+        }
+    }
+
+    private void loadBrowserDocumentTree(
+            Uri treeUri, String fallbackName, MpcBrowserView target, String locationKey) {
+        if (treeUri == null || target == null || destroyed || locationKey == null) return;
+        final String treeLabel = browserTreeLocationLabel(locationKey);
+        if (!treeUri.equals(savedBrowserTreeUriForLocation(locationKey))) return;
+        if (!hasPersistedReadPermission(treeUri)) {
+            target.setUserFolderState(fallbackName, false,
+                    treeLabel + " • ACCESS NEEDS RENEWAL • CHOOSE FOLDER");
+            return;
+        }
+        final String fallback = fallbackName == null || fallbackName.trim().isEmpty()
+                ? treeLabel : fallbackName.trim();
+        target.setUserFolderState(fallback, true, treeLabel + " • SCANNING…");
+        try {
+            startupExecutor.execute(() -> {
+                final String folderName;
+                final List<MpcBrowserFile> files;
+                try {
+                    folderName = MpcDocumentTreeCatalog.queryDisplayName(getContentResolver(), treeUri);
+                    files = MpcDocumentTreeCatalog.queryWavFiles(getContentResolver(), treeUri);
+                } catch (RuntimeException e) {
+                    runOnUiThread(() -> {
+                        if (destroyed || browserView != target
+                                || !locationKey.equals(navigationController.state().browserLocation())
+                                || !treeUri.equals(savedBrowserTreeUriForLocation(locationKey))) return;
+                        final String status = treeLabel + " • READ FAILED • "
+                                + e.getClass().getSimpleName() + " • CHOOSE FOLDER AGAIN";
+                        target.setUserFolderFailure(fallback, status);
+                        if ("BROWSE".equals(currentPage)) setBottomStatus(status);
+                    });
+                    return;
+                }
+                runOnUiThread(() -> {
+                    if (destroyed || browserView != target
+                            || !locationKey.equals(navigationController.state().browserLocation())
+                            || !treeUri.equals(savedBrowserTreeUriForLocation(locationKey))) return;
+                    final String resolved = folderName == null || folderName.trim().isEmpty()
+                            ? fallback : folderName.trim();
+                    saveBrowserTreeNameForLocation(locationKey, resolved);
+                    final String countLabel = files.size() == 1 ? "WAV FILE" : "WAV FILES";
+                    final String status = String.format(
+                            Locale.ROOT, "%s • %d %s INDEXED", treeLabel, files.size(), countLabel);
+                    target.setUserFolderFiles(resolved, files, status);
+                    if ("BROWSE".equals(currentPage)) setBottomStatus(status);
+                });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            final String status = treeLabel + " • SCAN UNAVAILABLE • REOPEN BROWSER";
+            target.setUserFolderFailure(fallback, status);
+            if ("BROWSE".equals(currentPage)
+                    && locationKey.equals(navigationController.state().browserLocation())) {
+                setBottomStatus(status);
+            }
+        }
+    }
+
+    private void handleUserDocumentTreeResult(int resultCode, Intent data) {
+        final android.content.SharedPreferences pickerPreferences =
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE);
+        int favoriteSlot = browserPickerTargetFavoriteSlot;
+        if (favoriteSlot < 0) {
+            favoriteSlot = pickerPreferences.getInt(PREF_PENDING_FAVORITE_SLOT, -1);
+        }
+        browserPickerTargetFavoriteSlot = -1;
+        pickerPreferences.edit().remove(PREF_PENDING_FAVORITE_SLOT).apply();
+        if (favoriteSlot > 0) {
+            handleFavoriteDocumentTreeResult(favoriteSlot, resultCode, data);
+            return;
+        }
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            setBottomStatus("USER FOLDER • SELECTION CANCELLED");
+            if (browserView != null && browserUserTreeUri == null) {
+                browserView.setProviderStatus("USER FOLDER • NO FOLDER SELECTED");
+            }
+            return;
+        }
+        final Uri treeUri = data.getData();
+        if ((data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION) == 0) {
+            final String status = "USER FOLDER • READ ACCESS NOT GRANTED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState(browserUserTreeName, false, status);
+            return;
+        }
+        try {
+            getContentResolver().takePersistableUriPermission(
+                    treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (SecurityException e) {
+            final String status = "USER FOLDER • PERSISTENT ACCESS DENIED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState(browserUserTreeName, false, status);
+            return;
+        }
+        if (!hasPersistedReadPermission(treeUri)) {
+            final String status = "USER FOLDER • ACCESS COULD NOT BE PERSISTED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState(browserUserTreeName, false, status);
+            return;
+        }
+        final String name;
+        try {
+            name = MpcDocumentTreeCatalog.fallbackDisplayName(treeUri);
+        } catch (RuntimeException e) {
+            setBottomStatus("USER FOLDER • INVALID DOCUMENT TREE");
+            return;
+        }
+        browserUserTreeUri = treeUri;
+        browserUserTreeName = name;
+        getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE).edit()
+                .putString(PREF_USER_TREE_URI, treeUri.toString())
+                .putString(PREF_USER_TREE_NAME, name).apply();
+        if (browserView != null && "BROWSE".equals(currentPage)) {
+            final String locationKey = "PLACES/USER FOLDER";
+            navigationController.setBrowser(locationKey,
+                    navigationController.state().browserFilter(),
+                    navigationController.state().browserSearch());
+            browserView.setUserFolderState(name, true, "USER FOLDER • FOLDER SELECTED • SCANNING…");
+            browserView.setLocation(locationKey);
+            loadBrowserDocumentTree(treeUri, name, browserView, locationKey);
+        }
+        setBottomStatus("USER FOLDER • " + name + " • ACCESS SAVED");
+        refreshMpcFunctionBar();
+    }
+
+    private void handleFavoriteDocumentTreeResult(int slot, int resultCode, Intent data) {
+        final String favoriteLabel = "FAVORITE " + slot;
+        final String locationKey = "PLACES/" + favoriteLabel;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            setBottomStatus(favoriteLabel + " • SELECTION CANCELLED");
+            if (browserView != null) browserView.setProviderStatus(favoriteLabel + " • NO FOLDER SELECTED");
+            return;
+        }
+        final Uri treeUri = data.getData();
+        if ((data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION) == 0) {
+            final String status = favoriteLabel + " • READ ACCESS NOT GRANTED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState("", false, status);
+            return;
+        }
+        try {
+            getContentResolver().takePersistableUriPermission(
+                    treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (SecurityException e) {
+            final String status = favoriteLabel + " • PERSISTENT ACCESS DENIED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState("", false, status);
+            return;
+        }
+        if (!hasPersistedReadPermission(treeUri)) {
+            final String status = favoriteLabel + " • ACCESS COULD NOT BE PERSISTED • CHOOSE FOLDER AGAIN";
+            setBottomStatus(status);
+            if (browserView != null) browserView.setUserFolderState("", false, status);
+            return;
+        }
+        final String name;
+        try {
+            name = MpcDocumentTreeCatalog.fallbackDisplayName(treeUri);
+        } catch (RuntimeException e) {
+            setBottomStatus(favoriteLabel + " • INVALID DOCUMENT TREE");
+            return;
+        }
+        getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE).edit()
+                .putString(favoriteTreeUriPreferenceKey(slot), treeUri.toString())
+                .putString(favoriteTreeNamePreferenceKey(slot), name).apply();
+        if (browserView != null && "BROWSE".equals(currentPage)) {
+            navigationController.setBrowser(locationKey,
+                    navigationController.state().browserFilter(),
+                    navigationController.state().browserSearch());
+            browserView.setLocation(locationKey);
+            browserView.setUserFolderState(
+                    name, true, favoriteLabel + " • FOLDER SELECTED • SCANNING…");
+            loadBrowserDocumentTree(treeUri, name, browserView, locationKey);
+        }
+        setBottomStatus(favoriteLabel + " • " + name + " • ACCESS SAVED");
+        refreshMpcFunctionBar();
+    }
+
+    private void requestLocalAudioScan() {
+        final String permission = Build.VERSION.SDK_INT >= 33
+                ? Manifest.permission.READ_MEDIA_AUDIO
+                : Manifest.permission.READ_EXTERNAL_STORAGE;
+        if (checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
+            scanLocalAudioFiles();
+            return;
+        }
+        if (browserView != null) {
+            browserView.setScanState(
+                    "LOCAL AUDIO • PERMISSION REQUIRED • OPEN STORAGE STILL WORKS");
+        }
+        requestPermissions(new String[]{permission}, REQUEST_SCAN_LOCAL_AUDIO);
+    }
+
+    private void scanLocalAudioFiles() {
+        if (browserView == null || destroyed) return;
+        browserView.setScanState("LOCAL AUDIO • SCANNING DEVICE MEDIA…");
+        try {
+            startupExecutor.execute(() -> {
+                final List<MpcBrowserFile> files;
+                try {
+                    files = MpcLocalAudioCatalog.queryWavFiles(getContentResolver());
+                } catch (RuntimeException e) {
+                    runOnUiThread(() -> {
+                        if (destroyed || browserView == null) return;
+                        browserView.setScanState(
+                                "LOCAL AUDIO SCAN FAILED • " + e.getClass().getSimpleName());
+                        setBottomStatus("Local WAV scan failed: " + e.getClass().getSimpleName());
+                    });
+                    return;
+                }
+                runOnUiThread(() -> {
+                    if (destroyed || browserView == null) return;
+                    browserView.setLocalFiles(
+                            files,
+                            String.format(Locale.ROOT,
+                                    "LOCAL AUDIO • %d WAV FILES INDEXED", files.size()));
+                    setBottomStatus(String.format(Locale.ROOT,
+                            "LOCAL AUDIO • %d WAV FILES INDEXED", files.size()));
+                });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            browserView.setScanState("LOCAL AUDIO SCAN UNAVAILABLE • TRY AGAIN");
+            setBottomStatus("Local WAV scan unavailable: worker executor is closed");
+        }
+    }
+
+    private void assignSelectedBrowserFile() {
+        final MpcBrowserFile file = browserView == null ? null : browserView.selectedFile();
+        if (file == null) {
+            setBottomStatus("SAMPLE ASSIGN unavailable • select a local WAV result first");
+            refreshMpcFunctionBar();
+            return;
+        }
+        stopBrowserPreview();
+        final int targetPad = Math.max(0, Math.min(15, selectedPad));
+        final int targetLayer = Math.max(0, Math.min(7, selectedLayer));
+        setBottomStatus(String.format(Locale.ROOT,
+                "LOADING %s → PAD %02d / LAYER %02d…",
+                file.displayName(), targetPad + 1, targetLayer + 1));
+        if (browserView != null) {
+            browserView.setProviderStatus(String.format(Locale.ROOT,
+                    "LOADING • %s → PAD %02d / LAYER %02d",
+                    file.displayName(), targetPad + 1, targetLayer + 1));
+        }
+
+        try {
+            startupExecutor.execute(() -> {
+                final byte[] bytes;
+                try {
+                    bytes = readSampleBytes(Uri.parse(file.uri()));
+                } catch (Exception e) {
+                    runOnUiThread(() -> {
+                        if (!destroyed) {
+                            final String failure = "Local WAV read failed • "
+                                    + e.getClass().getSimpleName()
+                                    + (e.getMessage() == null ? "" : ": " + e.getMessage());
+                            setBottomStatus(failure);
+                            if (browserView != null) {
+                                browserView.setProviderStatus(failure);
+                            }
+                        }
+                    });
+                    return;
+                }
+
+                runOnUiThread(() -> {
+                    if (destroyed) return;
+                    nativeAudioStop();
+                    final String loaded = nativeAudioLoadSampleForPadLayer(
+                            bytes, targetPad, targetLayer);
+                    final boolean loadSucceeded = loaded != null
+                            && loaded.startsWith("Pad ")
+                            && loaded.contains(" sample loaded");
+                    if (loadSucceeded) {
+                        nativeAudioSetPadSampleName(
+                                targetPad, targetLayer, file.displayName());
+                    }
+                    final String restarted = nativeAudioStart();
+                    setAudioStateFromResult(restarted);
+                    if (loadSucceeded) {
+                        final String assignmentStatus = String.format(Locale.ROOT,
+                                "ASSIGNED • %s → PAD %02d / LAYER %02d | %s",
+                                file.displayName(), targetPad + 1, targetLayer + 1, restarted);
+                        setBottomStatus(assignmentStatus);
+                        if (browserView != null) {
+                            browserView.setProviderStatus(assignmentStatus);
+                            if (selectedPad == targetPad && selectedLayer == targetLayer) {
+                                browserView.setCurrentSampleName(file.displayName());
+                            }
+                        }
+                    } else {
+                        final String failure = "Local WAV load failed • " + loaded + " | " + restarted;
+                        setBottomStatus(failure);
+                        if (browserView != null) browserView.setProviderStatus(failure);
+                    }
+                    refreshAllInspectorState();
+                    refreshSampleWaveform();
+                    refreshMpcFunctionBar();
+                });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            setBottomStatus("Local WAV load unavailable • worker executor is closed");
+            if (browserView != null) {
+                browserView.setProviderStatus("LOCAL WAV LOAD UNAVAILABLE • TRY AGAIN");
+            }
+        }
+    }
+
+    private void auditionBrowserFile(MpcBrowserFile file) {
+        if (file == null || file.uri().isEmpty()) {
+            setBottomStatus("AUDITION unavailable • select a local WAV result first");
+            return;
+        }
+        stopBrowserPreview();
+        final MediaPlayer player = new MediaPlayer();
+        browserPreviewPlayer = player;
+        browserPreviewUri = file.uri();
+        try {
+            player.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build());
+            player.setDataSource(this, Uri.parse(file.uri()));
+            player.setOnPreparedListener(prepared -> {
+                if (destroyed || browserPreviewPlayer != prepared) {
+                    try { prepared.release(); } catch (RuntimeException ignored) {}
+                    return;
+                }
+                prepared.start();
+                final String auditionStatus = "AUDITION • " + file.displayName();
+                setBottomStatus(auditionStatus);
+                if (browserView != null) browserView.setProviderStatus(auditionStatus);
+            });
+            player.setOnCompletionListener(completed -> {
+                if (browserPreviewPlayer != completed) return;
+                browserPreviewPlayer = null;
+                browserPreviewUri = "";
+                completed.release();
+                final String auditionStatus = "AUDITION COMPLETE • " + file.displayName();
+                setBottomStatus(auditionStatus);
+                if (browserView != null) browserView.setProviderStatus(auditionStatus);
+            });
+            player.setOnErrorListener((failed, what, extra) -> {
+                if (browserPreviewPlayer == failed) {
+                    browserPreviewPlayer = null;
+                    browserPreviewUri = "";
+                    try { failed.release(); } catch (RuntimeException ignored) {}
+                    setBottomStatus("AUDITION FAILED • this WAV could not be previewed");
+                    if (browserView != null) {
+                        browserView.setProviderStatus(
+                                "AUDITION FAILED • " + file.displayName());
+                    }
+                }
+                return true;
+            });
+            player.prepareAsync();
+            final String auditionStatus = "AUDITION PREPARING • " + file.displayName();
+            setBottomStatus(auditionStatus);
+            if (browserView != null) browserView.setProviderStatus(auditionStatus);
+        } catch (Exception e) {
+            stopBrowserPreview();
+            final String auditionStatus = "AUDITION FAILED • " + e.getClass().getSimpleName();
+            setBottomStatus(auditionStatus);
+            if (browserView != null) browserView.setProviderStatus(auditionStatus);
+        }
+    }
+
+    private void stopBrowserPreview() {
+        final MediaPlayer player = browserPreviewPlayer;
+        browserPreviewPlayer = null;
+        browserPreviewUri = "";
+        if (player == null) return;
+        player.setOnPreparedListener(null);
+        player.setOnCompletionListener(null);
+        player.setOnErrorListener(null);
+        try {
+            if (player.isPlaying()) player.stop();
+        } catch (RuntimeException ignored) {
+            // The player can still be preparing when the user changes context.
+        }
+        try {
+            player.release();
+        } catch (RuntimeException ignored) {
+            // Release is best-effort during Activity teardown.
+        }
+    }
+
+    private void showBrowserOptionsDialog() {
+        final String[] labels = {
+                "Show file size",
+                "Show modified date",
+                "Show created date",
+                "Search includes subfolders",
+                "Hide system folders",
+                "Clear unused samples on load"
+        };
+
+        LinearLayout body = column();
+        body.setPadding(dp(16), dp(4), dp(16), dp(2));
+        body.setContentDescription("MPC Browser Options");
+
+        TextView notice = label(
+                "FILE PROVIDER: PARTIAL • options are exposed as MPC taxonomy only; "
+                        + "unsupported provider behaviors remain inactive.",
+                10, MUTED);
+        notice.setPadding(0, 0, 0, dp(10));
+        body.addView(notice);
+
+        for (String labelText : labels) {
+            android.widget.CheckBox check = new android.widget.CheckBox(this);
+            check.setText(labelText);
+            check.setTextColor(TEXT);
+            check.setTextSize(11);
+            check.setContentDescription("MPC Browser Option " + labelText);
+            check.setEnabled(false);
+            check.setAlpha(0.55f);
+            body.addView(check, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+        }
+
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Browser Options")
+                .setView(body)
+                .setNegativeButton("CLOSE", null)
+                .create();
+        browserOptionsDialog = dialog;
+        dialog.setOnShowListener(d -> {
+            if (dialog.getButton(AlertDialog.BUTTON_NEGATIVE) != null) {
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setContentDescription(
+                        "MPC Browser Options close");
+            }
+        });
+        dialog.setOnDismissListener(d -> {
+            if (browserOptionsDialog == dialog) browserOptionsDialog = null;
+        });
+        dialog.show();
+        final Button closeButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+        if (closeButton != null) {
+            closeButton.setContentDescription("MPC Browser Options close");
+        }
     }
 
     private void showArrangePage() {
@@ -4719,15 +6286,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             @Override
             public void onEventDoubleTapped(int trackIndex, long tick) {
-                setBottomStatus(nativeSequenceSelectTrack(trackIndex));
-                navigationController.setSelectedTrack(trackIndex);
-                showSequenceGridPage();
+                openGridFromArrangementEvent(trackIndex, tick);
             }
 
             @Override
             public void onLoopCommitted(int startBar, int endBar) {
                 setBottomStatus(nativeSequenceSetLoopBars(startBar, endBar));
                 refreshArrangeView();
+                if (uiAuditSmokeMode) {
+                    Log.i(TAG, "UI_ARRANGE_LOOP_TOUCH_COMMITTED: start="
+                            + nativeSequenceGetLoopStartBar()
+                            + " end=" + nativeSequenceGetLoopEndBar()
+                            + " visibleBars=" + arrangementView.visibleBarsForAudit()
+                            + " viewportStart=" + arrangementView.viewportStartBarForAudit());
+                }
             }
         });
 
@@ -4775,6 +6347,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         loadArrangementLanes();
         refreshArrangeView();
         updateModeRailSelection();
+    }
+
+    private int openGridFromArrangementEvent(int trackIndex, long tick) {
+        lastArrangementFocusTrackIndex = trackIndex;
+        lastArrangementFocusTick = tick;
+        setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+        navigationController.setSelectedTrack(trackIndex);
+        final int focusedStep = focusSequenceGridAtTick(tick);
+        showSequenceGridPage();
+        setBottomStatus(
+                "ARRANGE EVENT • GRID FOCUSED • STEP "
+                        + String.format(Locale.ROOT, "%02d", focusedStep + 1));
+        return focusedStep;
     }
 
     private void loadArrangementLanes() {
@@ -4832,8 +6417,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? status.substring(0, separator) : status;
         final int kindSeparator = withoutEvents.indexOf("  ");
         if (kindSeparator >= 0 && kindSeparator + 2 < withoutEvents.length()) {
-            return withoutEvents.substring(kindSeparator + 2).trim();
-        }
+            return withoutEvents.substring(kindSeparator + 2).trim();        }
         return withoutEvents.trim();
     }
 
@@ -4861,14 +6445,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
-        currentPage = "TRACK_VIEW";
-        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
+        currentPage = "TRACK_VIEW";        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
         navigationController.navigate(MpcUiState.Mode.TRACK_VIEW);
         navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
         navigationController.setActionAvailable(true);
-        pageTitle.setText("TRACK VIEW");
-        content.removeAllViews();
+        pageTitle.setText("TRACK VIEW");        content.removeAllViews();
 
         LinearLayout page = page();
         page.setContentDescription("MPC Track View workspace");
@@ -5501,12 +7083,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (tool == MpcUiState.EditorTool.SELECT) {
                 selectedPad = padIndex;
                 navigationController.setSelectedPad(padIndex);
-                gridSelectionStateView.setText(
-                        String.format(
-                                Locale.ROOT,
-                                "PAD %02d • STEP %02d",
-                                padIndex + 1,
-                                absoluteStep + 1));
+                updateGridSelectionState(padIndex, absoluteStep);
                 refreshMpcCompactContext();
                 sequenceGridView.invalidate();
                 setBottomStatus(
@@ -5545,13 +7122,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     tool == MpcUiState.EditorTool.ERASE
                             ? MpcUiState.DataDialFocus.PAD
                             : MpcUiState.DataDialFocus.PAD);
-            gridSelectionStateView.setText(
-                    String.format(
-                            Locale.ROOT,
-                            "PAD %02d • STEP %02d",
-                            padIndex + 1,
-                            absoluteStep + 1));
             refreshSequenceGrid();
+            updateGridSelectionState(padIndex, absoluteStep);
             refreshMpcCompactContext();
         });
 
@@ -5618,11 +7190,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeSequenceIsGridEditable()
                         ? "EDIT READY"
                         : "STOP TO EDIT");
-        gridSelectionStateView.setText(
-                String.format(
-                        Locale.ROOT,
-                        "PAD %02d",
-                        selectedPad + 1));
+        updateGridPadSelectionState(selectedPad);
         refreshGridToolState();
         refreshSequenceGrid();
         refreshSequencePlayhead();
@@ -5753,6 +7321,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 MpcUiState.DataDialFocus.STEP);
         pageTitle.setText("STEP");
         content.removeAllViews();
+        sequenceStepTrackContext = null;
+        sequenceStepPadInfo = null;
         sequenceTimeline = null;
         sequenceGridView = null;
         sequenceLauncherView = null;
@@ -5793,33 +7363,40 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         title.setGravity(Gravity.CENTER_VERTICAL);
         header.addView(title, new LinearLayout.LayoutParams(dp(58), dp(38)));
 
-        TextView trackContext = label("", 10, MUTED);
+        TextView trackContext = label("", 9, MUTED);
         trackContext.setGravity(Gravity.CENTER_VERTICAL);
-        trackContext.setPadding(dp(8), 0, dp(8), 0);
+        trackContext.setPadding(dp(4), 0, dp(4), 0);
+        trackContext.setSingleLine(true);
+        trackContext.setEllipsize(TextUtils.TruncateAt.END);
+        trackContext.setContentDescription("Step Sequencer track context");
+        sequenceStepTrackContext = trackContext;
         header.addView(trackContext, new LinearLayout.LayoutParams(0, dp(38), 1.6f));
 
         TextView padInfo = label("", 10, TEXT);
         padInfo.setTypeface(Typeface.DEFAULT_BOLD);
         padInfo.setGravity(Gravity.CENTER);
         padInfo.setBackground(strokeBackground(SURFACE_2, LINE, 6));
-        header.addView(padInfo, new LinearLayout.LayoutParams(dp(88), dp(34)));
+        sequenceStepPadInfo = padInfo;
+        header.addView(padInfo, new LinearLayout.LayoutParams(dp(72), dp(34)));
 
         header.addView(actionButton("PAD −", v -> {
             selectedPad = Math.max(0, selectedPad - 1);
             navigationController.setSelectedPad(selectedPad);
             refreshSequenceStepPage();
             refreshMpcCompactContext();
-        }), new LinearLayout.LayoutParams(dp(62), dp(38)));
+        }), new LinearLayout.LayoutParams(dp(52), dp(38)));
         header.addView(actionButton("PAD +", v -> {
             selectedPad = Math.min(15, selectedPad + 1);
             navigationController.setSelectedPad(selectedPad);
             refreshSequenceStepPage();
             refreshMpcCompactContext();
-        }), new LinearLayout.LayoutParams(dp(62), dp(38)));
-        header.addView(actionButton("◀", v -> moveSequenceStepPage(-1)),
-                new LinearLayout.LayoutParams(dp(50), dp(38)));
-        header.addView(actionButton("▶", v -> moveSequenceStepPage(1)),
-                new LinearLayout.LayoutParams(dp(50), dp(38)));
+        }), new LinearLayout.LayoutParams(dp(52), dp(38)));
+        Button previousPage = actionButton("◀", v -> moveSequenceStepPage(-1));
+        previousPage.setContentDescription("MPC Step Sequencer previous 16-step page");
+        header.addView(previousPage, new LinearLayout.LayoutParams(dp(44), dp(38)));
+        Button nextPage = actionButton("▶", v -> moveSequenceStepPage(1));
+        nextPage.setContentDescription("MPC Step Sequencer next 16-step page");
+        header.addView(nextPage, new LinearLayout.LayoutParams(dp(44), dp(38)));
         page.addView(header);
 
         sequenceStepEventInfo = label(
@@ -5834,8 +7411,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(sequenceStepEventInfo, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
-        TextView toolInfo = label(
-                "STEP PARAMETER • Data Dial / +/− edit the focused event field",
+        TextView toolInfo = label(                "STEP PARAMETER • Data Dial / +/− edit the focused event field",
                 9, MUTED);
         toolInfo.setGravity(Gravity.CENTER_VERTICAL);
         toolInfo.setPadding(dp(10), 0, dp(10), 0);
@@ -5862,14 +7438,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 navigationController.setDataDialFocus(
                         MpcUiState.DataDialFocus.STEP);
                 refreshSequenceStepPage();
-                refreshMpcCompactContext();
-            });
-            button.setOnLongClickListener(v -> {
+                refreshMpcCompactContext();            });            button.setOnLongClickListener(v -> {
                 selectedSequenceStep =
                         sequenceStepPage * SEQUENCE_GRID_PAGE_STEPS + step;
                 navigationController.setDataDialFocus(
-                        MpcUiState.DataDialFocus.STEP);
-                setBottomStatus(
+                        MpcUiState.DataDialFocus.STEP);                setBottomStatus(
                         "STEP " + (selectedSequenceStep + 1) + " SELECTED");
                 refreshSequenceStepPage();
                 return true;
@@ -5890,15 +7463,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
         content.addView(page);
-
-        trackContext.setText(String.format(
-                Locale.ROOT,
-                "TRACK %02d • %s",
-                nativeSequenceGetSelectedTrack() + 1,
-                nativeSequenceTrackStatus(
-                        nativeSequenceGetSelectedTrack())));
-        padInfo.setText("PAD " + String.format(
-                Locale.ROOT, "%02d", selectedPad + 1));
 
         refreshSequenceStepPage();
         refreshMpcCompactContext();
@@ -5985,23 +7549,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             : "STEP —  •  VEL —  •  PROB —  •  RAT —  •  NUDGE —");
         }
 
-        final View parent = sequenceStepButtons[0].getParent() instanceof View
-                ? (View) sequenceStepButtons[0].getParent()
-                : null;
-        if (parent instanceof ViewGroup
-                && ((ViewGroup) parent).getParent() instanceof ViewGroup) {
-            final ViewGroup page = (ViewGroup)
-                    ((ViewGroup) parent).getParent();
-            if (page.getChildCount() > 0
-                    && page.getChildAt(0) instanceof ViewGroup) {
-                final ViewGroup header = (ViewGroup) page.getChildAt(0);
-                if (header.getChildCount() > 4
-                        && header.getChildAt(3) instanceof TextView) {
-                    ((TextView) header.getChildAt(3)).setText(
-                            "PAD " + String.format(
-                                    Locale.ROOT, "%02d", selectedPad + 1));
-                }
-            }
+        final int track = Math.max(0, nativeSequenceGetSelectedTrack());
+        if (sequenceStepTrackContext != null) {
+            sequenceStepTrackContext.setText(String.format(
+                    Locale.ROOT,
+                    "TRACK %02d • %s",
+                    track + 1,
+                    nativeSequenceGetTrackType(track)));
+        }
+        if (sequenceStepPadInfo != null) {
+            sequenceStepPadInfo.setText("PAD " + String.format(
+                    Locale.ROOT, "%02d", selectedPad + 1));
         }
     }
 
@@ -6107,10 +7665,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void moveSequenceStepPage(int delta) {
         final int count = sequenceStepPageCount();
-        sequenceStepPage = Math.max(
-                0, Math.min(count - 1, sequenceStepPage + delta));
+        final int previousPage = sequenceStepPage;
+        final int nextPage = Math.max(
+                0, Math.min(count - 1, previousPage + delta));
+        if (nextPage == previousPage) {
+            return;
+        }
+
+        sequenceStepPage = nextPage;
+        selectedSequenceStep = MpcSequenceStepPagePolicy.selectedStepForPageChange(
+                selectedSequenceStep,
+                previousPage,
+                nextPage,
+                sequenceGridTotalSteps(),
+                SEQUENCE_GRID_PAGE_STEPS);
         nativeSequenceSetStepEditContext(true, sequenceStepPage);
         refreshSequenceStepPage();
+        syncStepEditPadLeds();
     }
 
 
@@ -6344,6 +7915,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private int focusSequenceGridAtTick(long tick) {
+        final int totalSteps = sequenceGridTotalSteps();
+        final long gridTicks = Math.max(1L, nativeSequenceGetQuantizeGrid());
+        final int stepIndex = MpcSequenceZoomPolicy.stepIndexForTick(
+                tick, gridTicks, totalSteps);
+        sequenceGridVisibleSteps = Math.max(
+                1, Math.min(sequenceGridVisibleSteps, totalSteps));
+        sequenceGridStartStep = MpcSequenceZoomPolicy.gridStartForStep(
+                stepIndex, sequenceGridVisibleSteps, totalSteps);
+        return stepIndex;
+    }
+
     private int sequenceGridTotalSteps() {
         final long gridTicks = Math.max(
                 1L, nativeSequenceGetQuantizeGrid());
@@ -6395,6 +7978,65 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSequenceGrid();
     }
 
+    private void updateGridPadSelectionState(int padIndex) {
+        if (gridSelectionStateView == null) {
+            return;
+        }
+        final int safePad = Math.max(0, Math.min(15, padIndex));
+        gridSelectionStateView.setText(String.format(
+                Locale.ROOT,
+                "PAD %02d",
+                safePad + 1));
+        gridSelectionStateView.setContentDescription(String.format(
+                Locale.ROOT,
+                "Grid selection: PAD %02d",
+                safePad + 1));
+    }
+
+    /**
+     * Publishes the selected Grid cell's actual sequencer projection to
+     * accessibility. The custom-drawn canvas has no child View for each cell,
+     * so this label exposes the selected pad/step and current native note state.
+     */
+    private void updateGridSelectionState(int padIndex, int absoluteStep) {
+        if (gridSelectionStateView == null) {
+            return;
+        }
+        final int safePad = Math.max(0, Math.min(15, padIndex));
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int localColumn = absoluteStep - sequenceGridStartStep;
+        int velocity = 0;
+        if (localColumn >= 0 && localColumn < 16) {
+            final int[] velocities = nativeSequenceGetGridVelocities(
+                    sequenceGridStartStep,
+                    gridTicks);
+            final int localIndex = safePad * 16 + localColumn;
+            if (velocities != null && localIndex >= 0
+                    && localIndex < velocities.length) {
+                velocity = Math.max(0, velocities[localIndex]);
+            }
+        }
+
+        gridSelectionStateView.setText(String.format(
+                Locale.ROOT,
+                "PAD %02d • STEP %02d",
+                safePad + 1,
+                absoluteStep + 1));
+        gridSelectionStateView.setContentDescription(
+                velocity > 0
+                        ? String.format(
+                                Locale.ROOT,
+                                "Grid selection: PAD %02d, STEP %02d, note present, velocity %d",
+                                safePad + 1,
+                                absoluteStep + 1,
+                                velocity)
+                        : String.format(
+                                Locale.ROOT,
+                                "Grid selection: PAD %02d, STEP %02d, no note",
+                                safePad + 1,
+                                absoluteStep + 1));
+    }
+
     private void refreshGridHeaderState() {
         if (sequenceGridView == null || navigationController == null) {
             return;
@@ -6408,10 +8050,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int track = Math.max(0, nativeSequenceGetSelectedTrack());
 
         if (gridSelectionStateView != null) {
-            gridSelectionStateView.setText(String.format(
-                    Locale.ROOT,
-                    "PAD %02d",
-                    selectedPad + 1));
+            updateGridPadSelectionState(selectedPad);
         }
 
         if (gridToolStateView != null) {
@@ -6511,16 +8150,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 || !(header.getChildAt(2) instanceof TextView)) return;
 
         final TextView pageInfo = (TextView) header.getChildAt(2);
+        final int totalSteps = sequenceGridTotalSteps();
         final int first = sequenceGridStartStep + 1;
         final int last = Math.min(
-                sequenceGridTotalSteps(),
+                totalSteps,
                 sequenceGridStartStep + sequenceGridVisibleSteps);
         pageInfo.setText(String.format(
                 Locale.ROOT,
                 "%02d–%02d/%02d",
                 first,
                 last,
-                sequenceGridTotalSteps()));
+                totalSteps));
+        pageInfo.setContentDescription(String.format(
+                Locale.ROOT,
+                "Grid visible step range: steps %02d through %02d of %02d",
+                first,
+                last,
+                totalSteps));
     }
 
     private void zoomSequenceGridHorizontal(int delta) {
@@ -6838,7 +8484,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setBottomStatus(nativeSequenceSetQuantizeGrid(values[index]));
         refreshSequencePageTools();
     }
-
     private void refreshSequencePageTools() {
         refreshSequenceControls();
         if (sequenceQuantizeView != null) {
@@ -6865,11 +8510,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setBottomStatus(nativeSequenceSetSwing(value));
         refreshSequencePageTools();
     }
-
     private String sequenceGridLabel(int ticks) {
         switch (ticks) {
-            case 60: return "Q 1/64";
-            case 120: return "Q 1/32";
+            case 60: return "Q 1/64";            case 120: return "Q 1/32";
             case 240: return "Q 1/16";
             case 480: return "Q 1/8";
             case 960: return "Q 1/4";
@@ -7018,50 +8661,139 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "PAD_MIXER";
         navigationController.navigate(MpcUiState.Mode.PAD_MIXER);
+        navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setDataDialFocus(
+                MpcUiState.DataDialFocus.PAD_MIXER_LEVEL);
+        navigationController.setActionAvailable(true);
         pageTitle.setText("PAD MIXER");
         content.removeAllViews();
 
-        LinearLayout page = page();
-        page.addView(sectionLabel("PAD / LAYER MIX"));
+        padMixerView = new MpcPadMixerView(
+                this,
+                new MpcPadMixerView.Listener() {
+                    @Override public int selectedPad() {
+                        return selectedPadIndexForUi();
+                    }
 
-        LinearLayout strips = row();
-        for (int pad = 0; pad < 4; pad++) {
-            final int p = pad;
-            LinearLayout strip = panel();
-            TextView title = label("PAD " + (p + 1), 12, TEXT);
-            title.setTypeface(Typeface.DEFAULT_BOLD);
-            strip.addView(title);
+                    @Override public float padLevel(int pad) {
+                        return nativeAudioGetPadLevel(pad);
+                    }
 
-            SeekBar level = new SeekBar(this);
-            level.setMax(100);
-            level.setProgress(Math.round(nativeAudioGetPadLevel(p) * 100));
-            level.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
-                    if (fromUser) {
-                        nativeAudioSetPadLevel(p, progress / 100.0f);
+                    @Override public float padPan(int pad) {
+                        return nativeAudioGetPadPan(pad);
+                    }
+
+                    @Override public float padTuning(int pad) {
+                        return nativeAudioGetPadTuning(pad);
+                    }
+
+                    @Override public String padSampleName(int pad) {
+                        final String value = nativeAudioGetPadSampleName(
+                                pad, selectedLayer);
+                        return value == null ? "" : value;
+                    }
+
+                    @Override public void onPadSelected(int pad) {
+                        selectedPad = Math.max(0, Math.min(15, pad));
+                        navigationController.setSelectedPad(selectedPad);
+                        navigationController.setSubcontext(
+                                MpcUiState.Subcontext.PERFORMANCE);
+                        navigationController.setDataDialFocus(
+                                MpcUiState.DataDialFocus.PAD_MIXER_LEVEL);
+                        navigationController.setActionAvailable(true);
+                        padMixerView.setControlFocus(
+                                MpcPadMixerView.ControlFocus.LEVEL);
+                        setBottomStatus(String.format(
+                                Locale.ROOT,
+                                "PAD MIXER • PAD %02d • LEVEL • DATA DIAL",
+                                selectedPad + 1));
+                        refreshMpcCompactContext();
+                        syncHardwareControllerFeedback();
+                    }
+
+                    @Override public void onControlFocus(
+                            int pad,
+                            MpcPadMixerView.ControlFocus focus) {
+                        selectedPad = Math.max(0, Math.min(15, pad));
+                        navigationController.setSelectedPad(selectedPad);
+                        navigationController.setSubcontext(
+                                MpcUiState.Subcontext.PERFORMANCE);
+                        navigationController.setActionAvailable(true);
+                        final MpcUiState.DataDialFocus dialFocus;
+                        switch (focus) {
+                            case PAN:
+                                dialFocus = MpcUiState.DataDialFocus.PAD_MIXER_PAN;
+                                break;
+                            case TUNE:
+                                dialFocus = MpcUiState.DataDialFocus.PAD_MIXER_TUNE;
+                                break;
+                            case LEVEL:
+                            default:
+                                dialFocus = MpcUiState.DataDialFocus.PAD_MIXER_LEVEL;
+                                break;
+                        }
+                        navigationController.setDataDialFocus(dialFocus);
+                        setBottomStatus(String.format(
+                                Locale.ROOT,
+                                "PAD MIXER • PAD %02d • %s • DATA DIAL",
+                                selectedPad + 1,
+                                focus == MpcPadMixerView.ControlFocus.PAN
+                                        ? "PAN"
+                                        : focus == MpcPadMixerView.ControlFocus.TUNE
+                                                ? "TUNE"
+                                                : "LEVEL"));
+                        refreshMpcCompactContext();
+                        syncHardwareControllerFeedback();
+                    }
+
+                    @Override public void onPadLevelSet(int pad, float value) {
+                        final float next = Math.max(0.0f, Math.min(1.0f, value));
+                        setBottomStatus(nativeAudioSetPadLevel(pad, next));
                         refreshMpcCompactContext();
                     }
-                }
-                @Override public void onStartTrackingTouch(SeekBar bar) {}
-                @Override public void onStopTrackingTouch(SeekBar bar) {}
-            });
-            strip.addView(level, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
-            strip.addView(actionButton("SELECT", v -> {
-                selectedPad = p;
-                navigationController.setSelectedPad(p);
-                refreshPadSelectionVisuals();
-                showMainPage();
-            }), new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
-            strips.addView(strip, new LinearLayout.LayoutParams(
-                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+                    @Override public void onPadPanDelta(int pad, float delta) {
+                        final float next = Math.max(
+                                -1.0f,
+                                Math.min(1.0f,
+                                        nativeAudioGetPadPan(pad) + delta));
+                        setBottomStatus(nativeAudioSetPadPan(pad, next));
+                        refreshMpcCompactContext();
+                    }
+
+                    @Override public void onPadTuningDelta(int pad, float delta) {
+                        final float next =
+                                nativeAudioGetPadTuning(pad) + delta;
+                        setBottomStatus(nativeAudioSetPadTuning(pad, next));
+                        refreshMpcCompactContext();
+                    }
+                });
+
+        content.addView(padMixerView,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+        refreshPadMixerView();
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+    }
+
+    private void refreshPadMixerView() {
+        if (padMixerView == null) {
+            return;
         }
-
-        page.addView(strips, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-        content.addView(page);
+        final int trackIndex = startupComplete
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        final String trackLabel = String.format(
+                Locale.ROOT, "%02d", trackIndex + 1);
+        final String programLabel = startupComplete
+                ? normalizeProgramLabel(nativeSequenceGetTrackProgram(trackIndex))
+                : "PROGRAM —";
+        padMixerView.refresh(
+                trackLabel,
+                programLabel,
+                selectedPadIndexForUi());
     }
 
     private void showMidiPage() {
@@ -7134,28 +8866,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final MpcModeRegistry.Entry[] entries = MpcModeRegistry.menuEntries();
         for (int i = 0; i < entries.length; i++) {
             final MpcModeRegistry.Entry entry = entries[i];
-            final Button b = actionButton(
-                    entry.available ? entry.label : entry.label + "\nRESERVED",
-                    v -> {
-                        if (!entry.available) {
-                            navigationController.navigate(MpcUiState.Mode.RESERVED);
-                            navigationController.setActionAvailable(false);
-                            setBottomStatus(
-                                    entry.label + " • RESERVED / UNAVAILABLE");
-                            updateMpcShellState();
-                            return;
-                        }
-                        navigateToMode(entry.mode);
-                    });
-            b.setEnabled(entry.available);
-            b.setAlpha(entry.available ? 1.0f : 0.55f);
-            b.setGravity(Gravity.CENTER);
-            b.setTextSize(11);
-            b.setTypeface(Typeface.DEFAULT_BOLD);
-            b.setContentDescription(
-                    entry.available
-                            ? "MPC Menu " + entry.label
-                            : "MPC Menu " + entry.label + " reserved");
+            final Button b = buildMpcMenuTile(entry);
 
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
             lp.width = 0;
@@ -7170,30 +8881,68 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(grid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        LinearLayout system = row();
-        system.addView(actionButton("PREFERENCES", v -> showAudioSettingsPage()),
-                weight());
-        system.addView(actionButton("MIDI / CONTROL", v -> showMidiPage()),
-                weight());
-        Button saveProject = actionButton(
-                "SAVE / PROJECT",
-                null);
-        saveProject.setEnabled(false);
-        saveProject.setAlpha(0.45f);
-        saveProject.setContentDescription(
-                "Save and Project reserved");
-        system.addView(saveProject, weight());
-        system.addView(actionButton(
-                "EDIT SHORTCUTS",
-                v -> showShortcutConfigPage()),
-                weight());
-        system.addView(actionButton("BACK", v -> navigateBackFromShell()), weight());
-        page.addView(system, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
-
+        // Menu owns the 4x4 launcher only. System actions are rendered
+        // once by the shell Function Bar so there is no nested command footer.
         content.addView(page);
         updateModeRailSelection();
     }
+    private Button buildMpcMenuTile(MpcModeRegistry.Entry entry) {
+        final String title = entry.available
+                ? entry.label
+                : entry.label + "\nRESERVED";
+
+        final Button b = actionButton(
+                title,
+                v -> {
+                    if (!entry.available) {
+                        navigationController.navigate(MpcUiState.Mode.RESERVED);
+                        navigationController.setActionAvailable(false);
+                        setBottomStatus(
+                                entry.label + " • RESERVED / UNAVAILABLE");
+                        updateMpcShellState();
+                        return;
+                    }
+                    navigateToMode(entry.mode);
+                });
+
+        b.setGravity(Gravity.CENTER);
+        b.setTextSize(10);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setCompoundDrawablesWithIntrinsicBounds(
+                null,
+                new MpcShortcutIconDrawable(entry.mode, 0.0f),
+                null,
+                null);
+        b.setCompoundDrawablePadding(dp(5));
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
+        b.setPadding(dp(4), dp(6), dp(4), dp(4));
+        b.setTextColor(entry.available ? TEXT : MUTED);
+        b.setAlpha(entry.available ? 1.0f : 0.48f);
+        b.setBackground(strokeBackground(
+                MPC_PANEL_DARK,
+                MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));
+        b.setContentDescription(
+                entry.available
+                        ? "MPC Menu " + entry.label
+                        : "MPC Menu " + entry.label + " reserved");
+        return b;
+    }
+
+    private Button styleMpcMenuFooterButton(Button button) {
+        button.setTextSize(9);
+        button.setTypeface(Typeface.DEFAULT_BOLD);
+        button.setMinHeight(0);
+        button.setMinimumHeight(0);
+        button.setTextColor(TEXT);
+        button.setBackground(strokeBackground(
+                MPC_PANEL,
+                MPC_PANEL_BORDER,
+                MPC_FLAT_RADIUS_DP));
+        return button;
+    }
+
     private void showShortcutConfigPage() {
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
@@ -7203,13 +8952,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         pageTitle.setText("SHORTCUTS");
         content.removeAllViews();
 
-        final MpcModeRegistry.Entry[] allModes = MpcModeRegistry.menuEntries();
-        final ArrayList<MpcModeRegistry.Entry> availableModes = new ArrayList<>();
-        for (MpcModeRegistry.Entry entry : allModes) {
-            if (entry.available) {
-                availableModes.add(entry);
-            }
-        }
+        final MpcModeRegistry.Entry[] shortcutModes =
+                MpcModeRegistry.shortcutEntries();
 
         LinearLayout page = page();
         page.setPadding(dp(8), dp(6), dp(8), dp(2));
@@ -7222,7 +8966,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
         TextView hint = label(
-                "Each slot can promote any implemented context. RESERVED modes stay in Menu.",
+                "Each slot mirrors the canonical MPC shortcut set. RESERVED destinations stay visible.",
                 10, MUTED);
         page.addView(hint, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
@@ -7246,9 +8990,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             android.widget.Spinner spinner = new android.widget.Spinner(this);
             ArrayList<String> labels = new ArrayList<>();
             int selectedIndex = 0;
-            for (int j = 0; j < availableModes.size(); j++) {
-                MpcModeRegistry.Entry entry = availableModes.get(j);
-                labels.add(entry.label);
+            for (int j = 0; j < shortcutModes.length; j++) {
+                MpcModeRegistry.Entry entry = shortcutModes[j];
+                labels.add(entry.available
+                        ? entry.label
+                        : entry.label + " • RESERVED");
                 if (entry.mode == current[i]) {
                     selectedIndex = j;
                 }
@@ -7272,15 +9018,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 int positionIndex,
                                 long id) {
                             if (positionIndex >= 0
-                                    && positionIndex < availableModes.size()) {
+                                    && positionIndex < shortcutModes.length) {
+                                final MpcModeRegistry.Entry entry =
+                                        shortcutModes[positionIndex];
                                 navigationController.setShortcut(
                                         slot,
-                                        availableModes.get(positionIndex).mode);
+                                        entry.mode);
                                 setBottomStatus(String.format(
                                         Locale.ROOT,
                                         "SHORTCUT %d • %s",
                                         slot + 1,
-                                        availableModes.get(positionIndex).label));
+                                        entry.label));
                             }
                         }
 
@@ -7323,8 +9071,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout footer = row();
         footer.addView(actionButton("RESET DEFAULTS", v -> {
-            navigationController.setShortcuts(
-                    MpcModeRegistry.defaultShortcuts());
+            navigationController.resetDefaultShortcuts();
             showShortcutConfigPage();
         }), weight());
         footer.addView(actionButton("BACK TO MENU", v -> showMenuPage()), weight());
@@ -7346,6 +9093,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         LinearLayout page = page();
+        page.addView(buildPreferencesCategoryBar("AUDIO"),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
         LinearLayout columns = row();
 
@@ -7468,6 +9218,75 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setupAudioSettingSpinners();
         refreshAudioDevicesFromSystem();
         refreshAudioRoutingDiagnostics();
+        updateModeRailSelection();
+    }
+
+
+    private LinearLayout buildPreferencesCategoryBar(String selected) {
+        LinearLayout tabs = row();
+        tabs.setContentDescription("MPC Preferences category navigation");
+        final String[] categories = {"AUDIO", "MIDI / SYNC", "SEQUENCER"};
+        for (String category : categories) {
+            final Button tab = actionButton(category, v -> {
+                if ("AUDIO".equals(category)) {
+                    showAudioSettingsPage();
+                } else {
+                    showPreferencesReservedPage(category);
+                }
+            });
+            tab.setTextSize(9);
+            tab.setTypeface(Typeface.DEFAULT_BOLD);
+            tab.setContentDescription("MPC Preferences " + category);
+            tab.setBackground(strokeBackground(
+                    category.equals(selected) ? MPC_SELECTION_RED : MPC_PANEL_DARK,
+                    category.equals(selected) ? MPC_SELECTION_RED : MPC_PANEL_BORDER,
+                    MPC_FLAT_RADIUS_DP));
+            tab.setTextColor(category.equals(selected) ? Color.WHITE : TEXT);
+            tabs.addView(tab, weight());
+        }
+        return tabs;
+    }
+
+    private void showPreferencesReservedPage(String category) {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "PREFERENCES";
+        navigationController.navigate(MpcUiState.Mode.PREFERENCES);
+        navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
+        pageTitle.setText("PREFERENCES");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.addView(buildPreferencesCategoryBar(category),
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        LinearLayout body = panel();
+        body.setContentDescription(
+                "MPC Preferences " + category + " reserved workspace");
+        body.addView(sectionLabel(category));
+
+        TextView state = label("RESERVED / UNAVAILABLE", 18, MUTED);
+        state.setTypeface(Typeface.DEFAULT_BOLD);
+        state.setGravity(Gravity.CENTER);
+        body.addView(state, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(72)));
+
+        TextView detail = label(
+                "This Preferences category is present in the MPC 3.9 navigation model, "
+                        + "but this project does not expose a truthful semantic backend "
+                        + "for these settings yet. No fake values or setters are shown.",
+                11, MUTED);
+        detail.setGravity(Gravity.CENTER);
+        detail.setPadding(dp(18), dp(12), dp(18), dp(12));
+        body.addView(detail, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        page.addView(body, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        content.addView(page);
         updateModeRailSelection();
     }
 
@@ -7804,8 +9623,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             recordingTelemetry.setText(String.format(
                     Locale.ROOT,
                     "Duration %.2fs  •  Peak %d%%  •  Frames %d",
-                    seconds,
-                    Math.round(peak * 100.0f),
+                    seconds,                    Math.round(peak * 100.0f),
                     frames));
         }
     }
@@ -7830,11 +9648,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sampleWaveform.setPeaks(peaks);
         final long start = nativeAudioGetPadSampleRegionStart(
                 selectedPad, selectedLayer);
-        final long end = nativeAudioGetPadSampleRegionEnd(
-                selectedPad, selectedLayer);
+        final long end = nativeAudioGetPadSampleRegionEnd(                selectedPad, selectedLayer);
         sampleWaveform.setSelection(
-                start / (float) frames,
-                end / (float) frames);
+                start / (float) frames,                end / (float) frames);
         sampleWaveform.setDurationMs(
                 sampleRate > 0
                         ? frames * 1000.0f / sampleRate
@@ -8021,6 +9837,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void openWavPicker() {
+        // Snapshot the actual destination before Android temporarily takes
+        // over the UI. The picker is an import mechanism, not a new target.
+        browserPickerTargetPad = Math.max(0, Math.min(15, selectedPad));
+        browserPickerTargetLayer = Math.max(0, Math.min(7, selectedLayer));
+        stopBrowserPreview();
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         // Android file providers are inconsistent about the MIME they report
@@ -8054,9 +9875,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != REQUEST_OPEN_WAV || resultCode != RESULT_OK || data == null) {
+        if (requestCode == REQUEST_OPEN_DOCUMENT_TREE) {
+            handleUserDocumentTreeResult(resultCode, data);
             return;
         }
+        if (requestCode == REQUEST_OPEN_WAV
+                && uiAuditAwaitingBrowserStoragePickerResult) {
+            uiAuditAwaitingBrowserStoragePickerResult = false;
+            browserPickerTargetPad = -1;
+            browserPickerTargetLayer = -1;
+            if (resultCode != RESULT_CANCELED) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: storage picker audit expected Back/cancel"
+                        + " | resultCode=" + resultCode);
+                return;
+            }
+            // DocumentUI returns control before the underlying immersive
+            // window has necessarily completed its first visible layout pass.
+            // Wait boundedly for Browser to become visible again before testing
+            // context retention or clicking Main's Back action.
+            waitForBrowserAuditAfterPickerReturn(0);
+            return;
+        }
+        if (requestCode != REQUEST_OPEN_WAV) {
+            return;
+        }
+        if (resultCode != RESULT_OK || data == null) {
+            browserPickerTargetPad = -1;
+            browserPickerTargetLayer = -1;
+            return;
+        }
+
+        final int targetPad = browserPickerTargetPad >= 0
+                ? browserPickerTargetPad : Math.max(0, Math.min(15, selectedPad));
+        final int targetLayer = browserPickerTargetLayer >= 0
+                ? browserPickerTargetLayer : Math.max(0, Math.min(7, selectedLayer));
+        browserPickerTargetPad = -1;
+        browserPickerTargetLayer = -1;
 
         Uri uri = data.getData();
         if (uri == null && data.getClipData() != null
@@ -8085,27 +9939,76 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             nativeAudioStop();
             final String loaded = nativeAudioLoadSampleForPadLayer(
-                    bytes, selectedPad, selectedLayer);
+                    bytes, targetPad, targetLayer);
             final String sampleName = sampleDisplayName(uri);
             if (loaded != null
                     && loaded.startsWith("Pad ")
                     && loaded.contains(" sample loaded")) {
                 nativeAudioSetPadSampleName(
-                        selectedPad, selectedLayer, sampleName);
+                        targetPad, targetLayer, sampleName);
+                if (browserView != null && "BROWSE".equals(currentPage)) {
+                    if (selectedPad == targetPad && selectedLayer == targetLayer) {
+                        browserView.setCurrentSampleName(sampleName);
+                    }
+                    browserView.clearSelectedFile();
+                }
             }
             final String restarted = nativeAudioStart();
 
             setAudioStateFromResult(restarted);
-            setBottomStatus(loaded + " | " + restarted);
+            if (loaded != null
+                    && loaded.startsWith("Pad ")
+                    && loaded.contains(" sample loaded")) {
+                final String assignmentStatus = String.format(
+                        Locale.ROOT,
+                        "ASSIGNED • %s → PAD %02d / LAYER %02d | %s",
+                        sampleName, targetPad + 1, targetLayer + 1, restarted);
+                setBottomStatus(assignmentStatus);
+                // Keep the Browser's own result/status surface in sync with
+                // the state change made through Android Document Provider.
+                if (browserView != null) {
+                    browserView.setProviderStatus(assignmentStatus);
+                }
+            } else {
+                final String loadFailure = loaded + " | " + restarted;
+                setBottomStatus(loadFailure);
+                if (browserView != null) {
+                    browserView.setProviderStatus(loadFailure);
+                }
+            }
             refreshAllInspectorState();
             refreshSampleWaveform();
         } catch (IOException | IllegalArgumentException e) {
             final String restarted = nativeAudioStart();
             setAudioStateFromResult(restarted);
-            setBottomStatus("Sample load failed: "
+            final String pickerFailure = "Sample load failed: "
                     + e.getClass().getSimpleName() + ": " + e.getMessage()
-                    + " | " + restarted);
+                    + " | " + restarted;
+            setBottomStatus(pickerFailure);
+            if (browserView != null) {
+                browserView.setProviderStatus(pickerFailure);
+            }
         }
+    }
+
+    private void waitForBrowserAuditAfterPickerReturn(int attempt) {
+        if (destroyed) return;
+        if (browserView != null
+                && browserView.isShown()
+                && browserView.getWidth() > dp(200)
+                && browserView.getHeight() > dp(180)) {
+            continueUiAuditAfterBrowserStoragePicker(true);
+            return;
+        }
+        if (attempt >= 60) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser workspace did not become visible after storage picker"
+                    + " | browser=" + describeAuditView(browserView)
+                    + " | attempt=" + attempt);
+            return;
+        }
+        waveformUiHandler.postDelayed(
+                () -> waitForBrowserAuditAfterPickerReturn(attempt + 1),
+                50L);
     }
 
     private String sampleDisplayName(Uri uri) {
@@ -8188,8 +10091,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 + error.getClass().getSimpleName()
                 + (error.getMessage() == null ? "" : " • " + error.getMessage());
         Log.e(TAG, detail, error);
-        if (bottomStatus != null) {
-            bottomStatus.setVisibility(View.VISIBLE);
+        if (bottomStatus != null) {            bottomStatus.setVisibility(View.VISIBLE);
             bottomStatus.setText(detail);
         }
         try {
@@ -8424,10 +10326,36 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return view;
     }
 
+    private TextView topStatusCell(String text) {
+        TextView v = label(text, 8, MPC_TOOLBAR_TEXT);
+        v.setGravity(Gravity.CENTER);
+        v.setTypeface(Typeface.DEFAULT_BOLD);
+        v.setPadding(dp(2), 0, dp(2), 0);
+        v.setBackground(strokeBackground(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
+                MPC_FLAT_RADIUS_DP));
+        return v;
+    }
+
+    private void updateTopMidiStatus(TextView view, boolean connected) {
+        if (view == null) return;
+        view.setText("IN".equals(view.getTag()) ? "IN" : "OUT");
+        view.setTextColor(connected ? MPC_TOOLBAR_TEXT : Color.rgb(205, 154, 164));
+        view.setContentDescription(
+                "MPC Toolbar MIDI "
+                        + ("IN".equals(view.getTag()) ? "IN" : "OUT")
+                        + (connected ? " ready" : " unavailable"));
+    }
     private Button topButton(String text) {
         Button b = button(text);
         b.setTextSize(10);
-        b.setBackground(strokeBackground(SURFACE_2, LINE, MPC_FLAT_RADIUS_DP));
+        b.setTextColor(MPC_TOOLBAR_TEXT);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setBackground(strokeBackground(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
+                MPC_FLAT_RADIUS_DP));
         return b;
     }
 
@@ -8549,22 +10477,295 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return Math.round(value) + "Hz";
     }
 
-    private void runUiAudit() {
-        Log.i(TAG, "UI_HIERARCHY_BEGIN");
-        String[] expected = {
-                "GRID", "SAMPLER", "PAD MIXER",
-                "MENU", "PLAY", "STOP", "MIDI", "01", "16", "LOAD"
+    private void scheduleUiAuditAfterFirstLayout() {
+        final View decor = getWindow().getDecorView();
+        final Handler auditHandler = new Handler(Looper.getMainLooper());
+        final int[] attempts = {0};
+        final Runnable[] waitForMeasuredShell = new Runnable[1];
+
+        waitForMeasuredShell[0] = () -> {
+            if (destroyed) {
+                return;
+            }
+
+            final View shellRoot = mpcShell == null ? null : mpcShell.root();
+            final View mainWorkspace = mainTrackArrangementHost;
+            final View trackSelector = mainTrackViewButton;
+            final View arrangementSelector = mainArrangementViewButton;
+            final boolean decorMeasured =
+                    decor.getWidth() > 0 && decor.getHeight() > 0;
+            final boolean shellMeasured =
+                    shellRoot != null
+                            && shellRoot.getWidth() > 0
+                            && shellRoot.getHeight() > 0;
+            /*
+             * showMainPage() can rebuild the Main subtree after the shell itself
+             * is already measured. A weighted FrameLayout parent can acquire its
+             * bounds before its descendants are measured, so the barrier targets
+             * the actual controls that the audit will exercise.
+             */
+            final boolean mainWorkspaceMeasured =
+                    mainWorkspace != null
+                            && mainWorkspace.getWidth() > 0
+                            && mainWorkspace.getHeight() > 0;
+            final boolean mainControlsMeasured =
+                    trackSelector != null
+                            && trackSelector.getWidth() > 0
+                            && trackSelector.getHeight() > 0
+                            && arrangementSelector != null
+                            && arrangementSelector.getWidth() > 0
+                            && arrangementSelector.getHeight() > 0;
+
+            if (decorMeasured && shellMeasured
+                    && mainWorkspaceMeasured && mainControlsMeasured) {
+                /*
+                 * One additional animation turn keeps the audit behind the
+                 * layout pass that produced these dimensions. This matters on
+                 * immersive Android emulator startup where insets can trigger
+                 * a second traversal after the first visible frame.
+                 */
+                decor.postOnAnimation(() -> decor.postDelayed(
+                        this::runUiAudit, 250L));
+                return;
+            }
+
+            if (++attempts[0] >= 60) {
+                Log.e(TAG, "UI_HIERARCHY_FAILED: measured MPC shell timeout"
+                        + " | decor=" + describeAuditView(decor)
+                        + " | shell=" + describeAuditView(shellRoot)
+                        + " | mainWorkspace=" + describeAuditView(mainWorkspace));
+                return;
+            }
+
+            auditHandler.postDelayed(waitForMeasuredShell[0], 16L);
         };
 
-        for (String text : expected) {
-            View view = findViewWithExactText(getWindow().getDecorView(), text);
+        waitForMeasuredShell[0].run();
+    }
+
+    private void runUiAudit() {
+        if (!uiAuditSmokeMode) {
+            runUiAuditAfterMainEvidenceCapture();
+            return;
+        }
+
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-main-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_MAIN_CAPTURE_READY");
+
+        final long deadline = System.currentTimeMillis() + 60_000L;
+        final Runnable[] captureReleasePoll = new Runnable[1];
+        captureReleasePoll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                runUiAuditAfterMainEvidenceCapture();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_HIERARCHY_FAILED: Main screenshot/accessibility capture timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
+    }
+
+    private void runUiAuditAfterMainEvidenceCapture() {
+        Log.i(TAG, "UI_HIERARCHY_BEGIN");
+        String[] mainShellExpectedDescriptions = {
+                "MPC One Main Toolbar",
+                "MPC Toolbar Menu",
+                "MPC shortcut BROWSER",
+                "MPC shortcut CHANNEL MIXER",
+                "MPC shortcut PAD MIXER",
+                "MPC shortcut SOUNDS",
+                "MPC shortcut XY",
+                "Main Mode Sequence section",
+                "Main Track visual hierarchy • Track / Program / workspace header",
+                "Main Track and Arrangement workspace",
+                "MPC Main XL Mixer Strips",
+                "MPC Main mixer strips shown",
+                "MPC Main sequence REC ARM"
+        };
+
+        for (String description : mainShellExpectedDescriptions) {
+            View view = findViewWithContentDescription(
+                    getWindow().getDecorView(), description);
             if (view == null || view.getWidth() <= 0 || view.getHeight() <= 0) {
-                Log.e(TAG, "UI_HIERARCHY_FAILED: " + text);
+                Log.e(TAG, "UI_HIERARCHY_FAILED: " + description);
                 return;
             }
         }
         Log.i(TAG, "UI_HIERARCHY_COMPLETE");
+        /*
+         * Geometry for the canonical Main Track/Arrangement shell is accepted
+         * before any audit-driven state mutation. Later interactions can rebuild
+         * weighted Main children synchronously before Android measures them.
+         */
+        View mainViewSwitcher = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track Arrangement segmented control");
+        View mainTrackSelector = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track View header");
+        View mainArrangementSelector = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Arrangement View header");
+        View mainTrackWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode Track workspace");
+        View mainArrangementWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode arrangement preview");
+        if (mainViewSwitcher == null
+                || mainViewSwitcher.getHeight() < dp(36)
+                || mainTrackSelector == null
+                || mainArrangementSelector == null
+                || mainTrackWorkspace == null
+                || mainArrangementWorkspace == null
+                || mainTrackWorkspace.getVisibility() != View.VISIBLE
+                || mainArrangementWorkspace.getVisibility() != View.GONE) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track/Arrangement default view"
+                    + " | switcher=" + describeAuditView(mainViewSwitcher)
+                    + " | trackSelector=" + describeAuditView(mainTrackSelector)
+                    + " | arrangementSelector=" + describeAuditView(mainArrangementSelector)
+                    + " | trackWorkspace=" + describeAuditView(mainTrackWorkspace)
+                    + " | arrangementWorkspace=" + describeAuditView(mainArrangementWorkspace)
+                    + " | arrangementVisible="
+                    + (mainArrangementWorkspace != null
+                            && mainArrangementWorkspace.getVisibility() == View.VISIBLE));
+            return;
+        }
         Log.i(TAG, "UI_INTERACTION_BEGIN");
+
+        View quickSampleWaveform = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View quick sample waveform");
+        View quickSampleBrowse = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View browse samples");
+        View quickSampleRecord = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View record sample");
+        View quickSampleAudition = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track View audition selected Pad");
+        if (quickSampleWaveform == null
+                || quickSampleWaveform.getHeight() <= dp(70)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main quick sample waveform");
+            return;
+        }
+        final boolean emptySampleState =
+                quickSampleBrowse != null && quickSampleRecord != null;
+        final boolean loadedSampleState = quickSampleAudition != null;
+        if (!emptySampleState && !loadedSampleState) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main sample state has no valid action surface");
+            return;
+        }
+
+        View mainTrackProgram = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Main Track visual hierarchy • Track / Program / workspace section");
+        if (mainTrackProgram == null || mainTrackProgram.getHeight() <= dp(160)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Program composition");
+            return;
+        }
+
+        View xlMixerStrip = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main XL Mixer Strips");
+        View xlMixerToggle = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main mixer strips shown");
+        View selectedTrackMeter = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC XL selected track level meter and fader reserved");
+        if (xlMixerStrip == null
+                || xlMixerStrip.getWidth() < dp(180)
+                || xlMixerStrip.getHeight() <= dp(160)
+                || xlMixerToggle == null
+                || selectedTrackMeter == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: visible Main XL Channel Strip"
+                    + " | strip=" + describeAuditView(xlMixerStrip)
+                    + " | toggle=" + describeAuditView(xlMixerToggle)
+                    + " | meter=" + describeAuditView(selectedTrackMeter));
+            return;
+        }
+        final View selectedTrackProgramValue = xlMixerStrip.findViewWithTag(
+                "MPC Main selected track program value");
+        final String nativeProgramLabel = nativeSequenceGetTrackProgram(
+                Math.max(0, nativeSequenceGetSelectedTrack()));
+        final String programPrefix = "PROGRAM • ";
+        /*
+         * The UI audit may run before asynchronous native startup finishes.
+         * Until Main's startup-complete transition refreshes the strip, its
+         * truthful placeholder is "—", even if the native project is already
+         * initialized. Compare against the state the UI is allowed to expose.
+         */
+        final String expectedProgramAccessibility;
+        if (!startupComplete) {
+            expectedProgramAccessibility = "—";
+        } else {
+            expectedProgramAccessibility =
+                    nativeProgramLabel != null && nativeProgramLabel.startsWith(programPrefix)
+                            ? nativeProgramLabel.substring(programPrefix.length()).trim()
+                            : nativeProgramLabel;
+        }
+        final CharSequence programDescription = selectedTrackProgramValue == null
+                ? null : selectedTrackProgramValue.getContentDescription();
+        if (!(selectedTrackProgramValue instanceof TextView)
+                || !selectedTrackProgramValue.isShown()
+                || ((TextView) selectedTrackProgramValue).getLineCount() != 1
+                || ((TextView) selectedTrackProgramValue).getText() == null
+                || ((TextView) selectedTrackProgramValue).getText().toString().isEmpty()
+                || ((TextView) selectedTrackProgramValue).getText().toString()
+                        .startsWith("PROGRAM • ")
+                || programDescription == null
+                || !programDescription.toString().equals(
+                        "MPC Main selected track program: "
+                                + (expectedProgramAccessibility == null
+                                        ? "" : expectedProgramAccessibility))) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main XL program value wrapped or loses full program name"
+                    + " | program=" + describeAuditView(selectedTrackProgramValue)
+                    + " | shown=" + (selectedTrackProgramValue != null
+                            && selectedTrackProgramValue.isShown())
+                    + " | text=" + (selectedTrackProgramValue instanceof TextView
+                            ? ((TextView) selectedTrackProgramValue).getText() : "not-text")
+                    + " | lines=" + (selectedTrackProgramValue instanceof TextView
+                            ? ((TextView) selectedTrackProgramValue).getLineCount() : -1)
+                    + " | description=" + programDescription
+                    + " | expectedAccessibility=" + expectedProgramAccessibility);
+            return;
+        }
+        final View mainOutputValue = findViewWithContentDescription(
+                xlMixerStrip, "MPC Main output value: MAIN OUTPUT");
+        if (!(mainOutputValue instanceof TextView)
+                || !"MAIN".contentEquals(((TextView) mainOutputValue).getText())) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Output label repeats OUTPUT or lost value"
+                    + " | output=" + describeAuditView(mainOutputValue)
+                    + " | text=" + (mainOutputValue instanceof TextView
+                            ? ((TextView) mainOutputValue).getText() : "not-text"));
+            return;
+        }
+
+        showPullDown();
+        if (pullDownPanel == null
+                || pullDownPanel.getVisibility() != View.VISIBLE
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Pull-Down Menu") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pull-Down open");
+            return;
+        }
+        pullDownPanel.setPage(1);
+        if (findViewWithExactText(
+                getWindow().getDecorView(), "Q-LINK") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pull-Down Q-Link page");
+            hidePullDown();
+            return;
+        }
+        hidePullDown();
+        if (pullDownPanel.getVisibility() != View.GONE) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pull-Down close");
+            return;
+        }
 
         View browserShortcut = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC shortcut BROWSER");
@@ -8573,20 +10774,619 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View mainShortcut = findViewWithContentDescription(
-                getWindow().getDecorView(), "MPC shortcut MAIN");
-        if (mainShortcut == null || !mainShortcut.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: MAIN shortcut return");
+        if (browserView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser root missing after route");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserView,
+                dp(180),
+                "Browser workspace",
+                this::runUiAuditAfterBrowserLayout);
+    }
+
+    private void runUiAuditAfterBrowserLayout() {
+        if (destroyed) return;
+        if (browserView == null || !browserView.isShown()
+                || browserView.getWidth() <= dp(200)
+                || browserView.getHeight() <= dp(180)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser workspace geometry"
+                    + " | browser=" + describeAuditView(browserView));
             return;
         }
 
-        View pad1 = findViewWithExactText(getWindow().getDecorView(), "01");
-        if (pad1 == null || !pad1.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: pad 01");
+        View browserContentTab = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser CONTENT tab");
+        if (browserContentTab == null || !browserContentTab.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CONTENT tab click");
             return;
         }
-        if (selectedPad != 0) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: selection did not stick");
+
+        View browserDrumsAfterContent = findViewWithExactText(
+                getWindow().getDecorView(), "DRUMS");
+        if (browserDrumsAfterContent == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CONTENT sidebar item missing");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserDrumsAfterContent,
+                dp(20),
+                "Browser CONTENT sidebar item",
+                this::runUiAuditAfterBrowserContentLayout);
+    }
+
+    private void runUiAuditAfterBrowserContentLayout() {
+        if (destroyed) return;
+
+        View browserContentTab = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser CONTENT tab");
+        View browserDrums = findViewWithExactText(
+                getWindow().getDecorView(), "DRUMS");
+        if (browserContentTab == null || !browserContentTab.isSelected()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Browser current location: CONTENT • SAMPLES") == null
+                || browserDrums == null || !browserDrums.isShown()
+                || browserDrums.getWidth() <= dp(80)
+                || browserDrums.getHeight() <= dp(20)
+                || !browserDrums.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CONTENT/DRUMS layout or selection"
+                    + " | drums=" + describeAuditView(browserDrums));
+            return;
+        }
+
+        if (!browserDrums.isSelected()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Browser navigation CONTENT DRUMS") != browserDrums) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser sidebar DRUMS selected state");
+            return;
+        }
+
+        View browserUpFromDrums = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser UP from CONTENT/DRUMS");
+        if (browserUpFromDrums == null || !browserUpFromDrums.isEnabled()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser UP from CONTENT/DRUMS missing");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserUpFromDrums,
+                dp(20),
+                "Browser UP from CONTENT/DRUMS",
+                this::runUiAuditAfterBrowserDrumsLayout);
+    }
+
+    private void runUiAuditAfterBrowserDrumsLayout() {
+        if (destroyed) return;
+
+        View browserUpFromDrums = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser UP from CONTENT/DRUMS");
+        if (findViewWithContentDescription(
+                    getWindow().getDecorView(),
+                    "MPC Browser current location: CONTENT • DRUMS") == null
+                || browserUpFromDrums == null || !browserUpFromDrums.isShown()
+                || browserUpFromDrums.getWidth() <= dp(40)
+                || browserUpFromDrums.getHeight() <= dp(20)
+                || !browserUpFromDrums.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser UP from CONTENT/DRUMS"
+                    + " | up=" + describeAuditView(browserUpFromDrums));
+            return;
+        }
+
+        View browserDrumsAfterUp = findViewWithExactText(
+                getWindow().getDecorView(), "DRUMS");
+        if (browserDrumsAfterUp == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser sidebar after UP missing");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserDrumsAfterUp,
+                dp(20),
+                "Browser sidebar after UP",
+                this::runUiAuditAfterBrowserUpLayout);
+    }
+
+    private void runUiAuditAfterBrowserUpLayout() {
+        if (destroyed) return;
+
+        View browserDrumsAfterUp = findViewWithExactText(
+                getWindow().getDecorView(), "DRUMS");
+        View browserUpFromContent = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser UP from CONTENT");
+        View browserDrumsSemanticAfterUp = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser navigation CONTENT DRUMS");
+        if (findViewWithContentDescription(
+                    getWindow().getDecorView(),
+                    "MPC Browser current location: CONTENT • SAMPLES") == null
+                || browserDrumsAfterUp == null || !browserDrumsAfterUp.isShown()
+                || browserDrumsAfterUp.isSelected()
+                || browserDrumsSemanticAfterUp != browserDrumsAfterUp
+                || browserDrumsAfterUp.getWidth() <= dp(80)
+                || browserDrumsAfterUp.getHeight() <= dp(20)
+                || browserUpFromContent == null || !browserUpFromContent.isShown()
+                || browserUpFromContent.getWidth() <= dp(40)
+                || browserUpFromContent.getHeight() <= dp(20)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser UP restored visible CONTENT"
+                    + " | drums=" + describeAuditView(browserDrumsAfterUp)
+                    + " | up=" + describeAuditView(browserUpFromContent));
+            return;
+        }
+
+        View browserAllFilter = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser filter ALL");
+        View browserSamplesFilter = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser filter SAMPLES");
+        if (browserAllFilter == null || !browserAllFilter.isSelected()
+                || browserSamplesFilter == null || !browserSamplesFilter.isShown()
+                || browserSamplesFilter.getWidth() <= dp(20)
+                || browserSamplesFilter.getHeight() <= dp(20)
+                || !browserSamplesFilter.performClick()
+                || !browserSamplesFilter.isSelected() || browserAllFilter.isSelected()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-type filter selection"
+                    + " | all=" + describeAuditView(browserAllFilter)
+                    + " | samples=" + describeAuditView(browserSamplesFilter));
+            return;
+        }
+
+        View browserFunctionMeasureTarget = findViewWithExactText(
+                functionBar, "SAMPLE ASSIGN");
+        if (browserFunctionMeasureTarget == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar action missing before layout");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserFunctionMeasureTarget,
+                dp(20),
+                "Browser Function Bar",
+                this::runUiAuditAfterBrowserFunctionBarLayout);
+    }
+
+    private void runUiAuditAfterBrowserFunctionBarLayout() {
+        if (destroyed) return;
+
+        View browserResults = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser results list");
+        if (browserResults == null || !browserResults.isShown()
+                || browserResults.getWidth() <= dp(200)
+                || browserResults.getHeight() <= dp(80)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser results viewport geometry"
+                    + " | results=" + describeAuditView(browserResults));
+            return;
+        }
+        final String[] browserFunctionLabels = {
+                "SAMPLE ASSIGN", "AUDITION", "LOAD", "UP", "BACK"
+        };
+        if (functionBar == null
+                || functionBar.getChildCount() != browserFunctionLabels.length) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar structure"
+                    + " | bar=" + describeAuditView(functionBar));
+            return;
+        }
+        final boolean expectedAuditionEnabled =
+                browserView != null && browserView.selectedFile() != null;
+        int minBrowserActionWidth = Integer.MAX_VALUE;
+        int maxBrowserActionWidth = 0;
+        for (int i = 0; i < browserFunctionLabels.length; i++) {
+            final View action = functionBar.getChildAt(i);
+            final boolean shouldBeEnabled = i == 0 ? false
+                    : i == 1 ? expectedAuditionEnabled : true;
+            if (!(action instanceof TextView)
+                    || !browserFunctionLabels[i].contentEquals(((TextView) action).getText())
+                    || !action.isShown()
+                    || action.getWidth() <= dp(50)
+                    || action.getHeight() <= dp(20)
+                    || action.isEnabled() != shouldBeEnabled) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar action "
+                        + browserFunctionLabels[i]
+                        + " | expectedEnabled=" + shouldBeEnabled
+                        + " | action=" + describeAuditView(action));
+                return;
+            }
+            minBrowserActionWidth = Math.min(minBrowserActionWidth, action.getWidth());
+            maxBrowserActionWidth = Math.max(maxBrowserActionWidth, action.getWidth());
+        }
+        if (maxBrowserActionWidth - minBrowserActionWidth > dp(4)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar unequal action widths"
+                    + " | min=" + minBrowserActionWidth
+                    + " | max=" + maxBrowserActionWidth);
+            return;
+        }
+        final String[] expectedBrowserActionDescriptions = {
+                "MPC Browser Sample Assign unavailable: no source item selected",
+                "MPC Browser audition unavailable: no source item selected",
+                "MPC Browser LOAD source file with Android Document Picker",
+                "Browser UP from CONTENT",
+                "MPC Browser BACK to previous workspace"
+        };
+        for (int i = 0; i < expectedBrowserActionDescriptions.length; i++) {
+            final View action = functionBar.getChildAt(i);
+            if (!expectedBrowserActionDescriptions[i].contentEquals(
+                    action.getContentDescription())) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar accessibility "
+                        + browserFunctionLabels[i]
+                        + " | expectedDescription=" + expectedBrowserActionDescriptions[i]
+                        + " | action=" + describeAuditView(action));
+                return;
+            }
+        }
+        final String[] browserContextDescriptions = {
+                "MPC Browser search files",
+                "MPC Browser clear search",
+                "MPC Browser target Pad and Layer",
+                "MPC Browser current sample"
+        };
+        for (String description : browserContextDescriptions) {
+            View contextView = findViewWithContentDescription(
+                    getWindow().getDecorView(), description);
+            if (contextView == null || !contextView.isShown()
+                    || contextView.getWidth() <= dp(40)
+                    || contextView.getHeight() <= dp(20)) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Browser accessibility target "
+                        + description + " | view=" + describeAuditView(contextView));
+                return;
+            }
+        }
+
+        final View browserDestination = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser target Pad and Layer");
+        final View browserCurrentSample = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser current sample");
+        final View browserScanTitle = findViewWithExactText(
+                getWindow().getDecorView(), "SCAN LOCAL AUDIO…");
+        final View browserScanDetail = findViewWithExactText(
+                getWindow().getDecorView(), "INDEX ACCESSIBLE DEVICE WAV FILES");
+        final View browserScanAction = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser scan local audio files");
+        final View browserStorageTitle = findViewWithExactText(
+                getWindow().getDecorView(), "OPEN STORAGE…");
+        final View browserStorageDetail = findViewWithExactText(
+                getWindow().getDecorView(), "ANDROID DOCUMENT PICKER • DIRECT WAV LOAD");
+        final View browserStorageAction = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser open Android storage picker");
+        final android.graphics.Rect browserScanVisibleRect = new android.graphics.Rect();
+        final android.graphics.Rect browserStorageVisibleRect = new android.graphics.Rect();
+        final boolean browserScanFullyVisible = browserScanAction != null
+                && browserScanAction.getGlobalVisibleRect(browserScanVisibleRect)
+                && browserScanVisibleRect.height() == browserScanAction.getHeight();
+        final boolean browserStorageFullyVisible = browserStorageAction != null
+                && browserStorageAction.getGlobalVisibleRect(browserStorageVisibleRect)
+                && browserStorageVisibleRect.height() == browserStorageAction.getHeight();
+        if (browserScanAction == null || !browserScanAction.isShown()
+                || !browserScanAction.isClickable()
+                || browserScanAction.getWidth() <= dp(200)
+                || browserScanAction.getHeight() <= dp(36)
+                || !browserScanFullyVisible
+                || browserStorageAction == null || !browserStorageAction.isShown()
+                || !browserStorageAction.isClickable()
+                || browserStorageAction.getWidth() <= dp(200)
+                || browserStorageAction.getHeight() <= dp(36)
+                || !browserStorageFullyVisible) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser scan/storage actions are clipped or not actionable"
+                    + " | scan=" + describeAuditView(browserScanAction)
+                    + " | scanVisibleRect=" + browserScanVisibleRect
+                    + " | storage=" + describeAuditView(browserStorageAction)
+                    + " | storageVisibleRect=" + browserStorageVisibleRect);
+            return;
+        }
+        final View[] browserSingleLineTargets = {
+                browserDestination, browserCurrentSample, browserScanTitle,
+                browserScanDetail, browserStorageTitle, browserStorageDetail
+        };
+        final String[] browserSingleLineLabels = {
+                "destination context", "current sample metadata",
+                "local scan action title", "local scan action details",
+                "storage action title", "storage action details"
+        };
+        for (int i = 0; i < browserSingleLineTargets.length; i++) {
+            final View target = browserSingleLineTargets[i];
+            if (!(target instanceof TextView)
+                    || ((TextView) target).getLineCount() != 1) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Browser text wrapped after layout: "
+                        + browserSingleLineLabels[i]
+                        + " | target=" + describeAuditView(target)
+                        + " | lines=" + (target instanceof TextView
+                                ? ((TextView) target).getLineCount() : -1));
+                return;
+            }
+        }
+
+        final View browserSearchTarget = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser search files");
+        final View browserClearSearch = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser clear search");
+        if (!(browserSearchTarget instanceof EditText) || browserClearSearch == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser search/clear controls missing");
+            return;
+        }
+        final EditText browserSearch = (EditText) browserSearchTarget;
+        browserSearch.setText("MPC_UI_AUDIT");
+        if (!"MPC_UI_AUDIT".equals(browserView.searchQuery())
+                || !"MPC_UI_AUDIT".equals(
+                        navigationController.state().browserSearch())
+                || navigationController.state().dataDialFocus()
+                        != MpcUiState.DataDialFocus.BROWSER_ITEM) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser search state propagation"
+                    + " | visible=" + browserView.searchQuery()
+                    + " | state=" + navigationController.state().browserSearch()
+                    + " | focus=" + navigationController.state().dataDialFocus());
+            return;
+        }
+        if (!browserClearSearch.performClick()
+                || !browserView.searchQuery().isEmpty()
+                || !navigationController.state().browserSearch().isEmpty()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CLEAR did not clear persisted query"
+                    + " | visible=" + browserView.searchQuery()
+                    + " | state=" + navigationController.state().browserSearch());
+            return;
+        }
+
+        awaitBrowserRuntimeEvidenceCapture();
+    }
+
+    private void awaitBrowserRuntimeEvidenceCapture() {
+        if (!uiAuditSmokeMode) {
+            runUiAuditAfterBrowserRuntimeEvidenceCapture();
+            return;
+        }
+
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-browser-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_BROWSER_CAPTURE_READY");
+
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable captureReleasePoll = new Runnable() {
+            @Override
+            public void run() {
+                if (destroyed) return;
+
+                if (releaseSignal.isFile()) {
+                    releaseSignal.delete();
+                    runUiAuditAfterBrowserRuntimeEvidenceCapture();
+                    return;
+                }
+                if (System.currentTimeMillis() >= deadline) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Browser external screenshot/hierarchy "
+                            + "capture handshake timed out");
+                    return;
+                }
+                waveformUiHandler.postDelayed(this, 100L);
+            }
+        };
+        waveformUiHandler.postDelayed(captureReleasePoll, 100L);
+    }
+
+    private void runUiAuditAfterBrowserRuntimeEvidenceCapture() {
+        if (destroyed) return;
+        if (!captureBrowserAuditEvidence()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser runtime evidence capture");
+            return;
+        }
+
+        View browserProviderStatus = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser provider status");
+        handleHardwareDialDelta(1, false);
+        if (!(browserProviderStatus instanceof TextView)
+                || !((TextView) browserProviderStatus).getText().toString().contains(
+                        "DATA DIAL • RESERVED / UNAVAILABLE")
+                || navigationController.state().dataDialFocus()
+                        != MpcUiState.DataDialFocus.BROWSER_ITEM) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Data Dial delta did not expose provider limitation"
+                    + " | status=" + describeAuditView(browserProviderStatus));
+            return;
+        }
+        applyHardwareAction(
+                MpcStudioMk2SemanticActions.DATA_DIAL_PRESS, 0, 0, 0);
+        if (!((TextView) browserProviderStatus).getText().toString().contains(
+                "DATA DIAL • RESERVED / UNAVAILABLE")) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Data Dial press did not expose provider limitation");
+            return;
+        }
+        browserView.setProviderStatus("LOCAL AUDIO • NOT SCANNED");
+
+        View browserOptions = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser Options");
+        if (browserOptions == null || !browserOptions.isShown()
+                || browserOptions.getWidth() < dp(32)
+                || browserOptions.getHeight() < dp(20)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options button has no hittable bounds"
+                    + " | options=" + describeAuditView(browserOptions));
+            return;
+        }
+        if (!browserOptions.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options button did not click");
+            return;
+        }
+
+        final AlertDialog optionsDialog = browserOptionsDialog;
+        if (optionsDialog == null || !optionsDialog.isShowing()
+                || optionsDialog.getWindow() == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options dialog did not open");
+            return;
+        }
+        final View optionsDialogRoot = optionsDialog.getWindow().getDecorView();
+        if (findViewWithContentDescription(
+                optionsDialogRoot, "MPC Browser Option Show file size") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options dialog hierarchy");
+            return;
+        }
+
+        View browserOptionsClose = findViewWithContentDescription(
+                optionsDialogRoot, "MPC Browser Options close");
+        if (browserOptionsClose == null || !browserOptionsClose.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options close");
+            return;
+        }
+
+        final View browserStorageAction = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Browser open Android storage picker");
+        if (browserStorageAction == null || !browserStorageAction.isShown()
+                || !browserStorageAction.isClickable()
+                || browserStorageAction.getWidth() <= dp(200)
+                || browserStorageAction.getHeight() <= dp(36)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action not hittable"
+                    + " | action=" + describeAuditView(browserStorageAction));
+            return;
+        }
+        if (uiAuditSmokeMode) {
+            uiAuditAwaitingBrowserStoragePickerResult = true;
+            Log.i(TAG, "UI_STORAGE_PICKER_LAUNCH_REQUESTED");
+            if (!browserStorageAction.performClick()) {
+                uiAuditAwaitingBrowserStoragePickerResult = false;
+                Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action click");
+            }
+            return;
+        }
+        continueUiAuditAfterBrowserStoragePicker(false);
+    }
+
+    private void continueUiAuditAfterBrowserStoragePicker(boolean pickerReturned) {
+        if (destroyed) return;
+        final MpcUiState browserState = navigationController == null
+                ? null : navigationController.state();
+        if (browserState == null
+                || browserView == null
+                || !browserView.isShown()
+                || browserState.mode() != MpcUiState.Mode.BROWSER
+                || !"CONTENT".equals(browserState.browserLocation())
+                || !"SAMPLES".equals(browserState.browserFilter())
+                || !browserView.searchQuery().isEmpty()
+                || !browserState.browserSearch().isEmpty()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser context changed during storage picker round trip"
+                    + " | state=" + browserState
+                    + " | browser=" + describeAuditView(browserView)
+                    + " | visibleSearch=" + (browserView == null ? "missing" : browserView.searchQuery()));
+            return;
+        }
+        if (pickerReturned) {
+            Log.i(TAG, "UI_STORAGE_PICKER_RETURNED");
+        }
+
+        View browserBack = findViewWithExactText(
+                getWindow().getDecorView(), "BACK");
+        if (browserBack == null || !browserBack.performClick()
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: BROWSER back to Main"
+                    + " | mode=" + navigationController.state().mode());
+            return;
+        }
+
+        View browserShortcutAfterBack = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC shortcut BROWSER");
+        if (browserShortcutAfterBack == null || !browserShortcutAfterBack.performClick()
+                || browserView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser shortcut after Main return");
+            return;
+        }
+        waitForMeasuredAuditView(
+                browserView, dp(180), "Browser restored workspace",
+                this::runUiAuditAfterBrowserRestoreLayout);
+    }
+
+    private void runUiAuditAfterBrowserRestoreLayout() {
+        if (destroyed) return;
+
+        final MpcUiState state = navigationController.state();
+        final View restoredSamplesFilter = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser filter SAMPLES");
+        final View restoredSearch = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser search files");
+        if (browserView == null || !browserView.isShown()
+                || browserView.getWidth() <= dp(200)
+                || browserView.getHeight() <= dp(180)
+                || state.mode() != MpcUiState.Mode.BROWSER
+                || !"CONTENT".equals(state.browserLocation())
+                || !"SAMPLES".equals(state.browserFilter())
+                || !state.browserSearch().isEmpty()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Browser current location: CONTENT • SAMPLES") == null
+                || restoredSamplesFilter == null || !restoredSamplesFilter.isSelected()
+                || restoredSearch == null || !(restoredSearch instanceof EditText)
+                || !((EditText) restoredSearch).getText().toString().isEmpty()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser context did not survive view recreation"
+                    + " | mode=" + state.mode()
+                    + " | location=" + state.browserLocation()
+                    + " | filter=" + state.browserFilter()
+                    + " | search=" + state.browserSearch()
+                    + " | browser=" + describeAuditView(browserView)
+                    + " | filterView=" + describeAuditView(restoredSamplesFilter));
+            return;
+        }
+
+        View browserBackAfterRestore = findViewWithExactText(
+                getWindow().getDecorView(), "BACK");
+        if (browserBackAfterRestore == null || !browserBackAfterRestore.isShown()
+                || !browserBackAfterRestore.performClick()
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser restore did not return to Main"
+                    + " | mode=" + navigationController.state().mode());
+            return;
+        }
+
+        if (!clickMpcToolbarMenuForAudit()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU before PREFERENCES");
+            return;
+        }
+        View preferences = findViewWithExactText(
+                getWindow().getDecorView(), "PREFERENCES");
+        if (preferences == null || !preferences.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: PREFERENCES");
+            return;
+        }
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Preferences category navigation") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "MPC Preferences AUDIO") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "MPC Preferences MIDI / SYNC") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "MPC Preferences SEQUENCER") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Preferences category navigation");
+            return;
+        }
+        View midiSync = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Preferences MIDI / SYNC");
+        if (midiSync == null || !midiSync.performClick()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Preferences MIDI / SYNC reserved workspace") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Preferences reserved MIDI / SYNC");
+            return;
+        }
+        View audioTab = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Preferences AUDIO");
+        if (audioTab == null || !audioTab.performClick()
+                || outputDeviceSpinner == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Preferences AUDIO return");
+            return;
+        }
+        View preferencesBack = findViewWithExactText(
+                getWindow().getDecorView(), "BACK");
+        if (preferencesBack == null || !preferencesBack.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: PREFERENCES back");
+            return;
+        }
+        if (navigationController.state().mode() != MpcUiState.Mode.MENU) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Preferences Back did not restore Menu"
+                    + " | mode=" + navigationController.state().mode());
+            return;
+        }
+
+        View menuBackToMain = findViewWithExactText(
+                getWindow().getDecorView(), "BACK");
+        if (menuBackToMain == null || !menuBackToMain.isShown()
+                || !menuBackToMain.performClick()
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Menu Back did not restore Main"
+                    + " | mode=" + navigationController.state().mode());
+            return;
+        }
+
+        if (selectedPad != 0
+                || navigationController.state().selectedPad() != 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: default controller-first Pad selection");
             return;
         }
 
@@ -8629,78 +11429,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         activeMpcParameterDialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
 
-        View quickSampleWaveform = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View quick sample waveform");
-        View quickSampleInfo = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View quick sample info");
-        if (quickSampleWaveform == null
-                || quickSampleWaveform.getHeight() <= dp(70)
-                || quickSampleInfo == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main quick sample context");
-            return;
-        }
 
-        View quickSamplePrimary = findViewWithContentDescription(
+        View layerFieldAudit = findViewWithContentDescription(
                 getWindow().getDecorView(),
-                "Main Track View sample primary action");
-        View quickSampleBrowse = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View browse samples");
-        if (quickSamplePrimary == null || quickSampleBrowse == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main sample action state");
-            return;
-        }
-
-        View layerUp = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View next sample layer");
-        View layerDown = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "Main Track View previous sample layer");
-        if (layerUp == null || layerDown == null
-                || !layerUp.performClick()
-                || !layerDown.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main sample layer controls");
-            return;
-        }
-
-        View mainTrackProgram = findViewWithContentDescription(
-                getWindow().getDecorView(), "Main Mode Track Program section");
-        if (mainTrackProgram == null || mainTrackProgram.getHeight() <= dp(160)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Program composition");
-            return;
-        }
-
-        View compactContext = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC shell compact track program context");
-        View compactTrack = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC shell track context");
-        View compactProgram = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC shell program context");
-        if (compactContext == null
-                || compactContext.getWidth() < dp(160)
-                || compactContext.getHeight() <= dp(300)
-                || compactTrack == null
-                || compactProgram == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: persistent compact track/program context");
-            return;
-        }
-
-        View compactMixerToggleAudit = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC condensed Mixer Strip show or hide");
-        View compactMixerPanelAudit = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC condensed Mixer Strip");
-        if (compactMixerToggleAudit == null
-                || compactMixerPanelAudit == null
-                || compactMixerPanelAudit.getVisibility() != View.VISIBLE) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: persistent Main Mixer Strip");
+                "Main Track View selected layer • tap to focus Layer");
+        if (layerFieldAudit == null
+                || !layerFieldAudit.performClick()
+                || navigationController.state().dataDialFocus()
+                        != MpcUiState.DataDialFocus.SAMPLE_LAYER) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main controller-first sample layer focus");
             return;
         }
 
@@ -8726,59 +11463,81 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Main REC ARM disable");
             return;
         }
-        if (!compactMixerToggleAudit.performClick()
-                || compactMixerPanelAudit.getVisibility() != View.GONE) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Mixer Strip hide");
+        View xlMixerToggleAfterBrowser = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Main mixer strips shown");
+        if (xlMixerToggleAfterBrowser == null
+                || !xlMixerToggleAfterBrowser.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip hide action");
             return;
         }
-        if (!compactMixerToggleAudit.performClick()
-                || compactMixerPanelAudit.getVisibility() != View.VISIBLE) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Mixer Strip show");
+        View xlMixerHidden = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main mixer strips hidden");
+        if (xlMixerHidden == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip hidden state");
+            return;
+        }
+        if (!xlMixerHidden.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip show action");
+            return;
+        }
+        if (findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Main mixer strips shown") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: XL Channel Strip restore state");
             return;
         }
 
-        View mainViewSwitcher = findViewWithContentDescription(
-                getWindow().getDecorView(), "Main Track / Arrangement view switcher");
-        View mainTrackSelector = findViewWithContentDescription(
+        View mainViewSwitcherAfterMixer = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track Arrangement segmented control");
+        View mainTrackSelectorAfterMixer = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Track View header");
-        View mainArrangementSelector = findViewWithContentDescription(
+        View mainArrangementSelectorAfterMixer = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Arrangement View header");
-        View mainTrackWorkspace = findViewWithContentDescription(
-                getWindow().getDecorView(), "Main Mode Track View workspace");
-        View mainArrangementWorkspace = findViewWithContentDescription(
+        View mainTrackWorkspaceAfterMixer = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode Track workspace");
+        View mainArrangementWorkspaceAfterMixer = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Mode arrangement preview");
-        if (mainViewSwitcher == null
-                || mainViewSwitcher.getHeight() < dp(36)
-                || mainTrackSelector == null
-                || mainArrangementSelector == null
-                || mainTrackWorkspace == null
-                || mainArrangementWorkspace == null
-                || mainTrackWorkspace.getVisibility() != View.VISIBLE
-                || mainArrangementWorkspace.getVisibility() != View.GONE) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track/Arrangement default view");
+        if (mainViewSwitcherAfterMixer == null
+                || mainTrackSelectorAfterMixer == null
+                || mainArrangementSelectorAfterMixer == null
+                || mainTrackWorkspaceAfterMixer == null
+                || mainArrangementWorkspaceAfterMixer == null
+                || mainTrackWorkspaceAfterMixer.getVisibility() != View.VISIBLE
+                || mainArrangementWorkspaceAfterMixer.getVisibility() != View.GONE) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track/Arrangement default state"
+                    + " | switcher=" + describeAuditView(mainViewSwitcherAfterMixer)
+                    + " | trackSelector=" + describeAuditView(mainTrackSelectorAfterMixer)
+                    + " | arrangementSelector=" + describeAuditView(mainArrangementSelectorAfterMixer)
+                    + " | trackWorkspace=" + describeAuditView(mainTrackWorkspaceAfterMixer)
+                    + " | arrangementWorkspace=" + describeAuditView(mainArrangementWorkspaceAfterMixer)
+                    + " | arrangementVisible="
+                    + (mainArrangementWorkspaceAfterMixer != null
+                            && mainArrangementWorkspaceAfterMixer.getVisibility() == View.VISIBLE));
             return;
         }
-
-        if (!mainArrangementSelector.performClick()
-                || mainArrangementWorkspace.getVisibility() != View.VISIBLE
-                || mainTrackWorkspace.getVisibility() != View.GONE) {
+        if (!mainArrangementSelectorAfterMixer.performClick()
+                || mainArrangementWorkspaceAfterMixer.getVisibility() != View.VISIBLE
+                || mainTrackWorkspaceAfterMixer.getVisibility() != View.GONE) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Arrangement switch");
             return;
         }
 
-        if (!mainTrackSelector.performClick()
-                || mainTrackWorkspace.getVisibility() != View.VISIBLE
-                || mainArrangementWorkspace.getVisibility() != View.GONE) {
+        if (!mainTrackSelectorAfterMixer.performClick()
+                || mainTrackWorkspaceAfterMixer.getVisibility() != View.VISIBLE
+                || mainArrangementWorkspaceAfterMixer.getVisibility() != View.GONE) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Track switch");
             return;
         }
 
-        View seqSelect = findViewWithExactText(
-                getWindow().getDecorView(), "SEQ SELECT");
-        if (seqSelect == null || !seqSelect.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main SEQ SELECT");
-            return;
-        }
+        /*
+         * Sequence Select is a Main subcontext, not a duplicate visible
+         * toolbar/function button. Enter it through the same semantic command
+         * path used by the MPC Studio MkII Sequence Select control.
+         */
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.SEQUENCE_SELECTION_CONTEXT,
+                0, 0, 0);
         if (findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Sequence Select list") == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Sequence Select list");
@@ -8802,8 +11561,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         backMain = findViewWithExactText(
                 getWindow().getDecorView(), "BACK MAIN");
         if (backMain == null || !backMain.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Select back");
-            return;
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Select back");            return;
         }
 
         onHardwareAction(
@@ -8821,62 +11579,1088 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        if (!clickMpcToolbarMenuForAudit()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU before TRACK VIEW");
+            return;
+        }
         View trackView = findViewWithExactText(
                 getWindow().getDecorView(), "TRACK VIEW");
         if (trackView == null || !trackView.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: TRACK VIEW");
             return;
         }
-
         View trackViewWorkspace = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Track View workspace");
-        if (trackViewWorkspace == null
-                || trackViewWorkspace.getHeight() <= dp(180)) {
+        if (trackViewWorkspace == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View workspace");
             return;
         }
 
+        /*
+         * Page transitions rebuild weighted Android children synchronously, but
+         * measurement happens on the following traversal. Wait for the actual
+         * workspace before reading geometry or driving the next navigation.
+         */
+        waitForMeasuredAuditView(
+                trackViewWorkspace,
+                dp(180),
+                "Track View workspace",
+                this::runUiAuditAfterTrackView);
+
+    }
+
+    private void waitForMeasuredAuditView(
+            View view,
+            int minimumHeight,
+            String label,
+            Runnable continuation) {
+        final View decor = getWindow().getDecorView();
+        final Handler handler = new Handler(Looper.getMainLooper());
+        final int[] attempts = {0};
+        final Runnable[] wait = new Runnable[1];
+        wait[0] = () -> {
+            if (destroyed) {
+                return;
+            }
+            if (view != null
+                    && view.getWidth() > 0
+                    && view.getHeight() > minimumHeight) {
+                continuation.run();
+                return;
+            }
+            if (++attempts[0] >= 60) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: " + label
+                        + " measured timeout"
+                        + " | view=" + describeAuditView(view));
+                return;
+            }
+            decor.postOnAnimation(() -> handler.postDelayed(wait[0], 16L));
+        };
+        wait[0].run();
+    }
+
+    private boolean prepareArrangementEventGestureAudit() {
+        arrangementAuditTrackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
+        if (!"DRUM".equalsIgnoreCase(
+                nativeSequenceGetTrackType(arrangementAuditTrackIndex))) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange gesture seed requires selected Drum Track");
+            return false;
+        }
+
+        final int totalSteps = sequenceGridTotalSteps();
+        if (totalSteps < 8) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange gesture seed needs at least eight Grid steps");
+            return false;
+        }
+        final int visibleSteps = Math.max(
+                1, Math.min(sequenceGridVisibleSteps, totalSteps));
+        final int preferredStep = Math.min(
+                totalSteps - 1, Math.max(3, visibleSteps * 2));
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+
+        int freeStep = -1;
+        for (int step = preferredStep; step < totalSteps; step++) {
+            final int[] velocities = nativeSequenceGetGridVelocities(step, gridTicks);
+            if (velocities != null && velocities.length > 0 && velocities[0] <= 0) {
+                freeStep = step;
+                break;
+            }
+        }
+        if (freeStep < 0) {
+            for (int step = 3; step < preferredStep; step++) {
+                final int[] velocities = nativeSequenceGetGridVelocities(step, gridTicks);
+                if (velocities != null && velocities.length > 0 && velocities[0] <= 0) {
+                    freeStep = step;
+                    break;
+                }
+            }
+        }
+        if (freeStep < 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: no unused Pad 1 step available for Arrange gesture seed");
+            return false;
+        }
+
+        final String seeded = nativeSequenceToggleGridStep(0, freeStep, gridTicks);
+        if (seeded == null || !seeded.startsWith("STEP " + (freeStep + 1) + " ON")) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not seed Arrangement event"
+                    + " | step=" + (freeStep + 1)
+                    + " | result=" + seeded);
+            return false;
+        }
+
+        arrangementAuditTargetStep = freeStep;
+        arrangementAuditGridTicks = gridTicks;
+        arrangementAuditEventTick = (long) freeStep * gridTicks;
+        lastArrangementFocusTrackIndex = -1;
+        lastArrangementFocusTick = -1L;
+        Log.i(TAG, "UI_ARRANGEMENT_EVENT_SEEDED: trackIndex="
+                + arrangementAuditTrackIndex
+                + " targetStep=" + (freeStep + 1)
+                + " eventTick=" + arrangementAuditEventTick
+                + " gridTicks=" + gridTicks);
+        return true;
+    }
+
+    private String captureTrackViewGridNoteSnapshotForAudit(int gridTicks) {
+        final int totalSteps = sequenceGridTotalSteps();
+        final StringBuilder snapshot = new StringBuilder(Math.max(64, totalSteps * 48));
+        for (int step = 0; step < totalSteps; step++) {
+            final int[] velocities = nativeSequenceGetGridVelocities(step, gridTicks);
+            snapshot.append(step).append('=')
+                    .append(velocities == null
+                            ? "<null>"
+                            : java.util.Arrays.toString(velocities))
+                    .append(';');
+        }
+        return snapshot.toString();
+    }
+
+    private boolean trackViewMuteButtonShowsStateForAudit(
+            View view, boolean muted) {
+        return view instanceof Button
+                && (muted ? "MUTE" : "M").equals(
+                        ((Button) view).getText().toString())
+                && view.isShown()
+                && view.isEnabled();
+    }
+
+    private void verifyTrackViewMuteToggleAndRestoreForAudit(
+            Runnable continuation) {
+        if (!startupComplete || navigationController == null
+                || !"TRACK_VIEW".equals(currentPage)
+                || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute test has no active Track View context");
+            return;
+        }
+        final int trackCount = nativeSequenceGetTrackCount();
+        final int trackIndex = nativeSequenceGetSelectedTrack();
+        if (trackCount <= 0 || trackIndex < 0 || trackIndex >= trackCount) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute test has an invalid selected Track"
+                    + " | count=" + trackCount + " | selected=" + trackIndex);
+            return;
+        }
+        final MpcUiState stateBefore = navigationController.state();
+        final int sequenceBefore = nativeSequenceGetIndex();
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final boolean mutedBefore = nativeSequenceIsTrackMuted(trackIndex);
+        final String noteSnapshotBefore = captureTrackViewGridNoteSnapshotForAudit(gridTicks);
+        final String muteDescription = "Track View track " + (trackIndex + 1) + " mute";
+        View muteButton = findViewWithContentDescription(getWindow().getDecorView(), muteDescription);
+        if (!trackViewMuteButtonShowsStateForAudit(muteButton, mutedBefore)
+                || !muteButton.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute control was not actionable"
+                    + " | trackIndex=" + trackIndex + " | mutedBefore=" + mutedBefore
+                    + " | view=" + describeAuditView(muteButton));
+            return;
+        }
+        final boolean mutedAfterToggle = nativeSequenceIsTrackMuted(trackIndex);
+        View mutedButton = findViewWithContentDescription(getWindow().getDecorView(), muteDescription);
+        if (mutedAfterToggle == mutedBefore
+                || !trackViewMuteButtonShowsStateForAudit(mutedButton, mutedAfterToggle)
+                || nativeSequenceGetSelectedTrack() != trackIndex
+                || nativeSequenceGetIndex() != sequenceBefore
+                || navigationController.state().selectedTrack() != stateBefore.selectedTrack()
+                || navigationController.state().selectedSequence() != stateBefore.selectedSequence()
+                || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
+                || !"TRACK_VIEW".equals(currentPage)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute tap did not update visible/model state"
+                    + " | trackIndex=" + trackIndex + " | mutedBefore=" + mutedBefore
+                    + " | mutedAfter=" + mutedAfterToggle
+                    + " | button=" + describeAuditView(mutedButton));
+            return;
+        }
+
+        if (!uiAuditSmokeMode) {
+            completeTrackViewMuteToggleAndRestoreForAudit(trackIndex, sequenceBefore, gridTicks,
+                    stateBefore, mutedBefore, mutedAfterToggle, muteDescription,
+                    noteSnapshotBefore, continuation);
+            return;
+        }
+
+        // Keep the actual post-click state visible while CI captures pixels and
+        // accessibility, then restore the state that existed before this audit.
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-track-view-muted-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_TRACK_VIEW_MUTED_CAPTURE_READY: trackIndex=" + (trackIndex + 1)
+                + " mutedBefore=" + mutedBefore + " mutedAfterToggle=" + mutedAfterToggle);
+        final long deadline = System.currentTimeMillis() + 60_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                final View capturedButton = findViewWithContentDescription(
+                        getWindow().getDecorView(), muteDescription);
+                if (nativeSequenceIsTrackMuted(trackIndex) != mutedAfterToggle
+                        || !trackViewMuteButtonShowsStateForAudit(capturedButton, mutedAfterToggle)
+                        || !"TRACK_VIEW".equals(currentPage)
+                        || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute state changed during evidence capture"
+                            + " | trackIndex=" + trackIndex + " | expectedMuted=" + mutedAfterToggle
+                            + " | actualMuted=" + nativeSequenceIsTrackMuted(trackIndex)
+                            + " | button=" + describeAuditView(capturedButton));
+                    return;
+                }
+                completeTrackViewMuteToggleAndRestoreForAudit(trackIndex, sequenceBefore, gridTicks,
+                        stateBefore, mutedBefore, mutedAfterToggle, muteDescription,
+                        noteSnapshotBefore, continuation);
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Track View muted screenshot/accessibility capture timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
+    }
+
+    private void completeTrackViewMuteToggleAndRestoreForAudit(
+            int trackIndex,
+            int sequenceBefore,
+            int gridTicks,
+            MpcUiState stateBefore,
+            boolean mutedBefore,
+            boolean mutedAfterToggle,
+            String muteDescription,
+            String noteSnapshotBefore,
+            Runnable continuation) {
+        View mutedButton = findViewWithContentDescription(getWindow().getDecorView(), muteDescription);
+        if (nativeSequenceIsTrackMuted(trackIndex) != mutedAfterToggle
+                || !trackViewMuteButtonShowsStateForAudit(mutedButton, mutedAfterToggle)
+                || !"TRACK_VIEW".equals(currentPage)
+                || navigationController == null
+                || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute state was not retained for restoration"
+                    + " | trackIndex=" + trackIndex + " | expectedMuted=" + mutedAfterToggle
+                    + " | actualMuted=" + nativeSequenceIsTrackMuted(trackIndex)
+                    + " | button=" + describeAuditView(mutedButton));
+            return;
+        }
+        if (!mutedButton.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute control could not restore its initial state");
+            return;
+        }
+        final boolean mutedAfterRestore = nativeSequenceIsTrackMuted(trackIndex);
+        View restoredButton = findViewWithContentDescription(getWindow().getDecorView(), muteDescription);
+        final boolean notesUnchanged = noteSnapshotBefore.equals(
+                captureTrackViewGridNoteSnapshotForAudit(gridTicks));
+        if (mutedAfterRestore != mutedBefore
+                || !trackViewMuteButtonShowsStateForAudit(restoredButton, mutedBefore)
+                || !notesUnchanged
+                || nativeSequenceGetSelectedTrack() != trackIndex
+                || nativeSequenceGetIndex() != sequenceBefore
+                || navigationController.state().selectedTrack() != stateBefore.selectedTrack()
+                || navigationController.state().selectedSequence() != stateBefore.selectedSequence()
+                || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
+                || !"TRACK_VIEW".equals(currentPage)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track View mute round-trip did not restore the original state"
+                    + " | trackIndex=" + trackIndex + " | mutedBefore=" + mutedBefore
+                    + " | mutedAfterRestore=" + mutedAfterRestore
+                    + " | notesUnchanged=" + notesUnchanged
+                    + " | button=" + describeAuditView(restoredButton));
+            return;
+        }
+        Log.i(TAG, "UI_TRACK_VIEW_MUTE_ROUNDTRIP_COMPLETE: trackIndex=" + trackIndex
+                + " mutedBefore=" + mutedBefore + " toggledTo=" + mutedAfterToggle
+                + " restored=" + mutedAfterRestore + " visibleButtonVerified=true"
+                + " notesUnchanged=true trackSequencePreserved=true");
+        continuation.run();
+    }
+
+    private void runUiAuditAfterTrackView() {
+        if (destroyed) return;
         if (findViewWithContentDescription(
                 getWindow().getDecorView(), "Track View track 1") == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Track View track strips");
             return;
         }
+        // Seed a real Drum note before the Track View action. The mute round-trip
+        // must prove it preserves populated musical data, not an empty pattern.
+        if (!prepareArrangementEventGestureAudit()) return;
+        verifyTrackViewMuteToggleAndRestoreForAudit(
+                this::continueUiAuditAfterTrackViewMute);
+    }
 
+    private void continueUiAuditAfterTrackViewMute() {
+        if (destroyed) return;
+        if (!clickMpcToolbarMenuForAudit()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: MENU before ARRANGE");
+            return;
+        }
         View arrangeFromTrackView = findViewWithExactText(
                 getWindow().getDecorView(), "ARRANGE");
-        if (arrangeFromTrackView == null
-                || !arrangeFromTrackView.performClick()) {
+        if (arrangeFromTrackView == null || !arrangeFromTrackView.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: ARRANGE from Track View");
             return;
         }
-
-        View arrangementSurface = findViewWithContentDescription(
+        final View arrangementSurface = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC linear arrangement editor");
-        if (arrangementSurface == null
-                || arrangementSurface.getHeight() <= dp(160)) {
+        if (arrangementSurface == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement surface");
             return;
         }
+        waitForMeasuredAuditView(arrangementSurface, dp(160), "Arrangement surface",
+                this::runUiAuditAfterArrangement);
+    }
 
-        View menuAfterArrange = findViewWithExactText(
-                getWindow().getDecorView(), "MENU");
-        if (menuAfterArrange == null || !menuAfterArrange.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: MENU after ARRANGE");
+    private boolean verifyArrangeTrackSelectionAndRestoreForAudit() {
+        if (arrangementView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange track selection has no view");
+            return false;
+        }
+
+        final int originalTrack = Math.max(0, nativeSequenceGetSelectedTrack());
+        final int trackCount = Math.max(0, nativeSequenceGetTrackCount());
+        if (trackCount < 1 || originalTrack >= trackCount) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange track-selection audit has no valid selected lane"
+                    + " | selected=" + originalTrack
+                    + " | trackCount=" + trackCount);
+            return false;
+        }
+
+        final String originalDataBefore =
+                nativeSequenceGetTrackArrangementData(originalTrack);
+        if (trackCount == 1) {
+            // The clean emulator fixture starts with one Track and there is no
+            // native Track-removal contract. Prove the actual lane tap remains
+            // coherent and non-mutating without manufacturing a second Track.
+            final float[] onlyLanePoint =
+                    arrangementView.trackLanePointForAudit(originalTrack);
+            if (onlyLanePoint == null
+                    || !dispatchArrangementSingleTapForAudit(
+                            arrangementView, onlyLanePoint[0], onlyLanePoint[1])) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: could not tap the only Arrangement lane");
+                restoreArrangeTrackSelectionAfterAudit(originalTrack);
+                return false;
+            }
+            final int nativeSelected = nativeSequenceGetSelectedTrack();
+            final int viewSelected = arrangementView.selectedTrackForAudit();
+            final String originalDataAfter =
+                    nativeSequenceGetTrackArrangementData(originalTrack);
+            if (nativeSelected != originalTrack
+                    || viewSelected != originalTrack
+                    || !java.util.Objects.equals(originalDataBefore, originalDataAfter)) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: single-lane Arrange tap changed selection/data"
+                        + " | expected=" + originalTrack
+                        + " | native=" + nativeSelected
+                        + " | view=" + viewSelected
+                        + " | arrangementDataUnchanged="
+                        + java.util.Objects.equals(originalDataBefore, originalDataAfter));
+                restoreArrangeTrackSelectionAfterAudit(originalTrack);
+                return false;
+            }
+            Log.i(TAG, "UI_ARRANGE_TRACK_SELECTION_SINGLE_TRACK_COMPLETE: selected="
+                    + originalTrack
+                    + " trackCount=1"
+                    + " arrangementDataUnchanged=true"
+                    + " alternateTrackChangeUnavailable=true");
+            return true;
+        }
+
+        // Use opposite ends of the lane list so consecutive audit taps cannot
+        // be mistaken for one double-tap by GestureDetector.
+        final int targetTrack = originalTrack == 0 ? trackCount - 1 : 0;
+        if (targetTrack == originalTrack) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange track-selection target equals original");
+            return false;
+        }
+
+        final String targetDataBefore = nativeSequenceGetTrackArrangementData(targetTrack);
+        final float[] targetPoint = arrangementView.trackLanePointForAudit(targetTrack);
+        if (targetPoint == null
+                || !dispatchArrangementSingleTapForAudit(
+                        arrangementView, targetPoint[0], targetPoint[1])) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not tap target Arrangement lane"
+                    + " | targetTrack=" + targetTrack
+                    + " | view=" + describeAuditView(arrangementView));
+            restoreArrangeTrackSelectionAfterAudit(originalTrack);
+            return false;
+        }
+
+        final int changedTrack = nativeSequenceGetSelectedTrack();
+        final int viewChangedTrack = arrangementView.selectedTrackForAudit();
+        if (changedTrack != targetTrack || viewChangedTrack != targetTrack) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement lane tap did not change selected track"
+                    + " | expected=" + targetTrack
+                    + " | native=" + changedTrack
+                    + " | view=" + viewChangedTrack);
+            restoreArrangeTrackSelectionAfterAudit(originalTrack);
+            return false;
+        }
+
+        final float[] originalPoint = arrangementView.trackLanePointForAudit(originalTrack);
+        if (originalPoint == null
+                || !dispatchArrangementSingleTapForAudit(
+                        arrangementView, originalPoint[0], originalPoint[1])) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not restore original Arrangement track"
+                    + " | originalTrack=" + originalTrack
+                    + " | view=" + describeAuditView(arrangementView));
+            restoreArrangeTrackSelectionAfterAudit(originalTrack);
+            return false;
+        }
+
+        final int restoredTrack = nativeSequenceGetSelectedTrack();
+        final int viewRestoredTrack = arrangementView.selectedTrackForAudit();
+        final String originalDataAfter = nativeSequenceGetTrackArrangementData(originalTrack);
+        final String targetDataAfter = nativeSequenceGetTrackArrangementData(targetTrack);
+        if (restoredTrack != originalTrack
+                || viewRestoredTrack != originalTrack
+                || !java.util.Objects.equals(originalDataBefore, originalDataAfter)
+                || !java.util.Objects.equals(targetDataBefore, targetDataAfter)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement selection did not restore cleanly"
+                    + " | expectedOriginal=" + originalTrack
+                    + " | nativeRestored=" + restoredTrack
+                    + " | viewRestored=" + viewRestoredTrack
+                    + " | originalEventsUnchanged="
+                    + java.util.Objects.equals(originalDataBefore, originalDataAfter)
+                    + " | targetEventsUnchanged="
+                    + java.util.Objects.equals(targetDataBefore, targetDataAfter));
+            restoreArrangeTrackSelectionAfterAudit(originalTrack);
+            return false;
+        }
+
+        Log.i(TAG, "UI_ARRANGE_TRACK_SELECTION_COMPLETE: original="
+                + originalTrack
+                + " changed=" + changedTrack
+                + " restored=" + restoredTrack
+                + " arrangementDataUnchanged=true");
+        return true;
+    }
+
+    private void restoreArrangeTrackSelectionAfterAudit(int trackIndex) {
+        setBottomStatus(nativeSequenceSelectTrack(trackIndex));
+        navigationController.setSelectedTrack(trackIndex);
+        loadArrangementLanes();
+        refreshArrangeView();
+    }
+
+    private boolean dispatchArrangementSingleTapForAudit(
+            MpcArrangeView targetView, float x, float y) {
+        if (targetView == null) return false;
+        final long now = SystemClock.uptimeMillis();
+        final long downTime = now - 40L;
+        return dispatchArrangementTouchForAudit(
+                    targetView, downTime, downTime,
+                    MotionEvent.ACTION_DOWN, x, y)
+                && dispatchArrangementTouchForAudit(
+                    targetView, downTime, now,
+                    MotionEvent.ACTION_UP, x, y);
+    }
+
+    private boolean verifyArrangeLoopDragAndRestoreForAudit() {
+        if (arrangementView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange loop gesture has no view");
+            return false;
+        }
+
+        final int originalStart = nativeSequenceGetLoopStartBar();
+        final int originalEnd = nativeSequenceGetLoopEndBar();
+        final int bars = Math.max(1, nativeSequenceGetBars());
+        final int targetEnd = originalEnd < bars
+                ? originalEnd + 1
+                : originalEnd > originalStart
+                        ? originalEnd - 1
+                        : originalEnd;
+        if (targetEnd == originalEnd || targetEnd < originalStart) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: no alternative valid loop end for gesture audit"
+                    + " | start=" + originalStart
+                    + " | end=" + originalEnd
+                    + " | bars=" + bars);
+            return false;
+        }
+
+        final float[] initialPoint =
+                arrangementView.loopEndHandlePointForAudit(originalEnd);
+        final float[] changedPoint =
+                arrangementView.loopEndHandlePointForAudit(targetEnd);
+        if (initialPoint == null || changedPoint == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: loop-end handle point is not visible"
+                    + " | start=" + originalStart
+                    + " | end=" + originalEnd
+                    + " | target=" + targetEnd
+                    + " | view=" + describeAuditView(arrangementView));
+            return false;
+        }
+        if (!dispatchArrangementLoopDragForAudit(
+                arrangementView, originalEnd, targetEnd)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not dispatch Arrange loop-end drag");
+            return false;
+        }
+
+        final int changedStart = nativeSequenceGetLoopStartBar();
+        final int changedEnd = nativeSequenceGetLoopEndBar();
+        if (changedStart != originalStart || changedEnd != targetEnd) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange loop drag did not commit native loop state"
+                    + " | expected=" + originalStart + ".." + targetEnd
+                    + " | actual=" + changedStart + ".." + changedEnd);
+            nativeSequenceSetLoopBars(originalStart, originalEnd);
+            refreshArrangeView();
+            return false;
+        }
+
+        // Restore through the same handle gesture to prove both the new state
+        // and return to the original state without leaving the test loop active.
+        if (!dispatchArrangementLoopDragForAudit(
+                arrangementView, targetEnd, originalEnd)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not restore Arrange loop via handle drag");
+            nativeSequenceSetLoopBars(originalStart, originalEnd);
+            refreshArrangeView();
+            return false;
+        }
+        final int restoredStart = nativeSequenceGetLoopStartBar();
+        final int restoredEnd = nativeSequenceGetLoopEndBar();
+        if (restoredStart != originalStart || restoredEnd != originalEnd) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange loop handle did not restore prior state"
+                    + " | expected=" + originalStart + ".." + originalEnd
+                    + " | actual=" + restoredStart + ".." + restoredEnd);
+            nativeSequenceSetLoopBars(originalStart, originalEnd);
+            refreshArrangeView();
+            return false;
+        }
+
+        Log.i(TAG, "UI_ARRANGE_LOOP_GESTURE_COMPLETE: original="
+                + originalStart + ".." + originalEnd
+                + " changed=" + changedStart + ".." + changedEnd
+                + " restored=" + restoredStart + ".." + restoredEnd);
+        return true;
+    }
+
+    private boolean dispatchArrangementLoopDragForAudit(
+            MpcArrangeView targetView, int fromEndBar, int toEndBar) {
+        if (targetView == null) return false;
+        final float[] from = targetView.loopEndHandlePointForAudit(fromEndBar);
+        final float[] to = targetView.loopEndHandlePointForAudit(toEndBar);
+        if (from == null || to == null) return false;
+        final long now = SystemClock.uptimeMillis();
+        return dispatchArrangementTouchForAudit(
+                    targetView, now - 60L, now - 60L,
+                    MotionEvent.ACTION_DOWN, from[0], from[1])
+                && dispatchArrangementTouchForAudit(
+                    targetView, now - 60L, now - 25L,
+                    MotionEvent.ACTION_MOVE, to[0], to[1])
+                && dispatchArrangementTouchForAudit(
+                    targetView, now - 60L, now,
+                    MotionEvent.ACTION_UP, to[0], to[1]);
+    }
+
+    private void runUiAuditAfterArrangement() {
+        if (destroyed) return;
+        if (uiAuditSmokeMode) {
+            awaitArrangeLoopTouchAcceptance();
+            return;
+        }
+        runUiAuditAfterArrangementChecks();
+    }
+
+    private void awaitArrangeLoopTouchAcceptance() {
+        if (destroyed) return;
+        if (arrangementView == null || arrangementView.getWidth() <= 0
+                || arrangementView.getHeight() <= 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange loop touch capture has no measured view");
             return;
         }
 
-        View grid = findViewWithExactText(getWindow().getDecorView(), "GRID");
-        if (grid == null || !grid.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: GRID editor");
+        final int originalStart = nativeSequenceGetLoopStartBar();
+        final int originalEnd = nativeSequenceGetLoopEndBar();
+        final int bars = Math.max(1, nativeSequenceGetBars());
+        final int targetEnd = originalEnd < bars
+                ? originalEnd + 1
+                : originalEnd > originalStart ? originalEnd - 1 : originalEnd;
+        if (targetEnd == originalEnd || targetEnd < originalStart
+                || arrangementView.loopStartBarForAudit() != originalStart
+                || arrangementView.loopEndBarForAudit() != originalEnd) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: no valid external Arrange loop target"
+                    + " | native=" + originalStart + ".." + originalEnd
+                    + " | view=" + arrangementView.loopStartBarForAudit()
+                    + ".." + arrangementView.loopEndBarForAudit()
+                    + " | bars=" + bars);
             return;
         }
 
-        View gridView = findViewWithContentDescription(
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-arrange-loop-touch-capture-release");
+        final java.io.File resultFile = new java.io.File(
+                getCacheDir(), "mpc-arrange-loop-touch-result");
+        releaseSignal.delete();
+        resultFile.delete();
+        Log.i(TAG, "UI_ARRANGE_LOOP_TOUCH_CAPTURE_READY: start=" + originalStart
+                + " end=" + originalEnd
+                + " targetEnd=" + targetEnd
+                + " bars=" + bars
+                + " visibleBars=" + arrangementView.visibleBarsForAudit()
+                + " viewportStart=" + arrangementView.viewportStartBarForAudit()
+                + " viewWidth=" + arrangementView.getWidth()
+                + " viewHeight=" + arrangementView.getHeight());
+
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                final String reported = readArrangeLoopTouchResult(resultFile);
+                final String expectedReport = originalStart + " " + originalEnd
+                        + " " + targetEnd;
+                final int restoredStart = nativeSequenceGetLoopStartBar();
+                final int restoredEnd = nativeSequenceGetLoopEndBar();
+                final boolean restored = reported.equals(expectedReport)
+                        && restoredStart == originalStart
+                        && restoredEnd == originalEnd
+                        && arrangementView != null
+                        && "ARRANGE".equals(currentPage)
+                        && arrangementView.loopStartBarForAudit() == originalStart
+                        && arrangementView.loopEndBarForAudit() == originalEnd;
+                if (!restored) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: external Arrange loop restore rejected"
+                            + " | report=" + reported
+                            + " | expectedReport=" + expectedReport
+                            + " | native=" + restoredStart + ".." + restoredEnd
+                            + " | page=" + currentPage);
+                    return;
+                }
+                resultFile.delete();
+                Log.i(TAG, "UI_ARRANGE_LOOP_TOUCH_ACCEPTANCE_COMPLETE: original="
+                        + originalStart + ".." + originalEnd
+                        + " changedEnd=" + targetEnd
+                        + " restored=" + restoredStart + ".." + restoredEnd);
+                runUiAuditAfterArrangementChecks();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: external Arrange loop touch handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
+    }
+
+    private String readArrangeLoopTouchResult(java.io.File resultFile) {
+        if (!resultFile.isFile()) return "";
+        try (java.io.BufferedReader reader =
+                     new java.io.BufferedReader(new java.io.FileReader(resultFile))) {
+            final String line = reader.readLine();
+            return line == null ? "" : line.trim();
+        } catch (java.io.IOException error) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not read Arrange loop result", error);
+            return "";
+        }
+    }
+
+    private void runUiAuditAfterArrangementChecks() {
+        if (destroyed) return;
+
+        if (!verifyArrangeLoopDragAndRestoreForAudit()) return;
+        if (!verifyArrangeTrackSelectionAndRestoreForAudit()) return;
+
+        if (arrangementView == null
+                || arrangementAuditTrackIndex < 0
+                || arrangementAuditTargetStep < 0
+                || arrangementAuditGridTicks <= 0
+                || arrangementAuditEventTick < 0L) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement event gesture seed state missing");
+            return;
+        }
+
+        final int totalSteps = sequenceGridTotalSteps();
+        final int visibleSteps = Math.max(
+                1, Math.min(sequenceGridVisibleSteps, totalSteps));
+        final int expectedStep = MpcSequenceZoomPolicy.stepIndexForTick(
+                arrangementAuditEventTick, arrangementAuditGridTicks, totalSteps);
+        final int expectedStart = MpcSequenceZoomPolicy.gridStartForStep(
+                expectedStep, visibleSteps, totalSteps);
+        final float[] eventCenter = arrangementView.eventCenterForAudit(
+                arrangementAuditTrackIndex, arrangementAuditEventTick);
+        if (eventCenter == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: seeded Arrangement event has no hittable canvas location"
+                    + " | track=" + arrangementAuditTrackIndex
+                    + " | tick=" + arrangementAuditEventTick
+                    + " | view=" + describeAuditView(arrangementView));
+            return;
+        }
+
+        if (!dispatchArrangementEventDoubleTapForAudit(
+                arrangementView, eventCenter[0], eventCenter[1])) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not dispatch Arrangement event double-tap");
+            return;
+        }
+
+        final boolean exactListenerEvent =
+                lastArrangementFocusTrackIndex == arrangementAuditTrackIndex
+                && lastArrangementFocusTick == arrangementAuditEventTick;
+        final int focusedStep = lastArrangementFocusTick < 0L
+                ? -1
+                : MpcSequenceZoomPolicy.stepIndexForTick(
+                        lastArrangementFocusTick, arrangementAuditGridTicks, totalSteps);
+        if (!exactListenerEvent
+                || focusedStep != expectedStep
+                || sequenceGridView == null
+                || sequenceGridStartStep != expectedStart
+                || sequenceGridView.firstStepForTest() != expectedStart) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: real Arrange event double-tap did not focus its exact Grid step"
+                    + " | expectedTrack=" + arrangementAuditTrackIndex
+                    + " | listenerTrack=" + lastArrangementFocusTrackIndex
+                    + " | expectedTick=" + arrangementAuditEventTick
+                    + " | listenerTick=" + lastArrangementFocusTick
+                    + " | expectedStep=" + expectedStep
+                    + " | focusedStep=" + focusedStep
+                    + " | expectedStart=" + expectedStart
+                    + " | actualStart=" + sequenceGridStartStep
+                    + " | GridView=" + describeAuditView(sequenceGridView));
+            return;
+        }
+
+        final int firstVisibleStep = sequenceGridStartStep + 1;
+        final int lastVisibleStep = Math.min(
+                totalSteps, sequenceGridStartStep + sequenceGridVisibleSteps);
+        Log.i(TAG, "UI_ARRANGEMENT_EVENT_GESTURE_DISPATCHED: trackIndex="
+                + lastArrangementFocusTrackIndex
+                + " eventTick=" + lastArrangementFocusTick
+                + " targetStep=" + (focusedStep + 1));
+        Log.i(TAG, "UI_ARRANGEMENT_GRID_FOCUS_COMPLETE: targetStep="
+                + (focusedStep + 1)
+                + " firstVisibleStep=" + firstVisibleStep
+                + " lastVisibleStep=" + lastVisibleStep
+                + " totalSteps=" + totalSteps);
+
+        final View gridView = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Grid View drum event grid");
-        if (gridView == null || gridView.getHeight() <= dp(120)) {
+        if (gridView == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: sequence grid editor");
             return;
         }
+        waitForMeasuredAuditView(
+                gridView,
+                dp(120),
+                "sequence grid editor",
+                this::awaitArrangementGridFocusEvidenceCapture);
+    }
+
+    private boolean dispatchArrangementEventDoubleTapForAudit(
+            MpcArrangeView targetView, float x, float y) {
+        if (targetView == null || targetView.getWidth() <= 0 || targetView.getHeight() <= 0) {
+            return false;
+        }
+        final long now = SystemClock.uptimeMillis();
+        final long firstDown = now - 120L;
+        final long firstUp = now - 80L;
+        final long secondDown = now - 40L;
+        final long secondUp = now;
+        return dispatchArrangementTouchForAudit(
+                    targetView, firstDown, firstDown, MotionEvent.ACTION_DOWN, x, y)
+                && dispatchArrangementTouchForAudit(
+                    targetView, firstDown, firstUp, MotionEvent.ACTION_UP, x, y)
+                && dispatchArrangementTouchForAudit(
+                    targetView, secondDown, secondDown, MotionEvent.ACTION_DOWN, x, y)
+                && dispatchArrangementTouchForAudit(
+                    targetView, secondDown, secondUp, MotionEvent.ACTION_UP, x, y);
+    }
+
+    private boolean dispatchArrangementTouchForAudit(
+            MpcArrangeView targetView,
+            long downTime,
+            long eventTime,
+            int action,
+            float x,
+            float y) {
+        final MotionEvent event = MotionEvent.obtain(
+                downTime, eventTime, action, x, y, 0);
+        try {
+            return targetView.dispatchTouchEvent(event);
+        } finally {
+            event.recycle();
+        }
+    }
+
+    private void awaitArrangementGridFocusEvidenceCapture() {
+        if (destroyed) return;
+        if (!uiAuditSmokeMode) {
+            runUiAuditAfterGrid();
+            return;
+        }
+
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-arrange-grid-focus-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY");
+
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] captureReleasePoll = new Runnable[1];
+        captureReleasePoll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                runUiAuditAfterGrid();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement-to-Grid screenshot/hierarchy "
+                        + "capture handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
+    }
+
+    private void runUiAuditAfterGrid() {
+        if (destroyed) return;
+        beginArrangementBackReentryAudit();
+    }
+
+
+    private void beginArrangementBackReentryAudit() {
+        if (destroyed) return;
+        final MpcUiState initialState = navigationController == null ? null : navigationController.state();
+        final int expectedTrack = arrangementAuditTrackIndex;
+        final long expectedTick = arrangementAuditEventTick;
+        final int gridTicks = arrangementAuditGridTicks;
+        final int totalSteps = sequenceGridTotalSteps();
+        final int visibleSteps = Math.max(1, Math.min(sequenceGridVisibleSteps, totalSteps));
+        final int expectedStep = gridTicks <= 0 ? -1
+                : MpcSequenceZoomPolicy.stepIndexForTick(expectedTick, gridTicks, totalSteps);
+        final int expectedStart = expectedStep < 0 ? -1
+                : MpcSequenceZoomPolicy.gridStartForStep(expectedStep, visibleSteps, totalSteps);
+        final int expectedNavSequence = initialState == null ? -1 : initialState.selectedSequence();
+        final int expectedNativeSequence = nativeSequenceGetIndex();
+        if (initialState == null
+                || initialState.mode() != MpcUiState.Mode.GRID
+                || !"SEQ".equals(currentPage)
+                || expectedTrack < 0 || expectedTick < 0L || gridTicks <= 0
+                || expectedStep != arrangementAuditTargetStep
+                || nativeSequenceGetSelectedTrack() != expectedTrack
+                || initialState.selectedTrack() != expectedTrack
+                || lastArrangementFocusTrackIndex != expectedTrack
+                || lastArrangementFocusTick != expectedTick
+                || sequenceGridView == null
+                || sequenceGridStartStep != expectedStart
+                || sequenceGridView.firstStepForTest() != expectedStart
+                || expectedNativeSequence < 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: initial Arrange-to-Grid context is inconsistent"
+                    + " | expectedTrack=" + expectedTrack
+                    + " | listenerTrack=" + lastArrangementFocusTrackIndex
+                    + " | expectedTick=" + expectedTick
+                    + " | listenerTick=" + lastArrangementFocusTick
+                    + " | expectedStep=" + (expectedStep + 1)
+                    + " | gridStart=" + sequenceGridStartStep
+                    + " | currentPage=" + currentPage);
+            return;
+        }
+        final String patternSnapshot = captureArrangeNavigationPatternSnapshot(gridTicks);
+        final View back = findViewWithExactText(getWindow().getDecorView(), "BACK");
+        if (back == null || !back.isEnabled() || !back.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: actual Grid Function Bar BACK action");
+            return;
+        }
+        if (navigationController.state().mode() != MpcUiState.Mode.ARRANGE
+                || !"ARRANGE".equals(currentPage)
+                || nativeSequenceGetSelectedTrack() != expectedTrack
+                || navigationController.state().selectedTrack() != expectedTrack
+                || navigationController.state().selectedSequence() != expectedNavSequence
+                || nativeSequenceGetIndex() != expectedNativeSequence
+                || lastArrangementFocusTrackIndex != expectedTrack
+                || lastArrangementFocusTick != expectedTick
+                || arrangementView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Grid BACK did not restore Arrange context"
+                    + " | expectedTrack=" + expectedTrack
+                    + " | nativeTrack=" + nativeSequenceGetSelectedTrack()
+                    + " | navigationTrack=" + navigationController.state().selectedTrack()
+                    + " | expectedTick=" + expectedTick
+                    + " | lastTick=" + lastArrangementFocusTick
+                    + " | currentPage=" + currentPage);
+            return;
+        }
+        waitForMeasuredAuditView(arrangementView, dp(120), "Arrangement restored by Grid BACK",
+                () -> verifyArrangementBackContextForAudit(
+                        expectedNavSequence, expectedNativeSequence, expectedTrack, expectedTick,
+                        gridTicks, totalSteps, visibleSteps, expectedStep, expectedStart, patternSnapshot));
+    }
+
+    private String captureArrangeNavigationPatternSnapshot(int gridTicks) {
+        final StringBuilder snapshot = new StringBuilder(4096);
+        final int trackCount = Math.max(0, nativeSequenceGetTrackCount());
+        snapshot.append("trackCount=").append(trackCount);
+        for (int track = 0; track < trackCount; track++) {
+            snapshot.append("|arrange[").append(track).append("]=")
+                    .append(nativeSequenceGetTrackArrangementData(track));
+        }
+        final int totalSteps = sequenceGridTotalSteps();
+        snapshot.append("|gridTicks=").append(gridTicks).append("|steps=").append(totalSteps);
+        for (int step = 0; step < totalSteps; step++) {
+            final int[] velocities = nativeSequenceGetGridVelocities(step, gridTicks);
+            snapshot.append("|padVelocities[").append(step).append("]=")
+                    .append(velocities == null ? "<null>" : java.util.Arrays.toString(velocities));
+        }
+        return snapshot.toString();
+    }
+
+    private void verifyArrangementBackContextForAudit(
+            int expectedNavSequence, int expectedNativeSequence, int expectedTrack, long expectedTick,
+            int gridTicks, int totalSteps, int visibleSteps, int expectedStep, int expectedStart,
+            String patternSnapshot) {
+        if (destroyed) return;
+        final float[] eventCenter = arrangementView == null ? null
+                : arrangementView.eventCenterForAudit(expectedTrack, expectedTick);
+        final boolean eventPresent = eventCenter != null;
+        final boolean patternUnchanged = patternSnapshot.equals(captureArrangeNavigationPatternSnapshot(gridTicks));
+        if (navigationController.state().mode() != MpcUiState.Mode.ARRANGE
+                || !"ARRANGE".equals(currentPage)
+                || nativeSequenceGetSelectedTrack() != expectedTrack
+                || navigationController.state().selectedTrack() != expectedTrack
+                || navigationController.state().selectedSequence() != expectedNavSequence
+                || nativeSequenceGetIndex() != expectedNativeSequence
+                || lastArrangementFocusTrackIndex != expectedTrack
+                || lastArrangementFocusTick != expectedTick
+                || sequenceGridTotalSteps() != totalSteps
+                || sequenceGridVisibleSteps != visibleSteps
+                || !eventPresent || !patternUnchanged) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange did not preserve the same event/pattern after Grid BACK"
+                    + " | trackIndex=" + expectedTrack + " | eventTick=" + expectedTick
+                    + " | eventPresent=" + eventPresent + " | patternDataUnchanged=" + patternUnchanged
+                    + " | expectedGridStart=" + expectedStart);
+            return;
+        }
+        Log.i(TAG, "UI_ARRANGEMENT_BACK_CONTEXT_COMPLETE: selectedSequence=" + expectedNativeSequence
+                + " trackIndex=" + expectedTrack + " eventTick=" + expectedTick
+                + " targetStep=" + (expectedStep + 1) + " eventPresent=true patternDataUnchanged=true");
+        awaitArrangementBackEvidenceCapture(expectedNavSequence, expectedNativeSequence,
+                expectedTrack, expectedTick, gridTicks, totalSteps, visibleSteps,
+                expectedStep, expectedStart, patternSnapshot);
+    }
+
+    private void awaitArrangementBackEvidenceCapture(
+            int expectedNavSequence, int expectedNativeSequence, int expectedTrack, long expectedTick,
+            int gridTicks, int totalSteps, int visibleSteps, int expectedStep, int expectedStart,
+            String patternSnapshot) {
+        if (destroyed) return;
+        if (!uiAuditSmokeMode) {
+            reopenSameArrangementEventAfterBackForAudit(expectedNavSequence, expectedNativeSequence,
+                    expectedTrack, expectedTick, gridTicks, totalSteps, visibleSteps,
+                    expectedStep, expectedStart, patternSnapshot);
+            return;
+        }
+        final java.io.File releaseSignal = new java.io.File(getCacheDir(), "mpc-arrange-back-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_ARRANGEMENT_BACK_CAPTURE_READY");
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                reopenSameArrangementEventAfterBackForAudit(expectedNavSequence, expectedNativeSequence,
+                        expectedTrack, expectedTick, gridTicks, totalSteps, visibleSteps,
+                        expectedStep, expectedStart, patternSnapshot);
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Arrange-after-BACK evidence handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
+    }
+
+    private void reopenSameArrangementEventAfterBackForAudit(
+            int expectedNavSequence, int expectedNativeSequence, int expectedTrack, long expectedTick,
+            int gridTicks, int totalSteps, int visibleSteps, int expectedStep, int expectedStart,
+            String patternSnapshot) {
+        if (destroyed) return;
+        final float[] eventCenter = arrangementView == null ? null
+                : arrangementView.eventCenterForAudit(expectedTrack, expectedTick);
+        final boolean patternUnchanged = patternSnapshot.equals(captureArrangeNavigationPatternSnapshot(gridTicks));
+        if (navigationController.state().mode() != MpcUiState.Mode.ARRANGE
+                || !"ARRANGE".equals(currentPage)
+                || nativeSequenceGetSelectedTrack() != expectedTrack
+                || navigationController.state().selectedTrack() != expectedTrack
+                || navigationController.state().selectedSequence() != expectedNavSequence
+                || nativeSequenceGetIndex() != expectedNativeSequence
+                || !patternUnchanged || eventCenter == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: same Arrangement event unavailable for re-entry"
+                    + " | trackIndex=" + expectedTrack + " | eventTick=" + expectedTick
+                    + " | eventPresent=" + (eventCenter != null) + " | patternDataUnchanged=" + patternUnchanged);
+            return;
+        }
+        // Clear the prior callback result so only a fresh gesture can satisfy the re-entry check.
+        lastArrangementFocusTrackIndex = -1;
+        lastArrangementFocusTick = -1L;
+        if (!dispatchArrangementEventDoubleTapForAudit(arrangementView, eventCenter[0], eventCenter[1])) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: same Arrangement event double-tap after BACK");
+            return;
+        }
+        final int reTotal = sequenceGridTotalSteps();
+        final int reVisible = Math.max(1, Math.min(sequenceGridVisibleSteps, reTotal));
+        final int reStep = lastArrangementFocusTick < 0L ? -1
+                : MpcSequenceZoomPolicy.stepIndexForTick(lastArrangementFocusTick, gridTicks, reTotal);
+        final int reStart = reStep < 0 ? -1
+                : MpcSequenceZoomPolicy.gridStartForStep(reStep, reVisible, reTotal);
+        final boolean freshEvent = lastArrangementFocusTrackIndex == expectedTrack
+                && lastArrangementFocusTick == expectedTick;
+        final boolean sameGrid = navigationController.state().mode() == MpcUiState.Mode.GRID
+                && "SEQ".equals(currentPage)
+                && nativeSequenceGetSelectedTrack() == expectedTrack
+                && navigationController.state().selectedTrack() == expectedTrack
+                && navigationController.state().selectedSequence() == expectedNavSequence
+                && nativeSequenceGetIndex() == expectedNativeSequence
+                && reTotal == totalSteps && reVisible == visibleSteps
+                && sequenceGridVisibleSteps == visibleSteps
+                && reStep == expectedStep && reStart == expectedStart
+                && sequenceGridStartStep == expectedStart && sequenceGridView != null
+                && sequenceGridView.firstStepForTest() == expectedStart;
+        final boolean patternStillUnchanged = patternSnapshot.equals(captureArrangeNavigationPatternSnapshot(gridTicks));
+        if (!freshEvent || !sameGrid || !patternStillUnchanged) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrange BACK/re-entry did not restore the same musical location"
+                    + " | expectedTrack=" + expectedTrack + " | listenerTrack=" + lastArrangementFocusTrackIndex
+                    + " | expectedTick=" + expectedTick + " | listenerTick=" + lastArrangementFocusTick
+                    + " | expectedStep=" + (expectedStep + 1) + " | actualStep=" + (reStep + 1)
+                    + " | expectedGridStart=" + expectedStart + " | actualGridStart=" + sequenceGridStartStep
+                    + " | patternDataUnchanged=" + patternStillUnchanged);
+            return;
+        }
+        final int firstVisible = reStart + 1;
+        final int lastVisible = Math.min(reTotal, reStart + reVisible);
+        Log.i(TAG, "UI_ARRANGEMENT_GRID_BACK_REENTRY_COMPLETE: trackIndex=" + expectedTrack
+                + " eventTick=" + lastArrangementFocusTick + " targetStep=" + (reStep + 1)
+                + " firstVisibleStep=" + firstVisible + " lastVisibleStep=" + lastVisible
+                + " totalSteps=" + reTotal + " eventPresent=true patternDataUnchanged=true");
+        waitForMeasuredAuditView(sequenceGridView, dp(120),
+                "Grid after reopening same Arrangement event", this::awaitArrangementGridBackReentryEvidenceCapture);
+    }
+
+    private void awaitArrangementGridBackReentryEvidenceCapture() {
+        if (destroyed) return;
+        if (!uiAuditSmokeMode) {
+            continueUiAuditAfterGrid();
+            return;
+        }
+        final java.io.File releaseSignal = new java.io.File(getCacheDir(), "mpc-arrange-grid-reentry-capture-release");
+        releaseSignal.delete();
+        Log.i(TAG, "UI_ARRANGEMENT_GRID_BACK_REENTRY_CAPTURE_READY");
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                Log.i(TAG, "UI_ARRANGEMENT_GRID_BACK_REENTRY_CAPTURE_VERIFIED");
+                continueUiAuditAfterGrid();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Grid re-entry evidence handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
+    }
+
+    private void continueUiAuditAfterGrid() {
+        if (destroyed) return;
+
         if (!drumGridAvailable()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: audit track is not Drum");
             return;
@@ -8905,9 +12689,328 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Step audit track is not Drum");
             return;
         }
+        final View stepCell = findViewWithContentDescription(
+                getWindow().getDecorView(), "Pad 1 step 1 off");
+        if (stepCell == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: step editor cells");
+            return;
+        }
+        waitForMeasuredAuditView(
+                stepCell,
+                dp(40),
+                "step editor cells",
+                this::runUiAuditAfterStep);
+    }
+
+    private boolean hasStepEventForAudit(int[] parameters) {
+        return parameters != null
+                && parameters.length >= 3
+                && parameters[0] > 0;
+    }
+
+    private boolean stepEventInfoMatchesForAudit(int absoluteStep, boolean empty) {
+        if (sequenceStepEventInfo == null) return false;
+        final String text = sequenceStepEventInfo.getText().toString();
+        return text.contains(String.format(
+                        Locale.ROOT, "STEP %02d", absoluteStep + 1))
+                && (empty
+                        ? text.contains("EMPTY")
+                        : !text.contains("EMPTY") && text.contains("•"));
+    }
+
+    private boolean verifyStepPageNavigationAndRestoreForAudit() {
+        final int pageCount = sequenceStepPageCount();
+        final int originalPage = sequenceStepPage;
+        final int pad = selectedPad;
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        if (pageCount < 2 || originalPage != 0 || selectedSequenceStep != 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step paging fixture is not at page 1"
+                    + " | pages=" + pageCount
+                    + " | page=" + originalPage
+                    + " | selectedStep=" + selectedSequenceStep);
+            return false;
+        }
+
+        final int[] stepOneBefore = nativeSequenceGetStepParameters(pad, 0, gridTicks);
+        if (!hasStepEventForAudit(stepOneBefore)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step paging fixture lost the existing Pad 1 step 1 event");
+            return false;
+        }
+        final int[] stepOneSnapshot = stepOneBefore.clone();
+
+        // Find the same relative column empty on both pages so the navigation test
+        // neither overwrites the Arrangement focus fixture nor assumes an unused cell.
+        int testColumn = -1;
+        for (int column = 0; column < SEQUENCE_GRID_PAGE_STEPS; column++) {
+            final int[] source = nativeSequenceGetStepParameters(pad, column, gridTicks);
+            final int[] target = nativeSequenceGetStepParameters(
+                    pad, SEQUENCE_GRID_PAGE_STEPS + column, gridTicks);
+            if (!hasStepEventForAudit(source) && !hasStepEventForAudit(target)) {
+                testColumn = column;
+                break;
+            }
+        }
+        if (testColumn < 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: no matching empty Step column on pages 1 and 2");
+            return false;
+        }
+
+        final View sourceEmptyCell = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Pad " + (pad + 1) + " step " + (testColumn + 1) + " off");
+        if (sourceEmptyCell == null || !sourceEmptyCell.performLongClick()
+                || selectedSequenceStep != testColumn
+                || !stepEventInfoMatchesForAudit(testColumn, true)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step page source-column long press"
+                    + " | column=" + testColumn
+                    + " | selected=" + selectedSequenceStep
+                    + " | info=" + (sequenceStepEventInfo == null
+                            ? "missing" : sequenceStepEventInfo.getText()));
+            return false;
+        }
+
+        View nextPage = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Step Sequencer next 16-step page");
+        if (nextPage == null || !nextPage.isShown() || !nextPage.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: next Step page control");
+            return false;
+        }
+        final int targetStep = SEQUENCE_GRID_PAGE_STEPS + testColumn;
+        if (sequenceStepPage != 1
+                || selectedSequenceStep != targetStep
+                || !stepEventInfoMatchesForAudit(targetStep, true)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step page change did not keep the visible column selected"
+                    + " | page=" + sequenceStepPage
+                    + " | selected=" + selectedSequenceStep
+                    + " | expected=" + targetStep
+                    + " | info=" + sequenceStepEventInfo.getText());
+            return false;
+        }
+
+        View targetEmptyCell = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "Pad " + (pad + 1) + " step " + (testColumn + 1) + " off");
+        if (targetEmptyCell == null || !targetEmptyCell.performClick()
+                || selectedSequenceStep != targetStep) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: target-page step toggle"
+                    + " | target=" + targetStep
+                    + " | selected=" + selectedSequenceStep);
+            return false;
+        }
+
+        final int[] targetAfterAdd = nativeSequenceGetStepParameters(
+                pad, targetStep, gridTicks);
+        if (!hasStepEventForAudit(targetAfterAdd)
+                || !stepEventInfoMatchesForAudit(targetStep, false)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: second-page step did not become an active event"
+                    + " | target=" + targetStep
+                    + " | info=" + sequenceStepEventInfo.getText());
+            return false;
+        }
+
+        // Adjust through the same selected-step operation used by the hardware +/- path.
+        // The visible target must change while the pre-existing first-step parameters remain intact.
+        final int probabilityDelta = targetAfterAdd[1] >= 127 ? -1 : 1;
+        final int expectedProbability = Math.max(
+                0, Math.min(127, targetAfterAdd[1] + probabilityDelta));
+        adjustSelectedStepProbability(probabilityDelta);
+        final int[] targetAfterEdit = nativeSequenceGetStepParameters(
+                pad, targetStep, gridTicks);
+        if (!hasStepEventForAudit(targetAfterEdit)
+                || targetAfterEdit[1] != expectedProbability
+                || hasStepEventForAudit(
+                        nativeSequenceGetStepParameters(pad, testColumn, gridTicks))
+                || !java.util.Arrays.equals(stepOneSnapshot,
+                        nativeSequenceGetStepParameters(pad, 0, gridTicks))) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step page parameter edit hit the wrong absolute step"
+                    + " | target=" + targetStep
+                    + " | expectedProbability=" + expectedProbability
+                    + " | actual=" + (targetAfterEdit == null || targetAfterEdit.length < 2
+                            ? -1 : targetAfterEdit[1])
+                    + " | firstStepPreserved="
+                    + java.util.Arrays.equals(stepOneSnapshot,
+                            nativeSequenceGetStepParameters(pad, 0, gridTicks)));
+            return false;
+        }
+
+        View previousPage = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Step Sequencer previous 16-step page");
+        if (previousPage == null || !previousPage.isShown() || !previousPage.performClick()
+                || sequenceStepPage != 0
+                || selectedSequenceStep != testColumn
+                || !hasStepEventForAudit(nativeSequenceGetStepParameters(pad, targetStep, gridTicks))
+                || !java.util.Arrays.equals(stepOneSnapshot,
+                        nativeSequenceGetStepParameters(pad, 0, gridTicks))
+                || !stepEventInfoMatchesForAudit(testColumn, true)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: returning to Step page 1 changed the cursor or note state"
+                    + " | page=" + sequenceStepPage
+                    + " | selected=" + selectedSequenceStep);
+            return false;
+        }
+
+        nextPage = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Step Sequencer next 16-step page");
+        if (nextPage == null || !nextPage.performClick()
+                || sequenceStepPage != 1
+                || selectedSequenceStep != targetStep
+                || !stepEventInfoMatchesForAudit(targetStep, false)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: re-entering Step page 2 lost target cursor");
+            return false;
+        }
+
+        final String targetOnDescription =
+                "Pad " + (pad + 1) + " step " + (testColumn + 1) + " on";
+        View targetActiveCell = findViewWithContentDescription(
+                getWindow().getDecorView(), targetOnDescription);
+        if (targetActiveCell == null || !targetActiveCell.performClick()
+                || selectedSequenceStep != targetStep
+                || hasStepEventForAudit(
+                        nativeSequenceGetStepParameters(pad, targetStep, gridTicks))
+                || !java.util.Arrays.equals(stepOneSnapshot,
+                        nativeSequenceGetStepParameters(pad, 0, gridTicks))) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: removing the test event changed another step"
+                    + " | target=" + targetStep);
+            return false;
+        }
+
+        previousPage = findViewWithContentDescription(
+                getWindow().getDecorView(),
+                "MPC Step Sequencer previous 16-step page");
+        if (previousPage == null || !previousPage.performClick()
+                || sequenceStepPage != 0
+                || selectedSequenceStep != testColumn
+                || hasStepEventForAudit(
+                        nativeSequenceGetStepParameters(pad, targetStep, gridTicks))
+                || !java.util.Arrays.equals(stepOneSnapshot,
+                        nativeSequenceGetStepParameters(pad, 0, gridTicks))
+                || !stepEventInfoMatchesForAudit(testColumn, true)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step paging cleanup did not restore the original pattern");
+            return false;
+        }
+
+        Log.i(TAG, "UI_STEP_PAGE_NAVIGATION_COMPLETE: page1↔page2"
+                + " | column=" + (testColumn + 1)
+                + " | targetStep=" + (targetStep + 1)
+                + " | parameterEditRoutedToVisibleStep=true"
+                + " | originalStepAndPatternRestored=true");
+        return true;
+    }
+
+    private void runUiAuditAfterStep() {
+        if (destroyed) return;
+        if (!uiAuditSmokeMode) {
+            runUiAuditAfterStepChecks();
+            return;
+        }
+
+        stepTouchAuditPad = Math.max(0, Math.min(15, selectedPad));
+        stepTouchAuditGridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int[] stepOne = nativeSequenceGetStepParameters(
+                stepTouchAuditPad, 0, stepTouchAuditGridTicks);
+        stepTouchAuditStepOneSnapshot = stepOne == null ? null : stepOne.clone();
+        stepTouchAuditOriginalParameter = stepEditParameter;
+
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-step-touch-capture-release");
+        final java.io.File targetFile = new java.io.File(
+                getCacheDir(), "mpc-step-touch-target");
+        releaseSignal.delete();
+        targetFile.delete();
+        Log.i(TAG, "UI_STEP_TOUCH_CAPTURE_READY: pad=" + (stepTouchAuditPad + 1)
+                + " | stepOneInitiallyActive="
+                + hasStepEventForAudit(stepTouchAuditStepOneSnapshot));
+
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] captureReleasePoll = new Runnable[1];
+        captureReleasePoll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                final int targetStepNumber = readStepTouchAuditTarget(targetFile);
+                if (targetStepNumber < 2 || targetStepNumber > 16
+                        || !validateStepTouchAcceptanceForAudit(targetStepNumber - 1)) {
+                    targetFile.delete();
+                    return;
+                }
+                targetFile.delete();
+                // The external UI test temporarily advances VEL → PROB; restore
+                // the selector before the established Step audit continues.
+                stepEditParameter = stepTouchAuditOriginalParameter;
+                Log.i(TAG, "UI_STEP_TOUCH_ACCEPTANCE_COMPLETE: targetStep="
+                        + targetStepNumber
+                        + " | nativeEventRemoved=true"
+                        + " | fixtureStepOnePreserved=true"
+                        + " | parameterSelectorRestored=true");
+                runUiAuditAfterStepChecks();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Step Sequencer touch evidence handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(captureReleasePoll[0], 100L);
+    }
+
+    private int readStepTouchAuditTarget(java.io.File targetFile) {
+        if (!targetFile.isFile()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Step touch target file is missing");
+            return -1;
+        }
+        try (java.io.BufferedReader reader =
+                     new java.io.BufferedReader(new java.io.FileReader(targetFile))) {
+            final String value = reader.readLine();
+            final int target = value == null ? -1 : Integer.parseInt(value.trim());
+            if (target < 2 || target > 16) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Step touch target is out of range: "
+                        + target);
+                return -1;
+            }
+            return target;
+        } catch (java.io.IOException | NumberFormatException error) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not read Step touch target", error);
+            return -1;
+        }
+    }
+
+    private boolean validateStepTouchAcceptanceForAudit(int targetStep) {
+        final int[] targetParameters = nativeSequenceGetStepParameters(
+                stepTouchAuditPad, targetStep, stepTouchAuditGridTicks);
+        final int[] stepOneNow = nativeSequenceGetStepParameters(
+                stepTouchAuditPad, 0, stepTouchAuditGridTicks);
+        final boolean targetIsEmpty = !hasStepEventForAudit(targetParameters);
+        final boolean stepOnePreserved = Arrays.equals(
+                stepTouchAuditStepOneSnapshot, stepOneNow);
+        final boolean stepContextRestored = !destroyed
+                && "SEQ".equals(currentPage)
+                && navigationController != null
+                && navigationController.state().mode() == MpcUiState.Mode.STEP
+                && selectedPad == stepTouchAuditPad
+                && sequenceStepPage == targetStep / SEQUENCE_GRID_PAGE_STEPS
+                && selectedSequenceStep == targetStep
+                && stepEventInfoMatchesForAudit(targetStep, true);
+        if (!targetIsEmpty || !stepOnePreserved || !stepContextRestored) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: external Step touch acceptance cleanup"
+                    + " | targetStep=" + (targetStep + 1)
+                    + " | targetIsEmpty=" + targetIsEmpty
+                    + " | stepOnePreserved=" + stepOnePreserved
+                    + " | stepContextRestored=" + stepContextRestored);
+            return false;
+        }
+        return true;
+    }
+
+    private void runUiAuditAfterStepChecks() {
+        if (destroyed) return;
+
         View stepCell = findViewWithContentDescription(
                 getWindow().getDecorView(), "Pad 1 step 1 off");
-        if (stepCell == null || stepCell.getWidth() <= 0
+        if (stepCell == null
+                || stepCell.getWidth() <= 0
                 || stepCell.getHeight() <= dp(40)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: step editor cells");
             return;
@@ -8936,9 +13039,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         onHardwareAction(
                 MpcStudioMk2SemanticActions.DATA_DIAL_PRESS,
                 0, 0, 0);
+        // DATA DIAL ENTER cycles VEL -> PROB; a new step defaults to 127.
+        // Use -1 so the audit performs a real bounded parameter mutation.
         onHardwareAction(
                 MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
-                1, 0, 0);
+                -1, 0, 0);
         final String eventAfterHardwareEdit =
                 sequenceStepEventInfo.getText().toString();
         if (eventBeforeHardwareEdit.equals(eventAfterHardwareEdit)) {
@@ -8966,6 +13071,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        if (!verifyStepPageNavigationAndRestoreForAudit()) {
+            return;
+        }
+
         onHardwareAction(
                 MpcStudioMk2SemanticActions.LOCATE_STATE, 1, 0, 0);
         onHardwareAction(
@@ -8986,9 +13095,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         onHardwareAction(
                 MpcStudioMk2SemanticActions.LOCATE_STATE, 0, 0, 0);
 
-        View menuAfterStep = findViewWithExactText(
-                getWindow().getDecorView(), "MENU");
-        if (menuAfterStep == null || !menuAfterStep.performClick()) {
+        if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU after STEP");
             return;
         }
@@ -9000,16 +13107,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View launcher = findViewWithContentDescription(
+        final View launcher = findViewWithContentDescription(
                 getWindow().getDecorView(), "Sequence live launcher");
-        if (launcher == null || launcher.getHeight() <= dp(120)) {
+        if (launcher == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: sequence launcher");
             return;
         }
+        waitForMeasuredAuditView(
+                launcher,
+                dp(120),
+                "sequence launcher",
+                this::runUiAuditAfterLauncher);
+    }
 
-        View menuAfterLauncher = findViewWithExactText(
-                getWindow().getDecorView(), "MENU");
-        if (menuAfterLauncher == null || !menuAfterLauncher.performClick()) {
+    private void runUiAuditAfterLauncher() {
+        if (destroyed) return;
+
+        if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU after launcher");
             return;
         }
@@ -9021,6 +13135,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        final View waveform = findViewWithContentDescription(
+                getWindow().getDecorView(), "Sample waveform editor");
+        if (waveform == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: sample waveform editor");
+            return;
+        }
+        waitForMeasuredAuditView(
+                waveform,
+                0,
+                "sample waveform editor",
+                this::runUiAuditAfterSampleEdit);
+    }
+
+    private void runUiAuditAfterSampleEdit() {
+        if (destroyed) return;
+
         if (findViewWithExactText(getWindow().getDecorView(), "ENV") == null
                 || findViewWithExactText(getWindow().getDecorView(), "FILTER") == null
                 || findViewWithContentDescription(
@@ -9029,9 +13159,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View menuAfterSample = findViewWithExactText(
-                getWindow().getDecorView(), "MENU");
-        if (menuAfterSample == null || !menuAfterSample.performClick()) {
+        if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU after SAMPLE EDIT");
             return;
         }
@@ -9043,15 +13171,138 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        View recordingWaveformView = findViewWithContentDescription(
+        final View recordingWaveformView = findViewWithContentDescription(
+                getWindow().getDecorView(), "Recording waveform monitor");
+        if (recordingWaveformView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: recording waveform height");
+            return;
+        }
+        waitForMeasuredAuditView(
+                recordingWaveformView,
+                dp(144),
+                "recording waveform height",
+                this::finishUiAudit);
+    }
+
+    private void finishUiAudit() {
+        if (destroyed) return;
+
+        final View recordingWaveformView = findViewWithContentDescription(
                 getWindow().getDecorView(), "Recording waveform monitor");
         if (recordingWaveformView == null
                 || recordingWaveformView.getHeight() < dp(144)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: recording waveform height");
             return;
         }
-
+        if (uiAuditSmokeMode && recordingWaveformUpdater != null) {
+            waveformUiHandler.removeCallbacks(recordingWaveformUpdater);
+            recordingWaveformUpdater = null;
+        }
         Log.i(TAG, "UI_INTERACTION_COMPLETE");
+    }
+
+    private boolean captureBrowserAuditEvidence() {
+        final View decor = getWindow() == null ? null : getWindow().getDecorView();
+        if (browserView == null || decor == null
+                || decor.getWidth() <= 0 || decor.getHeight() <= 0
+                || !browserView.isShown()
+                || browserView.getWidth() <= dp(200)
+                || browserView.getHeight() <= dp(180)) {
+            Log.e(TAG, "UI_BROWSER_EVIDENCE_FAILED: Browser root has no visible viewport"
+                    + " | browser=" + describeAuditView(browserView)
+                    + " | decor=" + describeAuditView(decor));
+            return false;
+        }
+
+        android.graphics.Bitmap bitmap = null;
+        try {
+            bitmap = android.graphics.Bitmap.createBitmap(
+                    decor.getWidth(), decor.getHeight(),
+                    android.graphics.Bitmap.Config.ARGB_8888);
+            decor.draw(new android.graphics.Canvas(bitmap));
+            final java.io.File screenshotFile = new java.io.File(
+                    getCacheDir(), "mpc-groovebox-browser-render.png");
+            try (java.io.FileOutputStream output =
+                         new java.io.FileOutputStream(screenshotFile)) {
+                if (!bitmap.compress(
+                        android.graphics.Bitmap.CompressFormat.PNG, 100, output)) {
+                    throw new IOException("Browser Bitmap compression returned false");
+                }
+            }
+
+            final StringBuilder hierarchy = new StringBuilder(8192);
+            appendBrowserAuditHierarchy(browserView, hierarchy, 0);
+            final java.io.File hierarchyFile = new java.io.File(
+                    getCacheDir(), "mpc-groovebox-browser-hierarchy.txt");
+            try (java.io.FileOutputStream output =
+                         new java.io.FileOutputStream(hierarchyFile)) {
+                output.write(hierarchy.toString().getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (IOException | RuntimeException error) {
+            Log.e(TAG, "UI_BROWSER_EVIDENCE_FAILED: could not persist Browser screenshot/tree", error);
+            return false;
+        } finally {
+            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+        }
+
+        Log.i(TAG, "UI_BROWSER_EVIDENCE_CAPTURED: Browser CONTENT + SAMPLES filter");
+        return true;
+    }
+
+    private void appendBrowserAuditHierarchy(View view, StringBuilder output, int depth) {
+        if (view == null) return;
+        for (int i = 0; i < depth; i++) output.append("  ");
+
+        final int[] screenPosition = new int[2];
+        view.getLocationOnScreen(screenPosition);
+        output.append(view.getClass().getSimpleName())
+                .append(" bounds=[")
+                .append(screenPosition[0]).append(',').append(screenPosition[1]).append(',')
+                .append(screenPosition[0] + view.getWidth()).append(',')
+                .append(screenPosition[1] + view.getHeight()).append(']')
+                .append(" visibility=").append(view.getVisibility())
+                .append(" selected=").append(view.isSelected())
+                .append(" enabled=").append(view.isEnabled())
+                .append(" clickable=").append(view.isClickable())
+                .append(" focusable=").append(view.isFocusable());
+        if (view instanceof TextView) {
+            output.append(" text=\"")
+                    .append(escapeBrowserAuditValue(((TextView) view).getText()))
+                    .append('"');
+        }
+        output.append(" contentDescription=\"")
+                .append(escapeBrowserAuditValue(view.getContentDescription()))
+                .append("\"\n");
+
+        if (view instanceof ViewGroup) {
+            final ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                appendBrowserAuditHierarchy(group.getChildAt(i), output, depth + 1);
+            }
+        }
+    }
+
+    private String escapeBrowserAuditValue(CharSequence value) {
+        if (value == null) return "";
+        return value.toString()
+                .replace("\\", "\\\\")
+                .replace("\r", "\\r")
+                .replace("\n", "\\n")
+                .replace("\"", "\\\"");
+    }
+
+    private String describeAuditView(View view) {
+        if (view == null) return "null";
+        return "w=" + view.getWidth()
+                + ",h=" + view.getHeight()
+                + ",vis=" + view.getVisibility()
+                + ",a=" + view.getAlpha();
+    }
+
+    private boolean clickMpcToolbarMenuForAudit() {
+        final View menu = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Toolbar Menu");
+        return menu != null && menu.performClick();
     }
 
     private View findViewWithContentDescription(
@@ -9098,6 +13349,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                            String[] permissions,
                                            int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == REQUEST_SCAN_LOCAL_AUDIO) {
+            if (grantResults.length == 0
+                    || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                if (browserView != null) {
+                    browserView.setScanState(
+                            "LOCAL AUDIO SCAN • PERMISSION DENIED • OPEN STORAGE STILL WORKS");
+                }
+                setBottomStatus(
+                        "Local audio permission denied • OPEN STORAGE remains available");
+            } else {
+                scanLocalAudioFiles();
+            }
+            return;
+        }
 
         if (grantResults.length == 0
                 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
@@ -9332,14 +13598,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
                 return;
             case MpcStudioMk2SemanticActions.TRACK_TYPE_SELECTION_CONTEXT:
-                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK_TYPE);
-                setBottomStatus("TRACK TYPE • reserved");
+                navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
+                navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
+                setBottomStatus(TRACK_TYPE_CHANGE_RESERVED_STATUS);
+                refreshMainDataDialFocusVisuals();
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_DELTA:
             case MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA:
                 handleHardwareDialDelta(value0, value1 != 0);
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_PRESS:
+                if (navigationController.state().mode()
+                        == MpcUiState.Mode.PAD_MIXER
+                        && padMixerView != null) {
+                    cyclePadMixerDialFocus();
+                    return;
+                }
+                if (navigationController.state().mode() == MpcUiState.Mode.BROWSER
+                        && navigationController.state().dataDialFocus()
+                                == MpcUiState.DataDialFocus.BROWSER_ITEM) {
+                    showBrowserDialUnavailableStatus();
+                    return;
+                }
                 if (hardwareLocateActive) {
                     setBottomStatus(
                             "LOCATE • DATA DIAL = ±1 BEAT • SHIFT = ±1 TICK");
@@ -9780,6 +14060,49 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private void cyclePadMixerDialFocus() {
+        final MpcUiState.DataDialFocus current =
+                navigationController.state().dataDialFocus();
+        final MpcUiState.DataDialFocus next;
+        switch (current) {
+            case PAD_MIXER_PAN:
+                next = MpcUiState.DataDialFocus.PAD_MIXER_TUNE;
+                break;
+            case PAD_MIXER_TUNE:
+                next = MpcUiState.DataDialFocus.PAD_MIXER_LEVEL;
+                break;
+            case PAD_MIXER_LEVEL:
+            case PAD:
+            default:
+                next = MpcUiState.DataDialFocus.PAD_MIXER_PAN;
+                break;
+        }
+
+        navigationController.setDataDialFocus(next);
+        navigationController.setSubcontext(
+                MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setActionAvailable(true);
+
+        if (padMixerView != null) {
+            final MpcPadMixerView.ControlFocus focus =
+                    next == MpcUiState.DataDialFocus.PAD_MIXER_PAN
+                            ? MpcPadMixerView.ControlFocus.PAN
+                            : next == MpcUiState.DataDialFocus.PAD_MIXER_TUNE
+                                    ? MpcPadMixerView.ControlFocus.TUNE
+                                    : MpcPadMixerView.ControlFocus.LEVEL;
+            padMixerView.setControlFocus(focus);
+        }
+
+        setBottomStatus(
+                "PAD MIXER • "
+                        + (next == MpcUiState.DataDialFocus.PAD_MIXER_PAN
+                                ? "PAN"
+                                : next == MpcUiState.DataDialFocus.PAD_MIXER_TUNE
+                                        ? "TUNE"
+                                        : "LEVEL")
+                        + " • DATA DIAL");
+    }
+
     private void handleHardwareDialDelta(int delta, boolean fine) {
         if (delta == 0) return;
         if (hardwareLocateActive) {
@@ -9795,6 +14118,57 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
             adjustSelectedStepParameter(delta, fine);
+            return;
+        }
+        if (navigationController.state().mode()
+                == MpcUiState.Mode.PAD_MIXER
+                && padMixerView != null) {
+            final MpcUiState.DataDialFocus focus =
+                    navigationController.state().dataDialFocus();
+            switch (focus) {
+                case PAD_MIXER_PAN: {
+                    final float increment = fine ? 0.01f : 0.05f;
+                    final float next = Math.max(
+                            -1.0f,
+                            Math.min(
+                                    1.0f,
+                                    nativeAudioGetPadPan(selectedPad)
+                                            + delta * increment));
+                    setBottomStatus(
+                            nativeAudioSetPadPan(selectedPad, next));
+                    break;
+                }
+                case PAD_MIXER_TUNE: {
+                    final float increment = fine ? 0.1f : 1.0f;
+                    final float next =
+                            nativeAudioGetPadTuning(selectedPad)
+                                    + delta * increment;
+                    setBottomStatus(
+                            nativeAudioSetPadTuning(selectedPad, next));
+                    break;
+                }
+                case PAD_MIXER_LEVEL:
+                default: {
+                    final float increment = fine ? 0.001f : 0.01f;
+                    final float next = Math.max(
+                            0.0f,
+                            Math.min(
+                                    1.0f,
+                                    nativeAudioGetPadLevel(selectedPad)
+                                            + delta * increment));
+                    setBottomStatus(
+                            nativeAudioSetPadLevel(selectedPad, next));
+                    break;
+                }
+            }
+            refreshPadMixerView();
+            refreshMpcCompactContext();
+            return;
+        }
+        if (navigationController.state().mode() == MpcUiState.Mode.BROWSER
+                && navigationController.state().dataDialFocus()
+                        == MpcUiState.DataDialFocus.BROWSER_ITEM) {
+            showBrowserDialUnavailableStatus();
             return;
         }
         if (hardwareFocusId() == HARDWARE_FOCUS_SEQUENCE_BPM) {
@@ -9930,8 +14304,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (hardwareFocusId() == 5) {
-            setBottomStatus(
-                    "TRACK TYPE • DRUM is the only implemented Track Type");
+            setBottomStatus(TRACK_TYPE_CHANGE_RESERVED_STATUS);
             refreshMainDataDialFocusVisuals();
             return;
         }
@@ -9993,6 +14366,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         setBottomStatus("DATA DIAL " + (delta > 0 ? "+" : "−") + " • no focused selector");
+    }
+
+    private void showBrowserDialUnavailableStatus() {
+        final String message =
+                "DATA DIAL • RESERVED / UNAVAILABLE — Browser file index not implemented";
+        if (browserView != null
+                && navigationController != null
+                && navigationController.state().mode() == MpcUiState.Mode.BROWSER) {
+            browserView.setProviderStatus(message);
+        }
+        setBottomStatus(message);
     }
 
     private String stepEditParameterLabel() {
@@ -10294,6 +14678,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     && description.startsWith("Connected:");
             midiState.setText(connected ? "MIDI ON" : "MIDI —");
             midiState.setTextColor(connected ? ACTIVE : MUTED);
+            updateTopMidiStatus(midiInTopStatus, connected);
+            updateTopMidiStatus(midiOutTopStatus, connected);
             if (connected) {
                 Arrays.fill(hardwareButtonLedStateCache, -1);
                 lastTouchStripLedSignature = "";
@@ -10322,6 +14708,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     protected void onDestroy() {
         destroyed = true;
+        stopBrowserPreview();
         if (recordingWaveformUpdater != null) {
             waveformUiHandler.removeCallbacks(recordingWaveformUpdater);
         }

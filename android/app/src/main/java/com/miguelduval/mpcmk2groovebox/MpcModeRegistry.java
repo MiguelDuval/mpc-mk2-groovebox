@@ -1,5 +1,6 @@
 package com.miguelduval.mpcmk2groovebox;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -43,12 +44,21 @@ final class MpcModeRegistry {
             new Entry(MpcUiState.Mode.PROJECT, "PROJECT", false)
     };
 
+    /*
+     * MPC 3.x factory shortcut order is a product-level shell contract:
+     * Browser / Channel Mixer / Pad Mixer / Sounds / XY.
+     *
+     * Availability is independent from shortcut identity. A factory shortcut
+     * may currently resolve to a truthful RESERVED/UNAVAILABLE context when
+     * our backend is not ready; it must never be silently replaced by a
+     * different mode just to make the slot executable.
+     */
     private static final MpcUiState.Mode[] DEFAULT_SHORTCUTS = {
-            MpcUiState.Mode.MAIN,
             MpcUiState.Mode.BROWSER,
-            MpcUiState.Mode.GRID,
-            MpcUiState.Mode.SAMPLER,
-            MpcUiState.Mode.PAD_MIXER
+            MpcUiState.Mode.CHANNEL_MIXER,
+            MpcUiState.Mode.PAD_MIXER,
+            MpcUiState.Mode.SOUNDS,
+            MpcUiState.Mode.XYFX
     };
 
     private MpcModeRegistry() {}
@@ -59,6 +69,34 @@ final class MpcModeRegistry {
 
     static Entry[] menuEntries() {
         return Arrays.copyOf(MENU_GRID, MENU_GRID.length);
+    }
+
+    static Entry[] shortcutEntries() {
+        final Entry[] promoted = {
+                new Entry(MpcUiState.Mode.BROWSER, "BROWSER", true),
+                new Entry(MpcUiState.Mode.CHANNEL_MIXER, "CHANNEL MIXER", false),
+                new Entry(MpcUiState.Mode.PAD_MIXER, "PAD MIXER", true),
+                new Entry(MpcUiState.Mode.SOUNDS, "SOUNDS", false),
+                new Entry(MpcUiState.Mode.XYFX, "XY", false)
+        };
+
+        final ArrayList<Entry> result = new ArrayList<>();
+        for (Entry entry : promoted) {
+            result.add(entry);
+        }
+        for (Entry entry : MENU_GRID) {
+            boolean alreadyPresent = false;
+            for (Entry selected : result) {
+                if (selected.mode == entry.mode) {
+                    alreadyPresent = true;
+                    break;
+                }
+            }
+            if (!alreadyPresent) {
+                result.add(entry);
+            }
+        }
+        return result.toArray(new Entry[0]);
     }
 
     static MpcUiState.Mode[] defaultShortcuts() {

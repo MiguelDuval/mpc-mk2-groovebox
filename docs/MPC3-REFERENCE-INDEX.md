@@ -11,6 +11,22 @@ Primary software reference is the official MPC Standalone OS v3.9 guide. Current
 
 ---
 
+## Firmware UI static evidence — added 2026-10-16
+
+A targeted static investigation of the user-supplied `MPC-3.9.1-Gen1-update.img` was completed. The internal version is **3.9.1.2**; image size **162,220,784 bytes**; SHA-256 `4c0f7797a006313fad206f9513eca8b3823e834c9e0941a6b5f088386cb835d6`. This is the **Gen1** image, not confirmation that the separately mentioned Gen2 image was analysed.
+
+Full text-only findings, exact resource paths, UI-relevant binary string offsets, configured geometry, high-confidence help semantics, confidence limits, unresolved questions and a copy/paste next-session prompt are in [MPC3-FIRMWARE-UI-RESEARCH.md](MPC3-FIRMWARE-UI-RESEARCH.md).
+
+Highest-value evidence:
+- ACVS layout/help resources under `/usr/share/Akai/SME0/Resources/ACVS/layout/` describe shared shell geometry, Browser click-to-select vs double-click-to-load, Grid event editing, context-dependent bottom-panel behavior, toolbar/Follow Now, Inspector, bank selection, mixer scope and Q-Link Learn/Momentary/Inspector.
+- Program Edit TUI resources under `/usr/share/Akai/SME0/Resources/Pages/Program Edit/` contain structured Drum (11 tabs) and Keygroup (24 tabs) parameter/editor descriptions; the MIDI TUI is explicitly partial.
+- The stripped `/usr/bin/MPC` contains mode, transport, Arrange, Track View, Grid View and Step Sequencer strings. These are search anchors, not a proven runtime transition graph.
+- Resource geometry values are configuration units, **not verified physical screen pixels**. No full live-firmware screenshots or runtime input traces were recovered in this pass.
+
+Implementation rule: use this research to guide original Android UI and transition tests; do not copy firmware code/artwork or publish extracted proprietary resources. Preserve the existing audio, sequencer, MIDI, hardware-adapter and persistence boundaries. Do not repeat the full firmware crawl; investigate a binary handler only when a specific UI implementation question is blocked.
+
+Confidence note: direct help/layout/TUI content is stronger than a string-only inference. Never present an asset name or string as proof of the runtime action it might represent.
+
 ## 1. Official MPC 3.9 manual
 
 MPC Standalone OS User Guide v3.9
@@ -467,3 +483,70 @@ Confidence: HIGH for the overall geometry and bottom-tab behavior; individual un
 
 The Studio MkII protocol differentiates single-color LEDs (OFF/DIM/FULL = 0/1/2) from two-color LEDs.
 The Android feedback layer now uses a shared `buttonLedOnState()` policy and retains mutually-exclusive Level/Mute states.
+
+
+---
+
+## 2026-10-06 canonical research lock
+
+The current durable MPC3 reconstruction map is:
+
+- `docs/MPC3-9-OS-KNOWLEDGE-BASE.md` — screen taxonomy, routing matrix, control contract, version register, code audit and test plan.
+- `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md` — canonical implementation contract.
+- `docs/MPC-STYLE-UI-ROADMAP.md` — legacy/archive only.
+
+Current verified source facts:
+- Official v3.9 Main Mode is documented as Toolbar + Sequence + Shortcuts + Track/Arrangement Views + Mixer Strips + Function Buttons; double-tap Main waveform enters Track Edit and double-tap Arrangement enters Grid View. citeturn101044search0
+- MPC3 is a Standalone hardware OS and supports MPC One / One+; its architecture unifies tracks and programs into a single track container. citeturn431168search1
+- Browser includes Sample Assign, Places/Content/Expansions, five favourites, six filters and audition settings/options. citeturn431168search12
+- XL Channel Strips occupy the left edge beside five mode icons and can be shown/hidden; track/pad strip context is selected from Track/Arrangement. citeturn431168search0
+- Main Metro is a real MPC3 feature with settings and Pull-Down access; our disabled control is a backend gap rather than an intentional unsupported MPC feature. 
+- MPC3.9 Time Signature is an explicit Main-screen field; older MPC2 sequence assumptions must not be reused. citeturn431168search3
+
+Checked: 2026-10-06.
+Confidence: HIGH for the cited current MPC3 architecture/taxonomy.
+
+
+## 2026-10-10 — local-first Browser scope decision
+
+**Question:** Should the Browser reproduce every factory MPC 3.9 Content destination, including branded/partner content services?
+
+**Reference:** Akai's official Browser article documents the reference taxonomy; see Section 4 above and the detailed `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`.
+
+**Product decision:** No. Splice, commercial stores/marketplaces, paid expansion promotions, partner ads, upsells and unnecessary vendor-specific cloud/account dependencies are intentionally excluded. This is a product-specific scope choice, not a correction to Akai's published taxonomy.
+
+**Retain:** real local files, generic content categories backed by a provider, Android Document Provider beneath the app-level Browser, available external storage, local audition, target Pad/Layer, loading/assignment and persisted favourites when genuinely implemented.
+
+**Acceptance:** excluded routes are absent from the actual product UI; visible local categories return real results; Browser operations update the correct sample/layer state; no disconnected placeholder is described as complete.
+
+**Execution protocol:** `docs/DEVELOPMENT-OPERATING-PROTOCOL.md`. **Current verified checkpoint:** `docs/SESSION-STATE.md` (verify all mutable state against GitHub before use).
+
+
+## 2026-10-11 — Gen1 MPC 3.9.1 firmware audit (secondary implementation evidence)
+
+**Question:** Can the owner-supplied Gen1 image provide reliable information beyond public screenshots/manuals?
+
+**Input:** `MPC-3.9.1-Gen1-update.img`, SHA-256 `4c0f7797a006313fad206f9513eca8b3823e834c9e0941a6b5f088386cb835d6`; version note `3.9.1.2 (f3af35cdc95)`. The payload is XZ-compressed `rootfs` and its embedded SHA-1 verifies. The filesystem is ext4-format and can be traversed locally.
+
+**Findings:** 759 PNGs and 13 JSON layout descriptors exist under bundled `ACVS` resources; Program Edit TUI/component JSON also exists; static strings/type-info include Main layout data classes, Q-Link/Main and Media Browser components, Sound Select settings, Step Sequencer settings and track/channel type names.
+
+**Confidence:** HIGH for byte hashes, declared metadata, ELF type/version note, exact file counts and strings. MEDIUM for inferred component responsibilities from names. LOW until validated for any claim that an ACVS panel geometry value equals physical MPC One Main pixel geometry. No ARM execution or method-body decompilation was performed.
+
+**Repository decision:** keep manual + real hardware observations as the visual authority. Use firmware-derived facts as research leads only; do not copy bundled assets, publish the image, treat strings as proof of behavior, or restore commercial Browser destinations excluded by the local-first product decision.
+
+**Report:** [MPC 3.9.1 Gen1 firmware static analysis](research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md); [machine-readable summary](research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json).
+
+
+## 2026-10-11 — Firmware UI-schema follow-up and Track Type correction lead
+
+**Question:** Do firmware resources corroborate the project's current Track Type selector vocabulary?
+
+**Firmware evidence:** `ACVS/graphics/track type selection` contains six 125×125 images named `track-audio`, `track-cv`, `track-drum`, `track-keygroup`, `track-midi`, and `track-plugin`. There is no `track-clip.png` in that selector group. The distinct `programtypeicons` group does contain `strip-clip.png`, along with strip categories such as return, submix and master.
+
+**Published reference:** the official MPC Standalone OS v3.9 guide's Tracks chapter defines the six main Track Types as Audio, Drum, Keygroup, Plugin, MIDI and CV. Guide URL: https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf
+
+**Finding / decision:** HIGH confidence that the firmware selector asset set and official guide agree. The project's recent selector vocabulary (CLIP present, AUDIO absent) needs a code/test audit. Clip/Arrangement UI and Mixer strip categories must stay conceptually separate; do not blindly change domain types from filenames alone.
+
+**Additional static findings:** the main ELF contains TouchMainPage/navigation/content/track-panel and TouchMainModeMixerProperties type-name anchors. Program Edit resource metadata comprises 10 TUI JSON pages, 66 tabs and 652 component entries; these counts describe stored schemas, not runtime availability. `Help.json` includes host/shared interaction terminology, so ACVS layout dimensions remain unconfirmed as physical screen geometry.
+
+**Report:** `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`; structured data: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`.

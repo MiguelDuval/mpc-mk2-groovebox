@@ -1,4 +1,8 @@
-# MPC-Style UI Architecture & Roadmap
+# MPC-Style UI Architecture & Roadmap — LEGACY / ARCHIVE
+
+> **Status: NON-CANONICAL.** The current contract is `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md`; the durable research map is `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`.
+>
+> Historical material is preserved for provenance. Do not use this file for current MPC3 Main-layout decisions. The former permanent 4×4 software pad grid and seven-page permanent navigation rail are retired.
 
 ## Purpose
 
@@ -69,19 +73,22 @@ The first-level workflow is:
 
 Secondary modes such as Grid, Step, Track Edit, Pad Mixer, Q-Link, Project and hardware diagnostics belong behind the Menu or contextual actions.
 
-### 3. Main screen composition
+### 3. Main screen composition — RETIRED
 
-MAIN is the default performance workspace:
+The old Main composition is kept only as historical implementation context:
 
-- large 4x4 software pad surface;
-- selected-pad inspector;
-- sample identity/region summary;
-- quick tuning, level and pan;
-- layer selection;
-- direct entry into SAMPLE, SEQ and MIX;
-- physical MPC pads remain first-class and trigger the same semantic action.
+- permanent 4×4 Android software pad surface;
+- permanent selected-pad dashboard competing with the central workspace;
+- seven-page permanent mode rail.
 
-A tap on a software pad is an audition/play action. A long press is reserved for entering the selected-pad editing context.
+Canonical current Main is defined by the current master specification:
+- Toolbar;
+- five configurable Shortcuts;
+- XL Channel Strip region;
+- central Sequence + Track/Arrangement workspace;
+- contextual Function Bar;
+- controller-first pad selection/triggering;
+- explicit RESERVED/UNAVAILABLE states for unsupported backend capabilities.
 
 ### 4. Sample screen composition
 

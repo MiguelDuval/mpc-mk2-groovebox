@@ -57,6 +57,23 @@ final class MpcSequenceZoomPolicy {
                 max);
     }
 
+    static int stepIndexForTick(long tick, long ticksPerStep, int totalSteps) {
+        final int boundedTotal = Math.max(1, totalSteps);
+        final long stepTicks = Math.max(1L, ticksPerStep);
+        final long nonNegativeTick = Math.max(0L, tick);
+        return (int) Math.min(
+                boundedTotal - 1L,
+                nonNegativeTick / stepTicks);
+    }
+
+    static int gridStartForStep(int stepIndex, int visibleSteps, int totalSteps) {
+        final int boundedTotal = Math.max(1, totalSteps);
+        final int boundedVisible = clamp(visibleSteps, 1, boundedTotal);
+        final int boundedStep = clamp(stepIndex, 0, boundedTotal - 1);
+        final int desiredStart = boundedStep - boundedVisible / 2;
+        return clamp(desiredStart, 0, boundedTotal - boundedVisible);
+    }
+
     private static int zoomInCount(int current, int min, int max) {
         final int clamped = clamp(current, min, max);
         if (clamped <= min) return min;

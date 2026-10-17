@@ -16,6 +16,19 @@ public final class MpcModeRegistryTest {
     }
 
     @Test
+    public void shortcutCatalogContainsCanonicalMpcDestinations() {
+        MpcModeRegistry.Entry[] entries = MpcModeRegistry.shortcutEntries();
+        assertEquals(MpcUiState.Mode.BROWSER, entries[0].mode);
+        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, entries[1].mode);
+        assertEquals(MpcUiState.Mode.PAD_MIXER, entries[2].mode);
+        assertEquals(MpcUiState.Mode.SOUNDS, entries[3].mode);
+        assertEquals(MpcUiState.Mode.XYFX, entries[4].mode);
+        assertFalse(entries[1].available);
+        assertFalse(entries[3].available);
+        assertFalse(entries[4].available);
+    }
+
+    @Test
     public void unavailableModesAreExplicitlyReserved() {
         assertTrue(MpcModeRegistry.menuEntry(5).available);
         assertEquals(MpcUiState.Mode.TRACK_EDIT, MpcModeRegistry.menuEntry(5).mode);
@@ -27,13 +40,19 @@ public final class MpcModeRegistryTest {
     }
 
     @Test
-    public void defaultShortcutsAreFivePromotedContexts() {
+    public void defaultShortcutsMatchFactoryOrderAndCanBeReserved() {
         MpcUiState.Mode[] shortcuts = MpcModeRegistry.defaultShortcuts();
         assertEquals(5, shortcuts.length);
-        assertEquals(MpcUiState.Mode.MAIN, shortcuts[0]);
-        assertEquals(MpcUiState.Mode.BROWSER, shortcuts[1]);
-        assertEquals(MpcUiState.Mode.GRID, shortcuts[2]);
-        assertEquals(MpcUiState.Mode.SAMPLER, shortcuts[3]);
-        assertEquals(MpcUiState.Mode.PAD_MIXER, shortcuts[4]);
+        assertEquals(MpcUiState.Mode.BROWSER, shortcuts[0]);
+        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, shortcuts[1]);
+        assertEquals(MpcUiState.Mode.PAD_MIXER, shortcuts[2]);
+        assertEquals(MpcUiState.Mode.SOUNDS, shortcuts[3]);
+        assertEquals(MpcUiState.Mode.XYFX, shortcuts[4]);
+
+        assertTrue(MpcModeRegistry.shortcutEntries()[0].available);
+        assertFalse(MpcModeRegistry.shortcutEntries()[1].available);
+        assertTrue(MpcModeRegistry.shortcutEntries()[2].available);
+        assertFalse(MpcModeRegistry.shortcutEntries()[3].available);
+        assertFalse(MpcModeRegistry.shortcutEntries()[4].available);
     }
 }

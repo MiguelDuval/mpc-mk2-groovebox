@@ -518,17 +518,41 @@ final class MpcTrackEditView extends LinearLayout {
             View.OnClickListener leftAction,
             View.OnClickListener rightAction) {
         LinearLayout row = row();
+        final String semanticName = parameterSemanticName(title);
         TextView valueField = field(title + "\n" + value);
+        valueField.setContentDescription("Track Edit " + semanticName + " value");
         row.addView(valueField, new LinearLayout.LayoutParams(0, dp(42), 1.5f));
-        row.addView(parameterButton(left, leftAction),
-                new LinearLayout.LayoutParams(0, dp(42), 0.65f));
-        row.addView(parameterButton(right, rightAction),
-                new LinearLayout.LayoutParams(0, dp(42), 0.65f));
+        Button decrease = parameterButton(left, leftAction);
+        decrease.setContentDescription("Track Edit " + semanticName + " decrease");
+        row.addView(decrease, new LinearLayout.LayoutParams(0, dp(42), 0.65f));
+        Button increase = parameterButton(right, rightAction);
+        increase.setContentDescription("Track Edit " + semanticName + " increase");
+        row.addView(increase, new LinearLayout.LayoutParams(0, dp(42), 0.65f));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(42));
         lp.bottomMargin = dp(4);
         row.setLayoutParams(lp);
         return row;
+    }
+
+    private String parameterSemanticName(String title) {
+        final String key = title == null ? "" : title.trim().toUpperCase(Locale.ROOT);
+        if (tab == Tab.SAMPLES) {
+            if ("TUNE".equals(key)) return "layer tuning";
+            if ("GAIN".equals(key)) return "layer gain";
+            if ("PAN".equals(key)) return "layer pan";
+            return "layer " + key.toLowerCase(Locale.ROOT);
+        }
+        if (tab == Tab.GLOBAL) {
+            if ("TUNE".equals(key)) return "pad tuning";
+            if ("LEVEL".equals(key)) return "pad level";
+            if ("PAN".equals(key)) return "pad pan";
+            return "pad " + key.toLowerCase(Locale.ROOT);
+        }
+        if (tab == Tab.ENVELOPES) {
+            return "envelope " + key.toLowerCase(Locale.ROOT);
+        }
+        return key.toLowerCase(Locale.ROOT);
     }
 
     private Button parameterButton(String text, View.OnClickListener listener) {

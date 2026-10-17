@@ -92,6 +92,7 @@ final class MpcArrangeView extends View {
     private final ArrayList<Lane> lanes = new ArrayList<>();
 
     private Listener listener;
+    private boolean eventDoubleTapDispatched;
     private int selectedTrack = 0;
     private int barCount = 1;
     private int loopStartBar = 1;
@@ -146,6 +147,118 @@ final class MpcArrangeView extends View {
         }
         this.selectedTrack = Math.max(0, selectedTrack);
         invalidate();
+    }
+
+    float[] trackLanePointForAudit(int trackIndex) {
+        if (getWidth() <= 0 || getHeight() <= 0) {
+            return null;
+        }
+        final float headerX = Math.min(
+                dp(24f), Math.max(0f, getWidth() - dp(1f)));
+        final float rulerHeight = dp(TOP_RULER_DP);
+        final float laneHeight = dp(LANE_DP);
+        for (int laneIndex = 0; laneIndex < lanes.size(); laneIndex++) {
+            if (lanes.get(laneIndex).trackIndex != trackIndex) {
+                continue;
+            }
+            final float y = rulerHeight + laneIndex * laneHeight + laneHeight / 2f;
+            if (y < rulerHeight || y >= getHeight()) {
+                return null;
+            }
+            final Hit actual = hit(headerX, y);
+            if (actual.trackIndex != trackIndex) {
+                return null;
+            }
+            return new float[] {headerX, y};
+        }
+        return null;
+    }
+
+    int loopStartBarForAudit() {
+        return loopStartBar;
+    }
+
+    int loopEndBarForAudit() {
+        return loopEndBar;
+    }
+
+    int totalBarsForAudit() {
+        return barCount;
+    }
+
+    int visibleBarsForAudit() {
+        return visibleBars;
+    }
+
+    int viewportStartBarForAudit() {
+        return viewportStartBar;
+    }
+
+    int selectedTrackForAudit() {
+        return selectedTrack;
+    }
+
+    float[] loopEndHandlePointForAudit(int bar) {
+        if (getWidth() <= 0 || getHeight() <= 0
+                || bar < 1 || bar > barCount) {
+            return null;
+        }
+        final float headerWidth = dp(LEFT_HEADER_DP);
+        final float timelineWidth = Math.max(1f, getWidth() - headerWidth);
+        final float pxPerBar = timelineWidth / Math.max(1, visibleBars);
+        final float x = xForBar(
+                bar + 0.999f, headerWidth, timelineWidth, pxPerBar);
+        final float y = Math.max(1f, dp(4));
+        if (x < headerWidth || x >= getWidth() || y >= dp(TOP_RULER_DP)) {
+            return null;
+        }
+        return new float[] {x, y};
+    }
+
+    float[] eventCenterForAudit(int trackIndex, long eventTick) {
+        if (getWidth() <= 0 || getHeight() <= 0) return null;
+
+        int laneIndex = -1;
+        Event targetEvent = null;
+        for (int i = 0; i < lanes.size(); i++) {
+            final Lane lane = lanes.get(i);
+            if (lane.trackIndex != trackIndex) continue;
+            laneIndex = i;
+            for (Event event : lane.events) {
+                if (event.tick == eventTick) {
+                    targetEvent = event;
+                    break;
+                }
+            }
+            break;
+        }
+        if (laneIndex < 0 || targetEvent == null) return null;
+
+        final float headerWidth = dp(LEFT_HEADER_DP);
+        final float rulerHeight = dp(TOP_RULER_DP);
+        final float laneHeight = dp(LANE_DP);
+        final float timelineWidth = Math.max(1f, getWidth() - headerWidth);
+        final float pxPerBar = timelineWidth / Math.max(1, visibleBars);
+        final float startX = xForTick(
+                targetEvent.tick, headerWidth, timelineWidth, pxPerBar, 0L);
+        final float endX = xForTick(
+                targetEvent.tick + targetEvent.durationTicks,
+                headerWidth, timelineWidth, pxPerBar, 0L);
+        final float left = Math.max(headerWidth + dp(1), startX);
+        final float right = Math.min(
+                getWidth() - dp(1),
+                Math.max(startX + dp(2), endX));
+        if (right <= left) return null;
+
+        final float x = (left + right) / 2f;
+        final float y = rulerHeight + laneIndex * laneHeight + dp(21.5f);
+        final Hit actual = hit(x, y);
+        if (actual.trackIndex != trackIndex
+                || actual.eventIndex < 0
+                || actual.eventTick != eventTick) {
+            return null;
+        }
+        return new float[] {x, y};
     }
 
     void setTimeline(
@@ -237,6 +350,7 @@ final class MpcArrangeView extends View {
                         if (hit.trackIndex >= 0
                                 && hit.eventIndex >= 0
                                 && listener != null) {
+                            eventDoubleTapDispatched = true;
                             listener.onEventDoubleTapped(
                                     hit.trackIndex,
                                     hit.eventTick);
@@ -548,6 +662,15 @@ final class MpcArrangeView extends View {
     public boolean onTouchEvent(MotionEvent event) {
         scaleDetector.onTouchEvent(event);
         gestureDetector.onTouchEvent(event);
+
+        // The second ACTION_DOWN triggers GestureDetector.onDoubleTap.
+        // That callback may navigate away immediately, so do not also treat
+        // the same gesture as a fresh lane-selection tap.
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN
+                && eventDoubleTapDispatched) {
+            eventDoubleTapDispatched = false;
+            return true;
+        }
 
         if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
             final float headerWidth = dp(LEFT_HEADER_DP);

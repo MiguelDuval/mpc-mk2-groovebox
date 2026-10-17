@@ -4,7 +4,7 @@ This repository has one canonical project brief:
 
 **[`docs/PROJECT_MASTER_PROMPT.md`](docs/PROJECT_MASTER_PROMPT.md)**
 
-Every coding agent working on this repository must read that document before making changes.
+Before any implementation work, every coding agent must also read **[`docs/SESSION-STATE.md`](docs/SESSION-STATE.md)** and **[`docs/DEVELOPMENT-OPERATING-PROTOCOL.md`](docs/DEVELOPMENT-OPERATING-PROTOCOL.md)**, then verify their mutable status claims against live GitHub state. SESSION-STATE is a checkpoint, not a substitute for inspecting the active branch, PR, CI or source.
 
 ## Mandatory rules
 
@@ -19,11 +19,17 @@ Every coding agent working on this repository must read that document before mak
 9. **Physical hardware is the authority.** Reverse-engineered mappings remain unconfirmed until tested on the actual MPC Studio MkII.
 10. **Do not copy proprietary Akai code, firmware resources or artwork.** Use documented behavior and original implementation/graphics.
 11. **Keep changes small and traceable.** Prefer one coherent objective per branch/commit.
+12. **Resolve the current blocker first.** If the current feature branch has a failing latest relevant CI run, investigate and fix that failure before unrelated feature work. Never hide or weaken a meaningful acceptance assertion to obtain a green build.
+13. **Use the cheapest sufficient test first.** Run focused tests during iteration; run full emulator/CI acceptance at a meaningful slice boundary and verify it against the exact resulting HEAD.
+14. **One writer per branch.** Do not let ChatGPT/GitHub tools, Cline, or another agent concurrently mutate the same branch or same files. Parallelize only across isolated branches/worktrees with explicit file ownership; integrate sequentially.
+15. **Measure visual geometry before changing it.** Use a fresh landscape screenshot and accessibility/UI bounds. Treat firmware layout units as evidence to interpret, not as phone pixel coordinates; do not guess the root cause.
 
 ## Project source hierarchy
 
 Use these documents together:
 
+- `docs/SESSION-STATE.md` — concise, update-at-milestone state checkpoint; verify against live GitHub before relying on it.
+- `docs/DEVELOPMENT-OPERATING-PROTOCOL.md` — required session loop, product-scope exclusions, acceptance evidence and context-efficiency rules.
 - `docs/PROJECT_MASTER_PROMPT.md` — master operating brief.
 - `docs/ARCHITECTURE.md` — layer boundaries.
 - `docs/IMPLEMENTATION-ROADMAP.md` — stage sequence.
@@ -40,3 +46,7 @@ Use these documents together:
 When these documents conflict with the current code, investigate and update the documentation rather than silently ignoring the discrepancy.
 
 For the full rules, architecture, roadmap and acceptance criteria, read `docs/PROJECT_MASTER_PROMPT.md`.
+
+## Current execution queue
+
+Follow the current, dated work queue at the top of `docs/IMPLEMENTATION-ROADMAP.md`. Older dated blocks in that roadmap and `docs/SESSION-STATE.md` are historical context only; live PR/HEAD/Actions evidence takes precedence. Read `docs/SESSION-HISTORY-ARCHIVE.md` only when a specific regression or historical question requires it.

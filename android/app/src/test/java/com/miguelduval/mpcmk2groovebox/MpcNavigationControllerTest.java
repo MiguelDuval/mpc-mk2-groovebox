@@ -11,11 +11,11 @@ public class MpcNavigationControllerTest {
     public void defaultShellHasExactlyFiveShortcuts() {
         MpcNavigationController navigation = new MpcNavigationController();
         assertEquals(5, navigation.shortcuts().length);
-        assertEquals(MpcUiState.Mode.MAIN, navigation.shortcut(0));
-        assertEquals(MpcUiState.Mode.BROWSER, navigation.shortcut(1));
-        assertEquals(MpcUiState.Mode.GRID, navigation.shortcut(2));
-        assertEquals(MpcUiState.Mode.SAMPLER, navigation.shortcut(3));
-        assertEquals(MpcUiState.Mode.PAD_MIXER, navigation.shortcut(4));
+        assertEquals(MpcUiState.Mode.BROWSER, navigation.shortcut(0));
+        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, navigation.shortcut(1));
+        assertEquals(MpcUiState.Mode.PAD_MIXER, navigation.shortcut(2));
+        assertEquals(MpcUiState.Mode.SOUNDS, navigation.shortcut(3));
+        assertEquals(MpcUiState.Mode.XYFX, navigation.shortcut(4));
     }
 
     @Test
@@ -45,10 +45,12 @@ public class MpcNavigationControllerTest {
                 navigation.state().dataDialFocus());
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void reservedModeCannotBePromotedToShortcut() {
+    @Test
+    public void reservedModeCanBeAssignedToShortcutCatalogSlot() {
         MpcNavigationController navigation = new MpcNavigationController();
         navigation.setShortcut(0, MpcUiState.Mode.CHANNEL_MIXER);
+
+        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, navigation.shortcut(0));
     }
 
     @Test
@@ -66,8 +68,8 @@ public class MpcNavigationControllerTest {
         navigation.moveShortcut(4, 1);
 
         assertEquals(5, navigation.shortcuts().length);
-        assertEquals(MpcUiState.Mode.PAD_MIXER, navigation.shortcut(1));
-        assertEquals(MpcUiState.Mode.BROWSER, navigation.shortcut(2));
+        assertEquals(MpcUiState.Mode.XYFX, navigation.shortcut(1));
+        assertEquals(MpcUiState.Mode.CHANNEL_MIXER, navigation.shortcut(2));
     }
 
     @Test
