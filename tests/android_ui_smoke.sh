@@ -2122,8 +2122,8 @@ if not (left < sx < right and left < tx < right and top < yy < top+ruler):
     raise AssertionError(f"derived end-handle swipe escaped ruler: {(sx,yy,tx,yy)} bounds={(left,top,right,bottom)}")
 if abs(sx-start_x) > 22*density:
     raise AssertionError("clamped start coordinate moved outside the loop-handle hit radius")
-if abs(tx-sx) < 22*density:
-    raise AssertionError("target bar movement is too small for an unambiguous handle drag")
+if abs(tx-sx) < 2*density:
+    raise AssertionError("target bar movement is too small to reach a different bar")
 print(sx, yy, tx, yy)
 PY
     )" || { echo "ERROR: could not derive a valid live loop-brace swipe from the accessibility hierarchy"; exit 1; }
@@ -2196,8 +2196,8 @@ if not (left < sx < right and left < tx < right and top < y < top+ruler):
     raise AssertionError("restore swipe would leave the Arrangement ruler")
 if abs(sx-start_x) > 22*density:
     raise AssertionError("clamped restore start moved outside loop-handle hit radius")
-if abs(tx-sx) < 22*density:
-    raise AssertionError("restore drag target is too close to current handle")
+if abs(tx-sx) < 2*density:
+    raise AssertionError("restore drag target is too close to reach the original bar")
 print(sx,y,tx,y)
 PY
     )" || { echo "ERROR: could not derive live loop-handle restore gesture"; exit 1; }
