@@ -6635,6 +6635,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         final int trackIndex = selectedArrangementEventTrack;
         final long sourceTick = selectedArrangementEventTick;
+        final int sourceSelectionNote = selectedArrangementEventNote;
         final long targetTick = sourceTick + Math.max(1, nativeSequenceGetQuantizeGrid());
         final int pastedNote = nativeSequenceGetArrangementClipboardNote();
         final String result = nativeSequencePasteArrangementEvent(trackIndex, targetTick);
@@ -6660,7 +6661,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         lastArrangementPasteSourceTick = sourceTick;
         lastArrangementPasteTargetTick = targetTick;
         lastArrangementPasteNote = pastedNote;
-        lastArrangementPasteSourceNote = selectedArrangementEventNote;
+        lastArrangementPasteSourceNote = sourceSelectionNote;
         updateArrangementEventControls();
         setBottomStatus(result);
         logArrangementEventState("PASTE", trackIndex, targetTick, pastedNote);
