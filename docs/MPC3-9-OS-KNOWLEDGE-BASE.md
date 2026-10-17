@@ -143,7 +143,7 @@ Never fabricate meters, routing, FX slots or levels.
 ## 9. Track View / Arrange / Grid / Step
 
 Track View: selection, REC ARM, Track +/- and Mute are real; Solo and several mixer/I/O fields are reserved. PARTIAL.
-Arrange: lanes/events, Track select, loop brace and zoom are real; Cut/Copy/Paste/Duplicate reserved; double-tap event/overview opens Grid. PARTIAL.
+Arrange: lanes/events, Track select, loop brace, zoom, MOVE ± GRID, DUP and selected-event COPY/PASTE are native-model-backed and emulator-verified. CUT remains unimplemented; double-tap event/overview opens Grid. PARTIAL (full linear clip placement model is still absent).
 Grid: Drum renderer plus Draw/Erase/Select/Magnify and existing event operations; non-Drum explicitly unavailable. PARTIAL.
 Step: physical-pad 16-step context, step selection and Velocity/Probability/Ratchet/Nudge/Duration state via native Step Edit bridge. PARTIAL.
 
@@ -210,7 +210,8 @@ Sampler real subset: Record, Stop, Assign, Monitor On/Off, Threshold, waveform a
 | Pad Tune | edit tune | nativeAudioSetPadTuning | pad state | AVAILABLE |
 | Track View Mute | mute | nativeSequenceToggleTrackMute | track state | AVAILABLE |
 | Arrange Loop | set loop | nativeSequenceSetLoopBars | sequence state | AVAILABLE |
-| Arrange Cut/Copy/Paste/Dup | timeline editing | none | none | RESERVED |
+| Arrange CUT | timeline event removal | no accepted native mutation yet | Pattern event + native edit history | RESERVED |
+| Arrange COPY / PASTE / DUP | selected Pattern event editing | native PatternOps + edit history + Android actions | Pattern event and value-owned clipboard | IMPLEMENTED / EMULATOR-VERIFIED for COPY/PASTE/DUP; canonical Function Bar promotion and CUT remain open |
 | Grid Draw/Erase | event edit | existing sequence ops | event state | PARTIAL |
 | Step Params | event fields | native Step Edit | event state | PARTIAL |
 | Sampler Record | capture | nativeAudioStartRecording | audio | AVAILABLE |
@@ -281,7 +282,7 @@ Store source URL, manual section/page, observed geometry/relationship, and origi
 ## 19. Known gaps / priority
 
 P0: verify Track→Program playback authority; add semantic route/back history when covered by tests; build Browser semantic result provider.
-P1: Metronome backend/state/hardware; full Channel Mixer; Track Type mutation; fuller Program workflows for Keygroup/Plugin/MIDI/Clip/CV; Track View Solo; Arrange Cut/Copy/Paste/Duplicate; contextual strip selector; Browser Sample Assign/favourites/options/audition state; 16 Levels; Pad Perform.
+P1: Metronome backend/state/hardware; full Channel Mixer; Track Type mutation; fuller Program workflows for Keygroup/Plugin/MIDI/Clip/CV; Track View Solo; Arrangement CUT and canonical Function Bar routing for COPY/PASTE/DUP; contextual strip selector; Browser Sample Assign/favourites/options/audition state; 16 Levels; Pad Perform.
 P2: List Edit; Project New/Save/Save As; Q-Link/XY; Automation; full Preferences; complete routing/FX/returns/submixes.
 
 ## 20. Test/acceptance
@@ -308,7 +309,7 @@ The following contract is the implementation checklist for every significant MPC
 | Menu | OS launcher | 4x4 mode grid + Function Bar | Toolbar/Menu | Back/Main | mode selection | tap tile | Menu control | selected mode/reserved | none | navigation catalog | IMPLEMENTED/PARTIAL | HIGH | every tile |
 | Browser | content discovery/load | Places, Content, Expansions, search, filters, results, target | shortcut/Toolbar/Main | Back/context return | Browser item | tap/select/search | Browser/MkII navigation | location/filter/search/target | load/assignment | semantic storage + import | PARTIAL | HIGH | search/filter/load/audition |
 | Track View | sequence track overview | track header + track strips + Function Bar | Menu/shortcut/Main | Main/Back | Track | row selection | Track Select/Track +/- | selected Track, arm/mute | none current | sequence track state | PARTIAL | HIGH | select/arm/mute |
-| Arrange | linear arrangement | lanes, timeline, playhead, loop brace, zoom | Main/Menu | Grid/Track/Main | Timeline/zoom | loop/track/event gestures | zoom/navigation | events, loop, focus | Cut/Copy/Paste/Duplicate later | arrangement event model | PARTIAL | HIGH | loop/drill-down |
+| Arrange | linear arrangement | lanes, timeline, playhead, loop brace, zoom, event editing actions | Main/Menu | Grid/Track/Main | Timeline/zoom | loop/track/event gestures | zoom/navigation | Pattern events, clipboard, loop, focus | CUT still pending; no explicit linear clip placements | Pattern event model + native edit history | PARTIAL | HIGH | MOVE/DUP/COPY/PASTE and loop/drill-down |
 | Grid | detailed event editor | time grid, pad/piano-roll, playhead, tools, zoom | Arrange/Menu/shortcut | Main/Track/Step | cursor/zoom/tool | draw/erase/select/pinch | Grid navigation/pads | events, selected pad/time, zoom | erase/edit event | sequencer event model | PARTIAL | HIGH | Drum grid/state |
 | Step | fast 16-step editor | 16 steps, event info, parameters | Menu/Grid/shortcut | Grid/Main/Back | Step/event params | step select/edit | physical pads | velocity/probability/ratchet/nudge/duration | erase step | step-edit API | PARTIAL | HIGH | 16-step/dial |
 | Track Edit | selected track/pad/layer editor | TRACK/PAD context, workspace, tabs | Main waveform/pencil/Menu | Main/Back | layer/parameter | waveform/fields | pads/Data Dial/+/- | layers, gain/tune/pan, velocity, amp/filter | region/crop where invoked | audio/sample control-thread APIs | PARTIAL | HIGH | layer preservation |
@@ -383,7 +384,8 @@ Required route form: SOURCE CONTROL → EXPECTED MPC BEHAVIOR → CURRENT ROUTE 
 | Track View Mute | mute Track | native mute | same | native mute | mute | Track View | Mute LED | AVAILABLE |
 | Track View Solo | solo Track | reserved | semantic solo only when backend exists | none now | none | none | none | RESERVED |
 | Arrange loop brace | edit loop region | onLoopCommitted | same | nativeSequenceSetLoopBars | loop range | Arrange | loop state | AVAILABLE |
-| Arrange CUT/COPY/PASTE/DUP | edit loop selection | reserved | semantic arrangement commands | arranger API | events | Arrange | edit indication | RESERVED |
+| Arrange CUT | remove selected Pattern event | pending native mutation + edit-history entry | native Pattern/edit history | event state | events | Arrange | edit indication | RESERVED pending acceptance |
+| Arrange COPY/PASTE/DUP | selected Pattern-note operations | native PatternOps + native clipboard + edit history | Arrangement actions | event/clipboard state | Pattern events | Arrange | event selection | IMPLEMENTED / EMULATOR-VERIFIED for COPY/PASTE/DUP |
 | Arrange double-tap event | open Grid | showSequenceGridPage() | same + preserve event focus | grid/event state | event selection | Grid | Grid state | PARTIAL |
 | Grid Draw | add/modify event | grid listener | same | sequence event API | event | Grid | pad/event | PARTIAL |
 | Grid Erase | remove event | grid listener | same | erase API | event removed | Grid | pad/event | PARTIAL |

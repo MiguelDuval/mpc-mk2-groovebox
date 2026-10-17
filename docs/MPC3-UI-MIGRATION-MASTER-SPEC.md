@@ -1038,7 +1038,7 @@ Arrangement is now a dedicated linear context with:
 - horizontal zoom;
 - track selection;
 - double-tap event handoff to Grid;
-- explicit Cut/Copy/Paste/Duplicate RESERVED states until truthful arrangement editing semantics exist.
+- selected Pattern-note MOVE ± GRID, DUP and non-destructive COPY/PASTE are now native-model/edit-history-backed and emulator-verified. CUT remains RESERVED until native deletion, rollback, Undo/Redo and real-emulator restoration pass. The broader arranger remains a first-Pattern-per-track projection until explicit linear clip placements exist.
 
 Current arrangement domain limitation is intentional: the existing domain stores patterns and events but does not yet store explicit linear clip placements. The Arrangement view therefore renders the first pattern of each track from bar 1 as the truthful current projection. It must not be represented as a fully editable multi-clip arranger until a placement model is added.
 

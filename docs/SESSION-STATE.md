@@ -5,13 +5,15 @@
 
 ## Latest verified implementation state
 
-- Repository: `MiguelDuval/mpc-mk2-groovebox`; branch `feature/mpc-one-ui-fidelity`.
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) is **OPEN**; base `fix/ui-shell-format-width-startup`; HEAD [`af266a38bb850a20313bccfef9a7b953c4191151`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/af266a38bb850a20313bccfef9a7b953c4191151).
-- [Android Build #2781](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39062512475) completed **SUCCESS** on that exact SHA. Android native/JVM checks, PatternOps tests, debug APK assembly, emulator UI smoke, and visual-evidence upload passed.
-- APK artifact: `app-debug.apk`, artifact ID `12112066456`, 8,379,757 bytes, digest `sha256:15e422455360d96ada944a0d1c4c42ffbd9cb5acc6c951d2c53de1a6fa4dc6f9`.
-- UI-evidence artifact: `mpc-ui-visual-evidence`, artifact ID `12111553593`, 5,588,247 bytes, digest `sha256:b87731e92e4da3fb2e1a9f6bd250c4ffb3d28d0c77afcff24389260e3f416e8f`. It was downloaded and inspected. The Arrangement selected/moved/restored screenshots and XML show `TRACK 01 • TICK 7680 • NOTE 036` → `TICK 7920` → `TICK 7680`.
-- The log reports a short initial timeout looking for `Browser-Favorite-Only.wav` inside the remembered DocumentsUI folder; the scripted fallback navigates to provider root, and the subsequent favorite assignment, isolated preference and process-restart restoration test passed. The overall workflow is green.
-- Physical MPC Studio MkII verification remains **PENDING**. All results above are Android Emulator evidence, not physical-controller evidence.
+- Repository: MiguelDuval/mpc-mk2-groovebox; branch feature/mpc-one-ui-fidelity.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) is OPEN, base fix/ui-shell-format-width-startup, not merged.
+- Verified application commit: [ec41174ae729d6c4e7a13de8fd8171e80b904134](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/ec41174ae729d6c4e7a13de8fd8171e80b904134), adding native Pattern-backed Arrangement COPY/PASTE and fixing paste selection restoration across Undo/Redo.
+- [Android Build #2789](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39068765934) completed **SUCCESS** on that exact SHA. Native/JVM/domain tests, PatternOps and edit-history tests, debug APK assembly, full Android Emulator smoke, and visual-evidence upload all passed.
+- APK artifact: app-debug.apk, ID 12114811559, 8,656,477 bytes, SHA-256 32a474f2c4e5871c234fb4d0d1adab567b3d4e49ec6f816a86664dfe300cfe98. Downloaded and verified to be an Android package.
+- UI-evidence artifact: mpc-ui-visual-evidence, ID 12114423332, 6,997,526 bytes, SHA-256 4cff56a245109f14c05a887769d4fc1d23744366a3abae6073f8d9e7c3e71d6c. Downloaded, archive integrity checked, and inspected. Arrangement COPY/PASTE/UNDO/REDO screenshots and accessibility hierarchies show source tick 7680, pasted/redo tick 7920, and final undo tick 7680. Smoke assertions confirm COPY is non-mutating, PASTE adds exactly one event, and Undo restores the exact native Pattern serialization.
+- The same successful run retained earlier acceptances: Main XL geometry measured from live Android bounds at vertical 0.977 / horizontal 0.960 fill, legacy panel absent; Grid DRAW/ERASE and Step probability change passed; Track Edit TUNE changed +0.00 st → +1.00 st, persisted after re-entry, then was restored to +0.00 st.
+- One existing Browser DocumentsUI test printed a timeout for Browser-Favorite-Only.wav in the remembered folder; the test's root-navigation fallback ran and the USER FOLDER / FAVORITE 1 assignment, preference isolation, and process-restart restoration subsequently passed. Workflow stayed green.
+- Physical MPC Studio MkII verification is **PENDING**. These are Android Emulator screenshots/hierarchies, not physical-controller evidence.
 
 ## Completed in this session
 
@@ -43,9 +45,9 @@ The full emulator smoke used a real canvas touch to select Track 01 / Note 036 a
 
 ## Current execution order
 
-1. Extend Arrangement editing beyond one-grid movement with the smallest safe, model-backed duplicate or copy/paste operation for a selected MIDI event. Reuse the same native Pattern and edit-history path; define collision and sequence-boundary behavior before wiring controls.
-2. Add a real-emulator touch round-trip with authoritative native-state checks and safe fixture restoration; retain the passing MOVE ± GRID and loop-brace acceptance.
-3. Recheck live PR #23 HEAD/base and run the full Android workflow at the exact final SHA. Keep physical-controller validation separately marked pending.
+1. Promote the working selected-event COPY / PASTE / DUP operations into the canonical bottom Function Bar; the current screenshot shows these function slots still disabled even though real handlers exist in the secondary Arrangement action row. Tie enabled state and accessibility names to actual selection and native clipboard state.
+2. Implement Arrangement CUT as a native Pattern mutation that captures the full selected event in the clipboard and removes only that event. Define collision/boundary behavior and rollback; register Undo/Redo. Add native tests and a real-emulator touch → CUT → UNDO → REDO → UNDO restoration that leaves the fixture exactly unchanged.
+3. Re-run the full Android workflow for the exact resulting SHA. Keep MOVE ± GRID, DUP/COPY/PASTE, loop-brace, Grid and Step acceptance intact. Physical MPC Studio MkII verification remains a separate pending item.
 
 ## Mandatory operating rules
 

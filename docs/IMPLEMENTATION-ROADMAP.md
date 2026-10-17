@@ -30,11 +30,23 @@ Older dated “next task” sections below retain history only. Start each slice
 - The real-emulator test selected Track 01 / Note 036 at tick 7680, moved it to tick 7920 through EVENT +, then restored tick 7680 through EVENT −. The before/moved/restored screenshot and hierarchy set was downloaded and inspected.
 - Verified in successful exact-SHA [Android Build #2781](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39062512475), commit [`af266a38bb850a20313bccfef9a7b953c4191151`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/af266a38bb850a20313bccfef9a7b953c4191151).
 
-### 7. Next slice — Arrangement duplicate/copy of a selected event
-- Extend the same native Pattern path for one non-destructive duplicate/copy operation on the selected MIDI event. Define collision and sequence boundary behavior, preserve all musical parameters, and register undo/redo before adding UI behavior.
-- Verify via real emulator touch with a temporary target, native projection before/after and exact restoration. Keep current MOVE ± GRID, loop-brace and Arrange→Grid acceptance intact.
+### 7. Arrangement event DUP — COMPLETE / VERIFIED
+- Added native Pattern duplication for a uniquely identified event. Source and all musical fields are preserved; same-pitch destination collisions, ambiguous sources, invalid ticks and Pattern boundaries are rejected. The native edit-history entry supports undo/redo.
+- Full Android Emulator smoke tapped DUP, checked the authoritative Pattern projection, and performed UNDO → REDO → UNDO. The serialized Pattern returned exactly to its baseline; the selected-event accessibility state returned to the source.
+- Verified by successful exact-SHA [Android Build #2785](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39065465364), commit [ef7f8728ebffe9481647b373fa8867c20af15278](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/ef7f8728ebffe9481647b373fa8867c20af15278). The initial #2784 failure exposed clipped/unhittable DUP UI geometry; the compact header plus second action row fixed the real cause.
 
-Physical MPC Studio MkII verification remains pending. Do not repeat the firmware audit unless this specific next interaction requires it.
+### 8. Arrangement event COPY / PASTE — COMPLETE / VERIFIED
+- Added a value-owned native event clipboard and PatternOps copy/paste operations. COPY resolves exactly one source event without mutating the Pattern. PASTE preserves duration, note, velocity, probability, ratchet and nudge, changes only the destination tick, rejects same-pitch collisions and out-of-Pattern targets, and records undo/redo with the existing native edit history.
+- Full Android Emulator smoke performed actual COPY and PASTE touches. It confirmed COPY leaves the serialized Pattern unchanged, PASTE adds exactly one event without changing other events, and UNDO → REDO → UNDO restores the exact original Pattern and source selection. MOVE ± GRID, DUP/UNDO/REDO, loop-brace restoration, Grid draw/erase, Step probability and Track Edit tuning acceptance also remained green.
+- Verified by successful exact-SHA [Android Build #2789](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39068765934) on application commit [ec41174ae729d6c4e7a13de8fd8171e80b904134](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/ec41174ae729d6c4e7a13de8fd8171e80b904134).
+- Inspected APK artifact 12114811559 (8,656,477 bytes; SHA-256 32a474f2c4e5871c234fb4d0d1adab567b3d4e49ec6f816a86664dfe300cfe98) and visual-evidence artifact 12114423332 (6,997,526 bytes; SHA-256 4cff56a245109f14c05a887769d4fc1d23744366a3abae6073f8d9e7c3e71d6c). The Arrangement screenshots and accessibility hierarchies show selected tick 7680 → pasted/redo tick 7920 → final undo tick 7680; the Pattern-state assertion passed exact restoration.
+
+### 9. Next slice — Arrangement CUT + canonical Function Bar routing
+- Promote the working selected-event COPY / PASTE / DUP operations into the canonical bottom Function Bar; keep availability/accessibility descriptions truthful and tied to live selection/clipboard state. The current secondary event-action row remains a temporary access route.
+- Implement CUT as one native, history-backed operation that captures the selected full event and removes only that event. Rejection/rollback must leave the project and clipboard unchanged. Cover source identity, musical-field preservation, same-tick ambiguity, Pattern boundaries, and Undo/Redo restoration with native unit tests and a real-emulator touch round-trip.
+- Keep the Arrangement status truthful: this is Pattern-event editing, not yet full linear clip placement; Arrangement still projects the first Pattern of each Track from bar 1.
+
+Physical MPC Studio MkII verification remains PENDING. All interaction evidence above is Android Emulator evidence.
 
 
 ## Stage 0 — Foundation
