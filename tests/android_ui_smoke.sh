@@ -2199,7 +2199,7 @@ PY
     arrangement_event_state_line() {
       local action="$1"
       adb_bounded 5 logcat -d -v brief 2>/dev/null \
-        | grep -F -- "UI_ARRANGE_EVENT_STATE: action=\${action} " \
+        | grep -F -- "UI_ARRANGE_EVENT_STATE: action=${action} " \
         | tail -n 1 || true
     }
     arrange_event_target_tick=$((arrange_event_tick + arrange_event_grid))
@@ -2273,7 +2273,7 @@ if len(info)!=1 or info[0].attrib.get("text") != expected:
 print(f"Arrangement {action}: authoritative Pattern and selected UI event verified.")
 PY
       then
-        echo "ERROR: Arrangement \${action} state failed validation"
+        echo "ERROR: Arrangement ${action} state failed validation"
         cat "$xml_path"
         return 1
       fi
