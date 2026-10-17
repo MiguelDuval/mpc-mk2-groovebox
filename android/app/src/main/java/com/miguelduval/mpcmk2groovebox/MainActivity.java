@@ -1490,8 +1490,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final boolean visible = navigationController != null
                 && navigationController.state().compactMixerVisible();
-        compactMixerPanel.setVisibility(
-                visible ? View.VISIBLE : View.GONE);
+        // The legacy condensed panel was superseded by MpcMainMixerStripView.
+        // Keep its views mounted for refresh dependencies, but never re-expose
+        // this duplicate panel from the persisted Mixer Strip visibility state.
+        compactMixerPanel.setVisibility(View.GONE);
         if (mpcShell != null) {
             mpcShell.setChannelStripVisible(visible);
         }

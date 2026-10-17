@@ -1546,6 +1546,20 @@ for forbidden in \
     exit 1
   fi
 done
+if ! grep -Fq -- 'compactMixerPanel.setVisibility(View.GONE);' <<<"$context_visibility_block"; then
+  echo "ERROR: legacy condensed mixer panel must remain hidden; Main uses MpcMainMixerStripView"
+  exit 1
+fi
+if grep -Fq -- 'visible ? View.VISIBLE : View.GONE' <<<"$context_visibility_block"; then
+  echo "ERROR: persisted Mixer Strip visibility must not re-expose the legacy duplicate panel"
+  exit 1
+fi
+for required in 'mpcShell.setChannelStripVisible(visible);' 'compactMixerToggle.setText(' ; do
+  if ! grep -Fq -- "$required" <<<"$context_visibility_block"; then
+    echo "ERROR: Mixer Strip show/hide state wiring regressed: $required"
+    exit 1
+  fi
+done
 
 echo "Running MPC UI state/navigation source preflight..."
 for required in \
