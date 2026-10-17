@@ -3373,6 +3373,10 @@ TRACK_EDIT_XML="/tmp/mpc-groovebox-track-edit-tuning-uiautomator.xml"
 TRACK_EDIT_REMOTE="/sdcard/mpc-groovebox-track-edit-tuning-uiautomator.xml"
 TRACK_EDIT_BEFORE_PNG="/tmp/mpc-groovebox-track-edit-tuning-before.png"
 TRACK_EDIT_BEFORE_XML="/tmp/mpc-groovebox-track-edit-tuning-before-uiautomator.xml"
+TRACK_EDIT_CONTEXT_BEFORE_XML="/tmp/mpc-groovebox-track-edit-tuning-context-before-uiautomator.xml"
+TRACK_EDIT_CONTEXT_BEFORE_REMOTE="/sdcard/mpc-groovebox-track-edit-tuning-context-before-uiautomator.xml"
+TRACK_EDIT_CONTEXT_REOPENED_XML="/tmp/mpc-groovebox-track-edit-tuning-context-reopened-uiautomator.xml"
+TRACK_EDIT_CONTEXT_REOPENED_REMOTE="/sdcard/mpc-groovebox-track-edit-tuning-context-reopened-uiautomator.xml"
 TRACK_EDIT_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-tuning-changed.png"
 TRACK_EDIT_CHANGED_XML="/tmp/mpc-groovebox-track-edit-tuning-changed-uiautomator.xml"
 TRACK_EDIT_REOPENED_PNG="/tmp/mpc-groovebox-track-edit-tuning-reopened.png"
@@ -3380,9 +3384,11 @@ TRACK_EDIT_REOPENED_XML="/tmp/mpc-groovebox-track-edit-tuning-reopened-uiautomat
 TRACK_EDIT_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-tuning-restored.png"
 TRACK_EDIT_RESTORED_XML="/tmp/mpc-groovebox-track-edit-tuning-restored-uiautomator.xml"
 
-read_track_edit_values() {
+# The Pad/Layer/Sample context sits above the waveform, while tuning is
+# below it. Read them from separate real hierarchy snapshots instead of
+# assuming off-screen children remain accessible after scrolling.
+read_track_edit_context_values() {
   python3 - "$1" <<'PY'
-import re
 import sys
 import xml.etree.ElementTree as ET
 
@@ -3401,11 +3407,28 @@ sample_text = one("Track Edit sample").attrib.get("text", "")
 sample = sample_text.splitlines()[-1].strip() if sample_text.strip() else ""
 if not sample or "NO SAMPLE" in sample.upper():
     raise SystemExit(f"Track Edit test requires a real sample on the selected Pad/Layer: {sample_text!r}")
-tuning_text = one("Track Edit layer tuning value").attrib.get("text", "")
+print("\t".join((pad, layer, sample.replace("\t", " "))))
+PY
+}
+
+read_track_edit_tuning_value() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+found = [n for n in nodes
+         if n.attrib.get("content-desc", "") == "Track Edit layer tuning value"]
+if len(found) != 1:
+    raise SystemExit(
+        f"expected one visible Track Edit tuning value, found {len(found)}")
+tuning_text = found[0].attrib.get("text", "")
 match = re.search(r"([+-]?\d+(?:\.\d+)?)\s*st\b", tuning_text)
 if not match:
     raise SystemExit(f"could not parse layer tuning value from {tuning_text!r}")
-print("\t".join((pad, layer, sample.replace("\t", " "), f"{float(match.group(1)):.2f}")))
+print(f"{float(match.group(1)):.2f}")
 PY
 }
 
@@ -3475,19 +3498,29 @@ fi
 if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit Samples waveform" 20; then
   echo "ERROR: Track Edit Samples editor body did not render"; exit 1
 fi
+if ! dump_device_ui "$TRACK_EDIT_CONTEXT_BEFORE_REMOTE" "$TRACK_EDIT_CONTEXT_BEFORE_XML"; then
+  echo "ERROR: Track Edit initial Pad/Layer/sample context hierarchy failed"; exit 1
+fi
+read -r track_edit_pad_before track_edit_layer_before track_edit_sample_before \
+  < <(read_track_edit_context_values "$TRACK_EDIT_CONTEXT_BEFORE_XML") || {
+    echo "ERROR: Track Edit initial Pad/Layer/sample context snapshot was invalid"; exit 1;
+  }
+if [[ "$track_edit_pad_before" != "PAD 01" || "$track_edit_layer_before" != "LAYER 1/8" ]]; then
+  echo "ERROR: Track Edit fixture must begin on PAD 01 / LAYER 1/8"
+  echo "Pad=$track_edit_pad_before Layer=$track_edit_layer_before"; exit 1
+fi
 if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning increase" 8; then
   echo "ERROR: Track Edit layer tuning control did not become actionable after scrolling"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_BEFORE_XML"; then
   echo "ERROR: Track Edit initial tuning hierarchy failed"; exit 1
 fi
+track_edit_tuning_before="$(read_track_edit_tuning_value "$TRACK_EDIT_BEFORE_XML")" || {
+  echo "ERROR: Track Edit initial tuning value could not be read from the visible control"; exit 1;
+}
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_BEFORE_PNG"; then
   echo "ERROR: Track Edit initial tuning screenshot failed"; exit 1
 fi
-read -r track_edit_pad_before track_edit_layer_before track_edit_sample_before track_edit_tuning_before \
-  < <(read_track_edit_values "$TRACK_EDIT_BEFORE_XML") || {
-    echo "ERROR: Track Edit sample/tuning snapshot was invalid"; exit 1;
-  }
 if [[ "$track_edit_pad_before" != "PAD 01" || "$track_edit_layer_before" != "LAYER 1/8" ]]; then
   echo "ERROR: Track Edit fixture must begin on PAD 01 / LAYER 1/8"
   echo "Pad=$track_edit_pad_before Layer=$track_edit_layer_before"; exit 1
@@ -3502,7 +3535,7 @@ for attempt in {1..15}; do
   if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_XML"; then
     echo "ERROR: could not observe Track Edit after tuning increment"; exit 1
   fi
-  track_edit_tuning_current="$(read_track_edit_values "$TRACK_EDIT_XML" 2>/dev/null | cut -f4 || true)"
+  track_edit_tuning_current="$(read_track_edit_tuning_value "$TRACK_EDIT_XML" 2>/dev/null || true)"
   if [[ -n "$track_edit_tuning_current" && "$track_edit_tuning_current" != "$track_edit_tuning_before" ]]; then
     track_edit_tuning_changed=1; break
   fi
@@ -3546,16 +3579,22 @@ fi
 if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit Samples waveform" 20; then
   echo "ERROR: Track Edit Samples editor body did not render after re-entry"; exit 1
 fi
+if ! dump_device_ui "$TRACK_EDIT_CONTEXT_REOPENED_REMOTE" "$TRACK_EDIT_CONTEXT_REOPENED_XML"; then
+  echo "ERROR: Track Edit re-entry Pad/Layer/sample context hierarchy failed"; exit 1
+fi
+read -r track_edit_pad_reopened track_edit_layer_reopened track_edit_sample_reopened \
+  < <(read_track_edit_context_values "$TRACK_EDIT_CONTEXT_REOPENED_XML") || {
+    echo "ERROR: Track Edit re-entry Pad/Layer/sample context snapshot was invalid"; exit 1;
+  }
 if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning increase" 8; then
   echo "ERROR: Track Edit tuning control did not become actionable after re-entry scrolling"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_REOPENED_XML"; then
-  echo "ERROR: Track Edit re-entry hierarchy failed"; exit 1
+  echo "ERROR: Track Edit re-entry tuning hierarchy failed"; exit 1
 fi
-read -r track_edit_pad_reopened track_edit_layer_reopened track_edit_sample_reopened track_edit_tuning_reopened \
-  < <(read_track_edit_values "$TRACK_EDIT_REOPENED_XML") || {
-    echo "ERROR: Track Edit re-entry snapshot was invalid"; exit 1;
-  }
+track_edit_tuning_reopened="$(read_track_edit_tuning_value "$TRACK_EDIT_REOPENED_XML")" || {
+  echo "ERROR: Track Edit re-entry tuning value could not be read from the visible control"; exit 1;
+}
 if [[ "$track_edit_pad_reopened" != "$track_edit_pad_before" \
     || "$track_edit_layer_reopened" != "$track_edit_layer_before" \
     || "$track_edit_sample_reopened" != "$track_edit_sample_before" \
@@ -3576,7 +3615,7 @@ for attempt in {1..15}; do
   if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_XML"; then
     echo "ERROR: could not verify restored Track Edit tuning"; exit 1
   fi
-  track_edit_tuning_current="$(read_track_edit_values "$TRACK_EDIT_XML" 2>/dev/null | cut -f4 || true)"
+  track_edit_tuning_current="$(read_track_edit_tuning_value "$TRACK_EDIT_XML" 2>/dev/null || true)"
   if [[ "$track_edit_tuning_current" == "$track_edit_tuning_before" ]]; then
     track_edit_tuning_restored=1; break
   fi
@@ -3592,6 +3631,7 @@ if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_RESTORED_PNG"; then
   echo "ERROR: Track Edit restored tuning screenshot failed"; exit 1
 fi
 for evidence in \
+  "$TRACK_EDIT_CONTEXT_BEFORE_XML" "$TRACK_EDIT_CONTEXT_REOPENED_XML" \
   "$TRACK_EDIT_BEFORE_PNG" "$TRACK_EDIT_BEFORE_XML" \
   "$TRACK_EDIT_CHANGED_PNG" "$TRACK_EDIT_CHANGED_XML" \
   "$TRACK_EDIT_REOPENED_PNG" "$TRACK_EDIT_REOPENED_XML" \
