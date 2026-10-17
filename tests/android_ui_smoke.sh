@@ -3567,11 +3567,11 @@ fi
 if ! tap_ui_description "$TRACK_EDIT_CHANGED_XML" "Track Edit back"; then
   echo "ERROR: Track Edit BACK did not return to Main"; exit 1
 fi
-if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "Main Track Edit" 25; then
-  echo "ERROR: Main Track Edit entry was not restored after BACK"; exit 1
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "$track_edit_return_description" 25; then
+  echo "ERROR: original Track Edit entry route was not restored after BACK: $track_edit_return_description"; exit 1
 fi
-if ! tap_ui_description "$DUMP" "Main Track Edit"; then
-  echo "ERROR: could not re-enter Track Edit after BACK"; exit 1
+if ! tap_ui_description "$DUMP" "$track_edit_return_description"; then
+  echo "ERROR: could not re-enter Track Edit through its original route: $track_edit_return_description"; exit 1
 fi
 if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit Samples tab" 25; then
   echo "ERROR: Track Edit did not reopen"; exit 1
