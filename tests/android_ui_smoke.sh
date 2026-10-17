@@ -2061,11 +2061,47 @@ while (( SECONDS < audit_deadline )); do
 import sys
 import xml.etree.ElementTree as ET
 nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
-if not any(n.attrib.get("content-desc") == "MPC Step Sequencer workspace" for n in nodes):
+def bounds(node):
+    import re
+    m = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     node.attrib.get("bounds", ""))
+    if m is None:
+        raise AssertionError(f"invalid live accessibility bounds: {node.attrib}")
+    return tuple(map(int, m.groups()))
+workspace = [n for n in nodes
+             if n.attrib.get("content-desc") == "MPC Step Sequencer workspace"]
+if len(workspace) != 1:
     raise AssertionError("the actual Step Sequencer workspace is not visible")
+track_context = [n for n in nodes
+                 if n.attrib.get("content-desc") == "Step Sequencer track context"]
+if len(track_context) != 1:
+    raise AssertionError("Step Sequencer track context is missing or duplicated")
+wx1, wy1, wx2, wy2 = bounds(workspace[0])
+tx1, ty1, tx2, ty2 = bounds(track_context[0])
+if (tx2 - tx1) < (wx2 - wx1) * 0.15:
+    raise AssertionError(
+        f"Step track context occupies only {(tx2-tx1)/(wx2-wx1):.3f} of workspace width")
+context_text = track_context[0].attrib.get("text", "")
+if "\n" in context_text or not context_text.startswith("TRACK 01"):
+    raise AssertionError(f"Step track label should remain a single readable line: {context_text!r}")
+pad_info = [n for n in nodes
+            if n.attrib.get("class", "").endswith(".TextView")
+            and n.attrib.get("text", "") == "PAD 01"]
+pad_minus = [n for n in nodes
+             if n.attrib.get("class", "").endswith(".Button")
+             and n.attrib.get("text", "") == "PAD −"]
+pad_plus = [n for n in nodes
+            if n.attrib.get("class", "").endswith(".Button")
+            and n.attrib.get("text", "") == "PAD +"]
+incorrect_pad_buttons = [n for n in nodes
+                         if n.attrib.get("class", "").endswith(".Button")
+                         and n.attrib.get("text", "") == "PAD 01"]
+if len(pad_info) != 1 or len(pad_minus) != 1 or len(pad_plus) != 1         or incorrect_pad_buttons:
+    raise AssertionError(
+        "Step header must expose one PAD status label plus distinct PAD − / PAD + buttons")
 if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
     raise AssertionError("Step touch fixture requires Pad 01 / Step 01 to begin empty")
-print("Step Sequencer touch fixture and empty step-1 reference verified.")
+print("Step Sequencer header geometry and PAD controls verified from live bounds.")
 PY
     then
       echo "ERROR: Step Sequencer initial state did not match its native fixture"; exit 1

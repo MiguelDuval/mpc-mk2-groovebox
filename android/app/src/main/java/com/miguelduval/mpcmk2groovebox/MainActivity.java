@@ -22,6 +22,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.text.InputType;
+import android.text.TextUtils;
 import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
 import android.provider.MediaStore;
@@ -276,6 +277,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceLauncherView sequenceLauncherView;
     private final Button[] sequenceStepButtons = new Button[16];
     private TextView sequenceStepEventInfo;
+    private TextView sequenceStepTrackContext;
+    private TextView sequenceStepPadInfo;
     private TextView sequenceTransportView;
     private int sequenceGridStartStep = 0;
     private int sequenceGridVisibleSteps =
@@ -7311,6 +7314,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 MpcUiState.DataDialFocus.STEP);
         pageTitle.setText("STEP");
         content.removeAllViews();
+        sequenceStepTrackContext = null;
+        sequenceStepPadInfo = null;
         sequenceTimeline = null;
         sequenceGridView = null;
         sequenceLauncherView = null;
@@ -7351,35 +7356,40 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         title.setGravity(Gravity.CENTER_VERTICAL);
         header.addView(title, new LinearLayout.LayoutParams(dp(58), dp(38)));
 
-        TextView trackContext = label("", 10, MUTED);
+        TextView trackContext = label("", 9, MUTED);
         trackContext.setGravity(Gravity.CENTER_VERTICAL);
-        trackContext.setPadding(dp(8), 0, dp(8), 0);
+        trackContext.setPadding(dp(4), 0, dp(4), 0);
+        trackContext.setSingleLine(true);
+        trackContext.setEllipsize(TextUtils.TruncateAt.END);
+        trackContext.setContentDescription("Step Sequencer track context");
+        sequenceStepTrackContext = trackContext;
         header.addView(trackContext, new LinearLayout.LayoutParams(0, dp(38), 1.6f));
 
         TextView padInfo = label("", 10, TEXT);
         padInfo.setTypeface(Typeface.DEFAULT_BOLD);
         padInfo.setGravity(Gravity.CENTER);
         padInfo.setBackground(strokeBackground(SURFACE_2, LINE, 6));
-        header.addView(padInfo, new LinearLayout.LayoutParams(dp(88), dp(34)));
+        sequenceStepPadInfo = padInfo;
+        header.addView(padInfo, new LinearLayout.LayoutParams(dp(72), dp(34)));
 
         header.addView(actionButton("PAD −", v -> {
             selectedPad = Math.max(0, selectedPad - 1);
             navigationController.setSelectedPad(selectedPad);
             refreshSequenceStepPage();
             refreshMpcCompactContext();
-        }), new LinearLayout.LayoutParams(dp(62), dp(38)));
+        }), new LinearLayout.LayoutParams(dp(52), dp(38)));
         header.addView(actionButton("PAD +", v -> {
             selectedPad = Math.min(15, selectedPad + 1);
             navigationController.setSelectedPad(selectedPad);
             refreshSequenceStepPage();
             refreshMpcCompactContext();
-        }), new LinearLayout.LayoutParams(dp(62), dp(38)));
+        }), new LinearLayout.LayoutParams(dp(52), dp(38)));
         Button previousPage = actionButton("◀", v -> moveSequenceStepPage(-1));
         previousPage.setContentDescription("MPC Step Sequencer previous 16-step page");
-        header.addView(previousPage, new LinearLayout.LayoutParams(dp(50), dp(38)));
+        header.addView(previousPage, new LinearLayout.LayoutParams(dp(44), dp(38)));
         Button nextPage = actionButton("▶", v -> moveSequenceStepPage(1));
         nextPage.setContentDescription("MPC Step Sequencer next 16-step page");
-        header.addView(nextPage, new LinearLayout.LayoutParams(dp(50), dp(38)));
+        header.addView(nextPage, new LinearLayout.LayoutParams(dp(44), dp(38)));
         page.addView(header);
 
         sequenceStepEventInfo = label(
@@ -7446,15 +7456,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
 
         content.addView(page);
-
-        trackContext.setText(String.format(
-                Locale.ROOT,
-                "TRACK %02d • %s",
-                nativeSequenceGetSelectedTrack() + 1,
-                nativeSequenceTrackStatus(
-                        nativeSequenceGetSelectedTrack())));
-        padInfo.setText("PAD " + String.format(
-                Locale.ROOT, "%02d", selectedPad + 1));
 
         refreshSequenceStepPage();
         refreshMpcCompactContext();
@@ -7541,23 +7542,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             : "STEP —  •  VEL —  •  PROB —  •  RAT —  •  NUDGE —");
         }
 
-        final View parent = sequenceStepButtons[0].getParent() instanceof View
-                ? (View) sequenceStepButtons[0].getParent()
-                : null;
-        if (parent instanceof ViewGroup
-                && ((ViewGroup) parent).getParent() instanceof ViewGroup) {
-            final ViewGroup page = (ViewGroup)
-                    ((ViewGroup) parent).getParent();
-            if (page.getChildCount() > 0
-                    && page.getChildAt(0) instanceof ViewGroup) {
-                final ViewGroup header = (ViewGroup) page.getChildAt(0);
-                if (header.getChildCount() > 4
-                        && header.getChildAt(3) instanceof TextView) {
-                    ((TextView) header.getChildAt(3)).setText(
-                            "PAD " + String.format(
-                                    Locale.ROOT, "%02d", selectedPad + 1));
-                }
-            }
+        final int track = Math.max(0, nativeSequenceGetSelectedTrack());
+        if (sequenceStepTrackContext != null) {
+            sequenceStepTrackContext.setText(String.format(
+                    Locale.ROOT,
+                    "TRACK %02d • %s",
+                    track + 1,
+                    nativeSequenceTrackStatus(track)));
+        }
+        if (sequenceStepPadInfo != null) {
+            sequenceStepPadInfo.setText("PAD " + String.format(
+                    Locale.ROOT, "%02d", selectedPad + 1));
         }
     }
 
