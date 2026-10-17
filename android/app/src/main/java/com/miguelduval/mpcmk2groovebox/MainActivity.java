@@ -7548,7 +7548,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     Locale.ROOT,
                     "TRACK %02d • %s",
                     track + 1,
-                    nativeSequenceTrackStatus(track)));
+                    nativeSequenceGetTrackType(track)));
         }
         if (sequenceStepPadInfo != null) {
             sequenceStepPadInfo.setText("PAD " + String.format(

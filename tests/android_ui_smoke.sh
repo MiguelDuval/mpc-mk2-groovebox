@@ -2082,8 +2082,8 @@ if (tx2 - tx1) < (wx2 - wx1) * 0.15:
     raise AssertionError(
         f"Step track context occupies only {(tx2-tx1)/(wx2-wx1):.3f} of workspace width")
 context_text = track_context[0].attrib.get("text", "")
-if "\n" in context_text or not context_text.startswith("TRACK 01"):
-    raise AssertionError(f"Step track label should remain a single readable line: {context_text!r}")
+if context_text != "TRACK 01 • DRUM":
+    raise AssertionError(f"Step track context should be fully visible as 'TRACK 01 • DRUM': {context_text!r}")
 pad_info = [n for n in nodes
             if n.attrib.get("class", "").endswith(".TextView")
             and n.attrib.get("text", "") == "PAD 01"]
