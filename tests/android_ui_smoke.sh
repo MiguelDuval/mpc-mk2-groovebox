@@ -2112,9 +2112,16 @@ bar_width = (width-header)/visible_bars
 start_x = left + header + (end_bar + 0.999 - viewport_start)*bar_width
 target_x = left + header + (target_bar - viewport_start + 0.5)*bar_width
 y = top + 4.0*density
-sx, tx, yy = round(start_x), round(target_x), round(y)
+# The loop-end handle is allowed to sit on the view's right boundary for the
+# last visible bar. Clamp by at most the hit radius so the injected touch stays
+# inside the Android view while still hitting the same real drawn handle.
+sx = max(left + 2, min(right - 2, round(start_x)))
+tx = max(left + 2, min(right - 2, round(target_x)))
+yy = round(y)
 if not (left < sx < right and left < tx < right and top < yy < top+ruler):
     raise AssertionError(f"derived end-handle swipe escaped ruler: {(sx,yy,tx,yy)} bounds={(left,top,right,bottom)}")
+if abs(sx-start_x) > 22*density:
+    raise AssertionError("clamped start coordinate moved outside the loop-handle hit radius")
 if abs(tx-sx) < 22*density:
     raise AssertionError("target bar movement is too small for an unambiguous handle drag")
 print(sx, yy, tx, yy)
@@ -2179,12 +2186,16 @@ if not dens: raise AssertionError("could not parse Android density")
 density = int(dens[-1])/160.0
 header, ruler = 138.0*density, 34.0*density
 bar_width = (right-left-header)/visible_bars
-sx = left + header + (end_bar + 0.999 - viewport_start)*bar_width
-tx = left + header + (target_bar - viewport_start + 0.5)*bar_width
+start_x = left + header + (end_bar + 0.999 - viewport_start)*bar_width
+target_x = left + header + (target_bar - viewport_start + 0.5)*bar_width
 y = top + 4.0*density
-sx,tx,y = round(sx),round(tx),round(y)
+sx = max(left + 2, min(right - 2, round(start_x)))
+tx = max(left + 2, min(right - 2, round(target_x)))
+y = round(y)
 if not (left < sx < right and left < tx < right and top < y < top+ruler):
     raise AssertionError("restore swipe would leave the Arrangement ruler")
+if abs(sx-start_x) > 22*density:
+    raise AssertionError("clamped restore start moved outside loop-handle hit radius")
 if abs(tx-sx) < 22*density:
     raise AssertionError("restore drag target is too close to current handle")
 print(sx,y,tx,y)
