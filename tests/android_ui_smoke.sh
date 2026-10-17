@@ -2384,7 +2384,7 @@ PY
     if [[ -z "$arrangement_event_copy_line" ]]; then
       echo "ERROR: COPY did not log native Pattern state"; exit 1
     fi
-    python3 - "$ARRANGE_EVENT_COPIED_XML" "$arrangement_event_copy_line" \
+    if ! python3 - "$ARRANGE_EVENT_COPIED_XML" "$arrangement_event_copy_line" \
       "$arrange_event_baseline_data" "$arrange_event_track" "$arrange_event_tick" \
       "$arrange_event_note" <<'PY'
 import re, sys, xml.etree.ElementTree as ET
