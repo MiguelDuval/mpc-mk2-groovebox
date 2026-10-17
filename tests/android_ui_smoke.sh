@@ -1807,7 +1807,7 @@ if len(found) != 1:
 node = found[0]
 if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
     raise SystemExit(f"accessibility target is not enabled/clickable: {node.attrib}")
-parts = node.attrib.get("bounds", "").replace("[", "").replace("]", "").split(",")
+parts = node.attrib.get("bounds", "").replace("][", ",").strip("[]").split(",")
 if len(parts) != 4 or not all(p.isdigit() for p in parts):
     raise SystemExit(f"invalid accessibility target bounds: {node.attrib}")
 left, top, right, bottom = map(int, parts)
