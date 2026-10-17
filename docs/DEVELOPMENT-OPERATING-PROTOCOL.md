@@ -75,6 +75,16 @@ For each coherent feature slice:
 
 Keep the number of expensive full builds proportional to the amount of change. A small isolated view change can use a fast relevant test before the end-to-end build. Changes to Activity lifecycle, navigation, persistence, permissions, audio, MIDI, or device integration need broader tests sooner. Never skip the final required CI verification simply to save time.
 
+### 4.1 Fast feedback, test economics, and failure triage
+
+- Start with the smallest test that can answer the current question: a targeted unit/native test, source-contract test, or isolated UI scenario. Do not run unrelated Browser/Arrangement/Track workflows just because the only available command happens to run everything.
+- Keep one reusable implementation of each UI acceptance scenario. Prefer selecting a scenario by an argument/environment variable or extracting a small helper over copying a second version of the flow.
+- Full Android build + emulator smoke + artifact inspection remains mandatory at the acceptance boundary for a meaningful user-visible slice. A targeted green test is not a substitute for the final current-SHA integration run.
+- When a run fails, classify it before changing code: (a) product defect, (b) test-fixture/setup defect, (c) brittle test assumption, (d) environment/tool failure. Use the failing step, UI hierarchy, screenshot and logs to determine which category applies. Fix the cause; never delete the check, lower its assertion, or call a build successful when it failed.
+- UI tests must operate the real interface. If a target is inside a scrollable container, scroll to it using the current accessibility hierarchy before asserting visibility/actionability. Do not assume a control is visible merely because its view exists in source.
+- Avoid repeated full builds for documentation-only and narrowly scoped changes when local/source validation is sufficient; however, respect repository branch/PR rules and never report a new SHA as integration-verified until its actual workflow result is known.
+- Keep failure output bounded: report the failing step, root cause evidence, exact SHA/run URL and minimal relevant log excerpt, not the whole giant shell log.
+
 ## 5. Acceptance contract: evidence over appearance
 
 For each feature, distinguish the following:
@@ -113,6 +123,7 @@ Use small independently verifiable slices if all of the above cannot be delivere
 - Continue on `feature/mpc-one-ui-fidelity` and PR #23 unless the owner explicitly authorizes a different destination.
 - Never modify `main` for this work; no reset, rebase, history rewrite or force-push.
 - Do not merge or retarget PR #23 as part of routine UI development.
+- One agent/writer owns a branch at a time. Do not have ChatGPT's GitHub mutations and Cline edit the same branch/files concurrently. Parallel tasks require isolated branches/worktrees, explicit file ownership, and serial integration.
 - Do not replace an existing working backend with a mock or speculative architecture.
 - Keep the realtime callback free of UI work, file I/O, allocations and blocking operations.
 - Do not add paid tools, API dependencies, cloud services, or new required credentials. Prefer current GitHub/ChatGPT integration, repository tests and the existing Actions workflow.
@@ -130,6 +141,8 @@ The process must work within a limited ChatGPT context and usage budget:
 - Do not run broad public research when the current repository already records an adequate, cited official reference. Research externally when behavior is uncertain, version-sensitive, or absent from the local reference index.
 - Do not add paid services or require a paid ChatGPT plan. If a task exceeds the current session/tool capability, make bounded progress and record the next action in the state file instead of pretending it was completed.
 - Prefer one complete vertical slice and its evidence over numerous tiny status-only commits.
+- Follow the dated current execution queue at the top of `docs/IMPLEMENTATION-ROADMAP.md`; older task labels lower in the file can be historical. If CI is red, unblock the current failure before picking an unrelated feature.
+- Use the smallest relevant test while iterating, then one full verification at the slice boundary. Avoid adding a second copy of a UI smoke scenario when a focused mode can reuse the existing implementation.
 
 ## 9. Required session checkpoint
 
