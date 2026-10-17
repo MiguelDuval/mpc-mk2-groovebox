@@ -6,15 +6,15 @@
 ## Latest verified implementation state
 
 - Repository: `MiguelDuval/mpc-mk2-groovebox`; branch `feature/mpc-one-ui-fidelity`.
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) is **OPEN**, base `fix/ui-shell-format-width-startup`, not merged.
-- Latest code-bearing commit verified by full CI: [`830e47f2eddcf46bccbb5333de5edc9c402c39ce`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/830e47f2eddcf46bccbb5333de5edc9c402c39ce). It adds native Arrangement CUT and routes CUT / COPY / PASTE / DUP into the canonical bottom Function Bar.
-- [Android Build #2791](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39072384402) completed **SUCCESS** for that exact code SHA: all 57 workflow steps passed, including native PatternOps/edit-history tests, debug APK assembly, the full Android Emulator touch smoke, and UI evidence upload.
-- APK artifact: `app-debug.apk`, ID `12116190078`, 8,746,381 bytes, SHA-256 `a302c6244c859eaa3acd10fb07e029fe2f781385c955bb903a3258d87ecd9076`. It was downloaded, recognized as an Android package, and its internal ZIP integrity passed.
-- UI-evidence artifact: `mpc-ui-visual-evidence`, ID `12115971268`, 7,427,085 bytes, SHA-256 `a1737612ca1510ca73b35d10a2702344a8b51a2ae19b7e1214f8569561fa21fc`. The archive integrity passed and the Arrangement CUT/COPY/PASTE/DUP screenshots and XML were inspected.
-- Arrangement evidence: MOVE ± GRID restores Track 01 / tick 7680 / note 036; DUP and COPY/PASTE each pass their Undo/Redo round trips; CUT removes only that source event, Undo restores it, Redo removes it, and final Undo returns the exact serialized Pattern and selection.
-- Existing acceptance also stayed green: Main XL strips fill 0.977 vertical / 0.960 horizontal of the shell region, legacy panel absent; Grid DRAW/ERASE, Step probability 127→126, and Track Edit tuning +0.00 st→+1.00 st then restoration all passed.
-- A Browser DocumentsUI lookup timed out once for `Browser-Favorite-Only.wav` in the remembered folder. Its root-navigation fallback succeeded; separate USER FOLDER / FAVORITE 1 tree grants, preference isolation, and cold process-restart restoration all passed.
-- Physical MPC Studio MkII verification remains **PENDING**. These are emulator results, not physical-controller evidence.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains **OPEN**, base `fix/ui-shell-format-width-startup`, not merged.
+- Latest code-bearing commit verified by the full workflow: [`f49748de9db450ffc3b3b781befac99916f2a134`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/f49748de9db450ffc3b3b781befac99916f2a134), implementing the explicit Arrangement insertion cursor for empty-timeline PASTE.
+- [Android Build #2793](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39075574304) completed **SUCCESS** on that exact SHA. All 57 workflow steps passed, including native/domain/JVM tests, APK assembly, full Android Emulator touch smoke and evidence upload.
+- APK artifact: `app-debug.apk`, ID `12117086509`, 8,746,381 bytes, SHA-256 `a47c767a9c476fe696c75b6dbba0922c1b9a8d8830d704b4555abc29249ee8fc`. Downloaded, recognized as an Android package and ZIP-integrity checked.
+- UI-evidence artifact: `mpc-ui-visual-evidence`, ID `12116759419`, 8,382,189 bytes, SHA-256 `7074520600906be7a5cf3c348da795f7426c94e4f60613fbffcb57f076cdf5df`. Archive integrity passed; cursor, pasted, restored screenshots and accessibility hierarchies were inspected.
+- Arrangement acceptance: MOVE ± GRID; DUP; COPY/PASTE; CUT/UNDO/REDO; and CUT → empty cursor tick 240 → PASTE → UNDO → REDO → UNDO → undo CUT all passed against authoritative native Pattern serialization. The inserted event retained duration, pitch, velocity, probability, ratchet and nudge; final Undo restored exact starting Pattern and source selection.
+- Other acceptance stayed green: Main XL strips fill 0.977 vertical / 0.960 horizontal of their shell region, legacy panel absent; Grid DRAW/ERASE, Step probability 127→126, Track Edit tuning +0.00 st→+1.00 st and restoration, and loop-brace touch/restore passed.
+- One Browser DocumentsUI lookup timed out for `Browser-Favorite-Only.wav` in the remembered folder, then its root-navigation fallback succeeded. USER FOLDER / FAVORITE 1 permissions, preference isolation, and cold process restart restoration all passed; workflow remained green.
+- Physical MPC Studio MkII verification remains **PENDING**. All results in this checkpoint are Android Emulator evidence.
 
 ## Completed in this session
 
@@ -46,20 +46,23 @@ The full emulator smoke used a real canvas touch to select Track 01 / Note 036 a
 
 ### 7. Arrangement DUP / COPY / PASTE / CUT + canonical Function Bar — VERIFIED
 
-The selected-event DUP, COPY and PASTE operations remain backed by native PatternOps and native edit history. CUT now copies the full unique event into the native clipboard and removes only that Pattern event after history registration succeeds. The four actions live in the bottom Function Bar and are enabled only when their required event/clipboard state exists; UNDO/REDO and EVENT ± GRID remain in the secondary action row.
+DUP/COPY/PASTE/CUT are backed by native Pattern operations and native edit history, surfaced from the canonical bottom Function Bar. Event-only actions require a real event selection; PASTE additionally requires valid native clipboard state. UNDO/REDO and EVENT ± GRID remain in the secondary action row.
 
-Build #2791 performed real touches and checked authoritative native Pattern serialization:
-- DUP → UNDO → REDO → UNDO;
-- COPY → PASTE → UNDO → REDO → UNDO;
-- CUT → UNDO → REDO → UNDO.
+Build #2791 performed real touches and verified DUP → UNDO → REDO → UNDO, COPY → PASTE → UNDO → REDO → UNDO, and CUT → UNDO → REDO → UNDO against exact native Pattern state. Its full workflow passed all 57 steps, and its APK/evidence artifacts were inspected.
 
-The last sequence returned Track 01 / tick 7680 / note 036 and exact original Pattern serialization. Build #2791 completed all 57 workflow steps successfully on code SHA 830e47f2eddcf46bccbb5333de5edc9c402c39ce. The APK and screenshot/accessibility artifact archives were downloaded, integrity-checked, and inspected. Full linear clip placement remains intentionally unimplemented.
+### 8. Arrangement empty-timeline paste cursor — IMPLEMENTED / VERIFIED
+
+Build #2793 verified an actual empty-timeline touch at tick 240. The snapped cursor has its own state (not a fabricated event selection), shows a cyan marker and accessible Track/tick label, leaves the native Pattern unchanged, and enables PASTE only while a valid cursor and native clipboard coexist. After PASTE, note duration, pitch, velocity, probability, ratchet and nudge are preserved; UNDO restores the cursor and prior CUT Pattern, REDO recreates the event, and final UNDO CUT restores the exact fixture.
+
+Verified by [Android Build #2793](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39075574304) on code SHA [`f49748de9db450ffc3b3b781befac99916f2a134`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/f49748de9db450ffc3b3b781befac99916f2a134). All 57 workflow steps passed. The exact APK and visual-evidence archives were downloaded and integrity-checked; cursor/pasted/final-restored screenshots and accessibility XML were inspected.
+
+The Arrangement remains a first-Pattern-per-Track projection until a real linear clip-placement model is implemented.
 
 ## Current execution order
 
-1. Add an explicit paste-target cursor for empty Arrangement timeline positions. Snap to the current quantize grid, show a marker/accessibility label, and keep event-only actions disabled while the cursor is the focus. This closes the current limitation where PASTE requires an existing selected event.
-2. Extend real-emulator coverage for CUT → empty-timeline target → PASTE → UNDO/REDO and final CUT restoration. Cover Pattern boundaries/collisions and preserve every MIDI event field and exact native state.
-3. Inspect the exact-HEAD full Android workflow/APK/evidence before considering the next slice complete. Keep physical MPC Studio MkII validation marked separately as pending.
+1. Inspect the existing Sequence/Track/Pattern data model, project save/load path, native edit history and Arrangement projection before introducing explicit linear Pattern placements.
+2. Add the smallest backward-compatible Pattern-placement domain object and unit tests, then implement one real user path: create/place a Pattern on a Track timeline, move it by one quantize-grid interval, and undo/redo with exact persistence restoration.
+3. Add real-emulator touch evidence for the new placement path and run the full Android workflow on the exact final SHA. Keep physical MPC Studio MkII validation separately marked pending.
 
 ## Mandatory operating rules
 

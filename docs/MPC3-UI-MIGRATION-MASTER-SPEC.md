@@ -1038,7 +1038,7 @@ Arrangement is now a dedicated linear context with:
 - horizontal zoom;
 - track selection;
 - double-tap event handoff to Grid;
-- selected Pattern-note MOVE ± GRID, DUP, non-destructive COPY/PASTE and CUT are native-model/edit-history-backed and emulator-verified. CUT preserves the full event in the native clipboard and has passed deletion, Undo/Redo and exact emulator restoration. CUT/COPY/PASTE/DUP use the canonical bottom Function Bar. PASTE still derives its target from a selected event + one quantize grid; an explicit empty-timeline insertion cursor is the next interaction gap. The broader arranger remains a first-Pattern-per-track projection until explicit linear clip placements exist.
+- selected Pattern-note MOVE ± GRID, DUP, non-destructive COPY/PASTE, CUT and an explicit empty-timeline insertion cursor are native-model/edit-history-backed and Android Emulator-verified. CUT preserves the full event in the native clipboard; CUT/COPY/PASTE/DUP use the canonical bottom Function Bar. A real empty-timeline touch snaps a distinct target cursor to the current quantize grid and clamps it to the Pattern; cursor-driven PASTE is verified through Undo/Redo and exact fixture restoration. PASTE via an already selected event remains one grid later for compatibility. The broader arranger remains a first-Pattern-per-track projection until explicit linear clip placements exist.
 
 Current arrangement domain limitation is intentional: the existing domain stores patterns and events but does not yet store explicit linear clip placements. The Arrangement view therefore renders the first pattern of each track from bar 1 as the truthful current projection. It must not be represented as a fully editable multi-clip arranger until a placement model is added.
 

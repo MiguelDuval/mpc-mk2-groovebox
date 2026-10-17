@@ -143,7 +143,7 @@ Never fabricate meters, routing, FX slots or levels.
 ## 9. Track View / Arrange / Grid / Step
 
 Track View: selection, REC ARM, Track +/- and Mute are real; Solo and several mixer/I/O fields are reserved. PARTIAL.
-Arrange: lanes/events, Track select, loop brace, zoom, MOVE ± GRID, DUP, selected-event COPY/PASTE and CUT are native-model/edit-history-backed and Android Emulator-verified. CUT/COPY/PASTE/DUP use the canonical Function Bar. PASTE still requires a selected event and targets one quantize-grid step later; empty-timeline insertion cursor and explicit linear clip placements are absent. Double-tap event/overview opens Grid. PARTIAL.
+Arrange: lanes/events, Track select, loop brace, zoom, MOVE ± GRID, DUP, selected-event COPY/PASTE, CUT and an explicit empty-timeline insertion cursor are native-model/edit-history-backed and Android Emulator-verified. CUT/COPY/PASTE/DUP use the canonical Function Bar. PASTE targets the snapped empty cursor when one is selected; the legacy selected-event path still targets one quantize-grid step later. Explicit linear clip placements remain absent, so Arrangement still projects the first Pattern of each Track from bar 1. Double-tap event/overview opens Grid. PARTIAL.
 Grid: Drum renderer plus Draw/Erase/Select/Magnify and existing event operations; non-Drum explicitly unavailable. PARTIAL.
 Step: physical-pad 16-step context, step selection and Velocity/Probability/Ratchet/Nudge/Duration state via native Step Edit bridge. PARTIAL.
 
@@ -210,7 +210,7 @@ Sampler real subset: Record, Stop, Assign, Monitor On/Off, Threshold, waveform a
 | Pad Tune | edit tune | nativeAudioSetPadTuning | pad state | AVAILABLE |
 | Track View Mute | mute | nativeSequenceToggleTrackMute | track state | AVAILABLE |
 | Arrange Loop | set loop | nativeSequenceSetLoopBars | sequence state | AVAILABLE |
-| Arrange CUT | remove selected Pattern event and retain full event in clipboard | nativeSequenceCutArrangementEvent + cutPatternNoteTick + native edit history | Pattern event + native clipboard | IMPLEMENTED / EMULATOR-VERIFIED |
+| Arrange CUT | remove selected Pattern event and retain full event in clipboard | nativeSequenceCutArrangementEvent + cutPatternNoteTick + native edit history | Pattern event + native clipboard | IMPLEMENTED / EMULATOR-VERIFIED; empty-target cursor workflow remains intact |
 | Arrange COPY / PASTE / DUP | selected Pattern event editing | native PatternOps + edit history + Android actions | Pattern event and value-owned clipboard | IMPLEMENTED / EMULATOR-VERIFIED for COPY/PASTE/DUP; canonical Function Bar promotion and CUT remain open |
 | Grid Draw/Erase | event edit | existing sequence ops | event state | PARTIAL |
 | Step Params | event fields | native Step Edit | event state | PARTIAL |
@@ -282,7 +282,7 @@ Store source URL, manual section/page, observed geometry/relationship, and origi
 ## 19. Known gaps / priority
 
 P0: verify Track→Program playback authority; add semantic route/back history when covered by tests; build Browser semantic result provider.
-P1: Metronome backend/state/hardware; full Channel Mixer; Track Type mutation; fuller Program workflows for Keygroup/Plugin/MIDI/Clip/CV; Track View Solo; explicit empty-timeline paste cursor and the future linear clip placement model; contextual strip selector; Browser Sample Assign/favourites/options/audition state; 16 Levels; Pad Perform.
+P1: Metronome backend/state/hardware; full Channel Mixer; Track Type mutation; fuller Program workflows for Keygroup/Plugin/MIDI/Clip/CV; Track View Solo; explicit linear Pattern/clip placement model and persistence; contextual strip selector; Browser Sample Assign/favourites/options/audition state; 16 Levels; Pad Perform.
 P2: List Edit; Project New/Save/Save As; Q-Link/XY; Automation; full Preferences; complete routing/FX/returns/submixes.
 
 ## 20. Test/acceptance
@@ -385,7 +385,7 @@ Required route form: SOURCE CONTROL → EXPECTED MPC BEHAVIOR → CURRENT ROUTE 
 | Track View Solo | solo Track | reserved | semantic solo only when backend exists | none now | none | none | none | RESERVED |
 | Arrange loop brace | edit loop region | onLoopCommitted | same | nativeSequenceSetLoopBars | loop range | Arrange | loop state | AVAILABLE |
 | Arrange CUT | remove selected Pattern event | nativeSequenceCutArrangementEvent + history-backed PatternOps | native Pattern + clipboard | selected event/clipboard state | Arrangement | canonical Function Bar | event removal + undo/redo | IMPLEMENTED / EMULATOR-VERIFIED |
-| Arrange COPY/PASTE/DUP | selected Pattern-note operations | native PatternOps + native clipboard + edit history | canonical Function Bar actions | event/clipboard state | Pattern events | Arrange | event selection | IMPLEMENTED / EMULATOR-VERIFIED; paste targets selected event + one grid until explicit cursor exists |
+| Arrange COPY/PASTE/DUP | selected Pattern-note operations | native PatternOps + native clipboard + edit history | canonical Function Bar actions | event/clipboard/cursor state | Pattern events | Arrange | event selection or empty-target cursor | IMPLEMENTED / EMULATOR-VERIFIED; explicit target cursor is grid-snapped and Pattern-bounded |
 | Arrange double-tap event | open Grid | showSequenceGridPage() | same + preserve event focus | grid/event state | event selection | Grid | Grid state | PARTIAL |
 | Grid Draw | add/modify event | grid listener | same | sequence event API | event | Grid | pad/event | PARTIAL |
 | Grid Erase | remove event | grid listener | same | erase API | event removed | Grid | pad/event | PARTIAL |
