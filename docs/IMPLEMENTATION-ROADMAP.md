@@ -2,35 +2,27 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-17 (authoritative over older dated task notes)
 
-This queue is intentionally short. Older dated “next task” sections below preserve implementation history and must not override the live PR/HEAD/Actions state or this current queue.
+This queue is intentionally short. Older dated “next task” sections below preserve implementation history and must not override live PR/HEAD/Actions state or this queue.
 
-### 1. Unblock the current Track Edit acceptance test
+### 1. Track Edit sample-layer tuning acceptance — COMPLETE / VERIFIED
 
-- Active implementation branch: `feature/mpc-one-ui-fidelity`; PR #23.
-- Last inspected implementation HEAD: `35a608af7e13867257cf4ae3ed2e6ec3d6bf034b`.
-- Android Build #2754 failed in the emulator smoke test after successfully compiling/assembling the APK. Failure: `Track Edit did not expose the layer tuning value`.
-- Inspect the live screenshot/UI hierarchy and scroll behavior around the `Track Edit Samples tab`. Determine whether the control is merely below the viewport or whether the product UI has a real layout/accessibility defect. Fix the actual cause; do not skip or weaken the tuning acceptance check.
-- Verify the one-semitone change, authoritative sampler state, displayed value, exit/re-entry persistence, and safe restoration of the original tuning. Then run the full Android workflow on the exact new HEAD and inspect the APK/evidence artifacts.
+- The TUNE row is below the initial viewport in the real Track Edit Samples `ScrollView`; it was not a missing backend parameter. The smoke test now scrolls using visible bounds derived from the live accessibility hierarchy, then locates the actionable TUNE+ control.
+- The full acceptance still checks a real touch, exactly +1 semitone, sampler-backed refreshed value, exit/re-entry persistence and safe restoration of the original value. Android Build #2761 logged `+0.00 st → +1.00 st` and `Track Edit layer tuning → native state → leave/re-enter persistence → original value restore passed.`
+- The test re-enters through the actual route from which Track Edit was opened, including `MPC Menu TRACK EDIT`; it no longer assumes the original route was Main.
+- Verified in [Android Build #2761](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39043633365), successful for source commit [`11bc2de28d1af93c0165375791b19400c794a937`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/11bc2de28d1af93c0165375791b19400c794a937).
 
-### 2. Investigate Main left Channel Strip geometry — owner-reported visual defect
+### 2. Main left Channel Strip geometry — FIXED / VERIFIED
 
-**Status: REPORTED, NOT YET RE-MEASURED.** On 2026-10-17 the owner reported that the left Main/channel-strip region has an unexpectedly large panel/window above the Channel Strips, which pushes the strips into an incorrect position and does not resemble the corresponding MPC Main layout. Do not assume the cause before inspecting a fresh runtime capture.
+- The pre-fix Android Main screenshot and accessibility hierarchy from Build #2760 showed `MPC condensed Mixer Strip [137,135][666,602]` stacked above `MPC Main XL Mixer Strips [137,602][666,1069]`. The shell's outer context-area bounds remained `[126,124][677,1080]`.
+- Root cause: `compactMixerPanel` was hidden during construction but `applyCompactMixerVisibility()` set it back to VISIBLE from the persisted mixer-visible state. The legacy panel and new XL mixer view each had `height=0, weight=1`, splitting the left region into two equal halves. The issue was a duplicate legacy child, not an Android-insets or firmware-coordinate scaling error.
+- In [commit `11bc2de28d1af93c0165375791b19400c794a937`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/11bc2de28d1af93c0165375791b19400c794a937), the legacy panel stays GONE while existing shell show/hide state wiring is preserved. `tests/android_ui_smoke.sh` now guards against re-exposing it.
+- The post-fix hierarchy in Build #2761 confirms the legacy panel is absent and `MPC Main XL Mixer Strips` spans `[137,135][666,1069]`. The fresh landscape screenshot shows the left XL strips filling the region. [Android Build #2761](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39043633365) completed SUCCESS, including emulator smoke and evidence upload.
 
-When the current red CI blocker is resolved, make this the next visual investigation before unrelated cosmetic work:
+### 3. Next implementation slice
 
-1. Capture the actual Android Main screen in landscape at the intended device/emulator resolution, plus its accessibility/UI hierarchy. Record app/window bounds, system-bar insets, shell region bounds and each visible left-strip component's bounds.
-2. Inspect `MpcShell.java`, `MpcMainMixerStripView.java`, relevant `MainActivity.java` construction/visibility/layout callers, and the current Main blueprint/knowledge-base references.
-3. Identify the unexpected panel's actual owner and purpose. Check for a legacy context rail, placeholder/reserved panel, accidental minimum/fixed height, weight/constraint error, hidden-but-space-consuming view, or insets/available-viewport error.
-4. Compare the layout proportions to the documented MPC 3.9 Main-region relationships. Firmware geometry units are not guaranteed Android pixels and must not be copied literally; derive scale from the actual usable phone viewport and reference anchors.
-5. Fix only the demonstrated cause. Preserve the canonical Toolbar → five Shortcuts → XL Channel Strip region → Workspace → Function Bar shell, existing mixer semantics, and other screen contexts.
-6. Verify a before/after landscape screenshot and UI bounds, interaction/accessibility hit targets, focused tests, and full exact-HEAD Android CI. Add a regression assertion only if it captures the underlying invariant rather than hardcoding one emulator's pixel coordinates.
+Continue with the next high-value complete Track/Arrange/Grid/Step Sequencer workflow from live source and tests. Prefer one end-to-end musical action/state round-trip over broad cosmetic work. Keep Android Emulator evidence and physical MPC Studio MkII verification explicitly separate.
 
-Do not silently treat this as a confirmed firmware-scaling bug; scaling is one hypothesis alongside an extra/legacy panel or layout constraint.
-
-### 3. Continue the next verified musical workflow
-
-After the UI test blocker and Main left-strip geometry are resolved, continue the existing Track Edit layer parameter round-trip and then prioritize the next high-value complete Track/Arrange/Grid/Step workflow from live source and tests. Avoid broad cosmetic passes and repeated firmware audits unless a specific unresolved behavior requires it.
-
+Do not silently promote the historical task notes below over this queue. Do not repeat a full firmware audit unless a specific unresolved UI behaviour requires it.
 
 ## Stage 0 — Foundation
 - Android shell.
