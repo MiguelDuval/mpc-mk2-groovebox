@@ -2593,191 +2593,6 @@ if ! adb_bounded 10 exec-out cat "$DEVICE_DUMP" >"$DUMP"; then
 fi
 
 
-echo "Running Track Edit sample-layer tuning → leave/re-enter → restore runtime test..."
-TRACK_EDIT_XML="/tmp/mpc-groovebox-track-edit-tuning-uiautomator.xml"
-TRACK_EDIT_REMOTE="/sdcard/mpc-groovebox-track-edit-tuning-uiautomator.xml"
-TRACK_EDIT_BEFORE_PNG="/tmp/mpc-groovebox-track-edit-tuning-before.png"
-TRACK_EDIT_BEFORE_XML="/tmp/mpc-groovebox-track-edit-tuning-before-uiautomator.xml"
-TRACK_EDIT_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-tuning-changed.png"
-TRACK_EDIT_CHANGED_XML="/tmp/mpc-groovebox-track-edit-tuning-changed-uiautomator.xml"
-TRACK_EDIT_REOPENED_PNG="/tmp/mpc-groovebox-track-edit-tuning-reopened.png"
-TRACK_EDIT_REOPENED_XML="/tmp/mpc-groovebox-track-edit-tuning-reopened-uiautomator.xml"
-TRACK_EDIT_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-tuning-restored.png"
-TRACK_EDIT_RESTORED_XML="/tmp/mpc-groovebox-track-edit-tuning-restored-uiautomator.xml"
-
-read_track_edit_values() {
-  python3 - "$1" <<'PY'
-import re
-import sys
-import xml.etree.ElementTree as ET
-
-root = ET.parse(sys.argv[1]).getroot()
-nodes = list(root.iter("node"))
-
-def one(description):
-    found = [n for n in nodes if n.attrib.get("content-desc", "") == description]
-    if len(found) != 1:
-        raise SystemExit(f"expected one node {description!r}, found {len(found)}")
-    return found[0]
-
-pad = one("Track Edit Pad context").attrib.get("text", "").strip()
-layer = one("Track Edit selected layer").attrib.get("text", "").strip()
-sample_text = one("Track Edit sample").attrib.get("text", "")
-sample = sample_text.splitlines()[-1].strip() if sample_text.strip() else ""
-if not sample or "NO SAMPLE" in sample.upper():
-    raise SystemExit(f"Track Edit test requires a real sample on the selected Pad/Layer: {sample_text!r}")
-tuning_text = one("Track Edit layer tuning value").attrib.get("text", "")
-match = re.search(r"([+-]?\d+(?:\.\d+)?)\s*st\b", tuning_text)
-if not match:
-    raise SystemExit(f"could not parse layer tuning value from {tuning_text!r}")
-print("\t".join((pad, layer, sample.replace("\t", " "), f"{float(match.group(1)):.2f}")))
-PY
-}
-
-# The preceding app-side audit restores the Main workspace. Enter Track Edit
-# through its real pencil control, not through a direct state mutation.
-if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
-  echo "ERROR: could not inspect Main before Track Edit tuning acceptance"; exit 1
-fi
-if ! tap_ui_description "$DUMP" "Main Track Edit"; then
-  echo "ERROR: Main Track Edit entry control was not actionable"; exit 1
-fi
-if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit Samples tab" 25; then
-  echo "ERROR: Track Edit workspace did not open"; exit 1
-fi
-if ! tap_ui_description "$TRACK_EDIT_XML" "Track Edit Samples tab"; then
-  echo "ERROR: Track Edit Samples tab was not actionable"; exit 1
-fi
-if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning value" 20; then
-  echo "ERROR: Track Edit did not expose the layer tuning value"; exit 1
-fi
-if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_BEFORE_XML"; then
-  echo "ERROR: Track Edit initial tuning hierarchy failed"; exit 1
-fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_BEFORE_PNG"; then
-  echo "ERROR: Track Edit initial tuning screenshot failed"; exit 1
-fi
-read -r track_edit_pad_before track_edit_layer_before track_edit_sample_before track_edit_tuning_before \
-  < <(read_track_edit_values "$TRACK_EDIT_BEFORE_XML") || {
-    echo "ERROR: Track Edit sample/tuning snapshot was invalid"; exit 1;
-  }
-if [[ "$track_edit_pad_before" != "PAD 01" || "$track_edit_layer_before" != "LAYER 1/8" ]]; then
-  echo "ERROR: Track Edit fixture must begin on PAD 01 / LAYER 1/8"
-  echo "Pad=$track_edit_pad_before Layer=$track_edit_layer_before"; exit 1
-fi
-echo "Track Edit baseline: Pad=$track_edit_pad_before Layer=$track_edit_layer_before sample=$track_edit_sample_before tuning=$track_edit_tuning_before st"
-
-if ! tap_ui_description "$TRACK_EDIT_BEFORE_XML" "Track Edit layer tuning increase"; then
-  echo "ERROR: Track Edit layer tuning increase was not actionable"; exit 1
-fi
-track_edit_tuning_changed=0
-for attempt in {1..15}; do
-  if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_XML"; then
-    echo "ERROR: could not observe Track Edit after tuning increment"; exit 1
-  fi
-  track_edit_tuning_current="$(read_track_edit_values "$TRACK_EDIT_XML" 2>/dev/null | cut -f4 || true)"
-  if [[ -n "$track_edit_tuning_current" && "$track_edit_tuning_current" != "$track_edit_tuning_before" ]]; then
-    track_edit_tuning_changed=1; break
-  fi
-  sleep 1
-done
-if [[ "$track_edit_tuning_changed" != "1" ]]; then
-  echo "ERROR: Track Edit tuning increment did not change the projected sampler value"; exit 1
-fi
-if ! python3 - "$track_edit_tuning_before" "$track_edit_tuning_current" <<'PY'
-import sys
-before, after = map(float, sys.argv[1:])
-if abs((after - before) - 1.0) > 0.06:
-    raise SystemExit(f"one TUNE+ tap should add one semitone: before={before}, after={after}")
-print(f"Track Edit layer tuning increment verified: {before:+.2f} st → {after:+.2f} st")
-PY
-then
-  echo "ERROR: Track Edit layer tuning increment was not one semitone"; exit 1
-fi
-if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_CHANGED_XML"; then
-  echo "ERROR: Track Edit changed tuning hierarchy failed"; exit 1
-fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_CHANGED_PNG"; then
-  echo "ERROR: Track Edit changed tuning screenshot failed"; exit 1
-fi
-
-if ! tap_ui_description "$TRACK_EDIT_CHANGED_XML" "Track Edit back"; then
-  echo "ERROR: Track Edit BACK did not return to Main"; exit 1
-fi
-if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "Main Track Edit" 25; then
-  echo "ERROR: Main Track Edit entry was not restored after BACK"; exit 1
-fi
-if ! tap_ui_description "$DUMP" "Main Track Edit"; then
-  echo "ERROR: could not re-enter Track Edit after BACK"; exit 1
-fi
-if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit Samples tab" 25; then
-  echo "ERROR: Track Edit did not reopen"; exit 1
-fi
-if ! tap_ui_description "$TRACK_EDIT_XML" "Track Edit Samples tab"; then
-  echo "ERROR: Track Edit Samples tab was not actionable after re-entry"; exit 1
-fi
-if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning value" 20; then
-  echo "ERROR: Track Edit tuning field missing after re-entry"; exit 1
-fi
-if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_REOPENED_XML"; then
-  echo "ERROR: Track Edit re-entry hierarchy failed"; exit 1
-fi
-read -r track_edit_pad_reopened track_edit_layer_reopened track_edit_sample_reopened track_edit_tuning_reopened \
-  < <(read_track_edit_values "$TRACK_EDIT_REOPENED_XML") || {
-    echo "ERROR: Track Edit re-entry snapshot was invalid"; exit 1;
-  }
-if [[ "$track_edit_pad_reopened" != "$track_edit_pad_before" \
-    || "$track_edit_layer_reopened" != "$track_edit_layer_before" \
-    || "$track_edit_sample_reopened" != "$track_edit_sample_before" \
-    || "$track_edit_tuning_reopened" != "$track_edit_tuning_current" ]]; then
-  echo "ERROR: Track Edit parameter/Pad/Layer/sample did not survive leaving and re-entering"
-  echo "Before: Pad=$track_edit_pad_before Layer=$track_edit_layer_before sample=$track_edit_sample_before tuning=$track_edit_tuning_before"
-  echo "Reopened: Pad=$track_edit_pad_reopened Layer=$track_edit_layer_reopened sample=$track_edit_sample_reopened tuning=$track_edit_tuning_reopened"; exit 1
-fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REOPENED_PNG"; then
-  echo "ERROR: Track Edit re-entry screenshot failed"; exit 1
-fi
-
-if ! tap_ui_description "$TRACK_EDIT_REOPENED_XML" "Track Edit layer tuning decrease"; then
-  echo "ERROR: Track Edit tuning reset control was not actionable"; exit 1
-fi
-track_edit_tuning_restored=0
-for attempt in {1..15}; do
-  if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_XML"; then
-    echo "ERROR: could not verify restored Track Edit tuning"; exit 1
-  fi
-  track_edit_tuning_current="$(read_track_edit_values "$TRACK_EDIT_XML" 2>/dev/null | cut -f4 || true)"
-  if [[ "$track_edit_tuning_current" == "$track_edit_tuning_before" ]]; then
-    track_edit_tuning_restored=1; break
-  fi
-  sleep 1
-done
-if [[ "$track_edit_tuning_restored" != "1" ]]; then
-  echo "ERROR: Track Edit tuning test could not restore its initial sampler value"; exit 1
-fi
-if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_RESTORED_XML"; then
-  echo "ERROR: Track Edit restored tuning hierarchy failed"; exit 1
-fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_RESTORED_PNG"; then
-  echo "ERROR: Track Edit restored tuning screenshot failed"; exit 1
-fi
-for evidence in \
-  "$TRACK_EDIT_BEFORE_PNG" "$TRACK_EDIT_BEFORE_XML" \
-  "$TRACK_EDIT_CHANGED_PNG" "$TRACK_EDIT_CHANGED_XML" \
-  "$TRACK_EDIT_REOPENED_PNG" "$TRACK_EDIT_REOPENED_XML" \
-  "$TRACK_EDIT_RESTORED_PNG" "$TRACK_EDIT_RESTORED_XML"; do
-  if ! test -s "$evidence"; then
-    echo "ERROR: Track Edit runtime evidence missing/empty: $evidence"; exit 1
-  fi
-done
-if ! tap_ui_description "$TRACK_EDIT_RESTORED_XML" "Track Edit back"; then
-  echo "ERROR: Track Edit BACK could not return to Main after restoring tuning"; exit 1
-fi
-if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "Main Track Edit" 25; then
-  echo "ERROR: Main was not restored after Track Edit acceptance"; exit 1
-fi
-echo "Track Edit layer tuning → native state → leave/re-enter persistence → original value restore passed."
-
 echo "Running Browser local MediaStore → audition → Pad/Layer assignment runtime test..."
 LOCAL_SAMPLE_SOURCE="android/app/src/main/assets/samples/pad01.wav.b64"
 LOCAL_SAMPLE_NAME="Browser-Smoke-Local.wav"
@@ -3423,6 +3238,192 @@ PY
   cat "$hierarchy_path" || true
   return 1
 }
+
+echo "Running Track Edit sample-layer tuning → leave/re-enter → restore runtime test..."
+TRACK_EDIT_XML="/tmp/mpc-groovebox-track-edit-tuning-uiautomator.xml"
+TRACK_EDIT_REMOTE="/sdcard/mpc-groovebox-track-edit-tuning-uiautomator.xml"
+TRACK_EDIT_BEFORE_PNG="/tmp/mpc-groovebox-track-edit-tuning-before.png"
+TRACK_EDIT_BEFORE_XML="/tmp/mpc-groovebox-track-edit-tuning-before-uiautomator.xml"
+TRACK_EDIT_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-tuning-changed.png"
+TRACK_EDIT_CHANGED_XML="/tmp/mpc-groovebox-track-edit-tuning-changed-uiautomator.xml"
+TRACK_EDIT_REOPENED_PNG="/tmp/mpc-groovebox-track-edit-tuning-reopened.png"
+TRACK_EDIT_REOPENED_XML="/tmp/mpc-groovebox-track-edit-tuning-reopened-uiautomator.xml"
+TRACK_EDIT_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-tuning-restored.png"
+TRACK_EDIT_RESTORED_XML="/tmp/mpc-groovebox-track-edit-tuning-restored-uiautomator.xml"
+
+read_track_edit_values() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+
+def one(description):
+    found = [n for n in nodes if n.attrib.get("content-desc", "") == description]
+    if len(found) != 1:
+        raise SystemExit(f"expected one node {description!r}, found {len(found)}")
+    return found[0]
+
+pad = one("Track Edit Pad context").attrib.get("text", "").strip()
+layer = one("Track Edit selected layer").attrib.get("text", "").strip()
+sample_text = one("Track Edit sample").attrib.get("text", "")
+sample = sample_text.splitlines()[-1].strip() if sample_text.strip() else ""
+if not sample or "NO SAMPLE" in sample.upper():
+    raise SystemExit(f"Track Edit test requires a real sample on the selected Pad/Layer: {sample_text!r}")
+tuning_text = one("Track Edit layer tuning value").attrib.get("text", "")
+match = re.search(r"([+-]?\d+(?:\.\d+)?)\s*st\b", tuning_text)
+if not match:
+    raise SystemExit(f"could not parse layer tuning value from {tuning_text!r}")
+print("\t".join((pad, layer, sample.replace("\t", " "), f"{float(match.group(1)):.2f}")))
+PY
+}
+
+# The preceding app-side audit restores the Main workspace. Enter Track Edit
+# through its real pencil control, not through a direct state mutation.
+if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
+  echo "ERROR: could not inspect Main before Track Edit tuning acceptance"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "Main Track Edit"; then
+  echo "ERROR: Main Track Edit entry control was not actionable"; exit 1
+fi
+if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit Samples tab" 25; then
+  echo "ERROR: Track Edit workspace did not open"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_XML" "Track Edit Samples tab"; then
+  echo "ERROR: Track Edit Samples tab was not actionable"; exit 1
+fi
+if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning value" 20; then
+  echo "ERROR: Track Edit did not expose the layer tuning value"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_BEFORE_XML"; then
+  echo "ERROR: Track Edit initial tuning hierarchy failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_BEFORE_PNG"; then
+  echo "ERROR: Track Edit initial tuning screenshot failed"; exit 1
+fi
+read -r track_edit_pad_before track_edit_layer_before track_edit_sample_before track_edit_tuning_before \
+  < <(read_track_edit_values "$TRACK_EDIT_BEFORE_XML") || {
+    echo "ERROR: Track Edit sample/tuning snapshot was invalid"; exit 1;
+  }
+if [[ "$track_edit_pad_before" != "PAD 01" || "$track_edit_layer_before" != "LAYER 1/8" ]]; then
+  echo "ERROR: Track Edit fixture must begin on PAD 01 / LAYER 1/8"
+  echo "Pad=$track_edit_pad_before Layer=$track_edit_layer_before"; exit 1
+fi
+echo "Track Edit baseline: Pad=$track_edit_pad_before Layer=$track_edit_layer_before sample=$track_edit_sample_before tuning=$track_edit_tuning_before st"
+
+if ! tap_ui_description "$TRACK_EDIT_BEFORE_XML" "Track Edit layer tuning increase"; then
+  echo "ERROR: Track Edit layer tuning increase was not actionable"; exit 1
+fi
+track_edit_tuning_changed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_XML"; then
+    echo "ERROR: could not observe Track Edit after tuning increment"; exit 1
+  fi
+  track_edit_tuning_current="$(read_track_edit_values "$TRACK_EDIT_XML" 2>/dev/null | cut -f4 || true)"
+  if [[ -n "$track_edit_tuning_current" && "$track_edit_tuning_current" != "$track_edit_tuning_before" ]]; then
+    track_edit_tuning_changed=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_tuning_changed" != "1" ]]; then
+  echo "ERROR: Track Edit tuning increment did not change the projected sampler value"; exit 1
+fi
+if ! python3 - "$track_edit_tuning_before" "$track_edit_tuning_current" <<'PY'
+import sys
+before, after = map(float, sys.argv[1:])
+if abs((after - before) - 1.0) > 0.06:
+    raise SystemExit(f"one TUNE+ tap should add one semitone: before={before}, after={after}")
+print(f"Track Edit layer tuning increment verified: {before:+.2f} st → {after:+.2f} st")
+PY
+then
+  echo "ERROR: Track Edit layer tuning increment was not one semitone"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_CHANGED_XML"; then
+  echo "ERROR: Track Edit changed tuning hierarchy failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_CHANGED_PNG"; then
+  echo "ERROR: Track Edit changed tuning screenshot failed"; exit 1
+fi
+
+if ! tap_ui_description "$TRACK_EDIT_CHANGED_XML" "Track Edit back"; then
+  echo "ERROR: Track Edit BACK did not return to Main"; exit 1
+fi
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "Main Track Edit" 25; then
+  echo "ERROR: Main Track Edit entry was not restored after BACK"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "Main Track Edit"; then
+  echo "ERROR: could not re-enter Track Edit after BACK"; exit 1
+fi
+if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit Samples tab" 25; then
+  echo "ERROR: Track Edit did not reopen"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_XML" "Track Edit Samples tab"; then
+  echo "ERROR: Track Edit Samples tab was not actionable after re-entry"; exit 1
+fi
+if ! wait_for_ui_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning value" 20; then
+  echo "ERROR: Track Edit tuning field missing after re-entry"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_REOPENED_XML"; then
+  echo "ERROR: Track Edit re-entry hierarchy failed"; exit 1
+fi
+read -r track_edit_pad_reopened track_edit_layer_reopened track_edit_sample_reopened track_edit_tuning_reopened \
+  < <(read_track_edit_values "$TRACK_EDIT_REOPENED_XML") || {
+    echo "ERROR: Track Edit re-entry snapshot was invalid"; exit 1;
+  }
+if [[ "$track_edit_pad_reopened" != "$track_edit_pad_before" \
+    || "$track_edit_layer_reopened" != "$track_edit_layer_before" \
+    || "$track_edit_sample_reopened" != "$track_edit_sample_before" \
+    || "$track_edit_tuning_reopened" != "$track_edit_tuning_current" ]]; then
+  echo "ERROR: Track Edit parameter/Pad/Layer/sample did not survive leaving and re-entering"
+  echo "Before: Pad=$track_edit_pad_before Layer=$track_edit_layer_before sample=$track_edit_sample_before tuning=$track_edit_tuning_before"
+  echo "Reopened: Pad=$track_edit_pad_reopened Layer=$track_edit_layer_reopened sample=$track_edit_sample_reopened tuning=$track_edit_tuning_reopened"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REOPENED_PNG"; then
+  echo "ERROR: Track Edit re-entry screenshot failed"; exit 1
+fi
+
+if ! tap_ui_description "$TRACK_EDIT_REOPENED_XML" "Track Edit layer tuning decrease"; then
+  echo "ERROR: Track Edit tuning reset control was not actionable"; exit 1
+fi
+track_edit_tuning_restored=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_XML"; then
+    echo "ERROR: could not verify restored Track Edit tuning"; exit 1
+  fi
+  track_edit_tuning_current="$(read_track_edit_values "$TRACK_EDIT_XML" 2>/dev/null | cut -f4 || true)"
+  if [[ "$track_edit_tuning_current" == "$track_edit_tuning_before" ]]; then
+    track_edit_tuning_restored=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_tuning_restored" != "1" ]]; then
+  echo "ERROR: Track Edit tuning test could not restore its initial sampler value"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_RESTORED_XML"; then
+  echo "ERROR: Track Edit restored tuning hierarchy failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_RESTORED_PNG"; then
+  echo "ERROR: Track Edit restored tuning screenshot failed"; exit 1
+fi
+for evidence in \
+  "$TRACK_EDIT_BEFORE_PNG" "$TRACK_EDIT_BEFORE_XML" \
+  "$TRACK_EDIT_CHANGED_PNG" "$TRACK_EDIT_CHANGED_XML" \
+  "$TRACK_EDIT_REOPENED_PNG" "$TRACK_EDIT_REOPENED_XML" \
+  "$TRACK_EDIT_RESTORED_PNG" "$TRACK_EDIT_RESTORED_XML"; do
+  if ! test -s "$evidence"; then
+    echo "ERROR: Track Edit runtime evidence missing/empty: $evidence"; exit 1
+  fi
+done
+if ! tap_ui_description "$TRACK_EDIT_RESTORED_XML" "Track Edit back"; then
+  echo "ERROR: Track Edit BACK could not return to Main after restoring tuning"; exit 1
+fi
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "Main Track Edit" 25; then
+  echo "ERROR: Main was not restored after Track Edit acceptance"; exit 1
+fi
+echo "Track Edit layer tuning → native state → leave/re-enter persistence → original value restore passed."
+
 
 # The previous smoke ends with the Browser rail highlighted while the workspace
 # has returned to Main. Open Browser through the toolbar's explicit route instead
