@@ -2032,6 +2032,70 @@ PY
       cat /tmp/mpc-groovebox-main-ready-uiautomator.xml
       exit 1
     fi
+    # Assert the live layout relationship, not emulator-specific coordinates:
+    # the legacy weighted mixer must be absent and the XL mixer must occupy
+    # nearly the full persistent context column with its show/hide target inside it.
+    if ! python3 - /tmp/mpc-groovebox-main-ready-uiautomator.xml <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+
+def rect(node, label):
+    match = re.fullmatch(
+        r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+        node.attrib.get("bounds", ""))
+    if not match:
+        raise AssertionError(f"invalid Android accessibility bounds for {label}")
+    return tuple(map(int, match.groups()))
+
+def one(description):
+    found = [node for node in nodes
+             if node.attrib.get("content-desc", "") == description]
+    if len(found) != 1:
+        raise AssertionError(
+            f"expected exactly one {description!r}, got {len(found)}")
+    return found[0]
+
+legacy = [node for node in nodes
+          if node.attrib.get("content-desc", "") == "MPC condensed Mixer Strip"]
+if legacy:
+    raise AssertionError("legacy duplicate condensed mixer panel remains in Main hierarchy")
+
+area = one("MPC shell mixer strips")
+mixer = one("MPC Main XL Mixer Strips")
+toggle = one("MPC Main mixer strips shown")
+ax1, ay1, ax2, ay2 = rect(area, "persistent shell context area")
+sx1, sy1, sx2, sy2 = rect(mixer, "Main XL mixer strips")
+tx1, ty1, tx2, ty2 = rect(toggle, "Main XL mixer visibility control")
+
+area_width, area_height = ax2 - ax1, ay2 - ay1
+mixer_width, mixer_height = sx2 - sx1, sy2 - sy1
+if min(area_width, area_height, mixer_width, mixer_height) <= 0:
+    raise AssertionError("Main shell or XL mixer has non-positive bounds")
+
+vertical_fill = mixer_height / area_height
+horizontal_fill = mixer_width / area_width
+if vertical_fill < 0.75:
+    raise AssertionError(
+        f"Main XL mixer fills only {vertical_fill:.3f} of the context height")
+if horizontal_fill < 0.85:
+    raise AssertionError(
+        f"Main XL mixer fills only {horizontal_fill:.3f} of the context width")
+if not (sx1 <= tx1 < tx2 <= sx2 and sy1 <= ty1 < ty2 <= sy2):
+    raise AssertionError("Main XL mixer show/hide hit target escaped strip bounds")
+
+print(
+    f"Main XL geometry verified from live bounds: vertical={vertical_fill:.3f}, "
+    f"horizontal={horizontal_fill:.3f}; legacy panel absent; toggle hit target contained")
+PY
+    then
+      echo "ERROR: Main XL Channel Strip runtime geometry invariant failed"
+      cat /tmp/mpc-groovebox-main-ready-uiautomator.xml
+      exit 1
+    fi
     if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-main-capture-release; then
       echo "ERROR: could not release app-side Main capture checkpoint"
       exit 1
