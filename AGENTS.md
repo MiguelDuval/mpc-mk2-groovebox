@@ -27,6 +27,9 @@ Before any implementation work, every coding agent must also read **[`docs/SESSI
 17. **Use the controller traceability map for hardware work.** Before changing MPC Studio MkII handling, read `docs/MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md` and `docs/MPC-STUDIO-MKII-SEMANTIC-MAP.md`. Extract only physical-controller, protocol and hardware gesture knowledge; never import MPC Desktop or DAW navigation/workflows into our app. Keep source confidence, automated-test evidence and physical-device acceptance separate.
 
 ## Project source hierarchy
+18. **Use the MPC One ↔ Studio cross-device matrix.** When mapping an MPC One action to the MPC Studio MkII, consult `docs/MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md` as well as the semantic map and protocol traceability document. It defines non-identical gestures, alternate routes, reserved actions and physical-validation gaps. Never silently equate different secondary functions or invent controls the Studio does not have.
+
+
 
 Use these documents together:
 
