@@ -5175,6 +5175,130 @@ PY
     grid_event_current_xml="$GRID_EDIT_RANGE_RESTORED_XML"
     echo "Grid viewport real-touch acceptance passed: next/previous move 16 steps and preserve selected event."
 
+    # Gesture-based viewport pan is a separate live interaction from the buttons.
+    # Use current Grid bounds and Android density; pan only a few cells so the
+    # selected step remains visible, then reverse the same gesture exactly.
+    GRID_EDIT_RANGE_SWIPE_BEFORE_XML="/tmp/mpc-groovebox-grid-range-swipe-before-uiautomator.xml"
+    GRID_EDIT_RANGE_SWIPE_BEFORE_REMOTE="/sdcard/mpc-groovebox-grid-range-swipe-before-uiautomator.xml"
+    GRID_EDIT_RANGE_SWIPE_BEFORE_PNG="/tmp/mpc-groovebox-grid-range-swipe-before.png"
+    if ! dump_device_ui "$GRID_EDIT_RANGE_SWIPE_BEFORE_REMOTE" "$GRID_EDIT_RANGE_SWIPE_BEFORE_XML"; then
+      echo "ERROR: Grid swipe baseline hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_RANGE_SWIPE_BEFORE_PNG"; then
+      echo "ERROR: Grid swipe baseline screenshot failed"; exit 1
+    fi
+    grid_range_swipe_before="$(grid_event_read_range "$GRID_EDIT_RANGE_SWIPE_BEFORE_XML")" || {
+      echo "ERROR: Grid swipe baseline range unavailable"; exit 1;
+    }
+    grid_event_state_swipe_before="$(grid_event_read_state "$GRID_EDIT_RANGE_SWIPE_BEFORE_XML")" || {
+      echo "ERROR: Grid swipe baseline event unavailable"; exit 1;
+    }
+    grid_swipe_coordinates="$(python3 - "$GRID_EDIT_RANGE_SWIPE_BEFORE_XML" "$grid_density_info" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, density_text = sys.argv[1:]
+nodes = list(ET.parse(path).getroot().iter("node"))
+views = [n for n in nodes if n.attrib.get("content-desc") == "MPC Grid View drum event grid"]
+if len(views) != 1:
+    raise AssertionError(f"expected one accessible Grid canvas, got {len(views)}")
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", views[0].attrib.get("bounds", ""))
+if match is None:
+    raise AssertionError(f"invalid Grid bounds: {views[0].attrib.get('bounds')!r}")
+left, top, right, bottom = map(int, match.groups())
+densities = re.findall(r"(?:Override|Physical) density:\s*(\d+)", density_text)
+if not densities:
+    raise AssertionError(f"could not parse Android display density: {density_text!r}")
+density = int(densities[-1]) / 160.0
+grid_left, grid_right = left + 42*density, right - 6*density
+grid_top, grid_bottom = top + 24*density, bottom - 6*density
+grid_width = grid_right - grid_left
+cell_width = grid_width / 16.0
+start_x = round(grid_left + grid_width*0.68)
+end_x = round(start_x - cell_width*2.35)
+y = round(grid_top + (grid_bottom-grid_top)*0.5)
+if not (left < end_x < start_x < right and top < y < bottom):
+    raise AssertionError(f"Grid pan gesture is outside live bounds: {(start_x,y,end_x,y)}")
+delta_cells = (start_x-end_x)/cell_width
+if not 1.5 <= delta_cells <= 3.0:
+    raise AssertionError(f"Grid pan gesture is not a bounded cell-scale drag: {delta_cells:.2f}")
+print(start_x, y, end_x, y)
+PY
+    )" || { echo "ERROR: could not derive live Grid swipe coordinates"; exit 1; }
+    read -r grid_swipe_start_x grid_swipe_y grid_swipe_end_x grid_swipe_end_y <<< "$grid_swipe_coordinates"
+    if ! adb_bounded 10 shell input swipe "$grid_swipe_start_x" "$grid_swipe_y" "$grid_swipe_end_x" "$grid_swipe_end_y" 500; then
+      echo "ERROR: live Grid horizontal pan gesture failed"; exit 1
+    fi
+    sleep 0.3
+    GRID_EDIT_RANGE_SWIPE_PANNED_XML="/tmp/mpc-groovebox-grid-range-swipe-panned-uiautomator.xml"
+    GRID_EDIT_RANGE_SWIPE_PANNED_REMOTE="/sdcard/mpc-groovebox-grid-range-swipe-panned-uiautomator.xml"
+    GRID_EDIT_RANGE_SWIPE_PANNED_PNG="/tmp/mpc-groovebox-grid-range-swipe-panned.png"
+    if ! dump_device_ui "$GRID_EDIT_RANGE_SWIPE_PANNED_REMOTE" "$GRID_EDIT_RANGE_SWIPE_PANNED_XML"; then
+      echo "ERROR: Grid panned hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_RANGE_SWIPE_PANNED_PNG"; then
+      echo "ERROR: Grid panned screenshot failed"; exit 1
+    fi
+    grid_range_swipe_panned="$(grid_event_read_range "$GRID_EDIT_RANGE_SWIPE_PANNED_XML")" || {
+      echo "ERROR: Grid panned range unavailable"; exit 1;
+    }
+    grid_event_state_swipe_panned="$(grid_event_read_state "$GRID_EDIT_RANGE_SWIPE_PANNED_XML")" || {
+      echo "ERROR: selected event unavailable after Grid swipe"; exit 1;
+    }
+    if ! python3 - "$grid_range_swipe_before" "$grid_range_swipe_panned" "$grid_event_state_swipe_before" "$grid_event_state_swipe_panned" <<'PY'
+import sys
+before = tuple(map(int, sys.argv[1].split()))
+after = tuple(map(int, sys.argv[2].split()))
+if not (after[0] > before[0] and after[1] > before[1] and after[2] == before[2]):
+    raise AssertionError(f"leftward Grid swipe must pan forward while preserving total steps: {before!r} -> {after!r}")
+values = list(map(int, sys.argv[3].split()))
+if sys.argv[3] != sys.argv[4]:
+    raise AssertionError(f"Grid swipe changed selected event parameters: {sys.argv[3]!r} -> {sys.argv[4]!r}")
+selected_step = values[0]
+if not after[0] <= selected_step <= after[1]:
+    raise AssertionError(f"Grid swipe moved selected step {selected_step} outside viewport {after!r}")
+print(f"Grid swipe panned forward: {before!r} -> {after!r}; selected event {selected_step} unchanged.")
+PY
+    then
+      echo "ERROR: Grid swipe did not pan forward while preserving selected event"; exit 1
+    fi
+
+    if ! adb_bounded 10 shell input swipe "$grid_swipe_end_x" "$grid_swipe_y" "$grid_swipe_start_x" "$grid_swipe_y" 500; then
+      echo "ERROR: reverse Grid viewport gesture failed"; exit 1
+    fi
+    sleep 0.3
+    GRID_EDIT_RANGE_SWIPE_RESTORED_XML="/tmp/mpc-groovebox-grid-range-swipe-restored-uiautomator.xml"
+    GRID_EDIT_RANGE_SWIPE_RESTORED_REMOTE="/sdcard/mpc-groovebox-grid-range-swipe-restored-uiautomator.xml"
+    GRID_EDIT_RANGE_SWIPE_RESTORED_PNG="/tmp/mpc-groovebox-grid-range-swipe-restored.png"
+    if ! dump_device_ui "$GRID_EDIT_RANGE_SWIPE_RESTORED_REMOTE" "$GRID_EDIT_RANGE_SWIPE_RESTORED_XML"; then
+      echo "ERROR: Grid swipe-restored hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_RANGE_SWIPE_RESTORED_PNG"; then
+      echo "ERROR: Grid swipe-restored screenshot failed"; exit 1
+    fi
+    grid_range_swipe_restored="$(grid_event_read_range "$GRID_EDIT_RANGE_SWIPE_RESTORED_XML")" || {
+      echo "ERROR: Grid swipe-restored range unavailable"; exit 1;
+    }
+    grid_event_state_swipe_restored="$(grid_event_read_state "$GRID_EDIT_RANGE_SWIPE_RESTORED_XML")" || {
+      echo "ERROR: selected event unavailable after reverse Grid swipe"; exit 1;
+    }
+    if ! python3 - "$grid_range_swipe_before" "$grid_range_swipe_restored" "$grid_event_state_swipe_before" "$grid_event_state_swipe_restored" <<'PY'
+import sys
+before = tuple(map(int, sys.argv[1].split()))
+after = tuple(map(int, sys.argv[2].split()))
+if after != before:
+    raise AssertionError(f"reverse Grid swipe failed to restore exact viewport: {before!r} -> {after!r}")
+if sys.argv[3] != sys.argv[4]:
+    raise AssertionError(f"reverse Grid swipe mutated the event: {sys.argv[3]!r} -> {sys.argv[4]!r}")
+print(f"Grid horizontal swipe round trip restored viewport and full event: {after!r}.")
+PY
+    then
+      echo "ERROR: reverse Grid swipe did not restore viewport and event"; exit 1
+    fi
+    grid_event_current_xml="$GRID_EDIT_RANGE_SWIPE_RESTORED_XML"
+    echo "Grid viewport swipe real-touch acceptance passed: horizontal pan and reverse restore preserve native event."
+
     echo "Grid PARAM cycling and real-touch +/- acceptance passed for VEL, PROB, RAT, NUDGE and DUR."
     if ! tap_visible_description_early "$grid_event_current_xml" "Grid Erase tool"; then
       echo "ERROR: Grid ERASE tool was not actionable after DRAW"; exit 1
