@@ -5445,6 +5445,28 @@ PY
 done
 
 if [ "$ui_audit_complete" -ne 1 ]; then
+  # The app can emit its final completion marker between the last poll's
+  # logcat snapshot and the wall-clock deadline. Take one bounded final snapshot
+  # before classifying that narrow race as a timeout.
+  final_audit_log_snapshot="$(adb_bounded 10 logcat -d -v brief 2>/dev/null || true)"
+  if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$final_audit_log_snapshot" \
+      && [ "$arrangement_loop_touch_capture_done" -eq 1 ] \
+      && [ "$arrangement_loop_touch_acceptance_complete" -eq 1 ] \
+      && [ "$step_touch_capture_done" -eq 1 ] \
+      && [ "$step_touch_acceptance_complete" -eq 1 ] \
+      && grep -Fq -- "UI_GRID_HARDWARE_PARAMETER_ACCEPTANCE_COMPLETE:" <<<"$final_audit_log_snapshot" \
+      && [ "$arrangement_back_capture_done" -eq 1 ] \
+      && [ "$arrangement_grid_reentry_capture_done" -eq 1 ] \
+      && [ "$track_view_mute_capture_done" -eq 1 ] \
+      && ! grep -Eq 'UI_HIERARCHY_FAILED:|UI_INTERACTION_FAILED:|UI_STARTUP_FINALIZATION_FAILED|STARTUP_NATIVE_FAILED' <<<"$final_audit_log_snapshot"; then
+    ui_audit_complete=1
+    echo "UI audit final logcat recheck found UI_INTERACTION_COMPLETE and all required touch/navigation acceptance markers."
+  else
+    log_snapshot="$final_audit_log_snapshot"
+  fi
+fi
+
+if [ "$ui_audit_complete" -ne 1 ]; then
   echo "ERROR: application-side UI audit did not reach UI_INTERACTION_COMPLETE within ${UI_AUDIT_TIMEOUT_SECONDS}s wall-clock deadline"
   adb_bounded 10 logcat -d -v threadtime > /tmp/mpc-groovebox-logcat.txt || true
   tail -n 350 /tmp/mpc-groovebox-logcat.txt || true
