@@ -6998,14 +6998,15 @@ fi
 project_engine_ready=0
 for ((attempt=1; attempt<=45; attempt++)); do
   project_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
-  if grep -Fq -- "AUDIO_START_RESULT=" <<<"$project_logs"; then
+  if grep -Fq -- "AUDIO_START_RESULT=" <<<"$project_logs" \
+      && grep -Fq -- "STARTUP_COMPLETE" <<<"$project_logs"; then
     project_engine_ready=1
     break
   fi
   sleep 1
 done
 if [ "$project_engine_ready" -ne 1 ]; then
-  echo "ERROR: native Project/Audio engine did not finish startup"; exit 1
+  echo "ERROR: native Project/Audio/UI startup did not finish"; exit 1
 fi
 
 # Save the real native Project model through ACTION_CREATE_DOCUMENT.
