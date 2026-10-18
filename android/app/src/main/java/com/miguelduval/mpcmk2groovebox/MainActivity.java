@@ -341,8 +341,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView gridToolStateView;
     private TextView gridSelectionStateView;
     private TextView gridEventParameterView;
-    private Button gridEventVelocityMinusButton;
-    private Button gridEventVelocityPlusButton;
+    private Button gridEventParameterCycleButton;
+    private Button gridEventParameterMinusButton;
+    private Button gridEventParameterPlusButton;
+    private int gridEventParameter = STEP_EDIT_PARAMETER_VELOCITY;
     private int selectedGridEventPad = -1;
     private int selectedGridEventStep = -1;
     private final Handler sequenceUiHandler = new Handler(Looper.getMainLooper());
@@ -8094,8 +8096,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         pageTitle.setText("GRID");
         content.removeAllViews();
         gridEventParameterView = null;
-        gridEventVelocityMinusButton = null;
-        gridEventVelocityPlusButton = null;
+        gridEventParameterCycleButton = null;
+        gridEventParameterMinusButton = null;
+        gridEventParameterPlusButton = null;
+        gridEventParameter = STEP_EDIT_PARAMETER_VELOCITY;
         selectedGridEventPad = -1;
         selectedGridEventStep = -1;
         sequenceTimeline = null;
@@ -8299,19 +8303,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         eventParameterRow.addView(gridEventParameterView,
                 new LinearLayout.LayoutParams(0, dp(40), 1));
 
-        gridEventVelocityMinusButton = actionButton(
-                "VEL −", v -> adjustSelectedGridVelocity(-1));
-        gridEventVelocityMinusButton.setContentDescription(
-                "Grid event velocity minus");
-        eventParameterRow.addView(gridEventVelocityMinusButton,
-                new LinearLayout.LayoutParams(dp(84), dp(40)));
+        gridEventParameterCycleButton = actionButton(
+                "PARAM VEL", v -> cycleSelectedGridParameter());
+        gridEventParameterCycleButton.setContentDescription(
+                "Grid event parameter cycle");
+        eventParameterRow.addView(gridEventParameterCycleButton,
+                new LinearLayout.LayoutParams(dp(78), dp(40)));
 
-        gridEventVelocityPlusButton = actionButton(
-                "VEL +", v -> adjustSelectedGridVelocity(1));
-        gridEventVelocityPlusButton.setContentDescription(
-                "Grid event velocity plus");
-        eventParameterRow.addView(gridEventVelocityPlusButton,
-                new LinearLayout.LayoutParams(dp(84), dp(40)));
+        gridEventParameterMinusButton = actionButton(
+                "VEL −", v -> adjustSelectedGridParameter(-1));
+        eventParameterRow.addView(gridEventParameterMinusButton,
+                new LinearLayout.LayoutParams(dp(72), dp(40)));
+
+        gridEventParameterPlusButton = actionButton(
+                "VEL +", v -> adjustSelectedGridParameter(1));
+        eventParameterRow.addView(gridEventParameterPlusButton,
+                new LinearLayout.LayoutParams(dp(72), dp(40)));
 
         page.addView(eventParameterRow, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
@@ -8361,8 +8368,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Locale.ROOT,
                 "STEPS %02d–%02d / %02d",
                 first, last, totalSteps));
-        resolution.setText(sequenceGridLabel(
-                nativeSequenceGetQuantizeGrid()));
+        final int gridResolutionTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        resolution.setText(sequenceGridLabel(gridResolutionTicks));
+        resolution.setContentDescription(
+                "Grid quantize resolution: "
+                        + sequenceGridLabel(gridResolutionTicks)
+                        + " (" + gridResolutionTicks + " ticks)");
         editState.setText(
                 nativeSequenceIsGridEditable()
                         ? "EDIT READY"
@@ -8399,9 +8410,81 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 state.actionAvailable() ? ACCENT : DANGER);
     }
 
+    private String gridEventParameterLabel(int parameter) {
+        switch (parameter) {
+            case STEP_EDIT_PARAMETER_VELOCITY: return "VEL";
+            case STEP_EDIT_PARAMETER_PROBABILITY: return "PROB";
+            case STEP_EDIT_PARAMETER_RATCHET: return "RAT";
+            case STEP_EDIT_PARAMETER_NUDGE: return "NUDGE";
+            case STEP_EDIT_PARAMETER_DURATION: return "DUR";
+            default: return "VEL";
+        }
+    }
+
+    private String gridEventParameterName(int parameter) {
+        switch (parameter) {
+            case STEP_EDIT_PARAMETER_VELOCITY: return "velocity";
+            case STEP_EDIT_PARAMETER_PROBABILITY: return "probability";
+            case STEP_EDIT_PARAMETER_RATCHET: return "ratchet";
+            case STEP_EDIT_PARAMETER_NUDGE: return "nudge";
+            case STEP_EDIT_PARAMETER_DURATION: return "duration";
+            default: return "velocity";
+        }
+    }
+
+    private int gridEventParameterMinimum(int parameter, int gridTicks) {
+        switch (parameter) {
+            case STEP_EDIT_PARAMETER_VELOCITY:
+            case STEP_EDIT_PARAMETER_RATCHET:
+                return 1;
+            case STEP_EDIT_PARAMETER_PROBABILITY:
+                return 0;
+            case STEP_EDIT_PARAMETER_NUDGE:
+                return -960;
+            case STEP_EDIT_PARAMETER_DURATION:
+                return Math.max(1, gridTicks / 4);
+            default:
+                return 1;
+        }
+    }
+
+    private int gridEventParameterMaximum(int parameter, int gridTicks) {
+        switch (parameter) {
+            case STEP_EDIT_PARAMETER_VELOCITY:
+            case STEP_EDIT_PARAMETER_PROBABILITY:
+                return 127;
+            case STEP_EDIT_PARAMETER_RATCHET:
+                return 8;
+            case STEP_EDIT_PARAMETER_NUDGE:
+                return 960;
+            case STEP_EDIT_PARAMETER_DURATION:
+                return gridTicks * 4;
+            default:
+                return 127;
+        }
+    }
+
+    private void cycleSelectedGridParameter() {
+        gridEventParameter = nativeStepEditParameterNext(gridEventParameter);
+        setBottomStatus("GRID PARAM • " + gridEventParameterLabel(gridEventParameter));
+        refreshGridEventParameterState();
+    }
+
     private void refreshGridEventParameterState() {
         if (gridEventParameterView == null) {
             return;
+        }
+
+        gridEventParameter = Math.max(
+                STEP_EDIT_PARAMETER_VELOCITY,
+                Math.min(STEP_EDIT_PARAMETER_DURATION, gridEventParameter));
+        final String parameterLabel = gridEventParameterLabel(gridEventParameter);
+        final String parameterName = gridEventParameterName(gridEventParameter);
+        if (gridEventParameterCycleButton != null) {
+            gridEventParameterCycleButton.setText("PARAM " + parameterLabel);
+            gridEventParameterCycleButton.setContentDescription(
+                    "Grid event parameter cycle");
+            gridEventParameterCycleButton.setEnabled(true);
         }
 
         final boolean hasSelection =
@@ -8417,6 +8500,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 && parameters.length >= 5
                 && parameters[0] > 0;
         final boolean editable = hasEvent && nativeSequenceIsGridEditable();
+        final int fieldValue = hasEvent
+                ? (gridEventParameter == STEP_EDIT_PARAMETER_DURATION
+                        && parameters[4] <= 0 ? gridTicks : parameters[gridEventParameter])
+                : 0;
 
         if (!hasSelection) {
             gridEventParameterView.setText("GRID EVENT • Select a note");
@@ -8470,21 +8557,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     duration));
         }
 
-        if (gridEventVelocityMinusButton != null) {
-            gridEventVelocityMinusButton.setEnabled(
-                    editable && parameters[0] > 1);
+        final int minimum = gridEventParameterMinimum(gridEventParameter, gridTicks);
+        final int maximum = gridEventParameterMaximum(gridEventParameter, gridTicks);
+        if (gridEventParameterMinusButton != null) {
+            gridEventParameterMinusButton.setText(parameterLabel + " −");
+            gridEventParameterMinusButton.setContentDescription(
+                    "Grid event " + parameterName + " minus");
+            gridEventParameterMinusButton.setEnabled(
+                    editable && fieldValue > minimum);
         }
-        if (gridEventVelocityPlusButton != null) {
-            gridEventVelocityPlusButton.setEnabled(
-                    editable && parameters[0] < 127);
+        if (gridEventParameterPlusButton != null) {
+            gridEventParameterPlusButton.setText(parameterLabel + " +");
+            gridEventParameterPlusButton.setContentDescription(
+                    "Grid event " + parameterName + " plus");
+            gridEventParameterPlusButton.setEnabled(
+                    editable && fieldValue < maximum);
         }
     }
 
-    private void adjustSelectedGridVelocity(int delta) {
+    private void adjustSelectedGridParameter(int direction) {
         if (selectedGridEventPad < 0 || selectedGridEventPad >= 16
                 || selectedGridEventStep < 0
                 || selectedGridEventStep >= sequenceGridTotalSteps()) {
-            setBottomStatus("GRID VEL • Select an active note first");
+            setBottomStatus("GRID PARAM • Select an active note first");
             refreshGridEventParameterState();
             return;
         }
@@ -8493,28 +8588,68 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int[] parameters = nativeSequenceGetStepParameters(
                 selectedGridEventPad, selectedGridEventStep, gridTicks);
         if (parameters == null || parameters.length < 5 || parameters[0] <= 0) {
-            setBottomStatus("GRID VEL • No active note at the selected cell");
+            setBottomStatus("GRID PARAM • No active note at the selected cell");
             refreshGridEventParameterState();
             return;
         }
         if (!nativeSequenceIsGridEditable()) {
-            setBottomStatus("GRID VEL • Stop playback before editing");
+            setBottomStatus("GRID PARAM • Stop playback before editing");
             refreshGridEventParameterState();
             return;
         }
 
-        final int velocity = Math.max(1, Math.min(127, parameters[0] + delta));
-        if (velocity == parameters[0]) {
-            setBottomStatus(delta > 0 ? "GRID VEL • Maximum 127" : "GRID VEL • Minimum 1");
+        final int delta = nativeStepEditParameterDelta(
+                gridEventParameter, gridTicks, direction, false);
+        final int fieldValue = gridEventParameter == STEP_EDIT_PARAMETER_DURATION
+                && parameters[4] <= 0 ? gridTicks : parameters[gridEventParameter];
+        final int minimum = gridEventParameterMinimum(gridEventParameter, gridTicks);
+        final int maximum = gridEventParameterMaximum(gridEventParameter, gridTicks);
+        final int value;
+        if (gridEventParameter == STEP_EDIT_PARAMETER_DURATION) {
+            final int increment = Math.max(1, Math.abs(delta));
+            final int current = Math.max(
+                    increment, parameters[4] > 0 ? parameters[4] : gridTicks);
+            value = Math.max(
+                    increment,
+                    Math.min(gridTicks * 4, current + delta));
+        } else {
+            value = Math.max(minimum, Math.min(maximum, fieldValue + delta));
+        }
+
+        if (value == fieldValue) {
+            setBottomStatus("GRID " + gridEventParameterLabel(gridEventParameter)
+                    + " • Limit " + value);
             refreshGridEventParameterState();
             return;
         }
 
-        setBottomStatus(nativeSequenceSetStepVelocity(
-                selectedGridEventPad,
-                selectedGridEventStep,
-                gridTicks,
-                velocity));
+        final String result;
+        switch (gridEventParameter) {
+            case STEP_EDIT_PARAMETER_VELOCITY:
+                result = nativeSequenceSetStepVelocity(
+                        selectedGridEventPad, selectedGridEventStep, gridTicks, value);
+                break;
+            case STEP_EDIT_PARAMETER_PROBABILITY:
+                result = nativeSequenceSetStepProbability(
+                        selectedGridEventPad, selectedGridEventStep, gridTicks, value);
+                break;
+            case STEP_EDIT_PARAMETER_RATCHET:
+                result = nativeSequenceSetStepRatchet(
+                        selectedGridEventPad, selectedGridEventStep, gridTicks, value);
+                break;
+            case STEP_EDIT_PARAMETER_NUDGE:
+                result = nativeSequenceSetStepNudge(
+                        selectedGridEventPad, selectedGridEventStep, gridTicks, value);
+                break;
+            case STEP_EDIT_PARAMETER_DURATION:
+                result = nativeSequenceSetStepDuration(
+                        selectedGridEventPad, selectedGridEventStep, gridTicks, value);
+                break;
+            default:
+                return;
+        }
+
+        setBottomStatus(result);
         refreshSequenceGrid();
         updateGridSelectionState(selectedGridEventPad, selectedGridEventStep);
         refreshGridEventParameterState();

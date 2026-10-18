@@ -4811,14 +4811,14 @@ PY
     fi
 
 
-    # Real Grid event parameter edit: SELECT the drawn note, raise velocity,
-    # assert every other native note field is unchanged, then restore baseline.
+    # Real Grid event parameter acceptance. Cycle through all five native fields;
+    # change one field at a time, prove isolation, restore the full event, then erase.
     if ! tap_visible_description_early "$GRID_EDIT_DRAW_XML" "Grid Select tool"; then
       echo "ERROR: Grid SELECT tool was not actionable after DRAW"; exit 1
     fi
     sleep 0.2
-    GRID_EDIT_SELECT_TOOL_XML="/tmp/mpc-groovebox-grid-event-velocity-select-tool-uiautomator.xml"
-    GRID_EDIT_SELECT_TOOL_REMOTE="/sdcard/mpc-groovebox-grid-event-velocity-select-tool-uiautomator.xml"
+    GRID_EDIT_SELECT_TOOL_XML="/tmp/mpc-groovebox-grid-event-select-tool-uiautomator.xml"
+    GRID_EDIT_SELECT_TOOL_REMOTE="/sdcard/mpc-groovebox-grid-event-select-tool-uiautomator.xml"
     if ! dump_device_ui "$GRID_EDIT_SELECT_TOOL_REMOTE" "$GRID_EDIT_SELECT_TOOL_XML"; then
       echo "ERROR: Grid SELECT tool hierarchy capture failed"; exit 1
     fi
@@ -4826,133 +4826,225 @@ PY
       echo "ERROR: real Grid note selection touch failed"; exit 1
     fi
     sleep 0.3
-    GRID_EDIT_VELOCITY_SELECTED_PNG="/tmp/mpc-groovebox-grid-event-velocity-selected.png"
-    GRID_EDIT_VELOCITY_SELECTED_XML="/tmp/mpc-groovebox-grid-event-velocity-selected-uiautomator.xml"
-    GRID_EDIT_VELOCITY_SELECTED_REMOTE="/sdcard/mpc-groovebox-grid-event-velocity-selected-uiautomator.xml"
-    if ! dump_device_ui "$GRID_EDIT_VELOCITY_SELECTED_REMOTE" "$GRID_EDIT_VELOCITY_SELECTED_XML"; then
-      echo "ERROR: Grid selected-event hierarchy capture failed"; exit 1
-    fi
-    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_VELOCITY_SELECTED_PNG"; then
-      echo "ERROR: Grid selected-event screenshot capture failed"; exit 1
-    fi
-    grid_event_velocity_before="$(python3 - "$GRID_EDIT_VELOCITY_SELECTED_XML" "$grid_edit_step" <<'PY'
+
+    grid_event_current_xml=""
+    grid_event_read_state() {
+      python3 - "$1" "$grid_edit_step" <<'PY'
 import re
 import sys
 import xml.etree.ElementTree as ET
 path, step_s = sys.argv[1:]
 step = int(step_s)
 nodes = list(ET.parse(path).getroot().iter("node"))
-selected = [n for n in nodes if re.fullmatch(
-    rf"Grid selection: PAD 01, STEP {step:02d}, note present, velocity \d+",
-    n.attrib.get("content-desc", ""))]
-if len(selected) != 1:
-    raise AssertionError("Grid SELECT did not preserve selected native note state")
-parameters = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
-    f"Grid event parameters: PAD 01, STEP {step:02d}, VEL ")]
-if len(parameters) != 1:
-    raise AssertionError("Grid event parameter projection is missing for the selected note")
-pattern = re.compile(
+prefix = f"Grid event parameters: PAD 01, STEP {step:02d}, VEL "
+states = [n.attrib.get("content-desc", "") for n in nodes
+          if n.attrib.get("content-desc", "").startswith(prefix)]
+if len(states) != 1:
+    raise AssertionError(f"expected one full selected Grid event state, got {states!r}")
+match = re.fullmatch(
     r"Grid event parameters: PAD 01, STEP 0*(\d+), VEL (\d+), PROB (\d+), "
-    r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)")
-m = pattern.fullmatch(parameters[0].attrib.get("content-desc", ""))
-if m is None:
-    raise AssertionError(f"Malformed Grid native parameter state: {parameters[0].attrib!r}")
-parsed = [int(x) for x in m.groups()]
-if parsed[0] != step or not 1 <= parsed[1] <= 127 or not 0 <= parsed[2] <= 127 \
-        or not 1 <= parsed[3] <= 8 or parsed[5] <= 0:
-    raise AssertionError(f"Grid selected event values outside supported range: {parsed!r}")
-plus = [n for n in nodes if n.attrib.get("content-desc") == "Grid event velocity plus"]
-if len(plus) != 1 or plus[0].attrib.get("enabled") != "true":
-    raise AssertionError("Grid event VEL+ must be enabled for an editable non-max note")
-print(*parsed)
+    r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)", states[0])
+if match is None:
+    raise AssertionError(f"malformed Grid event parameter state: {states[0]!r}")
+values = list(map(int, match.groups()))
+if values[0] != step or not 1 <= values[1] <= 127 or not 0 <= values[2] <= 127 \
+        or not 1 <= values[3] <= 8 or not -960 <= values[4] <= 960 or values[5] <= 0:
+    raise AssertionError(f"Grid event values outside supported native bounds: {values!r}")
+resolution = [n.attrib.get("content-desc", "") for n in nodes
+              if n.attrib.get("content-desc", "").startswith("Grid quantize resolution: ")]
+if len(resolution) != 1:
+    raise AssertionError(f"Grid tick resolution is not exposed accessibly: {resolution!r}")
+tick_match = re.search(r"\((\d+) ticks\)$", resolution[0])
+if tick_match is None or int(tick_match.group(1)) < 1:
+    raise AssertionError(f"malformed accessible Grid resolution: {resolution[0]!r}")
+print(*values, int(tick_match.group(1)))
 PY
-)" || { echo "ERROR: Grid selected-event parameters were not available"; cat "$GRID_EDIT_VELOCITY_SELECTED_XML"; exit 1; }
-    read -r grid_event_step_before grid_event_velocity_before_value grid_event_probability_before grid_event_ratchet_before grid_event_nudge_before grid_event_duration_before <<< "$grid_event_velocity_before"
+    }
 
-    if ! tap_visible_description_early "$GRID_EDIT_VELOCITY_SELECTED_XML" "Grid event velocity plus"; then
-      echo "ERROR: Grid event velocity + was not actionable"; exit 1
-    fi
-    sleep 0.3
-    GRID_EDIT_VELOCITY_CHANGED_PNG="/tmp/mpc-groovebox-grid-event-velocity-changed.png"
-    GRID_EDIT_VELOCITY_CHANGED_XML="/tmp/mpc-groovebox-grid-event-velocity-changed-uiautomator.xml"
-    GRID_EDIT_VELOCITY_CHANGED_REMOTE="/sdcard/mpc-groovebox-grid-event-velocity-changed-uiautomator.xml"
-    if ! dump_device_ui "$GRID_EDIT_VELOCITY_CHANGED_REMOTE" "$GRID_EDIT_VELOCITY_CHANGED_XML"; then
-      echo "ERROR: Grid event velocity changed-state hierarchy capture failed"; exit 1
-    fi
-    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_VELOCITY_CHANGED_PNG"; then
-      echo "ERROR: Grid event velocity changed-state screenshot failed"; exit 1
-    fi
-    if ! python3 - "$GRID_EDIT_VELOCITY_CHANGED_XML" "$grid_edit_step" "$grid_event_velocity_before_value" "$grid_event_probability_before" "$grid_event_ratchet_before" "$grid_event_nudge_before" "$grid_event_duration_before" <<'PY'
-import re
+    grid_event_test_parameter() {
+      local parameter_name="$1"
+      local parameter_token="$2"
+      local parameter_index="$3"
+      local parameter_minimum="$4"
+      local parameter_maximum="$5"
+      local selected_xml="/tmp/mpc-groovebox-grid-event-$parameter_name-selected-uiautomator.xml"
+      local selected_remote="/sdcard/mpc-groovebox-grid-event-$parameter_name-selected-uiautomator.xml"
+      local selected_png="/tmp/mpc-groovebox-grid-event-$parameter_name-selected.png"
+      local changed_xml="/tmp/mpc-groovebox-grid-event-$parameter_name-changed-uiautomator.xml"
+      local changed_remote="/sdcard/mpc-groovebox-grid-event-$parameter_name-changed-uiautomator.xml"
+      local changed_png="/tmp/mpc-groovebox-grid-event-$parameter_name-changed.png"
+      local restored_xml="/tmp/mpc-groovebox-grid-event-$parameter_name-restored-uiautomator.xml"
+      local restored_remote="/sdcard/mpc-groovebox-grid-event-$parameter_name-restored-uiautomator.xml"
+      local restored_png="/tmp/mpc-groovebox-grid-event-$parameter_name-restored.png"
+      local current_state step_before velocity_before probability_before ratchet_before nudge_before duration_before grid_ticks
+      local current_value increment direction action_description restore_description next_value
+
+      if [ "$parameter_name" != "velocity" ]; then
+        if ! tap_visible_description_early "$grid_event_current_xml" "Grid event parameter cycle"; then
+          echo "ERROR: Grid parameter cycle action failed before $parameter_token"; exit 1
+        fi
+        sleep 0.2
+      fi
+      if ! dump_device_ui "$selected_remote" "$selected_xml"; then
+        echo "ERROR: Grid $parameter_token selected-state hierarchy failed"; exit 1
+      fi
+      if ! adb_bounded 10 exec-out screencap -p > "$selected_png"; then
+        echo "ERROR: Grid $parameter_token selected-state screenshot failed"; exit 1
+      fi
+      current_state="$(grid_event_read_state "$selected_xml")" || {
+        echo "ERROR: Grid $parameter_token state unavailable before edit"; cat "$selected_xml"; exit 1;
+      }
+      read -r step_before velocity_before probability_before ratchet_before nudge_before duration_before grid_ticks <<< "$current_state"
+
+      if ! python3 - "$selected_xml" "$parameter_token" "$parameter_name" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
-path, step_s, velocity_s, probability_s, ratchet_s, nudge_s, duration_s = sys.argv[1:]
-step, velocity, probability, ratchet, nudge, duration = map(
-    int, (step_s, velocity_s, probability_s, ratchet_s, nudge_s, duration_s))
+path, token, name = sys.argv[1:]
 nodes = list(ET.parse(path).getroot().iter("node"))
-matches = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
-    f"Grid event parameters: PAD 01, STEP {step:02d}, VEL ")]
-if len(matches) != 1:
-    raise AssertionError("Grid event parameter projection missing after VEL+")
-m = re.fullmatch(
-    r"Grid event parameters: PAD 01, STEP 0*(\d+), VEL (\d+), PROB (\d+), "
-    r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)",
-    matches[0].attrib.get("content-desc", ""))
-if m is None:
-    raise AssertionError(f"Malformed Grid parameter projection after VEL+: {matches[0].attrib!r}")
-after = [int(x) for x in m.groups()]
-if after != [step, min(127, velocity + 1), probability, ratchet, nudge, duration]:
-    raise AssertionError(f"Grid VEL+ must change only velocity by +1: before={[step, velocity, probability, ratchet, nudge, duration]!r} after={after!r}")
-print(f"Grid event VEL+ changed only velocity: {velocity} -> {after[1]}.")
+cycle = [n for n in nodes if n.attrib.get("content-desc") == "Grid event parameter cycle"]
+if len(cycle) != 1 or cycle[0].attrib.get("text") != "PARAM " + token:
+    raise AssertionError(f"Grid field cycle control mismatch for {name}: {[n.attrib for n in cycle]!r}")
+plus = [n for n in nodes if n.attrib.get("content-desc") == "Grid event " + name + " plus"]
+minus = [n for n in nodes if n.attrib.get("content-desc") == "Grid event " + name + " minus"]
+if len(plus) != 1 or len(minus) != 1:
+    raise AssertionError(f"Grid {name} must expose its own native parameter +/- controls")
+print(f"Grid selected {name.upper()} field with dedicated +/- controls.")
 PY
-    then
-      echo "ERROR: Grid event VEL+ changed unrelated fields or missed native velocity delta"; cat "$GRID_EDIT_VELOCITY_CHANGED_XML"; exit 1
-    fi
+      then
+        echo "ERROR: Grid parameter controls did not follow PARAM cycle"; cat "$selected_xml"; exit 1
+      fi
 
-    if ! tap_visible_description_early "$GRID_EDIT_VELOCITY_CHANGED_XML" "Grid event velocity minus"; then
-      echo "ERROR: Grid event velocity − was not actionable"; exit 1
-    fi
-    sleep 0.3
-    GRID_EDIT_VELOCITY_RESTORED_PNG="/tmp/mpc-groovebox-grid-event-velocity-restored.png"
-    GRID_EDIT_VELOCITY_RESTORED_XML="/tmp/mpc-groovebox-grid-event-velocity-restored-uiautomator.xml"
-    GRID_EDIT_VELOCITY_RESTORED_REMOTE="/sdcard/mpc-groovebox-grid-event-velocity-restored-uiautomator.xml"
-    if ! dump_device_ui "$GRID_EDIT_VELOCITY_RESTORED_REMOTE" "$GRID_EDIT_VELOCITY_RESTORED_XML"; then
-      echo "ERROR: Grid event velocity restore hierarchy failed"; exit 1
-    fi
-    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_VELOCITY_RESTORED_PNG"; then
-      echo "ERROR: Grid event velocity restore screenshot failed"; exit 1
-    fi
-    if ! python3 - "$GRID_EDIT_VELOCITY_SELECTED_XML" "$GRID_EDIT_VELOCITY_RESTORED_XML" "$grid_edit_step" <<'PY'
+      case "$parameter_name" in
+        velocity) current_value="$velocity_before"; increment=1 ;;
+        probability) current_value="$probability_before"; increment=1 ;;
+        ratchet) current_value="$ratchet_before"; increment=1 ;;
+        nudge) current_value="$nudge_before"; increment=60 ;;
+        duration)
+          current_value="$duration_before"
+          increment=$((grid_ticks / 4))
+          if [ "$increment" -lt 1 ]; then increment=1; fi
+          ;;
+        *) echo "ERROR: unknown Grid field $parameter_name"; exit 1 ;;
+      esac
+      direction=1
+      if [ "$current_value" -ge "$parameter_maximum" ]; then direction=-1; fi
+      if [ "$current_value" -le "$parameter_minimum" ]; then direction=1; fi
+      if [ "$direction" -gt 0 ]; then
+        action_description="Grid event $parameter_name plus"
+        restore_description="Grid event $parameter_name minus"
+      else
+        action_description="Grid event $parameter_name minus"
+        restore_description="Grid event $parameter_name plus"
+      fi
+
+      if ! tap_visible_description_early "$selected_xml" "$action_description"; then
+        echo "ERROR: real Grid $parameter_token adjustment touch failed"; exit 1
+      fi
+      sleep 0.25
+      if ! dump_device_ui "$changed_remote" "$changed_xml"; then
+        echo "ERROR: Grid $parameter_token changed-state hierarchy failed"; exit 1
+      fi
+      if ! adb_bounded 10 exec-out screencap -p > "$changed_png"; then
+        echo "ERROR: Grid $parameter_token changed-state screenshot failed"; exit 1
+      fi
+      if ! python3 - "$selected_xml" "$changed_xml" "$grid_edit_step" "$parameter_name" "$direction" "$grid_ticks" "$parameter_minimum" "$parameter_maximum" <<'PY'
 import re
 import sys
 import xml.etree.ElementTree as ET
-before_path, after_path, step_s = sys.argv[1:]
+before_path, after_path, step_s, name, direction_s, ticks_s, minimum_s, maximum_s = sys.argv[1:]
+step, direction, ticks, minimum, maximum = map(int, (step_s, direction_s, ticks_s, minimum_s, maximum_s))
+indices = {"velocity":1, "probability":2, "ratchet":3, "nudge":4, "duration":5}
+increments = {"velocity":1, "probability":1, "ratchet":1, "nudge":60,
+              "duration":max(1, ticks // 4)}
+def state(path):
+    nodes = list(ET.parse(path).getroot().iter("node"))
+    matches = [n.attrib.get("content-desc", "") for n in nodes
+               if n.attrib.get("content-desc", "").startswith(
+                   f"Grid event parameters: PAD 01, STEP {step:02d}, VEL ")]
+    if len(matches) != 1:
+        raise AssertionError(f"event projection missing in {path}: {matches!r}")
+    pattern = re.compile(
+        r"Grid event parameters: PAD 01, STEP 0*(\d+), VEL (\d+), PROB (\d+), "
+        r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)")
+    match = pattern.fullmatch(matches[0])
+    if match is None:
+        raise AssertionError(f"malformed event projection: {matches[0]!r}")
+    values = list(map(int, match.groups()))
+    if values[0] != step:
+        raise AssertionError(f"selected step changed: {values!r}")
+    return values, nodes
+before, _ = state(before_path)
+after, nodes = state(after_path)
+i = indices[name]
+target = max(minimum, min(maximum, before[i] + direction * increments[name]))
+if name == "duration":
+    target = max(increments[name], min(ticks * 4, before[i] + direction * increments[name]))
+expected = before[:]
+expected[i] = target
+if after != expected:
+    raise AssertionError(
+        f"Grid {name} must change only its own field by {direction * increments[name]}: "
+        f"before={before!r}, expected={expected!r}, after={after!r}")
+restore = [n for n in nodes if n.attrib.get("content-desc") == "Grid event " + name + (" minus" if direction > 0 else " plus")]
+if len(restore) != 1 or restore[0].attrib.get("enabled") != "true":
+    raise AssertionError(f"opposite {name} control must be enabled to restore the fixture")
+print(f"Grid {name} edit changed only its field: {before[i]} -> {after[i]}.")
+PY
+      then
+        echo "ERROR: Grid $parameter_token changed unrelated event fields or used wrong delta"; cat "$changed_xml"; exit 1
+      fi
+
+      if ! tap_visible_description_early "$changed_xml" "$restore_description"; then
+        echo "ERROR: Grid $parameter_token restore touch failed"; exit 1
+      fi
+      sleep 0.25
+      if ! dump_device_ui "$restored_remote" "$restored_xml"; then
+        echo "ERROR: Grid $parameter_token restored-state hierarchy failed"; exit 1
+      fi
+      if ! adb_bounded 10 exec-out screencap -p > "$restored_png"; then
+        echo "ERROR: Grid $parameter_token restored-state screenshot failed"; exit 1
+      fi
+      if ! python3 - "$selected_xml" "$restored_xml" "$grid_edit_step" "$parameter_name" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+before_path, after_path, step_s, name = sys.argv[1:]
 step = int(step_s)
 def state(path):
     nodes = list(ET.parse(path).getroot().iter("node"))
-    found = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
-        f"Grid event parameters: PAD 01, STEP {step:02d}, VEL ")]
+    found = [n.attrib.get("content-desc", "") for n in nodes
+             if n.attrib.get("content-desc", "").startswith(
+                 f"Grid event parameters: PAD 01, STEP {step:02d}, VEL ")]
     if len(found) != 1:
-        raise AssertionError("Grid event parameter projection missing during restore")
-    value = found[0].attrib.get("content-desc", "")
-    pattern = r"Grid event parameters: PAD 01, STEP 0*(\d+), VEL (\d+), PROB (\d+), RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)"
-    match = re.fullmatch(pattern, value)
+        raise AssertionError(f"Grid event projection missing: {found!r}")
+    match = re.fullmatch(
+        r"Grid event parameters: PAD 01, STEP 0*(\d+), VEL (\d+), PROB (\d+), "
+        r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)", found[0])
     if match is None:
-        raise AssertionError(f"Malformed Grid event state: {value!r}")
-    return match.group(0), list(map(int, match.groups())), nodes
-before_text, before, _ = state(before_path)
-after_text, after, nodes = state(after_path)
-if after != before or after_text != before_text:
-    raise AssertionError(f"Grid VEL+ → VEL− did not restore the complete event baseline: {before!r} -> {after!r}")
-if len([n for n in nodes if n.attrib.get("content-desc") == "Grid event velocity plus" and n.attrib.get("enabled") == "true"]) != 1:
-    raise AssertionError("Grid VEL+ should remain enabled after restoring a non-max velocity")
-print(f"Grid event VEL+ → VEL− restored exact native parameter state: {before!r}.")
+        raise AssertionError(f"malformed Grid state: {found[0]!r}")
+    return list(map(int, match.groups())), nodes
+before, _ = state(before_path)
+after, nodes = state(after_path)
+if after != before:
+    raise AssertionError(f"Grid {name} +/- did not restore the entire native event: {before!r} -> {after!r}")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Grid event parameter cycle"]) != 1:
+    raise AssertionError("Grid parameter selector disappeared after restoration")
+print(f"Grid {name.upper()} changed and restored with all five musical fields exact.")
 PY
-    then
-      echo "ERROR: Grid event velocity restore did not reproduce the exact original parameter state"; cat "$GRID_EDIT_VELOCITY_RESTORED_XML"; exit 1
-    fi
+      then
+        echo "ERROR: Grid $parameter_token did not restore exact full event state"; cat "$restored_xml"; exit 1
+      fi
+      grid_event_current_xml="$restored_xml"
+    }
 
-    if ! tap_visible_description_early "$GRID_EDIT_VELOCITY_RESTORED_XML" "Grid Erase tool"; then
+    grid_event_test_parameter "velocity" "VEL" 1 1 127
+    grid_event_test_parameter "probability" "PROB" 2 0 127
+    grid_event_test_parameter "ratchet" "RAT" 3 1 8
+    grid_event_test_parameter "nudge" "NUDGE" 4 -960 960
+    grid_event_test_parameter "duration" "DUR" 5 1 "$((grid_ticks * 4))"
+
+    echo "Grid PARAM cycling and real-touch +/- acceptance passed for VEL, PROB, RAT, NUDGE and DUR."
+    if ! tap_visible_description_early "$grid_event_current_xml" "Grid Erase tool"; then
       echo "ERROR: Grid ERASE tool was not actionable after DRAW"; exit 1
     fi
     sleep 0.2

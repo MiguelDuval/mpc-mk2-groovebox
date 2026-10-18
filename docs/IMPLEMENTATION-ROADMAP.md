@@ -12,16 +12,17 @@ Older queue entries below are historical snapshots. Read the status here first, 
 - Earlier Build #2835 / run 39139658033 was cancelled during emulator smoke on prior SHA 450bca9aac99adc47c61d14d3abc76a77c3cf439; it was neither a failure nor a pass. Build #2856 superseded it. APK artifact 12149263768; UI evidence artifact 12150136466.
 - Remaining Project boundaries: provider overwrite/write-failure recovery, independently opening two saved Projects, and external sample PCM relinking are not covered. Physical MPC Studio MkII validation is separate and pending.
 
-### 2. Step Edit NUDGE / DURATION + Grid event VEL — COMBINED EXACT-SHA ACCEPTANCE PENDING
+### 2. Step Edit NUDGE / DURATION — VERIFIED; Grid five-field editing — ACCEPTANCE PENDING
 
-- The current test branch extends Step Edit through real touch: PARAM focus → NUDGE +60 ticks → DUR + one quarter-grid increment, with unrelated-field isolation and Step 01 preservation.
-- Grid now adds a native-backed selected-event strip. SELECT exposes velocity, probability, ratchet, nudge and duration; VEL + must change only velocity by one, VEL − must restore all five fields exactly, and ERASE must leave the strip in EMPTY state with both velocity controls disabled.
-- The same emulator smoke includes dedicated screenshots/accessibility hierarchies for both routes. The last run on parent SHA 9007b899e2fb122c1b1e590a27f095ab9676afa7 was still executing its emulator step when the combined Grid extension was prepared. The subsequent feature HEAD must complete the full Android Build; do not mark any added assertion verified from the earlier run.
+- Android Build #2858 / run 39172036811 passed on exact SHA `d8d1a25ce2d83d1b669447dcf9a2c0fbddf9161c`: [Actions #2858](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39172036811). It includes the real-touch Step Edit NUDGE/DURATION route, Grid VEL +/− isolation/restore, native/domain/unit tests, APK upload and emulator visual-evidence upload.
+- The latest code expands Grid's selected-event strip to PARAM → VEL / PROB / RAT / NUDGE / DUR, and routes each +/- control to the existing native setter. Limits follow the native contract: VEL 1–127, PROB 0–127, RAT 1–8, NUDGE −960…+960 ticks, DUR one-quarter-grid…four grids.
+- The new smoke sequence will real-touch each field, change one field at a time, compare the complete five-parameter event projection, restore it exactly, then ERASE and verify disabled empty-state controls. Dedicated before/changed/restored screenshots and accessibility hierarchies are archived for PROB, RAT, NUDGE and DUR as well as VEL.
+- This all-five-field expansion is **not verified until Android Build on its resulting exact SHA passes**. Do not infer success from #2858, whose SHA predates this expansion.
 
-### 3. NEXT PRODUCT SLICE — finish Grid event-parameter coverage (GRID-007)
+### 3. NEXT PRODUCT SLICE — follow current Grid acceptance with the next live action-catalog gap
 
-- After the combined exact-SHA smoke passes, select one further supported Grid field (prefer probability/ratchet only where the existing native setter is authoritative) and extend the existing selected-event route without duplicating domain state or introducing unsupported Track Types.
-- Keep Grid Drum-focused. Any field without an exact native/UI route remains unavailable; do not imply melodic piano-roll support for Keygroup/Plugin/MIDI/CV. Physical controller acceptance remains separate.
+- Keep Grid Drum-only and native-authoritative. Do not claim Keygroup/Plugin/MIDI/CV piano-roll support or physical MPC Studio MkII acceptance from emulator evidence.
+- After the five-field Grid smoke is green, select the next highest-value incomplete action from the live catalog and current source/test coverage; avoid returning to completed Project persistence or already-verified Grid velocity work.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 

@@ -655,6 +655,30 @@ jobs:
             /tmp/mpc-groovebox-grid-event-velocity-changed-uiautomator.xml
             /tmp/mpc-groovebox-grid-event-velocity-restored.png
             /tmp/mpc-groovebox-grid-event-velocity-restored-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-probability-selected.png
+            /tmp/mpc-groovebox-grid-event-probability-selected-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-probability-changed.png
+            /tmp/mpc-groovebox-grid-event-probability-changed-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-probability-restored.png
+            /tmp/mpc-groovebox-grid-event-probability-restored-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-ratchet-selected.png
+            /tmp/mpc-groovebox-grid-event-ratchet-selected-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-ratchet-changed.png
+            /tmp/mpc-groovebox-grid-event-ratchet-changed-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-ratchet-restored.png
+            /tmp/mpc-groovebox-grid-event-ratchet-restored-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-nudge-selected.png
+            /tmp/mpc-groovebox-grid-event-nudge-selected-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-nudge-changed.png
+            /tmp/mpc-groovebox-grid-event-nudge-changed-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-nudge-restored.png
+            /tmp/mpc-groovebox-grid-event-nudge-restored-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-duration-selected.png
+            /tmp/mpc-groovebox-grid-event-duration-selected-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-duration-changed.png
+            /tmp/mpc-groovebox-grid-event-duration-changed-uiautomator.xml
+            /tmp/mpc-groovebox-grid-event-duration-restored.png
+            /tmp/mpc-groovebox-grid-event-duration-restored-uiautomator.xml
             /tmp/mpc-groovebox-grid-edit-after-erase.png
             /tmp/mpc-groovebox-grid-edit-after-erase-uiautomator.xml
             /tmp/mpc-groovebox-arrange-back.png

@@ -20,10 +20,10 @@
 ## Current execution queue — 2026-10-19
 
 1. Project lifecycle acceptance passed on exact SHA 617511efb820e96c6d9576051fa30012a3368db1, Android Build #2856 / run 39162451542; full details and artifact identities are recorded above.
-2. Step Edit NUDGE/DURATION and the new Grid event velocity slice are now combined in the current feature-branch work: exact-SHA emulator CI must pass before those added assertions are called verified. Live PR #23 is the authority for the resulting HEAD SHA.
-3. Next product slice after that smoke passes: extend GRID-007 with one further parameter backed by an existing native setter, preserving the event-field isolation and Drum-only contract.
+2. Android Build #2858 / run 39172036811 passed on exact SHA d8d1a25ce2d83d1b669447dcf9a2c0fbddf9161c, verifying Step Edit NUDGE/DURATION and Grid velocity field isolation via real emulator touches.
+3. The latest feature-branch change expands Grid PARAM cycling and real-touch field isolation/restoration to VEL, PROB, RAT, NUDGE and DUR. Its exact-SHA emulator build is pending; inspect the live Action and artifacts before claiming this expanded slice verified.
 
-PR #23 remains open against fix/ui-shell-format-width-startup; main must remain untouched. Physical MPC Studio MkII validation remains PENDING. Inspect the new exact-SHA Action for this checkpoint before treating the expanded Step test as green.
+PR #23 remains open against fix/ui-shell-format-width-startup; main must remain untouched. Physical MPC Studio MkII validation remains PENDING. Inspect the new exact-SHA Action for the expanded all-five-field Grid test before treating that addition as green.
 
 ## Completed in this session
 
