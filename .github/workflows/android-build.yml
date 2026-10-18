@@ -394,6 +394,18 @@ jobs:
             -o build/native-tests/mpc_project_state_tests
           build/native-tests/mpc_project_state_tests
 
+      - name: Test versioned project save/load and Arrangement Pattern placements
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcProjectPersistenceTests.cpp \
+            src/MPC/MpcProjectPersistence.cpp \
+            -o build/native-tests/mpc_project_persistence_tests
+          build/native-tests/mpc_project_persistence_tests
+
       - name: Test sequence transport clock
         shell: bash
         run: |
