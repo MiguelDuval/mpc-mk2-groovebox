@@ -7610,14 +7610,17 @@ expected_v1_sha_ext="$(sha256sum "$PROJECT_V1_CANONICAL_HOST" | awk '{print $1}'
 if [[ ! "$expected_v1_sha_ext" =~ ^[0-9a-f]{64}$ ]]; then
   echo "ERROR: could not hash canonical v1 state"; exit 1
 fi
-if ! adb_bounded 10 shell mkdir -p /sdcard/Download; then
-  echo "ERROR: could not prepare Downloads directory"; exit 1
+# DocumentsUI retains the folder used by Save As (the dedicated Browser
+# fixture folder). Put both test documents in that same visible provider folder
+# so the actual picker can select them without an unrelated navigation guess.
+if ! adb_bounded 10 shell mkdir -p "$FAVORITE_FOLDER_DEVICE"; then
+  echo "ERROR: could not prepare the Project acceptance fixture folder"; exit 1
 fi
-if ! adb_bounded 30 push "$PROJECT_V1_HOST" /sdcard/Download/Legacy-v1-no-placements.mpcproj; then
-  echo "ERROR: could not push valid v1 Project fixture"; exit 1
+if ! adb_bounded 30 push "$PROJECT_V1_HOST" "$FAVORITE_FOLDER_DEVICE/Legacy-v1-no-placements.mpcproj"; then
+  echo "ERROR: could not push valid v1 Project fixture beside the saved Project"; exit 1
 fi
-if ! adb_bounded 30 push "$PROJECT_MALFORMED_HOST" /sdcard/Download/Malformed-project.mpcproj; then
-  echo "ERROR: could not push malformed Project fixture"; exit 1
+if ! adb_bounded 30 push "$PROJECT_MALFORMED_HOST" "$FAVORITE_FOLDER_DEVICE/Malformed-project.mpcproj"; then
+  echo "ERROR: could not push malformed Project fixture beside the saved Project"; exit 1
 fi
 
 # The app is still in Project context after cancel; malformed input must reject
