@@ -20,6 +20,7 @@ Older queue entries below are historical snapshots. Read the status here first, 
 - This all-five-field expansion is **not verified until Android Build on its resulting exact SHA passes**. Do not infer success from #2858, whose SHA predates this expansion.
 - In parallel, the `work/grid-event-parameter-integrity` branch adds explicit native PatternOps tests that each VEL / PROB / RAT / NUDGE / DUR setter mutates only its intended event field and that invalid values leave the full two-note fixture unchanged.
 - The same work branch routes Studio semantic Data Dial press / coarse delta / fine Shift delta through the selected Grid parameter and extends the full Android UI audit to verify PROB change/restore plus fine NUDGE change/restore via `onHardwareAction`. Physical controller input still requires a real MPC Studio MkII.
+- A code review found that fine/Shift decrement on Grid Duration could calculate below the native one-quarter-grid minimum and then rely on native rejection. A follow-on branch centralizes all five fields' bounded-value calculation and extends the app UI audit to assert min/max clamping for every field without mutating the musical fixture.
 
 ### 3. NEXT PRODUCT SLICE — follow current Grid acceptance with the next live action-catalog gap
 

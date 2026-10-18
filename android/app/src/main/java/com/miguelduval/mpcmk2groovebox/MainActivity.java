@@ -8472,6 +8472,70 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private int gridEventParameterAdjustedValue(
+            int parameter, int currentValue, int delta, int gridTicks) {
+        final int minimum = gridEventParameterMinimum(parameter, gridTicks);
+        final int maximum = gridEventParameterMaximum(parameter, gridTicks);
+        return Math.max(minimum, Math.min(maximum, currentValue + delta));
+    }
+
+    private boolean verifyGridEventParameterBoundsForAudit(int gridTicks) {
+        return gridEventParameterAdjustedValue(
+                        STEP_EDIT_PARAMETER_VELOCITY, 1,
+                        nativeStepEditParameterDelta(
+                                STEP_EDIT_PARAMETER_VELOCITY, gridTicks, -1, false),
+                        gridTicks) == 1
+                && gridEventParameterAdjustedValue(
+                        STEP_EDIT_PARAMETER_VELOCITY, 127,
+                        nativeStepEditParameterDelta(
+                                STEP_EDIT_PARAMETER_VELOCITY, gridTicks, 1, false),
+                        gridTicks) == 127
+                && gridEventParameterAdjustedValue(
+                        STEP_EDIT_PARAMETER_PROBABILITY, 0,
+                        nativeStepEditParameterDelta(
+                                STEP_EDIT_PARAMETER_PROBABILITY, gridTicks, -1, false),
+                        gridTicks) == 0
+                && gridEventParameterAdjustedValue(
+                        STEP_EDIT_PARAMETER_PROBABILITY, 127,
+                        nativeStepEditParameterDelta(
+                                STEP_EDIT_PARAMETER_PROBABILITY, gridTicks, 1, false),
+                        gridTicks) == 127
+                && gridEventParameterAdjustedValue(
+                        STEP_EDIT_PARAMETER_RATCHET, 1,
+                        nativeStepEditParameterDelta(
+                                STEP_EDIT_PARAMETER_RATCHET, gridTicks, -1, false),
+                        gridTicks) == 1
+                && gridEventParameterAdjustedValue(
+                        STEP_EDIT_PARAMETER_RATCHET, 8,
+                        nativeStepEditParameterDelta(
+                                STEP_EDIT_PARAMETER_RATCHET, gridTicks, 1, false),
+                        gridTicks) == 8
+                && gridEventParameterAdjustedValue(
+                        STEP_EDIT_PARAMETER_NUDGE, -960,
+                        nativeStepEditParameterDelta(
+                                STEP_EDIT_PARAMETER_NUDGE, gridTicks, -1, true),
+                        gridTicks) == -960
+                && gridEventParameterAdjustedValue(
+                        STEP_EDIT_PARAMETER_NUDGE, 960,
+                        nativeStepEditParameterDelta(
+                                STEP_EDIT_PARAMETER_NUDGE, gridTicks, 1, true),
+                        gridTicks) == 960
+                && gridEventParameterAdjustedValue(
+                        STEP_EDIT_PARAMETER_DURATION,
+                        gridEventParameterMinimum(STEP_EDIT_PARAMETER_DURATION, gridTicks),
+                        nativeStepEditParameterDelta(
+                                STEP_EDIT_PARAMETER_DURATION, gridTicks, -1, true),
+                        gridTicks)
+                        == gridEventParameterMinimum(STEP_EDIT_PARAMETER_DURATION, gridTicks)
+                && gridEventParameterAdjustedValue(
+                        STEP_EDIT_PARAMETER_DURATION,
+                        gridEventParameterMaximum(STEP_EDIT_PARAMETER_DURATION, gridTicks),
+                        nativeStepEditParameterDelta(
+                                STEP_EDIT_PARAMETER_DURATION, gridTicks, 1, true),
+                        gridTicks)
+                        == gridEventParameterMaximum(STEP_EDIT_PARAMETER_DURATION, gridTicks);
+    }
+
     private void cycleSelectedGridParameter() {
         gridEventParameter = nativeStepEditParameterNext(gridEventParameter);
         if (navigationController != null) {
@@ -8619,19 +8683,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 gridEventParameter, gridTicks, direction, fine);
         final int fieldValue = gridEventParameter == STEP_EDIT_PARAMETER_DURATION
                 && parameters[4] <= 0 ? gridTicks : parameters[gridEventParameter];
-        final int minimum = gridEventParameterMinimum(gridEventParameter, gridTicks);
-        final int maximum = gridEventParameterMaximum(gridEventParameter, gridTicks);
-        final int value;
-        if (gridEventParameter == STEP_EDIT_PARAMETER_DURATION) {
-            final int increment = Math.max(1, Math.abs(delta));
-            final int current = Math.max(
-                    increment, parameters[4] > 0 ? parameters[4] : gridTicks);
-            value = Math.max(
-                    increment,
-                    Math.min(gridTicks * 4, current + delta));
-        } else {
-            value = Math.max(minimum, Math.min(maximum, fieldValue + delta));
-        }
+        final int value = gridEventParameterAdjustedValue(
+                gridEventParameter, fieldValue, delta, gridTicks);
 
         if (value == fieldValue) {
             setBottomStatus("GRID " + gridEventParameterLabel(gridEventParameter)
@@ -14739,6 +14792,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         gridEventParameter = STEP_EDIT_PARAMETER_VELOCITY;
         refreshGridEventParameterState();
 
+        final boolean parameterBoundsClamp =
+                verifyGridEventParameterBoundsForAudit(gridTicks);
         final int probabilityDirection = baseline[1] >= 127 ? -1 : 1;
         onHardwareAction(MpcStudioMk2SemanticActions.DATA_DIAL_PRESS, 0, 0, 0);
         final boolean probabilityFocus =
@@ -14789,10 +14844,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final boolean completeEventRestored = Arrays.equals(baseline, finalState);
 
         showSequenceStepPage();
-        if (!probabilityFocus || !probabilityFieldIsolated
+        if (!parameterBoundsClamp || !probabilityFocus || !probabilityFieldIsolated
                 || !probabilityRestoredExactly || !nudgeFocus
                 || !nudgeFieldIsolated || !completeEventRestored) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Grid hardware parameter path"
+                    + " | parameterBoundsClamp=" + parameterBoundsClamp
                     + " | probabilityFocus=" + probabilityFocus
                     + " | probabilityFieldIsolated=" + probabilityFieldIsolated
                     + " | probabilityRestoredExactly=" + probabilityRestoredExactly
@@ -14808,6 +14864,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 + " dataDialCyclesParameter=true"
                 + " | probabilityDeltaIsolated=true"
                 + " | fineNudgeDeltaIsolated=true"
+                + " | allParameterBoundsClamp=true"
                 + " | completeEventRestored=true");
         return true;
     }
