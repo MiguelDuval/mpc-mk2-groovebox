@@ -4,7 +4,7 @@
 
 This document is the canonical product-level mapping contract for the **Akai MPC Studio MkII** in MPC MK2 Groovebox.
 
-The controller is the primary physical performance surface. The Android device is the display, compute and audio host. The goal is not to clone Akai firmware or MPC Desktop; it is to reproduce the useful interaction model of a compact standalone groovebox with an original implementation.
+The controller is the primary physical performance surface. The Android device is the display, compute and audio host. The goal is an original Android instrument controlled by the physical MkII. The product does not depend on, reproduce or route through Akai's MPC Desktop application.
 
 This document bridges four things:
 
@@ -13,7 +13,7 @@ This document bridges four things:
 3. the **semantic action** that our application should receive;
 4. the UI/context and implementation priority for that action.
 
-Raw MIDI values belong only in the hardware adapter/control map. UI and domain code must consume semantic actions.
+Raw MIDI values belong only in the hardware adapter/control map. UI and domain code must consume semantic actions. For source-to-test traceability and the explicit exclusion of desktop-host workflows, use [MPC Studio MkII Reverse-Engineering Traceability](MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md).
 
 ## Evidence and confidence
 
@@ -44,13 +44,15 @@ For this project, the real controller remains the final authority.
 
 At the hardware-mapping research checkpoint:
 
-- physical pads are the only controller inputs currently used as working musical controls;
+- physical pads are the primary performance inputs; current source also routes multiple non-pad controls through the semantic adapter and app command surface; per-action coverage remains mixed;
 - pad velocity and physical pad numbering are already part of the working path;
 - the native decoder recognizes the documented button-note, jog, jog-press, touch-strip CC and pad-aftertouch message families;
-- non-pad P0 controls now pass through the semantic adapter and the shared application command surface; remaining gaps are explicitly marked by control section below;
-- button LED, touch-strip LED, Note Repeat LED and LCD message generators exist, but are not yet a complete state-driven feedback subsystem.
+- the decoder/adapter route many non-pad P0 controls, but each must be checked against the traceability table and current exact-SHA tests rather than described as globally complete;
+- button LED, pad RGB, Touch Strip LED and LCD protocol/rendering paths exist; full semantic feedback coverage and current-build physical acceptance remain incomplete;
 
 This distinction is important: **protocol support is not the same thing as functional mapping**.
+
+**Source scope:** use only hardware/protocol/physical-control findings from Akai resources. Do not import MPC Desktop or DAW workflow into this app's semantic contract. Older statuses in this long document are historical unless reconciled with the dated traceability document, current source, exact-SHA test results and physical test record.
 
 ## Hardware inventory
 
@@ -587,7 +589,7 @@ Semantic rule:
 - toggle buttons show actual state;
 - feedback is cached and only written when state changes.
 
-Status: **BASIC STATE ROUTER IMPLEMENTED for transport, Note Repeat, Level16 and mute-mode LEDs; writes are state-cached. Full LCD/state synchronization remains pending**.
+Status: **PARTIAL — Android sends state-cached feedback for transport, Note Repeat, Level16 and mute-mode semantics. Broader per-button state/colour mapping still requires action-by-action and physical verification. A compact LCD context mirror now exists; see the traceability document.**
 
 Priority: **P0 for transport and mode state; P1 for secondary controls**.
 
@@ -606,7 +608,7 @@ The controller accepts per-pad RGB values. The application should use the LEDs f
 
 Do not drive RGB continuously from a UI timer. Generate feedback from semantic state changes.
 
-Status: **WORKING for pad trigger/launcher feedback; broader semantic mode coloring and bank-state feedback remain pending.**.
+Status: **PARTIAL — pad RGB SysEx generation and app send paths exist, with exact packet assertions in native tests. Physical selected-pad/mode colour policy and full bank-state parity still require current-build device verification.**.
 
 Priority: **P0**.
 
@@ -619,7 +621,7 @@ Output protocol helpers exist.
 
 These must become state-driven feedback owned by the hardware feedback layer.
 
-Status: **NOTE REPEAT button LED routed; Touch-strip LED division feedback remains pending**.
+Status: **PARTIAL — protocol helpers and Android send paths exist for Touch Strip and Note Repeat indicator CCs; Note Repeat rate feedback is wired. Full Touch Strip segment/mode/value synchronization needs current-state and physical acceptance.**.
 
 Priority: **P1**.
 
@@ -641,7 +643,7 @@ The product-level LCD should eventually show a compact hardware context mirror:
 
 Do not attempt to mirror the whole Android UI. The LCD is a glanceable hardware companion.
 
-Status: **PROTOCOL/TEST FRAME PARTIAL; PRODUCT DISPLAY NOT IMPLEMENTED**.
+Status: **PARTIAL — six-chunk SysEx encoder, 160×80 original renderer, signature-gated Android update path and packet tests exist. A compact context display is implemented; current-build physical rendering/refresh and complete state coverage remain unverified.**.
 
 Priority: **P1 after core semantic routing; P0 for the first full hardware milestone's final status-feedback step**.
 
