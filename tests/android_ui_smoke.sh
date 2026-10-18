@@ -3102,8 +3102,22 @@ undo=[n for n in split_nodes
       if n.attrib.get("content-desc")=="Arrangement undo latest sequencer edit"]
 if len(undo)!=1 or undo[0].attrib.get("enabled")!="true":
     raise AssertionError("SPLIT result should expose native Undo")
+# DELETE leaves the insertion cursor in an empty gap: the clip-specific
+# delete action must be disabled/renamed to "at target", while PLACE is enabled.
+delete_nodes=list(ET.parse(delete_xml).getroot().iter("node"))
+delete_cursor=[n for n in delete_nodes
+               if n.attrib.get("content-desc")==f"Arrangement paste target Track {track+1:02d} tick {tick}"]
+if len(delete_cursor)!=1 or delete_cursor[0].attrib.get("text")!=f"PASTE TARGET • TRACK {track+1:02d} • TICK {tick}":
+    raise AssertionError("DELETE state lost its accessible insertion target")
+delete_action=[n for n in delete_nodes
+               if n.attrib.get("content-desc")=="Arrangement delete Pattern placement at target"]
+if len(delete_action)!=1 or delete_action[0].attrib.get("enabled")!="false":
+    raise AssertionError("DELETE must be disabled while the cursor is in the gap it created")
+place_gap=[n for n in delete_nodes
+           if n.attrib.get("content-desc")==f"Arrangement place Pattern at empty target tick {tick}"]
+if len(place_gap)!=1 or place_gap[0].attrib.get("enabled")!="true":
+    raise AssertionError("the empty post-DELETE gap must expose an enabled PLACE action")
 for path,description in [
-    (delete_xml, "Arrangement delete Pattern placement at tick"),
     (place_xml, "Arrangement place Pattern at empty target tick"),
     (move_xml, "Arrangement move Pattern placement at tick")]:
     nodes=list(ET.parse(path).getroot().iter("node"))
