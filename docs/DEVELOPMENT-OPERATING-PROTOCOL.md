@@ -22,6 +22,8 @@ At the start of each session, read these in order:
 
 **Live-repository precedence:** Current branch/PR/Actions/source evidence outranks stale session notes. When evidence disagrees, verify it, correct the relevant document, and record the discrepancy. Do not re-read hundreds of commits by default. Inspect the latest 20–50 commits and broaden the history only when answering a specific historical or regression question.
 
+When mapping MPC One / MPC 3.9 controls to Studio MkII gestures, consult [MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md](MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md) as the cross-device equivalence contract. Use the semantic map for the adapter action and the reverse-engineering traceability document for raw MIDI/SysEx and hardware evidence. The cross-device contract documents non-identical Shift gestures and missing hardware equivalents; do not silently remap them.
+
 ## 2. Product scope: an autonomous local instrument
 
 The product is a locally useful groovebox controlled primarily by the MPC Studio MkII. MPC Standalone OS 3.9 is the interaction and information-architecture reference, not a mandate to reproduce Akai's commercial ecosystem.
