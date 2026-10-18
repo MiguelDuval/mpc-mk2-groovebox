@@ -7,6 +7,8 @@
 
 Read this with [HARDWARE-MPC-STUDIO-MK2.md](HARDWARE-MPC-STUDIO-MK2.md), [MPC-STUDIO-MKII-SEMANTIC-MAP.md](MPC-STUDIO-MKII-SEMANTIC-MAP.md), [MIDI-TRANSPORT.md](MIDI-TRANSPORT.md) and [PHYSICAL-TEST-CHECKLIST.md](PHYSICAL-TEST-CHECKLIST.md).
 
+For the MPC One / MPC 3.9 action-to-Studio physical gesture crosswalk, also read [MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md](MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md). This is a product interaction bridge, not a replacement for the raw MIDI/SysEx tables below.
+
 ## 1. Scope firewall: what we extract
 
 The controller is an input/output device, not the application we are building. From hardware documents, support pages, tutorial videos and public research, retain only facts useful to our own host implementation:
