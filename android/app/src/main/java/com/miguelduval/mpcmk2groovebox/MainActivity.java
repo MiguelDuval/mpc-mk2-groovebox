@@ -10082,7 +10082,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page);
         updateModeRailSelection();
         notifyMpcWorkspaceAccessibilityChanged();
-        Log.i(TAG, "MPC_PROJECT_RENDER_COMPLETE");
+        Log.i(TAG, "MPC_PROJECT_RENDER_COMPLETE summary=" + summary.getText().toString());
     }
 
     private Button buildMpcMenuTile(MpcModeRegistry.Entry entry) {
