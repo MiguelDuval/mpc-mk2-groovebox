@@ -8612,11 +8612,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     selectedGridEventStep + 1));
         } else {
             final int duration = parameters[4] > 0 ? parameters[4] : gridTicks;
+            // Pad/step identity is already exposed by the Grid header; keep
+            // the full five-field summary visible instead of truncating DUR.
             gridEventParameterView.setText(String.format(
                     Locale.ROOT,
-                    "PAD %02d • STEP %02d • VEL %d • PROB %d • RAT %dx • NUDGE %+d • DUR %d",
-                    selectedGridEventPad + 1,
-                    selectedGridEventStep + 1,
+                    "VEL %d • PROB %d • RAT %dx • NUDGE %+d • DUR %d",
                     parameters[0],
                     parameters[1],
                     parameters[2],

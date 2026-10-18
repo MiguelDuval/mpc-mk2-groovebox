@@ -4846,6 +4846,14 @@ match = re.fullmatch(
     r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)", states[0])
 if match is None:
     raise AssertionError(f"malformed Grid event parameter state: {states[0]!r}")
+display_text = [n.attrib.get("text", "") for n in nodes
+                if n.attrib.get("content-desc", "") == states[0]]
+if len(display_text) != 1 or not all(token in display_text[0]
+        for token in ("VEL", "PROB", "RAT", "NUDGE", "DUR")):
+    raise AssertionError(
+        f"visible Grid summary must expose all five fields without dropping a label: {display_text!r}")
+if "…" in display_text[0] or "..." in display_text[0]:
+    raise AssertionError(f"Grid event summary contains ellipsis: {display_text[0]!r}")
 values = list(map(int, match.groups()))
 if values[0] != step or not 1 <= values[1] <= 127 or not 0 <= values[2] <= 127 \
         or not 1 <= values[3] <= 8 or not -960 <= values[4] <= 960 or values[5] <= 0:
