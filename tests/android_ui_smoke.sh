@@ -7002,22 +7002,48 @@ wait_for_new_project_marker() {
 }
 
 project_shell_geometry() {
+  # Derive touch geometry from actual shell nodes in the previously captured
+  # Main hierarchy. "MPC Browser" is a Toolbar button, not the workspace; using
+  # its bounds made the previous grid calculation produce negative touch points.
   python3 - "$PROJECT_MAIN_READY_XML" <<'PY'
 import re
 import sys
 import xml.etree.ElementTree as ET
+
 root = ET.parse(sys.argv[1]).getroot()
+
 def rect(node):
-    m = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
-    return tuple(map(int, m.groups())) if m else None
-root_rect = rect(next(iter(root.iter("node"))))
-workspace = next((n for n in root.iter("node") if n.attrib.get("content-desc") == "MPC Browser"), None)
-workspace_rect = rect(workspace) if workspace is not None else None
-if not root_rect or not workspace_rect:
-    raise SystemExit("Main-ready hierarchy has no valid root/workspace bounds")
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+nodes = list(root.iter("node"))
+root_rect = rect(nodes[0]) if nodes else None
+strips = next((n for n in nodes
+               if n.attrib.get("content-desc") == "MPC shell mixer strips"), None)
+playhead = next((n for n in nodes
+                 if n.attrib.get("content-desc") == "MPC global sequence playhead"), None)
+strips_rect = rect(strips) if strips is not None else None
+playhead_rect = rect(playhead) if playhead is not None else None
+if not root_rect or not strips_rect or not playhead_rect:
+    raise SystemExit("Main-ready hierarchy lacks screen, XL-strip or playhead bounds")
+
 _, _, root_right, root_bottom = root_rect
-workspace_left, workspace_top, workspace_right, workspace_bottom = workspace_rect
-print(root_right, root_bottom, workspace_left, workspace_top, workspace_right, workspace_bottom)
+_, _, strips_right, _ = strips_rect
+_, _, _, playhead_bottom = playhead_rect
+
+# Map the shared MPC shell regions, not a workspace-child accessibility node:
+# Menu tiles occupy the right-hand 4x4 region; the function bar spans that same
+# right-hand column. Insets are relative to the measured shell boundaries.
+workspace_left = strips_right + 8
+workspace_right = root_right - 18
+workspace_top = playhead_bottom + 12
+workspace_bottom = root_bottom - 108
+if (workspace_left >= workspace_right or workspace_top >= workspace_bottom
+        or workspace_right > root_right or workspace_bottom > root_bottom):
+    raise SystemExit("Calculated MPC shell touch bounds are invalid")
+print(root_right, root_bottom, workspace_left, workspace_top,
+      workspace_right, workspace_bottom)
 PY
 }
 
