@@ -17,7 +17,8 @@ At the start of each session, read these in order:
 4. `docs/IMPLEMENTATION-ROADMAP.md` — priorities and known product gaps.
 5. `docs/MPC3-USER-ACTION-CATALOG.md` — identify the action ID, expected state transition, source evidence, current implementation status and required acceptance path for the UI scenario being changed.
 6. `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md`, `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`, `docs/MPC3-REFERENCE-INDEX.md`, `docs/MPC3-UI-SCREEN-BLUEPRINT.md`, and `docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md` — only the sections relevant to the current slice.
-6. Current source, callers, relevant tests, latest commits, PR checks, and CI artifacts.
+7. When working on the physical MPC Studio MkII, also read `docs/HARDWARE-MPC-STUDIO-MK2.md`, `docs/MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md`, `docs/MPC-STUDIO-MKII-SEMANTIC-MAP.md`, `docs/MIDI-TRANSPORT.md`, and the applicable sections of `docs/PHYSICAL-TEST-CHECKLIST.md`.
+8. Inspect current source, callers, relevant tests, latest commits, PR checks, exact-SHA CI runs and artifacts.
 
 **Live-repository precedence:** Current branch/PR/Actions/source evidence outranks stale session notes. When evidence disagrees, verify it, correct the relevant document, and record the discrepancy. Do not re-read hundreds of commits by default. Inspect the latest 20–50 commits and broaden the history only when answering a specific historical or regression question.
 
