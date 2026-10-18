@@ -5136,6 +5136,13 @@ tap_ui_description() {
   local hierarchy_path="$1"
   local expected_description="$2"
   local coordinates tap_x tap_y
+  # Always resolve touch coordinates from a just-captured hierarchy. Several
+  # workflows restart the Activity or transition out of an external picker;
+  # a previously valid dump can point at a different control after that change.
+  if ! dump_device_ui "$DEVICE_DUMP" "$hierarchy_path"; then
+    echo "ERROR: could not refresh UI hierarchy before tapping $expected_description"
+    return 1
+  fi
   if ! coordinates="$(ui_target_center "$hierarchy_path" "$expected_description")"; then
     echo "ERROR: visible clickable UI target not found: $expected_description"
     return 1
