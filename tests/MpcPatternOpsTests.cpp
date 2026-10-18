@@ -34,6 +34,96 @@ int main() {
     assert(placementTrackAfterAdd.placements[2].id == "clip-03");
     assert(placementTrackAfterAdd.placements[2].sourceOffsetTicks == 960);
 
+    // Duplicate creates a new clip instance that reuses the exact source range.
+    mpc::domain::Sequence duplicatePlacementSequence;
+    duplicatePlacementSequence.id = "duplicate-placement-sequence";
+    duplicatePlacementSequence.lengthTicks = 3840;
+    mpc::domain::Track duplicatePlacementTrack;
+    duplicatePlacementTrack.id = "duplicate-placement-track";
+    mpc::domain::Pattern duplicatePlacementPattern;
+    duplicatePlacementPattern.id = "duplicate-placement-pattern";
+    duplicatePlacementPattern.lengthTicks = 1920;
+    duplicatePlacementPattern.notes = {{240, 180, 36, 97, 88, 3, -11}};
+    duplicatePlacementTrack.patterns.push_back(duplicatePlacementPattern);
+    duplicatePlacementSequence.tracks.push_back(duplicatePlacementTrack);
+    assert(mpc::sequencer::addPatternPlacement(
+            duplicatePlacementSequence, 0, "clip-source",
+            "duplicate-placement-pattern", 0, 960, 240));
+    const auto duplicateBaselineNotes =
+            duplicatePlacementSequence.tracks[0].patterns[0].notes;
+    const auto notesEqual = [](
+            const std::vector<mpc::domain::MidiNoteEvent>& lhs,
+            const std::vector<mpc::domain::MidiNoteEvent>& rhs) {
+        if (lhs.size() != rhs.size()) return false;
+        for (std::size_t i = 0; i < lhs.size(); ++i) {
+            const auto& a = lhs[i];
+            const auto& b = rhs[i];
+            if (a.tick != b.tick || a.durationTicks != b.durationTicks
+                    || a.note != b.note || a.velocity != b.velocity
+                    || a.probability != b.probability || a.ratchet != b.ratchet
+                    || a.nudgeTicks != b.nudgeTicks) return false;
+        }
+        return true;
+    };
+    assert(mpc::sequencer::duplicatePatternPlacement(
+            duplicatePlacementSequence, 0, "clip-source", "clip-copy", 960));
+    auto findPlacement = [&duplicatePlacementSequence](const std::string& id)
+            -> const mpc::domain::PatternPlacement* {
+        const auto& placements = duplicatePlacementSequence.tracks[0].placements;
+        const auto found = std::find_if(
+                placements.begin(), placements.end(),
+                [&id](const mpc::domain::PatternPlacement& placement) {
+                    return placement.id == id;
+                });
+        return found == placements.end() ? nullptr : &*found;
+    };
+    const auto* duplicatedPlacement = findPlacement("clip-copy");
+    const auto* sourcePlacement = findPlacement("clip-source");
+    assert(duplicatedPlacement != nullptr && sourcePlacement != nullptr);
+    assert(duplicatedPlacement->id != sourcePlacement->id);
+    assert(duplicatedPlacement->patternId == sourcePlacement->patternId);
+    assert(duplicatedPlacement->startTick == 960);
+    assert(duplicatedPlacement->lengthTicks == sourcePlacement->lengthTicks);
+    assert(duplicatedPlacement->sourceOffsetTicks == sourcePlacement->sourceOffsetTicks);
+    assert(duplicatePlacementSequence.tracks[0].placements.size() == 2);
+    assert(notesEqual(duplicatePlacementSequence.tracks[0].patterns[0].notes, duplicateBaselineNotes));
+    assert(!mpc::sequencer::duplicatePatternPlacement(
+            duplicatePlacementSequence, 0, "clip-source", "clip-id-collision", 960));
+    assert(!mpc::sequencer::duplicatePatternPlacement(
+            duplicatePlacementSequence, 0, "clip-source", "clip-copy", 1920));
+    assert(!mpc::sequencer::duplicatePatternPlacement(
+            duplicatePlacementSequence, 0, "missing-clip", "clip-missing-source", 1920));
+    assert(!mpc::sequencer::duplicatePatternPlacement(
+            duplicatePlacementSequence, 0, "clip-source", "clip-overlap", 480));
+    assert(!mpc::sequencer::duplicatePatternPlacement(
+            duplicatePlacementSequence, 0, "clip-source", "clip-outside", 3000));
+    assert(duplicatePlacementSequence.tracks[0].placements.size() == 2);
+
+    mpc::MpcEditHistory duplicatePlacementHistory;
+    const auto undoPlacementDuplicate = [&duplicatePlacementSequence]() {
+        return mpc::sequencer::erasePatternPlacement(
+                duplicatePlacementSequence, 0, "clip-copy");
+    };
+    const auto redoPlacementDuplicate = [&duplicatePlacementSequence]() {
+        return mpc::sequencer::duplicatePatternPlacement(
+                duplicatePlacementSequence, 0, "clip-source", "clip-copy", 960);
+    };
+    assert(duplicatePlacementHistory.record({
+            "Duplicate Arrangement Pattern placement",
+            undoPlacementDuplicate, redoPlacementDuplicate}));
+    assert(duplicatePlacementHistory.undo());
+    assert(duplicatePlacementSequence.tracks[0].placements.size() == 1);
+    assert(duplicatePlacementSequence.tracks[0].placements[0].id == "clip-source");
+    assert(notesEqual(duplicatePlacementSequence.tracks[0].patterns[0].notes, duplicateBaselineNotes));
+    assert(duplicatePlacementHistory.redo());
+    assert(duplicatePlacementSequence.tracks[0].placements.size() == 2);
+    assert(findPlacement("clip-copy") != nullptr);
+    assert(notesEqual(duplicatePlacementSequence.tracks[0].patterns[0].notes, duplicateBaselineNotes));
+    assert(duplicatePlacementHistory.undo());
+    assert(duplicatePlacementSequence.tracks[0].placements.size() == 1);
+    assert(duplicatePlacementSequence.tracks[0].placements[0].id == "clip-source");
+    assert(notesEqual(duplicatePlacementSequence.tracks[0].patterns[0].notes, duplicateBaselineNotes));
+
     // Invalid Pattern references, duplicate ids, overlaps and out-of-range clips fail
     // without changing the placement list.
     assert(!mpc::sequencer::addPatternPlacement(

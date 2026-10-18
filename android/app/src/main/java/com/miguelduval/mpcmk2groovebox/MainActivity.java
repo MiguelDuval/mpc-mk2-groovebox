@@ -540,6 +540,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int trackIndex, long sourceStartTick, long targetStartTick);
     private static native String nativeSequenceDeleteArrangementPatternPlacement(
             int trackIndex, long sourceStartTick);
+    private static native String nativeSequenceDuplicateArrangementPatternPlacement(
+            int trackIndex, long sourceStartTick);
     private static native String nativeSequenceMoveArrangementEvent(
             int trackIndex, long sourceTick, int noteNumber, long targetTick);
     private static native String nativeSequenceCutArrangementEvent(
@@ -1961,16 +1963,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             "Arrangement paste copied event at target tick %d",
                             arrangementInsertionTick));
 
-                    Button place = addFunction(
-                            "PLACE", canPlaceArrangementPatternAtTarget(),
-                            v -> placeArrangementPatternAtCursor());
-                    place.setContentDescription(String.format(Locale.ROOT,
-                            "Arrangement place Pattern at empty target tick %d",
-                            arrangementInsertionTick));
-
                     final MpcArrangeView.Placement targetPlacement =
                             findArrangementPlacementAtTarget();
                     final boolean hasClip = targetPlacement != null;
+                    final boolean canDuplicateClip = hasClip
+                            && canDuplicateArrangementPlacementAtTarget(targetPlacement);
+                    Button placeOrDuplicate = addFunction(
+                            hasClip ? "CLIP DUP" : "PLACE",
+                            hasClip ? canDuplicateClip : canPlaceArrangementPatternAtTarget(),
+                            v -> {
+                                if (hasClip) {
+                                    duplicateArrangementPlacementAtCursor();
+                                } else {
+                                    placeArrangementPatternAtCursor();
+                                }
+                            });
+                    placeOrDuplicate.setContentDescription(hasClip
+                            ? String.format(Locale.ROOT,
+                                    "Arrangement duplicate Pattern placement at tick %d one clip later",
+                                    targetPlacement.startTick)
+                            : String.format(Locale.ROOT,
+                                    "Arrangement place Pattern at empty target tick %d",
+                                    arrangementInsertionTick));
+
                     Button moveEarlier = addFunction(
                             "CLIP −", hasClip && canMoveArrangementPlacementBy(
                                     targetPlacement, -Math.max(1, nativeSequenceGetQuantizeGrid())),
@@ -7166,6 +7181,82 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (targetStart < otherEnd && other.startTick < targetEnd) return false;
         }
         return true;
+    }
+
+    private boolean canDuplicateArrangementPlacementAtTarget(
+            MpcArrangeView.Placement source) {
+        if (source == null || arrangementInsertionTrackIndex < 0
+                || source.lengthTicks <= 0) return false;
+        final MpcArrangeView.Lane lane =
+                arrangementLaneForTrack(arrangementInsertionTrackIndex);
+        if (lane == null) return false;
+        final long targetStart = source.startTick + source.lengthTicks;
+        final long targetEnd = targetStart + source.lengthTicks;
+        if (targetStart < 0L || targetEnd > lane.lengthTicks) return false;
+        for (MpcArrangeView.Placement existing : lane.placements) {
+            if (existing.id.equals(source.id)) continue;
+            final long existingEnd = existing.startTick + existing.lengthTicks;
+            if (targetStart < existingEnd && existing.startTick < targetEnd) return false;
+        }
+        return true;
+    }
+
+    private void duplicateArrangementPlacementAtCursor() {
+        final MpcArrangeView.Placement source = findArrangementPlacementAtTarget();
+        if (source == null || !canDuplicateArrangementPlacementAtTarget(source)) {
+            setBottomStatus("ARRANGE PATTERN PLACEMENT DUPLICATE • no free adjacent range");
+            updateArrangementEventControls();
+            return;
+        }
+        final int trackIndex = arrangementInsertionTrackIndex;
+        final long sourceStart = source.startTick;
+        final long expectedTarget = sourceStart + source.lengthTicks;
+        final String result = nativeSequenceDuplicateArrangementPatternPlacement(
+                trackIndex, sourceStart);
+        if (result == null || !result.startsWith(
+                "ARRANGE PATTERN PLACEMENT DUPLICATED •")) {
+            setBottomStatus(result == null
+                    ? "ARRANGE PATTERN PLACEMENT DUPLICATE • native operation returned no result"
+                    : result);
+            updateArrangementEventControls();
+            return;
+        }
+        loadArrangementLanes();
+        MpcArrangeView.Placement duplicate = null;
+        final MpcArrangeView.Lane lane = arrangementLaneForTrack(trackIndex);
+        if (lane != null) {
+            for (MpcArrangeView.Placement candidate : lane.placements) {
+                if (candidate.startTick == expectedTarget
+                        && candidate.lengthTicks == source.lengthTicks
+                        && candidate.patternId.equals(source.patternId)
+                        && candidate.sourceOffsetTicks == source.sourceOffsetTicks
+                        && !candidate.id.equals(source.id)) {
+                    duplicate = candidate;
+                    break;
+                }
+            }
+        }
+        if (duplicate == null) {
+            final String rollback = nativeSequenceUndo();
+            loadArrangementLanes();
+            if (arrangementView != null) {
+                arrangementView.setInsertionTarget(trackIndex, sourceStart);
+            }
+            updateArrangementEventControls();
+            setBottomStatus("ARRANGE PATTERN PLACEMENT DUPLICATE • projection check failed | rollback="
+                    + rollback);
+            refreshArrangeView();
+            return;
+        }
+        // Keep the cursor on the source clip so Undo/Redo is deterministic and
+        // the disabled CLIP DUP state explicitly reflects the occupied next range.
+        if (arrangementView != null) {
+            arrangementView.setInsertionTarget(trackIndex, sourceStart);
+        }
+        updateArrangementEventControls();
+        setBottomStatus(result);
+        logArrangementPlacementState("DUPLICATE", trackIndex, sourceStart);
+        refreshArrangeView();
     }
 
     private void placeArrangementPatternAtCursor() {

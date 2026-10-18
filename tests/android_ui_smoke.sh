@@ -1740,10 +1740,12 @@ echo "Running Arrangement Pattern placement Function Bar preflight..."
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceAddArrangementPatternPlacement'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceMoveArrangementPatternPlacement'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceDeleteArrangementPatternPlacement'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceDuplicateArrangementPatternPlacement'
+require_source_contains "$0" 'Arrangement CLIP DUP → UNDO → REDO → UNDO restored exact source placement state'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement place Pattern at empty target tick'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement move Pattern placement at tick'
 require_source_contains "$0" 'Pattern placement real-touch PLACE → MOVE ± GRID'
-require_source_contains "$0" 'UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE)'
+require_source_contains "$0" 'UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE|DUPLICATE|UNDO|REDO)'
 echo "Running MPC Browser Options preflight..."
 for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "$BROWSER_SOURCE"; then
@@ -3127,6 +3129,197 @@ print("Arrangement Pattern clip SPLIT → DELETE → PLACE → MOVE changed only
 PY
     then
       echo "ERROR: Pattern placement create/move native state or accessibility validation failed"; exit 1
+    fi
+
+    # Duplicate the selected Arrangement Pattern clip into its immediately adjacent
+    # free range. The source Pattern and source placement must remain untouched.
+    arrangement_placement_duplicate_source_tick="$(sed -nE 's/.*UI_ARRANGE_PLACEMENT_STATE: action=MOVE track=[0-9]+ tick=([0-9]+).*/\\1/p' <<<"$arrangement_placement_flow_move_line")"
+    if [[ -z "$arrangement_placement_duplicate_source_tick" ]]; then
+      echo "ERROR: could not derive the live Pattern clip start for CLIP DUP"; exit 1
+    fi
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_MOVE_XML" \
+      "Arrangement duplicate Pattern placement at tick $arrangement_placement_duplicate_source_tick one clip later"; then
+      echo "ERROR: Arrangement CLIP DUP Function Bar action not actionable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PLACEMENT_DUP_PNG="/tmp/mpc-groovebox-arrange-placement-duplicate.png"
+    ARRANGE_PLACEMENT_DUP_XML="/tmp/mpc-groovebox-arrange-placement-duplicate-uiautomator.xml"
+    ARRANGE_PLACEMENT_DUP_REMOTE="/sdcard/mpc-groovebox-arrange-placement-duplicate-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_DUP_REMOTE" "$ARRANGE_PLACEMENT_DUP_XML"; then
+      echo "ERROR: Arrangement CLIP DUP hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_DUP_PNG"; then
+      echo "ERROR: Arrangement CLIP DUP screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_duplicate_line="$(arrangement_placement_state_line DUPLICATE)"
+    if [[ -z "$arrangement_placement_duplicate_line" ]]; then
+      echo "ERROR: native Arrangement CLIP DUP did not log placement state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_flow_move_line" "$arrangement_placement_duplicate_line" \
+      "$ARRANGE_PLACEMENT_DUP_XML" "$arrange_event_track" \
+      "$arrangement_placement_duplicate_source_tick" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+before_line, duplicate_line, hierarchy_path, track_s, cursor_s = sys.argv[1:]
+track, cursor = map(int, (track_s, cursor_s))
+pattern = re.compile(
+    r"UI_ARRANGE_PLACEMENT_STATE: action=(MOVE|DUPLICATE) track=(\d+) "
+    r"tick=(\d+) placements=(.*?) pattern=(.*)$")
+def decode(line, action):
+    match = pattern.search(line)
+    if not match or match.group(1) != action:
+        raise AssertionError(f"missing {action} native placement state: {line!r}")
+    if tuple(map(int, match.group(2,3))) != (track,cursor):
+        raise AssertionError(f"{action} did not preserve the source cursor/track")
+    placement_list = []
+    for item in match.group(4).split(";"):
+        if not item: continue
+        fields = item.split(",")
+        if len(fields) != 5: raise AssertionError(f"invalid clip record: {item!r}")
+        placement_list.append((fields[0],fields[1],*map(int,fields[2:])))
+    length_s, sep, events = match.group(5).partition("|")
+    if not sep: raise AssertionError(f"invalid source Pattern state: {match.group(5)!r}")
+    return match.group(3), int(length_s), placement_list, match.group(5)
+_, before_length, before_clips, before_pattern = decode(before_line,"MOVE")
+_, duplicate_length, clips, duplicate_pattern = decode(duplicate_line,"DUPLICATE")
+if before_length != duplicate_length or before_pattern != duplicate_pattern:
+    raise AssertionError("CLIP DUP altered underlying Pattern data or sequence length")
+sources=[clip for clip in before_clips if clip[2] == cursor]
+if len(sources) != 1:
+    raise AssertionError(f"cursor should identify one source clip starting at {cursor}: {before_clips!r}")
+source=sources[0]
+expected_start=source[2]+source[3]
+if len(clips) != len(before_clips)+1:
+    raise AssertionError(f"CLIP DUP must add exactly one placement: {before_clips!r} -> {clips!r}")
+clones=[clip for clip in clips if clip[2] == expected_start and clip[0] != source[0]]
+if len(clones) != 1:
+    raise AssertionError(f"CLIP DUP must add one adjacent placement at {expected_start}: {clips!r}")
+clone=clones[0]
+if clone[1] != source[1] or clone[3:] != source[3:]:
+    raise AssertionError(f"duplicate clip did not preserve source Pattern/length/source offset: {source!r} -> {clone!r}")
+if [clip for clip in clips if clip[0] != clone[0]] != before_clips:
+    raise AssertionError("CLIP DUP changed or reordered existing clip identities/ranges")
+nodes=list(ET.parse(hierarchy_path).getroot().iter("node"))
+dup=[node for node in nodes if node.attrib.get("content-desc")==
+     f"Arrangement duplicate Pattern placement at tick {cursor} one clip later"]
+if len(dup)!=1 or dup[0].attrib.get("enabled")!="false":
+    raise AssertionError("CLIP DUP should disable when its immediately adjacent destination is now occupied")
+undo=[node for node in nodes if node.attrib.get("content-desc")=="Arrangement undo latest sequencer edit"]
+redo=[node for node in nodes if node.attrib.get("content-desc")=="Arrangement redo latest sequencer edit"]
+if len(undo)!=1 or undo[0].attrib.get("enabled")!="true":
+    raise AssertionError("CLIP DUP did not expose native Undo")
+if len(redo)!=1 or redo[0].attrib.get("enabled")!="false":
+    raise AssertionError("CLIP DUP unexpectedly exposes Redo before Undo")
+print(f"Arrangement CLIP DUP added one adjacent clip at tick {expected_start}; source clip and MIDI Pattern were unchanged.")
+PY
+    then
+      echo "ERROR: Arrangement CLIP DUP native-state or accessibility validation failed"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_DUP_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: Arrangement CLIP DUP UNDO action not available"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PLACEMENT_DUP_UNDO_PNG="/tmp/mpc-groovebox-arrange-placement-duplicate-undo.png"
+    ARRANGE_PLACEMENT_DUP_UNDO_XML="/tmp/mpc-groovebox-arrange-placement-duplicate-undo-uiautomator.xml"
+    ARRANGE_PLACEMENT_DUP_UNDO_REMOTE="/sdcard/mpc-groovebox-arrange-placement-duplicate-undo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_DUP_UNDO_REMOTE" "$ARRANGE_PLACEMENT_DUP_UNDO_XML"; then
+      echo "ERROR: Arrangement CLIP DUP UNDO hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_DUP_UNDO_PNG"; then
+      echo "ERROR: Arrangement CLIP DUP UNDO screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_duplicate_undo_line="$(arrangement_placement_state_line UNDO)"
+    if [[ -z "$arrangement_placement_duplicate_undo_line" ]]; then
+      echo "ERROR: CLIP DUP UNDO did not log native state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_flow_move_line" "$arrangement_placement_duplicate_undo_line" \
+      "$ARRANGE_PLACEMENT_DUP_UNDO_XML" "$arrange_event_track" \
+      "$arrangement_placement_duplicate_source_tick" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+before_line, undo_line, hierarchy_path, track_s, cursor_s = sys.argv[1:]
+track, cursor = map(int,(track_s,cursor_s))
+pattern=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(MOVE|UNDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+a=pattern.search(before_line); b=pattern.search(undo_line)
+if not a or not b or a.group(1)!="MOVE" or b.group(1)!="UNDO":
+    raise AssertionError("missing placement state for CLIP DUP Undo")
+if tuple(map(int,a.group(2,3)))!=(track,cursor) or tuple(map(int,b.group(2,3)))!=(track,cursor):
+    raise AssertionError("CLIP DUP Undo changed the source cursor")
+if a.group(4)!=b.group(4) or a.group(5)!=b.group(5):
+    raise AssertionError("CLIP DUP Undo did not restore exact prior placement/Pattern serialization")
+nodes=list(ET.parse(hierarchy_path).getroot().iter("node"))
+dup=[n for n in nodes if n.attrib.get("content-desc")==f"Arrangement duplicate Pattern placement at tick {cursor} one clip later"]
+if len(dup)!=1 or dup[0].attrib.get("enabled")!="true":
+    raise AssertionError("CLIP DUP Undo should restore the enabled duplicate action")
+redo=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement redo latest sequencer edit"]
+if len(redo)!=1 or redo[0].attrib.get("enabled")!="true":
+    raise AssertionError("CLIP DUP Undo did not expose native Redo")
+print("Arrangement CLIP DUP UNDO restored exact pre-duplicate clip state.")
+PY
+    then
+      echo "ERROR: CLIP DUP UNDO did not restore the pre-duplicate state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_DUP_UNDO_XML" \
+      "Arrangement redo latest sequencer edit"; then
+      echo "ERROR: Arrangement CLIP DUP REDO action not available"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PLACEMENT_DUP_REDO_PNG="/tmp/mpc-groovebox-arrange-placement-duplicate-redo.png"
+    ARRANGE_PLACEMENT_DUP_REDO_XML="/tmp/mpc-groovebox-arrange-placement-duplicate-redo-uiautomator.xml"
+    ARRANGE_PLACEMENT_DUP_REDO_REMOTE="/sdcard/mpc-groovebox-arrange-placement-duplicate-redo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_DUP_REDO_REMOTE" "$ARRANGE_PLACEMENT_DUP_REDO_XML"; then
+      echo "ERROR: Arrangement CLIP DUP REDO hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_DUP_REDO_PNG"; then
+      echo "ERROR: Arrangement CLIP DUP REDO screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_duplicate_redo_line="$(arrangement_placement_state_line REDO)"
+    if [[ -z "$arrangement_placement_duplicate_redo_line" ]]; then
+      echo "ERROR: CLIP DUP REDO did not log native state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_duplicate_line" "$arrangement_placement_duplicate_redo_line" <<'PY'
+import re, sys
+first,redo=sys.argv[1:]
+pattern=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(DUPLICATE|REDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+a=pattern.search(first); b=pattern.search(redo)
+if not a or not b or a.group(4)!=b.group(4) or a.group(5)!=b.group(5):
+    raise AssertionError("CLIP DUP Redo did not reproduce exact duplicate placement state")
+print("Arrangement CLIP DUP REDO reproduced the exact duplicate clip state.")
+PY
+    then
+      echo "ERROR: CLIP DUP REDO changed duplicate clip state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_DUP_REDO_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: final CLIP DUP cleanup UNDO action not available"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PLACEMENT_DUP_RESTORED_PNG="/tmp/mpc-groovebox-arrange-placement-duplicate-restored.png"
+    ARRANGE_PLACEMENT_DUP_RESTORED_XML="/tmp/mpc-groovebox-arrange-placement-duplicate-restored-uiautomator.xml"
+    ARRANGE_PLACEMENT_DUP_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-placement-duplicate-restored-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_DUP_RESTORED_REMOTE" "$ARRANGE_PLACEMENT_DUP_RESTORED_XML"; then
+      echo "ERROR: final CLIP DUP cleanup hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_DUP_RESTORED_PNG"; then
+      echo "ERROR: final CLIP DUP cleanup screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_duplicate_restored_line="$(arrangement_placement_state_line UNDO)"
+    if [[ -z "$arrangement_placement_duplicate_restored_line" ]]; then
+      echo "ERROR: final CLIP DUP cleanup did not log native state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_flow_move_line" "$arrangement_placement_duplicate_restored_line" <<'PY'
+import re, sys
+first,undo=sys.argv[1:]
+pattern=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(MOVE|UNDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+a=pattern.search(first); b=pattern.search(undo)
+if not a or not b or a.group(4)!=b.group(4) or a.group(5)!=b.group(5):
+    raise AssertionError("final CLIP DUP Undo did not restore exact pre-duplicate state")
+print("Arrangement CLIP DUP → UNDO → REDO → UNDO restored exact source placement state.")
+PY
+    then
+      echo "ERROR: final CLIP DUP cleanup did not restore exact state"; exit 1
     fi
 
     if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_MOVE_XML" \

@@ -610,6 +610,14 @@ jobs:
             /tmp/mpc-groovebox-arrange-placement-flow-delete-restored-uiautomator.xml
             /tmp/mpc-groovebox-arrange-placement-flow-final.png
             /tmp/mpc-groovebox-arrange-placement-flow-final-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-duplicate.png
+            /tmp/mpc-groovebox-arrange-placement-duplicate-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-duplicate-undo.png
+            /tmp/mpc-groovebox-arrange-placement-duplicate-undo-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-duplicate-redo.png
+            /tmp/mpc-groovebox-arrange-placement-duplicate-redo-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-duplicate-restored.png
+            /tmp/mpc-groovebox-arrange-placement-duplicate-restored-uiautomator.xml
             /tmp/mpc-groovebox-arrange-loop-before.png
             /tmp/mpc-groovebox-arrange-loop-before-uiautomator.xml
             /tmp/mpc-groovebox-arrange-loop-changed.png

@@ -117,6 +117,33 @@ inline bool addPatternPlacement(
     return true;
 }
 
+// Duplicate a timeline placement while sharing the same source Pattern/range.
+// The new placement is an independent clip instance; note data itself is not copied.
+inline bool duplicatePatternPlacement(
+        domain::Sequence& sequence,
+        std::size_t trackIndex,
+        const std::string& sourcePlacementId,
+        std::string duplicatePlacementId,
+        std::int64_t targetStartTick) {
+    if (trackIndex >= sequence.tracks.size()
+            || targetStartTick < 0
+            || targetStartTick > std::numeric_limits<std::int32_t>::max()
+            || duplicatePlacementId.empty()) {
+        return false;
+    }
+    auto& track = sequence.tracks[trackIndex];
+    const auto* source = findUniquePatternPlacement(track, sourcePlacementId);
+    if (source == nullptr || patternPlacementMatches(track, duplicatePlacementId) != 0
+            || sourcePlacementId == duplicatePlacementId) {
+        return false;
+    }
+    const auto sourceCopy = *source;
+    return addPatternPlacement(
+            sequence, trackIndex, std::move(duplicatePlacementId),
+            sourceCopy.patternId, targetStartTick,
+            sourceCopy.lengthTicks, sourceCopy.sourceOffsetTicks);
+}
+
 // Move one unique placement without changing its source Pattern, duration or offset.
 inline bool movePatternPlacement(
         domain::Sequence& sequence,
