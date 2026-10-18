@@ -24,6 +24,11 @@ Older queue entries below are historical snapshots. Read the status here first, 
 
 
 ### Controller reverse-engineering traceability — DOCUMENTATION SLICE ADDED (2026-10-18)
+- Added [MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md](MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md), the explicit MPC One / MPC 3.9 action → Studio MkII gesture → product semantic route crosswalk. It covers the top-panel actions, all 16 Mode+Pad destinations, alternate routes, state continuity, feedback, known backend gaps and a bounded physical-validation queue.
+- Documented non-identical gestures rather than assuming 1:1 hardware parity: Studio Shift+Main / Track View vs MPC One Main / Grid; Studio Shift+Browse / Browser Up vs MPC One Save; and the reversed primary/secondary Track Mute / Pad Mute relationship. Also explicitly records that Studio has no physical bank of eight Q-Link knobs or two-axis XY pad and that Mode+Pad 14 is Looper, not XYFX.
+- Reconciled source responsibilities: the cross-device document defines target-to-physical equivalence; the semantic map defines the app action emitted; the reverse-engineering traceability doc defines protocol/source/test evidence. This is documentation-only; physical Studio MkII acceptance remains pending and the Project Save/Open exact-SHA task above stays the current implementation priority.
+
+
 - Added [MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md](MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md) to connect the physical control map, published MIDI/SysEx research, current decoder/semantic/feedback implementation, automated tests and physical validation status.
 - Indexed the official Akai MPC Studio MkII FAQ and troubleshooting guide, Akai-linked MPC Studio Academy and Masterclass playlists, and a manufacturer-authored Quickstart mirror. Only transferable controller facts/physical gestures are retained; MPC Desktop, plug-in licensing, DAW navigation and host-specific tutorials are explicitly excluded.
 - The official tutorial playlist pages did not expose usable full transcripts in this research pass. Their source links are indexed, but they are not falsely marked fully reviewed; future findings require a video title and timestamp showing a specific physical action.
