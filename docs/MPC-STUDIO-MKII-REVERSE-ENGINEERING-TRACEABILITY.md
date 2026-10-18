@@ -39,10 +39,18 @@ Confidence belongs to a behavior, not an entire document. CONFIRMED means that e
 ### R-01 — Public MIDI / SysEx chart repository
 
 **Repository:** [bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts](https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts)  
-**Reviewed files:** [README.md](https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts/blob/master/README.md), [Go LCD proof of concept](https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts/blob/master/go-lcd-poc/main.go), [JavaScript LCD proof of concept](https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts/blob/master/lcd-poc/index.js).  
+**Reviewed files:** [README.md](https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts/blob/main/README.md), [Go LCD proof of concept](https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts/blob/main/go-lcd-poc/main.go), [Go POC control annotations](https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts/blob/main/go-lcd-poc/controls.yaml), [Python LCD proof of concept](https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts/blob/main/python-lcd-poc/main.py), and [JavaScript LCD proof of concept](https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts/blob/main/lcd-poc/index.js). The upstream default branch is `main`; use current branch URLs, not the old `master` path.  
 **Evidence:** Independent, non-manufacturer protocol research based on observation and sending MIDI.  
-**Retained:** button-note/LED-CC table, pad-note mapping, Jog Wheel, Touch Strip, RGB pad SysEx and LCD chunking/encoding.  
+**Retained:** button-note/LED-CC table, pad-note mapping, Jog Wheel, Touch Strip, RGB pad SysEx and LCD chunking/encoding. The Go, Python and JavaScript LCD proof-of-concepts provide independent encoders and six-region transmission examples; `python-lcd-poc/png.py` is a generic third-party PNG helper, not controller protocol evidence.  
 **Excluded:** the author's host-specific MPC Software / Ableton workflow. We use protocol facts, not copied source code. Code examples are corroborating experiments, not a license to copy implementation.
+
+### R-01a — Binary LCD capture and image-fixture inventory
+
+The upstream repository's `sysex/` directory contains **72 binary messages**: 60 files named as six-chunk groups `a1.syx` through `j6.syx`, plus 12 numeric `.sysex` files. Its `png/` directory contains 72 same-stem PNG fixtures. A representative byte inspection of numeric captures `1.sysex`–`12.sysex` shows the LCD message prefix `F0 47 7F 4A 04`, followed by size/flag fields, chunk coordinates and a seven-bit-safe payload beginning with the encoded PNG signature. The twelve numeric captures form two six-chunk coordinate runs: (0,0), (0,60), (60,0), (60,60), (120,0), (120,60), repeated for the second frame. Representative `a1.syx`, `a2.syx`, `j1.syx` and `j6.syx` show the same LCD transport family.
+
+**Audit boundary:** file inventory plus representative headers/payload prefixes were inspected; all 72 payloads were **not** individually decoded or reassembled into image fixtures. These are useful test references, not a claim of exhaustive binary reverse-engineering. They remain external-source evidence and were not copied into our product repository.
+
+**Important mapping conflict:** the public README's Button Note table identifies the Mode button as Note **114**, matching our current control map and semantic adapter. But the upstream `go-lcd-poc/controls.yaml` labels Mode with `data1: 1`. This appears to be an inconsistent POC annotation; it is not reconciled by the documentation alone. Keep the currently corroborated 114 mapping as a candidate, log the actual incoming status/note from the real controller and resolve the discrepancy in a physical test before declaring it CONFIRMED.
 
 ### R-02 — Akai Professional MPC Studio MkII FAQ
 
@@ -104,6 +112,10 @@ The MkII is host-driven: external software interprets incoming messages and send
 | Output feedback | Host sends CC and SysEx for button LEDs, pad RGB, Touch Strip LEDs and LCD. | Encoding tests exist. Physical feedback needs per-function tests. |
 
 ### Channel-validation discrepancy to resolve
+
+The mapping discrepancy in R-01a is a separate open item: the README/current app say Mode Note 114, while the Go POC YAML says Note 1. Do not silently merge these values; obtain a raw physical capture of Mode press/release and preserve the evidence in the hardware test log.
+
+
 
 The source charts specify Channel 1 for buttons and several controls. The current decoder enforces channel nibble 0 for button notes, Jog press and Touch Strip touch Note 78, and channel nibble 9 for pads/aftertouch. However, its CC branches currently accept CC 100 (Jog Wheel) and CC 33 (Touch Strip slide) **without checking the MIDI channel**. This may be intentional tolerance, but differs from a strictly channel-specific source interpretation. Capture these controls on the actual unit, log the raw status byte, then document the intended tolerance or add a focused channel-policy test. Do not silently treat this as settled.
 
