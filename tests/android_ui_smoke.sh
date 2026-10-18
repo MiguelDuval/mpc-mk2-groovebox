@@ -4895,6 +4895,11 @@ PY
         echo "ERROR: Grid $parameter_token state unavailable before edit"; cat "$selected_xml"; exit 1;
       }
       read -r step_before velocity_before probability_before ratchet_before nudge_before duration_before grid_ticks <<< "$current_state"
+      if [ "$parameter_name" = "duration" ]; then
+        parameter_minimum=$((grid_ticks / 4))
+        if [ "$parameter_minimum" -lt 1 ]; then parameter_minimum=1; fi
+        parameter_maximum=$((grid_ticks * 4))
+      fi
 
       if ! python3 - "$selected_xml" "$parameter_token" "$parameter_name" <<'PY'
 import sys
@@ -5041,7 +5046,20 @@ PY
     grid_event_test_parameter "probability" "PROB" 2 0 127
     grid_event_test_parameter "ratchet" "RAT" 3 1 8
     grid_event_test_parameter "nudge" "NUDGE" 4 -960 960
-    grid_event_test_parameter "duration" "DUR" 5 1 "$((grid_ticks * 4))"
+    grid_event_test_parameter "duration" "DUR" 5 1 1
+
+    # Return to VEL before ERASE so the empty-state contract remains explicit
+    # and the standard VEL controls are the disabled controls being asserted.
+    if ! tap_visible_description_early "$grid_event_current_xml" "Grid event parameter cycle"; then
+      echo "ERROR: Grid PARAM could not return to VEL before ERASE"; exit 1
+    fi
+    sleep 0.2
+    GRID_EDIT_EMPTY_VEL_FOCUS_XML="/tmp/mpc-groovebox-grid-empty-vel-focus-uiautomator.xml"
+    GRID_EDIT_EMPTY_VEL_FOCUS_REMOTE="/sdcard/mpc-groovebox-grid-empty-vel-focus-uiautomator.xml"
+    if ! dump_device_ui "$GRID_EDIT_EMPTY_VEL_FOCUS_REMOTE" "$GRID_EDIT_EMPTY_VEL_FOCUS_XML"; then
+      echo "ERROR: Grid VEL focus hierarchy before ERASE failed"; exit 1
+    fi
+    grid_event_current_xml="$GRID_EDIT_EMPTY_VEL_FOCUS_XML"
 
     echo "Grid PARAM cycling and real-touch +/- acceptance passed for VEL, PROB, RAT, NUDGE and DUR."
     if ! tap_visible_description_early "$grid_event_current_xml" "Grid Erase tool"; then
