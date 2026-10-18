@@ -6,21 +6,22 @@ Older queue entries below are historical snapshots. Read the status here first, 
 
 ### 1. Project SAVE / SAVE AS / OPEN — COMPLETE / EXACT-SHA VERIFIED
 
-- Live PR #23 HEAD at acceptance: 617511efb820e96c6d9576051fa30012a3368db1; Android Build #2856 / run 39162451542 completed success on that exact SHA. Workflow: [run #2856](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39162451542).
-- The actual Android emulator and DocumentsUI/SAF path saved the v2 Project, mutated the in-memory Project, reopened the file and compared the full canonical domain SHA. Fixture: two non-default MIDI notes and placement project-persistence-clip-01 → sequence-1-track-1-pattern-1, start 480, length 720, source offset 120. SHA: 4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9.
-- The same run passed force-stop/relaunch → Open with exact-state restoration, SAVE AS cancellation and OPEN cancellation without state changes, malformed-file rejection without replacing the current model, and a runtime-valid placement-free v1 document opened through SAF with zero placements and exact canonical-v2 oracle equality.
-- Run #2835 (39139658033) on the earlier SHA 450bca9aac99adc47c61d14d3abc76a77c3cf439 was cancelled during emulator smoke, not a product failure or pass. The later full exact-HEAD run #2856 supersedes it and passed. APK artifact 12149263768; UI evidence artifact 12150136466.
-- Known boundary: assigned PCM remains external; provider overwrite/write-failure recovery and opening two independently saved documents are not yet covered. Physical MPC Studio MkII validation remains separate and pending.
+- Android Build #2856 / run 39162451542 passed on exact SHA 617511efb820e96c6d9576051fa30012a3368db1: [Actions #2856](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39162451542).
+- Real Android DocumentsUI/SAF acceptance saved a v2 Project, mutated the live model, reopened it and compared the canonical domain SHA. Fixture: two non-default MIDI notes and placement project-persistence-clip-01 → sequence-1-track-1-pattern-1, start 480, length 720, source offset 120. Exact state SHA: 4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9.
+- The same run passed force-stop/relaunch → Open, SAVE AS/Open cancellation without state mutation, malformed-file rejection without replacing the active model, and placement-free runtime-valid v1 Open with zero placements and canonical-v2 state-oracle equality.
+- Earlier Build #2835 / run 39139658033 was cancelled during emulator smoke on prior SHA 450bca9aac99adc47c61d14d3abc76a77c3cf439; it was neither a failure nor a pass. Build #2856 superseded it. APK artifact 12149263768; UI evidence artifact 12150136466.
+- Remaining Project boundaries: provider overwrite/write-failure recovery, independently opening two saved Projects, and external sample PCM relinking are not covered. Physical MPC Studio MkII validation is separate and pending.
 
-### 2. Step Edit Nudge / Duration — real-touch acceptance extended; current-SHA CI pending
+### 2. Step Edit NUDGE / DURATION + Grid event VEL — COMBINED EXACT-SHA ACCEPTANCE PENDING
 
-- The Android Step Edit route already exposes native NUDGE and DURATION setters, PARAM focus cycling and +/- adjustments. Extended tests/android_ui_smoke.sh to tap those controls on a temporary real step and assert exact focused-field deltas against the native Step Edit projection. Nudge must move +60 ticks; Duration must move by one quarter-grid increment; other note fields and Step 01 must stay unchanged.
-- Added dedicated after-edit screenshot/accessibility artifacts. The source change requires a new exact-SHA Android Build before these new assertions may be called verified. Do not confuse the previously green probability-only test with this expanded scenario.
+- The current test branch extends Step Edit through real touch: PARAM focus → NUDGE +60 ticks → DUR + one quarter-grid increment, with unrelated-field isolation and Step 01 preservation.
+- Grid now adds a native-backed selected-event strip. SELECT exposes velocity, probability, ratchet, nudge and duration; VEL + must change only velocity by one, VEL − must restore all five fields exactly, and ERASE must leave the strip in EMPTY state with both velocity controls disabled.
+- The same emulator smoke includes dedicated screenshots/accessibility hierarchies for both routes. The last run on parent SHA 9007b899e2fb122c1b1e590a27f095ab9676afa7 was still executing its emulator step when the combined Grid extension was prepared. The subsequent feature HEAD must complete the full Android Build; do not mark any added assertion verified from the earlier run.
 
-### 3. NEXT PRODUCT SLICE — Grid event-parameter editing (GRID-007)
+### 3. NEXT PRODUCT SLICE — finish Grid event-parameter coverage (GRID-007)
 
-- Inspect current Drum Grid controls, semantic/native setters and action-specific tests first. Choose one real parameter supported by the current backend; drive it through a real touch, assert the exact intended field delta and preservation of unrelated MIDI fields, then exercise Undo/Redo if the existing Grid route supports it.
-- Keep Drum Grid explicitly scoped to supported Drum tracks; do not route Keygroup/Plugin/MIDI/CV into the Drum editor. Add the smallest real-UI acceptance and reverify on the new exact SHA before updating this queue.
+- After the combined exact-SHA smoke passes, select one further supported Grid field (prefer probability/ratchet only where the existing native setter is authoritative) and extend the existing selected-event route without duplicating domain state or introducing unsupported Track Types.
+- Keep Grid Drum-focused. Any field without an exact native/UI route remains unavailable; do not imply melodic piano-roll support for Keygroup/Plugin/MIDI/CV. Physical controller acceptance remains separate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 

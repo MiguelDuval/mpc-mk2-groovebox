@@ -340,6 +340,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView sequenceTrackInfoView;
     private TextView gridToolStateView;
     private TextView gridSelectionStateView;
+    private TextView gridEventParameterView;
+    private Button gridEventVelocityMinusButton;
+    private Button gridEventVelocityPlusButton;
+    private int selectedGridEventPad = -1;
+    private int selectedGridEventStep = -1;
     private final Handler sequenceUiHandler = new Handler(Looper.getMainLooper());
     private Runnable sequenceUiUpdater;
     private static final int STEP_EDIT_PARAMETER_VELOCITY = 0;
@@ -8088,6 +8093,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 && nativeSequenceIsGridEditable());
         pageTitle.setText("GRID");
         content.removeAllViews();
+        gridEventParameterView = null;
+        gridEventVelocityMinusButton = null;
+        gridEventVelocityPlusButton = null;
+        selectedGridEventPad = -1;
+        selectedGridEventStep = -1;
         sequenceTimeline = null;
         for (int i = 0; i < sequenceStepButtons.length; i++) {
             sequenceStepButtons[i] = null;
@@ -8215,7 +8225,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (tool == MpcUiState.EditorTool.SELECT) {
                 selectedPad = padIndex;
                 navigationController.setSelectedPad(padIndex);
+                selectedGridEventPad = padIndex;
+                selectedGridEventStep = absoluteStep;
                 updateGridSelectionState(padIndex, absoluteStep);
+                refreshGridEventParameterState();
                 refreshMpcCompactContext();
                 sequenceGridView.invalidate();
                 setBottomStatus(
@@ -8256,6 +8269,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             : MpcUiState.DataDialFocus.PAD);
             refreshSequenceGrid();
             updateGridSelectionState(padIndex, absoluteStep);
+            refreshGridEventParameterState();
             refreshMpcCompactContext();
         });
 
@@ -8270,6 +8284,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         page.addView(sequenceGridView, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout eventParameterRow = row();
+        gridEventParameterView = label(
+                "GRID EVENT • Select a note",
+                9, TEXT);
+        gridEventParameterView.setGravity(Gravity.CENTER_VERTICAL);
+        gridEventParameterView.setPadding(dp(8), 0, dp(8), 0);
+        gridEventParameterView.setSingleLine(true);
+        gridEventParameterView.setEllipsize(TextUtils.TruncateAt.END);
+        gridEventParameterView.setBackground(strokeBackground(SURFACE_2, LINE, 6));
+        gridEventParameterView.setContentDescription(
+                "Grid event parameters: no note selected");
+        eventParameterRow.addView(gridEventParameterView,
+                new LinearLayout.LayoutParams(0, dp(40), 1));
+
+        gridEventVelocityMinusButton = actionButton(
+                "VEL −", v -> adjustSelectedGridVelocity(-1));
+        gridEventVelocityMinusButton.setContentDescription(
+                "Grid event velocity minus");
+        eventParameterRow.addView(gridEventVelocityMinusButton,
+                new LinearLayout.LayoutParams(dp(84), dp(40)));
+
+        gridEventVelocityPlusButton = actionButton(
+                "VEL +", v -> adjustSelectedGridVelocity(1));
+        gridEventVelocityPlusButton.setContentDescription(
+                "Grid event velocity plus");
+        eventParameterRow.addView(gridEventVelocityPlusButton,
+                new LinearLayout.LayoutParams(dp(84), dp(40)));
+
+        page.addView(eventParameterRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
         LinearLayout footer = row();
         TextView resolution = label("", 10, TEXT);
@@ -8325,6 +8370,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         updateGridPadSelectionState(selectedPad);
         refreshGridToolState();
         refreshSequenceGrid();
+        refreshGridEventParameterState();
         refreshSequencePlayhead();
         refreshMpcCompactContext();
         refreshMpcFunctionBar();
@@ -8351,6 +8397,128 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         + state.dataDialFocus().name().replace('_', ' '));
         gridToolStateView.setTextColor(
                 state.actionAvailable() ? ACCENT : DANGER);
+    }
+
+    private void refreshGridEventParameterState() {
+        if (gridEventParameterView == null) {
+            return;
+        }
+
+        final boolean hasSelection =
+                selectedGridEventPad >= 0 && selectedGridEventPad < 16
+                        && selectedGridEventStep >= 0
+                        && selectedGridEventStep < sequenceGridTotalSteps();
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int[] parameters = hasSelection
+                ? nativeSequenceGetStepParameters(
+                        selectedGridEventPad, selectedGridEventStep, gridTicks)
+                : null;
+        final boolean hasEvent = parameters != null
+                && parameters.length >= 5
+                && parameters[0] > 0;
+        final boolean editable = hasEvent && nativeSequenceIsGridEditable();
+
+        if (!hasSelection) {
+            gridEventParameterView.setText("GRID EVENT • Select a note");
+            gridEventParameterView.setContentDescription(
+                    "Grid event parameters: no note selected");
+        } else if (parameters == null || parameters.length == 0
+                || parameters[0] <= 0) {
+            final String text = String.format(
+                    Locale.ROOT,
+                    "PAD %02d • STEP %02d • EMPTY",
+                    selectedGridEventPad + 1,
+                    selectedGridEventStep + 1);
+            gridEventParameterView.setText(text);
+            gridEventParameterView.setContentDescription(String.format(
+                    Locale.ROOT,
+                    "Grid event parameters: PAD %02d, STEP %02d, empty",
+                    selectedGridEventPad + 1,
+                    selectedGridEventStep + 1));
+        } else if (!hasEvent) {
+            gridEventParameterView.setText(String.format(
+                    Locale.ROOT,
+                    "PAD %02d • STEP %02d • PARAMETERS UNAVAILABLE",
+                    selectedGridEventPad + 1,
+                    selectedGridEventStep + 1));
+            gridEventParameterView.setContentDescription(String.format(
+                    Locale.ROOT,
+                    "Grid event parameters: PAD %02d, STEP %02d, parameters unavailable",
+                    selectedGridEventPad + 1,
+                    selectedGridEventStep + 1));
+        } else {
+            final int duration = parameters[4] > 0 ? parameters[4] : gridTicks;
+            gridEventParameterView.setText(String.format(
+                    Locale.ROOT,
+                    "PAD %02d • STEP %02d • VEL %d • PROB %d • RAT %dx • NUDGE %+d • DUR %d",
+                    selectedGridEventPad + 1,
+                    selectedGridEventStep + 1,
+                    parameters[0],
+                    parameters[1],
+                    parameters[2],
+                    parameters[3],
+                    duration));
+            gridEventParameterView.setContentDescription(String.format(
+                    Locale.ROOT,
+                    "Grid event parameters: PAD %02d, STEP %02d, VEL %d, PROB %d, RAT %dx, NUDGE %+d, DUR %d",
+                    selectedGridEventPad + 1,
+                    selectedGridEventStep + 1,
+                    parameters[0],
+                    parameters[1],
+                    parameters[2],
+                    parameters[3],
+                    duration));
+        }
+
+        if (gridEventVelocityMinusButton != null) {
+            gridEventVelocityMinusButton.setEnabled(
+                    editable && parameters[0] > 1);
+        }
+        if (gridEventVelocityPlusButton != null) {
+            gridEventVelocityPlusButton.setEnabled(
+                    editable && parameters[0] < 127);
+        }
+    }
+
+    private void adjustSelectedGridVelocity(int delta) {
+        if (selectedGridEventPad < 0 || selectedGridEventPad >= 16
+                || selectedGridEventStep < 0
+                || selectedGridEventStep >= sequenceGridTotalSteps()) {
+            setBottomStatus("GRID VEL • Select an active note first");
+            refreshGridEventParameterState();
+            return;
+        }
+
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int[] parameters = nativeSequenceGetStepParameters(
+                selectedGridEventPad, selectedGridEventStep, gridTicks);
+        if (parameters == null || parameters.length < 5 || parameters[0] <= 0) {
+            setBottomStatus("GRID VEL • No active note at the selected cell");
+            refreshGridEventParameterState();
+            return;
+        }
+        if (!nativeSequenceIsGridEditable()) {
+            setBottomStatus("GRID VEL • Stop playback before editing");
+            refreshGridEventParameterState();
+            return;
+        }
+
+        final int velocity = Math.max(1, Math.min(127, parameters[0] + delta));
+        if (velocity == parameters[0]) {
+            setBottomStatus(delta > 0 ? "GRID VEL • Maximum 127" : "GRID VEL • Minimum 1");
+            refreshGridEventParameterState();
+            return;
+        }
+
+        setBottomStatus(nativeSequenceSetStepVelocity(
+                selectedGridEventPad,
+                selectedGridEventStep,
+                gridTicks,
+                velocity));
+        refreshSequenceGrid();
+        updateGridSelectionState(selectedGridEventPad, selectedGridEventStep);
+        refreshGridEventParameterState();
+        refreshMpcCompactContext();
     }
 
     private void showSequenceLauncherPage() {
