@@ -11,6 +11,12 @@ Primary software reference is the official MPC Standalone OS v3.9 guide. Current
 
 **Action-level implementation index:** consult [MPC3-USER-ACTION-CATALOG.md](MPC3-USER-ACTION-CATALOG.md) before implementing a user-visible MPC action. It links documented behavior, firmware evidence, current Android routes/state, known gaps and acceptance tests. Update the relevant action row when implementation or verification status changes.
 
+## Controller-specific reverse-engineering map — 2026-10-18
+
+For the physical MPC Studio MkII, use [MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md](MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md) as the source → MIDI/SysEx → code → test → physical-evidence index, together with [HARDWARE-MPC-STUDIO-MK2.md](HARDWARE-MPC-STUDIO-MK2.md), [MPC-STUDIO-MKII-SEMANTIC-MAP.md](MPC-STUDIO-MKII-SEMANTIC-MAP.md), [MIDI-TRANSPORT.md](MIDI-TRANSPORT.md), and [PHYSICAL-TEST-CHECKLIST.md](PHYSICAL-TEST-CHECKLIST.md).
+
+The controller map combines public protocol research with Akai's hardware-specific FAQ, troubleshooting guide, and manufacturer-authored Quickstart guide. Akai's MPC Studio Academy and Masterclass playlists are indexed for targeted review, but full transcripts were not retrievable in this pass. Do not present them as fully reviewed. Only physical-control behavior transfers to our product; MPC Desktop, plug-in and DAW workflows are explicitly excluded. The Ableton remote script is a secondary hardware cross-check only.
+
 ---
 
 ## Firmware UI static evidence — added 2026-10-16
