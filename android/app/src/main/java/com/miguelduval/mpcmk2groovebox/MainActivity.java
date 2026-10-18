@@ -8616,7 +8616,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             // the full five-field summary visible instead of truncating DUR.
             gridEventParameterView.setText(String.format(
                     Locale.ROOT,
-                    "VEL %d • PROB %d • RAT %dx • NUDGE %+d • DUR %d",
+                    "VEL%d PROB%d RAT%dx NUDGE%+d DUR%d",
                     parameters[0],
                     parameters[1],
                     parameters[2],
