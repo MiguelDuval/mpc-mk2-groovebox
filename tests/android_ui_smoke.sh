@@ -6988,7 +6988,7 @@ project_marker_count() {
 }
 
 wait_for_new_project_marker() {
-  local marker="$1" before="$2" max_attempts="\${3:-45}" attempt count
+  local marker="$1" before="$2" max_attempts="${3:-45}" attempt count
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
     count="$(project_marker_count "$marker")"
     if [[ "$count" =~ ^[0-9]+$ ]] && (( count > before )); then return 0; fi
