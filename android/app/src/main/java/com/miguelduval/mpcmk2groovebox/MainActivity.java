@@ -52,6 +52,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -400,6 +401,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private volatile boolean startupComplete;
     private boolean uiOnlySmokeMode;
     private boolean uiAuditSmokeMode;
+    private boolean projectPersistenceSmokeMode;
     private boolean uiAuditAwaitingBrowserStoragePickerResult;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
@@ -408,6 +410,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeProjectLoad(byte[] data);
     private static native String nativeProjectGetName();
     private static native String nativeProjectGetSummary();
+    private static native String nativeProjectPreparePersistenceAcceptanceFixture();
     private static native String nativeAudioLoadSample(byte[] data);
     private static native String nativeAudioLoadSampleForPadLayer(byte[] data, int pad, int layer);
     private static native String nativeAudioSetPadSampleName(
@@ -594,6 +597,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         String smokeMode = getIntent().getStringExtra(SMOKE_MODE_EXTRA);
         uiOnlySmokeMode = "ui-only".equals(smokeMode);
         uiAuditSmokeMode = "ui-audit".equals(smokeMode);
+        projectPersistenceSmokeMode = "project-persistence".equals(smokeMode);
 
         try {
             applyFullscreenWindowPolicy();
@@ -708,6 +712,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             // shell was showing honest startup placeholders.
                             // Refresh the persistent Main shell now so the XL
                             // strip, Toolbar and Function Bar expose live state.
+                            if (projectPersistenceSmokeMode) {
+                                final String fixture = nativeProjectPreparePersistenceAcceptanceFixture();
+                                if (fixture == null || !fixture.startsWith("PROJECT_TEST_FIXTURE_READY")) {
+                                    throw new IllegalStateException(
+                                            fixture == null ? "native persistence fixture unavailable" : fixture);
+                                }
+                                Log.i(TAG, fixture + " stateSha256=" + currentProjectStateSha256());
+                                refreshAllInspectorState();
+                                refreshSequenceControls();
+                                refreshMainTrackQuickSample();
+                            }
                             updateMpcShellState();
                             Log.i(TAG, "STARTUP_COMPLETE");
 
@@ -11026,6 +11041,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             startActivityForResult(intent, REQUEST_OPEN_PROJECT);
         } catch (RuntimeException error) {
             setBottomStatus("PROJECT OPEN • picker unavailable • " + error.getClass().getSimpleName());
+            Log.i(TAG, "PROJECT_OPEN_PICKER_FAILED stateSha256=" + currentProjectStateSha256()
+                    + " error=" + error.getClass().getSimpleName());
         }
     }
 
@@ -11041,6 +11058,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             startActivityForResult(intent, REQUEST_SAVE_PROJECT_AS);
         } catch (RuntimeException error) {
             setBottomStatus("PROJECT SAVE AS • picker unavailable • " + error.getClass().getSimpleName());
+            Log.i(TAG, "PROJECT_SAVE_AS_PICKER_FAILED stateSha256=" + currentProjectStateSha256()
+                    + " error=" + error.getClass().getSimpleName());
         }
     }
 
@@ -11050,6 +11069,46 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         saveProjectToUri(currentProjectUri, false);
+    }
+
+    private static String projectBytesSha256(byte[] bytes) {
+        if (bytes == null) return "unavailable";
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(bytes);
+            final char[] hex = "0123456789abcdef".toCharArray();
+            final char[] result = new char[digest.length * 2];
+            for (int i = 0; i < digest.length; i++) {
+                final int value = digest[i] & 0xff;
+                result[i * 2] = hex[value >>> 4];
+                result[i * 2 + 1] = hex[value & 0x0f];
+            }
+            return new String(result);
+        } catch (Exception unavailable) {
+            return "unavailable";
+        }
+    }
+
+    private String currentProjectStateSha256() {
+        try {
+            return projectBytesSha256(nativeProjectSerialize());
+        } catch (RuntimeException unavailable) {
+            return "unavailable";
+        }
+    }
+
+    private static int projectFileFormatVersion(byte[] bytes) {
+        if (bytes == null || bytes.length == 0) return 0;
+        final String header = new String(
+                bytes, 0, Math.min(bytes.length, 96), StandardCharsets.UTF_8);
+        final int lineEnd = header.indexOf('\n');
+        if (lineEnd < 0) return 0;
+        final String[] fields = header.substring(0, lineEnd).trim().split("\\s+");
+        if (fields.length != 2 || !"MPCMK2_PROJECT".equals(fields[0])) return 0;
+        try {
+            return Integer.parseInt(fields[1]);
+        } catch (NumberFormatException invalid) {
+            return 0;
+        }
     }
 
     private void saveProjectToUri(Uri target, boolean selectAsCurrentProject) {
@@ -11085,6 +11144,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 if (destroyed) return;
                 if (saveFailure != null) {
                     setBottomStatus("PROJECT SAVE FAILED • " + saveFailure);
+                    Log.i(TAG, "PROJECT_SAVE_FAILED stateSha256=" + currentProjectStateSha256()
+                            + " error=" + saveFailure);
                     return;
                 }
                 if (selectAsCurrentProject) currentProjectUri = target;
@@ -11092,7 +11153,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 refreshProjectIdentity();
                 if ("PROJECT".equals(currentPage)) showProjectPage();
                 setBottomStatus("PROJECT SAVED • " + currentProjectName + " • placements and MIDI saved");
-                Log.i(TAG, "PROJECT_SAVE_COMPLETE bytes=" + bytes.length + " name=" + currentProjectName);
+                Log.i(TAG, "PROJECT_SAVE_COMPLETE bytes=" + bytes.length + " name=" + currentProjectName
+                        + " formatVersion=" + projectFileFormatVersion(bytes)
+                        + " stateSha256=" + projectBytesSha256(bytes));
             });
         });
     }
@@ -11138,7 +11201,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             } catch (Exception error) {
                 final String failure = error.getClass().getSimpleName() + ": " + error.getMessage();
                 runOnUiThread(() -> {
-                    if (!destroyed) setBottomStatus("PROJECT OPEN FAILED • " + failure);
+                    if (!destroyed) {
+                        setBottomStatus("PROJECT OPEN FAILED • " + failure);
+                        Log.i(TAG, "PROJECT_OPEN_FAILED stateSha256=" + currentProjectStateSha256()
+                                + " fileSha256=unavailable error=" + failure);
+                    }
                 });
                 return;
             }
@@ -11148,6 +11215,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 if (loaded == null || !loaded.startsWith("PROJECT_LOADED")) {
                     setBottomStatus(loaded == null
                             ? "PROJECT OPEN FAILED • native loader unavailable" : loaded);
+                    Log.i(TAG, "PROJECT_OPEN_REJECTED stateSha256=" + currentProjectStateSha256()
+                            + " fileSha256=" + projectBytesSha256(bytes) + " result=" + loaded);
                     return;
                 }
                 currentProjectUri = uri;
@@ -11162,7 +11231,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 refreshMainTrackQuickSample();
                 updateMpcShellState();
                 setBottomStatus(loaded + " • " + audioResult);
-                Log.i(TAG, "PROJECT_OPEN_COMPLETE bytes=" + bytes.length + " name=" + currentProjectName + " result=" + loaded);
+                final byte[] restoredDomain = nativeProjectSerialize();
+                final int formatVersion = projectFileFormatVersion(bytes);
+                final String persistedDomainExact = formatVersion == 2
+                        ? Boolean.toString(Arrays.equals(bytes, restoredDomain))
+                        : "not-applicable";
+                Log.i(TAG, "PROJECT_OPEN_COMPLETE bytes=" + bytes.length
+                        + " name=" + currentProjectName
+                        + " formatVersion=" + formatVersion
+                        + " fileSha256=" + projectBytesSha256(bytes)
+                        + " domainSha256=" + projectBytesSha256(restoredDomain)
+                        + " persistedDomainExact=" + persistedDomainExact
+                        + " result=" + loaded);
             });
         });
     }
@@ -11213,7 +11293,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_OPEN_PROJECT) {
-            if (resultCode != RESULT_OK || data == null) return;
+            if (resultCode != RESULT_OK || data == null) {
+                final String stateSha = currentProjectStateSha256();
+                if (resultCode == RESULT_CANCELED) {
+                    setBottomStatus("PROJECT OPEN CANCELLED • current Project unchanged");
+                    Log.i(TAG, "PROJECT_OPEN_CANCELLED stateSha256=" + stateSha);
+                } else {
+                    setBottomStatus("PROJECT OPEN FAILED • picker returned no document");
+                    Log.i(TAG, "PROJECT_OPEN_PICKER_FAILED stateSha256=" + stateSha
+                            + " resultCode=" + resultCode + " dataPresent=" + (data != null));
+                }
+                return;
+            }
             Uri uri = data.getData();
             if (uri == null) {
                 setBottomStatus("PROJECT OPEN FAILED • no document selected");
@@ -11223,7 +11314,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (requestCode == REQUEST_SAVE_PROJECT_AS) {
-            if (resultCode != RESULT_OK || data == null) return;
+            if (resultCode != RESULT_OK || data == null) {
+                final String stateSha = currentProjectStateSha256();
+                if (resultCode == RESULT_CANCELED) {
+                    setBottomStatus("PROJECT SAVE AS CANCELLED • current Project unchanged");
+                    Log.i(TAG, "PROJECT_SAVE_AS_CANCELLED stateSha256=" + stateSha);
+                } else {
+                    setBottomStatus("PROJECT SAVE AS FAILED • picker returned no destination");
+                    Log.i(TAG, "PROJECT_SAVE_AS_PICKER_FAILED stateSha256=" + stateSha
+                            + " resultCode=" + resultCode + " dataPresent=" + (data != null));
+                }
+                return;
+            }
             Uri uri = data.getData();
             if (uri == null) {
                 setBottomStatus("PROJECT SAVE AS FAILED • no destination selected");

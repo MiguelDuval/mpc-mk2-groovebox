@@ -178,6 +178,56 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectGetSummary(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenceAcceptanceFixture(
+        JNIEnv* env, jobject /* thiz */) {
+    // Acceptance-only entry point, invoked exclusively by the dedicated smoke intent.
+    // It seeds the authoritative native domain, never an Android view-side duplicate.
+    auto& core = mpc::MpcCore::instance();
+    auto candidate = core.projectState().project();
+    if (candidate.sequences.empty() || candidate.drumPrograms.empty()
+            || candidate.sequences.front().tracks.empty()
+            || candidate.sequences.front().tracks.front().patterns.empty()) {
+        return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • default Project topology unavailable");
+    }
+    auto& sequence = candidate.sequences.front();
+    auto& track = sequence.tracks.front();
+    auto& pattern = track.patterns.front();
+    if (sequence.lengthTicks < 1200 || pattern.lengthTicks < 840) {
+        return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • Sequence or Pattern too short");
+    }
+    pattern.notes = {
+        mpc::domain::MidiNoteEvent{120, 180, 36, 97, 88, 3, -11},
+        mpc::domain::MidiNoteEvent{600, 90, 42, 111, 123, 2, 7}
+    };
+    track.placements.clear();
+    mpc::domain::PatternPlacement placement;
+    placement.id = "project-persistence-clip-01";
+    placement.patternId = pattern.id;
+    placement.startTick = 480;
+    placement.lengthTicks = 720;
+    placement.sourceOffsetTicks = 120;
+    track.placements.push_back(placement);
+    std::string validationError;
+    if (mpc::persistence::serializeProject(candidate, &validationError).empty()) {
+        return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • " + validationError);
+    }
+    const std::string patternId = pattern.id;
+    if (!core.projectState().replaceProject(std::move(candidate))) {
+        return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • Project replacement rejected");
+    }
+    core.audio().refreshActiveProgramRuntimeProjection();
+    core.editHistory().clear();
+    arrangementEventClipboard.reset();
+    sequencePlayback.reset();
+    core.sequenceTransportClock().clearQueuedSequence();
+    return toJString(env,
+            "PROJECT_TEST_FIXTURE_READY notes=2 "
+            "note1=120/36/180/97/88/3/-11 "
+            "note2=600/42/90/111/123/2/7 "
+            "placement=project-persistence-clip-01/" + patternId + "/480/720/120");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
         JNIEnv* env, jobject /* thiz */, jbyteArray data) {
     if (env == nullptr || data == nullptr) return toJString(env, "PROJECT_LOAD_FAILED • empty project data");

@@ -6996,8 +6996,9 @@ fi
 if ! adb_bounded 10 shell logcat -c; then
   echo "ERROR: could not clear logcat before Project persistence test"; exit 1
 fi
-if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY"; then
-  echo "ERROR: could not launch normal native app for Project persistence test"; exit 1
+if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
+    --es "$SMOKE_MODE_EXTRA" "project-persistence"; then
+  echo "ERROR: could not launch native Project persistence acceptance session"; exit 1
 fi
 if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Browser" 40; then
   echo "ERROR: Main shell did not appear for Project persistence test"; exit 1
@@ -7152,3 +7153,283 @@ if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_REOPENED_XML"; then
 fi
 echo "Real Project Save As → add Track in memory → Open saved file restored exact persisted Track/Pattern-placement model."
 echo "Android runtime startup, local Browser, and Project persistence smoke passed."
+
+
+echo "Running extended Project persistence acceptance: full state digest, restart, legacy v1, cancel and malformed input..."
+PROJECT_V2_HOST="/tmp/mpc-groovebox-project-v2.mpcproj"
+PROJECT_V1_HOST="/tmp/mpc-groovebox-project-v1-no-placements.mpcproj"
+PROJECT_V1_CANONICAL_HOST="/tmp/mpc-groovebox-project-v1-canonical-v2.mpcproj"
+PROJECT_MALFORMED_HOST="/tmp/mpc-groovebox-project-malformed.mpcproj"
+PROJECT_EXT_OPEN_XML="/tmp/mpc-groovebox-project-extended-open-uiautomator.xml"
+PROJECT_EXT_OPEN_REMOTE="/sdcard/mpc-groovebox-project-extended-open-uiautomator.xml"
+PROJECT_EXT_OPEN_PNG="/tmp/mpc-groovebox-project-extended-open.png"
+PROJECT_EXT_RESTART_MAIN_XML="/tmp/mpc-groovebox-project-restart-main-uiautomator.xml"
+PROJECT_EXT_RESTART_MAIN_PNG="/tmp/mpc-groovebox-project-restart-main.png"
+PROJECT_EXT_RESTART_PROJECT_XML="/tmp/mpc-groovebox-project-restart-loaded-uiautomator.xml"
+PROJECT_EXT_RESTART_PROJECT_PNG="/tmp/mpc-groovebox-project-restart-loaded.png"
+PROJECT_EXT_CANCEL_XML="/tmp/mpc-groovebox-project-open-cancelled-uiautomator.xml"
+PROJECT_EXT_CANCEL_PNG="/tmp/mpc-groovebox-project-open-cancelled.png"
+PROJECT_EXT_REJECT_XML="/tmp/mpc-groovebox-project-malformed-rejected-uiautomator.xml"
+PROJECT_EXT_REJECT_PNG="/tmp/mpc-groovebox-project-malformed-rejected.png"
+PROJECT_EXT_V1_XML="/tmp/mpc-groovebox-project-legacy-v1-loaded-uiautomator.xml"
+PROJECT_EXT_V1_PNG="/tmp/mpc-groovebox-project-legacy-v1-loaded.png"
+
+wait_for_project_picker_item() {
+  local target_xml="$1" target_remote="$2" target_png="$3" item="$4"
+  local ready=0 attempt
+  for ((attempt=1; attempt<=25; attempt++)); do
+    if dump_device_ui "$target_remote" "$target_xml" \
+        && grep -Fq -- 'package="com.android.documentsui"' "$target_xml"; then
+      ready=1; break
+    fi
+    sleep 1
+  done
+  if [ "$ready" -ne 1 ]; then
+    echo "ERROR: Android DocumentsUI did not appear for expected item $item"; exit 1
+  fi
+  if ! capture_stable_picker_state "$target_remote" "$target_xml" "$target_png" 8; then
+    echo "ERROR: could not capture stable DocumentsUI state for $item"; exit 1
+  fi
+  if ! wait_for_ui_text "$target_xml" "$target_remote" "$item" 30; then
+    echo "ERROR: Android document provider did not expose $item"
+    cat "$target_xml" || true; exit 1
+  fi
+}
+open_project_document() {
+  local item="$1"
+  if ! tap_ui_description "$DUMP" "MPC Project Open"; then exit 1; fi
+  wait_for_project_picker_item "$PROJECT_EXT_OPEN_XML" "$PROJECT_EXT_OPEN_REMOTE" "$PROJECT_EXT_OPEN_PNG" "$item"
+  if ! tap_ui_picker_result_row "$PROJECT_EXT_OPEN_XML" "$item" auto label; then
+    echo "ERROR: could not select $item from the actual Android document picker"; exit 1
+  fi
+}
+show_project_route_extended() {
+  if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then exit 1; fi
+  if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Menu PROJECT" 20; then
+    echo "ERROR: Project tile did not appear in Menu"; exit 1
+  fi
+  if ! tap_ui_description "$DUMP" "MPC Menu PROJECT"; then exit 1; fi
+  if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Open" 20; then
+    echo "ERROR: Project Function Bar did not return to Project"; exit 1
+  fi
+}
+
+# Verify that the initial real UI Save As → mutate → Open restored the complete
+# serialized domain, not merely the visible counts. The native fixture above is
+# non-empty and includes non-default tick/pitch/duration/velocity/probability/
+# ratchet/nudge values as well as a clipped Pattern placement with source offset.
+project_save_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
+project_open_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
+project_saved_sha_ext="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_save_line_ext")"
+project_file_sha_ext="$(sed -nE 's/.*fileSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_open_line_ext")"
+project_domain_sha_ext="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_open_line_ext")"
+if [[ ! "$project_saved_sha_ext" =~ ^[0-9a-f]{64}$ ]] \
+    || [[ "$project_saved_sha_ext" != "$project_file_sha_ext" ]] \
+    || [[ "$project_saved_sha_ext" != "$project_domain_sha_ext" ]] \
+    || ! grep -Fq -- "formatVersion=2" <<<"$project_save_line_ext" \
+    || ! grep -Fq -- "formatVersion=2" <<<"$project_open_line_ext" \
+    || ! grep -Fq -- "persistedDomainExact=true" <<<"$project_open_line_ext"; then
+  echo "ERROR: Project Save → mutated model → Open did not preserve exact native-domain bytes"
+  echo "Save: $project_save_line_ext"; echo "Open: $project_open_line_ext"; exit 1
+fi
+echo "Project v2 Save/Open exact domain SHA passed: $project_saved_sha_ext"
+
+# A genuine force-stop kills the old application process and native model.
+# Launch without the fixture intent, then Open again through Android DocumentsUI.
+if ! adb_bounded 10 shell input keyevent KEYCODE_BACK >/dev/null 2>&1; then
+  : # Project route remains valid whether Back exits the route or only changes focus.
+fi
+if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
+  echo "ERROR: could not force-stop app for Project process restart"; exit 1
+fi
+if ! adb_bounded 10 shell logcat -c; then
+  echo "ERROR: could not clear logs before process-restart acceptance"; exit 1
+fi
+if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY"; then
+  echo "ERROR: could not relaunch app after process death"; exit 1
+fi
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Browser" 40; then
+  echo "ERROR: Main shell did not appear after the actual process restart"; exit 1
+fi
+restart_ready=0
+for ((attempt=1; attempt<=45; attempt++)); do
+  restart_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  if grep -Fq -- "STARTUP_COMPLETE" <<<"$restart_logs"; then restart_ready=1; break; fi
+  sleep 1
+done
+if [ "$restart_ready" -ne 1 ]; then
+  echo "ERROR: native startup did not complete after process restart"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_EXT_RESTART_MAIN_PNG"; then
+  echo "ERROR: could not capture post-restart Main screenshot"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_RESTART_MAIN_XML"; then
+  echo "ERROR: could not capture post-restart Main hierarchy"; exit 1
+fi
+show_project_route_extended
+open_project_document "Untitled.mpcproj"
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT_LOADED" 40; then
+  echo "ERROR: Open after process restart failed through DocumentsUI"; exit 1
+fi
+restart_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
+restart_open_sha="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$restart_open_line")"
+if ! grep -Fq -- "formatVersion=2" <<<"$restart_open_line" \
+    || ! grep -Fq -- "persistedDomainExact=true" <<<"$restart_open_line" \
+    || ! grep -Fq -- "TRACKS=1" <<<"$restart_open_line" \
+    || ! grep -Fq -- "PLACEMENTS=1" <<<"$restart_open_line" \
+    || [[ "$restart_open_sha" != "$project_saved_sha_ext" ]]; then
+  echo "ERROR: force-stop/relaunch → Open did not restore exact saved native state"
+  echo "$restart_open_line"; exit 1
+fi
+show_project_route_extended
+if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_EXT_RESTART_PROJECT_PNG"; then
+  echo "ERROR: could not capture reopened Project after process restart"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_RESTART_PROJECT_XML"; then
+  echo "ERROR: could not capture reopened Project hierarchy after restart"; exit 1
+fi
+
+# Cancel Save As, then Open, and ensure the same real Project remains in memory.
+if ! tap_ui_description "$DUMP" "MPC Project Save As"; then exit 1; fi
+wait_for_project_picker_item "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"
+if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
+  echo "ERROR: could not cancel Save As picker"; exit 1
+fi
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT SAVE AS CANCELLED" 20; then
+  echo "ERROR: Save As cancellation was not reported"; exit 1
+fi
+save_cancel_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_AS_CANCELLED" | tail -n 1 || true)"
+save_cancel_sha_ext="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$save_cancel_line_ext")"
+if [[ "$save_cancel_sha_ext" != "$project_saved_sha_ext" ]]; then
+  echo "ERROR: canceled Save As changed the native Project state"; echo "$save_cancel_line_ext"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-project-save-cancelled.png; then
+  echo "ERROR: could not capture Save As cancel path"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" /tmp/mpc-groovebox-project-save-cancelled-uiautomator.xml; then
+  echo "ERROR: could not capture Save As cancellation hierarchy"; exit 1
+fi
+
+if ! tap_ui_description "$DUMP" "MPC Project Open"; then exit 1; fi
+wait_for_project_picker_item "$PROJECT_EXT_OPEN_XML" "$PROJECT_EXT_OPEN_REMOTE" "$PROJECT_EXT_OPEN_PNG" "Untitled.mpcproj"
+if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
+  echo "ERROR: could not cancel Open picker"; exit 1
+fi
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT OPEN CANCELLED" 20; then
+  echo "ERROR: Open cancellation was not truthfully reported"; exit 1
+fi
+open_cancel_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_CANCELLED" | tail -n 1 || true)"
+open_cancel_sha_ext="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$open_cancel_line_ext")"
+if [[ "$open_cancel_sha_ext" != "$project_saved_sha_ext" ]]; then
+  echo "ERROR: canceled Open changed the authoritative Project state"; echo "$open_cancel_line_ext"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_EXT_CANCEL_PNG"; then
+  echo "ERROR: could not capture Open cancellation state"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_CANCEL_XML"; then
+  echo "ERROR: could not capture Open cancellation hierarchy"; exit 1
+fi
+
+# Build a valid v1 fixture from the actual saved file, not the older native
+# codec-only fixture whose PROGRAMS section intentionally violates runtime rules.
+device_project_path="$(adb_bounded 10 shell 'find /sdcard -type f -name "Untitled.mpcproj" 2>/dev/null | head -n 1' | tr -d '\r')"
+if [[ -z "$device_project_path" ]]; then
+  echo "ERROR: could not find the actual SAF saved Project file"; exit 1
+fi
+if ! adb_bounded 30 pull "$device_project_path" "$PROJECT_V2_HOST"; then
+  echo "ERROR: could not pull the real SAF saved Project to derive a v1 fixture"; exit 1
+fi
+if ! python3 - "$PROJECT_V2_HOST" "$PROJECT_V1_HOST" "$PROJECT_V1_CANONICAL_HOST" "$PROJECT_MALFORMED_HOST" <<'PY'
+import pathlib, sys
+source_path, legacy_path, canonical_path, malformed_path = map(pathlib.Path, sys.argv[1:])
+lines = source_path.read_text(encoding="utf-8").splitlines()
+if not lines or lines[0] != "MPCMK2_PROJECT 2":
+    raise AssertionError("expected the actual Save As document in v2 format")
+if not any(line.startswith('PROGRAM "') for line in lines):
+    raise AssertionError("v1 fixture must retain a runtime-valid Program")
+if not any(line.startswith("PLACEMENT ") for line in lines) or not any(line.startswith("NOTE ") for line in lines):
+    raise AssertionError("source fixture needs a placement and non-default MIDI events")
+legacy, canonical = [], []
+for line in lines:
+    if line.startswith("PLACEMENT "):
+        continue
+    if line.startswith("TRACK "):
+        prior = line.rsplit(" ", 1)[0]
+        legacy.append(prior)
+        canonical.append(prior + " 0")
+    else:
+        legacy.append(line)
+        canonical.append(line)
+legacy[0] = "MPCMK2_PROJECT 1"
+canonical[0] = "MPCMK2_PROJECT 2"
+legacy_path.write_text("\n".join(legacy) + "\n", encoding="utf-8")
+canonical_path.write_text("\n".join(canonical) + "\n", encoding="utf-8")
+malformed_path.write_text("not a valid MPCMK2_PROJECT document\n", encoding="utf-8")
+if any(line.startswith("PLACEMENT ") for line in legacy + canonical):
+    raise AssertionError("placement-free fixture/canonical oracle contains a clip")
+if not any(line.startswith('TRACK "') for line in legacy) or not any(line.startswith("NOTE ") for line in legacy):
+    raise AssertionError("legacy fixture lost its Track or MIDI events")
+print("Derived valid placement-free v1 fixture and canonical-v2 state oracle from real SAF file.")
+PY
+then
+  echo "ERROR: failed to produce checked v1/malformed fixtures"; exit 1
+fi
+expected_v1_sha_ext="$(sha256sum "$PROJECT_V1_CANONICAL_HOST" | awk '{print $1}')"
+if [[ ! "$expected_v1_sha_ext" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "ERROR: could not hash canonical v1 state"; exit 1
+fi
+if ! adb_bounded 10 shell mkdir -p /sdcard/Download; then
+  echo "ERROR: could not prepare Downloads directory"; exit 1
+fi
+if ! adb_bounded 30 push "$PROJECT_V1_HOST" /sdcard/Download/Legacy-v1-no-placements.mpcproj; then
+  echo "ERROR: could not push valid v1 Project fixture"; exit 1
+fi
+if ! adb_bounded 30 push "$PROJECT_MALFORMED_HOST" /sdcard/Download/Malformed-project.mpcproj; then
+  echo "ERROR: could not push malformed Project fixture"; exit 1
+fi
+
+# The app is still in Project context after cancel; malformed input must reject
+# without replacing the saved model and the Project route must remain usable.
+open_project_document "Malformed-project.mpcproj"
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT_LOAD_FAILED" 40; then
+  echo "ERROR: malformed Project did not report a native format rejection"; exit 1
+fi
+rejected_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_REJECTED" | tail -n 1 || true)"
+rejected_sha_ext="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$rejected_line_ext")"
+if [[ "$rejected_sha_ext" != "$project_saved_sha_ext" ]] || ! grep -Fq -- "PROJECT_LOAD_FAILED" <<<"$rejected_line_ext"; then
+  echo "ERROR: rejected Project changed the active native state or omitted truthful error"
+  echo "$rejected_line_ext"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_EXT_REJECT_PNG"; then
+  echo "ERROR: could not capture malformed load error"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_REJECT_XML"; then
+  echo "ERROR: could not capture malformed load hierarchy"; exit 1
+fi
+if ! grep -Fq -- "MPC Project Open" "$PROJECT_EXT_REJECT_XML"; then
+  echo "ERROR: Project Open route is no longer usable after rejection"; exit 1
+fi
+
+# Open the v1 file through the actual Android picker. Its canonical v2 state has
+# identical Program/Track/Pattern/MIDI fields but no Pattern placements.
+open_project_document "Legacy-v1-no-placements.mpcproj"
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT_LOADED" 40; then
+  echo "ERROR: runtime-valid placement-free v1 Project was not loaded from SAF"; exit 1
+fi
+legacy_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
+legacy_sha_ext="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$legacy_line_ext")"
+if ! grep -Fq -- "formatVersion=1" <<<"$legacy_line_ext" \
+    || ! grep -Fq -- "persistedDomainExact=not-applicable" <<<"$legacy_line_ext" \
+    || ! grep -Fq -- "TRACKS=1" <<<"$legacy_line_ext" \
+    || ! grep -Fq -- "PLACEMENTS=0" <<<"$legacy_line_ext" \
+    || [[ "$legacy_sha_ext" != "$expected_v1_sha_ext" ]]; then
+  echo "ERROR: v1 Open fabricated placements or changed persisted MIDI/domain values"
+  echo "Expected canonical state: $expected_v1_sha_ext"; echo "$legacy_line_ext"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_EXT_V1_PNG"; then
+  echo "ERROR: could not capture v1-loaded state"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_V1_XML"; then
+  echo "ERROR: could not capture v1-loaded accessibility hierarchy"; exit 1
+fi
+echo "Extended Project UI acceptance passed: exact v2 state, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."
