@@ -24,6 +24,7 @@ Before any implementation work, every coding agent must also read **[`docs/SESSI
 14. **One writer per branch.** Do not let ChatGPT/GitHub tools, Cline, or another agent concurrently mutate the same branch or same files. Parallelize only across isolated branches/worktrees with explicit file ownership; integrate sequentially.
 15. **Measure visual geometry before changing it.** Use a fresh landscape screenshot and accessibility/UI bounds. Treat firmware layout units as evidence to interpret, not as phone pixel coordinates; do not guess the root cause.
 16. **Use the action catalog.** Before changing a user-visible MPC interaction, locate its ID in `docs/MPC3-USER-ACTION-CATALOG.md`; verify the official source, backend route and exact-SHA acceptance evidence. Add/update the row when behavior or status changes. Do not implement from a label or stale matrix alone.
+17. **Use the controller traceability map for hardware work.** Before changing MPC Studio MkII handling, read `docs/MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md` and `docs/MPC-STUDIO-MKII-SEMANTIC-MAP.md`. Extract only physical-controller, protocol and hardware gesture knowledge; never import MPC Desktop or DAW navigation/workflows into our app. Keep source confidence, automated-test evidence and physical-device acceptance separate.
 
 ## Project source hierarchy
 
@@ -34,7 +35,9 @@ Use these documents together:
 - `docs/PROJECT_MASTER_PROMPT.md` — master operating brief.
 - `docs/ARCHITECTURE.md` — layer boundaries.
 - `docs/IMPLEMENTATION-ROADMAP.md` — stage sequence.
-- `docs/HARDWARE-MPC-STUDIO-MK2.md` — controller protocol research.
+- `docs/HARDWARE-MPC-STUDIO-MK2.md` — controller protocol overview.
+- `docs/MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md` — source → protocol → implementation → automated test → physical validation map; excludes host-application workflows.
+- `docs/MPC-STUDIO-MKII-SEMANTIC-MAP.md` — physical control to app semantic action contract.
 - `docs/MIDI-TRANSPORT.md` — Android MIDI boundary.
 - `docs/MPC-DOMAIN-MODEL.md` — musical domain model.
 - `docs/MPC-UX-REFERENCE.md` — standalone-style UX reference.
