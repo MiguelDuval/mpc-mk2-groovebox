@@ -41,6 +41,7 @@ Use these documents together:
 - `docs/HARDWARE-MPC-STUDIO-MK2.md` — controller protocol overview.
 - `docs/MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md` — source → protocol → implementation → automated test → physical validation map; excludes host-application workflows.
 - `docs/MPC-STUDIO-MKII-SEMANTIC-MAP.md` — physical control to app semantic action contract.
+- `docs/MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md` — cross-device mapping from MPC One reference actions to Studio MkII physical gestures, product routes, non-identical modifiers and validation gaps.
 - `docs/MIDI-TRANSPORT.md` — Android MIDI boundary.
 - `docs/MPC-DOMAIN-MODEL.md` — musical domain model.
 - `docs/MPC-UX-REFERENCE.md` — standalone-style UX reference.
