@@ -23,6 +23,7 @@ Before any implementation work, every coding agent must also read **[`docs/SESSI
 13. **Use the cheapest sufficient test first.** Run focused tests during iteration; run full emulator/CI acceptance at a meaningful slice boundary and verify it against the exact resulting HEAD.
 14. **One writer per branch.** Do not let ChatGPT/GitHub tools, Cline, or another agent concurrently mutate the same branch or same files. Parallelize only across isolated branches/worktrees with explicit file ownership; integrate sequentially.
 15. **Measure visual geometry before changing it.** Use a fresh landscape screenshot and accessibility/UI bounds. Treat firmware layout units as evidence to interpret, not as phone pixel coordinates; do not guess the root cause.
+16. **Use the action catalog.** Before changing a user-visible MPC interaction, locate its ID in `docs/MPC3-USER-ACTION-CATALOG.md`; verify the official source, backend route and exact-SHA acceptance evidence. Add/update the row when behavior or status changes. Do not implement from a label or stale matrix alone.
 
 ## Project source hierarchy
 
@@ -39,6 +40,7 @@ Use these documents together:
 - `docs/MPC-UX-REFERENCE.md` — standalone-style UX reference.
 - `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md` — permanent MPC 3.9 UI architecture and migration contract.
 - `docs/MPC3-REFERENCE-INDEX.md` — searchable MPC 3.9 research/source index.
+- `docs/MPC3-USER-ACTION-CATALOG.md` — canonical action-level link between Akai manual/support sources, firmware evidence, Android implementation/status and acceptance tests.
 - `docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md` — protected lower-layer and UI migration safety rules.
 - `docs/PHYSICAL-TEST-CHECKLIST.md` — hardware acceptance tests.
 - `THIRD_PARTY_NOTICES.md` — dependency/license record.
