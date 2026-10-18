@@ -679,6 +679,12 @@ jobs:
             /tmp/mpc-groovebox-grid-event-duration-changed-uiautomator.xml
             /tmp/mpc-groovebox-grid-event-duration-restored.png
             /tmp/mpc-groovebox-grid-event-duration-restored-uiautomator.xml
+            /tmp/mpc-groovebox-grid-range-before.png
+            /tmp/mpc-groovebox-grid-range-before-uiautomator.xml
+            /tmp/mpc-groovebox-grid-range-next.png
+            /tmp/mpc-groovebox-grid-range-next-uiautomator.xml
+            /tmp/mpc-groovebox-grid-range-restored.png
+            /tmp/mpc-groovebox-grid-range-restored-uiautomator.xml
             /tmp/mpc-groovebox-grid-edit-after-erase.png
             /tmp/mpc-groovebox-grid-edit-after-erase-uiautomator.xml
             /tmp/mpc-groovebox-arrange-back.png

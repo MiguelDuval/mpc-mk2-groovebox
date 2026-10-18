@@ -8133,9 +8133,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         gridSelectionStateView.setBackground(strokeBackground(SURFACE_2, LINE, 6));
         header.addView(gridSelectionStateView, new LinearLayout.LayoutParams(dp(116), dp(34)));
 
-        header.addView(actionButton("◀", v -> moveSequenceGridPage(-1)),
+        Button previousGridPageButton = actionButton(
+                "◀", v -> moveSequenceGridPage(-1));
+        previousGridPageButton.setContentDescription("Grid previous time range");
+        header.addView(previousGridPageButton,
                 new LinearLayout.LayoutParams(dp(50), dp(38)));
-        header.addView(actionButton("▶", v -> moveSequenceGridPage(1)),
+        Button nextGridPageButton = actionButton(
+                "▶", v -> moveSequenceGridPage(1));
+        nextGridPageButton.setContentDescription("Grid next time range");
+        header.addView(nextGridPageButton,
                 new LinearLayout.LayoutParams(dp(50), dp(38)));
         page.addView(header);
 

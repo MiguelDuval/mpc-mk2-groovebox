@@ -4869,6 +4869,26 @@ print(*values, int(tick_match.group(1)))
 PY
     }
 
+    grid_event_read_range() {
+      python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path = sys.argv[1]
+nodes = list(ET.parse(path).getroot().iter("node"))
+matches = [n.attrib.get("text", "").strip() for n in nodes
+           if re.fullmatch(r"\d+[–-]\d+/\d+", n.attrib.get("text", "").strip())]
+if len(matches) != 1:
+    raise AssertionError(f"expected one Grid viewport range label, got {matches!r}")
+match = re.fullmatch(r"(\d+)[–-](\d+)/(\d+)", matches[0])
+start, end, total = map(int, match.groups())
+if start < 1 or end - start != 15 or end > total:
+    raise AssertionError(f"invalid 16-step Grid range: {matches[0]!r}")
+print(start, end, total)
+PY
+    }
+
     grid_event_test_parameter() {
       local parameter_name="$1"
       local parameter_token="$2"
@@ -5068,6 +5088,92 @@ PY
       echo "ERROR: Grid VEL focus hierarchy before ERASE failed"; exit 1
     fi
     grid_event_current_xml="$GRID_EDIT_EMPTY_VEL_FOCUS_XML"
+
+    # GRID-006: page right then left through actual header controls. The viewport
+    # must move by exactly 16 steps and return, without changing the selected note.
+    GRID_EDIT_RANGE_BEFORE_XML="/tmp/mpc-groovebox-grid-range-before-uiautomator.xml"
+    GRID_EDIT_RANGE_BEFORE_REMOTE="/sdcard/mpc-groovebox-grid-range-before-uiautomator.xml"
+    GRID_EDIT_RANGE_BEFORE_PNG="/tmp/mpc-groovebox-grid-range-before.png"
+    if ! dump_device_ui "$GRID_EDIT_RANGE_BEFORE_REMOTE" "$GRID_EDIT_RANGE_BEFORE_XML"; then
+      echo "ERROR: Grid viewport initial hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_RANGE_BEFORE_PNG"; then
+      echo "ERROR: Grid viewport initial screenshot failed"; exit 1
+    fi
+    grid_range_before="$(grid_event_read_range "$GRID_EDIT_RANGE_BEFORE_XML")" || {
+      echo "ERROR: Grid viewport initial range unavailable"; exit 1;
+    }
+    grid_event_state_before="$(grid_event_read_state "$GRID_EDIT_RANGE_BEFORE_XML")" || {
+      echo "ERROR: Grid event state unavailable before viewport navigation"; exit 1;
+    }
+
+    if ! tap_visible_description_early "$GRID_EDIT_RANGE_BEFORE_XML" "Grid next time range"; then
+      echo "ERROR: Grid next time range control was not actionable"; exit 1
+    fi
+    sleep 0.25
+    GRID_EDIT_RANGE_NEXT_XML="/tmp/mpc-groovebox-grid-range-next-uiautomator.xml"
+    GRID_EDIT_RANGE_NEXT_REMOTE="/sdcard/mpc-groovebox-grid-range-next-uiautomator.xml"
+    GRID_EDIT_RANGE_NEXT_PNG="/tmp/mpc-groovebox-grid-range-next.png"
+    if ! dump_device_ui "$GRID_EDIT_RANGE_NEXT_REMOTE" "$GRID_EDIT_RANGE_NEXT_XML"; then
+      echo "ERROR: Grid viewport next-page hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_RANGE_NEXT_PNG"; then
+      echo "ERROR: Grid viewport next-page screenshot failed"; exit 1
+    fi
+    if ! grid_range_next_state="$(grid_event_read_range "$GRID_EDIT_RANGE_NEXT_XML")"; then
+      echo "ERROR: Grid viewport next range unavailable"; exit 1
+    fi
+    grid_event_state_next="$(grid_event_read_state "$GRID_EDIT_RANGE_NEXT_XML")" || {
+      echo "ERROR: selected event state unavailable after next-page navigation"; exit 1;
+    }
+    if ! python3 - "$grid_range_before" "$grid_range_next_state" "$grid_event_state_before" "$grid_event_state_next" <<'PY'
+import sys
+before_range = tuple(map(int, sys.argv[1].split()))
+after_range = tuple(map(int, sys.argv[2].split()))
+if after_range != (before_range[0] + 16, before_range[1] + 16, before_range[2]):
+    raise AssertionError(f"Grid next range must advance exactly 16 steps: {before_range!r} -> {after_range!r}")
+if sys.argv[3] != sys.argv[4]:
+    raise AssertionError(f"Grid viewport pan mutated selected note parameters: {sys.argv[3]!r} -> {sys.argv[4]!r}")
+print(f"Grid viewport advanced by 16 steps; selected event preserved: {before_range!r} -> {after_range!r}")
+PY
+    then
+      echo "ERROR: Grid next-page navigation changed musical state or wrong range"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$GRID_EDIT_RANGE_NEXT_XML" "Grid previous time range"; then
+      echo "ERROR: Grid previous time range control was not actionable"; exit 1
+    fi
+    sleep 0.25
+    GRID_EDIT_RANGE_RESTORED_XML="/tmp/mpc-groovebox-grid-range-restored-uiautomator.xml"
+    GRID_EDIT_RANGE_RESTORED_REMOTE="/sdcard/mpc-groovebox-grid-range-restored-uiautomator.xml"
+    GRID_EDIT_RANGE_RESTORED_PNG="/tmp/mpc-groovebox-grid-range-restored.png"
+    if ! dump_device_ui "$GRID_EDIT_RANGE_RESTORED_REMOTE" "$GRID_EDIT_RANGE_RESTORED_XML"; then
+      echo "ERROR: Grid viewport restored hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_RANGE_RESTORED_PNG"; then
+      echo "ERROR: Grid viewport restored screenshot failed"; exit 1
+    fi
+    grid_range_restored="$(grid_event_read_range "$GRID_EDIT_RANGE_RESTORED_XML")" || {
+      echo "ERROR: Grid viewport restored range unavailable"; exit 1;
+    }
+    grid_event_state_restored="$(grid_event_read_state "$GRID_EDIT_RANGE_RESTORED_XML")" || {
+      echo "ERROR: selected event state unavailable after restoring viewport"; exit 1;
+    }
+    if ! python3 - "$grid_range_before" "$grid_range_restored" "$grid_event_state_before" "$grid_event_state_restored" <<'PY'
+import sys
+before_range = tuple(map(int, sys.argv[1].split()))
+restored_range = tuple(map(int, sys.argv[2].split()))
+if restored_range != before_range:
+    raise AssertionError(f"Grid previous range did not restore viewport: {before_range!r} -> {restored_range!r}")
+if sys.argv[3] != sys.argv[4]:
+    raise AssertionError(f"Grid previous range did not preserve the selected note: {sys.argv[3]!r} -> {sys.argv[4]!r}")
+print(f"Grid page left/right real-touch round trip passed: {restored_range!r}; note unchanged.")
+PY
+    then
+      echo "ERROR: Grid viewport did not restore range and musical state"; exit 1
+    fi
+    grid_event_current_xml="$GRID_EDIT_RANGE_RESTORED_XML"
+    echo "Grid viewport real-touch acceptance passed: next/previous move 16 steps and preserve selected event."
 
     echo "Grid PARAM cycling and real-touch +/- acceptance passed for VEL, PROB, RAT, NUDGE and DUR."
     if ! tap_visible_description_early "$grid_event_current_xml" "Grid Erase tool"; then
