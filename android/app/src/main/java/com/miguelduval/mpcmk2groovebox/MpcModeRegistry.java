@@ -41,7 +41,7 @@ final class MpcModeRegistry {
             new Entry(MpcUiState.Mode.NEXT_SEQUENCE, "NEXT SEQUENCE", true),
             new Entry(MpcUiState.Mode.ARRANGE, "ARRANGE", true),
             new Entry(MpcUiState.Mode.LIST_EDIT, "LIST EDIT", false),
-            new Entry(MpcUiState.Mode.PROJECT, "PROJECT", false)
+            new Entry(MpcUiState.Mode.PROJECT, "PROJECT", true)
     };
 
     /*

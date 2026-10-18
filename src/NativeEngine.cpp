@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstddef>
 #include <span>
 #include <limits>
 #include <memory>
@@ -119,6 +120,29 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeEngineInfo(
 }
 
 
+
+namespace {
+std::string projectSummary(const mpc::domain::Project& project) {
+    std::size_t trackCount = 0;
+    std::size_t patternCount = 0;
+    std::size_t placementCount = 0;
+    std::size_t noteCount = 0;
+    for (const auto& sequence : project.sequences) {
+        trackCount += sequence.tracks.size();
+        for (const auto& track : sequence.tracks) {
+            patternCount += track.patterns.size();
+            placementCount += track.placements.size();
+            for (const auto& pattern : track.patterns) noteCount += pattern.notes.size();
+        }
+    }
+    return "SEQUENCES=" + std::to_string(project.sequences.size())
+            + " TRACKS=" + std::to_string(trackCount)
+            + " PATTERNS=" + std::to_string(patternCount)
+            + " PLACEMENTS=" + std::to_string(placementCount)
+            + " MIDI_NOTES=" + std::to_string(noteCount);
+}
+} // namespace
+
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectSerialize(
         JNIEnv* env, jobject /* thiz */) {
@@ -144,6 +168,13 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectGetName(
         JNIEnv* env, jobject /* thiz */) {
     return toJString(env, mpc::MpcCore::instance().projectState().project().name);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectGetSummary(
+        JNIEnv* env, jobject /* thiz */) {
+    return toJString(env, projectSummary(
+            mpc::MpcCore::instance().projectState().project()));
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -190,8 +221,9 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
     sequencePlayback.reset();
     core.sequenceTransportClock().clearQueuedSequence();
     return toJString(env,
-            "PROJECT_LOADED • project and Pattern placements restored"
-            " • sample PCM is not embedded; assigned WAVs may need reload");
+            "PROJECT_LOADED • "
+            + projectSummary(core.projectState().project())
+            + " • sample PCM is not embedded; assigned WAVs may need reload");
 }
 
 extern "C" JNIEXPORT jstring JNICALL

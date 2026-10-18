@@ -407,6 +407,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native byte[] nativeProjectSerialize();
     private static native String nativeProjectLoad(byte[] data);
     private static native String nativeProjectGetName();
+    private static native String nativeProjectGetSummary();
     private static native String nativeAudioLoadSample(byte[] data);
     private static native String nativeAudioLoadSampleForPadLayer(byte[] data, int pad, int layer);
     private static native String nativeAudioSetPadSampleName(
@@ -1498,6 +1499,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MENU:
                 showMenuPage();
                 break;
+            case PROJECT:
+                showProjectPage();
+                break;
             case MIDI_CONTROL:
                 showMidiPage();
                 break;
@@ -1871,15 +1875,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         if (mode == MpcUiState.Mode.MENU) {
-            // Keep all Menu system commands on the global shell Function Bar.
-            Button openProject = addFunction("OPEN", true, v -> openProjectPicker());
-            openProject.setContentDescription("MPC Menu Project Open");
-            Button saveAs = addFunction("SAVE AS", true, v -> openProjectSaveAsPicker());
-            saveAs.setContentDescription("MPC Menu Project Save As");
+            // Keep the established six Menu commands; project lifecycle lives in Project mode.
+            addFunction("NEW PROJECT", false, null);
             Button save = addFunction("SAVE", true, v -> saveCurrentProject());
             save.setContentDescription("MPC Menu Project Save");
             addFunction("PREFERENCES", true, v -> showAudioSettingsPage());
             addFunction("MIDI / CONTROL", true, v -> showMidiPage());
+            addFunction("EDIT SHORTCUTS", true, v -> showShortcutConfigPage());
+            addFunction("BACK", true, v -> navigateBackFromShell());
+            return;
+        }
+
+        if (mode == MpcUiState.Mode.PROJECT) {
+            Button open = addFunction("OPEN", true, v -> openProjectPicker());
+            open.setContentDescription("MPC Project Open");
+            Button saveAs = addFunction("SAVE AS", true, v -> openProjectSaveAsPicker());
+            saveAs.setContentDescription("MPC Project Save As");
+            Button save = addFunction("SAVE", true, v -> saveCurrentProject());
+            save.setContentDescription("MPC Project Save");
             addFunction("BACK", true, v -> navigateBackFromShell());
             return;
         }
@@ -9980,6 +9993,52 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page);
         updateModeRailSelection();
     }
+    private void showProjectPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "PROJECT";
+        navigationController.navigate(MpcUiState.Mode.PROJECT);
+        pageTitle.setText("PROJECT");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.setPadding(dp(10), dp(8), dp(10), dp(6));
+
+        TextView identity = label(
+                "PROJECT  •  " + currentProjectName.toUpperCase(Locale.ROOT),
+                16, TEXT);
+        identity.setTypeface(Typeface.DEFAULT_BOLD);
+        identity.setContentDescription("MPC Project current name " + currentProjectName);
+        page.addView(identity, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+
+        TextView summary = label(nativeProjectGetSummary(), 12, ACCENT);
+        summary.setContentDescription("MPC Project content summary");
+        summary.setPadding(dp(6), dp(6), dp(6), dp(6));
+        page.addView(summary, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+
+        TextView storage = label(
+                currentProjectUri == null
+                        ? "NO FILE LINKED • use SAVE AS to create a project file, then OPEN it after restarting."
+                        : "PROJECT FILE LINKED • SAVE updates this document; SAVE AS creates another file.",
+                11, MUTED);
+        storage.setContentDescription("MPC Project file link status");
+        page.addView(storage, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        TextView note = label(
+                "Pattern placements and MIDI data are stored. Sample PCM is external; reload or relink assigned WAV assets after opening.",
+                10, MUTED);
+        note.setContentDescription("MPC Project persistence limits");
+        page.addView(note, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
+
+        content.addView(page);
+        updateModeRailSelection();
+    }
+
     private Button buildMpcMenuTile(MpcModeRegistry.Entry entry) {
         final String title = entry.available
                 ? entry.label
@@ -11019,6 +11078,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 if (selectAsCurrentProject) currentProjectUri = target;
                 currentProjectName = nativeProjectGetName();
                 refreshProjectIdentity();
+                if ("PROJECT".equals(currentPage)) showProjectPage();
                 setBottomStatus("PROJECT SAVED • " + currentProjectName + " • placements and MIDI saved");
                 Log.i(TAG, "PROJECT_SAVE_COMPLETE bytes=" + bytes.length + " name=" + currentProjectName);
             });
@@ -11090,7 +11150,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 refreshMainTrackQuickSample();
                 updateMpcShellState();
                 setBottomStatus(loaded + " • " + audioResult);
-                Log.i(TAG, "PROJECT_OPEN_COMPLETE bytes=" + bytes.length + " name=" + currentProjectName);
+                Log.i(TAG, "PROJECT_OPEN_COMPLETE bytes=" + bytes.length + " name=" + currentProjectName + " result=" + loaded);
             });
         });
     }

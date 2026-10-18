@@ -1162,7 +1162,7 @@ if grep -Fq -- 'LinearLayout system = row();' <<<"$menu_block"; then
   echo "ERROR: Menu must not render a second internal bottom command bar"
   exit 1
 fi
-for required in   'case MENU:'   'OPEN'   'SAVE AS'   'SAVE'   'PREFERENCES'   'MIDI / CONTROL'   'MPC Menu Project Open'   'MPC Menu Project Save As'   'MPC Menu Project Save'   'nativeProjectSerialize()'   'nativeProjectLoad(byte[] data)'   'ACTION_CREATE_DOCUMENT'   'ACTION_OPEN_DOCUMENT'   'PROJECT_SAVE_COMPLETE'   'PROJECT_OPEN_COMPLETE'; do
+for required in   'case MENU:'   'NEW PROJECT'   'SAVE'   'EDIT SHORTCUTS'   'if (mode == MpcUiState.Mode.PROJECT)'   'showProjectPage()'   'MPC Project Open'   'MPC Project Save As'   'MPC Project Save'   'nativeProjectSerialize()'   'nativeProjectLoad(byte[] data)'   'nativeProjectGetSummary()'   'ACTION_CREATE_DOCUMENT'   'ACTION_OPEN_DOCUMENT'   'PROJECT_SAVE_COMPLETE'   'PROJECT_OPEN_COMPLETE'   'PROJECT_LOADED • '; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Menu contextual Function Bar contract missing: $required"
     exit 1
@@ -6966,4 +6966,175 @@ if ! dump_device_ui "$FAVORITE_TREE_RESTORED_REMOTE" "$FAVORITE_TREE_RESTORED_XM
 fi
 echo "Browser Favorite 1 assignment, isolated preferences and process-restart restoration passed."
 
-echo "Android runtime startup and local Browser workflow smoke passed."
+
+echo "Running real Project Save As → edit model → Open saved file acceptance..."
+PROJECT_SAVE_XML="/tmp/mpc-groovebox-project-save-picker-uiautomator.xml"
+PROJECT_SAVE_REMOTE="/sdcard/mpc-groovebox-project-save-picker-uiautomator.xml"
+PROJECT_SAVE_PNG="/tmp/mpc-groovebox-project-save-picker.png"
+PROJECT_SAVED_XML="/tmp/mpc-groovebox-project-saved-uiautomator.xml"
+PROJECT_SAVED_PNG="/tmp/mpc-groovebox-project-saved.png"
+PROJECT_MUTATED_XML="/tmp/mpc-groovebox-project-mutated-uiautomator.xml"
+PROJECT_MUTATED_PNG="/tmp/mpc-groovebox-project-mutated.png"
+PROJECT_OPEN_XML="/tmp/mpc-groovebox-project-open-picker-uiautomator.xml"
+PROJECT_OPEN_REMOTE="/sdcard/mpc-groovebox-project-open-picker-uiautomator.xml"
+PROJECT_OPEN_PNG="/tmp/mpc-groovebox-project-open-picker.png"
+PROJECT_REOPENED_XML="/tmp/mpc-groovebox-project-reopened-uiautomator.xml"
+PROJECT_REOPENED_PNG="/tmp/mpc-groovebox-project-reopened.png"
+
+# Previous Browser tests deliberately use ui-only startup for permission
+# restoration. Start a real native session before testing Project persistence.
+if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
+  echo "ERROR: could not stop UI-only session before Project persistence test"; exit 1
+fi
+if ! adb_bounded 10 shell logcat -c; then
+  echo "ERROR: could not clear logcat before Project persistence test"; exit 1
+fi
+if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY"; then
+  echo "ERROR: could not launch normal native app for Project persistence test"; exit 1
+fi
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Browser" 40; then
+  echo "ERROR: Main shell did not appear for Project persistence test"; exit 1
+fi
+project_engine_ready=0
+for ((attempt=1; attempt<=45; attempt++)); do
+  project_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  if grep -Fq -- "AUDIO_START_RESULT=" <<<"$project_logs"; then
+    project_engine_ready=1
+    break
+  fi
+  sleep 1
+done
+if [ "$project_engine_ready" -ne 1 ]; then
+  echo "ERROR: native Project/Audio engine did not finish startup"; exit 1
+fi
+
+# Save the real native Project model through ACTION_CREATE_DOCUMENT.
+if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then exit 1; fi
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Menu PROJECT" 20; then
+  echo "ERROR: Project tile is unavailable in the MPC Menu"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "MPC Menu PROJECT"; then exit 1; fi
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "TRACKS=1" 20; then
+  echo "ERROR: initial Project summary does not expose its Track count"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "MPC Project Save As"; then exit 1; fi
+project_save_picker_ready=0
+for ((attempt=1; attempt<=25; attempt++)); do
+  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
+      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
+    project_save_picker_ready=1
+    break
+  fi
+  sleep 1
+done
+if [ "$project_save_picker_ready" -ne 1 ]; then
+  echo "ERROR: Android DocumentsUI did not appear for Project Save As"; exit 1
+fi
+if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
+  echo "ERROR: could not capture stable DocumentsUI state for Project Save As"; exit 1
+fi
+if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
+  echo "ERROR: Save As did not prefill the project filename"; exit 1
+fi
+if ! tap_ui_text "$PROJECT_SAVE_XML" "Save"; then
+  echo "ERROR: DocumentsUI Save action was not available for Project Save As"; exit 1
+fi
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT SAVED" 30; then
+  echo "ERROR: Project Save As did not complete through the real document provider"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_SAVED_PNG"; then
+  echo "ERROR: could not capture saved Project screen"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_SAVED_XML"; then
+  echo "ERROR: could not capture saved Project hierarchy"; exit 1
+fi
+if ! grep -Fq -- "PROJECT_SAVE_COMPLETE" <<<"$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"; then
+  echo "ERROR: Project Save As screen has no native-snapshot completion log"; exit 1
+fi
+
+# Change the in-memory model after saving; the disk copy must still load the
+# earlier single-Track state rather than the currently edited model.
+if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then exit 1; fi
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Menu MAIN" 20; then
+  echo "ERROR: Main mode unavailable while mutating the saved Project"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "MPC Menu MAIN"; then exit 1; fi
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "+ NEW TRACK" 20; then
+  echo "ERROR: Main Track creation action was not visible"; exit 1
+fi
+if ! tap_ui_text "$DUMP" "+ NEW TRACK"; then
+  echo "ERROR: could not mutate the in-memory Project with a new Track"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then exit 1; fi
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Menu PROJECT" 20; then
+  echo "ERROR: Project tile unavailable after Track mutation"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "MPC Menu PROJECT"; then exit 1; fi
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "TRACKS=2" 20; then
+  echo "ERROR: Project summary did not expose the in-memory Track mutation"; exit 1
+fi
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PLACEMENTS=2" 10; then
+  echo "ERROR: added Track's Pattern placement was not reflected in the model summary"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_MUTATED_PNG"; then
+  echo "ERROR: could not capture mutated Project state"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MUTATED_XML"; then
+  echo "ERROR: could not capture mutated Project hierarchy"; exit 1
+fi
+
+# Open the saved file through ACTION_OPEN_DOCUMENT. This parses the file into
+# a new domain Project and replaces the already-mutated in-memory model.
+if ! tap_ui_description "$DUMP" "MPC Project Open"; then exit 1; fi
+project_open_picker_ready=0
+for ((attempt=1; attempt<=25; attempt++)); do
+  if dump_device_ui "$PROJECT_OPEN_REMOTE" "$PROJECT_OPEN_XML" \
+      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_OPEN_XML"; then
+    project_open_picker_ready=1
+    break
+  fi
+  sleep 1
+done
+if [ "$project_open_picker_ready" -ne 1 ]; then
+  echo "ERROR: Android DocumentsUI did not appear for Project Open"; exit 1
+fi
+if ! capture_stable_picker_state "$PROJECT_OPEN_REMOTE" "$PROJECT_OPEN_XML" "$PROJECT_OPEN_PNG" 8; then
+  echo "ERROR: could not capture stable DocumentsUI state for Project Open"; exit 1
+fi
+if ! wait_for_ui_text "$PROJECT_OPEN_XML" "$PROJECT_OPEN_REMOTE" "Untitled.mpcproj" 30; then
+  echo "ERROR: saved Project file is not discoverable in Android DocumentsUI"; exit 1
+fi
+if ! tap_ui_picker_result_row "$PROJECT_OPEN_XML" "Untitled.mpcproj" auto label; then
+  echo "ERROR: could not select the previously saved Project file"; exit 1
+fi
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT_LOADED" 40; then
+  echo "ERROR: app did not report a successful load of the selected Project file"; exit 1
+fi
+project_open_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+project_open_line="$(grep -F -- "PROJECT_OPEN_COMPLETE" <<<"$project_open_logs" | tail -n 1 || true)"
+if [[ -z "$project_open_line" ]] \
+    || ! grep -Fq -- "TRACKS=1" <<<"$project_open_line" \
+    || ! grep -Fq -- "PLACEMENTS=1" <<<"$project_open_line"; then
+  echo "ERROR: Project file open did not restore its saved Track/Pattern-placement counts"
+  echo "$project_open_line"
+  exit 1
+fi
+if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then exit 1; fi
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Menu PROJECT" 20; then
+  echo "ERROR: could not return to the restored Project summary"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "MPC Menu PROJECT"; then exit 1; fi
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "TRACKS=1" 20; then
+  echo "ERROR: visible Project summary did not match the opened disk state"; exit 1
+fi
+if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PLACEMENTS=1" 10; then
+  echo "ERROR: visible Pattern placement count did not match saved file"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_REOPENED_PNG"; then
+  echo "ERROR: could not capture the reopened Project screen"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_REOPENED_XML"; then
+  echo "ERROR: could not capture reopened Project hierarchy"; exit 1
+fi
+echo "Real Project Save As → add Track in memory → Open saved file restored exact persisted Track/Pattern-placement model."
+echo "Android runtime startup, local Browser, and Project persistence smoke passed."

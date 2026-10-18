@@ -13,6 +13,7 @@ public final class MpcModeRegistryTest {
         assertEquals(16, entries.length);
         assertEquals(MpcUiState.Mode.MAIN, entries[0].mode);
         assertEquals(MpcUiState.Mode.PROJECT, entries[15].mode);
+        assertTrue(entries[15].available);
     }
 
     @Test

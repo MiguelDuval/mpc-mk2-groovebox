@@ -153,6 +153,9 @@ jobs:
       - name: Test Android sequence zoom and Step page focus policies
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest --tests com.miguelduval.mpcmk2groovebox.MpcSequenceStepPagePolicyTest
 
+      - name: Test MPC Menu Project route catalog
+        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcModeRegistryTest
+
       - name: Test local Browser WAV filtering policy
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest
 
@@ -677,5 +680,13 @@ jobs:
             /tmp/mpc-groovebox-browser-favorite-tree-restored.png
             /tmp/mpc-groovebox-browser-favorite-tree-restored-uiautomator.xml
             /tmp/mpc-browser-favorite-prefs.xml
+            /tmp/mpc-groovebox-project-save-picker.png
+            /tmp/mpc-groovebox-project-saved.png
+            /tmp/mpc-groovebox-project-saved-uiautomator.xml
+            /tmp/mpc-groovebox-project-mutated.png
+            /tmp/mpc-groovebox-project-mutated-uiautomator.xml
+            /tmp/mpc-groovebox-project-open-picker.png
+            /tmp/mpc-groovebox-project-reopened.png
+            /tmp/mpc-groovebox-project-reopened-uiautomator.xml
           if-no-files-found: warn
           archive: true
