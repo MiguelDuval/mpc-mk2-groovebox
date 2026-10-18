@@ -15,7 +15,8 @@ At the start of each session, read these in order:
 2. `docs/PROJECT_MASTER_PROMPT.md` and `AGENTS.md` — permanent project rules.
 3. This file — execution loop, scope exclusions, completion criteria.
 4. `docs/IMPLEMENTATION-ROADMAP.md` — priorities and known product gaps.
-5. `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md`, `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`, `docs/MPC3-REFERENCE-INDEX.md`, `docs/MPC3-UI-SCREEN-BLUEPRINT.md`, and `docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md` — only the sections relevant to the current slice.
+5. `docs/MPC3-USER-ACTION-CATALOG.md` — identify the action ID, expected state transition, source evidence, current implementation status and required acceptance path for the UI scenario being changed.
+6. `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md`, `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`, `docs/MPC3-REFERENCE-INDEX.md`, `docs/MPC3-UI-SCREEN-BLUEPRINT.md`, and `docs/UI-MIGRATION-SAFE-CHANGE-CONTRACT.md` — only the sections relevant to the current slice.
 6. Current source, callers, relevant tests, latest commits, PR checks, and CI artifacts.
 
 **Live-repository precedence:** Current branch/PR/Actions/source evidence outranks stale session notes. When evidence disagrees, verify it, correct the relevant document, and record the discrepancy. Do not re-read hundreds of commits by default. Inspect the latest 20–50 commits and broaden the history only when answering a specific historical or regression question.
@@ -66,6 +67,7 @@ For each coherent feature slice:
 
 1. **Orient:** fetch the live branch HEAD, PR #23 state/base/head, recent commits, latest relevant Actions runs, and the known-good APK/artifact identity. Confirm all edits are on `feature/mpc-one-ui-fidelity`.
 2. **Define:** state the user scenario, expected MPC-inspired behavior, current gap, relevant source files, real semantic/backend commands, acceptance checks, and what is explicitly out of scope.
+   - For an MPC-style UI interaction, cite the catalog action ID; if no row exists, add one before implementation. Keep the official reference behavior, product-specific deviation, backend truth and test evidence distinct.
 3. **Trace:** read the current view, its listeners/callers, the authoritative state model, relevant backend operation and existing tests. Do not recreate source from memory.
 4. **Implement:** make the smallest coherent change that completes part of the user scenario. Keep one logical intent per commit and preserve existing domain/audio/MIDI paths.
 5. **Test narrowly first:** run source/contract checks and the smallest relevant unit or native test. Fix failures before adding unrelated work.
