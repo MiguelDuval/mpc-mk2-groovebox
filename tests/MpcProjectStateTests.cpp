@@ -161,5 +161,58 @@ int main() {
     assert(state.activeSequenceIndex() == 0);
     assert(!state.selectSequence(99));
 
+
+    // Project replacement must reset active indices and resolve the Track-owned Program.
+    mpc::domain::Project opened;
+    opened.id = "opened-project";
+    opened.name = "Opened Project";
+    mpc::domain::DrumProgram openedProgram;
+    openedProgram.id = "opened-program";
+    openedProgram.name = "Opened Drums";
+    openedProgram.type = mpc::domain::ProgramType::Drum;
+    openedProgram.pads[0].index = 0;
+    openedProgram.pads[0].midiNote = 36;
+    openedProgram.pads[0].name = "Loaded Kick";
+    openedProgram.pads[0].level = 0.75f;
+    openedProgram.pads[0].layer(0).sample.value = 41;
+    mpc::domain::SampleRef openedSample;
+    openedSample.id = "sample-41";
+    openedSample.name = "Saved Kick";
+    openedSample.sampleRate = 48000.0;
+    openedSample.lengthSamples = 12000;
+    openedSample.assetId.value = 41;
+    opened.samples.push_back(openedSample);
+    opened.drumPrograms.push_back(openedProgram);
+    mpc::domain::Sequence openedSequence;
+    openedSequence.id = "opened-sequence";
+    openedSequence.name = "Opening";
+    openedSequence.lengthTicks = 3840;
+    mpc::domain::Track openedTrack;
+    openedTrack.id = "opened-track";
+    openedTrack.name = "DRUMS";
+    openedTrack.kind = mpc::domain::TrackKind::Drum;
+    openedTrack.type = mpc::domain::ProgramType::Drum;
+    openedTrack.programId = openedProgram.id;
+    mpc::domain::Pattern openedPattern;
+    openedPattern.id = "opened-pattern";
+    openedPattern.lengthTicks = 3840;
+    openedPattern.notes = {{240, 120, 36, 105, 100, 2, -5}};
+    openedTrack.patterns.push_back(openedPattern);
+    openedSequence.tracks.push_back(openedTrack);
+    opened.sequences.push_back(openedSequence);
+    assert(mpc::MpcProjectState::canReplaceProject(opened));
+    assert(state.replaceProject(opened));
+    assert(state.project().id == "opened-project");
+    assert(state.activeSequenceIndex() == 0);
+    assert(state.activeTrackIndex() == 0);
+    assert(state.activeDrumProgram().id == "opened-program");
+    assert(state.activeSequence().tracks[0].patterns[0].notes[0].nudgeTicks == -5);
+    const auto newSampleId = state.registerSample("New sample", "", 44100.0, 9000);
+    assert(newSampleId.value == 42);
+    mpc::domain::Project invalid;
+    invalid.id = "invalid";
+    assert(!mpc::MpcProjectState::canReplaceProject(invalid));
+    assert(!state.replaceProject(std::move(invalid)));
+    assert(state.project().id == "opened-project");
     return 0;
 }

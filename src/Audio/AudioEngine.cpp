@@ -2354,8 +2354,11 @@ std::string AudioEngine::start() {
 
         for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
             samples[pad][layer] = padSamples_[pad][layer];
-            regions[pad][layer] = projectState_.activeDrumProgram().pad(pad).layer(layer).region;
+            const auto& layerState = projectState_.activeDrumProgram().pad(pad).layer(layer);
+            regions[pad][layer] = layerState.region;
+            // Saved assignments without decoded PCM must suppress the unrelated bundled fallback.
             anyExplicitLayer = anyExplicitLayer
+                    || layerState.sample.isAssigned()
                     || (samples[pad][layer] != nullptr
                         && samples[pad][layer]->frameCount() > 0);
         }
@@ -2493,6 +2496,24 @@ std::string AudioEngine::stop() {
     }
 
     return "Audio stopped";
+}
+
+
+bool AudioEngine::clearRuntimeSamplesForProjectReplacement() noexcept {
+    if (stream_ != nullptr || inputStream_ != nullptr) return false;
+    for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            padSamples_[pad][layer].reset();
+            padSampleDescriptions_[pad][layer].clear();
+        }
+    }
+    return true;
+}
+
+void AudioEngine::refreshActiveProgramRuntimeProjection() noexcept {
+    for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+        syncPadRuntimeProjection(static_cast<std::uint8_t>(pad));
+    }
 }
 
 std::string AudioEngine::status() const {

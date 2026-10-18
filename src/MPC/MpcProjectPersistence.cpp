@@ -286,7 +286,9 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
 
 } // namespace
 
-std::string serializeProject(const domain::Project& project) {
+std::string serializeProject(const domain::Project& project, std::string* error) {
+    if (error != nullptr) error->clear();
+    if (!validatePlacements(project, error)) return {};
     std::ostringstream out;
     out << std::setprecision(std::numeric_limits<double>::max_digits10);
     out << "MPCMK2_PROJECT " << kCurrentProjectFormatVersion << '\n';
@@ -516,7 +518,8 @@ bool saveProjectFile(
     if (path.empty()) return setError(error, "Project path is empty");
     if (!validatePlacements(project, error)) return false;
 
-    const auto bytes = serializeProject(project);
+    const auto bytes = serializeProject(project, error);
+    if (bytes.empty()) return false;
     if (bytes.size() > kMaxProjectFileBytes) {
         return setError(error, "Serialized project exceeds the supported file-size limit");
     }

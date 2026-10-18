@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "MPC/MpcCore.h"
+#include "MPC/MpcProjectPersistence.h"
 #include "MPC/Sequencer/MpcPatternOps.h"
 #include "MPC/Sequencer/MpcArrangementOps.h"
 #include "MPC/Sequencer/MpcSequenceLauncher.h"
@@ -115,6 +116,82 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeEngineInfo(
         "MPC Studio MkII hardware layer is ready.";
 
     return toJString(env, message);
+}
+
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectSerialize(
+        JNIEnv* env, jobject /* thiz */) {
+    if (env == nullptr) return nullptr;
+    std::string error;
+    const auto bytes = mpc::persistence::serializeProject(
+            mpc::MpcCore::instance().projectState().project(), &error);
+    constexpr std::size_t kMaxJavaProjectBytes = 128ULL * 1024ULL * 1024ULL;
+    if (!error.empty() || bytes.empty() || bytes.size() > kMaxJavaProjectBytes
+            || bytes.size() > static_cast<std::size_t>(std::numeric_limits<jsize>::max())) return nullptr;
+    const auto length = static_cast<jsize>(bytes.size());
+    jbyteArray result = env->NewByteArray(length);
+    if (result == nullptr) return nullptr;
+    env->SetByteArrayRegion(result, 0, length, reinterpret_cast<const jbyte*>(bytes.data()));
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return nullptr;
+    }
+    return result;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectGetName(
+        JNIEnv* env, jobject /* thiz */) {
+    return toJString(env, mpc::MpcCore::instance().projectState().project().name);
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
+        JNIEnv* env, jobject /* thiz */, jbyteArray data) {
+    if (env == nullptr || data == nullptr) return toJString(env, "PROJECT_LOAD_FAILED • empty project data");
+    constexpr jsize kMaxJavaProjectBytes = 128 * 1024 * 1024;
+    const jsize length = env->GetArrayLength(data);
+    if (length <= 0 || length > kMaxJavaProjectBytes) {
+        return toJString(env, "PROJECT_LOAD_FAILED • invalid project file size");
+    }
+    jbyte* raw = env->GetByteArrayElements(data, nullptr);
+    if (raw == nullptr) return toJString(env, "PROJECT_LOAD_FAILED • could not read project bytes");
+    const std::string bytes(reinterpret_cast<const char*>(raw), static_cast<std::size_t>(length));
+    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
+
+    mpc::domain::Project candidate;
+    std::string error;
+    if (!mpc::persistence::deserializeProject(bytes, candidate, &error)) {
+        return toJString(env, "PROJECT_LOAD_FAILED • " + error);
+    }
+    if (!mpc::MpcProjectState::canReplaceProject(candidate)) {
+        return toJString(env, "PROJECT_LOAD_FAILED • no usable Sequence/Track/Pattern/Program");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    stopSequenceForMutation();
+    const auto stopped = core.audio().stop();
+    if (stopped.rfind("Audio stop failed:", 0) == 0
+            || stopped.rfind("Audio close failed:", 0) == 0
+            || stopped.rfind("Input stop failed:", 0) == 0
+            || stopped.rfind("Input close failed:", 0) == 0) {
+        return toJString(env, "PROJECT_LOAD_FAILED • " + stopped);
+    }
+    if (!core.audio().clearRuntimeSamplesForProjectReplacement()) {
+        return toJString(env, "PROJECT_LOAD_FAILED • audio streams did not stop");
+    }
+    if (!core.projectState().replaceProject(std::move(candidate))) {
+        return toJString(env, "PROJECT_LOAD_FAILED • project state rejected replacement");
+    }
+    core.audio().refreshActiveProgramRuntimeProjection();
+    core.editHistory().clear();
+    arrangementEventClipboard.reset();
+    sequencePlayback.reset();
+    core.sequenceTransportClock().clearQueuedSequence();
+    return toJString(env,
+            "PROJECT_LOADED • project and Pattern placements restored"
+            " • sample PCM is not embedded; assigned WAVs may need reload");
 }
 
 extern "C" JNIEXPORT jstring JNICALL

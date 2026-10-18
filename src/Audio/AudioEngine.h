@@ -160,6 +160,8 @@ public:
     std::string start();
     std::string stop();
     std::string status() const;
+    bool clearRuntimeSamplesForProjectReplacement() noexcept;
+    void refreshActiveProgramRuntimeProjection() noexcept;
 
     // Starts a bounded microphone capture buffer in RAM.
     // The capture callback writes only into preallocated storage.

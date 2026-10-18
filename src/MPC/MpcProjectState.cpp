@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 
 namespace mpc {
@@ -71,6 +72,53 @@ MpcProjectState::MpcProjectState() {
     project_.sequences.push_back(makeDefaultSequence(1));
 }
 
+
+bool MpcProjectState::canReplaceProject(const domain::Project& project) noexcept {
+    if (project.id.empty() || project.sequences.empty() || project.drumPrograms.empty()) {
+        return false;
+    }
+    for (const auto& sequence : project.sequences) {
+        if (sequence.id.empty() || sequence.tracks.empty()) return false;
+        for (const auto& track : sequence.tracks) {
+            if (track.id.empty() || track.patterns.empty()) return false;
+        }
+    }
+    return true;
+}
+
+bool MpcProjectState::replaceProject(domain::Project project) {
+    if (!canReplaceProject(project)) return false;
+    project_ = std::move(project);
+    activeSequenceIndex_ = 0;
+    activeTrackIndex_ = 0;
+    activeDrumProgramIndex_ = 0;
+    const auto programIndex = activeProgramIndexForTrack(activeTrackIndex_);
+    if (programIndex < project_.drumPrograms.size()) activeDrumProgramIndex_ = programIndex;
+
+    std::uint32_t maximumId = 0;
+    for (const auto& sample : project_.samples) maximumId = std::max(maximumId, sample.assetId.value);
+    for (const auto& program : project_.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) maximumId = std::max(maximumId, layer.sample.value);
+        }
+    }
+    if (maximumId != std::numeric_limits<std::uint32_t>::max()) {
+        nextSampleId_ = maximumId + 1;
+    } else {
+        nextSampleId_ = 1;
+        const auto used = [this](std::uint32_t candidate) {
+            for (const auto& sample : project_.samples) if (sample.assetId.value == candidate) return true;
+            for (const auto& program : project_.drumPrograms) {
+                for (const auto& pad : program.pads) {
+                    for (const auto& layer : pad.layers) if (layer.sample.value == candidate) return true;
+                }
+            }
+            return false;
+        };
+        while (nextSampleId_ != 0 && used(nextSampleId_)) ++nextSampleId_;
+    }
+    return true;
+}
 
 bool MpcProjectState::selectSequence(std::size_t sequenceIndex) noexcept {
     if (sequenceIndex >= project_.sequences.size()) {

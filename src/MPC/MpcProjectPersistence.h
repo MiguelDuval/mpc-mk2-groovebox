@@ -11,7 +11,7 @@ namespace mpc::persistence {
 // for projects whose Tracks contain Patterns but no explicit placements.
 inline constexpr int kCurrentProjectFormatVersion = 2;
 
-std::string serializeProject(const domain::Project& project);
+std::string serializeProject(const domain::Project& project, std::string* error = nullptr);
 bool deserializeProject(
         std::string_view bytes,
         domain::Project& project,

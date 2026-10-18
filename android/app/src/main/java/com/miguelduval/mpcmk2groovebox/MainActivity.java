@@ -50,6 +50,7 @@ import android.widget.ArrayAdapter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -77,6 +78,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int REQUEST_MONITOR_AUDIO = 1003;
     private static final int REQUEST_SCAN_LOCAL_AUDIO = 1004;
     private static final int REQUEST_OPEN_DOCUMENT_TREE = 1005;
+    private static final int REQUEST_OPEN_PROJECT = 1006;
+    private static final int REQUEST_SAVE_PROJECT_AS = 1007;
+    private static final int MAX_PROJECT_FILE_BYTES = 128 * 1024 * 1024;
     private static final String TRACK_TYPE_CHANGE_RESERVED_STATUS =
             "TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation";
     private static final String BROWSER_STORAGE_PREFERENCES = "mpc_browser_storage";
@@ -175,6 +179,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final List<AudioDeviceInfo> inputDevices = new ArrayList<>();
     private boolean audioSettingsBinding;
     private FrameLayout content;
+    private Uri currentProjectUri;
+    private String currentProjectName = "Untitled";
+    private final ExecutorService projectIoExecutor = Executors.newSingleThreadExecutor();
     private MpcNavigationController navigationController;
     private MpcShell mpcShell;
     private LinearLayout functionBar;
@@ -397,6 +404,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
     private static native String nativeEngineInfo();
+    private static native byte[] nativeProjectSerialize();
+    private static native String nativeProjectLoad(byte[] data);
+    private static native String nativeProjectGetName();
     private static native String nativeAudioLoadSample(byte[] data);
     private static native String nativeAudioLoadSampleForPadLayer(byte[] data, int pad, int layer);
     private static native String nativeAudioSetPadSampleName(
@@ -1862,11 +1872,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         if (mode == MpcUiState.Mode.MENU) {
             // Keep all Menu system commands on the global shell Function Bar.
-            addFunction("NEW PROJECT", false, null);
-            addFunction("SAVE", false, null);
+            Button openProject = addFunction("OPEN", true, v -> openProjectPicker());
+            openProject.setContentDescription("MPC Menu Project Open");
+            Button saveAs = addFunction("SAVE AS", true, v -> openProjectSaveAsPicker());
+            saveAs.setContentDescription("MPC Menu Project Save As");
+            Button save = addFunction("SAVE", true, v -> saveCurrentProject());
+            save.setContentDescription("MPC Menu Project Save");
             addFunction("PREFERENCES", true, v -> showAudioSettingsPage());
             addFunction("MIDI / CONTROL", true, v -> showMidiPage());
-            addFunction("EDIT SHORTCUTS", true, v -> showShortcutConfigPage());
             addFunction("BACK", true, v -> navigateBackFromShell());
             return;
         }
@@ -2369,11 +2382,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 dp(MPC_TOOLBAR_MENU_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
 
-        projectState = label("PROJECT\nUNTITLED", 9, MPC_TOOLBAR_TEXT);
+        projectState = label("PROJECT\n" + currentProjectName.toUpperCase(Locale.ROOT), 9, MPC_TOOLBAR_TEXT);
         projectState.setTypeface(Typeface.DEFAULT_BOLD);
         projectState.setGravity(Gravity.CENTER_VERTICAL);
         projectState.setPadding(dp(6), 0, dp(2), 0);
-        projectState.setContentDescription("MPC Project");
+        projectState.setContentDescription("MPC Project " + currentProjectName);
         bar.addView(projectState, new LinearLayout.LayoutParams(
                 dp(MPC_TOOLBAR_PROJECT_IDENTITY_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
@@ -10917,6 +10930,177 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshRecordingInfo();
     }
 
+
+    private String safeProjectFilename(String name) {
+        String base = name == null ? "" : name.trim();
+        base = base.replaceAll("[\\\\/:*?\"<>|]", "_");
+        if (base.isEmpty()) base = "Untitled";
+        if (!base.toLowerCase(Locale.ROOT).endsWith(".mpcproj")) base += ".mpcproj";
+        return base;
+    }
+
+    private void openProjectPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
+                "application/x-mpc-groovebox-project",
+                "application/x-mpc-project",
+                "application/octet-stream"
+        });
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQUEST_OPEN_PROJECT);
+        } catch (RuntimeException error) {
+            setBottomStatus("PROJECT OPEN • picker unavailable • " + error.getClass().getSimpleName());
+        }
+    }
+
+    private void openProjectSaveAsPicker() {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/octet-stream");
+        intent.putExtra(Intent.EXTRA_TITLE, safeProjectFilename(currentProjectName));
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQUEST_SAVE_PROJECT_AS);
+        } catch (RuntimeException error) {
+            setBottomStatus("PROJECT SAVE AS • picker unavailable • " + error.getClass().getSimpleName());
+        }
+    }
+
+    private void saveCurrentProject() {
+        if (currentProjectUri == null) {
+            openProjectSaveAsPicker();
+            return;
+        }
+        saveProjectToUri(currentProjectUri, false);
+    }
+
+    private void saveProjectToUri(Uri target, boolean selectAsCurrentProject) {
+        if (target == null || !startupComplete) {
+            setBottomStatus("PROJECT SAVE • project engine is not ready");
+            return;
+        }
+        final byte[] bytes;
+        try {
+            // Snapshot native musical state on the UI thread. Provider I/O is asynchronous.
+            bytes = nativeProjectSerialize();
+        } catch (RuntimeException error) {
+            setBottomStatus("PROJECT SAVE FAILED • " + error.getClass().getSimpleName());
+            return;
+        }
+        if (bytes == null || bytes.length == 0 || bytes.length > MAX_PROJECT_FILE_BYTES) {
+            setBottomStatus("PROJECT SAVE FAILED • native project serialization unavailable");
+            return;
+        }
+
+        setBottomStatus("SAVING PROJECT • " + currentProjectName);
+        projectIoExecutor.execute(() -> {
+            String failure = null;
+            try (OutputStream output = getContentResolver().openOutputStream(target, "wt")) {
+                if (output == null) throw new IOException("Document provider returned no output stream");
+                output.write(bytes);
+                output.flush();
+            } catch (Exception error) {
+                failure = error.getClass().getSimpleName() + ": " + error.getMessage();
+            }
+            final String saveFailure = failure;
+            runOnUiThread(() -> {
+                if (destroyed) return;
+                if (saveFailure != null) {
+                    setBottomStatus("PROJECT SAVE FAILED • " + saveFailure);
+                    return;
+                }
+                if (selectAsCurrentProject) currentProjectUri = target;
+                currentProjectName = nativeProjectGetName();
+                refreshProjectIdentity();
+                setBottomStatus("PROJECT SAVED • " + currentProjectName + " • placements and MIDI saved");
+                Log.i(TAG, "PROJECT_SAVE_COMPLETE bytes=" + bytes.length + " name=" + currentProjectName);
+            });
+        });
+    }
+
+    private byte[] readProjectBytes(Uri uri) throws IOException {
+        try (InputStream input = getContentResolver().openInputStream(uri);
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            if (input == null) throw new IOException("Document provider returned no input stream");
+            byte[] buffer = new byte[16 * 1024];
+            int total = 0;
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                total += read;
+                if (total > MAX_PROJECT_FILE_BYTES) {
+                    throw new IOException("Project exceeds the 128 MiB safety limit");
+                }
+                output.write(buffer, 0, read);
+            }
+            if (total == 0) throw new IOException("Project file is empty");
+            return output.toByteArray();
+        }
+    }
+
+    private void loadProjectFromUri(Uri uri, int resultFlags) {
+        if (uri == null || !startupComplete) {
+            setBottomStatus("PROJECT OPEN • project engine is not ready");
+            return;
+        }
+        if ((resultFlags & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
+            try {
+                getContentResolver().takePersistableUriPermission(
+                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            } catch (SecurityException ignored) {
+                // Transient access remains enough for the immediate load.
+            }
+        }
+        setBottomStatus("OPENING PROJECT…");
+        projectIoExecutor.execute(() -> {
+            final byte[] bytes;
+            try {
+                bytes = readProjectBytes(uri);
+            } catch (Exception error) {
+                final String failure = error.getClass().getSimpleName() + ": " + error.getMessage();
+                runOnUiThread(() -> {
+                    if (!destroyed) setBottomStatus("PROJECT OPEN FAILED • " + failure);
+                });
+                return;
+            }
+            runOnUiThread(() -> {
+                if (destroyed) return;
+                final String loaded = nativeProjectLoad(bytes);
+                if (loaded == null || !loaded.startsWith("PROJECT_LOADED")) {
+                    setBottomStatus(loaded == null
+                            ? "PROJECT OPEN FAILED • native loader unavailable" : loaded);
+                    return;
+                }
+                currentProjectUri = uri;
+                currentProjectName = nativeProjectGetName();
+                refreshProjectIdentity();
+                final String audioResult = nativeAudioStart();
+                setAudioStateFromResult(audioResult);
+                showMainPage();
+                refreshAllInspectorState();
+                refreshSequenceControls();
+                refreshMpcCompactContext();
+                refreshMainTrackQuickSample();
+                updateMpcShellState();
+                setBottomStatus(loaded + " • " + audioResult);
+                Log.i(TAG, "PROJECT_OPEN_COMPLETE bytes=" + bytes.length + " name=" + currentProjectName);
+            });
+        });
+    }
+
+    private void refreshProjectIdentity() {
+        if (projectState == null) return;
+        projectState.setText("PROJECT\\n" + currentProjectName.toUpperCase(Locale.ROOT));
+        projectState.setContentDescription("MPC Project " + currentProjectName);
+    }
+
     private void openWavPicker() {
         // Snapshot the actual destination before Android temporarily takes
         // over the UI. The picker is an import mechanism, not a new target.
@@ -10956,6 +11140,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_OPEN_PROJECT) {
+            if (resultCode != RESULT_OK || data == null) return;
+            Uri uri = data.getData();
+            if (uri == null) {
+                setBottomStatus("PROJECT OPEN FAILED • no document selected");
+                return;
+            }
+            loadProjectFromUri(uri, data.getFlags());
+            return;
+        }
+        if (requestCode == REQUEST_SAVE_PROJECT_AS) {
+            if (resultCode != RESULT_OK || data == null) return;
+            Uri uri = data.getData();
+            if (uri == null) {
+                setBottomStatus("PROJECT SAVE AS FAILED • no destination selected");
+                return;
+            }
+            saveProjectToUri(uri, true);
+            return;
+        }
         if (requestCode == REQUEST_OPEN_DOCUMENT_TREE) {
             handleUserDocumentTreeResult(resultCode, data);
             return;
@@ -15811,6 +16015,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             waveformUiHandler.removeCallbacks(recordingWaveformUpdater);
         }
         startupExecutor.shutdownNow();
+        projectIoExecutor.shutdownNow();
         stopSequenceUiUpdater();
         nativeSequenceSetStepEditContext(false, 0);
 
