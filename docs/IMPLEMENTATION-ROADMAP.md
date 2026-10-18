@@ -1,6 +1,29 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-17 (authoritative over older dated task notes)
+## CURRENT EXECUTION QUEUE — 2026-10-18 (verified source state and exact-SHA evidence govern)
+
+Older queue entries below are historical snapshots. Read the status here first, then inspect live GitHub before starting work.
+
+### 1. Arrangement Pattern placements — COMPLETE / REGRESSION VERIFIED
+- The stale 2026-10-17 task that proposed creating the placement entity is superseded. The current domain has `PatternPlacement{id, patternId, startTick, lengthTicks, sourceOffsetTicks}`; real native operations cover place, move, split, delete and duplicate using the existing Pattern model/edit history.
+- Build #2807 on [`a237e00370a39912843edce4d593d3272736db2d`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/a237e00370a39912843edce4d593d3272736db2d) passed the real-touch placement and edit scenarios. Current code commit [`63a5e51e7b66e0e879513acd9c9ff32d545f434e`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/63a5e51e7b66e0e879513acd9c9ff32d545f434e) kept the regression suite green in Build #2808, including clip-state cleanup and MIDI Pattern invariance.
+- The APK and visual evidence from #2808 were downloaded and checked. Accessibility XML identifies the actual Track/tick target and enables/disables clip actions according to selection state.
+
+### 2. Native project persistence codec and disk round-trip — BACKEND SLICE COMPLETE / USER WORKFLOW INCOMPLETE
+- Source audit found no earlier project serializer, disk save/load API or connected Android Project Save/Open route. Reopening Arrangement and using native Undo/Redo alone did not prove persistence.
+- Added `MpcProjectPersistence` version 2 with project-file read/write and atomic temporary-file replacement. Version 2 serializes musical Project/Sequence/Track/Pattern state, MIDI event fields and explicit Pattern placement identity/timing/source ranges. It also retains current pad/program/layer and sample-reference metadata.
+- Backward-compatibility test: the decoder accepts a placement-free version-1 document so tracks whose placements list is empty retain the established legacy projection/fallback. Since the previous code had no persisted project format, this validates the documented legacy schema rather than claiming an older app build emitted this exact file format.
+- `MpcProjectPersistenceTests.cpp` performs real save-to-disk and reload into a separate Project object, verifies three placements referencing one Pattern, moved position, duration/source offsets, identifiers, musical note parameters and metadata; it then deletes and restores a loaded clip via native edit history. The version-1 fixture and failure-without-destination-mutation checks also pass.
+- Verified by [Android Build #2808](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39121411497) on the exact code SHA above; persistence test, APK assembly, complete Android Emulator smoke and artifact upload succeeded.
+- Limitations still open: native file APIs are not connected to Android SAF or Project UI; the emulator did not save/reopen a project file; sample PCM data is not embedded in project files. Do not label the complete user-facing Project workflow done.
+
+### 3. NEXT — Connect Project Save/Open to the application
+- Implement a small real Project context or menu route for Save, Save As and Open using Android SAF. Use the new codec rather than UI-only state or a duplicate format.
+- Introduce a safe project-replacement boundary in `MpcProjectState`; stop/flush active mutation/recording where needed, replace model state without leaving stale active indices, clear incompatible edit history, and explicitly handle program/sample metadata versus decoded sample buffers.
+- Add emulator save → process/context exit → open saved file → verify placement IDs/timing and unchanged MIDI data. Include a placement-free version-1 load. Capture the final UI hierarchy and log; run the full workflow on the exact final SHA and inspect its APK/evidence.
+- Only after that acceptance, advance to the next real Arrange/Grid/Track/Step Sequencer gap from the current sources and queue. Physical MkII testing remains separate/pending.
+
+## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 
 Older dated “next task” sections below retain history only. Start each slice from live HEAD, current source and real test gaps.
 
@@ -56,13 +79,11 @@ Older dated “next task” sections below retain history only. Start each slice
 - Verified by successful exact-SHA [Android Build #2793](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39075574304) on application commit [f49748de9db450ffc3b3b781befac99916f2a134](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/f49748de9db450ffc3b3b781befac99916f2a134); all 57 workflow steps passed.
 - Inspected APK artifact 12117086509 (8,746,381 bytes; SHA-256 `a47c767a9c476fe696c75b6dbba0922c1b9a8d8830d704b4555abc29249ee8fc`) and UI evidence artifact 12116759419 (8,382,189 bytes; SHA-256 `7074520600906be7a5cf3c348da795f7426c94e4f60613fbffcb57f076cdf5df`). ZIP integrity passed; cursor, pasted, restored screenshots and accessibility XML were downloaded and inspected.
 
-### 11. Next slice — explicit Arrangement Pattern/clip placements
-- The Arrangement canvas still projects the first Pattern of each Track from bar 1 because the current model has no explicit linear clip-placement entity. Do not hide this limitation behind UI-only blocks.
-- Inspect the current Sequence/Track/Pattern domain, project persistence/serialization, edit-history API, and existing Grid/Arrange projection tests. Design the smallest backward-compatible model for a Pattern placement (Pattern identity, track, start tick, duration/length, and source offset only if existing behavior requires it) and add domain tests before wiring UI.
-- Implement one real user path first: create/place a Pattern instance on a Track timeline, move it by a quantize-grid interval, and undo/redo with exact persistence restoration. Preserve the established note-event CUT/COPY/PASTE/DUP tools; avoid a broad arranger rewrite. Verify on a real emulator touch round-trip and the exact final GitHub SHA.
-
-Physical MPC Studio MkII verification remains PENDING. All interaction evidence above is Android Emulator evidence.
-
+### 11. Historical placement slice — SUPERSEDED
+- This was the placement proposal for the earlier 2026-10-17 checkpoint; do not restart it. Explicit Pattern placement operations are present and have real-emulator acceptance evidence in Android Build #2807, with regressions passing in Build #2808.
+- The real remaining persistence gap was then investigated: there was no project serialization/file save-load implementation. The versioned native codec and true file round-trip test are now in place, verified on the code SHA recorded in the current queue above.
+- The current task is Android user-facing Project Save/Open integration, not another PatternPlacement domain or clip-operation implementation.
+- Physical MPC Studio MkII verification remains pending.
 
 ## Stage 0 — Foundation
 - Android shell.

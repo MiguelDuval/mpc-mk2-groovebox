@@ -96,7 +96,7 @@ MpcShell.java still names the 210dp host contextArea; it is now interpreted as t
 | Pad Perform | Menu | Main/Back | performance | RESERVED | notes/chords/scales |
 | Next Sequence | Menu/shortcut | Main/Back | sequence/launcher | PARTIAL | polish/depth |
 | List Edit | Menu | Main/Back | event | RESERVED | editor backend |
-| Project | Menu | Back | project item | RESERVED | persistence |
+| Project | Menu | Back | project item | PARTIAL (native codec only) | Android Save/Open route, SAF integration and sample-asset restoration |
 | Preferences | Menu | Back | settings | PARTIAL | Audio implemented; MIDI/Sync + Sequencer taxonomy shell reserved |
 | MIDI / Control | Toolbar/Menu | Back | contextual | PARTIAL | deeper management |
 | Looper | taxonomy | — | performance | RESERVED | backend |
@@ -321,7 +321,7 @@ The following contract is the implementation checklist for every significant MPC
 | Pad Perform | alternate pad interpretation | notes/chords/scales/other map | Menu/shortcut | Main/Back | note/scale/performance | pad mapping | pads | pad interpretation | none | performance model | RESERVED | HIGH | reserved |
 | Next Sequence | live sequence launcher | slots, current/queued, pad bank | Menu/shortcut | Main/Back | sequence/launcher | pad launch | pads + Pad Bank | current/queued | launch state | launcher semantics | PARTIAL | HIGH | bank/launch |
 | List Edit | event list editor | event rows/fields | Menu | Main/Back | event field | select/edit | Data Dial | event values | delete/edit | list-editor backend | RESERVED | MEDIUM | reserved |
-| Project | project lifecycle | browser, New/Open/Save/Save As | Menu/Toolbar | Main/back | project item | file/actions | project/menu | project identity/persistence | save/replace | project serializer | RESERVED | HIGH | no fake save |
+| Project | project lifecycle | New/Open/Save/Save As | Menu/Toolbar | Main/back | project item | file/actions | project/menu | project identity/persistence | save/replace | native versioned project codec | PARTIAL (no UI route) | HIGH | no fake save; connect codec and verify actual reopen |
 | Preferences | system/project settings | settings tabs | Menu | back | setting item | selectors/tabs | settings controls | device/audio/MIDI/sequencer defaults | settings apply | platform/device prefs | PARTIAL | HIGH | subset+reserved |
 | MIDI / Control | MIDI/controller setup | routing/control configuration | Toolbar I/O/Menu | back | contextual | selectors | MIDI controls | ports/routes/learn | none current subset | Android MIDI + semantic controller | PARTIAL | HIGH | connection/route |
 | Looper | loop performance | loop transport/content | Menu/taxonomy | Main/back | performance | pad/touch | performance controls | loop state | clear/replace later | looper backend | RESERVED | LOW | reserved |
@@ -408,7 +408,7 @@ Required route form: SOURCE CONTROL → EXPECTED MPC BEHAVIOR → CURRENT ROUTE 
 | Sampler ASSIGN | assign recording | nativeAudioAssignRecordingToPadLayer | same | native assign | layer sample | Sample/Main | pad/sample | AVAILABLE |
 | Next Sequence pad | queue/launch sequence | launcher view | same + full quantization state later | launcher backend | current/queued | launcher | pad LEDs | PARTIAL |
 | Menu reserved tile | report unsupported capability | explicit reserved | same | none | availability | reserved state | no false feedback | REQUIRED |
-| Project New/Save | project lifecycle | no route | serializer first | project persistence | project files | Project/Main | project state | RESERVED |
+| Project New/Save | project lifecycle | no user route yet | native serializer first | project persistence | project files | Project/Main | project state | PARTIAL (codec only; UI route absent) |
 
 ## 24. Versioned behavior register
 
