@@ -11157,7 +11157,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void refreshProjectIdentity() {
         if (projectState == null) return;
-        projectState.setText("PROJECT\\n" + currentProjectName.toUpperCase(Locale.ROOT));
+        projectState.setText("PROJECT\n" + currentProjectName.toUpperCase(Locale.ROOT));
         projectState.setContentDescription("MPC Project " + currentProjectName);
     }
 
@@ -11216,6 +11216,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (uri == null) {
                 setBottomStatus("PROJECT SAVE AS FAILED • no destination selected");
                 return;
+            }
+            if ((data.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
+                try {
+                    getContentResolver().takePersistableUriPermission(
+                            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                    | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                } catch (SecurityException ignored) {
+                    // Transient write access still supports the immediate Save As operation.
+                }
             }
             saveProjectToUri(uri, true);
             return;
