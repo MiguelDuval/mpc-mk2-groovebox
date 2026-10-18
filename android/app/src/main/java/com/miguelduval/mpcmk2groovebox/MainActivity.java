@@ -597,7 +597,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         String smokeMode = getIntent().getStringExtra(SMOKE_MODE_EXTRA);
         uiOnlySmokeMode = "ui-only".equals(smokeMode);
         uiAuditSmokeMode = "ui-audit".equals(smokeMode);
-        projectPersistenceSmokeMode = "project-persistence".equals(smokeMode);
+        projectPersistenceSmokeMode = "project-persistence".equals(smokeMode)
+                && getPackageName().endsWith(".debug");
 
         try {
             applyFullscreenWindowPolicy();

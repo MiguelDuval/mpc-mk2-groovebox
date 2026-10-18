@@ -215,7 +215,6 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
     if (!core.projectState().replaceProject(std::move(candidate))) {
         return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • Project replacement rejected");
     }
-    core.audio().refreshActiveProgramRuntimeProjection();
     core.editHistory().clear();
     arrangementEventClipboard.reset();
     sequencePlayback.reset();

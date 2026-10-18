@@ -7214,6 +7214,16 @@ show_project_route_extended() {
   fi
 }
 
+# Verify the dedicated debug-only native fixture populated actual non-default
+# MIDI events and a clipped placement before the real Save As → mutate → Open.
+project_fixture_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_TEST_FIXTURE_READY" | tail -n 1 || true)"
+for expected_fixture_field in "note1=120/36/180/97/88/3/-11" "note2=600/42/90/111/123/2/7" "placement=project-persistence-clip-01/sequence-1-track-1-pattern-1/480/720/120"; do
+  if ! grep -Fq -- "$expected_fixture_field" <<<"$project_fixture_line_ext"; then
+    echo "ERROR: native persistence fixture missing field $expected_fixture_field"
+    echo "$project_fixture_line_ext"; exit 1
+  fi
+done
+
 # Verify that the initial real UI Save As → mutate → Open restored the complete
 # serialized domain, not merely the visible counts. The native fixture above is
 # non-empty and includes non-default tick/pitch/duration/velocity/probability/
@@ -7236,9 +7246,6 @@ echo "Project v2 Save/Open exact domain SHA passed: $project_saved_sha_ext"
 
 # A genuine force-stop kills the old application process and native model.
 # Launch without the fixture intent, then Open again through Android DocumentsUI.
-if ! adb_bounded 10 shell input keyevent KEYCODE_BACK >/dev/null 2>&1; then
-  : # Project route remains valid whether Back exits the route or only changes focus.
-fi
 if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
   echo "ERROR: could not force-stop app for Project process restart"; exit 1
 fi
@@ -7291,7 +7298,7 @@ fi
 
 # Cancel Save As, then Open, and ensure the same real Project remains in memory.
 if ! tap_ui_description "$DUMP" "MPC Project Save As"; then exit 1; fi
-wait_for_project_picker_item "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"
+wait_for_project_picker_item "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"
 if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
   echo "ERROR: could not cancel Save As picker"; exit 1
 fi
