@@ -79,6 +79,7 @@ Use the official MPC 3.9 guide as the primary user-workflow source. Page numbers
 | S-20 | [MPC Studio Academy playlist (Akai-linked YouTube)](https://www.youtube.com/playlist?list=PLyawkFIWnO1PkLpXAN1cciuvoXbrt7M9U) | Candidate tutorial evidence only for visible/explicit physical gestures or feedback. Full transcripts not reviewed in the 2026-10-18 pass; do not claim specific video findings without title/timestamp. |
 | S-21 | [MPC Studio Masterclass playlist (Akai-linked YouTube)](https://www.youtube.com/playlist?list=PLyawkFIWnO1O6ipwAPUWnZgA5wxp2g0fL) | Candidate source for clearly observable controller behavior; exclude MPC Desktop and DAW steps. Full transcripts not reviewed in the 2026-10-18 pass. |
 | S-22 | [Akai-authored MPC Studio MkII Quickstart Guide (third-party PDF mirror)](https://imagescdn.juno.co.uk/manual/846279-01U.pdf) | Physical control labels and printed gesture hints. Manufacturer-authored but mirrored rather than Akai-hosted; do not treat host-specific screen operations as product requirements. |
+| S-23 | [MPC Studio Masterclass Full (official Akai Pro video)](https://www.youtube.com/watch?v=TTx7yxS_le4) | Official controller-related tutorial identified from Akai's channel. Its description is an end-to-end music-making walkthrough; use only controller gestures that can be isolated at a verified timestamp. The full transcript was not available in this review, so no control mapping is inferred from it. |
 
 
 ## 4. Firmware research registry
