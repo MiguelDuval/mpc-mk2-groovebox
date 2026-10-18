@@ -1,38 +1,26 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-18 (verified source state and exact-SHA evidence govern)
+## CURRENT EXECUTION QUEUE — 2026-10-19 (live branch + exact-SHA CI govern)
 
 Older queue entries below are historical snapshots. Read the status here first, then inspect live GitHub before starting work.
 
-### 1. Arrangement Pattern placements — COMPLETE / REGRESSION VERIFIED
-- The stale 2026-10-17 task that proposed creating the placement entity is superseded. The current domain has `PatternPlacement{id, patternId, startTick, lengthTicks, sourceOffsetTicks}`; real native operations cover place, move, split, delete and duplicate using the existing Pattern model/edit history.
-- Build #2807 on [`a237e00370a39912843edce4d593d3272736db2d`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/a237e00370a39912843edce4d593d3272736db2d) passed the real-touch placement and edit scenarios. Current code commit [`63a5e51e7b66e0e879513acd9c9ff32d545f434e`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/63a5e51e7b66e0e879513acd9c9ff32d545f434e) kept the regression suite green in Build #2808, including clip-state cleanup and MIDI Pattern invariance.
-- The APK and visual evidence from #2808 were downloaded and checked. Accessibility XML identifies the actual Track/tick target and enables/disables clip actions according to selection state.
+### 1. Project SAVE / SAVE AS / OPEN — COMPLETE / EXACT-SHA VERIFIED
 
-### 2. Project persistence — SAF lifecycle and exact-domain acceptance harness added / EXACT-SHA E2E PENDING
-- The real SAF smoke now seeds authoritative native state (only under a dedicated acceptance intent) with two non-default MIDI events (`120/36/180/97/88/3/-11`, `600/42/90/111/123/2/7`) and a placement ID `project-persistence-clip-01` at start 480, length 720 and source offset 120.
-- It saves with Save As, mutates the live model by adding a Track, opens through the real Android provider and compares file/native SHA-256 over the entire serialized Project. It then force-stops/relaunches the actual app and repeats the file open and exact-domain comparison.
-- The extended flow verifies Save As/Open cancellation and unchanged state hashes, malformed-file rejection without replacing the current Project, and a runtime-valid placement-free v1 document derived from the real saved file. The v1-loaded model must match a host-created canonical-v2 state oracle and report zero placements while retaining MIDI/domain data.
-- These scenarios are added in the new implementation SHA but remain **PENDING exact-SHA emulator CI** until the current Android Build and evidence archive pass. Inspect the actual failing step, screenshots/hierarchies, APK and evidence; do not weaken assertions.
-- Sample PCM remains external: Project files preserve supported SampleRef/sample-layer metadata, and assigned WAV content may need reload/relink.
-### 3. NEXT — finish Project lifecycle acceptance, then return to musical UI gaps
-1. Run/inspect the extended Android Build + real emulator acceptance on the resulting exact SHA; APK assembly and shell syntax alone do not accept persistence.
-2. Diagnose and fix any failing route/fixture/assertion without weakening acceptance, then rerun at the resulting exact SHA.
-3. Close Project Save/Open only after v2 complete-state equality, force-stop/relaunch, placement-free v1 canonical equality, cancellation and malformed rejection all pass through the real UI/provider.
-4. Then record exact Actions/artifact evidence and select the next highest-value Arrange/Grid/Track/Step gap from live source/tests.
-### Controller reverse-engineering traceability — DOCUMENTATION SLICE ADDED (2026-10-18)
-- Added [MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md](MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md), the explicit MPC One / MPC 3.9 action → Studio MkII gesture → product semantic route crosswalk. It covers the top-panel actions, all 16 Mode+Pad destinations, alternate routes, state continuity, feedback, known backend gaps and a bounded physical-validation queue.
-- Documented non-identical gestures rather than assuming 1:1 hardware parity: Studio Shift+Main / Track View vs MPC One Main / Grid; Studio Shift+Browse / Browser Up vs MPC One Save; and the reversed primary/secondary Track Mute / Pad Mute relationship. Also explicitly records that Studio has no physical bank of eight Q-Link knobs or two-axis XY pad and that Mode+Pad 14 is Looper, not XYFX.
-- Reconciled source responsibilities: the cross-device document defines target-to-physical equivalence; the semantic map defines the app action emitted; the reverse-engineering traceability doc defines protocol/source/test evidence. This is documentation-only; physical Studio MkII acceptance remains pending and the Project Save/Open exact-SHA task above stays the current implementation priority.
+- Live PR #23 HEAD at acceptance: 617511efb820e96c6d9576051fa30012a3368db1; Android Build #2856 / run 39162451542 completed success on that exact SHA. Workflow: [run #2856](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39162451542).
+- The actual Android emulator and DocumentsUI/SAF path saved the v2 Project, mutated the in-memory Project, reopened the file and compared the full canonical domain SHA. Fixture: two non-default MIDI notes and placement project-persistence-clip-01 → sequence-1-track-1-pattern-1, start 480, length 720, source offset 120. SHA: 4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9.
+- The same run passed force-stop/relaunch → Open with exact-state restoration, SAVE AS cancellation and OPEN cancellation without state changes, malformed-file rejection without replacing the current model, and a runtime-valid placement-free v1 document opened through SAF with zero placements and exact canonical-v2 oracle equality.
+- Run #2835 (39139658033) on the earlier SHA 450bca9aac99adc47c61d14d3abc76a77c3cf439 was cancelled during emulator smoke, not a product failure or pass. The later full exact-HEAD run #2856 supersedes it and passed. APK artifact 12149263768; UI evidence artifact 12150136466.
+- Known boundary: assigned PCM remains external; provider overwrite/write-failure recovery and opening two independently saved documents are not yet covered. Physical MPC Studio MkII validation remains separate and pending.
 
+### 2. Step Edit Nudge / Duration — real-touch acceptance extended; current-SHA CI pending
 
-- Added [MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md](MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md) to connect the physical control map, published MIDI/SysEx research, current decoder/semantic/feedback implementation, automated tests and physical validation status.
-- Indexed the official Akai MPC Studio MkII FAQ and troubleshooting guide, Akai-linked MPC Studio Academy and Masterclass playlists, and a manufacturer-authored Quickstart mirror. Only transferable controller facts/physical gestures are retained; MPC Desktop, plug-in licensing, DAW navigation and host-specific tutorials are explicitly excluded.
-- The official tutorial playlist pages did not expose usable full transcripts in this research pass. Their source links are indexed, but they are not falsely marked fully reviewed; future findings require a video title and timestamp showing a specific physical action.
-- Reconciled stale hardware documentation that described only pads as working inputs or described the product LCD as wholly absent. Multiple non-pad semantic routes and a compact LCD context renderer exist in source, but full parity and current-build physical confirmation remain partial.
-- Source inventory has now checked 72 upstream binary LCD SysEx messages (60 `.syx` + 12 `.sysex`) and 72 paired PNG fixtures; representative packet headers show the six-chunk LCD transport. This is a representative byte audit, not a full decode of every capture.
-- Identified two source discrepancies to resolve with physical evidence: the upstream README and current app map Mode as Note 114 while `go-lcd-poc/controls.yaml` labels it Note 1; and the decoder accepts CC 100 and CC 33 without channel checks. Do not edit protocol policy until raw input bytes are captured on the actual controller.
-- This documentation slice changes no application/runtime code and does not close any physical controller test. The implementation priority remains Project Save/Open exact-SHA acceptance in the queue above; controller physical verification stays separate.
+- The Android Step Edit route already exposes native NUDGE and DURATION setters, PARAM focus cycling and +/- adjustments. Extended tests/android_ui_smoke.sh to tap those controls on a temporary real step and assert exact focused-field deltas against the native Step Edit projection. Nudge must move +60 ticks; Duration must move by one quarter-grid increment; other note fields and Step 01 must stay unchanged.
+- Added dedicated after-edit screenshot/accessibility artifacts. The source change requires a new exact-SHA Android Build before these new assertions may be called verified. Do not confuse the previously green probability-only test with this expanded scenario.
+
+### 3. NEXT PRODUCT SLICE — Grid event-parameter editing (GRID-007)
+
+- Inspect current Drum Grid controls, semantic/native setters and action-specific tests first. Choose one real parameter supported by the current backend; drive it through a real touch, assert the exact intended field delta and preservation of unrelated MIDI fields, then exercise Undo/Redo if the existing Grid route supports it.
+- Keep Drum Grid explicitly scoped to supported Drum tracks; do not route Keygroup/Plugin/MIDI/CV into the Drum editor. Add the smallest real-UI acceptance and reverify on the new exact SHA before updating this queue.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 

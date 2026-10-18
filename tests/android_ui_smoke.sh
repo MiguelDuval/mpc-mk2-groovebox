@@ -4104,7 +4104,165 @@ PY
       echo "ERROR: visible Step Sequencer parameter control did not change native probability by one"; cat "$STEP_TOUCH_CHANGED_XML"; exit 1
     fi
 
-    if ! tap_visible_description_early "$STEP_TOUCH_CHANGED_XML" "Pad 1 step $step_touch_target_number on"; then
+
+    # Continue from PROB through RAT → NUDGE → DUR using the same visible
+    # Step PARAM/+ controls. Validate the complete native projection after each edit.
+    STEP_TOUCH_RATCHET_XML="/tmp/mpc-groovebox-step-touch-ratchet-focus-uiautomator.xml"
+    STEP_TOUCH_RATCHET_REMOTE="/sdcard/mpc-groovebox-step-touch-ratchet-focus-uiautomator.xml"
+    if ! tap_visible_text_early "$STEP_TOUCH_CHANGED_XML" "PARAM"; then
+      echo "ERROR: Step Edit PARAM could not select Ratchet"; exit 1
+    fi
+    sleep 0.15
+    if ! dump_device_ui "$STEP_TOUCH_RATCHET_REMOTE" "$STEP_TOUCH_RATCHET_XML"; then
+      echo "ERROR: Step Edit Ratchet-focus hierarchy failed"; exit 1
+    fi
+
+    STEP_TOUCH_NUDGE_FOCUS_XML="/tmp/mpc-groovebox-step-touch-nudge-focus-uiautomator.xml"
+    STEP_TOUCH_NUDGE_FOCUS_REMOTE="/sdcard/mpc-groovebox-step-touch-nudge-focus-uiautomator.xml"
+    if ! tap_visible_text_early "$STEP_TOUCH_RATCHET_XML" "PARAM"; then
+      echo "ERROR: Step Edit PARAM could not select Nudge"; exit 1
+    fi
+    sleep 0.15
+    if ! dump_device_ui "$STEP_TOUCH_NUDGE_FOCUS_REMOTE" "$STEP_TOUCH_NUDGE_FOCUS_XML"; then
+      echo "ERROR: Step Edit Nudge-focus hierarchy failed"; exit 1
+    fi
+    step_touch_timing_before="$(python3 - "$STEP_TOUCH_NUDGE_FOCUS_XML" "$step_touch_target_number" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s = sys.argv[1:]
+target = int(target_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit timing projection is missing")
+text = info[0].attrib.get("text", "")
+if re.search(rf"\bSTEP\s+0*{target}\b", text) is None:
+    raise AssertionError(f"Step Edit focus does not match target {target}: {text!r}")
+patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b",
+            r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b",
+            r"\bDUR\s+(\d+)\b"]
+values = [re.search(p, text) for p in patterns]
+if any(value is None for value in values):
+    raise AssertionError(f"Malformed native Step Edit timing state: {text!r}")
+parsed = [int(value.group(1)) for value in values]
+if not 1 <= parsed[0] <= 127 or not 0 <= parsed[1] <= 127 \
+        or not 1 <= parsed[2] <= 8 or parsed[4] <= 0:
+    raise AssertionError(f"Step Edit timing baseline outside supported range: {parsed!r}")
+print(*parsed)
+PY
+)" || { echo "ERROR: could not read complete native Step Edit fields before Nudge"; exit 1; }
+    read -r step_touch_velocity_timing_before step_touch_probability_timing_before step_touch_ratchet_before step_touch_nudge_before step_touch_duration_before <<< "$step_touch_timing_before"
+
+    if ! tap_visible_text_early "$STEP_TOUCH_NUDGE_FOCUS_XML" "+"; then
+      echo "ERROR: Step Edit Nudge + control was not actionable"; exit 1
+    fi
+    sleep 0.25
+    STEP_TOUCH_NUDGE_CHANGED_PNG="/tmp/mpc-groovebox-step-touch-nudge-changed.png"
+    STEP_TOUCH_NUDGE_CHANGED_XML="/tmp/mpc-groovebox-step-touch-nudge-changed-uiautomator.xml"
+    STEP_TOUCH_NUDGE_CHANGED_REMOTE="/sdcard/mpc-groovebox-step-touch-nudge-changed-uiautomator.xml"
+    if ! dump_device_ui "$STEP_TOUCH_NUDGE_CHANGED_REMOTE" "$STEP_TOUCH_NUDGE_CHANGED_XML"; then
+      echo "ERROR: Step Edit after-Nudge hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_NUDGE_CHANGED_PNG"; then
+      echo "ERROR: Step Edit after-Nudge screenshot failed"; exit 1
+    fi
+    if ! python3 - "$STEP_TOUCH_NUDGE_CHANGED_XML" "$step_touch_target_number" "$step_touch_timing_before" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s, before_s = sys.argv[1:]
+target = int(target_s)
+before = list(map(int, before_s.split()))
+nodes = list(ET.parse(path).getroot().iter("node"))
+if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {target} on"]) != 1:
+    raise AssertionError("Nudge edit lost the selected native Step event")
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Nudge edit lost the Step Edit native projection")
+text = info[0].attrib.get("text", "")
+patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b",
+            r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b",
+            r"\bDUR\s+(\d+)\b"]
+matches = [re.search(p, text) for p in patterns]
+if any(m is None for m in matches):
+    raise AssertionError(f"Malformed native Step Edit projection after Nudge: {text!r}")
+after = [int(m.group(1)) for m in matches]
+expected_nudge = min(960, before[3] + 60)
+if after[3] != expected_nudge:
+    raise AssertionError(f"Nudge should change by one normal 60-tick increment: {before[3]} -> {after[3]}, expected {expected_nudge}")
+if [after[0], after[1], after[2], after[4]] != [before[0], before[1], before[2], before[4]]:
+    raise AssertionError(f"Nudge edit changed unrelated Step fields: {before!r} -> {after!r}")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
+    raise AssertionError("Nudge edit changed the Step 01 reference")
+print(f"Step Edit NUDGE + changed only nudge ticks: {before[3]} -> {after[3]}.")
+PY
+    then
+      echo "ERROR: Step Edit Nudge + did not make the exact native field-only change"; cat "$STEP_TOUCH_NUDGE_CHANGED_XML"; exit 1
+    fi
+
+    # Advance NUDGE → DUR and assert a quantize-relative duration delta.
+    STEP_TOUCH_DURATION_FOCUS_XML="/tmp/mpc-groovebox-step-touch-duration-focus-uiautomator.xml"
+    STEP_TOUCH_DURATION_FOCUS_REMOTE="/sdcard/mpc-groovebox-step-touch-duration-focus-uiautomator.xml"
+    if ! tap_visible_text_early "$STEP_TOUCH_NUDGE_CHANGED_XML" "PARAM"; then
+      echo "ERROR: Step Edit PARAM could not select Duration"; exit 1
+    fi
+    sleep 0.15
+    if ! dump_device_ui "$STEP_TOUCH_DURATION_FOCUS_REMOTE" "$STEP_TOUCH_DURATION_FOCUS_XML"; then
+      echo "ERROR: Step Edit Duration-focus hierarchy failed"; exit 1
+    fi
+    if ! tap_visible_text_early "$STEP_TOUCH_DURATION_FOCUS_XML" "+"; then
+      echo "ERROR: Step Edit Duration + control was not actionable"; exit 1
+    fi
+    sleep 0.25
+    STEP_TOUCH_DURATION_CHANGED_PNG="/tmp/mpc-groovebox-step-touch-duration-changed.png"
+    STEP_TOUCH_DURATION_CHANGED_XML="/tmp/mpc-groovebox-step-touch-duration-changed-uiautomator.xml"
+    STEP_TOUCH_DURATION_CHANGED_REMOTE="/sdcard/mpc-groovebox-step-touch-duration-changed-uiautomator.xml"
+    if ! dump_device_ui "$STEP_TOUCH_DURATION_CHANGED_REMOTE" "$STEP_TOUCH_DURATION_CHANGED_XML"; then
+      echo "ERROR: Step Edit after-Duration hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_DURATION_CHANGED_PNG"; then
+      echo "ERROR: Step Edit after-Duration screenshot failed"; exit 1
+    fi
+    if ! python3 - "$STEP_TOUCH_NUDGE_CHANGED_XML" "$STEP_TOUCH_DURATION_CHANGED_XML" "$step_touch_target_number" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+before_path, after_path, target_s = sys.argv[1:]
+target = int(target_s)
+def read_state(path):
+    nodes = list(ET.parse(path).getroot().iter("node"))
+    if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {target} on"]) != 1:
+        raise AssertionError("Duration edit lost the selected native Step event")
+    info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+    if len(info) != 1:
+        raise AssertionError("Duration edit lost the Step Edit native projection")
+    text = info[0].attrib.get("text", "")
+    patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b",
+                r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b",
+                r"\bDUR\s+(\d+)\b"]
+    matches = [re.search(p, text) for p in patterns]
+    if any(m is None for m in matches):
+        raise AssertionError(f"Malformed native Step Edit projection: {text!r}")
+    return [int(m.group(1)) for m in matches], nodes
+before, _ = read_state(before_path)
+after, nodes = read_state(after_path)
+increment = max(1, before[4] // 4)
+expected_duration = min(before[4] + increment, before[4] * 4)
+if after[4] != expected_duration:
+    raise AssertionError(f"Duration should increase by one quarter-grid increment: {before[4]} -> {after[4]}, expected {expected_duration}")
+if after[:4] != before[:4]:
+    raise AssertionError(f"Duration edit changed velocity/probability/ratchet/nudge: {before!r} -> {after!r}")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
+    raise AssertionError("Duration edit changed the Step 01 reference")
+print(f"Step Edit DURATION + changed only duration ticks: {before[4]} -> {after[4]}.")
+PY
+    then
+      echo "ERROR: Step Edit Duration + did not make the exact native field-only change"; cat "$STEP_TOUCH_DURATION_CHANGED_XML"; exit 1
+    fi
+    echo "Step Edit NUDGE and DURATION real-touch field-isolation round trips passed."
+
+    if ! tap_visible_description_early "$STEP_TOUCH_DURATION_CHANGED_XML" "Pad 1 step $step_touch_target_number on"; then
       echo "ERROR: could not remove the temporary Step event with a real touchscreen tap"; exit 1
     fi
     sleep 0.35

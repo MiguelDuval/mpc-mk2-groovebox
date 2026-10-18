@@ -541,6 +541,10 @@ jobs:
             /tmp/mpc-groovebox-step-touch-after-add-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-after-parameter.png
             /tmp/mpc-groovebox-step-touch-after-parameter-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-nudge-changed.png
+            /tmp/mpc-groovebox-step-touch-nudge-changed-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-duration-changed.png
+            /tmp/mpc-groovebox-step-touch-duration-changed-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-after-erase.png
             /tmp/mpc-groovebox-step-touch-after-erase-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-tuning-before.png
