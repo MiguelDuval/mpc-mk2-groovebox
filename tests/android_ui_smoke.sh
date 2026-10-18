@@ -3085,11 +3085,27 @@ if len(moved)!=2 or left[0] not in moved:
 moved_clips=[p for p in moved if p!=left[0]]
 if len(moved_clips)!=1 or moved_clips[0]!=(new_clip[0],new_clip[1],tick+grid,expected_clip_length,new_clip[4]):
     raise AssertionError(f"CLIP + GRID must move only the new clip by exactly one grid: {moved_clips!r}")
-for path,expected,description in [
-    (split_xml, "Arrangement split Pattern placement at target tick", "SPLIT"),
-    (delete_xml, "Arrangement delete Pattern placement at tick", "DELETE"),
-    (place_xml, "Arrangement place Pattern at empty target tick", "PLACE"),
-    (move_xml, "Arrangement move Pattern placement at tick", "MOVE")]:
+# After SPLIT, the cursor sits on the new shared boundary. It must remain
+# accessible, but SPLIT must disappear there because the target is no longer
+# strictly inside a single placement. Assert that state explicitly rather than
+# requiring an invalid second split action on the boundary.
+split_nodes=list(ET.parse(split_xml).getroot().iter("node"))
+cursor=[n for n in split_nodes
+        if n.attrib.get("content-desc")==f"Arrangement paste target Track {track+1:02d} tick {tick}"]
+if len(cursor)!=1 or cursor[0].attrib.get("text")!=f"PASTE TARGET • TRACK {track+1:02d} • TICK {tick}":
+    raise AssertionError("SPLIT state lost its accessible insertion target")
+split_actions=[n for n in split_nodes
+               if (n.attrib.get("content-desc") or "").startswith("Arrangement split Pattern placement at target tick")]
+if any(n.attrib.get("enabled")=="true" for n in split_actions):
+    raise AssertionError("SPLIT remained enabled at a shared placement boundary")
+undo=[n for n in split_nodes
+      if n.attrib.get("content-desc")=="Arrangement undo latest sequencer edit"]
+if len(undo)!=1 or undo[0].attrib.get("enabled")!="true":
+    raise AssertionError("SPLIT result should expose native Undo")
+for path,description in [
+    (delete_xml, "Arrangement delete Pattern placement at tick"),
+    (place_xml, "Arrangement place Pattern at empty target tick"),
+    (move_xml, "Arrangement move Pattern placement at tick")]:
     nodes=list(ET.parse(path).getroot().iter("node"))
     matching=[n for n in nodes if (n.attrib.get("content-desc") or "").startswith(description)]
     if not matching: raise AssertionError(f"{description} state lacks its accessible action/target")
