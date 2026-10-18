@@ -8396,6 +8396,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return "DRUM".equalsIgnoreCase(nativeSequenceGetTrackType(track));
     }
 
+    private boolean isGridEventParameterDialFocused() {
+        return "SEQ".equals(currentPage)
+                && sequenceGridView != null
+                && navigationController != null
+                && navigationController.state().dataDialFocus()
+                        == MpcUiState.DataDialFocus.STEP;
+    }
+
     private void refreshGridToolState() {
         if (gridToolStateView == null || navigationController == null) {
             return;
@@ -8466,8 +8474,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void cycleSelectedGridParameter() {
         gridEventParameter = nativeStepEditParameterNext(gridEventParameter);
-        setBottomStatus("GRID PARAM • " + gridEventParameterLabel(gridEventParameter));
+        if (navigationController != null) {
+            navigationController.setDataDialFocus(MpcUiState.DataDialFocus.STEP);
+        }
+        setBottomStatus("GRID PARAM • " + gridEventParameterLabel(gridEventParameter)
+                + " • DATA DIAL / +/−");
         refreshGridEventParameterState();
+        refreshMpcCompactContext();
     }
 
     private void refreshGridEventParameterState() {
@@ -8576,6 +8589,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void adjustSelectedGridParameter(int direction) {
+        adjustSelectedGridParameter(direction, false);
+    }
+
+    private void adjustSelectedGridParameter(int direction, boolean fine) {
         if (selectedGridEventPad < 0 || selectedGridEventPad >= 16
                 || selectedGridEventStep < 0
                 || selectedGridEventStep >= sequenceGridTotalSteps()) {
@@ -8599,7 +8616,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         final int delta = nativeStepEditParameterDelta(
-                gridEventParameter, gridTicks, direction, false);
+                gridEventParameter, gridTicks, direction, fine);
         final int fieldValue = gridEventParameter == STEP_EDIT_PARAMETER_DURATION
                 && parameters[4] <= 0 ? gridTicks : parameters[gridEventParameter];
         final int minimum = gridEventParameterMinimum(gridEventParameter, gridTicks);
@@ -14707,6 +14724,94 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return true;
     }
 
+    private boolean verifyGridHardwareParameterRoutingForAudit() {
+        final int pad = Math.max(0, Math.min(15, selectedPad));
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int[] baseline = nativeSequenceGetStepParameters(pad, 0, gridTicks);
+        if (!hasStepEventForAudit(baseline)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Grid Data Dial fixture note is missing");
+            return false;
+        }
+
+        showSequenceGridPage();
+        selectedGridEventPad = pad;
+        selectedGridEventStep = 0;
+        gridEventParameter = STEP_EDIT_PARAMETER_VELOCITY;
+        refreshGridEventParameterState();
+
+        final int probabilityDirection = baseline[1] >= 127 ? -1 : 1;
+        onHardwareAction(MpcStudioMk2SemanticActions.DATA_DIAL_PRESS, 0, 0, 0);
+        final boolean probabilityFocus =
+                gridEventParameter == STEP_EDIT_PARAMETER_PROBABILITY
+                        && navigationController.state().dataDialFocus()
+                                == MpcUiState.DataDialFocus.STEP;
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
+                probabilityDirection, 0, 0);
+        final int[] probabilityChanged = nativeSequenceGetStepParameters(
+                pad, 0, gridTicks);
+        final int[] expectedProbability = baseline.clone();
+        expectedProbability[1] = Math.max(
+                0, Math.min(127, baseline[1] + probabilityDirection));
+        final boolean probabilityFieldIsolated =
+                Arrays.equals(expectedProbability, probabilityChanged);
+
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
+                -probabilityDirection, 0, 0);
+        final int[] probabilityRestored = nativeSequenceGetStepParameters(
+                pad, 0, gridTicks);
+        final boolean probabilityRestoredExactly =
+                Arrays.equals(baseline, probabilityRestored);
+
+        // The selector must cycle from PROB through RAT to NUDGE, then honor
+        // the fine (Shift) increment while leaving all other note fields intact.
+        onHardwareAction(MpcStudioMk2SemanticActions.DATA_DIAL_PRESS, 0, 0, 0);
+        onHardwareAction(MpcStudioMk2SemanticActions.DATA_DIAL_PRESS, 0, 0, 0);
+        final boolean nudgeFocus =
+                gridEventParameter == STEP_EDIT_PARAMETER_NUDGE
+                        && navigationController.state().dataDialFocus()
+                                == MpcUiState.DataDialFocus.STEP;
+        final int nudgeDirection = baseline[3] >= 960 ? -1 : 1;
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
+                nudgeDirection, 1, 0);
+        final int[] nudgeChanged = nativeSequenceGetStepParameters(pad, 0, gridTicks);
+        final int[] expectedNudge = baseline.clone();
+        expectedNudge[3] = Math.max(
+                -960, Math.min(960, baseline[3] + nudgeDirection * 10));
+        final boolean nudgeFieldIsolated = Arrays.equals(expectedNudge, nudgeChanged);
+
+        onHardwareAction(
+                MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA,
+                -nudgeDirection, 1, 0);
+        final int[] finalState = nativeSequenceGetStepParameters(pad, 0, gridTicks);
+        final boolean completeEventRestored = Arrays.equals(baseline, finalState);
+
+        showSequenceStepPage();
+        if (!probabilityFocus || !probabilityFieldIsolated
+                || !probabilityRestoredExactly || !nudgeFocus
+                || !nudgeFieldIsolated || !completeEventRestored) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Grid hardware parameter path"
+                    + " | probabilityFocus=" + probabilityFocus
+                    + " | probabilityFieldIsolated=" + probabilityFieldIsolated
+                    + " | probabilityRestoredExactly=" + probabilityRestoredExactly
+                    + " | nudgeFocus=" + nudgeFocus
+                    + " | nudgeFieldIsolated=" + nudgeFieldIsolated
+                    + " | completeEventRestored=" + completeEventRestored
+                    + " | baseline=" + Arrays.toString(baseline)
+                    + " | final=" + Arrays.toString(finalState));
+            return false;
+        }
+
+        Log.i(TAG, "UI_GRID_HARDWARE_PARAMETER_ACCEPTANCE_COMPLETE:"
+                + " dataDialCyclesParameter=true"
+                + " | probabilityDeltaIsolated=true"
+                + " | fineNudgeDeltaIsolated=true"
+                + " | completeEventRestored=true");
+        return true;
+    }
+
     private void runUiAuditAfterStep() {
         if (destroyed) return;
         if (!uiAuditSmokeMode) {
@@ -14880,6 +14985,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         if (!verifyStepPageNavigationAndRestoreForAudit()) {
+            return;
+        }
+        if (!verifyGridHardwareParameterRoutingForAudit()) {
             return;
         }
 
@@ -15434,6 +15542,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 } else if (hardwareFocusId() == 4) {
                     showProgramSelectPage();
                     setBottomStatus("PROGRAM SELECT • DATA DIAL / +/-");
+                } else if ("SEQ".equals(currentPage) && sequenceGridView != null) {
+                    cycleSelectedGridParameter();
                 } else if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {
                     stepEditParameter = nativeStepEditParameterNext(
                             stepEditParameter);
@@ -15922,6 +16032,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     : delta * beatTicks;
             setBottomStatus(nativeSequenceLocateMoveTicks(deltaTicks));
             refreshSequencePlayhead();
+            return;
+        }
+        if (isGridEventParameterDialFocused()) {
+            adjustSelectedGridParameter(delta, fine);
             return;
         }
         if ("SEQ".equals(currentPage) && sequenceStepButtons[0] != null) {

@@ -18,6 +18,8 @@ Older queue entries below are historical snapshots. Read the status here first, 
 - The latest code expands Grid's selected-event strip to PARAM → VEL / PROB / RAT / NUDGE / DUR, and routes each +/- control to the existing native setter. Limits follow the native contract: VEL 1–127, PROB 0–127, RAT 1–8, NUDGE −960…+960 ticks, DUR one-quarter-grid…four grids.
 - The new smoke sequence will real-touch each field, change one field at a time, compare the complete five-parameter event projection, restore it exactly, then ERASE and verify disabled empty-state controls. Dedicated before/changed/restored screenshots and accessibility hierarchies are archived for PROB, RAT, NUDGE and DUR as well as VEL.
 - This all-five-field expansion is **not verified until Android Build on its resulting exact SHA passes**. Do not infer success from #2858, whose SHA predates this expansion.
+- In parallel, the `work/grid-event-parameter-integrity` branch adds explicit native PatternOps tests that each VEL / PROB / RAT / NUDGE / DUR setter mutates only its intended event field and that invalid values leave the full two-note fixture unchanged.
+- The same work branch routes Studio semantic Data Dial press / coarse delta / fine Shift delta through the selected Grid parameter and extends the full Android UI audit to verify PROB change/restore plus fine NUDGE change/restore via `onHardwareAction`. Physical controller input still requires a real MPC Studio MkII.
 
 ### 3. NEXT PRODUCT SLICE — follow current Grid acceptance with the next live action-catalog gap
 

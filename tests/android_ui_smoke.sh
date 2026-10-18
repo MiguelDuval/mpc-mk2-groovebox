@@ -5294,6 +5294,10 @@ PY
       echo "ERROR: UI audit completed without verified Step Sequencer real-touch acceptance"
       exit 1
     fi
+    if ! grep -Fq -- "UI_GRID_HARDWARE_PARAMETER_ACCEPTANCE_COMPLETE:" <<<"$log_snapshot"; then
+      echo "ERROR: UI audit completed without Grid Data Dial/Shift parameter acceptance"
+      exit 1
+    fi
     if [ "$arrangement_back_capture_done" -ne 1 ] \
         || [ "$arrangement_grid_reentry_capture_done" -ne 1 ] \
         || [ "$track_view_mute_capture_done" -ne 1 ]; then
