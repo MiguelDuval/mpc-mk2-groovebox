@@ -1162,7 +1162,7 @@ if grep -Fq -- 'LinearLayout system = row();' <<<"$menu_block"; then
   echo "ERROR: Menu must not render a second internal bottom command bar"
   exit 1
 fi
-for required in   'case MENU:'   'NEW PROJECT'   'SAVE'   'EDIT SHORTCUTS'   'if (mode == MpcUiState.Mode.PROJECT)'   'showProjectPage()'   'MPC Project Open'   'MPC Project Save As'   'MPC Project Save'   'nativeProjectSerialize()'   'nativeProjectLoad(byte[] data)'   'nativeProjectGetSummary()'   'ACTION_CREATE_DOCUMENT'   'ACTION_OPEN_DOCUMENT'   'PROJECT_SAVE_COMPLETE'   'PROJECT_OPEN_COMPLETE'   'PROJECT_LOADED • '; do
+for required in   'case MENU:'   'NEW PROJECT'   'SAVE'   'EDIT SHORTCUTS'   'if (mode == MpcUiState.Mode.PROJECT)'   'showProjectPage()'   'MPC Project Open'   'MPC Project Save As'   'MPC Project Save'   'nativeProjectSerialize()'   'nativeProjectLoad(byte[] data)'   'nativeProjectGetSummary()'   'ACTION_CREATE_DOCUMENT'   'ACTION_OPEN_DOCUMENT'   'PROJECT_SAVE_COMPLETE'   'PROJECT_OPEN_COMPLETE'   'loaded.startsWith("PROJECT_LOADED")'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Menu contextual Function Bar contract missing: $required"
     exit 1
