@@ -8,6 +8,8 @@ This document is the project's canonical operating brief.
 
 Before making code changes, read this document and then consult the more specific repository documents it points to. Treat repository evidence, build results, physical hardware tests, and current source code as higher-confidence evidence than assumptions.
 
+For any MPC-style UI action, also consult `docs/MPC3-USER-ACTION-CATALOG.md` before implementing. Use its action ID, official source anchors, firmware evidence, current implementation mapping and acceptance path; extend the catalog when a new user intent is not already covered.
+
 The project must be developed incrementally, with every important layer independently testable.
 
 ---
