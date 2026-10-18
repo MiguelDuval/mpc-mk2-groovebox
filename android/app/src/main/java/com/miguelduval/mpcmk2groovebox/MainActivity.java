@@ -36,6 +36,7 @@ import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.view.accessibility.AccessibilityEvent;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -9971,6 +9972,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page);
     }
 
+    private void notifyMpcWorkspaceAccessibilityChanged() {
+        // Page transitions replace the workspace children in place. Notify the
+        // accessibility root explicitly so UIAutomator/TalkBack do not retain a
+        // stale snapshot of the previous workspace after a real navigation.
+        if (content != null) {
+            content.sendAccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
+        }
+        final View decor = getWindow() == null ? null : getWindow().getDecorView();
+        if (decor != null) {
+            decor.sendAccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
+        }
+    }
+
     private void showMenuPage() {
         Log.i(TAG, "MPC_MENU_RENDER_BEGIN");
         clearStepEditPadLeds();
@@ -10019,6 +10033,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // once by the shell Function Bar so there is no nested command footer.
         content.addView(page);
         updateModeRailSelection();
+        notifyMpcWorkspaceAccessibilityChanged();
         Log.i(TAG, "MPC_MENU_RENDER_COMPLETE");
     }
     private void showProjectPage() {
@@ -10066,6 +10081,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         content.addView(page);
         updateModeRailSelection();
+        notifyMpcWorkspaceAccessibilityChanged();
         Log.i(TAG, "MPC_PROJECT_RENDER_COMPLETE");
     }
 
