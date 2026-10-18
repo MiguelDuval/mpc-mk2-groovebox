@@ -7567,7 +7567,7 @@ fi
 # Open the v1 file through the actual Android picker. Its canonical v2 state has
 # identical Program/Track/Pattern/MIDI fields but no Pattern placements.
 open_project_document "Legacy-v1-no-placements.mpcproj"
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT_LOADED" 40; then
+if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE_BEFORE" 45; then
   echo "ERROR: runtime-valid placement-free v1 Project was not loaded from SAF"; exit 1
 fi
 legacy_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
