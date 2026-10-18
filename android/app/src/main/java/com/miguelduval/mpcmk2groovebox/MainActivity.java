@@ -1519,10 +1519,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void updateMpcShellState() {
+        Log.i(TAG, "MPC_SHELL_STATE_BEGIN mode="
+                + (navigationController == null ? "none" : navigationController.state().mode()));
         updateModeRailSelection();
         refreshMpcCompactContext();
         refreshMpcToolbarState();
         refreshMpcFunctionBar();
+        Log.i(TAG, "MPC_SHELL_STATE_END mode="
+                + (navigationController == null ? "none" : navigationController.state().mode()));
     }
 
     private void refreshMpcToolbarState() {
@@ -2390,7 +2394,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         menu.setForeground(new MpcMainIconDrawable(
                 MpcMainIconDrawable.Mode.MENU, false));
         menu.setContentDescription("MPC Toolbar Menu");
-        menu.setOnClickListener(v -> showMenuPage());
+        menu.setOnClickListener(v -> {
+            Log.i(TAG, "MPC_MENU_CLICK_BEGIN currentPage=" + currentPage);
+            showMenuPage();
+            Log.i(TAG, "MPC_MENU_CLICK_END currentPage=" + currentPage);
+        });
         bar.addView(menu, new LinearLayout.LayoutParams(
                 dp(MPC_TOOLBAR_MENU_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP)));
@@ -9948,11 +9956,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMenuPage() {
+        Log.i(TAG, "MPC_MENU_RENDER_BEGIN");
         clearStepEditPadLeds();
+        Log.i(TAG, "MPC_MENU_STEP_LEDS_CLEARED");
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MENU";
         navigationController.navigate(MpcUiState.Mode.MENU);
+        Log.i(TAG, "MPC_MENU_NAVIGATE_RETURN");
         pageTitle.setText("MENU");
         content.removeAllViews();
 
@@ -9992,6 +10003,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // once by the shell Function Bar so there is no nested command footer.
         content.addView(page);
         updateModeRailSelection();
+        Log.i(TAG, "MPC_MENU_RENDER_COMPLETE");
     }
     private void showProjectPage() {
         clearStepEditPadLeds();

@@ -7019,7 +7019,13 @@ fi
 # Save the real native Project model through ACTION_CREATE_DOCUMENT.
 if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then exit 1; fi
 if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Menu PROJECT" 20; then
-  echo "ERROR: Project tile is unavailable in the MPC Menu"; exit 1
+  echo "ERROR: Project tile is unavailable in the MPC Menu"
+  echo "--- MainActivity navigation diagnostics ---"
+  adb_bounded 10 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+    | grep -E 'MPC_MENU_|MPC_SHELL_STATE_|STARTUP_COMPLETE|AUDIO_START_RESULT=' \
+    | tail -n 80 || true
+  echo "--- End navigation diagnostics ---"
+  exit 1
 fi
 if ! tap_ui_description "$DUMP" "MPC Menu PROJECT"; then exit 1; fi
 if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "TRACKS=1" 20; then
