@@ -409,6 +409,83 @@ int main() {
             stepPattern, 4, 120, 38, 90, 240, 64, 3));
     assert(stepPattern.notes[1].nudgeTicks == -120);
 
+    // Each Grid event parameter setter must mutate exactly one musical field.
+    // The selected event carries non-default values for all five fields so an
+    // accidental reset of a neighbouring property cannot hide behind defaults.
+    mpc::domain::Pattern gridParameterIsolationPattern;
+    gridParameterIsolationPattern.lengthTicks = 1920;
+    gridParameterIsolationPattern.notes = {
+            {120, 360, 36, 97, 88, 3, -11},
+            {720, 240, 38, 73, 41, 2, 17}};
+    const auto gridParameterBaseline = gridParameterIsolationPattern.notes;
+    const auto eventEquals = [](
+            const mpc::domain::MidiNoteEvent& lhs,
+            const mpc::domain::MidiNoteEvent& rhs) {
+        return lhs.tick == rhs.tick
+                && lhs.durationTicks == rhs.durationTicks
+                && lhs.note == rhs.note
+                && lhs.velocity == rhs.velocity
+                && lhs.probability == rhs.probability
+                && lhs.ratchet == rhs.ratchet
+                && lhs.nudgeTicks == rhs.nudgeTicks;
+    };
+    auto expectOnlyGridEventField = [&](
+            const mpc::domain::MidiNoteEvent& expectedSelected) {
+        assert(gridParameterIsolationPattern.notes.size() == gridParameterBaseline.size());
+        assert(eventEquals(gridParameterIsolationPattern.notes[0], expectedSelected));
+        assert(eventEquals(
+                gridParameterIsolationPattern.notes[1], gridParameterBaseline[1]));
+    };
+
+    auto expectedGridEvent = gridParameterBaseline[0];
+    assert(mpc::sequencer::setStepNoteVelocity(
+            gridParameterIsolationPattern, 1, 120, 36, 104));
+    expectedGridEvent.velocity = 104;
+    expectOnlyGridEventField(expectedGridEvent);
+
+    gridParameterIsolationPattern.notes = gridParameterBaseline;
+    expectedGridEvent = gridParameterBaseline[0];
+    assert(mpc::sequencer::setStepNoteProbability(
+            gridParameterIsolationPattern, 1, 120, 36, 44));
+    expectedGridEvent.probability = 44;
+    expectOnlyGridEventField(expectedGridEvent);
+
+    gridParameterIsolationPattern.notes = gridParameterBaseline;
+    expectedGridEvent = gridParameterBaseline[0];
+    assert(mpc::sequencer::setStepNoteRatchet(
+            gridParameterIsolationPattern, 1, 120, 36, 5));
+    expectedGridEvent.ratchet = 5;
+    expectOnlyGridEventField(expectedGridEvent);
+
+    gridParameterIsolationPattern.notes = gridParameterBaseline;
+    expectedGridEvent = gridParameterBaseline[0];
+    assert(mpc::sequencer::setStepNoteNudge(
+            gridParameterIsolationPattern, 1, 120, 36, 49));
+    expectedGridEvent.nudgeTicks = 49;
+    expectOnlyGridEventField(expectedGridEvent);
+
+    gridParameterIsolationPattern.notes = gridParameterBaseline;
+    expectedGridEvent = gridParameterBaseline[0];
+    assert(mpc::sequencer::setStepNoteDuration(
+            gridParameterIsolationPattern, 1, 120, 36, 240));
+    expectedGridEvent.durationTicks = 240;
+    expectOnlyGridEventField(expectedGridEvent);
+
+    // Invalid edits must be atomic: reject the value and preserve both notes.
+    gridParameterIsolationPattern.notes = gridParameterBaseline;
+    assert(!mpc::sequencer::setStepNoteVelocity(
+            gridParameterIsolationPattern, 1, 120, 36, 0));
+    assert(!mpc::sequencer::setStepNoteProbability(
+            gridParameterIsolationPattern, 1, 120, 36, 128));
+    assert(!mpc::sequencer::setStepNoteRatchet(
+            gridParameterIsolationPattern, 1, 120, 36, 9));
+    assert(!mpc::sequencer::setStepNoteNudge(
+            gridParameterIsolationPattern, 1, 120, 36, 961));
+    assert(!mpc::sequencer::setStepNoteDuration(
+            gridParameterIsolationPattern, 1, 120, 36, 29));
+    assert(notesEqual(
+            gridParameterIsolationPattern.notes, gridParameterBaseline));
+
     mpc::domain::Pattern ratchetDurationPattern;
     ratchetDurationPattern.lengthTicks = 1920;
     assert(mpc::sequencer::setStepNote(
