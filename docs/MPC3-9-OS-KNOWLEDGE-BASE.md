@@ -11,6 +11,14 @@ Canonical contract: docs/MPC3-UI-MIGRATION-MASTER-SPEC.md
 
 This is the durable research map for future sessions. It records published MPC3 information architecture, routes, control semantics, current implementation status and known gaps. It does not copy Akai artwork, firmware, source code or proprietary resources.
 
+## Current implementation status override — 2026-10-18
+
+This dated addendum supersedes older Project rows below that say the Project UI/route is absent or RESERVED. The current branch source contains a user-facing Project SAVE, SAVE AS and OPEN route in `MainActivity.java`, wired to the v2 native serializer/loader in `NativeEngine.cpp` and Android Storage Access Framework document intents.
+
+The current emulator smoke scenario saves via SAF, mutates the in-memory Project by adding a Track, reopens the saved file, and checks that Track and Pattern-placement counts return to the saved state. This is a first integrated UI slice, not complete persistence acceptance: the Android smoke does not yet compare each placement identity/timing/source range and every MIDI field, does not force-stop/relaunch between save and open, and does not exercise all malformed/cancel/permission/provider-write failures. Native persistence tests separately cover detailed field round-trip and a placement-free v1 fixture. Sample PCM remains external and must be reloaded/relinked as needed.
+
+The last observed exact-head Android workflow was still running its emulator smoke step at the time of this note. Verify live PR/Actions against the exact current HEAD before marking this flow verified. Use `docs/IMPLEMENTATION-ROADMAP.md`, `docs/SESSION-STATE.md` and `docs/MPC3-USER-ACTION-CATALOG.md` for the operational queue; the older table rows below are research/history and must not restart the now-wired Save/Open integration task.
+
 ## 1. Official sources
 
 ### S1 — MPC Standalone OS User Guide v3.9
