@@ -685,11 +685,14 @@ jobs:
             /tmp/mpc-groovebox-browser-favorite-tree-restored-uiautomator.xml
             /tmp/mpc-browser-favorite-prefs.xml
             /tmp/mpc-groovebox-project-save-picker.png
+            /tmp/mpc-groovebox-project-save-picker-uiautomator.xml
             /tmp/mpc-groovebox-project-saved.png
             /tmp/mpc-groovebox-project-saved-uiautomator.xml
             /tmp/mpc-groovebox-project-mutated.png
             /tmp/mpc-groovebox-project-mutated-uiautomator.xml
             /tmp/mpc-groovebox-project-open-picker.png
+            /tmp/mpc-groovebox-project-open-cancel-picker.png
+            /tmp/mpc-groovebox-project-open-cancel-picker-uiautomator.xml
             /tmp/mpc-groovebox-project-reopened.png
             /tmp/mpc-groovebox-project-reopened-uiautomator.xml
           if-no-files-found: warn

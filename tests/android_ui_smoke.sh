@@ -7352,6 +7352,9 @@ PROJECT_EXT_RESTART_PROJECT_XML="/tmp/mpc-groovebox-project-restart-loaded-uiaut
 PROJECT_EXT_RESTART_PROJECT_PNG="/tmp/mpc-groovebox-project-restart-loaded.png"
 PROJECT_EXT_CANCEL_XML="/tmp/mpc-groovebox-project-open-cancelled-uiautomator.xml"
 PROJECT_EXT_CANCEL_PNG="/tmp/mpc-groovebox-project-open-cancelled.png"
+PROJECT_EXT_OPEN_CANCEL_PICKER_XML="/tmp/mpc-groovebox-project-open-cancel-picker-uiautomator.xml"
+PROJECT_EXT_OPEN_CANCEL_PICKER_REMOTE="/sdcard/mpc-groovebox-project-open-cancel-picker-uiautomator.xml"
+PROJECT_EXT_OPEN_CANCEL_PICKER_PNG="/tmp/mpc-groovebox-project-open-cancel-picker.png"
 PROJECT_EXT_REJECT_XML="/tmp/mpc-groovebox-project-malformed-rejected-uiautomator.xml"
 PROJECT_EXT_REJECT_PNG="/tmp/mpc-groovebox-project-malformed-rejected.png"
 PROJECT_EXT_V1_XML="/tmp/mpc-groovebox-project-legacy-v1-loaded-uiautomator.xml"
@@ -7377,6 +7380,56 @@ wait_for_project_picker_item() {
     echo "ERROR: Android document provider did not expose $item"
     cat "$target_xml" || true; exit 1
   fi
+}
+
+# Android Back may navigate up or dismiss an input method without cancelling
+# DocumentsUI. Observe the resumed Activity after each Back and stop as soon as
+# our app resumes; never send an additional Back into the app. On failure,
+# preserve the picker screenshot and accessibility hierarchy for diagnosis.
+cancel_android_document_picker() {
+  local remote_path="$1" hierarchy_path="$2" screenshot_path="$3" label="$4"
+  local resumed_activity="" attempt back_count=0 app_resumed=0
+
+  for ((attempt=1; attempt<=5; attempt++)); do
+    resumed_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+      | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+    if grep -Fq -- "$PACKAGE" <<<"$resumed_activity"; then
+      app_resumed=1
+      break
+    fi
+    if [[ -z "$resumed_activity" ]]; then
+      sleep 0.5
+      continue
+    fi
+    if ! grep -Fq -- "com.android.documentsui" <<<"$resumed_activity"; then
+      echo "ERROR: unexpected foreground Activity while cancelling Android $label picker"
+      printf '%s\\n' "$resumed_activity"
+      break
+    fi
+    if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
+      echo "ERROR: could not send Android Back while cancelling $label picker"
+      return 1
+    fi
+    back_count=$((back_count + 1))
+    sleep 0.5
+  done
+
+  if [[ "$app_resumed" != "1" ]]; then
+    resumed_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+      | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+    if grep -Fq -- "$PACKAGE" <<<"$resumed_activity"; then app_resumed=1; fi
+  fi
+
+  if [[ "$app_resumed" != "1" ]]; then
+    echo "ERROR: Android DocumentsUI did not return to the app after $back_count Back action(s) while cancelling $label"
+    printf '%s\\n' "$resumed_activity"
+    adb_bounded 10 exec-out screencap -p > "$screenshot_path" || true
+    dump_device_ui "$remote_path" "$hierarchy_path" || true
+    return 1
+  fi
+
+  echo "Android DocumentsUI returned to the app while cancelling $label after $back_count Back action(s)."
+  return 0
 }
 open_project_document() {
   local item="$1"
@@ -7472,9 +7525,7 @@ fi
 save_cancel_marker_before="$(project_marker_count "PROJECT_SAVE_AS_CANCELLED")"
 if ! tap_project_function_bar 1; then exit 1; fi
 wait_for_project_picker_item "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"
-if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
-  echo "ERROR: could not cancel Save As picker"; exit 1
-fi
+if ! cancel_android_document_picker "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Save As"; then exit 1; fi
 if ! wait_for_new_project_marker "PROJECT_SAVE_AS_CANCELLED" "$save_cancel_marker_before" 20; then
   echo "ERROR: Save As cancellation was not reported"; exit 1
 fi
@@ -7492,10 +7543,8 @@ fi
 
 open_cancel_marker_before="$(project_marker_count "PROJECT_OPEN_CANCELLED")"
 if ! tap_project_function_bar 0; then exit 1; fi
-wait_for_project_picker_item "$PROJECT_EXT_OPEN_XML" "$PROJECT_EXT_OPEN_REMOTE" "$PROJECT_EXT_OPEN_PNG" "Untitled.mpcproj"
-if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
-  echo "ERROR: could not cancel Open picker"; exit 1
-fi
+wait_for_project_picker_item "$PROJECT_EXT_OPEN_CANCEL_PICKER_XML" "$PROJECT_EXT_OPEN_CANCEL_PICKER_REMOTE" "$PROJECT_EXT_OPEN_CANCEL_PICKER_PNG" "Untitled.mpcproj"
+if ! cancel_android_document_picker "$PROJECT_EXT_OPEN_CANCEL_PICKER_REMOTE" "$PROJECT_EXT_OPEN_CANCEL_PICKER_XML" "$PROJECT_EXT_OPEN_CANCEL_PICKER_PNG" "Open"; then exit 1; fi
 if ! wait_for_new_project_marker "PROJECT_OPEN_CANCELLED" "$open_cancel_marker_before" 20; then
   echo "ERROR: Open cancellation was not truthfully reported"; exit 1
 fi
