@@ -11235,7 +11235,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     setBottomStatus(loaded == null
                             ? "PROJECT OPEN FAILED • native loader unavailable" : loaded);
                     Log.i(TAG, "PROJECT_OPEN_REJECTED stateSha256=" + currentProjectStateSha256()
-                            + " fileSha256=" + projectBytesSha256(bytes) + " result=" + loaded);
+                            + " fileSha256=" + projectBytesSha256(bytes)
+                            + " currentPage=" + currentPage + " result=" + loaded);
                     return;
                 }
                 currentProjectUri = uri;

@@ -7560,8 +7560,8 @@ fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_REJECT_XML"; then
   echo "ERROR: could not capture malformed load hierarchy"; exit 1
 fi
-if ! grep -Fq -- "MPC Project Open" "$PROJECT_EXT_REJECT_XML"; then
-  echo "ERROR: Project Open route is no longer usable after rejection"; exit 1
+if ! grep -Fq -- "currentPage=PROJECT" <<<"$rejected_line_ext"; then
+  echo "ERROR: malformed-file rejection lost the Project context"; echo "$rejected_line_ext"; exit 1
 fi
 
 # Open the v1 file through the actual Android picker. Its canonical v2 state has
