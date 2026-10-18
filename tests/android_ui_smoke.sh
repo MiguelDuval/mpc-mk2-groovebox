@@ -7251,7 +7251,7 @@ fi
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
   echo "ERROR: Save As did not prefill the project filename"; exit 1
 fi
-if ! tap_ui_text "$PROJECT_SAVE_XML" "Save"; then
+if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then
   echo "ERROR: DocumentsUI Save action was not available for Project Save As"; exit 1
 fi
 if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_save_marker_before" 45; then
