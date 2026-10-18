@@ -7562,7 +7562,9 @@ fi
 
 # Build a valid v1 fixture from the actual saved file, not the older native
 # codec-only fixture whose PROGRAMS section intentionally violates runtime rules.
-device_project_path="$(adb_bounded 10 shell 'find /sdcard -type f -name "Untitled.mpcproj" 2>/dev/null | head -n 1' | tr -d '\r')"
+# Search the real shared-storage mount. On Android, /sdcard is a symlink;
+# toybox find without -L does not necessarily traverse that starting path.
+device_project_path="$(adb_bounded 10 shell 'find /storage/emulated/0 -type f -name "Untitled.mpcproj" 2>/dev/null | head -n 1' | tr -d '\r')"
 if [[ -z "$device_project_path" ]]; then
   echo "ERROR: could not find the actual SAF saved Project file"; exit 1
 fi
