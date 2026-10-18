@@ -9,6 +9,8 @@ Question -> Source -> Finding -> Confidence -> Repository decision -> Test.
 
 Primary software reference is the official MPC Standalone OS v3.9 guide. Current MPC3 support material is preferred over older MPC2 material when both describe the same feature.
 
+**Action-level implementation index:** consult [MPC3-USER-ACTION-CATALOG.md](MPC3-USER-ACTION-CATALOG.md) before implementing a user-visible MPC action. It links documented behavior, firmware evidence, current Android routes/state, known gaps and acceptance tests. Update the relevant action row when implementation or verification status changes.
+
 ---
 
 ## Firmware UI static evidence — added 2026-10-16
