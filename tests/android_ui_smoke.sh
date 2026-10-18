@@ -3120,7 +3120,7 @@ place_gap=[n for n in delete_nodes
 if len(place_gap)!=1 or place_gap[0].attrib.get("enabled")!="true":
     raise AssertionError("the empty post-DELETE gap must expose an enabled PLACE action")
 for path,description in [
-    (place_xml, "Arrangement place Pattern at empty target tick"),
+    (place_xml, f"Arrangement duplicate Pattern placement at tick {tick} one clip later"),
     (move_xml, "Arrangement move Pattern placement at tick")]:
     nodes=list(ET.parse(path).getroot().iter("node"))
     matching=[n for n in nodes if (n.attrib.get("content-desc") or "").startswith(description)]
