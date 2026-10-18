@@ -15,6 +15,8 @@ This document bridges four things:
 
 Raw MIDI values belong only in the hardware adapter/control map. UI and domain code must consume semantic actions. For source-to-test traceability and the explicit exclusion of desktop-host workflows, use [MPC Studio MkII Reverse-Engineering Traceability](MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md).
 
+For the other half of the mapping, use [MPC Studio MkII ↔ MPC One Integration Contract](MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md). That document maps MPC One / MPC 3.9 reference actions to actual Studio gestures and documents non-identical modifiers, missing physical equivalents and alternate routes. This semantic map remains authoritative for which semantic action the adapter emits; the traceability document remains authoritative for raw protocol and source/test evidence.
+
 ## Evidence and confidence
 
 The hardware protocol is reconstructed from independent public observation and documentation. The primary protocol source is:
