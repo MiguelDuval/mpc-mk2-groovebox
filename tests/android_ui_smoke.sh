@@ -3133,7 +3133,7 @@ PY
 
     # Duplicate the selected Arrangement Pattern clip into its immediately adjacent
     # free range. The source Pattern and source placement must remain untouched.
-    arrangement_placement_duplicate_source_tick="$(sed -nE 's/.*UI_ARRANGE_PLACEMENT_STATE: action=MOVE track=[0-9]+ tick=([0-9]+).*/\\1/p' <<<"$arrangement_placement_flow_move_line")"
+    arrangement_placement_duplicate_source_tick="$(sed -nE 's/.*UI_ARRANGE_PLACEMENT_STATE: action=MOVE track=[0-9]+ tick=([0-9]+).*/\1/p' <<<"$arrangement_placement_flow_move_line")"
     if [[ -z "$arrangement_placement_duplicate_source_tick" ]]; then
       echo "ERROR: could not derive the live Pattern clip start for CLIP DUP"; exit 1
     fi
