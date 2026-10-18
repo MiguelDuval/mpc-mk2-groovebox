@@ -7072,7 +7072,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
         final int patternLength = arrangementPatternLengthTicks(arrangementInsertionTrackIndex);
         if (patternLength <= 0) return 0;
-        // Make a useful short clip with at least two grid cells where available;
+        // Make a visible short clip spanning two grid cells where available;
         // the source Pattern remains shared and is never copied or truncated.
         final long requestedLength = Math.min((long) patternLength, (long) gridTicks * 2L);
         if (requestedLength <= 0L

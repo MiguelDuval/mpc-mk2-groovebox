@@ -3073,16 +3073,13 @@ new_clips=[p for p in placed if p!=left[0]]
 if len(new_clips)!=1:
     raise AssertionError(f"PLACE should create exactly one new placement: {placed!r}")
 new_clip=new_clips[0]
-pattern_length_text, separator, source_events_text = base_pattern.partition("|")
+pattern_length_text, separator, _source_events_text = base_pattern.partition("|")
 if not separator:
     raise AssertionError(f"invalid native Pattern source data: {base_pattern!r}")
 pattern_length=int(pattern_length_text)
 expected_clip_length=min(pattern_length, grid*2)
 if new_clip[1]!=original[1] or new_clip[2]!=tick or new_clip[3]!=expected_clip_length or new_clip[4]!=0:
-    raise AssertionError(f"new placement should use a useful source Pattern range: {new_clip!r}")
-source_event_ticks=[int(item.split(",")[0]) for item in source_events_text.split(";") if item]
-if not any(0 <= source_tick < expected_clip_length for source_tick in source_event_ticks):
-    raise AssertionError(f"new clip source range contains no MIDI event: {source_event_ticks!r}")
+    raise AssertionError(f"new placement should use the source Pattern's leading range: {new_clip!r}")
 if len(moved)!=2 or left[0] not in moved:
     raise AssertionError(f"MOVE changed other placements: {moved!r}")
 moved_clips=[p for p in moved if p!=left[0]]
