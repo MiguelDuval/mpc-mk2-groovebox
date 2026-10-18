@@ -7199,7 +7199,8 @@ fi
 echo "Real Main → Menu → Project touch path and native summary verified; screenshots/hierarchies captured."
 
 # Save the real native Project model through ACTION_CREATE_DOCUMENT.
-if ! tap_ui_description "$DUMP" "MPC Project Save As"; then exit 1; fi
+project_save_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+if ! tap_project_function_bar 1; then exit 1; fi
 project_save_picker_ready=0
 for ((attempt=1; attempt<=25; attempt++)); do
   if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
@@ -7221,7 +7222,7 @@ fi
 if ! tap_ui_text "$PROJECT_SAVE_XML" "Save"; then
   echo "ERROR: DocumentsUI Save action was not available for Project Save As"; exit 1
 fi
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT SAVED" 30; then
+if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_save_marker_before" 45; then
   echo "ERROR: Project Save As did not complete through the real document provider"; exit 1
 fi
 if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_SAVED_PNG"; then
@@ -7236,28 +7237,19 @@ fi
 
 # Change the in-memory model after saving; the disk copy must still load the
 # earlier single-Track state rather than the currently edited model.
-if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then exit 1; fi
-if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Menu MAIN" 20; then
-  echo "ERROR: Main mode unavailable while mutating the saved Project"; exit 1
+if ! tap_project_toolbar_menu; then exit 1; fi
+if ! tap_mpc_menu_tile 0 0; then exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_MUTATED_PNG"; then
+  echo "ERROR: could not capture Main before Track mutation"; exit 1
 fi
-if ! tap_ui_description "$DUMP" "MPC Menu MAIN"; then exit 1; fi
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "+ NEW TRACK" 20; then
-  echo "ERROR: Main Track creation action was not visible"; exit 1
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MUTATED_XML"; then
+  echo "ERROR: could not capture Main hierarchy before Track mutation"; exit 1
 fi
-if ! tap_ui_text "$DUMP" "+ NEW TRACK"; then
-  echo "ERROR: could not mutate the in-memory Project with a new Track"; exit 1
-fi
-if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then exit 1; fi
-if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Menu PROJECT" 20; then
-  echo "ERROR: Project tile unavailable after Track mutation"; exit 1
-fi
-if ! tap_ui_description "$DUMP" "MPC Menu PROJECT"; then exit 1; fi
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "TRACKS=2" 20; then
-  echo "ERROR: Project summary did not expose the in-memory Track mutation"; exit 1
-fi
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PLACEMENTS=2" 10; then
-  echo "ERROR: added Track's Pattern placement was not reflected in the model summary"; exit 1
-fi
+if ! tap_main_new_track; then exit 1; fi
+sleep 1
+if ! tap_project_toolbar_menu; then exit 1; fi
+if ! tap_mpc_menu_tile 3 3; then exit 1; fi
+if ! assert_latest_project_summary "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
 if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_MUTATED_PNG"; then
   echo "ERROR: could not capture mutated Project state"; exit 1
 fi
@@ -7267,7 +7259,8 @@ fi
 
 # Open the saved file through ACTION_OPEN_DOCUMENT. This parses the file into
 # a new domain Project and replaces the already-mutated in-memory model.
-if ! tap_ui_description "$DUMP" "MPC Project Open"; then exit 1; fi
+project_open_marker_before="$(project_marker_count "PROJECT_OPEN_COMPLETE")"
+if ! tap_project_function_bar 0; then exit 1; fi
 project_open_picker_ready=0
 for ((attempt=1; attempt<=25; attempt++)); do
   if dump_device_ui "$PROJECT_OPEN_REMOTE" "$PROJECT_OPEN_XML" \
@@ -7289,7 +7282,7 @@ fi
 if ! tap_ui_picker_result_row "$PROJECT_OPEN_XML" "Untitled.mpcproj" auto label; then
   echo "ERROR: could not select the previously saved Project file"; exit 1
 fi
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT_LOADED" 40; then
+if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$project_open_marker_before" 45; then
   echo "ERROR: app did not report a successful load of the selected Project file"; exit 1
 fi
 project_open_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
@@ -7301,17 +7294,8 @@ if [[ -z "$project_open_line" ]] \
   echo "$project_open_line"
   exit 1
 fi
-if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then exit 1; fi
-if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Menu PROJECT" 20; then
-  echo "ERROR: could not return to the restored Project summary"; exit 1
-fi
-if ! tap_ui_description "$DUMP" "MPC Menu PROJECT"; then exit 1; fi
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "TRACKS=1" 20; then
-  echo "ERROR: visible Project summary did not match the opened disk state"; exit 1
-fi
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PLACEMENTS=1" 10; then
-  echo "ERROR: visible Pattern placement count did not match saved file"; exit 1
-fi
+show_project_route_extended
+if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_REOPENED_PNG"; then
   echo "ERROR: could not capture the reopened Project screen"; exit 1
 fi
@@ -7364,21 +7348,18 @@ wait_for_project_picker_item() {
 }
 open_project_document() {
   local item="$1"
-  if ! tap_ui_description "$DUMP" "MPC Project Open"; then exit 1; fi
+  OPEN_PROJECT_COMPLETE_BEFORE="$(project_marker_count "PROJECT_OPEN_COMPLETE")"
+  OPEN_PROJECT_REJECTED_BEFORE="$(project_marker_count "PROJECT_OPEN_REJECTED")"
+  if ! tap_project_function_bar 0; then exit 1; fi
   wait_for_project_picker_item "$PROJECT_EXT_OPEN_XML" "$PROJECT_EXT_OPEN_REMOTE" "$PROJECT_EXT_OPEN_PNG" "$item"
   if ! tap_ui_picker_result_row "$PROJECT_EXT_OPEN_XML" "$item" auto label; then
     echo "ERROR: could not select $item from the actual Android document picker"; exit 1
   fi
 }
 show_project_route_extended() {
-  if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then exit 1; fi
-  if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Menu PROJECT" 20; then
-    echo "ERROR: Project tile did not appear in Menu"; exit 1
-  fi
-  if ! tap_ui_description "$DUMP" "MPC Menu PROJECT"; then exit 1; fi
-  if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Open" 20; then
-    echo "ERROR: Project Function Bar did not return to Project"; exit 1
-  fi
+  if ! tap_project_toolbar_menu; then exit 1; fi
+  if ! tap_mpc_menu_tile 3 3; then exit 1; fi
+  if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 }
 
 # Verify the dedicated debug-only native fixture populated actual non-default
@@ -7422,9 +7403,6 @@ fi
 if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY"; then
   echo "ERROR: could not relaunch app after process death"; exit 1
 fi
-if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Browser" 40; then
-  echo "ERROR: Main shell did not appear after the actual process restart"; exit 1
-fi
 restart_ready=0
 for ((attempt=1; attempt<=45; attempt++)); do
   restart_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
@@ -7442,7 +7420,7 @@ if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_RESTART_MAIN_XML"; then
 fi
 show_project_route_extended
 open_project_document "Untitled.mpcproj"
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT_LOADED" 40; then
+if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE_BEFORE" 45; then
   echo "ERROR: Open after process restart failed through DocumentsUI"; exit 1
 fi
 restart_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
@@ -7464,12 +7442,13 @@ if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_RESTART_PROJECT_XML"; then
 fi
 
 # Cancel Save As, then Open, and ensure the same real Project remains in memory.
-if ! tap_ui_description "$DUMP" "MPC Project Save As"; then exit 1; fi
+save_cancel_marker_before="$(project_marker_count "PROJECT_SAVE_AS_CANCELLED")"
+if ! tap_project_function_bar 1; then exit 1; fi
 wait_for_project_picker_item "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"
 if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
   echo "ERROR: could not cancel Save As picker"; exit 1
 fi
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT SAVE AS CANCELLED" 20; then
+if ! wait_for_new_project_marker "PROJECT_SAVE_AS_CANCELLED" "$save_cancel_marker_before" 20; then
   echo "ERROR: Save As cancellation was not reported"; exit 1
 fi
 save_cancel_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_AS_CANCELLED" | tail -n 1 || true)"
@@ -7484,12 +7463,13 @@ if ! dump_device_ui "$DEVICE_DUMP" /tmp/mpc-groovebox-project-save-cancelled-uia
   echo "ERROR: could not capture Save As cancellation hierarchy"; exit 1
 fi
 
-if ! tap_ui_description "$DUMP" "MPC Project Open"; then exit 1; fi
+open_cancel_marker_before="$(project_marker_count "PROJECT_OPEN_CANCELLED")"
+if ! tap_project_function_bar 0; then exit 1; fi
 wait_for_project_picker_item "$PROJECT_EXT_OPEN_XML" "$PROJECT_EXT_OPEN_REMOTE" "$PROJECT_EXT_OPEN_PNG" "Untitled.mpcproj"
 if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
   echo "ERROR: could not cancel Open picker"; exit 1
 fi
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT OPEN CANCELLED" 20; then
+if ! wait_for_new_project_marker "PROJECT_OPEN_CANCELLED" "$open_cancel_marker_before" 20; then
   echo "ERROR: Open cancellation was not truthfully reported"; exit 1
 fi
 open_cancel_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_CANCELLED" | tail -n 1 || true)"
@@ -7565,7 +7545,7 @@ fi
 # The app is still in Project context after cancel; malformed input must reject
 # without replacing the saved model and the Project route must remain usable.
 open_project_document "Malformed-project.mpcproj"
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "PROJECT_LOAD_FAILED" 40; then
+if ! wait_for_new_project_marker "PROJECT_OPEN_REJECTED" "$OPEN_PROJECT_REJECTED_BEFORE" 45; then
   echo "ERROR: malformed Project did not report a native format rejection"; exit 1
 fi
 rejected_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_REJECTED" | tail -n 1 || true)"
