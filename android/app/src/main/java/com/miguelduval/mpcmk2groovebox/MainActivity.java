@@ -246,6 +246,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Button arrangementMoveLaterButton;
     private Button arrangementUndoButton;
     private Button arrangementRedoButton;
+    private Button arrangementCursorCutDisabledButton;
+    private Button arrangementCursorCopyDisabledButton;
+    private Button arrangementCursorDuplicateDisabledButton;
     private int selectedArrangementEventTrack = -1;
     private long selectedArrangementEventTick = -1L;
     private int selectedArrangementEventNote = -1;
@@ -6416,6 +6419,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementMoveLaterButton = null;
         arrangementUndoButton = null;
         arrangementRedoButton = null;
+        arrangementCursorCutDisabledButton = null;
+        arrangementCursorCopyDisabledButton = null;
+        arrangementCursorDuplicateDisabledButton = null;
         arrangementView = new MpcArrangeView(this);
         arrangementView.setListener(new MpcArrangeView.Listener() {
             @Override
@@ -6562,6 +6568,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementRedoButton.setEnabled(nativeSequenceCanRedo());
         eventActionRow.addView(arrangementRedoButton,
                 new LinearLayout.LayoutParams(dp(48), dp(34)));
+
+        // The Function Bar changes context when the insertion cursor is active.
+        // Keep event-only actions explicitly present but disabled in the secondary
+        // row so accessibility clients can distinguish "unavailable here" from
+        // an action omitted accidentally.
+        arrangementCursorCutDisabledButton = actionButton("CUT", null);
+        arrangementCursorCutDisabledButton.setTextSize(9);
+        arrangementCursorCutDisabledButton.setContentDescription("Arrangement cut selected event");
+        arrangementCursorCutDisabledButton.setEnabled(false);
+        arrangementCursorCutDisabledButton.setAlpha(0.45f);
+        arrangementCursorCutDisabledButton.setVisibility(View.GONE);
+        eventActionRow.addView(arrangementCursorCutDisabledButton,
+                new LinearLayout.LayoutParams(dp(42), dp(34)));
+
+        arrangementCursorCopyDisabledButton = actionButton("COPY", null);
+        arrangementCursorCopyDisabledButton.setTextSize(9);
+        arrangementCursorCopyDisabledButton.setContentDescription("Arrangement copy selected event");
+        arrangementCursorCopyDisabledButton.setEnabled(false);
+        arrangementCursorCopyDisabledButton.setAlpha(0.45f);
+        arrangementCursorCopyDisabledButton.setVisibility(View.GONE);
+        eventActionRow.addView(arrangementCursorCopyDisabledButton,
+                new LinearLayout.LayoutParams(dp(48), dp(34)));
+
+        arrangementCursorDuplicateDisabledButton = actionButton("DUP", null);
+        arrangementCursorDuplicateDisabledButton.setTextSize(9);
+        arrangementCursorDuplicateDisabledButton.setContentDescription(
+                "Arrangement duplicate selected event one grid later");
+        arrangementCursorDuplicateDisabledButton.setEnabled(false);
+        arrangementCursorDuplicateDisabledButton.setAlpha(0.45f);
+        arrangementCursorDuplicateDisabledButton.setVisibility(View.GONE);
+        eventActionRow.addView(arrangementCursorDuplicateDisabledButton,
+                new LinearLayout.LayoutParams(dp(42), dp(34)));
+
         updateArrangementEventControls();
         page.addView(eventActionRow, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
@@ -6649,6 +6688,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (arrangementMoveLaterButton != null) arrangementMoveLaterButton.setEnabled(selected);
         if (arrangementUndoButton != null) arrangementUndoButton.setEnabled(nativeSequenceCanUndo());
         if (arrangementRedoButton != null) arrangementRedoButton.setEnabled(nativeSequenceCanRedo());
+        final boolean cursorOnly = !selected && hasArrangementInsertionTarget();
+        final int cursorActionVisibility = cursorOnly ? View.VISIBLE : View.GONE;
+        if (arrangementCursorCutDisabledButton != null) {
+            arrangementCursorCutDisabledButton.setEnabled(false);
+            arrangementCursorCutDisabledButton.setVisibility(cursorActionVisibility);
+        }
+        if (arrangementCursorCopyDisabledButton != null) {
+            arrangementCursorCopyDisabledButton.setEnabled(false);
+            arrangementCursorCopyDisabledButton.setVisibility(cursorActionVisibility);
+        }
+        if (arrangementCursorDuplicateDisabledButton != null) {
+            arrangementCursorDuplicateDisabledButton.setEnabled(false);
+            arrangementCursorDuplicateDisabledButton.setVisibility(cursorActionVisibility);
+        }
         if (arrangementEventSelectionView != null) {
             if (selected) {
                 arrangementEventSelectionView.setText(String.format(
