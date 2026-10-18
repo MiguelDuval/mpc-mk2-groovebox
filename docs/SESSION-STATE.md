@@ -6,15 +6,14 @@
 ## Latest source and verification state
 
 - Repository: `MiguelDuval/mpc-mk2-groovebox`; working branch: `feature/mpc-one-ui-fidelity`.
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) is **OPEN**, base `fix/ui-shell-format-width-startup`; it remains unmerged and has not been retargeted.
-- At the start of this checkpoint, branch HEAD was `1dd5742331642e34713636a1ac811752e5fb1bb9`. The current branch includes application changes beyond the old native-codec SHA `63a5e51e7b66e0e879513acd9c9ff32d545f434e`; the last commit being documentation-only does **not** mean the entire current branch is documentation-only.
-- The versioned native Project codec v2 has a real filesystem save/load API and native round-trip tests for placements, MIDI event values, sample/program metadata, invalid input and the documented placement-free v1 fixture.
-- **Project UI integration now exists in source:** `MainActivity.java` exposes Project SAVE, SAVE AS (Android `ACTION_CREATE_DOCUMENT`) and OPEN (`ACTION_OPEN_DOCUMENT`). Save serializes the current native Project; Open reads a bounded document and calls `nativeProjectLoad`. The native bridge validates a candidate Project before replacement, stops transport/audio as needed, clears runtime sample buffers, replaces the Project, clears incompatible edit history and the native Arrangement event clipboard, and then refreshes/restarts the application context. Sample PCM is not embedded; WAV data may need reloading/relinking.
-- The first UI smoke scenario uses the real SAF picker: save a one-Track Project, add a Track in memory, open the saved file, then require the summary to return to the persisted one-Track/one-placement state. This proves more than native serialization alone, but it currently checks counts rather than every placement ID/timing field and complete MIDI state, and it does not force-stop/relaunch between save and open. Native codec tests cover detailed fields separately.
-- Prior [Android Build #2808](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39121411497) succeeded on the earlier code SHA `63a5e51e7b66e0e879513acd9c9ff32d545f434e`; that run predates the newly wired Android Project route and must not be cited as UI-route acceptance.
-- Android Build #2819 (`39136433515`) was **IN_PROGRESS** on the preceding HEAD `1dd5742331642e34713636a1ac811752e5fb1bb9` when this state was audited: native/JVM tests, APK assembly/upload and smoke-shell syntax had passed; the emulator smoke step was still running. That is not a green final result. Because this audit advances the PR branch, inspect the newly triggered exact-HEAD workflow and replace this note only with observed final status.
-- The APK and visual evidence attached to #2808 are verified for that older code SHA, not proof of the current Project UI route. Check current run artifacts and SHA before claiming new acceptance.
-- Physical MPC Studio MkII verification remains **PENDING**; emulator evidence does not stand in for a physical-controller test.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains **OPEN**, base `fix/ui-shell-format-width-startup`; not merged or retargeted.
+- The implementation's user-facing Project SAVE / SAVE AS / OPEN route is present in `MainActivity.java`, using Android SAF and native serializer/loader calls. The native loader validates a candidate, stops transport/audio as needed, clears runtime sample buffers and incompatible edit history, then replaces model state. Sample PCM is external; assigned WAV data may need reloading/relinking.
+- The first Project UI smoke scenario saves via SAF, adds a Track to the in-memory model, reopens the saved document and checks that Track/placement counts return to saved values. It does not yet compare every placement ID/timing/source offset and complete MIDI field in the Android flow or force-stop/relaunch between save and open. Native codec tests cover detailed field round-trip and the placement-free v1 fixture separately.
+- Prior [Android Build #2808](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39121411497) passed on app SHA `63a5e51e7b66e0e879513acd9c9ff32d545f434e`, but that SHA predates the Android Project UI route and is **not** proof of the new UI integration.
+- Successive documentation updates superseded Android Build #2820 / #2826 while the GitHub workflow was pending or running. At checkpoint preparation, Build #2826 (`39138937354`) for the previous docs SHA `5b05a5943f38b96ce9150bee2b9006d35b70de20` was cancelled; the workflow/check query did not yet return a run for docs HEAD `a96e5eac0d14389b0f8ffeda61619bbff4dca610`. **No green result is claimed for the current documentation HEAD.** Refresh live PR/Actions after this checkpoint commit.
+- A new controller research document now connects the public MIDI/SysEx source, official Akai support/quickstart/tutorial resources, code, tests and physical validation: [MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md](MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md). Source scope explicitly excludes MPC Desktop and DAW workflows. The official tutorial playlists are indexed, but full transcripts were not accessible in this pass; no claim is made that every video has been reviewed.
+- Controller documentation and agent rules have been reconciled to reflect current non-pad semantic routing and partial feedback implementation. The decoder currently accepts Jog CC 100 and Touch Strip CC 33 without a channel constraint; physical captures should settle whether to keep that tolerance or add a channel-policy test.
+- Physical MPC Studio MkII verification remains **PENDING** for many current behaviors. Emulator/unit tests do not replace device checks, and the existing detailed physical record is tied to its historical APK/build.
 
 ## Completed in this session
 
@@ -58,12 +57,18 @@ Verified by [Android Build #2793](https://github.com/MiguelDuval/mpc-mk2-grooveb
 
 Historical note superseded on 2026-10-18: explicit Pattern placements and their place/move/split/delete/duplicate operations are now implemented and emulator-verified. The open gap is project file save/reload through the Android user workflow.
 
+### 9. MPC Studio MkII protocol/support/tutorial traceability — DOCUMENTATION COMPLETE / VIDEO TRANSCRIPTS NOT FULLY REVIEWED
+
+Created [MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md](MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md). It documents the full pad-note map, 39 button/input mappings, Jog Wheel/Touch Strip input, button LED CC semantics, RGB pad SysEx, the six-chunk 160×80 LCD transport, corresponding source files/tests, and a physical validation queue. It links the primary community reverse-engineering repository, its Go/JavaScript LCD proof-of-concepts, official Akai FAQ and troubleshooting guide, the manufacturer-authored Quickstart mirror, and the official Akai-linked Academy/Masterclass playlists. Only hardware-level facts are retained; MPC Desktop, plug-in, licensing and DAW workflows are explicitly excluded.
+
+The official playlists could not be fully transcript-audited through the available source view, so the document labels them indexed but not fully reviewed. It does not invent video findings. Hardware doc/semantic-map status summaries were reconciled; agent instructions and the operating protocol now require traceability before controller work. No app/runtime code was changed in this documentation slice. The current exact-HEAD workflow result still requires a live check.
+
 ## Current execution order
 
-1. Verify the newest exact-HEAD Android workflow and inspect its Project Save/Open logs, screenshots, accessibility hierarchy and APK; do not infer a final result from an in-progress run.
-2. Harden the Project acceptance path: process stop/relaunch, exact placement tuples and MIDI-note fields, placement-free v1 load, and bounded malformed/cancel/error behavior. Keep sample PCM's external-reference limitation explicit.
-3. After the persistence flow is accepted, select the next highest-value Arrange/Grid/Track/Step gap using the action catalog and current source/tests; do not reopen finished Arrangement placement work or repeat full firmware research.
-4. Physical MPC Studio MkII input/feedback verification remains a separate hardware task; emulator checks do not close it.
+1. Check live PR #23 HEAD and its latest exact-SHA Android workflow; successive documentation commits may cancel earlier runs. Inspect logs, screenshots, hierarchy and APK before asserting the Project UI flow is verified.
+2. Harden Project acceptance: true app-session reset/relaunch, exact placement IDs/references/start/length/source offsets and MIDI-note fields, placement-free v1 load, and bounded malformed/cancel/error paths. Keep sample PCM's external-reference limit explicit.
+3. After the Project flow is accepted, select the next highest-value Arrange/Grid/Track/Step gap from current code/tests and the action catalog. Do not restart completed Pattern-placement work or repeat the full firmware crawl.
+4. Controller hardware work must use the new traceability map and the semantic control map. Resolve the Jog/Touch Strip CC channel discrepancy only after capturing raw bytes on the real controller. Physical verification remains separate from emulator/CI.
 
 ## Mandatory operating rules
 
