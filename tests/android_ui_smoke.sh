@@ -7000,13 +7000,15 @@ if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
     --es "$SMOKE_MODE_EXTRA" "project-persistence"; then
   echo "ERROR: could not launch native Project persistence acceptance session"; exit 1
 fi
-if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Browser" 40; then
-  echo "ERROR: Main shell did not appear for Project persistence test"; exit 1
-fi
+# Do not interrogate the UI hierarchy until native startup has completed.
+# uiautomator dump can occupy the main thread during cold startup; waiting for
+# its first visible toolbar label before the native fixture ran caused the old
+# smoke to stall and only dispatch the queued Menu click at timeout.
 project_engine_ready=0
-for ((attempt=1; attempt<=45; attempt++)); do
+for ((attempt=1; attempt<=120; attempt++)); do
   project_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
   if grep -Fq -- "AUDIO_START_RESULT=" <<<"$project_logs" \
+      && grep -Fq -- "PROJECT_TEST_FIXTURE_READY" <<<"$project_logs" \
       && grep -Fq -- "STARTUP_COMPLETE" <<<"$project_logs"; then
     project_engine_ready=1
     break
@@ -7014,7 +7016,27 @@ for ((attempt=1; attempt<=45; attempt++)); do
   sleep 1
 done
 if [ "$project_engine_ready" -ne 1 ]; then
-  echo "ERROR: native Project/Audio/UI startup did not finish"; exit 1
+  echo "ERROR: native Project/Audio startup or acceptance fixture did not finish"
+  adb_bounded 10 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+    | grep -E 'PROJECT_TEST_FIXTURE|AUDIO_START_RESULT=|STARTUP_COMPLETE|EARLY_STARTUP|FAILED' \
+    | tail -n 100 || true
+  exit 1
+fi
+project_fixture_line="$(grep -F -- "PROJECT_TEST_FIXTURE_READY" <<<"$project_logs" | tail -n 1)"
+for expected_fixture_field in \
+    "notes=2" \
+    "note1=120/36/180/97/88/3/-11" \
+    "note2=600/42/90/111/123/2/7" \
+    "placement=project-persistence-clip-01/sequence-1-track-1-pattern-1/480/720/120"; do
+  if ! grep -Fq -- "$expected_fixture_field" <<<"$project_fixture_line"; then
+    echo "ERROR: native persistence fixture omitted $expected_fixture_field"
+    echo "$project_fixture_line"
+    exit 1
+  fi
+done
+sleep 1
+if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Browser" 20; then
+  echo "ERROR: Main shell did not appear after native Project fixture startup"; exit 1
 fi
 
 # Save the real native Project model through ACTION_CREATE_DOCUMENT.
