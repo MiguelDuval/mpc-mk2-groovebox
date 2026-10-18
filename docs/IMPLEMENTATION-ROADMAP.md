@@ -22,6 +22,15 @@ Older queue entries below are historical snapshots. Read the status here first, 
 3. Update this roadmap, the action catalog and SESSION-STATE from the observed final result. Only then select the next highest-value Arrange/Grid/Track/Step gap from live code and tests.
 4. Physical MPC Studio MkII validation remains a separate requirement; emulator success does not close it.
 
+
+### Controller reverse-engineering traceability — DOCUMENTATION SLICE ADDED (2026-10-18)
+- Added [MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md](MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md) to connect the physical control map, published MIDI/SysEx research, current decoder/semantic/feedback implementation, automated tests and physical validation status.
+- Indexed the official Akai MPC Studio MkII FAQ and troubleshooting guide, Akai-linked MPC Studio Academy and Masterclass playlists, and a manufacturer-authored Quickstart mirror. Only transferable controller facts/physical gestures are retained; MPC Desktop, plug-in licensing, DAW navigation and host-specific tutorials are explicitly excluded.
+- The official tutorial playlist pages did not expose usable full transcripts in this research pass. Their source links are indexed, but they are not falsely marked fully reviewed; future findings require a video title and timestamp showing a specific physical action.
+- Reconciled stale hardware documentation that described only pads as working inputs or described the product LCD as wholly absent. Multiple non-pad semantic routes and a compact LCD context renderer exist in source, but full parity and current-build physical confirmation remain partial.
+- Identified a testable open discrepancy: the decoder enforces the documented channel for button/Jog-press/Touch Strip-touch notes, but currently accepts CC 100 and CC 33 without a channel check. Log these bytes on the physical controller before changing the policy.
+- This documentation slice changes no application/runtime code and does not close any physical controller test. The implementation priority remains Project Save/Open exact-SHA acceptance in the queue above; controller physical verification stays separate.
+
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 
 Older dated “next task” sections below retain history only. Start each slice from live HEAD, current source and real test gaps.
