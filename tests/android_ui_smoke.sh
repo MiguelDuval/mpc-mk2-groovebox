@@ -7034,26 +7034,106 @@ for expected_fixture_field in \
     exit 1
   fi
 done
-sleep 1
-if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Project Browser" 20; then
-  echo "ERROR: Main shell did not appear after native Project fixture startup"; exit 1
-fi
+echo "$project_fixture_line"
+echo "PROJECT_NATIVE_STARTUP_READY • awaiting actual Main shell interaction"
 
-# Save the real native Project model through ACTION_CREATE_DOCUMENT.
-if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then exit 1; fi
-if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "MPC Menu PROJECT" 20; then
-  echo "ERROR: Project tile is unavailable in the MPC Menu"
-  echo "--- MainActivity navigation diagnostics ---"
+# The earlier Main hierarchy is from this same emulator run and uses the same
+# canonical persistent Toolbar geometry. Re-use that captured enabled target
+# instead of starting another hierarchy dump while cold native startup settles.
+if ! tap_visible_description_early \
+    "/tmp/mpc-groovebox-main-ready-uiautomator.xml" "MPC Toolbar Menu"; then
+  echo "ERROR: could not activate the real MPC Toolbar Menu from captured Main evidence"; exit 1
+fi
+project_menu_rendered=0
+for ((attempt=1; attempt<=60; attempt++)); do
+  project_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  if grep -Fq -- "MPC_MENU_RENDER_COMPLETE" <<<"$project_logs" \
+      && grep -Fq -- "MPC_MENU_CLICK_END currentPage=MENU" <<<"$project_logs"; then
+    project_menu_rendered=1
+    break
+  fi
+  sleep 1
+done
+if [ "$project_menu_rendered" -ne 1 ]; then
+  echo "ERROR: real Toolbar Menu tap did not complete its Activity render"
   adb_bounded 10 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
     | grep -E 'MPC_MENU_|MPC_SHELL_STATE_|STARTUP_COMPLETE|AUDIO_START_RESULT=' \
-    | tail -n 80 || true
-  echo "--- End navigation diagnostics ---"
+    | tail -n 100 || true
   exit 1
 fi
-if ! tap_ui_description "$DUMP" "MPC Menu PROJECT"; then exit 1; fi
-if ! wait_for_ui_text "$DUMP" "$DEVICE_DUMP" "TRACKS=1" 20; then
-  echo "ERROR: initial Project summary does not expose its Track count"; exit 1
+sleep 1
+PROJECT_MENU_XML="/tmp/mpc-groovebox-project-menu-uiautomator.xml"
+PROJECT_MENU_PNG="/tmp/mpc-groovebox-project-menu.png"
+if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_MENU_PNG"; then
+  echo "ERROR: could not capture rendered MPC Menu screenshot"; exit 1
 fi
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MENU_XML"; then
+  echo "ERROR: could not capture rendered MPC Menu hierarchy"; exit 1
+fi
+if ! python3 - "$PROJECT_MENU_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+targets = [node for node in root.iter("node")
+           if node.attrib.get("content-desc", "").startswith("MPC Menu PROJECT")
+           and node.attrib.get("clickable") == "true"
+           and node.attrib.get("enabled") == "true"]
+if len(targets) != 1:
+    raise SystemExit(f"expected one enabled Project tile in rendered Menu, got {len(targets)}")
+PY
+then
+  echo "ERROR: Menu render was logged but the real Project tile is absent from accessibility hierarchy"
+  cat "$PROJECT_MENU_XML" || true
+  exit 1
+fi
+
+# Enter Project by a real tap on the clickable, accessibility-verified Menu tile.
+if ! tap_visible_description_early "$PROJECT_MENU_XML" "MPC Menu PROJECT"; then exit 1; fi
+project_route_ready=0
+for ((attempt=1; attempt<=45; attempt++)); do
+  project_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  if grep -Fq -- "MPC_PROJECT_RENDER_COMPLETE" <<<"$project_logs"; then
+    project_route_ready=1
+    break
+  fi
+  sleep 1
+done
+if [ "$project_route_ready" -ne 1 ]; then
+  echo "ERROR: Project tile tap did not change the MPC shell to PROJECT mode"
+  adb_bounded 10 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+    | grep -E 'MPC_MENU_|MPC_SHELL_STATE_|STARTUP_COMPLETE' | tail -n 100 || true
+  exit 1
+fi
+sleep 1
+PROJECT_ROUTE_XML="/tmp/mpc-groovebox-project-route-uiautomator.xml"
+PROJECT_ROUTE_PNG="/tmp/mpc-groovebox-project-route.png"
+if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_ROUTE_PNG"; then
+  echo "ERROR: could not capture Project route screenshot"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: could not capture Project route hierarchy"; exit 1
+fi
+if ! python3 - "$PROJECT_ROUTE_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+descriptions = [node.attrib.get("content-desc", "") for node in root.iter("node")]
+texts = [node.attrib.get("text", "") for node in root.iter("node")]
+if not any(desc.startswith("MPC Project content summary") for desc in descriptions):
+    raise SystemExit("Project domain summary is not present in the real UI hierarchy")
+if not any("TRACKS=1" in text for text in texts):
+    raise SystemExit("initial Project summary does not expose one Track")
+if not any("PLACEMENTS=1" in text for text in texts):
+    raise SystemExit("seeded Pattern placement is not reflected in the Project summary")
+PY
+then
+  echo "ERROR: rendered Project route did not expose the authoritative native summary"
+  cat "$PROJECT_ROUTE_XML" || true
+  exit 1
+fi
+echo "Real Main → Menu → Project tap path passed; screenshots and hierarchies captured."
+
+# Save the real native Project model through ACTION_CREATE_DOCUMENT.
 if ! tap_ui_description "$DUMP" "MPC Project Save As"; then exit 1; fi
 project_save_picker_ready=0
 for ((attempt=1; attempt<=25; attempt++)); do

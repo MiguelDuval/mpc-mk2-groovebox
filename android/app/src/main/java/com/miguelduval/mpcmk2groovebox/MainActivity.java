@@ -10022,6 +10022,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Log.i(TAG, "MPC_MENU_RENDER_COMPLETE");
     }
     private void showProjectPage() {
+        Log.i(TAG, "MPC_PROJECT_RENDER_BEGIN");
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
@@ -10065,6 +10066,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         content.addView(page);
         updateModeRailSelection();
+        Log.i(TAG, "MPC_PROJECT_RENDER_COMPLETE");
     }
 
     private Button buildMpcMenuTile(MpcModeRegistry.Entry entry) {

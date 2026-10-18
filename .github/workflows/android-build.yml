@@ -531,6 +531,10 @@ jobs:
             /tmp/mpc-groovebox-startup.png
             /tmp/mpc-groovebox-main-ready.png
             /tmp/mpc-groovebox-main-ready-uiautomator.xml
+            /tmp/mpc-groovebox-project-menu.png
+            /tmp/mpc-groovebox-project-menu-uiautomator.xml
+            /tmp/mpc-groovebox-project-route.png
+            /tmp/mpc-groovebox-project-route-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-before.png
             /tmp/mpc-groovebox-step-touch-before-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-after-add.png
