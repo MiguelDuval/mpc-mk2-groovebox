@@ -13288,9 +13288,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 + " gridTicks=" + arrangementAuditGridTicks
                 + " ticksPerBar=" + arrangementView.ticksPerBarForAudit());
 
-        // Keep this checkpoint bounded, but allow the complete touch smoke—including
-        // Pattern-placement Undo/Redo—to finish within its 120-second audit window.
-        final long deadline = System.currentTimeMillis() + 110_000L;
+        // Keep this checkpoint bounded while leaving headroom for the Arrangement
+        // clip-placement duplicate touch round-trip plus the existing placement lifecycle.
+        // The external UI audit still has a 210-second overall deadline; do not weaken the
+        // touch/state assertions or let this handshake wait indefinitely.
+        final long deadline = System.currentTimeMillis() + 135_000L;
         final Runnable[] poll = new Runnable[1];
         poll[0] = () -> {
             if (destroyed) return;
