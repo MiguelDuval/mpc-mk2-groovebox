@@ -7087,6 +7087,12 @@ assert_latest_project_summary() {
   echo "Verified rendered Project summary: $line"
 }
 
+show_project_route_extended() {
+  if ! tap_project_toolbar_menu; then exit 1; fi
+  if ! tap_mpc_menu_tile 3 3; then exit 1; fi
+  if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
+}
+
 
 PROJECT_SAVE_XML="/tmp/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_REMOTE="/sdcard/mpc-groovebox-project-save-picker-uiautomator.xml"
@@ -7355,11 +7361,6 @@ open_project_document() {
   if ! tap_ui_picker_result_row "$PROJECT_EXT_OPEN_XML" "$item" auto label; then
     echo "ERROR: could not select $item from the actual Android document picker"; exit 1
   fi
-}
-show_project_route_extended() {
-  if ! tap_project_toolbar_menu; then exit 1; fi
-  if ! tap_mpc_menu_tile 3 3; then exit 1; fi
-  if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 }
 
 # Verify the dedicated debug-only native fixture populated actual non-default
