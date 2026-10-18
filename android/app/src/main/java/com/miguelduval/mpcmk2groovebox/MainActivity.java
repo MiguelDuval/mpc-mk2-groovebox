@@ -264,6 +264,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int lastArrangementCutTrack = -1;
     private long lastArrangementCutTick = -1L;
     private int lastArrangementCutNote = -1;
+    private int lastArrangementPlacementMoveTrack = -1;
+    private long lastArrangementPlacementMoveSourceTick = -1L;
+    private long lastArrangementPlacementMoveTargetTick = -1L;
     private int arrangementAuditTrackIndex = -1;
     private int arrangementAuditTargetStep = -1;
     private long arrangementAuditEventTick = -1L;
@@ -528,6 +531,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceGetTrackArrangementData(int trackIndex);
     private static native String nativeSequenceGetTrackArrangementPlacements(int trackIndex);
     private static native String nativeSequenceSplitPatternPlacement(int trackIndex, long splitTick);
+    private static native String nativeSequenceAddArrangementPatternPlacement(
+            int trackIndex, long startTick, int lengthTicks);
+    private static native String nativeSequenceMoveArrangementPatternPlacement(
+            int trackIndex, long sourceStartTick, long targetStartTick);
+    private static native String nativeSequenceDeleteArrangementPatternPlacement(
+            int trackIndex, long sourceStartTick);
     private static native String nativeSequenceMoveArrangementEvent(
             int trackIndex, long sourceTick, int noteNumber, long targetTick);
     private static native String nativeSequenceCutArrangementEvent(
@@ -1936,40 +1945,92 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         selectedArrangementEventTrack >= 0
                                 && selectedArrangementEventTick >= 0L
                                 && selectedArrangementEventNote >= 0;
-                Button cut = addFunction(
-                        "CUT", arrangementEventSelected,
-                        v -> cutSelectedArrangementEvent());
-                cut.setContentDescription("Arrangement cut selected event");
-                Button copy = addFunction(
-                        "COPY", arrangementEventSelected,
-                        v -> copySelectedArrangementEvent());
-                copy.setContentDescription("Arrangement copy selected event");
+                final boolean cursorContext = hasArrangementInsertionTarget()
+                        && !arrangementEventSelected;
                 final boolean arrangementClipboardReady =
                         nativeSequenceHasArrangementClipboard()
                                 && nativeSequenceGetArrangementClipboardNote() >= 0;
-                final boolean pasteTargetAvailable =
-                        arrangementEventSelected || hasArrangementInsertionTarget();
-                Button paste = addFunction(
-                        "PASTE", pasteTargetAvailable && arrangementClipboardReady,
-                        v -> pasteArrangementClipboard());
-                paste.setContentDescription(hasArrangementInsertionTarget()
-                        ? String.format(Locale.ROOT,
-                                "Arrangement paste copied event at target tick %d",
-                                arrangementInsertionTick)
-                        : "Arrangement paste copied event one grid later");
-                Button duplicate = addFunction(
-                        "DUP", arrangementEventSelected,
-                        v -> duplicateSelectedArrangementEvent());
-                duplicate.setContentDescription(
-                        "Arrangement duplicate selected event one grid later");
-                addFunction("GRID", true, v -> showSequenceGridPage());
-                if (canSplitArrangementPlacementAtTarget()) {
-                    Button split = addFunction(
-                            "SPLIT", true, v -> splitArrangementPlacementAtCursor());
-                    split.setContentDescription(String.format(
-                            Locale.ROOT, "Arrangement split Pattern placement at target tick %d",
+                if (cursorContext) {
+                    Button paste = addFunction(
+                            "PASTE", arrangementClipboardReady,
+                            v -> pasteArrangementClipboard());
+                    paste.setContentDescription(String.format(Locale.ROOT,
+                            "Arrangement paste copied event at target tick %d",
                             arrangementInsertionTick));
+
+                    Button place = addFunction(
+                            "PLACE", canPlaceArrangementPatternAtTarget(),
+                            v -> placeArrangementPatternAtCursor());
+                    place.setContentDescription(String.format(Locale.ROOT,
+                            "Arrangement place Pattern at empty target tick %d",
+                            arrangementInsertionTick));
+
+                    final MpcArrangeView.Placement targetPlacement =
+                            findArrangementPlacementAtTarget();
+                    final boolean hasClip = targetPlacement != null;
+                    Button moveEarlier = addFunction(
+                            "CLIP −", hasClip && canMoveArrangementPlacementBy(
+                                    targetPlacement, -Math.max(1, nativeSequenceGetQuantizeGrid())),
+                            v -> moveArrangementPlacementBy(
+                                    -Math.max(1, nativeSequenceGetQuantizeGrid())));
+                    moveEarlier.setContentDescription(hasClip
+                            ? String.format(Locale.ROOT,
+                                    "Arrangement move Pattern placement at tick %d one grid earlier",
+                                    targetPlacement.startTick)
+                            : "Arrangement move Pattern placement one grid earlier");
+
+                    Button moveLater = addFunction(
+                            "CLIP +", hasClip && canMoveArrangementPlacementBy(
+                                    targetPlacement, Math.max(1, nativeSequenceGetQuantizeGrid())),
+                            v -> moveArrangementPlacementBy(
+                                    Math.max(1, nativeSequenceGetQuantizeGrid())));
+                    moveLater.setContentDescription(hasClip
+                            ? String.format(Locale.ROOT,
+                                    "Arrangement move Pattern placement at tick %d one grid later",
+                                    targetPlacement.startTick)
+                            : "Arrangement move Pattern placement one grid later");
+
+                    final MpcArrangeView.Lane targetLane =
+                            arrangementLaneForTrack(arrangementInsertionTrackIndex);
+                    final boolean canDelete = hasClip && targetLane != null
+                            && targetLane.placements.size() > 1;
+                    Button delete = addFunction(
+                            "CLIP DEL", canDelete, v -> deleteArrangementPlacementAtCursor());
+                    delete.setContentDescription(hasClip
+                            ? String.format(Locale.ROOT,
+                                    "Arrangement delete Pattern placement at tick %d",
+                                    targetPlacement.startTick)
+                            : "Arrangement delete Pattern placement at target");
+
+                    if (canSplitArrangementPlacementAtTarget()) {
+                        Button split = addFunction(
+                                "SPLIT", true, v -> splitArrangementPlacementAtCursor());
+                        split.setContentDescription(String.format(
+                                Locale.ROOT, "Arrangement split Pattern placement at target tick %d",
+                                arrangementInsertionTick));
+                    } else {
+                        addFunction("TRACK VIEW", true, v -> showTrackViewPage());
+                    }
                 } else {
+                    Button cut = addFunction(
+                            "CUT", arrangementEventSelected,
+                            v -> cutSelectedArrangementEvent());
+                    cut.setContentDescription("Arrangement cut selected event");
+                    Button copy = addFunction(
+                            "COPY", arrangementEventSelected,
+                            v -> copySelectedArrangementEvent());
+                    copy.setContentDescription("Arrangement copy selected event");
+                    final boolean pasteTargetAvailable = arrangementEventSelected;
+                    Button paste = addFunction(
+                            "PASTE", pasteTargetAvailable && arrangementClipboardReady,
+                            v -> pasteArrangementClipboard());
+                    paste.setContentDescription("Arrangement paste copied event one grid later");
+                    Button duplicate = addFunction(
+                            "DUP", arrangementEventSelected,
+                            v -> duplicateSelectedArrangementEvent());
+                    duplicate.setContentDescription(
+                            "Arrangement duplicate selected event one grid later");
+                    addFunction("GRID", true, v -> showSequenceGridPage());
                     addFunction("TRACK VIEW", true, v -> showTrackViewPage());
                 }
                 break;
@@ -6844,6 +6905,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final boolean splitPlacementHistoryAction =
                 result.contains("Split Arrangement Pattern placement")
                 && arrangementInsertionTrackIndex >= 0;
+        final boolean movePlacementHistoryAction =
+                result.contains("Move Arrangement Pattern placement")
+                && arrangementInsertionTrackIndex == lastArrangementPlacementMoveTrack
+                && ((redo && arrangementInsertionTick == lastArrangementPlacementMoveSourceTick)
+                    || (!redo
+                        && arrangementInsertionTick == lastArrangementPlacementMoveTargetTick));
+        final boolean placementHistoryAction = result.contains("Arrangement Pattern placement");
+        if (movePlacementHistoryAction) {
+            arrangementInsertionTick = redo
+                    ? lastArrangementPlacementMoveTargetTick
+                    : lastArrangementPlacementMoveSourceTick;
+            if (arrangementView != null) {
+                arrangementView.setInsertionTarget(
+                        arrangementInsertionTrackIndex, arrangementInsertionTick);
+            }
+        }
         final boolean cutHistoryAction = result.contains("Cut Arrangement event")
                 && lastArrangementCutTrack >= 0;
         final boolean duplicateHistoryAction = result.contains("Duplicate Arrangement event")
@@ -6927,7 +7004,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     redo ? lastArrangementPasteTargetTick : lastArrangementPasteSourceTick,
                     lastArrangementPasteNote);
         }
-        if (splitPlacementHistoryAction) {
+        if (placementHistoryAction && arrangementInsertionTrackIndex >= 0) {
             logArrangementPlacementState(redo ? "REDO" : "UNDO",
                     arrangementInsertionTrackIndex, arrangementInsertionTick);
         }
@@ -6953,6 +7030,234 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (kindSeparator >= 0 && kindSeparator + 2 < withoutEvents.length()) {
             return withoutEvents.substring(kindSeparator + 2).trim();        }
         return withoutEvents.trim();
+    }
+
+    private MpcArrangeView.Lane arrangementLaneForTrack(int trackIndex) {
+        for (MpcArrangeView.Lane lane : arrangementLanes) {
+            if (lane.trackIndex == trackIndex) return lane;
+        }
+        return null;
+    }
+
+    private MpcArrangeView.Placement findArrangementPlacementAtTarget() {
+        if (!hasArrangementInsertionTarget()) return null;
+        final MpcArrangeView.Lane lane =
+                arrangementLaneForTrack(arrangementInsertionTrackIndex);
+        if (lane == null) return null;
+        for (MpcArrangeView.Placement placement : lane.placements) {
+            final long end = placement.startTick + placement.lengthTicks;
+            if (arrangementInsertionTick >= placement.startTick
+                    && arrangementInsertionTick < end) return placement;
+        }
+        return null;
+    }
+
+    private int arrangementPatternLengthTicks(int trackIndex) {
+        final String data = nativeSequenceGetTrackArrangementData(trackIndex);
+        if (data == null) return 0;
+        final int delimiter = data.indexOf('|');
+        if (delimiter <= 0) return 0;
+        try {
+            return Integer.parseInt(data.substring(0, delimiter));
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    private int arrangementPlacementLengthForTarget() {
+        if (!hasArrangementInsertionTarget()) return 0;
+        final MpcArrangeView.Lane lane =
+                arrangementLaneForTrack(arrangementInsertionTrackIndex);
+        if (lane == null || lane.lengthTicks <= 0) return 0;
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int patternLength = arrangementPatternLengthTicks(arrangementInsertionTrackIndex);
+        if (patternLength <= 0) return 0;
+        // Make a useful short clip with at least two grid cells where available;
+        // the source Pattern remains shared and is never copied or truncated.
+        final long requestedLength = Math.min((long) patternLength, (long) gridTicks * 2L);
+        if (requestedLength <= 0L
+                || arrangementInsertionTick + requestedLength > lane.lengthTicks) return 0;
+        return (int) requestedLength;
+    }
+
+    private boolean canPlaceArrangementPatternAtTarget() {
+        if (!hasArrangementInsertionTarget()
+                || findArrangementPlacementAtTarget() != null) return false;
+        final MpcArrangeView.Lane lane =
+                arrangementLaneForTrack(arrangementInsertionTrackIndex);
+        if (lane == null) return false;
+        final int placementLength = arrangementPlacementLengthForTarget();
+        if (placementLength <= 0) return false;
+        final long targetEnd = arrangementInsertionTick + placementLength;
+        for (MpcArrangeView.Placement placement : lane.placements) {
+            final long end = placement.startTick + placement.lengthTicks;
+            if (arrangementInsertionTick < end && placement.startTick < targetEnd) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean canMoveArrangementPlacementBy(
+            MpcArrangeView.Placement placement, long deltaTicks) {
+        if (placement == null || deltaTicks == 0L) return false;
+        final MpcArrangeView.Lane lane = arrangementLaneForTrack(
+                arrangementInsertionTrackIndex);
+        if (lane == null) return false;
+        final long targetStart = placement.startTick + deltaTicks;
+        final long targetEnd = targetStart + placement.lengthTicks;
+        if (targetStart < 0L || targetEnd > lane.lengthTicks) return false;
+        for (MpcArrangeView.Placement other : lane.placements) {
+            if (other.id.equals(placement.id)) continue;
+            final long otherEnd = other.startTick + other.lengthTicks;
+            if (targetStart < otherEnd && other.startTick < targetEnd) return false;
+        }
+        return true;
+    }
+
+    private void placeArrangementPatternAtCursor() {
+        if (!canPlaceArrangementPatternAtTarget()) {
+            setBottomStatus("ARRANGE PATTERN PLACEMENT • choose a free grid cell");
+            updateArrangementEventControls();
+            return;
+        }
+        final int trackIndex = arrangementInsertionTrackIndex;
+        final long targetTick = arrangementInsertionTick;
+        final int lengthTicks = arrangementPlacementLengthForTarget();
+        if (lengthTicks <= 0) {
+            setBottomStatus("ARRANGE PATTERN PLACEMENT • target cannot fit a valid source range");
+            updateArrangementEventControls();
+            return;
+        }
+        final String result = nativeSequenceAddArrangementPatternPlacement(
+                trackIndex, targetTick, lengthTicks);
+        if (result == null || !result.startsWith("ARRANGE PATTERN PLACEMENT ADDED •")) {
+            setBottomStatus(result == null
+                    ? "ARRANGE PATTERN PLACEMENT • native operation returned no result" : result);
+            updateArrangementEventControls();
+            return;
+        }
+        loadArrangementLanes();
+        MpcArrangeView.Placement added = null;
+        final MpcArrangeView.Lane lane = arrangementLaneForTrack(trackIndex);
+        if (lane != null) {
+            for (MpcArrangeView.Placement placement : lane.placements) {
+                if (placement.startTick == targetTick
+                        && placement.lengthTicks == lengthTicks
+                        && placement.sourceOffsetTicks == 0) {
+                    added = placement;
+                    break;
+                }
+            }
+        }
+        if (added == null) {
+            final String rollback = nativeSequenceUndo();
+            loadArrangementLanes();
+            if (arrangementView != null) arrangementView.setInsertionTarget(trackIndex, targetTick);
+            updateArrangementEventControls();
+            setBottomStatus("ARRANGE PATTERN PLACEMENT • projection check failed | rollback="
+                    + rollback);
+            refreshArrangeView();
+            return;
+        }
+        if (arrangementView != null) arrangementView.setInsertionTarget(trackIndex, targetTick);
+        updateArrangementEventControls();
+        setBottomStatus(result);
+        logArrangementPlacementState("PLACE", trackIndex, targetTick);
+        refreshArrangeView();
+    }
+
+    private void moveArrangementPlacementBy(long deltaTicks) {
+        final MpcArrangeView.Placement placement = findArrangementPlacementAtTarget();
+        if (placement == null || !canMoveArrangementPlacementBy(placement, deltaTicks)) {
+            setBottomStatus("ARRANGE PATTERN PLACEMENT MOVE • no valid adjacent grid destination");
+            updateArrangementEventControls();
+            return;
+        }
+        final int trackIndex = arrangementInsertionTrackIndex;
+        final long sourceStart = placement.startTick;
+        final long targetStart = sourceStart + deltaTicks;
+        final String result = nativeSequenceMoveArrangementPatternPlacement(
+                trackIndex, sourceStart, targetStart);
+        if (result == null || !result.startsWith("ARRANGE PATTERN PLACEMENT MOVED •")) {
+            setBottomStatus(result == null
+                    ? "ARRANGE PATTERN PLACEMENT MOVE • native operation returned no result"
+                    : result);
+            updateArrangementEventControls();
+            return;
+        }
+        loadArrangementLanes();
+        MpcArrangeView.Placement moved = null;
+        final MpcArrangeView.Lane lane = arrangementLaneForTrack(trackIndex);
+        if (lane != null) {
+            for (MpcArrangeView.Placement candidate : lane.placements) {
+                if (candidate.startTick == targetStart
+                        && candidate.lengthTicks == placement.lengthTicks
+                        && candidate.patternId.equals(placement.patternId)
+                        && candidate.sourceOffsetTicks == placement.sourceOffsetTicks) {
+                    moved = candidate;
+                    break;
+                }
+            }
+        }
+        if (moved == null) {
+            final String rollback = nativeSequenceUndo();
+            loadArrangementLanes();
+            if (arrangementView != null) arrangementView.setInsertionTarget(trackIndex, sourceStart);
+            updateArrangementEventControls();
+            setBottomStatus("ARRANGE PATTERN PLACEMENT MOVE • projection check failed | rollback="
+                    + rollback);
+            refreshArrangeView();
+            return;
+        }
+        lastArrangementPlacementMoveTrack = trackIndex;
+        lastArrangementPlacementMoveSourceTick = sourceStart;
+        lastArrangementPlacementMoveTargetTick = targetStart;
+        arrangementInsertionTrackIndex = trackIndex;
+        arrangementInsertionTick = targetStart;
+        if (arrangementView != null) arrangementView.setInsertionTarget(trackIndex, targetStart);
+        updateArrangementEventControls();
+        setBottomStatus(result);
+        logArrangementPlacementState("MOVE", trackIndex, targetStart);
+        refreshArrangeView();
+    }
+
+    private void deleteArrangementPlacementAtCursor() {
+        final MpcArrangeView.Placement placement = findArrangementPlacementAtTarget();
+        final MpcArrangeView.Lane lane =
+                arrangementLaneForTrack(arrangementInsertionTrackIndex);
+        if (placement == null || lane == null || lane.placements.size() <= 1) {
+            setBottomStatus("ARRANGE PATTERN PLACEMENT DELETE • keep at least one placement");
+            updateArrangementEventControls();
+            return;
+        }
+        final int trackIndex = arrangementInsertionTrackIndex;
+        final long sourceStart = placement.startTick;
+        final String result = nativeSequenceDeleteArrangementPatternPlacement(
+                trackIndex, sourceStart);
+        if (result == null || !result.startsWith("ARRANGE PATTERN PLACEMENT DELETED •")) {
+            setBottomStatus(result == null
+                    ? "ARRANGE PATTERN PLACEMENT DELETE • native operation returned no result"
+                    : result);
+            updateArrangementEventControls();
+            return;
+        }
+        loadArrangementLanes();
+        if (findArrangementPlacementAtTarget() != null) {
+            final String rollback = nativeSequenceUndo();
+            loadArrangementLanes();
+            if (arrangementView != null) arrangementView.setInsertionTarget(trackIndex, sourceStart);
+            updateArrangementEventControls();
+            setBottomStatus("ARRANGE PATTERN PLACEMENT DELETE • projection check failed | rollback="
+                    + rollback);
+            refreshArrangeView();
+            return;
+        }
+        if (arrangementView != null) arrangementView.setInsertionTarget(trackIndex, sourceStart);
+        updateArrangementEventControls();
+        setBottomStatus(result);
+        logArrangementPlacementState("DELETE", trackIndex, sourceStart);
+        refreshArrangeView();
     }
 
     private boolean canSplitArrangementPlacementAtTarget() {

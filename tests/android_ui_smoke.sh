@@ -1736,6 +1736,14 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'view.setPadding(left, 0, right,
 require_source_contains "$0" 'Browser Options has zero/empty Android accessibility bounds'
 require_source_contains "$0" 'Function Bar action hit widths are unequal'
 
+echo "Running Arrangement Pattern placement Function Bar preflight..."
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceAddArrangementPatternPlacement'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceMoveArrangementPatternPlacement'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceDeleteArrangementPatternPlacement'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement place Pattern at empty target tick'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement move Pattern placement at tick'
+require_source_contains "$0" 'Pattern placement real-touch PLACE → MOVE ± GRID'
+require_source_contains "$0" 'UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE)'
 echo "Running MPC Browser Options preflight..."
 for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "$BROWSER_SOURCE"; then
@@ -2943,7 +2951,355 @@ PY
     fi
     echo "Arrangement clip SPLIT → UNDO → REDO → UNDO passed."
 
+    # Exercise a complete placement lifecycle using the real Function Bar. The split
+    # creates two source ranges; delete the right range to make a gap, place a short
+    # Pattern clip in that gap, and move it one grid later. Cleanup is native Undo.
+    ARRANGE_PLACEMENT_FLOW_SPLIT_PNG="/tmp/mpc-groovebox-arrange-placement-flow-split.png"
+    ARRANGE_PLACEMENT_FLOW_SPLIT_XML="/tmp/mpc-groovebox-arrange-placement-flow-split-uiautomator.xml"
+    ARRANGE_PLACEMENT_FLOW_SPLIT_REMOTE="/sdcard/mpc-groovebox-arrange-placement-flow-split-uiautomator.xml"
     if ! tap_visible_description_early "$ARRANGE_PLACEMENT_RESTORED_XML" \
+      "Arrangement split Pattern placement at target tick $arrange_cursor_tick"; then
+      echo "ERROR: Pattern placement lifecycle SPLIT was not actionable"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_SPLIT_REMOTE" "$ARRANGE_PLACEMENT_FLOW_SPLIT_XML"; then
+      echo "ERROR: lifecycle SPLIT hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_SPLIT_PNG"; then
+      echo "ERROR: lifecycle SPLIT screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_flow_split_line="$(arrangement_placement_state_line SPLIT)"
+    if [[ -z "$arrangement_placement_flow_split_line" ]]; then
+      echo "ERROR: lifecycle SPLIT did not log native placement state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_SPLIT_XML" \
+      "Arrangement delete Pattern placement at tick $arrange_cursor_tick"; then
+      echo "ERROR: Pattern placement CLIP DEL action not actionable at the clip start"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PLACEMENT_FLOW_DELETE_PNG="/tmp/mpc-groovebox-arrange-placement-flow-delete.png"
+    ARRANGE_PLACEMENT_FLOW_DELETE_XML="/tmp/mpc-groovebox-arrange-placement-flow-delete-uiautomator.xml"
+    ARRANGE_PLACEMENT_FLOW_DELETE_REMOTE="/sdcard/mpc-groovebox-arrange-placement-flow-delete-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_DELETE_REMOTE" "$ARRANGE_PLACEMENT_FLOW_DELETE_XML"; then
+      echo "ERROR: lifecycle clip-delete hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_DELETE_PNG"; then
+      echo "ERROR: lifecycle clip-delete screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_flow_delete_line="$(arrangement_placement_state_line DELETE)"
+    if [[ -z "$arrangement_placement_flow_delete_line" ]]; then
+      echo "ERROR: deleting a Pattern placement did not log native state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_DELETE_XML" \
+      "Arrangement place Pattern at empty target tick $arrange_cursor_tick"; then
+      echo "ERROR: Pattern PLACE action not actionable in the new gap"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PLACEMENT_FLOW_PLACE_PNG="/tmp/mpc-groovebox-arrange-placement-flow-place.png"
+    ARRANGE_PLACEMENT_FLOW_PLACE_XML="/tmp/mpc-groovebox-arrange-placement-flow-place-uiautomator.xml"
+    ARRANGE_PLACEMENT_FLOW_PLACE_REMOTE="/sdcard/mpc-groovebox-arrange-placement-flow-place-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_PLACE_REMOTE" "$ARRANGE_PLACEMENT_FLOW_PLACE_XML"; then
+      echo "ERROR: lifecycle PLACE hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_PLACE_PNG"; then
+      echo "ERROR: lifecycle PLACE screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_flow_place_line="$(arrangement_placement_state_line PLACE)"
+    if [[ -z "$arrangement_placement_flow_place_line" ]]; then
+      echo "ERROR: native Pattern placement ADD did not log state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_PLACE_XML" \
+      "Arrangement move Pattern placement at tick $arrange_cursor_tick one grid later"; then
+      echo "ERROR: new Pattern placement CLIP + GRID action not actionable"; exit 1
+    fi
+    sleep 0.3
+    ARRANGE_PLACEMENT_FLOW_MOVE_PNG="/tmp/mpc-groovebox-arrange-placement-flow-move.png"
+    ARRANGE_PLACEMENT_FLOW_MOVE_XML="/tmp/mpc-groovebox-arrange-placement-flow-move-uiautomator.xml"
+    ARRANGE_PLACEMENT_FLOW_MOVE_REMOTE="/sdcard/mpc-groovebox-arrange-placement-flow-move-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_MOVE_REMOTE" "$ARRANGE_PLACEMENT_FLOW_MOVE_XML"; then
+      echo "ERROR: lifecycle MOVE hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_MOVE_PNG"; then
+      echo "ERROR: lifecycle MOVE screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_flow_move_line="$(arrangement_placement_state_line MOVE)"
+    if [[ -z "$arrangement_placement_flow_move_line" ]]; then
+      echo "ERROR: native Pattern placement MOVE did not log state"; exit 1
+    fi
+
+    if ! python3 - "$arrangement_placement_target_line" "$arrangement_placement_flow_split_line" \
+      "$arrangement_placement_flow_delete_line" "$arrangement_placement_flow_place_line" \
+      "$arrangement_placement_flow_move_line" "$ARRANGE_PLACEMENT_FLOW_SPLIT_XML" \
+      "$ARRANGE_PLACEMENT_FLOW_DELETE_XML" "$ARRANGE_PLACEMENT_FLOW_PLACE_XML" \
+      "$ARRANGE_PLACEMENT_FLOW_MOVE_XML" "$arrange_event_track" "$arrange_cursor_tick" \
+      "$arrange_event_grid" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+baseline_line,split_line,delete_line,place_line,move_line,split_xml,delete_xml,place_xml,move_xml,track_s,tick_s,grid_s=sys.argv[1:]
+track,tick,grid=map(int,(track_s,tick_s,grid_s))
+pat=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+def decode(line,action):
+    m=pat.search(line)
+    if not m or m.group(1)!=action or int(m.group(2))!=track:
+        raise AssertionError(f"missing/invalid {action} state: {line!r}")
+    items=[]
+    for item in m.group(4).split(";"):
+        if not item: continue
+        fields=item.split(",")
+        if len(fields)!=5: raise AssertionError(f"invalid placement record: {item!r}")
+        items.append((fields[0],fields[1],*map(int,fields[2:])))
+    return int(m.group(3)),items,m.group(5)
+base_tick,base,base_pattern=decode(baseline_line,"TARGET")
+split_tick,split,split_pattern=decode(split_line,"SPLIT")
+delete_tick,deleted,delete_pattern=decode(delete_line,"DELETE")
+place_tick,placed,place_pattern=decode(place_line,"PLACE")
+move_tick,moved,move_pattern=decode(move_line,"MOVE")
+if base_tick!=tick or any(x!=base_pattern for x in (split_pattern,delete_pattern,place_pattern,move_pattern)):
+    raise AssertionError("clip edits changed underlying Pattern notes or the baseline cursor tick")
+if len(base)!=1 or len(split)!=2:
+    raise AssertionError(f"SPLIT must turn the single baseline placement into two: {base!r} -> {split!r}")
+original=base[0]
+left=[p for p in split if p[2]==original[2] and p[3]==tick-original[2]]
+right=[p for p in split if p[2]==tick and p[3]==original[2]+original[3]-tick]
+if len(left)!=1 or len(right)!=1 or left[0][1]!=original[1] or right[0][1]!=original[1]:
+    raise AssertionError(f"split ranges do not preserve their source Pattern: {split!r}")
+if len(deleted)!=1 or deleted[0]!=left[0]:
+    raise AssertionError(f"CLIP DEL must remove only the right split placement: {deleted!r}")
+if len(placed)!=2 or not any(p==left[0] for p in placed):
+    raise AssertionError(f"PLACE must retain the left placement: {placed!r}")
+new_clips=[p for p in placed if p!=left[0]]
+if len(new_clips)!=1:
+    raise AssertionError(f"PLACE should create exactly one new placement: {placed!r}")
+new_clip=new_clips[0]
+pattern_length_text, separator, source_events_text = base_pattern.partition("|")
+if not separator:
+    raise AssertionError(f"invalid native Pattern source data: {base_pattern!r}")
+pattern_length=int(pattern_length_text)
+expected_clip_length=min(pattern_length, grid*2)
+if new_clip[1]!=original[1] or new_clip[2]!=tick or new_clip[3]!=expected_clip_length or new_clip[4]!=0:
+    raise AssertionError(f"new placement should use a useful source Pattern range: {new_clip!r}")
+source_event_ticks=[int(item.split(",")[0]) for item in source_events_text.split(";") if item]
+if not any(0 <= source_tick < expected_clip_length for source_tick in source_event_ticks):
+    raise AssertionError(f"new clip source range contains no MIDI event: {source_event_ticks!r}")
+if len(moved)!=2 or left[0] not in moved:
+    raise AssertionError(f"MOVE changed other placements: {moved!r}")
+moved_clips=[p for p in moved if p!=left[0]]
+if len(moved_clips)!=1 or moved_clips[0]!=(new_clip[0],new_clip[1],tick+grid,expected_clip_length,new_clip[4]):
+    raise AssertionError(f"CLIP + GRID must move only the new clip by exactly one grid: {moved_clips!r}")
+for path,expected,description in [
+    (split_xml, "Arrangement split Pattern placement at target tick", "SPLIT"),
+    (delete_xml, "Arrangement delete Pattern placement at tick", "DELETE"),
+    (place_xml, "Arrangement place Pattern at empty target tick", "PLACE"),
+    (move_xml, "Arrangement move Pattern placement at tick", "MOVE")]:
+    nodes=list(ET.parse(path).getroot().iter("node"))
+    matching=[n for n in nodes if (n.attrib.get("content-desc") or "").startswith(description)]
+    if not matching: raise AssertionError(f"{description} state lacks its accessible action/target")
+print("Arrangement Pattern clip SPLIT → DELETE → PLACE → MOVE changed only placement state; Pattern events remained identical.")
+PY
+    then
+      echo "ERROR: Pattern placement create/move native state or accessibility validation failed"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_MOVE_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: clip MOVE UNDO action not available"; exit 1
+    fi
+    sleep 0.25
+    ARRANGE_PLACEMENT_FLOW_UNDO_PNG="/tmp/mpc-groovebox-arrange-placement-flow-undo.png"
+    ARRANGE_PLACEMENT_FLOW_UNDO_XML="/tmp/mpc-groovebox-arrange-placement-flow-undo-uiautomator.xml"
+    ARRANGE_PLACEMENT_FLOW_UNDO_REMOTE="/sdcard/mpc-groovebox-arrange-placement-flow-undo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_UNDO_REMOTE" "$ARRANGE_PLACEMENT_FLOW_UNDO_XML"; then
+      echo "ERROR: clip MOVE UNDO hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_UNDO_PNG"; then
+      echo "ERROR: clip MOVE UNDO screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_flow_undo_line="$(arrangement_placement_state_line UNDO)"
+    if [[ -z "$arrangement_placement_flow_undo_line" ]]; then
+      echo "ERROR: clip MOVE UNDO did not log native placement state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_flow_place_line" "$arrangement_placement_flow_undo_line" \
+      "$ARRANGE_PLACEMENT_FLOW_UNDO_XML" "$arrange_event_track" "$arrange_cursor_tick" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+place_line,undo_line,path,track_s,tick_s=sys.argv[1:]
+pat=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(PLACE|UNDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+place=pat.search(place_line); undo=pat.search(undo_line)
+if not place or not undo or place.group(5)!=undo.group(5) or place.group(4)!=undo.group(4):
+    raise AssertionError("Undo of CLIP MOVE did not restore exact PLACE placement state")
+if (int(undo.group(2)),int(undo.group(3)))!=(int(track_s),int(tick_s)):
+    raise AssertionError("Undo of CLIP MOVE did not return the cursor to the clip's original start")
+nodes=list(ET.parse(path).getroot().iter("node"))
+move=[n for n in nodes if n.attrib.get("content-desc")==f"Arrangement move Pattern placement at tick {tick_s} one grid later"]
+if len(move)!=1 or move[0].attrib.get("enabled")!="true":
+    raise AssertionError("Undo should restore the enabled one-grid placement move")
+print("Arrangement Pattern placement MOVE UNDO restored the exact placed clip and source cursor.")
+PY
+    then
+      echo "ERROR: clip MOVE UNDO did not restore its exact placement state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_UNDO_XML" \
+      "Arrangement redo latest sequencer edit"; then
+      echo "ERROR: clip MOVE REDO action not available"; exit 1
+    fi
+    sleep 0.25
+    ARRANGE_PLACEMENT_FLOW_REDO_PNG="/tmp/mpc-groovebox-arrange-placement-flow-redo.png"
+    ARRANGE_PLACEMENT_FLOW_REDO_XML="/tmp/mpc-groovebox-arrange-placement-flow-redo-uiautomator.xml"
+    ARRANGE_PLACEMENT_FLOW_REDO_REMOTE="/sdcard/mpc-groovebox-arrange-placement-flow-redo-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_REDO_REMOTE" "$ARRANGE_PLACEMENT_FLOW_REDO_XML"; then
+      echo "ERROR: clip MOVE REDO hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_REDO_PNG"; then
+      echo "ERROR: clip MOVE REDO screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_flow_redo_line="$(arrangement_placement_state_line REDO)"
+    if [[ -z "$arrangement_placement_flow_redo_line" ]]; then
+      echo "ERROR: clip MOVE REDO did not log native placement state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_flow_move_line" "$arrangement_placement_flow_redo_line" <<'PY'
+import re, sys
+before,redo=sys.argv[1:]
+pat=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(MOVE|REDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+a=pat.search(before); b=pat.search(redo)
+if not a or not b or a.group(4)!=b.group(4) or a.group(5)!=b.group(5):
+    raise AssertionError("clip MOVE REDO did not reproduce exact placement and Pattern state")
+print("Arrangement Pattern placement MOVE REDO reproduced the exact moved clip state.")
+PY
+    then
+      echo "ERROR: clip MOVE REDO changed placement/Pattern state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_REDO_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: final clip MOVE cleanup UNDO unavailable"; exit 1
+    fi
+    sleep 0.25
+    ARRANGE_PLACEMENT_FLOW_MOVE_RESTORED_PNG="/tmp/mpc-groovebox-arrange-placement-flow-move-restored.png"
+    ARRANGE_PLACEMENT_FLOW_MOVE_RESTORED_XML="/tmp/mpc-groovebox-arrange-placement-flow-move-restored-uiautomator.xml"
+    ARRANGE_PLACEMENT_FLOW_MOVE_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-placement-flow-move-restored-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_MOVE_RESTORED_REMOTE" "$ARRANGE_PLACEMENT_FLOW_MOVE_RESTORED_XML"; then
+      echo "ERROR: final clip MOVE restoration hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_MOVE_RESTORED_PNG"; then
+      echo "ERROR: final clip MOVE restoration screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_flow_move_restored_line="$(arrangement_placement_state_line UNDO)"
+    if [[ -z "$arrangement_placement_flow_move_restored_line" ]]; then
+      echo "ERROR: final clip MOVE restoration did not log native state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_flow_place_line" "$arrangement_placement_flow_move_restored_line" <<'PY'
+import re, sys
+place,undo=sys.argv[1:]
+pat=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(PLACE|UNDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+a=pat.search(place); b=pat.search(undo)
+if not a or not b or a.group(4)!=b.group(4) or a.group(5)!=b.group(5):
+    raise AssertionError("final MOVE UNDO did not return to exact placed clip state")
+print("Arrangement Pattern placement final MOVE UNDO returned to the exact placed state.")
+PY
+    then
+      echo "ERROR: final clip MOVE UNDO state mismatch"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_MOVE_RESTORED_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: PLACE UNDO action not available"; exit 1
+    fi
+    sleep 0.25
+    ARRANGE_PLACEMENT_FLOW_PLACE_RESTORED_PNG="/tmp/mpc-groovebox-arrange-placement-flow-place-restored.png"
+    ARRANGE_PLACEMENT_FLOW_PLACE_RESTORED_XML="/tmp/mpc-groovebox-arrange-placement-flow-place-restored-uiautomator.xml"
+    ARRANGE_PLACEMENT_FLOW_PLACE_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-placement-flow-place-restored-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_PLACE_RESTORED_REMOTE" "$ARRANGE_PLACEMENT_FLOW_PLACE_RESTORED_XML"; then
+      echo "ERROR: PLACE UNDO hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_PLACE_RESTORED_PNG"; then
+      echo "ERROR: PLACE UNDO screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_flow_place_restored_line="$(arrangement_placement_state_line UNDO)"
+    if [[ -z "$arrangement_placement_flow_place_restored_line" ]]; then
+      echo "ERROR: PLACE UNDO did not log native placement state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_flow_delete_line" "$arrangement_placement_flow_place_restored_line" <<'PY'
+import re, sys
+deleted,undo=sys.argv[1:]
+pat=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(DELETE|UNDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+a=pat.search(deleted); b=pat.search(undo)
+if not a or not b or a.group(4)!=b.group(4) or a.group(5)!=b.group(5):
+    raise AssertionError("Undo of PLACE did not restore the pre-PLACE gap state")
+print("Arrangement Pattern placement PLACE UNDO removed only the temporary new clip.")
+PY
+    then
+      echo "ERROR: PLACE UNDO did not restore the gap state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_PLACE_RESTORED_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: CLIP DEL UNDO action not available"; exit 1
+    fi
+    sleep 0.25
+    ARRANGE_PLACEMENT_FLOW_DELETE_RESTORED_PNG="/tmp/mpc-groovebox-arrange-placement-flow-delete-restored.png"
+    ARRANGE_PLACEMENT_FLOW_DELETE_RESTORED_XML="/tmp/mpc-groovebox-arrange-placement-flow-delete-restored-uiautomator.xml"
+    ARRANGE_PLACEMENT_FLOW_DELETE_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-placement-flow-delete-restored-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_DELETE_RESTORED_REMOTE" "$ARRANGE_PLACEMENT_FLOW_DELETE_RESTORED_XML"; then
+      echo "ERROR: CLIP DEL UNDO hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_DELETE_RESTORED_PNG"; then
+      echo "ERROR: CLIP DEL UNDO screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_flow_delete_restored_line="$(arrangement_placement_state_line UNDO)"
+    if [[ -z "$arrangement_placement_flow_delete_restored_line" ]]; then
+      echo "ERROR: CLIP DEL UNDO did not log native placement state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_flow_split_line" "$arrangement_placement_flow_delete_restored_line" <<'PY'
+import re, sys
+split,undo=sys.argv[1:]
+pat=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(SPLIT|UNDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+a=pat.search(split); b=pat.search(undo)
+if not a or not b or a.group(4)!=b.group(4) or a.group(5)!=b.group(5):
+    raise AssertionError("Undo of CLIP DEL did not restore exact split placement state")
+print("Arrangement Pattern placement DELETE UNDO restored the exact split clip state.")
+PY
+    then
+      echo "ERROR: CLIP DEL UNDO did not restore the split state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_DELETE_RESTORED_XML" \
+      "Arrangement undo latest sequencer edit"; then
+      echo "ERROR: initial lifecycle SPLIT cleanup UNDO unavailable"; exit 1
+    fi
+    sleep 0.25
+    ARRANGE_PLACEMENT_FLOW_FINAL_PNG="/tmp/mpc-groovebox-arrange-placement-flow-final.png"
+    ARRANGE_PLACEMENT_FLOW_FINAL_XML="/tmp/mpc-groovebox-arrange-placement-flow-final-uiautomator.xml"
+    ARRANGE_PLACEMENT_FLOW_FINAL_REMOTE="/sdcard/mpc-groovebox-arrange-placement-flow-final-uiautomator.xml"
+    if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_FINAL_REMOTE" "$ARRANGE_PLACEMENT_FLOW_FINAL_XML"; then
+      echo "ERROR: final placement lifecycle hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_FINAL_PNG"; then
+      echo "ERROR: final placement lifecycle screenshot capture failed"; exit 1
+    fi
+    arrangement_placement_flow_final_line="$(arrangement_placement_state_line UNDO)"
+    if [[ -z "$arrangement_placement_flow_final_line" ]]; then
+      echo "ERROR: final placement lifecycle restoration did not log native state"; exit 1
+    fi
+    if ! python3 - "$arrangement_placement_target_line" "$arrangement_placement_flow_final_line" \
+      "$ARRANGE_PLACEMENT_FLOW_FINAL_XML" "$arrange_event_track" "$arrange_cursor_tick" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+baseline_line,final_line,path,track_s,tick_s=sys.argv[1:]
+pat=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|UNDO) track=(\d+) tick=(\d+) placements=(.*?) pattern=(.*)$")
+base=pat.search(baseline_line); final=pat.search(final_line)
+if not base or not final or base.group(4)!=final.group(4) or base.group(5)!=final.group(5):
+    raise AssertionError("final Undo did not restore exact original Pattern placement serialization")
+if (int(final.group(2)),int(final.group(3)))!=(int(track_s),int(tick_s)):
+    raise AssertionError("final Undo did not restore the source insertion cursor")
+print("Arrangement Pattern placement SPLIT → DELETE → PLACE → MOVE → UNDO/REDO → cleanup restored exact state.")
+PY
+    then
+      echo "ERROR: Pattern placement lifecycle cleanup did not restore the baseline"; exit 1
+    fi
+    echo "Arrangement Pattern placement real-touch PLACE → MOVE ± GRID → UNDO → REDO → UNDO plus full fixture cleanup passed."
+
+    if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_FINAL_XML" \
       "Arrangement paste copied event at target tick $arrange_cursor_tick"; then
       echo "ERROR: Function Bar PASTE did not accept its explicit target cursor"; exit 1
     fi

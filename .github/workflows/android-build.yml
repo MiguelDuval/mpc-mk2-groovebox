@@ -491,6 +491,9 @@ jobs:
           archive: false
           if-no-files-found: error
 
+      - name: Validate Android UI smoke shell syntax
+        run: bash -n tests/android_ui_smoke.sh
+
       - name: Run Android emulator smoke test
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -587,6 +590,26 @@ jobs:
             /tmp/mpc-groovebox-arrange-placement-split-redo-uiautomator.xml
             /tmp/mpc-groovebox-arrange-placement-split-restored.png
             /tmp/mpc-groovebox-arrange-placement-split-restored-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-flow-split.png
+            /tmp/mpc-groovebox-arrange-placement-flow-split-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-flow-delete.png
+            /tmp/mpc-groovebox-arrange-placement-flow-delete-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-flow-place.png
+            /tmp/mpc-groovebox-arrange-placement-flow-place-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-flow-move.png
+            /tmp/mpc-groovebox-arrange-placement-flow-move-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-flow-undo.png
+            /tmp/mpc-groovebox-arrange-placement-flow-undo-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-flow-redo.png
+            /tmp/mpc-groovebox-arrange-placement-flow-redo-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-flow-move-restored.png
+            /tmp/mpc-groovebox-arrange-placement-flow-move-restored-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-flow-place-restored.png
+            /tmp/mpc-groovebox-arrange-placement-flow-place-restored-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-flow-delete-restored.png
+            /tmp/mpc-groovebox-arrange-placement-flow-delete-restored-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-flow-final.png
+            /tmp/mpc-groovebox-arrange-placement-flow-final-uiautomator.xml
             /tmp/mpc-groovebox-arrange-loop-before.png
             /tmp/mpc-groovebox-arrange-loop-before-uiautomator.xml
             /tmp/mpc-groovebox-arrange-loop-changed.png

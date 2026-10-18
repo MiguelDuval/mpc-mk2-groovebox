@@ -2164,6 +2164,243 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackArrangem
     return toJString(env, result);
 }
 
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAddArrangementPatternPlacement(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jlong startTick, jint lengthTicks)
+{
+    if (trackIndex < 0 || startTick < 0
+            || startTick > std::numeric_limits<std::int32_t>::max()
+            || lengthTicks <= 0) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: invalid track, tick or length");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT ADD blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& state = core.projectState();
+    auto& sequence = state.activeSequence();
+    const auto trackIndexValue = static_cast<std::size_t>(trackIndex);
+    if (trackIndexValue >= sequence.tracks.size()) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: no such track");
+    }
+    auto& track = sequence.tracks[trackIndexValue];
+    if (track.patterns.empty()) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: track has no source Pattern");
+    }
+    const auto patternId = track.patterns.front().id;
+    if (patternId.empty()) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: source Pattern has no identity");
+    }
+    std::string placementId;
+    for (std::uint32_t suffix = 1; suffix <= 10000; ++suffix) {
+        const auto candidate = track.id + "-arrangement-clip-" + std::to_string(suffix);
+        if (mpc::sequencer::patternPlacementMatches(track, candidate) == 0) {
+            placementId = candidate;
+            break;
+        }
+    }
+    if (placementId.empty()) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: could not allocate clip identity");
+    }
+    const auto sourceSequenceIndex = state.activeSequenceIndex();
+    const auto targetStart = static_cast<std::int32_t>(startTick);
+    if (!mpc::sequencer::addPatternPlacement(
+            sequence, trackIndexValue, placementId, patternId,
+            targetStart, lengthTicks, 0)) {
+        return toJString(env,
+                "ARRANGE PATTERN PLACEMENT ADD failed: target overlaps or exceeds the source Pattern/Sequence");
+    }
+
+    const auto eraseStoredPlacement = [](
+            std::size_t sequenceIndex, std::size_t storedTrackIndex,
+            const std::string& storedPlacementId) -> bool {
+        auto& project = mpc::MpcCore::instance().projectState().project();
+        if (sequenceIndex >= project.sequences.size()) return false;
+        return mpc::sequencer::erasePatternPlacement(
+                project.sequences[sequenceIndex], storedTrackIndex, storedPlacementId);
+    };
+    const auto addStoredPlacement = [](
+            std::size_t sequenceIndex, std::size_t storedTrackIndex,
+            const std::string& storedPlacementId, const std::string& storedPatternId,
+            std::int32_t storedStart, std::int32_t storedLength,
+            std::int32_t storedSourceOffset) -> bool {
+        auto& project = mpc::MpcCore::instance().projectState().project();
+        if (sequenceIndex >= project.sequences.size()) return false;
+        return mpc::sequencer::addPatternPlacement(
+                project.sequences[sequenceIndex], storedTrackIndex,
+                storedPlacementId, storedPatternId, storedStart,
+                storedLength, storedSourceOffset);
+    };
+    if (!core.editHistory().record({
+            "Place Arrangement Pattern placement",
+            [eraseStoredPlacement, sourceSequenceIndex, trackIndexValue, placementId]() {
+                return eraseStoredPlacement(sourceSequenceIndex, trackIndexValue, placementId);
+            },
+            [addStoredPlacement, sourceSequenceIndex, trackIndexValue, placementId,
+                    patternId, targetStart, lengthTicks]() {
+                return addStoredPlacement(sourceSequenceIndex, trackIndexValue, placementId,
+                        patternId, targetStart, lengthTicks, 0);
+            }})) {
+        (void) mpc::sequencer::erasePatternPlacement(sequence, trackIndexValue, placementId);
+        return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: history registration failed");
+    }
+    syncSequenceTransportStopped();
+    return toJString(env, std::string("ARRANGE PATTERN PLACEMENT ADDED • ")
+            + placementId + " • tick " + std::to_string(targetStart)
+            + " • length " + std::to_string(lengthTicks));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveArrangementPatternPlacement(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex,
+        jlong sourceStartTick, jlong targetStartTick)
+{
+    if (trackIndex < 0 || sourceStartTick < 0 || targetStartTick < 0
+            || sourceStartTick > std::numeric_limits<std::int32_t>::max()
+            || targetStartTick > std::numeric_limits<std::int32_t>::max()
+            || sourceStartTick == targetStartTick) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT MOVE failed: invalid track or tick");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT MOVE blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& state = core.projectState();
+    auto& sequence = state.activeSequence();
+    const auto trackIndexValue = static_cast<std::size_t>(trackIndex);
+    if (trackIndexValue >= sequence.tracks.size()) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT MOVE failed: no such track");
+    }
+    auto& track = sequence.tracks[trackIndexValue];
+    const auto sourceStart = static_cast<std::int32_t>(sourceStartTick);
+    const auto targetStart = static_cast<std::int32_t>(targetStartTick);
+    const mpc::domain::PatternPlacement* found = nullptr;
+    for (const auto& placement : track.placements) {
+        if (placement.startTick != sourceStart) continue;
+        if (found != nullptr) {
+            return toJString(env, "ARRANGE PATTERN PLACEMENT MOVE failed: ambiguous source start");
+        }
+        found = &placement;
+    }
+    if (found == nullptr) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT MOVE failed: no clip at source start");
+    }
+    const auto placementId = found->id;
+    const auto sequenceIndex = state.activeSequenceIndex();
+    if (!mpc::sequencer::movePatternPlacement(
+            sequence, trackIndexValue, placementId, targetStart)) {
+        return toJString(env,
+                "ARRANGE PATTERN PLACEMENT MOVE failed: collision or Sequence boundary");
+    }
+    const auto moveStoredPlacement = [](
+            std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            const std::string& storedPlacementId, std::int32_t storedStart) -> bool {
+        auto& project = mpc::MpcCore::instance().projectState().project();
+        if (storedSequenceIndex >= project.sequences.size()) return false;
+        return mpc::sequencer::movePatternPlacement(
+                project.sequences[storedSequenceIndex], storedTrackIndex,
+                storedPlacementId, storedStart);
+    };
+    if (!core.editHistory().record({
+            "Move Arrangement Pattern placement",
+            [moveStoredPlacement, sequenceIndex, trackIndexValue,
+                    placementId, sourceStart]() {
+                return moveStoredPlacement(sequenceIndex, trackIndexValue, placementId, sourceStart);
+            },
+            [moveStoredPlacement, sequenceIndex, trackIndexValue,
+                    placementId, targetStart]() {
+                return moveStoredPlacement(sequenceIndex, trackIndexValue, placementId, targetStart);
+            }})) {
+        (void) mpc::sequencer::movePatternPlacement(
+                sequence, trackIndexValue, placementId, sourceStart);
+        return toJString(env, "ARRANGE PATTERN PLACEMENT MOVE failed: history registration failed");
+    }
+    syncSequenceTransportStopped();
+    return toJString(env, std::string("ARRANGE PATTERN PLACEMENT MOVED • ")
+            + placementId + " • " + std::to_string(sourceStart)
+            + " → " + std::to_string(targetStart));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDeleteArrangementPatternPlacement(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jlong sourceStartTick)
+{
+    if (trackIndex < 0 || sourceStartTick < 0
+            || sourceStartTick > std::numeric_limits<std::int32_t>::max()) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT DELETE failed: invalid track or tick");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT DELETE blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& state = core.projectState();
+    auto& sequence = state.activeSequence();
+    const auto trackIndexValue = static_cast<std::size_t>(trackIndex);
+    if (trackIndexValue >= sequence.tracks.size()) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT DELETE failed: no such track");
+    }
+    auto& track = sequence.tracks[trackIndexValue];
+    if (track.placements.size() <= 1) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT DELETE failed: cannot remove the final placement");
+    }
+    const auto sourceStart = static_cast<std::int32_t>(sourceStartTick);
+    const mpc::domain::PatternPlacement* found = nullptr;
+    for (const auto& placement : track.placements) {
+        if (placement.startTick != sourceStart) continue;
+        if (found != nullptr) {
+            return toJString(env, "ARRANGE PATTERN PLACEMENT DELETE failed: ambiguous source start");
+        }
+        found = &placement;
+    }
+    if (found == nullptr) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT DELETE failed: no clip at source start");
+    }
+    const auto removed = *found;
+    const auto sequenceIndex = state.activeSequenceIndex();
+    if (!mpc::sequencer::erasePatternPlacement(
+            sequence, trackIndexValue, removed.id)) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT DELETE failed: clip identity ambiguous");
+    }
+    const auto addStoredPlacement = [](
+            std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            const mpc::domain::PatternPlacement& placement) -> bool {
+        auto& project = mpc::MpcCore::instance().projectState().project();
+        if (storedSequenceIndex >= project.sequences.size()) return false;
+        return mpc::sequencer::addPatternPlacement(
+                project.sequences[storedSequenceIndex], storedTrackIndex,
+                placement.id, placement.patternId, placement.startTick,
+                placement.lengthTicks, placement.sourceOffsetTicks);
+    };
+    const auto eraseStoredPlacement = [](
+            std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            const std::string& placementId) -> bool {
+        auto& project = mpc::MpcCore::instance().projectState().project();
+        if (storedSequenceIndex >= project.sequences.size()) return false;
+        return mpc::sequencer::erasePatternPlacement(
+                project.sequences[storedSequenceIndex], storedTrackIndex, placementId);
+    };
+    if (!core.editHistory().record({
+            "Delete Arrangement Pattern placement",
+            [addStoredPlacement, sequenceIndex, trackIndexValue, removed]() {
+                return addStoredPlacement(sequenceIndex, trackIndexValue, removed);
+            },
+            [eraseStoredPlacement, sequenceIndex, trackIndexValue, placementId = removed.id]() {
+                return eraseStoredPlacement(sequenceIndex, trackIndexValue, placementId);
+            }})) {
+        (void) mpc::sequencer::addPatternPlacement(
+                sequence, trackIndexValue, removed.id, removed.patternId,
+                removed.startTick, removed.lengthTicks, removed.sourceOffsetTicks);
+        return toJString(env, "ARRANGE PATTERN PLACEMENT DELETE failed: history registration failed");
+    }
+    syncSequenceTransportStopped();
+    return toJString(env, std::string("ARRANGE PATTERN PLACEMENT DELETED • ")
+            + removed.id + " • tick " + std::to_string(sourceStart));
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSplitPatternPlacement(
         JNIEnv* env, jobject /* thiz */, jint trackIndex, jlong splitTick)
