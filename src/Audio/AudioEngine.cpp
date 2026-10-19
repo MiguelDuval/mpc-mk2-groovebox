@@ -1091,10 +1091,6 @@ std::string AudioEngine::chopPadSampleToPads(
         return "Chop failed: invalid source pad or layer";
     }
 
-    if (stream_ != nullptr) {
-        return "Stop audio before chopping a sample";
-    }
-
     if (!isSupportedChopCount(chopCount)) {
         return "Chop failed: supported counts are 4, 8 or 16";
     }
@@ -1139,15 +1135,8 @@ std::string AudioEngine::chopPadSampleToPads(
         return "Chop failed: source region is too short";
     }
 
-    mpc::domain::SampleId resolvedSourceSampleId = sourceSampleId;
-    if (!resolvedSourceSampleId.isAssigned()) {
-        resolvedSourceSampleId = projectState_.registerSample(
-                "Chop source sample",
-                "",
-                static_cast<double>(sourceSample->sampleRate),
-                static_cast<std::int64_t>(sourceSample->frameCount()));
-    }
-
+    // Validate every destination before stopping output or mutating the model.
+    // An accepted Chop command must not partially assign a subset of pads.
     for (std::size_t destinationPad = 0;
             destinationPad < plan.count;
             ++destinationPad) {
@@ -1173,6 +1162,36 @@ std::string AudioEngine::chopPadSampleToPads(
         }
     }
 
+    // The audio callback reads both sample pointers and project region state.
+    // Stop output at the established callback boundary before the multi-pad
+    // mutation, then reopen the stream using the new authoritative regions.
+    const bool wasRunning = stream_ != nullptr;
+    if (wasRunning) {
+        const std::string stopResult = stopOutputStream();
+        if (stream_ != nullptr) {
+            return "Chop failed: audio output did not stop | " + stopResult;
+        }
+        if (stopResult.rfind("Audio stop failed:", 0) == 0
+                || stopResult.rfind("Audio close failed:", 0) == 0) {
+            const std::string restartResult = start();
+            if (stream_ == nullptr) {
+                return "Chop failed: " + stopResult
+                        + " | restart failed | " + restartResult;
+            }
+            return "Chop failed: " + stopResult
+                    + " | audio restarted; no sample assignments changed";
+        }
+    }
+
+    mpc::domain::SampleId resolvedSourceSampleId = sourceSampleId;
+    if (!resolvedSourceSampleId.isAssigned()) {
+        resolvedSourceSampleId = projectState_.registerSample(
+                "Chop source sample",
+                "",
+                static_cast<double>(sourceSample->sampleRate),
+                static_cast<std::int64_t>(sourceSample->frameCount()));
+    }
+
     for (std::size_t destinationPad = 0;
             destinationPad < plan.count;
             ++destinationPad) {
@@ -1187,13 +1206,25 @@ std::string AudioEngine::chopPadSampleToPads(
         padSampleDescriptions_[destinationPad][0] = sourceDescription;
     }
 
-    return "Chop complete: Pad "
+    const std::string message =
+            "Chop complete: Pad "
             + std::to_string(static_cast<unsigned>(sourcePadIndex + 1))
             + " layer "
             + std::to_string(static_cast<unsigned>(sourceLayerIndex + 1))
             + " -> pads 1-"
             + std::to_string(plan.count)
             + " (" + std::to_string(plan.count) + " slices)";
+
+    if (!wasRunning) {
+        return message;
+    }
+
+    const std::string startResult = start();
+    if (stream_ == nullptr) {
+        return message + " | restart failed | " + startResult;
+    }
+
+    return message + " | " + startResult;
 }
 
 std::string AudioEngine::cropPadSampleRegion(

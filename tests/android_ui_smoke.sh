@@ -10257,14 +10257,120 @@ fi
 echo "SAMP-008 Crop real-touch mutation passed: [$samp_crop_before_start,$samp_crop_before_end) of $samp_crop_before_total -> [0,$SAMP_CROP_EXPECTED_TOTAL) with $SAMP_CROP_EXPECTED_TOTAL frames; cursor idle."
 echo "SAMP-008 before/after evidence captured; the pre-Crop baseline is SAMP-007 stopped playback evidence."
 
+# SAMP-009: a real CH4 action must safely update every destination pad even
+# while the output stream is running; verify the authoritative region on pads 1-4.
+echo "Running SAMP-009 real-touch Chop-to-4 destination assignment acceptance..."
+SAMP_CHOP_SOURCE_TOTAL="$SAMP_CROP_EXPECTED_TOTAL"
+SAMP_CHOP_PAD1_PNG="/tmp/mpc-groovebox-sample-chop-pad-1.png"
+SAMP_CHOP_PAD1_XML="/tmp/mpc-groovebox-sample-chop-pad-1-uiautomator.xml"
+if (( SAMP_CHOP_SOURCE_TOTAL < 4 )); then
+  echo "ERROR: SAMP-009 cropped sample is too short for four slices"; exit 1
+fi
+if ! tap_ui_text "$SAMP_CROP_AFTER_XML" "CH4"; then
+  echo "ERROR: Sample Edit CH4 action was not actionable"; exit 1
+fi
+
+read_samp_chop_status() {
+  python3 - "$1" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+texts = [node.attrib.get("text", "") for node in root.iter("node")]
+matching = [text for text in texts if "Chop complete: Pad 1 layer 1 -> pads 1-4 (4 slices)" in text]
+if not matching:
+    raise SystemExit("the real-touch CH4 action did not report a completed four-pad assignment")
+if any("restart failed" in text.lower() for text in matching):
+    raise SystemExit("the output stream failed to restart after Chop")
+print(matching[0])
+PY
+}
+
+samp_chop_pad1_state=""
+samp_chop_confirmed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CHOP_PAD1_XML"; then
+    echo "ERROR: SAMP-009 could not capture the post-CH4 source pad"; exit 1
+  fi
+  samp_chop_pad1_state="$(read_samp_cursor_region_state "$SAMP_CHOP_PAD1_XML" 2>/dev/null || true)"
+  if [[ -n "$samp_chop_pad1_state" ]]; then
+    read -r samp_chop_p1_start samp_chop_p1_end samp_chop_p1_total samp_chop_p1_cursor <<< "$samp_chop_pad1_state"
+    if (( samp_chop_p1_start == 0 \
+        && samp_chop_p1_end == SAMP_CHOP_SOURCE_TOTAL / 4 \
+        && samp_chop_p1_total == SAMP_CHOP_SOURCE_TOTAL \
+        && samp_chop_p1_cursor == -1 )); then
+      if read_samp_chop_status "$SAMP_CHOP_PAD1_XML" >/dev/null 2>&1; then
+        samp_chop_confirmed=1; break
+      fi
+    fi
+  fi
+  sleep 0.25
+done
+if [[ "$samp_chop_confirmed" != "1" ]]; then
+  echo "ERROR: CH4 did not commit the first slice and restart audio without leaving the cursor active"
+  echo "Expected=0 $((SAMP_CHOP_SOURCE_TOTAL / 4)) $SAMP_CHOP_SOURCE_TOTAL -1; actual=$samp_chop_pad1_state"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CHOP_PAD1_PNG"; then
+  echo "ERROR: could not capture the CH4 source-pad screenshot"; exit 1
+fi
+echo "SAMP-009 Pad 1 first slice verified: [0,$((SAMP_CHOP_SOURCE_TOTAL / 4))) / $SAMP_CHOP_SOURCE_TOTAL."
+
+for samp_chop_pad in 2 3 4; do
+  if ! tap_project_toolbar_menu; then
+    echo "ERROR: could not open Menu to inspect chopped Pad $samp_chop_pad"; exit 1
+  fi
+  if ! tap_mpc_menu_tile 0 0; then
+    echo "ERROR: could not return to Main to inspect chopped Pad $samp_chop_pad"; exit 1
+  fi
+  if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
+    echo "ERROR: could not capture Main before inspecting chopped Pad $samp_chop_pad"; exit 1
+  fi
+  if ! tap_ui_description "$DUMP" "Main Mode pad $samp_chop_pad"; then
+    echo "ERROR: Main Mode Pad $samp_chop_pad was not actionable"; exit 1
+  fi
+  if ! tap_ui_text "$DUMP" "SAMPLE"; then
+    echo "ERROR: Main Sample Edit route failed for chopped Pad $samp_chop_pad"; exit 1
+  fi
+  samp_chop_pad_xml="/tmp/mpc-groovebox-sample-chop-pad-$samp_chop_pad-uiautomator.xml"
+  samp_chop_pad_png="/tmp/mpc-groovebox-sample-chop-pad-$samp_chop_pad.png"
+  if ! wait_for_ui_description "$samp_chop_pad_xml" "$SAMP_CURSOR_REMOTE" "Sample waveform editor" 20; then
+    echo "ERROR: Sample Edit did not open for chopped Pad $samp_chop_pad"; exit 1
+  fi
+  if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$samp_chop_pad_xml"; then
+    echo "ERROR: could not capture chopped Pad $samp_chop_pad hierarchy"; exit 1
+  fi
+  samp_chop_pad_state="$(read_samp_cursor_region_state "$samp_chop_pad_xml" 2>/dev/null || true)"
+  if [[ -z "$samp_chop_pad_state" ]]; then
+    echo "ERROR: chopped Pad $samp_chop_pad region state is unavailable"; exit 1
+  fi
+  read -r samp_chop_start samp_chop_end samp_chop_total samp_chop_cursor <<< "$samp_chop_pad_state"
+  samp_chop_expected_start=$((SAMP_CHOP_SOURCE_TOTAL * (samp_chop_pad - 1) / 4))
+  samp_chop_expected_end=$((SAMP_CHOP_SOURCE_TOTAL * samp_chop_pad / 4))
+  if (( samp_chop_start != samp_chop_expected_start \
+      || samp_chop_end != samp_chop_expected_end \
+      || samp_chop_total != SAMP_CHOP_SOURCE_TOTAL \
+      || samp_chop_start >= samp_chop_end )); then
+    echo "ERROR: Chop destination Pad $samp_chop_pad has a missing/overlapping region"
+    echo "Expected=$samp_chop_expected_start $samp_chop_expected_end $SAMP_CHOP_SOURCE_TOTAL; actual=$samp_chop_pad_state"; exit 1
+  fi
+  if ! adb_bounded 10 exec-out screencap -p > "$samp_chop_pad_png"; then
+    echo "ERROR: could not capture chopped Pad $samp_chop_pad screenshot"; exit 1
+  fi
+  echo "SAMP-009 Pad $samp_chop_pad slice verified: [$samp_chop_start,$samp_chop_end) / $samp_chop_total."
+done
+echo "SAMP-009 CH4 verified every real destination pad plus an active-to-stopped output-stream restart."
+
 for evidence in \
   "$SAMP_CURSOR_BEFORE_PNG" "$SAMP_CURSOR_BEFORE_XML" \
   "$SAMP_CURSOR_REGION_PNG" "$SAMP_CURSOR_REGION_XML" \
   "$SAMP_CURSOR_DURING_PNG" "$SAMP_CURSOR_DURING_XML" \
   "$SAMP_CURSOR_PROGRESS_PNG" "$SAMP_CURSOR_PROGRESS_XML" \
   "$SAMP_CURSOR_STOPPED_PNG" "$SAMP_CURSOR_STOPPED_XML" \
-  "$SAMP_CROP_AFTER_PNG" "$SAMP_CROP_AFTER_XML"; do
+  "$SAMP_CROP_AFTER_PNG" "$SAMP_CROP_AFTER_XML" \
+  "$SAMP_CHOP_PAD1_PNG" "$SAMP_CHOP_PAD1_XML" \
+  "/tmp/mpc-groovebox-sample-chop-pad-2.png" "/tmp/mpc-groovebox-sample-chop-pad-2-uiautomator.xml" \
+  "/tmp/mpc-groovebox-sample-chop-pad-3.png" "/tmp/mpc-groovebox-sample-chop-pad-3-uiautomator.xml" \
+  "/tmp/mpc-groovebox-sample-chop-pad-4.png" "/tmp/mpc-groovebox-sample-chop-pad-4-uiautomator.xml"; do
   if [[ ! -s "$evidence" ]]; then echo "ERROR: SAMP sample acceptance evidence file missing: $evidence"; exit 1; fi
 done
-echo "SAMP-007 playback cursor and SAMP-008 Crop screenshot/hierarchy evidence verified."
+echo "SAMP-007/008/009 playback, Crop and Chop screenshot/hierarchy evidence verified."
 

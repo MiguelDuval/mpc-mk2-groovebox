@@ -811,5 +811,13 @@ jobs:
             /tmp/mpc-groovebox-sample-playback-cursor-stopped-uiautomator.xml
             /tmp/mpc-groovebox-sample-crop-after.png
             /tmp/mpc-groovebox-sample-crop-after-uiautomator.xml
+            /tmp/mpc-groovebox-sample-chop-pad-1.png
+            /tmp/mpc-groovebox-sample-chop-pad-1-uiautomator.xml
+            /tmp/mpc-groovebox-sample-chop-pad-2.png
+            /tmp/mpc-groovebox-sample-chop-pad-2-uiautomator.xml
+            /tmp/mpc-groovebox-sample-chop-pad-3.png
+            /tmp/mpc-groovebox-sample-chop-pad-3-uiautomator.xml
+            /tmp/mpc-groovebox-sample-chop-pad-4.png
+            /tmp/mpc-groovebox-sample-chop-pad-4-uiautomator.xml
           if-no-files-found: warn
           archive: true
