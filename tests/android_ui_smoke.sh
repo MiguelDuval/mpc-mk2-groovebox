@@ -1879,27 +1879,46 @@ PY
 
 dump_device_ui() {
   # Keep exactly one device-side hierarchy file. This smoke captures hundreds
-  # of accessibility snapshots; retaining a unique /sdcard XML per snapshot
-  # eventually makes later uiautomator dumps report success without creating
-  # the requested file. Host-side evidence remains uniquely named by callers.
+  # # of accessibility snapshots; retaining unique /sdcard XMLs eventually
+  # exhausts the device-side fixture space and can make uiautomator return
+  # without creating its output. Host evidence keeps the caller's unique name.
   local requested_remote_path="$1"
   local remote_path="/sdcard/mpc-groovebox-current-uiautomator.xml"
   local host_path="$2"
   local log_path="/tmp/mpc-groovebox-uiautomator-dump.log"
-  if ! adb_bounded 20 shell uiautomator dump "$remote_path" > "$log_path" 2>&1; then
-    cat "$log_path" || true
-    echo "ERROR: could not dump emulator UI hierarchy (requested $requested_remote_path; shared path $remote_path)"
-    return 1
-  fi
-  if ! adb_bounded 10 exec-out cat "$remote_path" > "$host_path"; then
-    echo "ERROR: could not retrieve emulator UI hierarchy (requested $requested_remote_path; shared path $remote_path)"
-    cat "$log_path" || true
-    return 1
-  fi
-  if ! test -s "$host_path"; then
-    echo "ERROR: emulator UI hierarchy is empty: $host_path"
-    return 1
-  fi
+  for attempt in {1..3}; do
+    # Remove stale output first so an old successful XML can never mask a
+    # failed current dump. The reusable path prevents per-snapshot accumulation.
+    adb_bounded 5 shell rm -f "$remote_path" >/dev/null 2>&1 || true
+    if ! adb_bounded 20 shell uiautomator dump "$remote_path" > "$log_path" 2>&1; then
+      cat "$log_path" || true
+      echo "WARN: emulator UI hierarchy dump attempt $attempt/3 failed (requested $requested_remote_path)"
+      sleep 1
+      continue
+    fi
+    if ! adb_bounded 10 exec-out cat "$remote_path" > "$host_path"; then
+      echo "WARN: emulator UI hierarchy output missing on attempt $attempt/3 (requested $requested_remote_path; shared path $remote_path)"
+      cat "$log_path" || true
+      sleep 1
+      continue
+    fi
+    if test -s "$host_path" && python3 - "$host_path" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+try:
+    ET.parse(sys.argv[1])
+except (OSError, ET.ParseError):
+    raise SystemExit(1)
+PY
+    then
+      return 0
+    fi
+    echo "WARN: emulator UI hierarchy was empty or malformed on attempt $attempt/3: $host_path"
+    sleep 1
+  done
+  echo "ERROR: could not obtain a valid emulator UI hierarchy after three attempts (requested $requested_remote_path; shared path $remote_path)"
+  cat "$log_path" || true
+  return 1
 }
 
 echo "Installing debug APK (hard limit 120s)..."
