@@ -4689,7 +4689,7 @@ if len(accessible_ranges) != 1:
     raise AssertionError(f"expected one semantic Grid step-range accessibility node, got {len(accessible_ranges)}")
 description = accessible_ranges[0].attrib.get("content-desc", "")
 accessible_match = re.fullmatch(
-    r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+    r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)(?:; pads\s+0*\d+ through 0*\d+ of 16)?",
     description)
 if accessible_match is None:
     raise AssertionError(f"Grid step-range accessibility label is malformed: {description!r}")
@@ -4747,7 +4747,7 @@ if not density_matches: raise AssertionError("unparseable Android density: " + r
 density = int(density_matches[-1]) / 160.0
 range_nodes = [n for n in nodes if n.attrib.get("content-desc", "").startswith("Grid visible step range: steps ")]
 if len(range_nodes) != 1: raise AssertionError(f"expected one Grid range, got {len(range_nodes)}")
-m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)(?:; pads\s+0*\d+ through 0*\d+ of 16)?",
                  range_nodes[0].attrib.get("content-desc", ""))
 if m is None: raise AssertionError("malformed Grid range")
 shown_first, shown_last, total = map(int, m.groups())
@@ -4886,6 +4886,29 @@ start, end, total = map(int, match.groups())
 if start < 1 or end < start or end - start >= 16 or end > total:
     raise AssertionError(f"invalid Grid viewport range: {matches[0]!r}")
 print(start, end, total)
+PY
+    }
+
+    grid_event_read_pad_range() {
+      python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+descriptions = [n.attrib.get("content-desc", "") for n in nodes
+                if n.attrib.get("content-desc", "").startswith("Grid visible step range: steps ")]
+if len(descriptions) != 1:
+    raise AssertionError(f"expected one Grid viewport accessibility description, got {descriptions!r}")
+match = re.fullmatch(
+    r"Grid visible step range: steps\s+0*\d+ through 0*\d+ of 0*\d+; pads\s+0*(\d+) through 0*(\d+) of 16",
+    descriptions[0])
+if match is None:
+    raise AssertionError(f"Grid accessibility description has no valid Pad range: {descriptions[0]!r}")
+first, last = map(int, match.groups())
+if not 1 <= first <= last <= 16:
+    raise AssertionError(f"invalid Grid visible Pad bounds: {first}–{last}")
+print(first, last, 16)
 PY
     }
 
@@ -5407,6 +5430,191 @@ PY
     fi
     echo "Grid ZOOM H touch acceptance passed: visible steps narrowed and selected event stayed empty and unchanged."
 
+    # GRID-006 vertical Pad window: zoom to a subset, swipe down to reveal higher
+    # numbered Pads, reverse to the exact viewport, then zoom out to all 16 Pads.
+    GRID_EDIT_PAD_ZOOM_IN_PNG="/tmp/mpc-groovebox-grid-pad-zoom-in.png"
+    GRID_EDIT_PAD_ZOOM_IN_XML="/tmp/mpc-groovebox-grid-pad-zoom-in-uiautomator.xml"
+    GRID_EDIT_PAD_ZOOM_IN_REMOTE="/sdcard/mpc-groovebox-grid-pad-zoom-in-uiautomator.xml"
+    grid_pad_range_before_zoom="$(grid_event_read_pad_range "$GRID_EDIT_ZOOM_XML")" || {
+      echo "ERROR: Pad range unavailable before ZOOM V"; exit 1;
+    }
+    grid_projection_before_pad_zoom="$(grid_event_read_projection "$GRID_EDIT_ZOOM_XML")" || {
+      echo "ERROR: selected event projection unavailable before ZOOM V"; exit 1;
+    }
+    if ! tap_visible_text_early "$GRID_EDIT_ZOOM_XML" "ZOOM V"; then
+      echo "ERROR: Grid ZOOM V function-bar action was not actionable"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui "$GRID_EDIT_PAD_ZOOM_IN_REMOTE" "$GRID_EDIT_PAD_ZOOM_IN_XML"; then
+      echo "ERROR: Grid Pad zoom-in accessibility hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_PAD_ZOOM_IN_PNG"; then
+      echo "ERROR: Grid Pad zoom-in screenshot capture failed"; exit 1
+    fi
+    grid_pad_range_after_zoom="$(grid_event_read_pad_range "$GRID_EDIT_PAD_ZOOM_IN_XML")" || {
+      echo "ERROR: Pad range unavailable after ZOOM V"; exit 1;
+    }
+    grid_projection_after_pad_zoom="$(grid_event_read_projection "$GRID_EDIT_PAD_ZOOM_IN_XML")" || {
+      echo "ERROR: selected event projection unavailable after ZOOM V"; exit 1;
+    }
+    if ! python3 - "$grid_pad_range_before_zoom" "$grid_pad_range_after_zoom" "$grid_projection_before_pad_zoom" "$grid_projection_after_pad_zoom" <<'PY'
+import sys
+before = tuple(map(int, sys.argv[1].split()))
+after = tuple(map(int, sys.argv[2].split()))
+before_count, after_count = before[1]-before[0]+1, after[1]-after[0]+1
+if before != (1, 16, 16):
+    raise AssertionError(f"Grid starts with an unexpected full Pad range: {before!r}")
+if after[2] != 16 or not 1 <= after_count < before_count:
+    raise AssertionError(f"ZOOM V must narrow the Pad range without changing total Pads: {before!r} -> {after!r}")
+if not after[0] <= 1 <= after[1]:
+    raise AssertionError(f"ZOOM V unexpectedly lost the selected Pad 01: {after!r}")
+if sys.argv[3] != sys.argv[4]:
+    raise AssertionError(f"ZOOM V mutated selected note parameters: {sys.argv[3]!r} -> {sys.argv[4]!r}")
+print(f"Grid ZOOM V touch reduced visible Pads: {before!r} -> {after!r}; event unchanged.")
+PY
+    then
+      echo "ERROR: Grid ZOOM V changed event state or failed to narrow visible Pads"; exit 1
+    fi
+
+    grid_density_info="$(adb_bounded 10 shell wm density)" || {
+      echo "ERROR: could not read Android density for vertical Grid pan"; exit 1;
+    }
+    grid_pad_swipe_coordinates="$(python3 - "$GRID_EDIT_PAD_ZOOM_IN_XML" "$grid_density_info" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, density_text = sys.argv[1:]
+nodes = list(ET.parse(path).getroot().iter("node"))
+grids = [n for n in nodes if n.attrib.get("content-desc") == "MPC Grid View drum event grid"]
+ranges = [n.attrib.get("content-desc", "") for n in nodes
+          if n.attrib.get("content-desc", "").startswith("Grid visible step range: steps ")]
+if len(grids) != 1 or len(ranges) != 1:
+    raise AssertionError(f"missing Grid canvas or Pad range: grids={len(grids)} ranges={ranges!r}")
+bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", grids[0].attrib.get("bounds", ""))
+if bounds is None: raise AssertionError(f"malformed Grid bounds: {grids[0].attrib.get('bounds')!r}")
+left, top, right, bottom = map(int, bounds.groups())
+pad_range = re.search(r"; pads\s+0*(\d+) through 0*(\d+) of 16$", ranges[0])
+if pad_range is None: raise AssertionError(f"Pad range missing from Grid semantics: {ranges[0]!r}")
+first, last = map(int, pad_range.groups())
+visible_pads = last-first+1
+densities = re.findall(r"(?:Override|Physical) density:\s*(\d+)", density_text)
+if not densities: raise AssertionError(f"could not parse Android density: {density_text!r}")
+density = int(densities[-1])/160.0
+plot_top = top + 24*density
+plot_bottom = bottom - 6*density
+cell_height = (plot_bottom-plot_top)/visible_pads
+start_y = round(plot_top + cell_height*4.0)
+end_y = round(start_y + cell_height*3.2)
+x = round(left + (right-left)*0.55)
+if not (top < start_y < end_y < bottom):
+    raise AssertionError(f"vertical Grid swipe would leave canvas: {(x,start_y,x,end_y)}")
+if not 2.0 <= (end_y-start_y)/cell_height <= 4.0:
+    raise AssertionError("vertical Grid swipe does not cover a bounded multi-row move")
+print(x,start_y,x,end_y)
+PY
+    )" || { echo "ERROR: could not derive vertical Pad swipe coordinates"; exit 1; }
+    read -r grid_pad_swipe_x grid_pad_swipe_start_y grid_pad_swipe_end_x grid_pad_swipe_end_y <<< "$grid_pad_swipe_coordinates"
+
+    GRID_EDIT_PAD_SWIPE_PANNED_PNG="/tmp/mpc-groovebox-grid-pad-swipe-panned.png"
+    GRID_EDIT_PAD_SWIPE_PANNED_XML="/tmp/mpc-groovebox-grid-pad-swipe-panned-uiautomator.xml"
+    GRID_EDIT_PAD_SWIPE_PANNED_REMOTE="/sdcard/mpc-groovebox-grid-pad-swipe-panned-uiautomator.xml"
+    if ! adb_bounded 10 shell input swipe "$grid_pad_swipe_x" "$grid_pad_swipe_start_y" "$grid_pad_swipe_end_x" "$grid_pad_swipe_end_y" 500; then
+      echo "ERROR: Grid vertical Pad pan touch failed"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui "$GRID_EDIT_PAD_SWIPE_PANNED_REMOTE" "$GRID_EDIT_PAD_SWIPE_PANNED_XML"; then
+      echo "ERROR: panned Grid Pad hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_PAD_SWIPE_PANNED_PNG"; then
+      echo "ERROR: panned Grid Pad screenshot capture failed"; exit 1
+    fi
+    grid_pad_range_panned="$(grid_event_read_pad_range "$GRID_EDIT_PAD_SWIPE_PANNED_XML")" || {
+      echo "ERROR: Pad range unavailable after vertical swipe"; exit 1;
+    }
+    grid_projection_after_pad_swipe="$(grid_event_read_projection "$GRID_EDIT_PAD_SWIPE_PANNED_XML")" || {
+      echo "ERROR: selected event projection unavailable after vertical swipe"; exit 1;
+    }
+    if ! python3 - "$grid_pad_range_after_zoom" "$grid_pad_range_panned" "$grid_projection_after_pad_zoom" "$grid_projection_after_pad_swipe" <<'PY'
+import sys
+before = tuple(map(int, sys.argv[1].split()))
+after = tuple(map(int, sys.argv[2].split()))
+if not (after[0] > before[0] and after[1] > before[1] and after[2] == before[2]):
+    raise AssertionError(f"downward Grid swipe should reveal higher numbered Pads: {before!r} -> {after!r}")
+if sys.argv[3] != sys.argv[4]:
+    raise AssertionError(f"vertical Pad pan mutated event parameters: {sys.argv[3]!r} -> {sys.argv[4]!r}")
+print(f"Grid vertical pan revealed higher Pads: {before!r} -> {after!r}; event unchanged.")
+PY
+    then
+      echo "ERROR: Grid vertical swipe did not pan to higher Pads without changing event"; exit 1
+    fi
+
+    GRID_EDIT_PAD_SWIPE_RESTORED_PNG="/tmp/mpc-groovebox-grid-pad-swipe-restored.png"
+    GRID_EDIT_PAD_SWIPE_RESTORED_XML="/tmp/mpc-groovebox-grid-pad-swipe-restored-uiautomator.xml"
+    GRID_EDIT_PAD_SWIPE_RESTORED_REMOTE="/sdcard/mpc-groovebox-grid-pad-swipe-restored-uiautomator.xml"
+    if ! adb_bounded 10 shell input swipe "$grid_pad_swipe_x" "$grid_pad_swipe_end_y" "$grid_pad_swipe_x" "$grid_pad_swipe_start_y" 500; then
+      echo "ERROR: reverse vertical Grid Pad pan touch failed"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui "$GRID_EDIT_PAD_SWIPE_RESTORED_REMOTE" "$GRID_EDIT_PAD_SWIPE_RESTORED_XML"; then
+      echo "ERROR: restored Grid Pad hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_PAD_SWIPE_RESTORED_PNG"; then
+      echo "ERROR: restored Grid Pad screenshot capture failed"; exit 1
+    fi
+    grid_pad_range_restored="$(grid_event_read_pad_range "$GRID_EDIT_PAD_SWIPE_RESTORED_XML")" || {
+      echo "ERROR: Pad range unavailable after reverse vertical swipe"; exit 1;
+    }
+    grid_projection_after_pad_restore="$(grid_event_read_projection "$GRID_EDIT_PAD_SWIPE_RESTORED_XML")" || {
+      echo "ERROR: selected event projection unavailable after reverse vertical swipe"; exit 1;
+    }
+    if ! python3 - "$grid_pad_range_after_zoom" "$grid_pad_range_restored" "$grid_projection_after_pad_zoom" "$grid_projection_after_pad_restore" <<'PY'
+import sys
+before = tuple(map(int, sys.argv[1].split()))
+restored = tuple(map(int, sys.argv[2].split()))
+if restored != before:
+    raise AssertionError(f"reverse vertical Grid swipe failed to restore Pad range: {before!r} -> {restored!r}")
+if sys.argv[3] != sys.argv[4]:
+    raise AssertionError(f"reverse vertical Grid swipe changed event parameters: {sys.argv[3]!r} -> {sys.argv[4]!r}")
+print(f"Grid vertical swipe round trip restored Pad range and event: {restored!r}.")
+PY
+    then
+      echo "ERROR: reverse vertical Grid swipe failed to restore viewport and event"; exit 1
+    fi
+
+    GRID_EDIT_PAD_ZOOM_RESTORED_PNG="/tmp/mpc-groovebox-grid-pad-zoom-restored.png"
+    GRID_EDIT_PAD_ZOOM_RESTORED_XML="/tmp/mpc-groovebox-grid-pad-zoom-restored-uiautomator.xml"
+    GRID_EDIT_PAD_ZOOM_RESTORED_REMOTE="/sdcard/mpc-groovebox-grid-pad-zoom-restored-uiautomator.xml"
+    if ! tap_visible_text_early "$GRID_EDIT_PAD_SWIPE_RESTORED_XML" "ZOOM V"; then
+      echo "ERROR: Grid ZOOM V function-bar action was not actionable for zoom-out"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui "$GRID_EDIT_PAD_ZOOM_RESTORED_REMOTE" "$GRID_EDIT_PAD_ZOOM_RESTORED_XML"; then
+      echo "ERROR: full Grid Pad zoom-out hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_PAD_ZOOM_RESTORED_PNG"; then
+      echo "ERROR: full Grid Pad zoom-out screenshot failed"; exit 1
+    fi
+    grid_pad_range_restored_full="$(grid_event_read_pad_range "$GRID_EDIT_PAD_ZOOM_RESTORED_XML")" || {
+      echo "ERROR: full Pad range unavailable after zoom-out"; exit 1;
+    }
+    grid_projection_after_pad_zoom_out="$(grid_event_read_projection "$GRID_EDIT_PAD_ZOOM_RESTORED_XML")" || {
+      echo "ERROR: selected event projection unavailable after Pad zoom-out"; exit 1;
+    }
+    if ! python3 - "$grid_pad_range_before_zoom" "$grid_pad_range_restored_full" "$grid_projection_before_pad_zoom" "$grid_projection_after_pad_zoom_out" <<'PY'
+import sys
+before = tuple(map(int, sys.argv[1].split()))
+after = tuple(map(int, sys.argv[2].split()))
+if after != before:
+    raise AssertionError(f"Grid ZOOM V out must restore all Pads: {before!r} -> {after!r}")
+if sys.argv[3] != sys.argv[4]:
+    raise AssertionError(f"Pad zoom round trip changed selected event: {sys.argv[3]!r} -> {sys.argv[4]!r}")
+print(f"Grid Pad zoom-in/pan/out round trip restored full Pad range and event: {after!r}.")
+PY
+    then
+      echo "ERROR: Grid Pad zoom/pan round trip failed to restore full viewport and event"; exit 1
+    fi
+    echo "Grid vertical Pad zoom/swipe/restore real-touch acceptance passed."
+
     if ! adb_bounded 10 shell run-as "$PACKAGE" \
         touch cache/mpc-arrange-grid-focus-capture-release; then
       echo "ERROR: could not release app-side Arrangement-to-Grid capture checkpoint"
@@ -5493,7 +5701,7 @@ if shown!=(first,last,total): raise AssertionError(f"range {shown} disagrees wit
 if not first<=target<=last<=total: raise AssertionError(f"target step {target} outside {shown}")
 semantic=[n for n in nodes if n.attrib.get("content-desc","").startswith("Grid visible step range: steps ")]
 if len(semantic)!=1: raise AssertionError(f"expected one semantic Grid range, got {len(semantic)}")
-m=re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",semantic[0].attrib.get("content-desc",""))
+m=re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)(?:; pads\s+0*\d+ through 0*\d+ of 16)?",semantic[0].attrib.get("content-desc",""))
 if m is None or tuple(map(int,m.groups()))!=shown: raise AssertionError("Grid range text and description disagree")
 print(f"Re-entered Grid evidence verified: Track {track+1}, step {target}, visible {first}–{last} of {total}.")
 PY
