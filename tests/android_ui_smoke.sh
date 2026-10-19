@@ -4197,7 +4197,7 @@ info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event inf
 if len(info) != 1:
     raise AssertionError("Step Edit probability baseline is missing")
 text = info[0].attrib.get("text", "")
-patterns = [r"\\bVEL\\s+(\\d+)\\b", r"\\bPROB\\s+(\\d+)\\b", r"\\bRAT\\s+(\\d+)x\\b", r"\\bNUDGE\\s+([+-]?\\d+)\\b", r"\\bDUR\\s+(\\d+)\\b"]
+patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b", r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b", r"\bDUR\s+(\d+)\b"]
 matches = [re.search(p, text) for p in patterns]
 if any(m is None for m in matches):
     raise AssertionError(f"Malformed Step Edit probability baseline: {text!r}")
@@ -4248,9 +4248,9 @@ info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event inf
 if len(info) != 1:
     raise AssertionError("Step Edit parameter value is missing")
 text = info[0].attrib.get("text", "")
-if re.search(rf"\\bSTEP\\s+0*{number}\\b", text) is None:
+if re.search(rf"\bSTEP\s+0*{number}\b", text) is None:
     raise AssertionError(f"Step Edit focus lost the active Step: {text!r}")
-patterns = [r"\\bVEL\\s+(\\d+)\\b", r"\\bPROB\\s+(\\d+)\\b", r"\\bRAT\\s+(\\d+)x\\b", r"\\bNUDGE\\s+([+-]?\\d+)\\b", r"\\bDUR\\s+(\\d+)\\b"]
+patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b", r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b", r"\bDUR\s+(\d+)\b"]
 matches = [re.search(p, text) for p in patterns]
 if any(m is None for m in matches):
     raise AssertionError(f"Malformed Step Edit state after probability change: {text!r}")
@@ -4295,7 +4295,7 @@ info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event inf
 if len(info) != 1:
     raise AssertionError("Step Edit projection missing after probability restore")
 text = info[0].attrib.get("text", "")
-patterns = [r"\\bVEL\\s+(\\d+)\\b", r"\\bPROB\\s+(\\d+)\\b", r"\\bRAT\\s+(\\d+)x\\b", r"\\bNUDGE\\s+([+-]?\\d+)\\b", r"\\bDUR\\s+(\\d+)\\b"]
+patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b", r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b", r"\bDUR\s+(\d+)\b"]
 matches = [re.search(p, text) for p in patterns]
 if any(m is None for m in matches):
     raise AssertionError(f"Malformed Step Edit state after probability restore: {text!r}")
