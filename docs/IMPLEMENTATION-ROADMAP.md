@@ -2,30 +2,30 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-19 (live branch + exact-SHA CI govern)
 
-Older queue entries below are historical snapshots. Read the status here first, then inspect live GitHub before starting work.
+### 1. Project SAVE / SAVE AS / OPEN — COMPLETE / RECONFIRMED
+- Android Build #2900 / run 39236521987 passed on exact SHA `a285ed9bcdb3426e71f85a600838f6589bc121d9`: [Actions #2900](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39236521987).
+- Real Android DocumentsUI/SAF saved a v2 Project, mutated the live model and reopened the document with exact canonical domain SHA `4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9`. The fixture covers non-default MIDI events plus Pattern-placement identity/reference/start/length/source-offset; force-stop/relaunch, cancellation without mutation, malformed-file preservation and placement-free valid v1 compatibility passed.
+- APK artifact 12179887151 (9,956,909 bytes; SHA-256 `1a5892b5477471196f0561e957379ebf24d6253db70123612718723157659b76`); UI evidence artifact 12180247158 (17,855,080 bytes; SHA-256 `f6629398bdf5d0f26d148a6e94bdcc87cbfbc73525debff9a58860a9870f7fab`). Both artifacts were downloaded; ZIP evidence integrity passed and the Step Edit/page-navigation screenshots and XML hierarchies were inspected.
+- The earlier Build #2835 cancellation remains correctly classified as cancelled—not pass or implementation failure—and is superseded by completed #2856/#2893/#2900 coverage.
 
-### 1. Project SAVE / SAVE AS / OPEN — COMPLETE / EXACT-SHA VERIFIED
+### 2. Grid/Step Edit field isolation and STEP-002 — VERIFIED / EXACT-SHA
+- Build #2900 on exact SHA `a285ed9bcdb3426e71f85a600838f6589bc121d9` passed the full Android emulator smoke.
+- Grid VEL / PROB / RAT / NUDGE / DUR each changed and restored one native field at a time. Step Edit VEL changed 100 → 101 and inverse-restored; PROB changed 127 → 126 and inverse-restored; RAT changed 1 → 2 and inverse-restored; NUDGE and DURATION round trips preserved all unrelated fields. Step 01 and Pattern fixtures remained intact.
+- STEP-002 page navigation was exercised through real touchscreen taps: page 1 → page 2 selected absolute Step 18 in the matching relative column, then page 2 → page 1 restored absolute Step 2. Both pages preserved the empty-step fixture; the full application smoke and upload of APK/UI evidence completed successfully.
 
-- Android Build #2856 / run 39162451542 passed on exact SHA 617511efb820e96c6d9576051fa30012a3368db1: [Actions #2856](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39162451542).
-- Real Android DocumentsUI/SAF acceptance saved a v2 Project, mutated the live model, reopened it and compared the canonical domain SHA. Fixture: two non-default MIDI notes and placement project-persistence-clip-01 → sequence-1-track-1-pattern-1, start 480, length 720, source offset 120. Exact state SHA: 4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9.
-- The same run passed force-stop/relaunch → Open, SAVE AS/Open cancellation without state mutation, malformed-file rejection without replacing the active model, and placement-free runtime-valid v1 Open with zero placements and canonical-v2 state-oracle equality.
-- Reconfirmed by Android Build #2893 / run 39232129363 on exact SHA 0d0558704ed73f8c6c27c528178cc049858d2386: the complete real SAF save/open, canonical digest comparison, force-stop/relaunch, cancellation, malformed file and v1 compatibility scenarios all passed again. APK artifact 12178252131; UI evidence artifact 12178600540.
-- Earlier Build #2835 / run 39139658033 was cancelled during emulator smoke on prior SHA 450bca9aac99adc47c61d14d3abc76a77c3cf439; it was neither a failure nor a pass. Build #2856 superseded it. APK artifact 12149263768; UI evidence artifact 12150136466.
-- Remaining Project boundaries: provider overwrite/write-failure recovery, independently opening two saved Projects, and external sample PCM relinking are not covered. Physical MPC Studio MkII validation is separate and pending.
+### 3. NEXT SLICE — STEP-001 Pad selection, real-touch state consistency
+- PR #23 HEAD `a681303fe3d411c0df99d4ce7dc90e8f2caaac76` contains real touchscreen PAD + / PAD − acceptance. Android Build #2901 / run 39242015786 is in progress; do not mark STEP-001 verified until its full emulator smoke passes on that exact SHA.
+- Assertions preserve the absolute Step cursor, confirm that Pad 2's visible active/empty cell agrees with the authoritative Step Edit parameter projection, then switch back to Pad 1 and verify the empty target plus Step 01 are unchanged.
+- This is acceptance work on existing handlers, not a new Pad-selection implementation.
 
-### 2. Project lifecycle, Grid parameters and Step Edit RAT/NUDGE/DURATION — VERIFIED / EXACT-SHA
+### 4. PREPARED FOLLOW-UP — EDIT-004 sample-layer GAIN field-isolation/restore
+- Isolated branch `feature/track-edit-layer-gain-acceptance` adds a real-touch GAIN +/- round trip to the existing Track Edit Samples workflow.
+- The test reads the visible/native-authoritative GAIN projection, requires exactly one 10-percentage-point change, asserts TUNE and PAN remain unchanged, then inverse-touches and compares GAIN/TUNE/PAN exactly. Before/changed/restored screenshot and UI-hierarchy paths are added to the evidence artifact.
+- This candidate is not yet integrated or verified. Wait for STEP-001 Build #2901 to resolve, then integrate by fast-forward into PR #23 and require CI on the resulting exact SHA.
 
-- Android Build #2893 / run 39232129363 passed on exact SHA 0d0558704ed73f8c6c27c528178cc049858d2386: [Actions #2893](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39232129363).
-- The complete Project lifecycle ran against real Android DocumentsUI/SAF. It saved a v2 file with two non-default MIDI events and the Pattern placement identity/reference/start 480/length 720/source offset 120, mutated the live model, reopened and restored the canonical state hash 4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9, then passed force-stop/relaunch, Save As/Open cancellation, malformed-file rejection and placement-free valid v1 load.
-- Grid VEL / PROB / RAT / NUDGE / DUR each changed and restored one native field at a time, preserving the other four fields; DRAW/ERASE and empty-state controls also passed. Step Edit RAT changed 1 → 2 by real touch and inverse-restored the complete five-field event. Step Edit NUDGE and DURATION also passed real-touch field isolation/restoration.
-- The earlier 210-second audit deadline was insufficient for the expanded suite; the bounded timeout is 360 seconds. Run #2893 completed the application-side UI audit and the full acceptance suite without weakening assertions.
-- APK artifact 12178252131 (SHA-256 1c9b42a8cd0ff1e9de4a7b2685de60f41da1e59e56d318843b30c049cb2791d1); UI evidence artifact 12178600540 (SHA-256 360ade26688380e650a8c2c312bc3ced1311021a16b3e9b1fae916da92b0edb7). Physical MPC Studio MkII tests remain separate and pending.
-
-### 3. NEXT SLICE — STEP-005 Step Edit VELOCITY field-isolation/restore
-
-- The current candidate extends the real Step Sequencer acceptance at the default VEL focus: +/- changes velocity by exactly one supported value, the other native PROB/RAT/NUDGE/DUR fields remain exact, and the inverse touch restores the full baseline before the existing probability route runs.
-- Require a successful Android Build on this candidate's own exact SHA before marking STEP-005 verified. Evidence paths archive changed/restored hierarchy and screenshots; no product-side duplicate state or architecture change is introduced.
-- After velocity passes, take the next bounded step from the live action catalog; no need to revisit Project persistence or Grid fields unless a new regression appears.
+### 5. Remaining explicit boundaries
+- Physical MPC Studio MkII acceptance is **PENDING** and must not be inferred from emulator results.
+- Project provider overwrite/write-failure recovery, independently opening two saved Projects, and external sample PCM relinking remain uncovered. Address only when they become the highest-value next slice or a regression is found.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 
