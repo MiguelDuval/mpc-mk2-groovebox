@@ -6794,6 +6794,25 @@ print(f"{value:.1f}")
 PY
 }
 
+read_track_edit_layer_pan_value() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+found = [n for n in nodes
+         if n.attrib.get("content-desc", "") == "Track Edit layer pan value"]
+if len(found) != 1:
+    raise SystemExit(f"expected one visible Track Edit layer pan value, found {len(found)}")
+text = found[0].attrib.get("text", "")
+match = re.search(r"(?m)^PAN\s*\n?\s*(C|L(?:100|[1-9]?\d)|R(?:100|[1-9]?\d))\s*$", text)
+if not match:
+    raise SystemExit(f"could not parse layer pan value from {text!r}")
+print(match.group(1))
+PY
+}
+
 # The app-side audit may leave the navigation shell on Main, Menu, Browser or
 # Sampler. Resolve the actual entry target from accessibility, return through the
 # foreground workspace's real BACK action if required, then preserve that exact
@@ -7118,6 +7137,146 @@ for evidence in \
   fi
 done
 echo "Track Edit layer GAIN real-touch edit → exact inverse restore passed."
+
+# Exercise the absolute layer-pan commands with a known centered fixture.
+# PAN buttons are absolute L/R endpoints rather than relative increments, so
+# assert the seeded native projection is CENTER before touching, then restore
+# through the existing CENTER LAYER PAN action. Never overwrite a non-centered
+# fixture that this UI cannot restore to an arbitrary intermediate pan value.
+TRACK_EDIT_PAN_BEFORE_PNG="/tmp/mpc-groovebox-track-edit-pan-before.png"
+TRACK_EDIT_PAN_BEFORE_XML="/tmp/mpc-groovebox-track-edit-pan-before-uiautomator.xml"
+TRACK_EDIT_PAN_BEFORE_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-before-uiautomator.xml"
+TRACK_EDIT_PAN_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-pan-changed.png"
+TRACK_EDIT_PAN_CHANGED_XML="/tmp/mpc-groovebox-track-edit-pan-changed-uiautomator.xml"
+TRACK_EDIT_PAN_CHANGED_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-changed-uiautomator.xml"
+TRACK_EDIT_PAN_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-pan-restored.png"
+TRACK_EDIT_PAN_RESTORED_XML="/tmp/mpc-groovebox-track-edit-pan-restored-uiautomator.xml"
+TRACK_EDIT_PAN_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-restored-uiautomator.xml"
+if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer pan decrease" 8; then
+  echo "ERROR: Track Edit layer PAN control did not become actionable after scrolling"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_PAN_BEFORE_REMOTE" "$TRACK_EDIT_PAN_BEFORE_XML"; then
+  echo "ERROR: Track Edit layer pan baseline hierarchy failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PAN_BEFORE_PNG"; then
+  echo "ERROR: Track Edit layer pan baseline screenshot failed"; exit 1
+fi
+track_edit_pan_before="$(read_track_edit_layer_pan_value "$TRACK_EDIT_PAN_BEFORE_XML")" || {
+  echo "ERROR: could not read the visible Track Edit layer pan baseline"; exit 1;
+}
+if [[ "$track_edit_pan_before" != "C" ]]; then
+  echo "ERROR: Track Edit PAN smoke fixture must begin centered so its absolute gesture can be restored safely (actual=$track_edit_pan_before)"; exit 1
+fi
+track_edit_pan_other_fields_before="$(python3 - "$TRACK_EDIT_PAN_BEFORE_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+values = {}
+for description in ("Track Edit layer gain value", "Track Edit layer tuning value"):
+    found = [n for n in nodes if n.attrib.get("content-desc", "") == description]
+    if len(found) != 1:
+        raise SystemExit(f"expected one visible {description!r}, found {len(found)}")
+    values[description] = found[0].attrib.get("text", "")
+print(values["Track Edit layer gain value"] + "\t" + values["Track Edit layer tuning value"])
+PY
+)" || { echo "ERROR: GAIN/TUNE baseline unavailable for layer pan isolation"; exit 1; }
+if ! tap_ui_description "$TRACK_EDIT_PAN_BEFORE_XML" "Track Edit layer pan decrease"; then
+  echo "ERROR: Track Edit layer pan LEFT control was not actionable"; exit 1
+fi
+track_edit_pan_changed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_PAN_CHANGED_XML"; then
+    echo "ERROR: could not observe Track Edit after layer pan edit"; exit 1
+  fi
+  track_edit_pan_current="$(read_track_edit_layer_pan_value "$TRACK_EDIT_PAN_CHANGED_XML" 2>/dev/null || true)"
+  if [[ "$track_edit_pan_current" == "L100" ]]; then
+    track_edit_pan_changed=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_pan_changed" != "1" ]]; then
+  echo "ERROR: Track Edit layer PAN left touch did not set the native projection to L100"; exit 1
+fi
+if ! python3 - "$TRACK_EDIT_PAN_BEFORE_XML" "$TRACK_EDIT_PAN_CHANGED_XML" "$track_edit_pan_other_fields_before" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+before_path, after_path, other_before_s = sys.argv[1:]
+before_other = other_before_s.split("\t")
+def values(path):
+    nodes = list(ET.parse(path).getroot().iter("node"))
+    result = {}
+    for description in ("Track Edit layer gain value", "Track Edit layer tuning value", "Track Edit layer pan value"):
+        found = [n for n in nodes if n.attrib.get("content-desc", "") == description]
+        if len(found) != 1:
+            raise SystemExit(f"expected one visible {description!r}, found {len(found)}")
+        result[description] = found[0].attrib.get("text", "")
+    return result
+before, after = values(before_path), values(after_path)
+if not before["Track Edit layer pan value"].endswith("\nC"):
+    raise SystemExit(f"PAN baseline was not CENTER: {before!r}")
+if not after["Track Edit layer pan value"].endswith("\nL100"):
+    raise SystemExit(f"PAN left touch did not set L100: {after!r}")
+if [before["Track Edit layer gain value"], before["Track Edit layer tuning value"]] != before_other:
+    raise SystemExit("GAIN/TUNE snapshot values were parsed inconsistently")
+if before["Track Edit layer gain value"] != after["Track Edit layer gain value"] or before["Track Edit layer tuning value"] != after["Track Edit layer tuning value"]:
+    raise SystemExit(f"changing layer PAN modified GAIN/TUNE: {before!r} -> {after!r}")
+print("Track Edit layer PAN field isolation passed: C → L100; GAIN/TUNE preserved.")
+PY
+then
+  echo "ERROR: Track Edit layer pan modified unrelated state"; cat "$TRACK_EDIT_PAN_CHANGED_XML"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PAN_CHANGED_PNG"; then
+  echo "ERROR: Track Edit layer pan changed screenshot failed"; exit 1
+fi
+if ! tap_ui_text "$TRACK_EDIT_PAN_CHANGED_XML" "CENTER LAYER PAN"; then
+  echo "ERROR: Track Edit CENTER LAYER PAN control was not actionable"; exit 1
+fi
+track_edit_pan_restored=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_PAN_RESTORED_XML"; then
+    echo "ERROR: could not observe restored Track Edit layer pan"; exit 1
+  fi
+  track_edit_pan_current="$(read_track_edit_layer_pan_value "$TRACK_EDIT_PAN_RESTORED_XML" 2>/dev/null || true)"
+  if [[ "$track_edit_pan_current" == "C" ]]; then
+    track_edit_pan_restored=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_pan_restored" != "1" ]]; then
+  echo "ERROR: Track Edit CENTER LAYER PAN failed to restore the centered fixture"; exit 1
+fi
+if ! python3 - "$TRACK_EDIT_PAN_BEFORE_XML" "$TRACK_EDIT_PAN_RESTORED_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+def values(path):
+    nodes = list(ET.parse(path).getroot().iter("node"))
+    result = {}
+    for description in ("Track Edit layer gain value", "Track Edit layer tuning value", "Track Edit layer pan value"):
+        found = [n for n in nodes if n.attrib.get("content-desc", "") == description]
+        if len(found) != 1:
+            raise SystemExit(f"expected one visible {description!r}, found {len(found)}")
+        result[description] = found[0].attrib.get("text", "")
+    return result
+before, restored = values(sys.argv[1]), values(sys.argv[2])
+if before != restored:
+    raise SystemExit(f"Track Edit layer PAN inverse action failed exact GAIN/TUNE/PAN restoration: {before!r} -> {restored!r}")
+print("Track Edit layer PAN center restoration returned GAIN/TUNE/PAN exactly to baseline.")
+PY
+then
+  echo "ERROR: Track Edit layer pan round-trip failed complete field restoration"; cat "$TRACK_EDIT_PAN_RESTORED_XML"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PAN_RESTORED_PNG"; then
+  echo "ERROR: Track Edit layer pan restored screenshot failed"; exit 1
+fi
+for evidence in \
+  "$TRACK_EDIT_PAN_BEFORE_PNG" "$TRACK_EDIT_PAN_BEFORE_XML" \
+  "$TRACK_EDIT_PAN_CHANGED_PNG" "$TRACK_EDIT_PAN_CHANGED_XML" \
+  "$TRACK_EDIT_PAN_RESTORED_PNG" "$TRACK_EDIT_PAN_RESTORED_XML"; do
+  if ! test -s "$evidence"; then
+    echo "ERROR: Track Edit layer pan evidence missing/empty: $evidence"; exit 1
+  fi
+done
+echo "Track Edit layer PAN real-touch edit → exact center restore passed."
 
 for evidence in \
   "$TRACK_EDIT_CONTEXT_BEFORE_XML" "$TRACK_EDIT_CONTEXT_REOPENED_XML" \
