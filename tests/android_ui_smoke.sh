@@ -7959,7 +7959,7 @@ PY
 }
 
 wait_for_track_edit_description_bounded() {
-  local host_path="$1" remote_path="$2" expected_description="$3" max_attempts="\${4:-6}"
+  local host_path="$1" remote_path="$2" expected_description="$3" max_attempts="$4"
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
     if track_edit_dump_ui_bounded "$remote_path" "$host_path"; then
       if python3 - "$host_path" "$expected_description" <<'PY'
