@@ -819,5 +819,13 @@ jobs:
             /tmp/mpc-groovebox-sample-chop-pad-3-uiautomator.xml
             /tmp/mpc-groovebox-sample-chop-pad-4.png
             /tmp/mpc-groovebox-sample-chop-pad-4-uiautomator.xml
+            /tmp/mpc-groovebox-sample-zoom-baseline.png
+            /tmp/mpc-groovebox-sample-zoom-baseline-uiautomator.xml
+            /tmp/mpc-groovebox-sample-zoom-in.png
+            /tmp/mpc-groovebox-sample-zoom-in-uiautomator.xml
+            /tmp/mpc-groovebox-sample-zoom-out.png
+            /tmp/mpc-groovebox-sample-zoom-out-uiautomator.xml
+            /tmp/mpc-groovebox-sample-zoom-reset.png
+            /tmp/mpc-groovebox-sample-zoom-reset-uiautomator.xml
           if-no-files-found: warn
           archive: true

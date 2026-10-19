@@ -5038,7 +5038,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(header);
 
         sampleWaveform = new WaveformView(this);
-        sampleWaveform.setContentDescription("Sample waveform editor");
+        sampleWaveform.setViewportAccessibilityPrefix("Sample waveform editor");
         sampleWaveform.setEditable(true);
         sampleWaveform.setMinimumHeight(dp(144));
         page.addView(sampleWaveform, new LinearLayout.LayoutParams(

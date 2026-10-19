@@ -52,6 +52,7 @@ public final class WaveformView extends View {
     private float durationMs;
     private float viewportStart = 0f;
     private float viewportEnd = 1f;
+    private String viewportAccessibilityPrefix;
     private float verticalZoom = 1f;
     private boolean editable;
     private boolean recording;
@@ -207,6 +208,26 @@ public final class WaveformView extends View {
         invalidate();
     }
 
+    /**
+     * Adds an assistive-technology projection of the visible viewport. This
+     * is presentation state only; it never writes sample or region parameters.
+     */
+    public void setViewportAccessibilityPrefix(String prefix) {
+        viewportAccessibilityPrefix = prefix == null || prefix.trim().isEmpty()
+                ? null : prefix.trim();
+        updateViewportAccessibilityDescription();
+    }
+
+    private void updateViewportAccessibilityDescription() {
+        if (viewportAccessibilityPrefix == null) return;
+        setContentDescription(String.format(
+                Locale.ROOT,
+                "%s • VIEWPORT %.3f-%.3f",
+                viewportAccessibilityPrefix,
+                viewportStart,
+                viewportEnd));
+    }
+
     public void zoomIn() {
         final float center = (startNormalized + endNormalized) * 0.5f;
         zoomAround(center,
@@ -257,6 +278,7 @@ public final class WaveformView extends View {
     private void setViewport(float start, float end) {
         viewportStart = clamp(start, 0f, 0.999f);
         viewportEnd = clamp(end, viewportStart + 0.001f, 1f);
+        updateViewportAccessibilityDescription();
         invalidate();
     }
 

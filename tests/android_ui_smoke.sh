@@ -10359,6 +10359,149 @@ for samp_chop_pad in 2 3 4; do
 done
 echo "SAMP-009 CH4 verified every real destination pad plus an active-to-stopped output-stream restart."
 
+# SAMP-010: waveform zoom is a viewport-only edit. The existing chopped Pad 4
+# keeps its exact native Start/End/frame-count/cursor while ZOOM+, ZOOM− and RESET
+# change only the accessible viewport range.
+echo "Running SAMP-010 viewport-only waveform zoom acceptance..."
+SAMP_ZOOM_BASELINE_PNG="/tmp/mpc-groovebox-sample-zoom-baseline.png"
+SAMP_ZOOM_BASELINE_XML="/tmp/mpc-groovebox-sample-zoom-baseline-uiautomator.xml"
+SAMP_ZOOM_IN_PNG="/tmp/mpc-groovebox-sample-zoom-in.png"
+SAMP_ZOOM_IN_XML="/tmp/mpc-groovebox-sample-zoom-in-uiautomator.xml"
+SAMP_ZOOM_OUT_PNG="/tmp/mpc-groovebox-sample-zoom-out.png"
+SAMP_ZOOM_OUT_XML="/tmp/mpc-groovebox-sample-zoom-out-uiautomator.xml"
+SAMP_ZOOM_RESET_PNG="/tmp/mpc-groovebox-sample-zoom-reset.png"
+SAMP_ZOOM_RESET_XML="/tmp/mpc-groovebox-sample-zoom-reset-uiautomator.xml"
+
+if ! cp "/tmp/mpc-groovebox-sample-chop-pad-4.png" "$SAMP_ZOOM_BASELINE_PNG"; then
+  echo "ERROR: could not preserve Pad 4 pre-zoom screenshot"; exit 1
+fi
+if ! cp "/tmp/mpc-groovebox-sample-chop-pad-4-uiautomator.xml" "$SAMP_ZOOM_BASELINE_XML"; then
+  echo "ERROR: could not preserve Pad 4 pre-zoom hierarchy"; exit 1
+fi
+
+read_samp_waveform_viewport() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+nodes = [node for node in root.iter("node")
+         if node.attrib.get("content-desc", "").startswith(
+             "Sample waveform editor • VIEWPORT ")]
+if len(nodes) != 1:
+    raise SystemExit(f"expected one accessible waveform viewport, found {len(nodes)}")
+description = nodes[0].attrib.get("content-desc", "")
+match = re.search(r"VIEWPORT\s+([0-9]+(?:\.[0-9]+)?)-([0-9]+(?:\.[0-9]+)?)", description)
+if match is None:
+    raise SystemExit(f"could not parse waveform viewport from {description!r}")
+start, end = map(float, match.groups())
+if not (0.0 <= start < end <= 1.0):
+    raise SystemExit(f"invalid normalized viewport: {start}..{end}")
+print(f"{start:.3f} {end:.3f}")
+PY
+}
+
+samp_zoom_region_before="$(read_samp_cursor_region_state "$SAMP_ZOOM_BASELINE_XML")" || {
+  echo "ERROR: could not read sample region before zoom"; exit 1;
+}
+samp_zoom_view_before="$(read_samp_waveform_viewport "$SAMP_ZOOM_BASELINE_XML")" || {
+  echo "ERROR: waveform viewport is not exposed to accessibility"; exit 1;
+}
+read -r samp_zoom_start_before samp_zoom_end_before <<< "$samp_zoom_view_before"
+if ! python3 - "$samp_zoom_start_before" "$samp_zoom_end_before" <<'PY'
+import sys
+start, end = map(float, sys.argv[1:])
+raise SystemExit(0 if start <= 0.005 and end >= 0.995 else 1)
+PY
+then
+  echo "ERROR: newly opened Sample Edit viewport did not start at full range: $samp_zoom_view_before"; exit 1
+fi
+
+if ! tap_ui_text "$SAMP_ZOOM_BASELINE_XML" "ZOOM+"; then
+  echo "ERROR: SAMP-010 ZOOM+ action was not actionable"; exit 1
+fi
+if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_ZOOM_IN_XML"; then
+  echo "ERROR: could not capture waveform after ZOOM+"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_ZOOM_IN_PNG"; then
+  echo "ERROR: could not capture waveform ZOOM+ screenshot"; exit 1
+fi
+samp_zoom_view_in="$(read_samp_waveform_viewport "$SAMP_ZOOM_IN_XML")" || {
+  echo "ERROR: viewport range missing after ZOOM+"; exit 1;
+}
+samp_zoom_region_in="$(read_samp_cursor_region_state "$SAMP_ZOOM_IN_XML")" || {
+  echo "ERROR: sample region missing after ZOOM+"; exit 1;
+}
+read -r samp_zoom_start_in samp_zoom_end_in <<< "$samp_zoom_view_in"
+samp_zoom_in_narrower=0
+if python3 - "$samp_zoom_start_before" "$samp_zoom_end_before" "$samp_zoom_start_in" "$samp_zoom_end_in" <<'PY'
+import sys
+before_start, before_end, after_start, after_end = map(float, sys.argv[1:])
+raise SystemExit(0 if (after_end - after_start) < (before_end - before_start) - 0.001 else 1)
+PY
+then samp_zoom_in_narrower=1; fi
+if [[ "$samp_zoom_region_in" != "$samp_zoom_region_before" || "$samp_zoom_in_narrower" != "1" ]]; then
+  echo "ERROR: ZOOM+ failed to narrow only the viewport; region before=$samp_zoom_region_before after=$samp_zoom_region_in; viewport before=$samp_zoom_view_before after=$samp_zoom_view_in"; exit 1
+fi
+echo "SAMP-010 ZOOM+ narrowed viewport from $samp_zoom_view_before to $samp_zoom_view_in with native sample region unchanged."
+
+if ! tap_ui_text "$SAMP_ZOOM_IN_XML" "ZOOM−"; then
+  echo "ERROR: SAMP-010 ZOOM− action was not actionable"; exit 1
+fi
+if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_ZOOM_OUT_XML"; then
+  echo "ERROR: could not capture waveform after ZOOM−"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_ZOOM_OUT_PNG"; then
+  echo "ERROR: could not capture waveform ZOOM− screenshot"; exit 1
+fi
+samp_zoom_view_out="$(read_samp_waveform_viewport "$SAMP_ZOOM_OUT_XML")" || {
+  echo "ERROR: viewport range missing after ZOOM−"; exit 1;
+}
+samp_zoom_region_out="$(read_samp_cursor_region_state "$SAMP_ZOOM_OUT_XML")" || {
+  echo "ERROR: sample region missing after ZOOM−"; exit 1;
+}
+read -r samp_zoom_start_out samp_zoom_end_out <<< "$samp_zoom_view_out"
+samp_zoom_out_wider=0
+if python3 - "$samp_zoom_start_in" "$samp_zoom_end_in" "$samp_zoom_start_out" "$samp_zoom_end_out" <<'PY'
+import sys
+before_start, before_end, after_start, after_end = map(float, sys.argv[1:])
+raise SystemExit(0 if (after_end - after_start) > (before_end - before_start) + 0.001 else 1)
+PY
+then samp_zoom_out_wider=1; fi
+if [[ "$samp_zoom_region_out" != "$samp_zoom_region_before" || "$samp_zoom_out_wider" != "1" ]]; then
+  echo "ERROR: ZOOM− failed to widen only the viewport; region before=$samp_zoom_region_before after=$samp_zoom_region_out; viewport in=$samp_zoom_view_in out=$samp_zoom_view_out"; exit 1
+fi
+echo "SAMP-010 ZOOM− widened viewport to $samp_zoom_view_out; the exact region remains unchanged."
+
+if ! tap_ui_text "$SAMP_ZOOM_OUT_XML" "RESET"; then
+  echo "ERROR: SAMP-010 RESET action was not actionable"; exit 1
+fi
+if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_ZOOM_RESET_XML"; then
+  echo "ERROR: could not capture waveform after RESET"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_ZOOM_RESET_PNG"; then
+  echo "ERROR: could not capture waveform RESET screenshot"; exit 1
+fi
+samp_zoom_view_reset="$(read_samp_waveform_viewport "$SAMP_ZOOM_RESET_XML")" || {
+  echo "ERROR: viewport range missing after RESET"; exit 1;
+}
+samp_zoom_region_reset="$(read_samp_cursor_region_state "$SAMP_ZOOM_RESET_XML")" || {
+  echo "ERROR: sample region missing after RESET"; exit 1;
+}
+read -r samp_zoom_start_reset samp_zoom_end_reset <<< "$samp_zoom_view_reset"
+samp_zoom_reset_full=0
+if python3 - "$samp_zoom_start_reset" "$samp_zoom_end_reset" <<'PY'
+import sys
+start, end = map(float, sys.argv[1:])
+raise SystemExit(0 if start <= 0.001 and end >= 0.999 else 1)
+PY
+then samp_zoom_reset_full=1; fi
+if [[ "$samp_zoom_region_reset" != "$samp_zoom_region_before" || "$samp_zoom_reset_full" != "1" ]]; then
+  echo "ERROR: RESET did not return to the full viewport without mutating sample state; region before=$samp_zoom_region_before after=$samp_zoom_region_reset; viewport=$samp_zoom_view_reset"; exit 1
+fi
+echo "SAMP-010 RESET restored full viewport and preserved native sample state exactly: $samp_zoom_region_before."
+echo "SAMP-010 zoom changed only viewport state and archived baseline/in/out/reset screenshots and hierarchies."
+
 for evidence in \
   "$SAMP_CURSOR_BEFORE_PNG" "$SAMP_CURSOR_BEFORE_XML" \
   "$SAMP_CURSOR_REGION_PNG" "$SAMP_CURSOR_REGION_XML" \
@@ -10369,8 +10512,12 @@ for evidence in \
   "$SAMP_CHOP_PAD1_PNG" "$SAMP_CHOP_PAD1_XML" \
   "/tmp/mpc-groovebox-sample-chop-pad-2.png" "/tmp/mpc-groovebox-sample-chop-pad-2-uiautomator.xml" \
   "/tmp/mpc-groovebox-sample-chop-pad-3.png" "/tmp/mpc-groovebox-sample-chop-pad-3-uiautomator.xml" \
-  "/tmp/mpc-groovebox-sample-chop-pad-4.png" "/tmp/mpc-groovebox-sample-chop-pad-4-uiautomator.xml"; do
+  "/tmp/mpc-groovebox-sample-chop-pad-4.png" "/tmp/mpc-groovebox-sample-chop-pad-4-uiautomator.xml" \
+  "$SAMP_ZOOM_BASELINE_PNG" "$SAMP_ZOOM_BASELINE_XML" \
+  "$SAMP_ZOOM_IN_PNG" "$SAMP_ZOOM_IN_XML" \
+  "$SAMP_ZOOM_OUT_PNG" "$SAMP_ZOOM_OUT_XML" \
+  "$SAMP_ZOOM_RESET_PNG" "$SAMP_ZOOM_RESET_XML"; do
   if [[ ! -s "$evidence" ]]; then echo "ERROR: SAMP sample acceptance evidence file missing: $evidence"; exit 1; fi
 done
-echo "SAMP-007/008/009 playback, Crop and Chop screenshot/hierarchy evidence verified."
+echo "SAMP-007/008/009/010 playback, Crop, Chop and viewport-only zoom evidence verified."
 
