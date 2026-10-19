@@ -6457,10 +6457,10 @@ if scroll is None:
         "Track Edit layer pan value",
         "Track Edit region",
         "Track Edit velocity",
-        "Track Edit attack value",
-        "Track Edit decay value",
-        "Track Edit sustain value",
-        "Track Edit release value",
+        "Track Edit envelope attack value",
+        "Track Edit envelope decay value",
+        "Track Edit envelope sustain value",
+        "Track Edit envelope release value",
         "Track Edit cutoff",
     }
     scroll_candidates = []
@@ -7913,7 +7913,7 @@ TRACK_EDIT_FILTER_CHECK_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-check-u
 if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit AMP ENV tab"; then
   echo "ERROR: Track Edit AMP ENV tab could not be opened"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit attack value" 15; then
+if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit envelope attack value" 15; then
   echo "ERROR: Track Edit envelope Attack value is not exposed"; exit 1
 fi
 if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit cutoff" 15; then
@@ -7941,7 +7941,7 @@ specs = (
 )
 values = []
 for name, pattern in specs:
-    description = "Track Edit " + name + " value"
+    description = "Track Edit envelope " + name + " value"
     found = [n for n in root.iter("node")
              if n.attrib.get("content-desc", "") == description]
     if len(found) != 1:
@@ -7989,12 +7989,12 @@ track_edit_env_before="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_BASELIN
 }
 read -r track_edit_env_attack_before track_edit_env_decay_before track_edit_env_sustain_before track_edit_env_release_before <<< "$track_edit_env_before"
 if (( track_edit_env_attack_before < 1900 )); then
-  track_edit_env_attack_action="Track Edit attack increase"
-  track_edit_env_attack_inverse="Track Edit attack decrease"
+  track_edit_env_attack_action="Track Edit envelope attack increase"
+  track_edit_env_attack_inverse="Track Edit envelope attack decrease"
   track_edit_env_attack_expected=$((track_edit_env_attack_before + 100))
 elif (( track_edit_env_attack_before >= 100 )); then
-  track_edit_env_attack_action="Track Edit attack decrease"
-  track_edit_env_attack_inverse="Track Edit attack increase"
+  track_edit_env_attack_action="Track Edit envelope attack decrease"
+  track_edit_env_attack_inverse="Track Edit envelope attack increase"
   track_edit_env_attack_expected=$((track_edit_env_attack_before - 100))
 else
   echo "ERROR: AMP ENV Attack has no safe adjacent 100 ms value to exercise"; exit 1
