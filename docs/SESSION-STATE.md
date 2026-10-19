@@ -7,7 +7,7 @@
 
 - Repository: `MiguelDuval/mpc-mk2-groovebox`; working branch: `feature/mpc-one-ui-fidelity`.
 - PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains **OPEN**, base `fix/ui-shell-format-width-startup`; not merged or retargeted.
-- Latest completed exact-SHA Android Build #2893 / run 39232129363 passed on 0d0558704ed73f8c6c27c528178cc049858d2386: the full Project lifecycle, Grid five-field mutation/restoration and Step Edit RAT/NUDGE/DURATION acceptance completed. APK artifact 12178252131; UI evidence artifact 12178600540. This checkpoint's follow-up adds real-touch Step Edit VEL isolation/restoration and must receive its own exact-SHA result before STEP-005 is marked complete.
+- Latest completed exact-SHA Android Build #2900 / run 39236521987 passed on `a285ed9bcdb3426e71f85a600838f6589bc121d9`: real Android SAF Project save/open lifecycle, Grid VEL/PROB/RAT/NUDGE/DUR field-isolation round trips, Step Edit VEL and PROB mutation/restoration, RAT/NUDGE/DURATION field-isolation, and real-touch Step page 1 → 2 → 1 navigation all passed. APK artifact 12179887151 (SHA-256 `1a5892b5477471196f0561e957379ebf24d6253db70123612718723157659b76`); UI evidence artifact 12180247158 (SHA-256 `f6629398bdf5d0f26d148a6e94bdcc87cbfbc73525debff9a58860a9870f7fab`). The next candidate adds real-touch Pad selection round-trip; its own exact-SHA CI is pending.
 - The implementation's user-facing Project SAVE / SAVE AS / OPEN route is present in `MainActivity.java`, using Android SAF and native serializer/loader calls. The native loader validates a candidate, stops transport/audio as needed, clears runtime sample buffers and incompatible edit history, then replaces model state. Sample PCM is external; assigned WAV data may need reloading/relinking.
 - Project SAVE / SAVE AS / OPEN lifecycle is now VERIFIED by Android Build #2856 / run 39162451542 on exact HEAD 617511efb820e96c6d9576051fa30012a3368db1 (run completed successfully; [Actions](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39162451542)). The real DocumentsUI/SAF flow restored the exact canonical domain SHA 4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9, including two non-default MIDI events and placement identity/reference/start 480/length 720/source offset 120. The same extended smoke passed force-stop/relaunch → Open, SAVE AS/Open cancellation with unchanged state SHA, malformed-load rejection without active-state mutation, and placement-free runtime-valid v1 Open with zero placements and canonical-v2 state-oracle equality.
 - Historical note: Build #2808 predates the Android Project UI route and is not proof of Project UI integration. The current acceptance is proven by Build #2856, not by the older codec-only result. APK artifact 12149263768 (9,956,909 bytes; SHA-256 ecca25dd5a02c0d8eb02fd0d19a13a11e68cb0e38558c11ec1a5ddceddd376f0) and visual-evidence artifact 12150136466 (12,168,362 bytes; SHA-256 662d8ff8a923c8f186109b90845fb02d676216d662e1017da7f221b9fe51cdf5) are unexpired.
@@ -20,12 +20,13 @@
 
 ## Current execution queue — 2026-10-19
 
-1. Project SAVE / SAVE AS / OPEN passed again on exact SHA 0d0558704ed73f8c6c27c528178cc049858d2386, Android Build #2893 / run 39232129363. Real SAF save, canonical state restoration, process restart/open, both cancellation paths, malformed-file preservation, and supported placement-free v1 all passed. State SHA: 4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9.
-2. Grid all-five-field edit/restore and DRAW/ERASE passed on that same SHA. Step Edit RAT real-touch mutation and exact inverse restore passed with the four unrelated native fields preserved. Step Edit NUDGE and DURATION passed in the same run.
-3. This checkpoint adds Step Edit VELOCITY real-touch mutation and inverse restore, verifying that PROB/RAT/NUDGE/DUR stay unchanged and the full five-field baseline returns exactly. Wait for the new candidate's own exact-SHA Actions before declaring STEP-005 done.
-4. After Step Edit VELOCITY is verified, continue with one incomplete user action from the live catalog (for example, STEP-002 step-page/bar navigation); avoid repeating completed Project/Grid scenarios absent a regression.
+1. **Project SAVE / SAVE AS / OPEN — VERIFIED.** Android Build #2900 / run 39236521987 passed on exact SHA `a285ed9bcdb3426e71f85a600838f6589bc121d9` and re-ran the real DocumentsUI/SAF lifecycle. V2 save → mutate live Project → Open restored canonical state SHA `4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9`, including MIDI events and Pattern-placement identity/parameters; force-stop/relaunch, SAVE AS/Open cancellation, malformed-file preservation and placement-free v1 compatibility passed. [Actions #2900](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39236521987).
+2. **Grid event parameters and Step Edit STEP-005/006/007/008/009 — VERIFIED on #2900.** Grid VEL/PROB/RAT/NUDGE/DUR real-touch changes/restores passed. Step Edit VEL changed 100 → 101 → 100; PROB 127 → 126 → 127; RAT 1 → 2 → 1; NUDGE/DURATION field-isolation round trips passed, preserving unrelated fields and Step 01.
+3. **STEP-002 — VERIFIED on #2900.** Real touchscreen navigation changed page 1 → page 2 and returned to page 1. Relative column 2 stayed mapped to absolute Step 18 then Step 2; the empty fixture and existing Pattern state were preserved.
+4. **NEXT: STEP-001 Pad selection.** The isolated follow-up adds PAD + / PAD − real-touch checks: switch Pad 1 → Pad 2 while preserving the absolute Step cursor, verify the UI projection agrees with the selected Pad's native event state, then restore Pad 1 and assert the temporary event and Step 01 fixtures remain unchanged. Require CI on the resulting PR SHA before marking the action verified.
+5. Physical MPC Studio MkII validation remains **PENDING**; emulator evidence is not hardware proof. Uncovered Project boundaries remain provider overwrite/write-failure recovery, opening two saved Projects independently, and relinking external sample PCM.
 
-PR #23 remains open against fix/ui-shell-format-width-startup; main must remain untouched. Physical MPC Studio MkII validation remains PENDING.
+PR #23 remains open against `fix/ui-shell-format-width-startup`; `main` remains untouched.
 
 ## Completed in this session
 
@@ -77,10 +78,9 @@ The official playlists could not be fully transcript-audited through the availab
 
 ## Current execution order
 
-1. Inspect the Android Build attached to the new implementation SHA, including emulator-smoke conclusion, logs, screenshots/accessibility hierarchy, APK and evidence bundle. Unit tests and APK upload do not close persistence.
-2. If an acceptance assertion fails, fix the actual cause without weakening it and rerun at the resulting exact SHA. Preserve the external sample-PCM contract.
-3. Only after persistence is green, select the next high-value Arrange/Grid/Track/Step gap from live source/tests/action catalog; do not restart placement work or repeat controller research.
-4. Controller hardware work must use the new traceability map and the semantic control map. Resolve the Jog/Touch Strip CC channel discrepancy only after capturing raw bytes on the real controller. Physical verification remains separate from emulator/CI.
+1. Verify STEP-001 Pad selection with real touchscreen PAD + / PAD −, native state projection, preserved Step cursor and exact fixture restoration on the candidate's own exact-SHA Android Build.
+2. Select the next bounded incomplete action from `docs/MPC3-USER-ACTION-CATALOG.md`; do not reopen Project persistence or completed Grid/Step parameter work without a regression.
+3. Keep physical MPC Studio MkII acceptance separate from emulator CI and continue preserving the app's native-authoritative music model.
 
 ### 10. MPC One ↔ Studio MkII cross-device integration — DOCUMENTATION COMPLETE / PHYSICAL VALIDATION PENDING
 
