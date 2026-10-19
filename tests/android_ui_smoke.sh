@@ -4720,6 +4720,93 @@ PY
       echo "ERROR: real-touch Step page return failed state assertions"; cat "$STEP_TOUCH_PAGE1_RESTORED_XML"; exit 1
     fi
 
+    # Exercise Pad selection through real visible PAD +/- touch controls.
+    # The absolute Step cursor stays selected while its displayed event follows the Pad.
+    STEP_TOUCH_PAD2_PNG="/tmp/mpc-groovebox-step-touch-pad2.png"
+    STEP_TOUCH_PAD2_XML="/tmp/mpc-groovebox-step-touch-pad2-uiautomator.xml"
+    STEP_TOUCH_PAD2_REMOTE="/sdcard/mpc-groovebox-step-touch-pad2-uiautomator.xml"
+    if ! tap_visible_text_early "$STEP_TOUCH_PAGE1_RESTORED_XML" "PAD +"; then
+      echo "ERROR: real touchscreen PAD + control was not actionable"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$STEP_TOUCH_PAD2_REMOTE" "$STEP_TOUCH_PAD2_XML"; then
+      echo "ERROR: Pad 2 hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_PAD2_PNG"; then
+      echo "ERROR: Pad 2 screenshot failed"; exit 1
+    fi
+    if ! python3 - "$STEP_TOUCH_PAD2_XML" "$step_touch_target_number" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s = sys.argv[1:]
+target = int(target_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+pad = [n for n in nodes if n.attrib.get("text", "").strip() == "PAD 02"]
+if len(pad) != 1:
+    raise AssertionError(f"PAD + did not select Pad 2: {[(n.attrib.get("text"), n.attrib.get("content-desc")) for n in nodes if "PAD" in n.attrib.get("text", "")]!r}")
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit event information missing after Pad selection")
+text = info[0].attrib.get("text", "")
+if re.search(rf"\bSTEP\s+0*{target}\b", text) is None:
+    raise AssertionError(f"Pad selection changed the absolute step cursor: {text!r}")
+cell_prefix = f"Pad 2 step {target}"
+cells = [n.attrib.get("content-desc", "") for n in nodes
+         if n.attrib.get("content-desc", "") in (cell_prefix + " on", cell_prefix + " off")]
+if len(cells) != 1:
+    raise AssertionError(f"Step target is not projected for the selected Pad 2: {cells!r}")
+active = cells[0].endswith(" on")
+if active == ("EMPTY" in text):
+    raise AssertionError(f"Pad 2 cell and native Step event projection disagree: {cells[0]!r}, {text!r}")
+if active:
+    patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b", r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b", r"\bDUR\s+(\d+)\b"]
+    if any(re.search(p, text) is None for p in patterns):
+        raise AssertionError(f"Pad 2 active event has incomplete native fields: {text!r}")
+print(f"Real-touch PAD + selected Pad 2; absolute step {target} preserved and projection matches selected-Pad state (active={active}).")
+PY
+    then
+      echo "ERROR: real-touch Pad 2 selection failed state assertions"; cat "$STEP_TOUCH_PAD2_XML"; exit 1
+    fi
+
+    STEP_TOUCH_PAD1_RESTORED_PNG="/tmp/mpc-groovebox-step-touch-pad1-restored.png"
+    STEP_TOUCH_PAD1_RESTORED_XML="/tmp/mpc-groovebox-step-touch-pad1-restored-uiautomator.xml"
+    STEP_TOUCH_PAD1_RESTORED_REMOTE="/sdcard/mpc-groovebox-step-touch-pad1-restored-uiautomator.xml"
+    if ! tap_visible_text_early "$STEP_TOUCH_PAD2_XML" "PAD −"; then
+      echo "ERROR: real touchscreen PAD − control was not actionable"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$STEP_TOUCH_PAD1_RESTORED_REMOTE" "$STEP_TOUCH_PAD1_RESTORED_XML"; then
+      echo "ERROR: restored Pad 1 hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_PAD1_RESTORED_PNG"; then
+      echo "ERROR: restored Pad 1 screenshot failed"; exit 1
+    fi
+    if ! python3 - "$STEP_TOUCH_PAD1_RESTORED_XML" "$step_touch_target_number" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s = sys.argv[1:]
+target = int(target_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+pad = [n for n in nodes if n.attrib.get("text", "").strip() == "PAD 01"]
+if len(pad) != 1:
+    raise AssertionError("PAD − did not restore Pad 1")
+for description in (f"Pad 1 step {target} off", "Pad 1 step 1 off"):
+    if len([n for n in nodes if n.attrib.get("content-desc") == description]) != 1:
+        raise AssertionError(f"Pad 1 state not restored or an event was modified: {description!r}")
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit information missing after restoring Pad 1")
+text = info[0].attrib.get("text", "")
+if re.search(rf"\bSTEP\s+0*{target}\b", text) is None or "EMPTY" not in text:
+    raise AssertionError(f"Pad 1 selected-step state was not restored: {text!r}")
+print(f"Real-touch PAD − restored Pad 1, selected empty step {target}, and the Step 01 fixture unchanged.")
+PY
+    then
+      echo "ERROR: real-touch Pad 1 restore failed state assertions"; cat "$STEP_TOUCH_PAD1_RESTORED_XML"; exit 1
+    fi
+
     if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'echo $step_touch_target_number > cache/mpc-step-touch-target'"; then
       echo "ERROR: could not report the Step target to the native audit"; exit 1
     fi
