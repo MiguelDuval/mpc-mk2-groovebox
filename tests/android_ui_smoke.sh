@@ -6788,8 +6788,8 @@ match = re.search(r"(\d+(?:\.\d+)?)\s*%", text)
 if not match:
     raise SystemExit(f"could not parse layer gain percent from {text!r}")
 value = float(match.group(1))
-if not 0.0 <= value <= 200.0:
-    raise SystemExit(f"Track Edit layer gain outside supported display range: {value}")
+if value < 0.0:
+    raise SystemExit(f"Track Edit layer gain cannot be negative: {value}")
 print(f"{value:.1f}")
 PY
 }
