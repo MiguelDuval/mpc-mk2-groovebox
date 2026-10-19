@@ -7203,6 +7203,217 @@ if [[ "$track_edit_pan_final" != "$track_edit_pan_before" \
 fi
 echo "Track Edit layer PAN real-touch field isolation passed: PAN C → PAN L100 → PAN C; GAIN/TUNE preserved."
 
+# EDIT-007: verify both sample-layer velocity-range bounds are native-backed,
+# field-isolated, and inverse-restorable through real on-screen touch controls.
+echo "Running Track Edit sample-layer velocity MIN/MAX field-isolation → restore runtime test..."
+TRACK_EDIT_VELOCITY_BASELINE_PNG="/tmp/mpc-groovebox-track-edit-velocity-range-before.png"
+TRACK_EDIT_VELOCITY_BASELINE_XML="/tmp/mpc-groovebox-track-edit-velocity-range-before-uiautomator.xml"
+TRACK_EDIT_VELOCITY_REMOTE="/sdcard/mpc-groovebox-track-edit-velocity-range-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MAX_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-velocity-max-changed.png"
+TRACK_EDIT_VELOCITY_MAX_CHANGED_XML="/tmp/mpc-groovebox-track-edit-velocity-max-changed-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MAX_CHANGED_REMOTE="/sdcard/mpc-groovebox-track-edit-velocity-max-changed-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MAX_RESTORE_CHECK_XML="/tmp/mpc-groovebox-track-edit-velocity-max-restore-check-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MAX_RESTORE_CHECK_REMOTE="/sdcard/mpc-groovebox-track-edit-velocity-max-restore-check-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MAX_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-velocity-max-restored.png"
+TRACK_EDIT_VELOCITY_MAX_RESTORED_XML="/tmp/mpc-groovebox-track-edit-velocity-max-restored-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MAX_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-velocity-max-restored-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MIN_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-velocity-min-changed.png"
+TRACK_EDIT_VELOCITY_MIN_CHANGED_XML="/tmp/mpc-groovebox-track-edit-velocity-min-changed-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MIN_CHANGED_REMOTE="/sdcard/mpc-groovebox-track-edit-velocity-min-changed-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MIN_RESTORE_CHECK_XML="/tmp/mpc-groovebox-track-edit-velocity-min-restore-check-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MIN_RESTORE_CHECK_REMOTE="/sdcard/mpc-groovebox-track-edit-velocity-min-restore-check-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MIN_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-velocity-min-restored.png"
+TRACK_EDIT_VELOCITY_MIN_RESTORED_XML="/tmp/mpc-groovebox-track-edit-velocity-min-restored-uiautomator.xml"
+TRACK_EDIT_VELOCITY_MIN_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-velocity-min-restored-uiautomator.xml"
+TRACK_EDIT_VELOCITY_REENTRY_XML="/tmp/mpc-groovebox-track-edit-velocity-range-reentry-uiautomator.xml"
+TRACK_EDIT_VELOCITY_REENTRY_REMOTE="/sdcard/mpc-groovebox-track-edit-velocity-range-reentry-uiautomator.xml"
+
+read_track_edit_velocity_range() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+found = [n for n in root.iter("node")
+         if n.attrib.get("content-desc", "") == "Track Edit velocity"]
+if len(found) != 1:
+    raise SystemExit(f"expected one Track Edit velocity range field, found {len(found)}")
+text = found[0].attrib.get("text", "")
+match = re.search(r"VELOCITY\s+(\d+)\s*[—–-]\s*(\d+)", text)
+if match is None:
+    raise SystemExit(f"could not parse layer velocity range from {text!r}")
+minimum, maximum = map(int, match.groups())
+if not 0 <= minimum <= maximum <= 127:
+    raise SystemExit(f"layer velocity range outside contract: {minimum} — {maximum}")
+print(minimum, maximum)
+PY
+}
+
+if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer velocity minimum increase" 8; then
+  echo "ERROR: Track Edit velocity-range field did not become visible after scrolling"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_VELOCITY_REMOTE" "$TRACK_EDIT_VELOCITY_BASELINE_XML"; then
+  echo "ERROR: Track Edit velocity-range baseline hierarchy capture failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_VELOCITY_BASELINE_PNG"; then
+  echo "ERROR: Track Edit velocity-range baseline screenshot capture failed"; exit 1
+fi
+track_edit_velocity_range_before="$(read_track_edit_velocity_range "$TRACK_EDIT_VELOCITY_BASELINE_XML")" || {
+  echo "ERROR: initial Track Edit velocity range could not be read"; exit 1;
+}
+read -r track_edit_velocity_min_before track_edit_velocity_max_before <<< "$track_edit_velocity_range_before"
+if (( track_edit_velocity_max_before > track_edit_velocity_min_before )); then
+  track_edit_velocity_max_direction="decrease"
+  track_edit_velocity_max_inverse="MAX +"
+  track_edit_velocity_max_expected=$((track_edit_velocity_max_before - 1))
+elif (( track_edit_velocity_max_before < 127 )); then
+  track_edit_velocity_max_direction="increase"
+  track_edit_velocity_max_inverse="MAX −"
+  track_edit_velocity_max_expected=$((track_edit_velocity_max_before + 1))
+else
+  echo "ERROR: velocity MAX fixture has no safe adjacent value to exercise"; exit 1
+fi
+if ! tap_ui_text "$TRACK_EDIT_VELOCITY_BASELINE_XML" "MAX $([[ "$track_edit_velocity_max_direction" == "decrease" ]] && printf '−' || printf '+')"; then
+  echo "ERROR: Track Edit velocity MAX control was not actionable"; exit 1
+fi
+track_edit_velocity_max_changed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_VELOCITY_MAX_CHANGED_REMOTE" "$TRACK_EDIT_VELOCITY_MAX_CHANGED_XML"; then
+    echo "ERROR: Track Edit velocity MAX changed hierarchy capture failed"; exit 1
+  fi
+  track_edit_velocity_max_current="$(read_track_edit_velocity_range "$TRACK_EDIT_VELOCITY_MAX_CHANGED_XML" 2>/dev/null || true)"
+  if [[ -n "$track_edit_velocity_max_current" ]]; then
+    read -r track_edit_velocity_min_current track_edit_velocity_max_current_value <<< "$track_edit_velocity_max_current"
+    if (( track_edit_velocity_min_current == track_edit_velocity_min_before         && track_edit_velocity_max_current_value == track_edit_velocity_max_expected )); then
+      track_edit_velocity_max_changed=1; break
+    fi
+  fi
+  sleep 1
+done
+if [[ "$track_edit_velocity_max_changed" != "1" ]]; then
+  echo "ERROR: velocity MAX touch did not change only the upper bound by one"
+  echo "Before=$track_edit_velocity_range_before expected=$track_edit_velocity_min_before — $track_edit_velocity_max_expected actual=$track_edit_velocity_max_current"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_VELOCITY_MAX_CHANGED_PNG"; then
+  echo "ERROR: Track Edit velocity MAX changed screenshot capture failed"; exit 1
+fi
+if ! tap_ui_text "$TRACK_EDIT_VELOCITY_MAX_CHANGED_XML" "$track_edit_velocity_max_inverse"; then
+  echo "ERROR: Track Edit velocity MAX inverse control was not actionable"; exit 1
+fi
+track_edit_velocity_max_restored=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_VELOCITY_MAX_RESTORE_CHECK_REMOTE" "$TRACK_EDIT_VELOCITY_MAX_RESTORE_CHECK_XML"; then
+    echo "ERROR: Track Edit velocity MAX restoration hierarchy capture failed"; exit 1
+  fi
+  track_edit_velocity_range_current="$(read_track_edit_velocity_range "$TRACK_EDIT_VELOCITY_MAX_RESTORE_CHECK_XML" 2>/dev/null || true)"
+  if [[ "$track_edit_velocity_range_current" == "$track_edit_velocity_range_before" ]]; then
+    track_edit_velocity_max_restored=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_velocity_max_restored" != "1" ]]; then
+  echo "ERROR: Track Edit velocity MAX inverse touch did not restore the original range"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_VELOCITY_REMOTE" "$TRACK_EDIT_VELOCITY_MAX_RESTORED_XML"; then
+  echo "ERROR: Track Edit restored velocity MAX hierarchy capture failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_VELOCITY_MAX_RESTORED_PNG"; then
+  echo "ERROR: Track Edit restored velocity MAX screenshot capture failed"; exit 1
+fi
+echo "Track Edit velocity MAX changed only the upper bound and inverse-restored the exact range: $track_edit_velocity_range_before."
+
+# The MIN control must leave MAX untouched and restore its original lower bound.
+track_edit_velocity_range_before_min="$(read_track_edit_velocity_range "$TRACK_EDIT_VELOCITY_MAX_RESTORED_XML")" || {
+  echo "ERROR: velocity MIN baseline could not be read after MAX restore"; exit 1;
+}
+read -r track_edit_velocity_min_before_min track_edit_velocity_max_before_min <<< "$track_edit_velocity_range_before_min"
+if (( track_edit_velocity_min_before_min < track_edit_velocity_max_before_min )); then
+  track_edit_velocity_min_direction="increase"
+  track_edit_velocity_min_action="MIN +"
+  track_edit_velocity_min_inverse="MIN −"
+  track_edit_velocity_min_expected=$((track_edit_velocity_min_before_min + 1))
+elif (( track_edit_velocity_min_before_min > 0 )); then
+  track_edit_velocity_min_direction="decrease"
+  track_edit_velocity_min_action="MIN −"
+  track_edit_velocity_min_inverse="MIN +"
+  track_edit_velocity_min_expected=$((track_edit_velocity_min_before_min - 1))
+else
+  echo "ERROR: velocity MIN fixture has no safe adjacent value to exercise"; exit 1
+fi
+if ! tap_ui_text "$TRACK_EDIT_VELOCITY_MAX_RESTORED_XML" "$track_edit_velocity_min_action"; then
+  echo "ERROR: Track Edit velocity MIN control was not actionable"; exit 1
+fi
+track_edit_velocity_min_changed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_VELOCITY_MIN_CHANGED_REMOTE" "$TRACK_EDIT_VELOCITY_MIN_CHANGED_XML"; then
+    echo "ERROR: Track Edit velocity MIN changed hierarchy capture failed"; exit 1
+  fi
+  track_edit_velocity_min_current="$(read_track_edit_velocity_range "$TRACK_EDIT_VELOCITY_MIN_CHANGED_XML" 2>/dev/null || true)"
+  if [[ -n "$track_edit_velocity_min_current" ]]; then
+    read -r track_edit_velocity_min_current_value track_edit_velocity_max_current <<< "$track_edit_velocity_min_current"
+    if (( track_edit_velocity_min_current_value == track_edit_velocity_min_expected         && track_edit_velocity_max_current == track_edit_velocity_max_before_min )); then
+      track_edit_velocity_min_changed=1; break
+    fi
+  fi
+  sleep 1
+done
+if [[ "$track_edit_velocity_min_changed" != "1" ]]; then
+  echo "ERROR: velocity MIN touch did not change only the lower bound by one"
+  echo "Before=$track_edit_velocity_range_before_min expected=$track_edit_velocity_min_expected — $track_edit_velocity_max_before_min actual=$track_edit_velocity_min_current"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_VELOCITY_MIN_CHANGED_PNG"; then
+  echo "ERROR: Track Edit velocity MIN changed screenshot capture failed"; exit 1
+fi
+if ! tap_ui_text "$TRACK_EDIT_VELOCITY_MIN_CHANGED_XML" "$track_edit_velocity_min_inverse"; then
+  echo "ERROR: Track Edit velocity MIN inverse control was not actionable"; exit 1
+fi
+track_edit_velocity_min_restored=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_VELOCITY_MIN_RESTORE_CHECK_REMOTE" "$TRACK_EDIT_VELOCITY_MIN_RESTORE_CHECK_XML"; then
+    echo "ERROR: Track Edit velocity MIN restoration hierarchy capture failed"; exit 1
+  fi
+  track_edit_velocity_range_current="$(read_track_edit_velocity_range "$TRACK_EDIT_VELOCITY_MIN_RESTORE_CHECK_XML" 2>/dev/null || true)"
+  if [[ "$track_edit_velocity_range_current" == "$track_edit_velocity_range_before_min" ]]; then
+    track_edit_velocity_min_restored=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_velocity_min_restored" != "1" ]]; then
+  echo "ERROR: Track Edit velocity MIN inverse touch did not restore the original range"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_VELOCITY_REMOTE" "$TRACK_EDIT_VELOCITY_MIN_RESTORED_XML"; then
+  echo "ERROR: Track Edit restored velocity MIN hierarchy capture failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_VELOCITY_MIN_RESTORED_PNG"; then
+  echo "ERROR: Track Edit restored velocity MIN screenshot capture failed"; exit 1
+fi
+echo "Track Edit velocity MIN changed only the lower bound and inverse-restored the exact range: $track_edit_velocity_range_before_min."
+
+# Re-enter the visible layer controls and confirm the complete Track Edit state
+# still matches the fixture after both independent velocity-range round trips.
+if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning increase" 8; then
+  echo "ERROR: Track Edit tuning controls did not become visible after velocity-range acceptance"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_VELOCITY_REENTRY_XML"; then
+  echo "ERROR: Track Edit post-velocity-range hierarchy capture failed"; exit 1
+fi
+track_edit_velocity_reentry_gain="$(read_track_edit_gain_value "$TRACK_EDIT_VELOCITY_REENTRY_XML")" || {
+  echo "ERROR: GAIN value missing after velocity-range edits"; exit 1;
+}
+track_edit_velocity_reentry_tuning="$(read_track_edit_tuning_value "$TRACK_EDIT_VELOCITY_REENTRY_XML")" || {
+  echo "ERROR: TUNE value missing after velocity-range edits"; exit 1;
+}
+track_edit_velocity_reentry_pan="$(read_track_edit_pan_value "$TRACK_EDIT_VELOCITY_REENTRY_XML")" || {
+  echo "ERROR: PAN value missing after velocity-range edits"; exit 1;
+}
+if [[ "$track_edit_velocity_reentry_gain" != "$track_edit_pan_gain_before" \
+    || "$track_edit_velocity_reentry_tuning" != "$track_edit_pan_tuning_before" \
+    || "$track_edit_velocity_reentry_pan" != "$track_edit_pan_before" ]]; then
+  echo "ERROR: velocity-range edits changed GAIN/TUNE/PAN outside their own fields"
+  echo "GAIN $track_edit_pan_gain_before -> $track_edit_velocity_reentry_gain; TUNE $track_edit_pan_tuning_before -> $track_edit_velocity_reentry_tuning; PAN $track_edit_pan_before -> $track_edit_velocity_reentry_pan"; exit 1
+fi
+echo "Track Edit velocity MIN/MAX round trips restored exact bounds and preserved GAIN/TUNE/PAN."
+
 for evidence in \
   "$TRACK_EDIT_CONTEXT_BEFORE_XML" "$TRACK_EDIT_CONTEXT_REOPENED_XML" \
   "$TRACK_EDIT_BEFORE_PNG" "$TRACK_EDIT_BEFORE_XML" \
@@ -7212,12 +7423,17 @@ for evidence in \
   "$TRACK_EDIT_GAIN_CHANGED_PNG" "$TRACK_EDIT_GAIN_CHANGED_XML" \
   "$TRACK_EDIT_GAIN_RESTORED_PNG" "$TRACK_EDIT_GAIN_RESTORED_XML" \
   "$TRACK_EDIT_PAN_CHANGED_PNG" "$TRACK_EDIT_PAN_CHANGED_XML" \
-  "$TRACK_EDIT_PAN_RESTORED_PNG" "$TRACK_EDIT_PAN_RESTORED_XML"; do
+  "$TRACK_EDIT_PAN_RESTORED_PNG" "$TRACK_EDIT_PAN_RESTORED_XML" \
+  "$TRACK_EDIT_VELOCITY_BASELINE_PNG" "$TRACK_EDIT_VELOCITY_BASELINE_XML" \
+  "$TRACK_EDIT_VELOCITY_MAX_CHANGED_PNG" "$TRACK_EDIT_VELOCITY_MAX_CHANGED_XML" \
+  "$TRACK_EDIT_VELOCITY_MAX_RESTORED_PNG" "$TRACK_EDIT_VELOCITY_MAX_RESTORED_XML" \
+  "$TRACK_EDIT_VELOCITY_MIN_CHANGED_PNG" "$TRACK_EDIT_VELOCITY_MIN_CHANGED_XML" \
+  "$TRACK_EDIT_VELOCITY_MIN_RESTORED_PNG" "$TRACK_EDIT_VELOCITY_MIN_RESTORED_XML"; do
   if ! test -s "$evidence"; then
     echo "ERROR: Track Edit runtime evidence missing/empty: $evidence"; exit 1
   fi
 done
-if ! tap_ui_description "$TRACK_EDIT_PAN_RESTORED_XML" "Track Edit back"; then
+if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit back"; then
   echo "ERROR: Track Edit BACK could not return to Main after restoring tuning"; exit 1
 fi
 if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "$track_edit_return_description" 25; then

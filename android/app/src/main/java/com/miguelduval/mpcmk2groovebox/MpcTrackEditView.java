@@ -410,10 +410,26 @@ final class MpcTrackEditView extends LinearLayout {
         body.addView(infoField("VELOCITY", String.format(
                 Locale.ROOT, "%d — %d", snapshot.velocityMin, snapshot.velocityMax)));
         LinearLayout velocity = row();
-        velocity.addView(parameterButton("MIN −", v -> listener.onLayerVelocityMinDelta(-1)));
-        velocity.addView(parameterButton("MIN +", v -> listener.onLayerVelocityMinDelta(1)));
-        velocity.addView(parameterButton("MAX −", v -> listener.onLayerVelocityMaxDelta(-1)));
-        velocity.addView(parameterButton("MAX +", v -> listener.onLayerVelocityMaxDelta(1)));
+        Button velocityMinDecrease = parameterButton(
+                "MIN −", v -> listener.onLayerVelocityMinDelta(-1));
+        velocityMinDecrease.setContentDescription(
+                "Track Edit layer velocity minimum decrease");
+        velocity.addView(velocityMinDecrease);
+        Button velocityMinIncrease = parameterButton(
+                "MIN +", v -> listener.onLayerVelocityMinDelta(1));
+        velocityMinIncrease.setContentDescription(
+                "Track Edit layer velocity minimum increase");
+        velocity.addView(velocityMinIncrease);
+        Button velocityMaxDecrease = parameterButton(
+                "MAX −", v -> listener.onLayerVelocityMaxDelta(-1));
+        velocityMaxDecrease.setContentDescription(
+                "Track Edit layer velocity maximum decrease");
+        velocity.addView(velocityMaxDecrease);
+        Button velocityMaxIncrease = parameterButton(
+                "MAX +", v -> listener.onLayerVelocityMaxDelta(1));
+        velocityMaxIncrease.setContentDescription(
+                "Track Edit layer velocity maximum increase");
+        velocity.addView(velocityMaxIncrease);
         body.addView(velocity, height(42));
 
         body.addView(actionButton("AUDITION", v -> listener.onAudition()), height(42));
