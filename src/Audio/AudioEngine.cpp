@@ -236,6 +236,7 @@ public:
             std::array<std::atomic<std::int32_t>, kPadCount>& envelopeSustainMilli,
             std::array<std::atomic<std::int32_t>, kPadCount>& envelopeReleaseMilliMs,
             std::array<std::atomic<std::int32_t>, kPadCount>& filterCutoffMilliHz,
+            std::array<std::array<std::atomic<std::int64_t>, kSampleLayerCount>, kPadCount>& padLayerPlaybackFrames,
             std::array<float, kMonitorBufferFrames>& monitorSamples,
             std::atomic<std::uint32_t>& monitorWriteSequence,
             std::atomic<bool>& monitorEnabled,
@@ -261,6 +262,7 @@ public:
               envelopeSustainMilli_(envelopeSustainMilli),
               envelopeReleaseMilliMs_(envelopeReleaseMilliMs),
               filterCutoffMilliHz_(filterCutoffMilliHz),
+              padLayerPlaybackFrames_(padLayerPlaybackFrames),
               monitorSamples_(monitorSamples),
               monitorWriteSequence_(monitorWriteSequence),
               monitorEnabled_(monitorEnabled),
@@ -554,6 +556,33 @@ public:
             }
         }
 
+        // Publish one source-frame snapshot per Pad/Layer at callback boundaries.
+        // The newest active voice wins when a pad has overlapping retriggers.
+        // The UI reads atomics only; it never inspects callback-owned voice state.
+        for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+            for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+                const PadVoice::LayerVoice* latestLayerVoice = nullptr;
+                std::uint64_t latestStartSequence = 0;
+                for (std::size_t voiceIndex = 0;
+                        voiceIndex < kMaxPadVoices;
+                        ++voiceIndex) {
+                    const auto& voice = voices_[pad][voiceIndex];
+                    const auto& layerVoice = voice.layers[layer];
+                    if (!voice.active || !layerVoice.active) continue;
+                    if (latestLayerVoice == nullptr
+                            || voice.startSequence >= latestStartSequence) {
+                        latestLayerVoice = &layerVoice;
+                        latestStartSequence = voice.startSequence;
+                    }
+                }
+                const std::int64_t frame = latestLayerVoice == nullptr
+                        ? -1
+                        : static_cast<std::int64_t>(latestLayerVoice->position);
+                padLayerPlaybackFrames_[pad][layer].store(
+                        frame, std::memory_order_relaxed);
+            }
+        }
+
         for (std::size_t index = 0; index < pendingTriggerCount_; ++index) {
             pendingTriggerEvents_[index].offsetFrames -= numFrames;
         }
@@ -584,6 +613,7 @@ private:
                 static_cast<std::uint8_t>((selectedIndex + 1) % kMaxPadVoices);
 
         auto& voice = voices_[padIndex][selectedIndex];
+        voice.startSequence = ++voiceStartSequence_;
         const float velocityGain =
                 static_cast<float>(std::min<std::uint8_t>(velocity, 127u))
                 / 127.0f;
@@ -721,6 +751,7 @@ private:
         float rightGain = 1.0f;
         float baseFilterCutoffHz = 20000.0f;
         float lastFilterCutoffHz = -1.0f;
+        std::uint64_t startSequence = 0;
         bool active = false;
     };
 
@@ -742,6 +773,7 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount>& envelopeSustainMilli_;
     std::array<std::atomic<std::int32_t>, kPadCount>& envelopeReleaseMilliMs_;
     std::array<std::atomic<std::int32_t>, kPadCount>& filterCutoffMilliHz_;
+    std::array<std::array<std::atomic<std::int64_t>, kSampleLayerCount>, kPadCount>& padLayerPlaybackFrames_;
     std::array<float, kMonitorBufferFrames>& monitorSamples_;
     std::atomic<std::uint32_t>& monitorWriteSequence_;
     std::atomic<bool>& monitorEnabled_;
@@ -755,12 +787,16 @@ private:
     double testTonePhase_ = 0.0;
     std::array<std::array<PadVoice, kMaxPadVoices>, kPadCount> voices_{};
     std::array<std::uint8_t, kPadCount> nextVoiceIndex_{};
+    std::uint64_t voiceStartSequence_ = 0;
     std::array<AudioTriggerEvent, kAudioTriggerQueueCapacity> pendingTriggerEvents_{};
     std::size_t pendingTriggerCount_ = 0;
 };
 
 AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
         : projectState_(projectState) {
+    for (auto& padFrames : padLayerPlaybackFrames_) {
+        for (auto& frame : padFrames) frame.store(-1, std::memory_order_relaxed);
+    }
     outputLastErrorCode_.store(
             static_cast<std::int32_t>(oboe::Result::OK),
             std::memory_order_relaxed);
@@ -1748,6 +1784,14 @@ std::uint32_t AudioEngine::padSampleRate(
     return 0;
 }
 
+std::int64_t AudioEngine::padLayerPlaybackFrame(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) const noexcept {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) return -1;
+    return padLayerPlaybackFrames_[padIndex][layerIndex].load(
+            std::memory_order_relaxed);
+}
+
 std::vector<WaveformPeak> AudioEngine::padWaveformPeaks(
         std::uint8_t padIndex,
         std::uint8_t layerIndex,
@@ -2401,6 +2445,7 @@ std::string AudioEngine::start() {
             padEnvelopeSustainMilli_,
             padEnvelopeReleaseMilliMs_,
             padFilterCutoffMilliHz_,
+            padLayerPlaybackFrames_,
             monitorSamples_,
             monitorWriteSequence_,
             monitorEnabled_,
@@ -2489,6 +2534,10 @@ std::string AudioEngine::stop() {
     if (inputResult.rfind("Input stop failed:", 0) == 0
             || inputResult.rfind("Input close failed:", 0) == 0) {
         return inputResult;
+    }
+
+    for (auto& padFrames : padLayerPlaybackFrames_) {
+        for (auto& frame : padFrames) frame.store(-1, std::memory_order_relaxed);
     }
 
     if (hadInput) {

@@ -428,6 +428,17 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadSampleRegionE
 }
 
 extern "C" JNIEXPORT jlong JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadLayerPlaybackFrame(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad, jint layer)
+{
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) return -1;
+    return static_cast<jlong>(
+            mpc::audio::AudioEngine::instance().padLayerPlaybackFrame(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer)));
+}
+
+extern "C" JNIEXPORT jlong JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadSampleFrameCount(
         JNIEnv* /* env */, jobject /* thiz */, jint pad, jint layer)
 {

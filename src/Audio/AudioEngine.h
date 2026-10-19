@@ -61,6 +61,10 @@ public:
     std::uint32_t padSampleRate(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
+    // Absolute source-frame position of the newest active voice, or -1 when idle.
+    std::int64_t padLayerPlaybackFrame(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex) const noexcept;
     std::vector<WaveformPeak> padWaveformPeaks(
             std::uint8_t padIndex,
             std::uint8_t layerIndex,
@@ -257,6 +261,8 @@ private:
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeSustainMilli_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padEnvelopeReleaseMilliMs_{};
     std::array<std::atomic<std::int32_t>, kPadCount> padFilterCutoffMilliHz_{};
+    std::array<std::array<std::atomic<std::int64_t>, kSampleLayerCount>, kPadCount>
+            padLayerPlaybackFrames_{};
     mpc::MpcProjectState& projectState_;
     std::array<std::array<std::atomic<std::int32_t>, kSampleLayerCount>, kPadCount>
             padLayerGainMilli_{};
