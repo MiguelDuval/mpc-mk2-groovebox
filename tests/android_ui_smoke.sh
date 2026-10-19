@@ -6331,8 +6331,13 @@ PY
 
 wait_for_ui_description() {
   local hierarchy_path="$1" remote_path="$2" expected_description="$3" max_attempts="$4"
+  local hierarchy_failures=0
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
-    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then
+      hierarchy_failures=$((hierarchy_failures + 1))
+      sleep 1
+      continue
+    fi
     if python3 - "$hierarchy_path" "$expected_description" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
@@ -6344,7 +6349,11 @@ PY
     then return 0; fi
     sleep 1
   done
-  echo "ERROR: timed out waiting for UI target: $expected_description"
+  if (( hierarchy_failures == max_attempts )); then
+    echo "ERROR: could not retrieve emulator UI hierarchy in $max_attempts bounded attempts while waiting for: $expected_description"
+  else
+    echo "ERROR: timed out waiting for UI target: $expected_description (hierarchy capture failures: $hierarchy_failures/$max_attempts)"
+  fi
   cat "$hierarchy_path" || true
   return 1
 }
@@ -6448,11 +6457,11 @@ if scroll is None:
         "Track Edit layer pan value",
         "Track Edit region",
         "Track Edit velocity",
-        "Track Edit envelope attack value",
-        "Track Edit envelope decay value",
-        "Track Edit envelope sustain value",
-        "Track Edit envelope release value",
-        "Track Edit cutoff",
+        "Track Edit attack value",
+        "Track Edit decay value",
+        "Track Edit sustain value",
+        "Track Edit release value",
+        "Track Edit cutoff value",
     }
     scroll_candidates = []
     for candidate in nodes:
@@ -7904,10 +7913,10 @@ TRACK_EDIT_FILTER_CHECK_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-check-u
 if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit AMP ENV tab"; then
   echo "ERROR: Track Edit AMP ENV tab could not be opened"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit envelope attack value" 15; then
+if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit attack value" 15; then
   echo "ERROR: Track Edit envelope Attack value is not exposed"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit cutoff" 15; then
+if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit cutoff value" 15; then
   echo "ERROR: Track Edit filter cutoff value is not exposed"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML"; then
@@ -7932,7 +7941,7 @@ specs = (
 )
 values = []
 for name, pattern in specs:
-    description = "Track Edit envelope " + name + " value"
+    description = "Track Edit " + name + " value"
     found = [n for n in root.iter("node")
              if n.attrib.get("content-desc", "") == description]
     if len(found) != 1:
@@ -7957,9 +7966,9 @@ import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
 found = [n for n in root.iter("node")
-         if n.attrib.get("content-desc", "") == "Track Edit cutoff"]
+         if n.attrib.get("content-desc", "") == "Track Edit cutoff value"]
 if len(found) != 1:
-    raise SystemExit(f"expected one Track Edit cutoff field, found {len(found)}")
+    raise SystemExit(f"expected one Track Edit cutoff value field, found {len(found)}")
 value_text = found[0].attrib.get("text", "")
 khz = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*kHz\b", value_text, re.I)
 if khz:
@@ -7980,12 +7989,12 @@ track_edit_env_before="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_BASELIN
 }
 read -r track_edit_env_attack_before track_edit_env_decay_before track_edit_env_sustain_before track_edit_env_release_before <<< "$track_edit_env_before"
 if (( track_edit_env_attack_before < 1900 )); then
-  track_edit_env_attack_action="Track Edit envelope attack increase"
-  track_edit_env_attack_inverse="Track Edit envelope attack decrease"
+  track_edit_env_attack_action="Track Edit attack increase"
+  track_edit_env_attack_inverse="Track Edit attack decrease"
   track_edit_env_attack_expected=$((track_edit_env_attack_before + 100))
 elif (( track_edit_env_attack_before >= 100 )); then
-  track_edit_env_attack_action="Track Edit envelope attack decrease"
-  track_edit_env_attack_inverse="Track Edit envelope attack increase"
+  track_edit_env_attack_action="Track Edit attack decrease"
+  track_edit_env_attack_inverse="Track Edit attack increase"
   track_edit_env_attack_expected=$((track_edit_env_attack_before - 100))
 else
   echo "ERROR: AMP ENV Attack has no safe adjacent 100 ms value to exercise"; exit 1
