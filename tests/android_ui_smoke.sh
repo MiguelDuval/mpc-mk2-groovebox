@@ -7934,10 +7934,10 @@ TRACK_EDIT_FILTER_CHECK_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-check-u
 if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit AMP ENV tab"; then
   echo "ERROR: Track Edit AMP ENV tab could not be opened"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit attack value" 15; then
+if ! wait_for_ui_description "$TRACK_EDIT_ENV_BASELINE_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit attack value" 15; then
   echo "ERROR: Track Edit envelope Attack value is not exposed"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit cutoff" 15; then
+if ! wait_for_ui_description "$TRACK_EDIT_ENV_BASELINE_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit cutoff" 15; then
   echo "ERROR: Track Edit filter cutoff value is not exposed"; exit 1
 fi
 if [[ ! -s "$TRACK_EDIT_ENV_BASELINE_XML" ]]; then
