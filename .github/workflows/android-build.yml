@@ -799,5 +799,33 @@ jobs:
             /tmp/mpc-groovebox-track-edit-envelope-release-changed-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-envelope-release-restored.png
             /tmp/mpc-groovebox-track-edit-envelope-release-restored-uiautomator.xml
+            /tmp/mpc-groovebox-sample-playback-cursor-before.png
+            /tmp/mpc-groovebox-sample-playback-cursor-before-uiautomator.xml
+            /tmp/mpc-groovebox-sample-playback-cursor-region-changed.png
+            /tmp/mpc-groovebox-sample-playback-cursor-region-changed-uiautomator.xml
+            /tmp/mpc-groovebox-sample-playback-cursor-during.png
+            /tmp/mpc-groovebox-sample-playback-cursor-during-uiautomator.xml
+            /tmp/mpc-groovebox-sample-playback-cursor-progressed.png
+            /tmp/mpc-groovebox-sample-playback-cursor-progressed-uiautomator.xml
+            /tmp/mpc-groovebox-sample-playback-cursor-stopped.png
+            /tmp/mpc-groovebox-sample-playback-cursor-stopped-uiautomator.xml
+            /tmp/mpc-groovebox-sample-crop-after.png
+            /tmp/mpc-groovebox-sample-crop-after-uiautomator.xml
+            /tmp/mpc-groovebox-sample-chop-pad-1.png
+            /tmp/mpc-groovebox-sample-chop-pad-1-uiautomator.xml
+            /tmp/mpc-groovebox-sample-chop-pad-2.png
+            /tmp/mpc-groovebox-sample-chop-pad-2-uiautomator.xml
+            /tmp/mpc-groovebox-sample-chop-pad-3.png
+            /tmp/mpc-groovebox-sample-chop-pad-3-uiautomator.xml
+            /tmp/mpc-groovebox-sample-chop-pad-4.png
+            /tmp/mpc-groovebox-sample-chop-pad-4-uiautomator.xml
+            /tmp/mpc-groovebox-sample-zoom-baseline.png
+            /tmp/mpc-groovebox-sample-zoom-baseline-uiautomator.xml
+            /tmp/mpc-groovebox-sample-zoom-in.png
+            /tmp/mpc-groovebox-sample-zoom-in-uiautomator.xml
+            /tmp/mpc-groovebox-sample-zoom-out.png
+            /tmp/mpc-groovebox-sample-zoom-out-uiautomator.xml
+            /tmp/mpc-groovebox-sample-zoom-reset.png
+            /tmp/mpc-groovebox-sample-zoom-reset-uiautomator.xml
           if-no-files-found: warn
           archive: true

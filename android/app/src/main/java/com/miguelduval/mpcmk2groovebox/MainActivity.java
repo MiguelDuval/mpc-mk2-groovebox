@@ -236,6 +236,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final Button[] modeButtons = new Button[7];
     private final Handler waveformUiHandler = new Handler(Looper.getMainLooper());
     private Runnable recordingWaveformUpdater;
+    private Runnable samplePlaybackCursorUpdater;
+    private int samplePlaybackCursorAccessibilityBucket = -1;
     private WaveformView sampleWaveform;
     private WaveformView mainTrackWaveform;
     private Button mainTrackSamplePrimaryButton;
@@ -445,6 +447,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native long nativeAudioGetPadSampleRegionStart(int pad, int layer);
     private static native long nativeAudioGetPadSampleRegionEnd(int pad, int layer);
     private static native long nativeAudioGetPadSampleFrameCount(int pad, int layer);
+    private static native long nativeAudioGetPadSamplePlaybackCursorFrame(int pad, int layer);
     private static native String nativeAudioGetPadSampleName(int pad, int layer);
     private static native int nativeAudioGetPadSampleRate(int pad, int layer);
     private static native float[] nativeAudioGetPadWaveformPeaks(
@@ -5035,7 +5038,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(header);
 
         sampleWaveform = new WaveformView(this);
-        sampleWaveform.setContentDescription("Sample waveform editor");
+        sampleWaveform.setViewportAccessibilityPrefix("Sample waveform editor");
         sampleWaveform.setEditable(true);
         sampleWaveform.setMinimumHeight(dp(144));
         page.addView(sampleWaveform, new LinearLayout.LayoutParams(
@@ -5079,6 +5082,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSampleInfo();
         refreshRegionInfo();
         refreshSampleWaveform();
+        startSamplePlaybackCursorUpdates();
     }
 
     private void showSampleEditPanel(LinearLayout page) {
@@ -11142,6 +11146,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             sampleWaveform.setPeaks(null);
             sampleWaveform.setSelection(0f, 1f);
             sampleWaveform.setDurationMs(0f);
+            sampleWaveform.setPlayhead(-1f);
             return;
         }
 
@@ -11158,6 +11163,57 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ? frames * 1000.0f / sampleRate
                         : 0.0f);
         sampleWaveform.setRecording(false);
+        sampleWaveform.setPlayhead(-1f);
+        samplePlaybackCursorAccessibilityBucket = -1;
+    }
+
+    private void startSamplePlaybackCursorUpdates() {
+        if (samplePlaybackCursorUpdater == null) {
+            samplePlaybackCursorUpdater = new Runnable() {
+                @Override
+                public void run() {
+                    if (!"SAMPLE".equals(currentPage) || sampleWaveform == null) {
+                        if (sampleWaveform != null) sampleWaveform.setPlayhead(-1f);
+                        waveformUiHandler.removeCallbacks(this);
+                        if (samplePlaybackCursorAccessibilityBucket != -1) {
+                            samplePlaybackCursorAccessibilityBucket = -1;
+                            refreshRegionInfo();
+                        }
+                        return;
+                    }
+                    final long totalFrames = nativeAudioGetPadSampleFrameCount(
+                            selectedPad, selectedLayer);
+                    final long cursorFrame = nativeAudioGetPadSamplePlaybackCursorFrame(
+                            selectedPad, selectedLayer);
+                    if (totalFrames > 0 && cursorFrame >= 0 && cursorFrame < totalFrames) {
+                        sampleWaveform.setPlayhead(cursorFrame / (float) totalFrames);
+                        final int bucket = (int) Math.min(31L,
+                                (cursorFrame * 32L) / totalFrames);
+                        if (bucket != samplePlaybackCursorAccessibilityBucket) {
+                            samplePlaybackCursorAccessibilityBucket = bucket;
+                            if (regionInfo != null) {
+                                final long start = nativeAudioGetPadSampleRegionStart(
+                                        selectedPad, selectedLayer);
+                                final long end = nativeAudioGetPadSampleRegionEnd(
+                                        selectedPad, selectedLayer);
+                                regionInfo.setText("Region " + start + " → " + end
+                                        + " / " + totalFrames + " frames • PLAYHEAD " + cursorFrame);
+                            }
+                        }
+                    } else {
+                        sampleWaveform.setPlayhead(-1f);
+                        if (samplePlaybackCursorAccessibilityBucket != -1) {
+                            samplePlaybackCursorAccessibilityBucket = -1;
+                            refreshRegionInfo();
+                        }
+                    }
+                    waveformUiHandler.postDelayed(this, 33);
+                }
+            };
+        }
+        waveformUiHandler.removeCallbacks(samplePlaybackCursorUpdater);
+        samplePlaybackCursorAccessibilityBucket = -1;
+        waveformUiHandler.post(samplePlaybackCursorUpdater);
     }
 
     private void startRecordingWaveformUpdates() {
@@ -14943,7 +14999,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        final View waveform = findViewWithContentDescription(
+        final View waveform = findViewWithContentDescriptionPrefix(
                 getWindow().getDecorView(), "Sample waveform editor");
         if (waveform == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: sample waveform editor");
@@ -14961,7 +15017,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         if (findViewWithExactText(getWindow().getDecorView(), "ENV") == null
                 || findViewWithExactText(getWindow().getDecorView(), "FILTER") == null
-                || findViewWithContentDescription(
+                || findViewWithContentDescriptionPrefix(
                         getWindow().getDecorView(), "Sample waveform editor") == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: sample waveform editor");
             return;
@@ -15127,6 +15183,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             for (int i = 0; i < group.getChildCount(); i++) {
                 View match = findViewWithContentDescription(
                         group.getChildAt(i), expectedDescription);
+                if (match != null) return match;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds a view whose accessibility description starts with a stable semantic prefix.
+     * WaveformView includes live viewport bounds after this prefix, so its full description
+     * is intentionally dynamic while the semantic target remains stable for audits.
+     */
+    private View findViewWithContentDescriptionPrefix(View view, String prefix) {
+        if (view == null || prefix == null) return null;
+
+        final CharSequence actual = view.getContentDescription();
+        if (actual != null && actual.toString().startsWith(prefix)) {
+            return view;
+        }
+
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View match = findViewWithContentDescriptionPrefix(
+                        group.getChildAt(i), prefix);
                 if (match != null) return match;
             }
         }
@@ -16515,6 +16595,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     @Override
     protected void onDestroy() {
+        if (samplePlaybackCursorUpdater != null) {
+            waveformUiHandler.removeCallbacks(samplePlaybackCursorUpdater);
+        }
         destroyed = true;
         stopBrowserPreview();
         if (recordingWaveformUpdater != null) {

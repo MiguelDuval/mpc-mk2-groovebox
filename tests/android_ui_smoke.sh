@@ -9988,3 +9988,603 @@ if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_V1_XML"; then
   echo "ERROR: could not capture v1-loaded accessibility hierarchy"; exit 1
 fi
 echo "Extended Project UI acceptance passed: exact v2 state, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."
+
+
+# SAMP-007: adjust a real sample region and verify the playback cursor from native audio telemetry.
+echo "Running SAMP-007 real sample-region audition and native playback-cursor acceptance..."
+SAMP_CURSOR_NAME="Browser-Smoke-Cursor.wav"
+SAMP_CURSOR_HOST="/tmp/$SAMP_CURSOR_NAME"
+SAMP_CURSOR_DEVICE="/sdcard/Music/$SAMP_CURSOR_NAME"
+SAMP_CURSOR_CANONICAL="/storage/emulated/0/Music/$SAMP_CURSOR_NAME"
+SAMP_CURSOR_SCAN="/tmp/mpc-groovebox-sample-cursor-media-scan.txt"
+SAMP_CURSOR_QUERY="/tmp/mpc-groovebox-sample-cursor-media-query.txt"
+SAMP_CURSOR_REMOTE="/sdcard/mpc-groovebox-sample-playback-cursor.xml"
+SAMP_CURSOR_BEFORE_PNG="/tmp/mpc-groovebox-sample-playback-cursor-before.png"
+SAMP_CURSOR_BEFORE_XML="/tmp/mpc-groovebox-sample-playback-cursor-before-uiautomator.xml"
+SAMP_CURSOR_REGION_PNG="/tmp/mpc-groovebox-sample-playback-cursor-region-changed.png"
+SAMP_CURSOR_REGION_XML="/tmp/mpc-groovebox-sample-playback-cursor-region-changed-uiautomator.xml"
+SAMP_CURSOR_DURING_PNG="/tmp/mpc-groovebox-sample-playback-cursor-during.png"
+SAMP_CURSOR_DURING_XML="/tmp/mpc-groovebox-sample-playback-cursor-during-uiautomator.xml"
+SAMP_CURSOR_PROGRESS_PNG="/tmp/mpc-groovebox-sample-playback-cursor-progressed.png"
+SAMP_CURSOR_PROGRESS_XML="/tmp/mpc-groovebox-sample-playback-cursor-progressed-uiautomator.xml"
+SAMP_CURSOR_CHECK_XML="/tmp/mpc-groovebox-sample-playback-cursor-check-uiautomator.xml"
+SAMP_CURSOR_STOPPED_PNG="/tmp/mpc-groovebox-sample-playback-cursor-stopped.png"
+SAMP_CURSOR_STOPPED_XML="/tmp/mpc-groovebox-sample-playback-cursor-stopped-uiautomator.xml"
+
+if [[ ! -s "$LOCAL_SAMPLE_HOST" ]]; then
+  echo "ERROR: bundled WAV fixture needed for the cursor test is missing: $LOCAL_SAMPLE_HOST"; exit 1
+fi
+SAMP_CURSOR_EXPECTED_TOTAL="$(python3 - "$LOCAL_SAMPLE_HOST" "$SAMP_CURSOR_HOST" <<'PY'
+import sys
+import wave
+
+source_path, output_path = sys.argv[1:3]
+with wave.open(source_path, "rb") as source:
+    params = source.getparams()
+    frames = source.readframes(params.nframes)
+if not frames or params.nframes <= 0:
+    raise SystemExit("source WAV has no decoded PCM frames")
+repeat_count = 125
+with wave.open(output_path, "wb") as output:
+    output.setnchannels(params.nchannels)
+    output.setsampwidth(params.sampwidth)
+    output.setframerate(params.framerate)
+    output.writeframes(frames * repeat_count)
+with wave.open(output_path, "rb") as output:
+    total = output.getnframes()
+expected = params.nframes * repeat_count
+if total != expected:
+    raise SystemExit(f"long cursor WAV frame mismatch: expected {expected}, got {total}")
+print(total)
+PY
+)" || { echo "ERROR: could not create the long cursor WAV fixture"; exit 1; }
+if [[ ! "$SAMP_CURSOR_EXPECTED_TOTAL" =~ ^[0-9]+$ ]] || (( SAMP_CURSOR_EXPECTED_TOTAL < 200000 )); then
+  echo "ERROR: cursor WAV fixture is too short to validate progression: $SAMP_CURSOR_EXPECTED_TOTAL"; exit 1
+fi
+SAMP_CURSOR_EXPECTED_START=1000
+SAMP_CURSOR_EXPECTED_END=$((SAMP_CURSOR_EXPECTED_TOTAL - 1000))
+if ! adb_bounded 10 shell mkdir -p /sdcard/Music; then
+  echo "ERROR: could not prepare emulator Music folder for SAMP-007"; exit 1
+fi
+if ! adb_bounded 30 push "$SAMP_CURSOR_HOST" "$SAMP_CURSOR_DEVICE"; then
+  echo "ERROR: could not copy the long cursor WAV to emulator storage"; exit 1
+fi
+if ! adb_bounded 15 shell content call --uri content://media --method scan_file --arg "$SAMP_CURSOR_CANONICAL" > "$SAMP_CURSOR_SCAN" 2>&1; then
+  echo "ERROR: MediaStore scan_file failed for the cursor WAV"; cat "$SAMP_CURSOR_SCAN" || true; exit 1
+fi
+SAMP_CURSOR_URI="$(grep -oE 'content://media/[^[:space:]]+/audio/media/[0-9]+' "$SAMP_CURSOR_SCAN" | head -n 1 || true)"
+SAMP_CURSOR_ID="$(basename "$SAMP_CURSOR_URI")"
+SAMP_CURSOR_COLLECTION="$(printf '%s' "$SAMP_CURSOR_URI" | sed 's#/[^/]*$##')"
+if [[ ! "$SAMP_CURSOR_ID" =~ ^[0-9]+$ || -z "$SAMP_CURSOR_COLLECTION" ]]; then
+  echo "ERROR: MediaStore did not return a usable cursor WAV URI"; cat "$SAMP_CURSOR_SCAN" || true; exit 1
+fi
+if ! adb_bounded 10 shell content query --uri "$SAMP_CURSOR_COLLECTION" --projection _id:_display_name:mime_type --where "_id=$SAMP_CURSOR_ID" > "$SAMP_CURSOR_QUERY" 2>&1; then
+  echo "ERROR: could not verify the indexed cursor WAV by ID"; exit 1
+fi
+if ! grep -Fq -- "$SAMP_CURSOR_NAME" "$SAMP_CURSOR_QUERY"; then
+  echo "ERROR: MediaStore row does not match the cursor WAV filename"; cat "$SAMP_CURSOR_QUERY" || true; exit 1
+fi
+echo "Long cursor fixture indexed: $SAMP_CURSOR_NAME ($SAMP_CURSOR_EXPECTED_TOTAL frames)."
+
+# The Project workflow leaves a valid drum project open. Return to Main using
+# the existing measured Menu helper instead of relying on a stale workspace route.
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MAIN_READY_XML"; then
+  echo "ERROR: could not capture the shared MPC shell before leaving Project"; exit 1
+fi
+if ! tap_project_toolbar_menu; then
+  echo "ERROR: could not open Menu before the cursor workflow"; exit 1
+fi
+if ! tap_mpc_menu_tile 0 0; then
+  echo "ERROR: could not return to Main before the cursor workflow"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
+  echo "ERROR: could not capture Main before opening Browser for SAMP-007"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "MPC Project Browser"; then
+  echo "ERROR: could not open Browser for the cursor WAV"; exit 1
+fi
+if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "MPC Browser scan local audio files" 20; then
+  echo "ERROR: Browser scan control is unavailable for SAMP-007"; exit 1
+fi
+if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser scan local audio files"; then
+  echo "ERROR: could not refresh Browser's local MediaStore catalog"; exit 1
+fi
+if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser clear search"; then
+  echo "ERROR: could not clear inherited Browser search state"; exit 1
+fi
+if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser filter ALL"; then
+  echo "ERROR: could not reset Browser's file filter"; exit 1
+fi
+if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser search files"; then
+  echo "ERROR: Browser Search is unavailable for the cursor WAV"; exit 1
+fi
+if ! adb_bounded 10 shell input text "Browser-Smoke-Cursor"; then
+  echo "ERROR: could not enter the cursor WAV search query"; exit 1
+fi
+if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
+  echo "ERROR: could not dismiss the Search keyboard"; exit 1
+fi
+if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "MPC Browser file $SAMP_CURSOR_NAME" 20; then
+  echo "ERROR: the indexed cursor WAV is not visible in Browser"; exit 1
+fi
+if ! adb_bounded 10 shell input swipe 1400 930 1400 760 300; then
+  echo "ERROR: could not scroll the Browser cursor fixture into the touch area"; exit 1
+fi
+sleep 1
+if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_BEFORE_XML"; then
+  echo "ERROR: could not capture Browser's cursor WAV result row"; exit 1
+fi
+if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser file $SAMP_CURSOR_NAME"; then
+  echo "ERROR: could not select the cursor WAV in Browser"; exit 1
+fi
+if ! wait_for_ui_node_text_desc "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "CURRENT SAMPLE • $SAMP_CURSOR_NAME" "MPC Browser current sample" 20; then
+  echo "ERROR: Browser did not select the requested cursor WAV"; exit 1
+fi
+if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser assign selected local WAV to target Pad/Layer"; then
+  echo "ERROR: Browser Pad/Layer assignment is unavailable for the cursor WAV"; exit 1
+fi
+if ! wait_for_ui_node_text_desc "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "CURRENT SAMPLE • $SAMP_CURSOR_NAME" "MPC Browser current sample" 20; then
+  echo "ERROR: assigning the cursor WAV did not preserve the current sample selection"; exit 1
+fi
+if ! wait_for_ui_text_pair "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "ASSIGNED" "PAD 01 / LAYER 01" 20; then
+  echo "ERROR: cursor WAV was not assigned to Pad 01 / Layer 01"; exit 1
+fi
+
+# Return to Main through the existing shell Menu, then open its Sample Edit action.
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MAIN_READY_XML"; then
+  echo "ERROR: could not capture the shell after Browser assignment"; exit 1
+fi
+if ! tap_project_toolbar_menu; then
+  echo "ERROR: could not open Menu after Browser assignment"; exit 1
+fi
+if ! tap_mpc_menu_tile 0 0; then
+  echo "ERROR: could not return to Main after Browser assignment"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
+  echo "ERROR: could not capture Main before Sample Edit"; exit 1
+fi
+if ! tap_ui_text "$DUMP" "SAMPLE"; then
+  echo "ERROR: Main's Sample Edit action was not actionable after assignment"; exit 1
+fi
+if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "Sample waveform editor" 20; then
+  echo "ERROR: Sample Edit waveform did not open for the assigned WAV"; exit 1
+fi
+if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_BEFORE_XML"; then
+  echo "ERROR: could not capture Sample Edit baseline hierarchy"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CURSOR_BEFORE_PNG"; then
+  echo "ERROR: could not capture Sample Edit baseline screenshot"; exit 1
+fi
+
+read_samp_cursor_region_state() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+pattern = re.compile(
+    r"Region\s+([0-9]+)\s*→\s*([0-9]+)\s*/\s*([0-9]+)\s*frames"
+    r"(?:\s+•\s+PLAYHEAD\s+([0-9]+))?"
+)
+for node in root.iter("node"):
+    match = pattern.search(node.attrib.get("text", ""))
+    if match:
+        start, end, total = map(int, match.group(1, 2, 3))
+        cursor = int(match.group(4)) if match.group(4) is not None else -1
+        print(start, end, total, cursor)
+        raise SystemExit(0)
+raise SystemExit("Sample Edit region/cursor text missing from accessibility hierarchy")
+PY
+}
+
+samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_BEFORE_XML")" || { echo "ERROR: initial region state could not be read"; exit 1; }
+read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
+if (( samp_cursor_start != 0 || samp_cursor_end != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_total != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_frame != -1 )); then
+  echo "ERROR: initial Sample Edit region did not cover the full decoded WAV"
+  echo "Expected=0 $SAMP_CURSOR_EXPECTED_TOTAL $SAMP_CURSOR_EXPECTED_TOTAL -1; actual=$samp_cursor_state"; exit 1
+fi
+
+if ! tap_ui_text "$SAMP_CURSOR_BEFORE_XML" "S +1K"; then
+  echo "ERROR: Start +1K real-touch control was not actionable"; exit 1
+fi
+samp_cursor_start_changed=0
+for attempt in {1..10}; do
+  if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_REGION_XML"; then echo "ERROR: could not observe Start +1K"; exit 1; fi
+  samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_REGION_XML" 2>/dev/null || true)"
+  if [[ -n "$samp_cursor_state" ]]; then
+    read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
+    if (( samp_cursor_start == SAMP_CURSOR_EXPECTED_START && samp_cursor_end == SAMP_CURSOR_EXPECTED_TOTAL && samp_cursor_total == SAMP_CURSOR_EXPECTED_TOTAL && samp_cursor_frame == -1 )); then
+      samp_cursor_start_changed=1; break
+    fi
+  fi
+  sleep 0.2
+done
+if [[ "$samp_cursor_start_changed" != "1" ]]; then echo "ERROR: Start +1K failed to change only the region start; state=$samp_cursor_state"; exit 1; fi
+
+if ! tap_ui_text "$SAMP_CURSOR_REGION_XML" "E −1K"; then
+  echo "ERROR: End −1K real-touch control was not actionable"; exit 1
+fi
+samp_cursor_region_changed=0
+for attempt in {1..10}; do
+  if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_REGION_XML"; then echo "ERROR: could not observe End −1K"; exit 1; fi
+  samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_REGION_XML" 2>/dev/null || true)"
+  if [[ -n "$samp_cursor_state" ]]; then
+    read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
+    if (( samp_cursor_start == SAMP_CURSOR_EXPECTED_START && samp_cursor_end == SAMP_CURSOR_EXPECTED_END && samp_cursor_total == SAMP_CURSOR_EXPECTED_TOTAL && samp_cursor_frame == -1 )); then
+      samp_cursor_region_changed=1; break
+    fi
+  fi
+  sleep 0.2
+done
+if [[ "$samp_cursor_region_changed" != "1" ]]; then echo "ERROR: End −1K failed to change only the region end; state=$samp_cursor_state"; exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CURSOR_REGION_PNG"; then echo "ERROR: could not capture adjusted-region screenshot"; exit 1; fi
+if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_REGION_XML"; then echo "ERROR: could not capture adjusted-region hierarchy"; exit 1; fi
+
+if ! tap_ui_text "$SAMP_CURSOR_REGION_XML" "PLAY"; then echo "ERROR: Sample Edit PLAY button was not actionable"; exit 1; fi
+samp_cursor_seen=0
+samp_cursor_progressed=0
+samp_cursor_first=-1
+samp_cursor_last=-1
+for attempt in {1..10}; do
+  if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_CHECK_XML"; then echo "ERROR: could not capture live playback cursor"; exit 1; fi
+  samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_CHECK_XML" 2>/dev/null || true)"
+  if [[ -n "$samp_cursor_state" ]]; then
+    read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
+    if (( samp_cursor_start != SAMP_CURSOR_EXPECTED_START || samp_cursor_end != SAMP_CURSOR_EXPECTED_END || samp_cursor_total != SAMP_CURSOR_EXPECTED_TOTAL )); then
+      echo "ERROR: region boundaries changed during playback; state=$samp_cursor_state"; exit 1
+    fi
+    if (( samp_cursor_frame >= samp_cursor_start && samp_cursor_frame < samp_cursor_end )); then
+      samp_cursor_seen=1
+      if (( samp_cursor_first < 0 )); then
+        samp_cursor_first=$samp_cursor_frame
+        if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CURSOR_DURING_PNG"; then echo "ERROR: could not capture active playhead screenshot"; exit 1; fi
+        if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_DURING_XML"; then echo "ERROR: could not capture active playhead hierarchy"; exit 1; fi
+      elif (( samp_cursor_frame > samp_cursor_last )); then
+        samp_cursor_progressed=1
+        if ! cp "$SAMP_CURSOR_CHECK_XML" "$SAMP_CURSOR_PROGRESS_XML"; then echo "ERROR: could not preserve progressed cursor hierarchy"; exit 1; fi
+        if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CURSOR_PROGRESS_PNG"; then echo "ERROR: could not capture progressed playhead screenshot"; exit 1; fi
+      fi
+      if (( samp_cursor_frame > samp_cursor_last )); then samp_cursor_last=$samp_cursor_frame; fi
+    fi
+  fi
+  sleep 0.15
+done
+if [[ "$samp_cursor_seen" != "1" || "$samp_cursor_progressed" != "1" ]]; then
+  echo "ERROR: native cursor was not observed and progressing inside the edited region"
+  echo "Seen=$samp_cursor_seen progressed=$samp_cursor_progressed first=$samp_cursor_first last=$samp_cursor_last state=$samp_cursor_state"; exit 1
+fi
+if (( samp_cursor_first < SAMP_CURSOR_EXPECTED_START || samp_cursor_first >= SAMP_CURSOR_EXPECTED_END )); then
+  echo "ERROR: playback cursor started outside selected region: $samp_cursor_first"; exit 1
+fi
+echo "SAMP-007 region trim and native playback cursor passed: $samp_cursor_first -> $samp_cursor_last inside $SAMP_CURSOR_EXPECTED_START..$SAMP_CURSOR_EXPECTED_END."
+
+# Allow the one-shot preview to finish; the cursor must return to idle but the
+# selected region boundaries must remain unchanged.
+sleep 11
+if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_STOPPED_XML"; then echo "ERROR: could not capture stopped playback state"; exit 1; fi
+samp_cursor_stopped_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_STOPPED_XML")" || { echo "ERROR: stopped region state is unavailable"; exit 1; }
+read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_stopped_state"
+if (( samp_cursor_start != SAMP_CURSOR_EXPECTED_START || samp_cursor_end != SAMP_CURSOR_EXPECTED_END || samp_cursor_total != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_frame != -1 )); then
+  echo "ERROR: cursor did not return to idle after the edited region ended; state=$samp_cursor_stopped_state"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CURSOR_STOPPED_PNG"; then echo "ERROR: could not capture stopped playback screenshot"; exit 1; fi
+echo "SAMP-007 playback ended and cursor returned to idle without changing the edited region."
+
+# SAMP-008: Crop must replace the sample with the selected region's PCM and
+# normalize the new region to [0, croppedFrameCount). This is a disposable MediaStore
+# fixture, so the destructive edit cannot alter a user's project/sample.
+echo "Running SAMP-008 real-touch Crop mutation acceptance..."
+SAMP_CROP_AFTER_PNG="/tmp/mpc-groovebox-sample-crop-after.png"
+SAMP_CROP_AFTER_XML="/tmp/mpc-groovebox-sample-crop-after-uiautomator.xml"
+SAMP_CROP_EXPECTED_TOTAL=$((SAMP_CURSOR_EXPECTED_END - SAMP_CURSOR_EXPECTED_START))
+if (( SAMP_CROP_EXPECTED_TOTAL <= 0 )); then
+  echo "ERROR: SAMP-008 crop fixture region is not positive: $SAMP_CROP_EXPECTED_TOTAL"; exit 1
+fi
+samp_crop_before_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_STOPPED_XML")" || {
+  echo "ERROR: SAMP-008 could not read the post-playback/pre-Crop baseline"; exit 1;
+}
+read -r samp_crop_before_start samp_crop_before_end samp_crop_before_total samp_crop_before_cursor <<< "$samp_crop_before_state"
+if (( samp_crop_before_start != SAMP_CURSOR_EXPECTED_START \
+    || samp_crop_before_end != SAMP_CURSOR_EXPECTED_END \
+    || samp_crop_before_total != SAMP_CURSOR_EXPECTED_TOTAL \
+    || samp_crop_before_cursor != -1 )); then
+  echo "ERROR: SAMP-008 pre-Crop source state does not match the trimmed fixture: $samp_crop_before_state"; exit 1
+fi
+if ! tap_ui_text "$SAMP_CURSOR_STOPPED_XML" "CROP"; then
+  echo "ERROR: Sample Edit Crop action was not actionable"; exit 1
+fi
+samp_crop_confirmed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_CHECK_XML"; then
+    echo "ERROR: SAMP-008 could not capture the post-Crop Sample Edit hierarchy"; exit 1
+  fi
+  samp_crop_after_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_CHECK_XML" 2>/dev/null || true)"
+  if [[ -n "$samp_crop_after_state" ]]; then
+    read -r samp_crop_after_start samp_crop_after_end samp_crop_after_total samp_crop_after_cursor <<< "$samp_crop_after_state"
+    if (( samp_crop_after_start == 0 \
+        && samp_crop_after_end == SAMP_CROP_EXPECTED_TOTAL \
+        && samp_crop_after_total == SAMP_CROP_EXPECTED_TOTAL \
+        && samp_crop_after_cursor == -1 )); then
+      samp_crop_confirmed=1; break
+    fi
+  fi
+  sleep 0.25
+done
+if [[ "$samp_crop_confirmed" != "1" ]]; then
+  echo "ERROR: Crop did not replace the selected region with an exact-length sample and full-range region"
+  echo "Before=$samp_crop_before_state expected=0 $SAMP_CROP_EXPECTED_TOTAL $SAMP_CROP_EXPECTED_TOTAL -1 actual=$samp_crop_after_state"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CROP_AFTER_PNG"; then
+  echo "ERROR: could not capture post-Crop Sample Edit screenshot"; exit 1
+fi
+if ! cp "$SAMP_CURSOR_CHECK_XML" "$SAMP_CROP_AFTER_XML"; then
+  echo "ERROR: could not preserve post-Crop Sample Edit hierarchy"; exit 1
+fi
+echo "SAMP-008 Crop real-touch mutation passed: [$samp_crop_before_start,$samp_crop_before_end) of $samp_crop_before_total -> [0,$SAMP_CROP_EXPECTED_TOTAL) with $SAMP_CROP_EXPECTED_TOTAL frames; cursor idle."
+echo "SAMP-008 before/after evidence captured; the pre-Crop baseline is SAMP-007 stopped playback evidence."
+
+# SAMP-009: a real CH4 action must safely update every destination pad even
+# while the output stream is running; verify the authoritative region on pads 1-4.
+echo "Running SAMP-009 real-touch Chop-to-4 destination assignment acceptance..."
+SAMP_CHOP_SOURCE_TOTAL="$SAMP_CROP_EXPECTED_TOTAL"
+SAMP_CHOP_PAD1_PNG="/tmp/mpc-groovebox-sample-chop-pad-1.png"
+SAMP_CHOP_PAD1_XML="/tmp/mpc-groovebox-sample-chop-pad-1-uiautomator.xml"
+if (( SAMP_CHOP_SOURCE_TOTAL < 4 )); then
+  echo "ERROR: SAMP-009 cropped sample is too short for four slices"; exit 1
+fi
+if ! tap_ui_text "$SAMP_CROP_AFTER_XML" "CH4"; then
+  echo "ERROR: Sample Edit CH4 action was not actionable"; exit 1
+fi
+
+read_samp_chop_status() {
+  python3 - "$1" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+texts = [node.attrib.get("text", "") for node in root.iter("node")]
+matching = [text for text in texts if "Chop complete: Pad 1 layer 1 -> pads 1-4 (4 slices)" in text]
+if not matching:
+    raise SystemExit("the real-touch CH4 action did not report a completed four-pad assignment")
+if any("restart failed" in text.lower() for text in matching):
+    raise SystemExit("the output stream failed to restart after Chop")
+print(matching[0])
+PY
+}
+
+samp_chop_pad1_state=""
+samp_chop_confirmed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CHOP_PAD1_XML"; then
+    echo "ERROR: SAMP-009 could not capture the post-CH4 source pad"; exit 1
+  fi
+  samp_chop_pad1_state="$(read_samp_cursor_region_state "$SAMP_CHOP_PAD1_XML" 2>/dev/null || true)"
+  if [[ -n "$samp_chop_pad1_state" ]]; then
+    read -r samp_chop_p1_start samp_chop_p1_end samp_chop_p1_total samp_chop_p1_cursor <<< "$samp_chop_pad1_state"
+    if (( samp_chop_p1_start == 0 \
+        && samp_chop_p1_end == SAMP_CHOP_SOURCE_TOTAL / 4 \
+        && samp_chop_p1_total == SAMP_CHOP_SOURCE_TOTAL \
+        && samp_chop_p1_cursor == -1 )); then
+      if read_samp_chop_status "$SAMP_CHOP_PAD1_XML" >/dev/null 2>&1; then
+        samp_chop_confirmed=1; break
+      fi
+    fi
+  fi
+  sleep 0.25
+done
+if [[ "$samp_chop_confirmed" != "1" ]]; then
+  echo "ERROR: CH4 did not commit the first slice and restart audio without leaving the cursor active"
+  echo "Expected=0 $((SAMP_CHOP_SOURCE_TOTAL / 4)) $SAMP_CHOP_SOURCE_TOTAL -1; actual=$samp_chop_pad1_state"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CHOP_PAD1_PNG"; then
+  echo "ERROR: could not capture the CH4 source-pad screenshot"; exit 1
+fi
+echo "SAMP-009 Pad 1 first slice verified: [0,$((SAMP_CHOP_SOURCE_TOTAL / 4))) / $SAMP_CHOP_SOURCE_TOTAL."
+
+for samp_chop_pad in 2 3 4; do
+  if ! tap_project_toolbar_menu; then
+    echo "ERROR: could not open Menu to inspect chopped Pad $samp_chop_pad"; exit 1
+  fi
+  if ! tap_mpc_menu_tile 0 0; then
+    echo "ERROR: could not return to Main to inspect chopped Pad $samp_chop_pad"; exit 1
+  fi
+  if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
+    echo "ERROR: could not capture Main before inspecting chopped Pad $samp_chop_pad"; exit 1
+  fi
+  if ! tap_ui_description "$DUMP" "Main Mode pad $samp_chop_pad"; then
+    echo "ERROR: Main Mode Pad $samp_chop_pad was not actionable"; exit 1
+  fi
+  if ! tap_ui_text "$DUMP" "SAMPLE"; then
+    echo "ERROR: Main Sample Edit route failed for chopped Pad $samp_chop_pad"; exit 1
+  fi
+  samp_chop_pad_xml="/tmp/mpc-groovebox-sample-chop-pad-$samp_chop_pad-uiautomator.xml"
+  samp_chop_pad_png="/tmp/mpc-groovebox-sample-chop-pad-$samp_chop_pad.png"
+  if ! wait_for_ui_description "$samp_chop_pad_xml" "$SAMP_CURSOR_REMOTE" "Sample waveform editor" 20; then
+    echo "ERROR: Sample Edit did not open for chopped Pad $samp_chop_pad"; exit 1
+  fi
+  if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$samp_chop_pad_xml"; then
+    echo "ERROR: could not capture chopped Pad $samp_chop_pad hierarchy"; exit 1
+  fi
+  samp_chop_pad_state="$(read_samp_cursor_region_state "$samp_chop_pad_xml" 2>/dev/null || true)"
+  if [[ -z "$samp_chop_pad_state" ]]; then
+    echo "ERROR: chopped Pad $samp_chop_pad region state is unavailable"; exit 1
+  fi
+  read -r samp_chop_start samp_chop_end samp_chop_total samp_chop_cursor <<< "$samp_chop_pad_state"
+  samp_chop_expected_start=$((SAMP_CHOP_SOURCE_TOTAL * (samp_chop_pad - 1) / 4))
+  samp_chop_expected_end=$((SAMP_CHOP_SOURCE_TOTAL * samp_chop_pad / 4))
+  if (( samp_chop_start != samp_chop_expected_start \
+      || samp_chop_end != samp_chop_expected_end \
+      || samp_chop_total != SAMP_CHOP_SOURCE_TOTAL \
+      || samp_chop_start >= samp_chop_end )); then
+    echo "ERROR: Chop destination Pad $samp_chop_pad has a missing/overlapping region"
+    echo "Expected=$samp_chop_expected_start $samp_chop_expected_end $SAMP_CHOP_SOURCE_TOTAL; actual=$samp_chop_pad_state"; exit 1
+  fi
+  if ! adb_bounded 10 exec-out screencap -p > "$samp_chop_pad_png"; then
+    echo "ERROR: could not capture chopped Pad $samp_chop_pad screenshot"; exit 1
+  fi
+  echo "SAMP-009 Pad $samp_chop_pad slice verified: [$samp_chop_start,$samp_chop_end) / $samp_chop_total."
+done
+echo "SAMP-009 CH4 verified every real destination pad plus an active-to-stopped output-stream restart."
+
+# SAMP-010: waveform zoom is a viewport-only edit. The existing chopped Pad 4
+# keeps its exact native Start/End/frame-count/cursor while ZOOM+, ZOOM− and RESET
+# change only the accessible viewport range.
+echo "Running SAMP-010 viewport-only waveform zoom acceptance..."
+SAMP_ZOOM_BASELINE_PNG="/tmp/mpc-groovebox-sample-zoom-baseline.png"
+SAMP_ZOOM_BASELINE_XML="/tmp/mpc-groovebox-sample-zoom-baseline-uiautomator.xml"
+SAMP_ZOOM_IN_PNG="/tmp/mpc-groovebox-sample-zoom-in.png"
+SAMP_ZOOM_IN_XML="/tmp/mpc-groovebox-sample-zoom-in-uiautomator.xml"
+SAMP_ZOOM_OUT_PNG="/tmp/mpc-groovebox-sample-zoom-out.png"
+SAMP_ZOOM_OUT_XML="/tmp/mpc-groovebox-sample-zoom-out-uiautomator.xml"
+SAMP_ZOOM_RESET_PNG="/tmp/mpc-groovebox-sample-zoom-reset.png"
+SAMP_ZOOM_RESET_XML="/tmp/mpc-groovebox-sample-zoom-reset-uiautomator.xml"
+
+if ! cp "/tmp/mpc-groovebox-sample-chop-pad-4.png" "$SAMP_ZOOM_BASELINE_PNG"; then
+  echo "ERROR: could not preserve Pad 4 pre-zoom screenshot"; exit 1
+fi
+if ! cp "/tmp/mpc-groovebox-sample-chop-pad-4-uiautomator.xml" "$SAMP_ZOOM_BASELINE_XML"; then
+  echo "ERROR: could not preserve Pad 4 pre-zoom hierarchy"; exit 1
+fi
+
+read_samp_waveform_viewport() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+nodes = [node for node in root.iter("node")
+         if node.attrib.get("content-desc", "").startswith(
+             "Sample waveform editor • VIEWPORT ")]
+if len(nodes) != 1:
+    raise SystemExit(f"expected one accessible waveform viewport, found {len(nodes)}")
+description = nodes[0].attrib.get("content-desc", "")
+match = re.search(r"VIEWPORT\s+([0-9]+(?:\.[0-9]+)?)-([0-9]+(?:\.[0-9]+)?)", description)
+if match is None:
+    raise SystemExit(f"could not parse waveform viewport from {description!r}")
+start, end = map(float, match.groups())
+if not (0.0 <= start < end <= 1.0):
+    raise SystemExit(f"invalid normalized viewport: {start}..{end}")
+print(f"{start:.3f} {end:.3f}")
+PY
+}
+
+samp_zoom_region_before="$(read_samp_cursor_region_state "$SAMP_ZOOM_BASELINE_XML")" || {
+  echo "ERROR: could not read sample region before zoom"; exit 1;
+}
+samp_zoom_view_before="$(read_samp_waveform_viewport "$SAMP_ZOOM_BASELINE_XML")" || {
+  echo "ERROR: waveform viewport is not exposed to accessibility"; exit 1;
+}
+read -r samp_zoom_start_before samp_zoom_end_before <<< "$samp_zoom_view_before"
+if ! python3 - "$samp_zoom_start_before" "$samp_zoom_end_before" <<'PY'
+import sys
+start, end = map(float, sys.argv[1:])
+raise SystemExit(0 if start <= 0.005 and end >= 0.995 else 1)
+PY
+then
+  echo "ERROR: newly opened Sample Edit viewport did not start at full range: $samp_zoom_view_before"; exit 1
+fi
+
+if ! tap_ui_text "$SAMP_ZOOM_BASELINE_XML" "ZOOM+"; then
+  echo "ERROR: SAMP-010 ZOOM+ action was not actionable"; exit 1
+fi
+if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_ZOOM_IN_XML"; then
+  echo "ERROR: could not capture waveform after ZOOM+"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_ZOOM_IN_PNG"; then
+  echo "ERROR: could not capture waveform ZOOM+ screenshot"; exit 1
+fi
+samp_zoom_view_in="$(read_samp_waveform_viewport "$SAMP_ZOOM_IN_XML")" || {
+  echo "ERROR: viewport range missing after ZOOM+"; exit 1;
+}
+samp_zoom_region_in="$(read_samp_cursor_region_state "$SAMP_ZOOM_IN_XML")" || {
+  echo "ERROR: sample region missing after ZOOM+"; exit 1;
+}
+read -r samp_zoom_start_in samp_zoom_end_in <<< "$samp_zoom_view_in"
+samp_zoom_in_narrower=0
+if python3 - "$samp_zoom_start_before" "$samp_zoom_end_before" "$samp_zoom_start_in" "$samp_zoom_end_in" <<'PY'
+import sys
+before_start, before_end, after_start, after_end = map(float, sys.argv[1:])
+raise SystemExit(0 if (after_end - after_start) < (before_end - before_start) - 0.001 else 1)
+PY
+then samp_zoom_in_narrower=1; fi
+if [[ "$samp_zoom_region_in" != "$samp_zoom_region_before" || "$samp_zoom_in_narrower" != "1" ]]; then
+  echo "ERROR: ZOOM+ failed to narrow only the viewport; region before=$samp_zoom_region_before after=$samp_zoom_region_in; viewport before=$samp_zoom_view_before after=$samp_zoom_view_in"; exit 1
+fi
+echo "SAMP-010 ZOOM+ narrowed viewport from $samp_zoom_view_before to $samp_zoom_view_in with native sample region unchanged."
+
+if ! tap_ui_text "$SAMP_ZOOM_IN_XML" "ZOOM−"; then
+  echo "ERROR: SAMP-010 ZOOM− action was not actionable"; exit 1
+fi
+if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_ZOOM_OUT_XML"; then
+  echo "ERROR: could not capture waveform after ZOOM−"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_ZOOM_OUT_PNG"; then
+  echo "ERROR: could not capture waveform ZOOM− screenshot"; exit 1
+fi
+samp_zoom_view_out="$(read_samp_waveform_viewport "$SAMP_ZOOM_OUT_XML")" || {
+  echo "ERROR: viewport range missing after ZOOM−"; exit 1;
+}
+samp_zoom_region_out="$(read_samp_cursor_region_state "$SAMP_ZOOM_OUT_XML")" || {
+  echo "ERROR: sample region missing after ZOOM−"; exit 1;
+}
+read -r samp_zoom_start_out samp_zoom_end_out <<< "$samp_zoom_view_out"
+samp_zoom_out_wider=0
+if python3 - "$samp_zoom_start_in" "$samp_zoom_end_in" "$samp_zoom_start_out" "$samp_zoom_end_out" <<'PY'
+import sys
+before_start, before_end, after_start, after_end = map(float, sys.argv[1:])
+raise SystemExit(0 if (after_end - after_start) > (before_end - before_start) + 0.001 else 1)
+PY
+then samp_zoom_out_wider=1; fi
+if [[ "$samp_zoom_region_out" != "$samp_zoom_region_before" || "$samp_zoom_out_wider" != "1" ]]; then
+  echo "ERROR: ZOOM− failed to widen only the viewport; region before=$samp_zoom_region_before after=$samp_zoom_region_out; viewport in=$samp_zoom_view_in out=$samp_zoom_view_out"; exit 1
+fi
+echo "SAMP-010 ZOOM− widened viewport to $samp_zoom_view_out; the exact region remains unchanged."
+
+if ! tap_ui_text "$SAMP_ZOOM_OUT_XML" "RESET"; then
+  echo "ERROR: SAMP-010 RESET action was not actionable"; exit 1
+fi
+if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_ZOOM_RESET_XML"; then
+  echo "ERROR: could not capture waveform after RESET"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_ZOOM_RESET_PNG"; then
+  echo "ERROR: could not capture waveform RESET screenshot"; exit 1
+fi
+samp_zoom_view_reset="$(read_samp_waveform_viewport "$SAMP_ZOOM_RESET_XML")" || {
+  echo "ERROR: viewport range missing after RESET"; exit 1;
+}
+samp_zoom_region_reset="$(read_samp_cursor_region_state "$SAMP_ZOOM_RESET_XML")" || {
+  echo "ERROR: sample region missing after RESET"; exit 1;
+}
+read -r samp_zoom_start_reset samp_zoom_end_reset <<< "$samp_zoom_view_reset"
+samp_zoom_reset_full=0
+if python3 - "$samp_zoom_start_reset" "$samp_zoom_end_reset" <<'PY'
+import sys
+start, end = map(float, sys.argv[1:])
+raise SystemExit(0 if start <= 0.001 and end >= 0.999 else 1)
+PY
+then samp_zoom_reset_full=1; fi
+if [[ "$samp_zoom_region_reset" != "$samp_zoom_region_before" || "$samp_zoom_reset_full" != "1" ]]; then
+  echo "ERROR: RESET did not return to the full viewport without mutating sample state; region before=$samp_zoom_region_before after=$samp_zoom_region_reset; viewport=$samp_zoom_view_reset"; exit 1
+fi
+echo "SAMP-010 RESET restored full viewport and preserved native sample state exactly: $samp_zoom_region_before."
+echo "SAMP-010 zoom changed only viewport state and archived baseline/in/out/reset screenshots and hierarchies."
+
+for evidence in \
+  "$SAMP_CURSOR_BEFORE_PNG" "$SAMP_CURSOR_BEFORE_XML" \
+  "$SAMP_CURSOR_REGION_PNG" "$SAMP_CURSOR_REGION_XML" \
+  "$SAMP_CURSOR_DURING_PNG" "$SAMP_CURSOR_DURING_XML" \
+  "$SAMP_CURSOR_PROGRESS_PNG" "$SAMP_CURSOR_PROGRESS_XML" \
+  "$SAMP_CURSOR_STOPPED_PNG" "$SAMP_CURSOR_STOPPED_XML" \
+  "$SAMP_CROP_AFTER_PNG" "$SAMP_CROP_AFTER_XML" \
+  "$SAMP_CHOP_PAD1_PNG" "$SAMP_CHOP_PAD1_XML" \
+  "/tmp/mpc-groovebox-sample-chop-pad-2.png" "/tmp/mpc-groovebox-sample-chop-pad-2-uiautomator.xml" \
+  "/tmp/mpc-groovebox-sample-chop-pad-3.png" "/tmp/mpc-groovebox-sample-chop-pad-3-uiautomator.xml" \
+  "/tmp/mpc-groovebox-sample-chop-pad-4.png" "/tmp/mpc-groovebox-sample-chop-pad-4-uiautomator.xml" \
+  "$SAMP_ZOOM_BASELINE_PNG" "$SAMP_ZOOM_BASELINE_XML" \
+  "$SAMP_ZOOM_IN_PNG" "$SAMP_ZOOM_IN_XML" \
+  "$SAMP_ZOOM_OUT_PNG" "$SAMP_ZOOM_OUT_XML" \
+  "$SAMP_ZOOM_RESET_PNG" "$SAMP_ZOOM_RESET_XML"; do
+  if [[ ! -s "$evidence" ]]; then echo "ERROR: SAMP sample acceptance evidence file missing: $evidence"; exit 1; fi
+done
+echo "SAMP-007/008/009/010 playback, Crop, Chop and viewport-only zoom evidence verified."
+
