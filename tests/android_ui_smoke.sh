@@ -10204,13 +10204,67 @@ fi
 if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CURSOR_STOPPED_PNG"; then echo "ERROR: could not capture stopped playback screenshot"; exit 1; fi
 echo "SAMP-007 playback ended and cursor returned to idle without changing the edited region."
 
+# SAMP-008: Crop must replace the sample with the selected region's PCM and
+# normalize the new region to [0, croppedFrameCount). This is a disposable MediaStore
+# fixture, so the destructive edit cannot alter a user's project/sample.
+echo "Running SAMP-008 real-touch Crop mutation acceptance..."
+SAMP_CROP_AFTER_PNG="/tmp/mpc-groovebox-sample-crop-after.png"
+SAMP_CROP_AFTER_XML="/tmp/mpc-groovebox-sample-crop-after-uiautomator.xml"
+SAMP_CROP_EXPECTED_TOTAL=$((SAMP_CURSOR_EXPECTED_END - SAMP_CURSOR_EXPECTED_START))
+if (( SAMP_CROP_EXPECTED_TOTAL <= 0 )); then
+  echo "ERROR: SAMP-008 crop fixture region is not positive: $SAMP_CROP_EXPECTED_TOTAL"; exit 1
+fi
+samp_crop_before_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_STOPPED_XML")" || {
+  echo "ERROR: SAMP-008 could not read the post-playback/pre-Crop baseline"; exit 1;
+}
+read -r samp_crop_before_start samp_crop_before_end samp_crop_before_total samp_crop_before_cursor <<< "$samp_crop_before_state"
+if (( samp_crop_before_start != SAMP_CURSOR_EXPECTED_START \
+    || samp_crop_before_end != SAMP_CURSOR_EXPECTED_END \
+    || samp_crop_before_total != SAMP_CURSOR_EXPECTED_TOTAL \
+    || samp_crop_before_cursor != -1 )); then
+  echo "ERROR: SAMP-008 pre-Crop source state does not match the trimmed fixture: $samp_crop_before_state"; exit 1
+fi
+if ! tap_ui_text "$SAMP_CURSOR_STOPPED_XML" "CROP"; then
+  echo "ERROR: Sample Edit Crop action was not actionable"; exit 1
+fi
+samp_crop_confirmed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_CHECK_XML"; then
+    echo "ERROR: SAMP-008 could not capture the post-Crop Sample Edit hierarchy"; exit 1
+  fi
+  samp_crop_after_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_CHECK_XML" 2>/dev/null || true)"
+  if [[ -n "$samp_crop_after_state" ]]; then
+    read -r samp_crop_after_start samp_crop_after_end samp_crop_after_total samp_crop_after_cursor <<< "$samp_crop_after_state"
+    if (( samp_crop_after_start == 0 \
+        && samp_crop_after_end == SAMP_CROP_EXPECTED_TOTAL \
+        && samp_crop_after_total == SAMP_CROP_EXPECTED_TOTAL \
+        && samp_crop_after_cursor == -1 )); then
+      samp_crop_confirmed=1; break
+    fi
+  fi
+  sleep 0.25
+done
+if [[ "$samp_crop_confirmed" != "1" ]]; then
+  echo "ERROR: Crop did not replace the selected region with an exact-length sample and full-range region"
+  echo "Before=$samp_crop_before_state expected=0 $SAMP_CROP_EXPECTED_TOTAL $SAMP_CROP_EXPECTED_TOTAL -1 actual=$samp_crop_after_state"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CROP_AFTER_PNG"; then
+  echo "ERROR: could not capture post-Crop Sample Edit screenshot"; exit 1
+fi
+if ! cp "$SAMP_CURSOR_CHECK_XML" "$SAMP_CROP_AFTER_XML"; then
+  echo "ERROR: could not preserve post-Crop Sample Edit hierarchy"; exit 1
+fi
+echo "SAMP-008 Crop real-touch mutation passed: [$samp_crop_before_start,$samp_crop_before_end) of $samp_crop_before_total -> [0,$SAMP_CROP_EXPECTED_TOTAL) with $SAMP_CROP_EXPECTED_TOTAL frames; cursor idle."
+echo "SAMP-008 before/after evidence captured; the pre-Crop baseline is SAMP-007 stopped playback evidence."
+
 for evidence in \
   "$SAMP_CURSOR_BEFORE_PNG" "$SAMP_CURSOR_BEFORE_XML" \
   "$SAMP_CURSOR_REGION_PNG" "$SAMP_CURSOR_REGION_XML" \
   "$SAMP_CURSOR_DURING_PNG" "$SAMP_CURSOR_DURING_XML" \
   "$SAMP_CURSOR_PROGRESS_PNG" "$SAMP_CURSOR_PROGRESS_XML" \
-  "$SAMP_CURSOR_STOPPED_PNG" "$SAMP_CURSOR_STOPPED_XML"; do
-  if [[ ! -s "$evidence" ]]; then echo "ERROR: SAMP-007 evidence file missing: $evidence"; exit 1; fi
+  "$SAMP_CURSOR_STOPPED_PNG" "$SAMP_CURSOR_STOPPED_XML" \
+  "$SAMP_CROP_AFTER_PNG" "$SAMP_CROP_AFTER_XML"; do
+  if [[ ! -s "$evidence" ]]; then echo "ERROR: SAMP sample acceptance evidence file missing: $evidence"; exit 1; fi
 done
-echo "SAMP-007 changed/restored hierarchy and screenshot evidence verified."
+echo "SAMP-007 playback cursor and SAMP-008 Crop screenshot/hierarchy evidence verified."
 
