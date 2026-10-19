@@ -6602,6 +6602,7 @@ import xml.etree.ElementTree as ET
 nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
 descriptions = {n.attrib.get("content-desc", "") for n in nodes}
 raise SystemExit(0 if {
+    "Track Edit region",
     "Track Edit layer gain value",
     "Track Edit layer gain decrease",
     "Track Edit layer tuning value",
@@ -6609,7 +6610,7 @@ raise SystemExit(0 if {
 }.issubset(descriptions) else 1)
 PY
     then
-      echo "Track Edit GAIN/TUNE/PAN fields are visible after $((attempt - 1)) reverse scroll gesture(s)."
+      echo "Track Edit REGION/GAIN/TUNE/PAN fields are visible after $((attempt - 1)) reverse scroll gesture(s)."
       return 0
     fi
 
@@ -7440,7 +7441,10 @@ TRACK_EDIT_REGION_END_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-region-e
 TRACK_EDIT_REGION_CHECK_XML="/tmp/mpc-groovebox-track-edit-region-check-uiautomator.xml"
 TRACK_EDIT_REGION_CHECK_REMOTE="/sdcard/mpc-groovebox-track-edit-region-check-uiautomator.xml"
 
-if ! dump_device_ui "$TRACK_EDIT_PAN_RESTORED_REMOTE" "$TRACK_EDIT_REGION_BEFORE_XML"; then
+if ! scroll_track_edit_to_layer_gain "$TRACK_EDIT_REGION_BEFORE_XML" "$TRACK_EDIT_REGION_BEFORE_REMOTE" 8; then
+  echo "ERROR: Track Edit REGION/GAIN/TUNE/PAN fields did not return to the visible upper-layer viewport"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_REGION_BEFORE_REMOTE" "$TRACK_EDIT_REGION_BEFORE_XML"; then
   echo "ERROR: Track Edit sample-region baseline hierarchy failed"; exit 1
 fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_BEFORE_PNG"; then
