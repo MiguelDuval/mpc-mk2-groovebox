@@ -387,10 +387,26 @@ final class MpcTrackEditView extends LinearLayout {
                         : "NO SAMPLE"));
 
         LinearLayout region = row();
-        region.addView(actionButton("S −1K", v -> listener.onRegionStartDelta(-1000)), weight());
-        region.addView(actionButton("S +1K", v -> listener.onRegionStartDelta(1000)), weight());
-        region.addView(actionButton("E −1K", v -> listener.onRegionEndDelta(-1000)), weight());
-        region.addView(actionButton("E +1K", v -> listener.onRegionEndDelta(1000)), weight());
+        Button regionStartDecrease = actionButton(
+                "S −1K", v -> listener.onRegionStartDelta(-1000));
+        regionStartDecrease.setContentDescription(
+                "Track Edit layer region start decrease");
+        region.addView(regionStartDecrease, weight());
+        Button regionStartIncrease = actionButton(
+                "S +1K", v -> listener.onRegionStartDelta(1000));
+        regionStartIncrease.setContentDescription(
+                "Track Edit layer region start increase");
+        region.addView(regionStartIncrease, weight());
+        Button regionEndDecrease = actionButton(
+                "E −1K", v -> listener.onRegionEndDelta(-1000));
+        regionEndDecrease.setContentDescription(
+                "Track Edit layer region end decrease");
+        region.addView(regionEndDecrease, weight());
+        Button regionEndIncrease = actionButton(
+                "E +1K", v -> listener.onRegionEndDelta(1000));
+        regionEndIncrease.setContentDescription(
+                "Track Edit layer region end increase");
+        region.addView(regionEndIncrease, weight());
         body.addView(region, height(42));
 
         body.addView(parameterRow(
