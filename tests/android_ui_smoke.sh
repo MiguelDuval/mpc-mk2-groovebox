@@ -6461,7 +6461,7 @@ if scroll is None:
         "Track Edit decay value",
         "Track Edit sustain value",
         "Track Edit release value",
-        "Track Edit cutoff value",
+        "Track Edit cutoff value value",
     }
     scroll_candidates = []
     for candidate in nodes:
@@ -7916,7 +7916,7 @@ fi
 if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit attack value" 15; then
   echo "ERROR: Track Edit envelope Attack value is not exposed"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit cutoff value" 15; then
+if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit cutoff value value" 15; then
   echo "ERROR: Track Edit filter cutoff value is not exposed"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML"; then
@@ -7966,9 +7966,9 @@ import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
 found = [n for n in root.iter("node")
-         if n.attrib.get("content-desc", "") == "Track Edit cutoff value"]
+         if n.attrib.get("content-desc", "") == "Track Edit cutoff value value"]
 if len(found) != 1:
-    raise SystemExit(f"expected one Track Edit cutoff value field, found {len(found)}")
+    raise SystemExit(f"expected one Track Edit cutoff value value field, found {len(found)}")
 value_text = found[0].attrib.get("text", "")
 khz = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*kHz\b", value_text, re.I)
 if khz:
@@ -8051,6 +8051,129 @@ if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_ENV_ATTACK_RESTORED_PNG
   echo "ERROR: restored Attack screenshot capture failed"; exit 1
 fi
 echo "Track Edit AMP ENV Attack real-touch field isolation and exact restore passed: $track_edit_env_before."
+
+# Verify DECAY, SUSTAIN and RELEASE with the same real-touch, independent-field
+# and inverse-restoration contract as Attack. Each row has its own archived evidence.
+TRACK_EDIT_ENV_WORK_XML="/tmp/mpc-groovebox-track-edit-envelope-work-uiautomator.xml"
+TRACK_EDIT_ENV_CHECK_XML="/tmp/mpc-groovebox-track-edit-envelope-check-uiautomator.xml"
+TRACK_EDIT_ENV_DECAY_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-envelope-decay-changed.png"
+TRACK_EDIT_ENV_DECAY_CHANGED_XML="/tmp/mpc-groovebox-track-edit-envelope-decay-changed-uiautomator.xml"
+TRACK_EDIT_ENV_DECAY_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-envelope-decay-restored.png"
+TRACK_EDIT_ENV_DECAY_RESTORED_XML="/tmp/mpc-groovebox-track-edit-envelope-decay-restored-uiautomator.xml"
+TRACK_EDIT_ENV_SUSTAIN_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-envelope-sustain-changed.png"
+TRACK_EDIT_ENV_SUSTAIN_CHANGED_XML="/tmp/mpc-groovebox-track-edit-envelope-sustain-changed-uiautomator.xml"
+TRACK_EDIT_ENV_SUSTAIN_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-envelope-sustain-restored.png"
+TRACK_EDIT_ENV_SUSTAIN_RESTORED_XML="/tmp/mpc-groovebox-track-edit-envelope-sustain-restored-uiautomator.xml"
+TRACK_EDIT_ENV_RELEASE_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-envelope-release-changed.png"
+TRACK_EDIT_ENV_RELEASE_CHANGED_XML="/tmp/mpc-groovebox-track-edit-envelope-release-changed-uiautomator.xml"
+TRACK_EDIT_ENV_RELEASE_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-envelope-release-restored.png"
+TRACK_EDIT_ENV_RELEASE_RESTORED_XML="/tmp/mpc-groovebox-track-edit-envelope-release-restored-uiautomator.xml"
+
+exercise_track_edit_envelope_field() {
+  local field="$1" step="$2" baseline_xml="$3"
+  local changed_png="$4" changed_xml="$5" restored_png="$6" restored_xml="$7"
+  local before expected action inverse index maximum
+  local current changed=0 restored=0
+  local before_attack before_decay before_sustain before_release
+  local now_attack now_decay now_sustain now_release
+
+  before="$(read_track_edit_envelope_state "$baseline_xml")" || {
+    echo "ERROR: could not read $field baseline ADSR state"; return 1;
+  }
+  read -r before_attack before_decay before_sustain before_release <<< "$before"
+  case "$field" in
+    decay) index=1; maximum=2000; before_value="$before_decay" ;;
+    sustain) index=2; maximum=100; before_value="$before_sustain" ;;
+    release) index=3; maximum=2000; before_value="$before_release" ;;
+    *) echo "ERROR: unsupported envelope field in acceptance helper: $field"; return 1 ;;
+  esac
+  if (( before_value + step <= maximum )); then
+    action="Track Edit $field increase"
+    inverse="Track Edit $field decrease"
+    expected=$((before_value + step))
+  elif (( before_value >= step )); then
+    action="Track Edit $field decrease"
+    inverse="Track Edit $field increase"
+    expected=$((before_value - step))
+  else
+    echo "ERROR: $field has no safe adjacent value for the acceptance step $step"; return 1
+  fi
+
+  if ! scroll_ui_until_description "$TRACK_EDIT_ENV_WORK_XML" "$TRACK_EDIT_ENV_REMOTE" "$action" 8; then
+    echo "ERROR: Track Edit $field action did not become visible after bounded scrolling"; return 1
+  fi
+  if ! tap_ui_description "$TRACK_EDIT_ENV_WORK_XML" "$action"; then
+    echo "ERROR: Track Edit $field real-touch action failed"; return 1
+  fi
+  for attempt in {1..15}; do
+    if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_CHECK_XML"; then
+      echo "ERROR: Track Edit $field changed-state hierarchy capture failed"; return 1
+    fi
+    current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_CHECK_XML" 2>/dev/null || true)"
+    if [[ -n "$current" ]]; then
+      read -r now_attack now_decay now_sustain now_release <<< "$current"
+      case "$field" in
+        decay) changed_value="$now_decay";;
+        sustain) changed_value="$now_sustain";;
+        release) changed_value="$now_release";;
+      esac
+      if (( changed_value == expected )) \
+          && [[ "$now_attack" == "$before_attack" ]] \
+          && [[ "$now_decay" == "$before_decay" || "$field" == "decay" ]] \
+          && [[ "$now_sustain" == "$before_sustain" || "$field" == "sustain" ]] \
+          && [[ "$now_release" == "$before_release" || "$field" == "release" ]]; then
+        changed=1; break
+      fi
+    fi
+    sleep 1
+  done
+  if [[ "$changed" != "1" ]]; then
+    echo "ERROR: $field real-touch did not change only its expected envelope field"
+    echo "Before=$before expected=$expected actual=$current"; return 1
+  fi
+  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$changed_xml"; then
+    echo "ERROR: Track Edit $field changed-state evidence capture failed"; return 1
+  fi
+  if ! adb_bounded 10 exec-out screencap -p > "$changed_png"; then
+    echo "ERROR: Track Edit $field changed-state screenshot capture failed"; return 1
+  fi
+
+  if ! scroll_ui_until_description "$TRACK_EDIT_ENV_WORK_XML" "$TRACK_EDIT_ENV_REMOTE" "$inverse" 8; then
+    echo "ERROR: Track Edit $field inverse action did not become visible"; return 1
+  fi
+  if ! tap_ui_description "$TRACK_EDIT_ENV_WORK_XML" "$inverse"; then
+    echo "ERROR: Track Edit $field inverse touch failed"; return 1
+  fi
+  for attempt in {1..15}; do
+    if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_CHECK_XML"; then
+      echo "ERROR: Track Edit $field restoration hierarchy capture failed"; return 1
+    fi
+    current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_CHECK_XML" 2>/dev/null || true)"
+    if [[ "$current" == "$before" ]]; then restored=1; break; fi
+    sleep 1
+  done
+  if [[ "$restored" != "1" ]]; then
+    echo "ERROR: Track Edit $field inverse touch did not restore exact ADSR state"
+    echo "Before=$before actual=$current"; return 1
+  fi
+  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$restored_xml"; then
+    echo "ERROR: Track Edit $field restored-state evidence capture failed"; return 1
+  fi
+  if ! adb_bounded 10 exec-out screencap -p > "$restored_png"; then
+    echo "ERROR: Track Edit $field restored-state screenshot capture failed"; return 1
+  fi
+  echo "Track Edit AMP ENV $field real-touch field isolation and exact restore passed: $before."
+}
+
+if ! exercise_track_edit_envelope_field "decay" 100 "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML" \
+    "$TRACK_EDIT_ENV_DECAY_CHANGED_PNG" "$TRACK_EDIT_ENV_DECAY_CHANGED_XML" \
+    "$TRACK_EDIT_ENV_DECAY_RESTORED_PNG" "$TRACK_EDIT_ENV_DECAY_RESTORED_XML"; then exit 1; fi
+if ! exercise_track_edit_envelope_field "sustain" 10 "$TRACK_EDIT_ENV_DECAY_RESTORED_XML" \
+    "$TRACK_EDIT_ENV_SUSTAIN_CHANGED_PNG" "$TRACK_EDIT_ENV_SUSTAIN_CHANGED_XML" \
+    "$TRACK_EDIT_ENV_SUSTAIN_RESTORED_PNG" "$TRACK_EDIT_ENV_SUSTAIN_RESTORED_XML"; then exit 1; fi
+if ! exercise_track_edit_envelope_field "release" 100 "$TRACK_EDIT_ENV_SUSTAIN_RESTORED_XML" \
+    "$TRACK_EDIT_ENV_RELEASE_CHANGED_PNG" "$TRACK_EDIT_ENV_RELEASE_CHANGED_XML" \
+    "$TRACK_EDIT_ENV_RELEASE_RESTORED_PNG" "$TRACK_EDIT_ENV_RELEASE_RESTORED_XML"; then exit 1; fi
 
 track_edit_filter_before="$(read_track_edit_filter_cutoff_hz "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML")" || {
   echo "ERROR: initial Track Edit filter cutoff could not be read"; exit 1;
@@ -8148,7 +8271,13 @@ for evidence in \
   "$TRACK_EDIT_ENV_ATTACK_CHANGED_PNG" "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML" \
   "$TRACK_EDIT_ENV_ATTACK_RESTORED_PNG" "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML" \
   "$TRACK_EDIT_FILTER_CHANGED_PNG" "$TRACK_EDIT_FILTER_CHANGED_XML" \
-  "$TRACK_EDIT_FILTER_RESTORED_PNG" "$TRACK_EDIT_FILTER_RESTORED_XML"; do
+  "$TRACK_EDIT_FILTER_RESTORED_PNG" "$TRACK_EDIT_FILTER_RESTORED_XML" \
+  "$TRACK_EDIT_ENV_DECAY_CHANGED_PNG" "$TRACK_EDIT_ENV_DECAY_CHANGED_XML" \
+  "$TRACK_EDIT_ENV_DECAY_RESTORED_PNG" "$TRACK_EDIT_ENV_DECAY_RESTORED_XML" \
+  "$TRACK_EDIT_ENV_SUSTAIN_CHANGED_PNG" "$TRACK_EDIT_ENV_SUSTAIN_CHANGED_XML" \
+  "$TRACK_EDIT_ENV_SUSTAIN_RESTORED_PNG" "$TRACK_EDIT_ENV_SUSTAIN_RESTORED_XML" \
+  "$TRACK_EDIT_ENV_RELEASE_CHANGED_PNG" "$TRACK_EDIT_ENV_RELEASE_CHANGED_XML" \
+  "$TRACK_EDIT_ENV_RELEASE_RESTORED_PNG" "$TRACK_EDIT_ENV_RELEASE_RESTORED_XML"; do
   if ! test -s "$evidence"; then
     echo "ERROR: Track Edit runtime evidence missing/empty: $evidence"; exit 1
   fi
