@@ -6772,6 +6772,28 @@ print(f"{float(match.group(1)):.2f}")
 PY
 }
 
+read_track_edit_layer_gain_percent() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+found = [n for n in nodes
+         if n.attrib.get("content-desc", "") == "Track Edit layer gain value"]
+if len(found) != 1:
+    raise SystemExit(f"expected one visible Track Edit layer gain value, found {len(found)}")
+text = found[0].attrib.get("text", "")
+match = re.search(r"(\d+(?:\.\d+)?)\s*%", text)
+if not match:
+    raise SystemExit(f"could not parse layer gain percent from {text!r}")
+value = float(match.group(1))
+if not 0.0 <= value <= 200.0:
+    raise SystemExit(f"Track Edit layer gain outside supported display range: {value}")
+print(f"{value:.1f}")
+PY
+}
+
 # The app-side audit may leave the navigation shell on Main, Menu, Browser or
 # Sampler. Resolve the actual entry target from accessibility, return through the
 # foreground workspace's real BACK action if required, then preserve that exact
@@ -6970,6 +6992,144 @@ fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_RESTORED_PNG"; then
   echo "ERROR: Track Edit restored tuning screenshot failed"; exit 1
 fi
+# Independently exercise sample-layer GAIN through the visible +/- controls.
+# Compare actual projected state, preserve TUNE/PAN, then inverse-touch the
+# control so this acceptance never leaves the user Project's sampler fixture altered.
+TRACK_EDIT_GAIN_BEFORE_PNG="/tmp/mpc-groovebox-track-edit-gain-before.png"
+TRACK_EDIT_GAIN_BEFORE_XML="/tmp/mpc-groovebox-track-edit-gain-before-uiautomator.xml"
+TRACK_EDIT_GAIN_BEFORE_REMOTE="/sdcard/mpc-groovebox-track-edit-gain-before-uiautomator.xml"
+TRACK_EDIT_GAIN_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-gain-changed.png"
+TRACK_EDIT_GAIN_CHANGED_XML="/tmp/mpc-groovebox-track-edit-gain-changed-uiautomator.xml"
+TRACK_EDIT_GAIN_CHANGED_REMOTE="/sdcard/mpc-groovebox-track-edit-gain-changed-uiautomator.xml"
+TRACK_EDIT_GAIN_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-gain-restored.png"
+TRACK_EDIT_GAIN_RESTORED_XML="/tmp/mpc-groovebox-track-edit-gain-restored-uiautomator.xml"
+TRACK_EDIT_GAIN_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-gain-restored-uiautomator.xml"
+if ! dump_device_ui "$TRACK_EDIT_GAIN_BEFORE_REMOTE" "$TRACK_EDIT_GAIN_BEFORE_XML"; then
+  echo "ERROR: Track Edit layer gain baseline hierarchy failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_GAIN_BEFORE_PNG"; then
+  echo "ERROR: Track Edit layer gain baseline screenshot failed"; exit 1
+fi
+track_edit_gain_before="$(read_track_edit_layer_gain_percent "$TRACK_EDIT_GAIN_BEFORE_XML")" || {
+  echo "ERROR: could not read the visible Track Edit layer gain baseline"; exit 1;
+}
+if [[ "$track_edit_gain_before" != "$track_edit_gain_before" ]]; then
+  echo "ERROR: non-deterministic Track Edit layer gain baseline"; exit 1
+fi
+track_edit_gain_before_tuning="$(python3 - "$TRACK_EDIT_GAIN_BEFORE_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+for description in ("Track Edit layer tuning value", "Track Edit layer pan value"):
+    found = [n for n in nodes if n.attrib.get("content-desc", "") == description]
+    if len(found) != 1:
+        raise SystemExit(f"expected one visible {description!r}, found {len(found)}")
+    print(found[0].attrib.get("text", ""))
+PY
+)" || { echo "ERROR: Track Edit tuning/pan baseline unavailable for gain isolation"; exit 1; }
+if awk -v gain="$track_edit_gain_before" 'BEGIN { exit !(gain >= 10.0) }'; then
+  track_edit_gain_direction="decrease"
+  track_edit_gain_inverse="increase"
+  track_edit_gain_expected="$(awk -v gain="$track_edit_gain_before" 'BEGIN { printf "%.1f", gain - 10.0 }')"
+else
+  track_edit_gain_direction="increase"
+  track_edit_gain_inverse="decrease"
+  track_edit_gain_expected="$(awk -v gain="$track_edit_gain_before" 'BEGIN { printf "%.1f", gain + 10.0 }')"
+fi
+if ! tap_ui_description "$TRACK_EDIT_GAIN_BEFORE_XML" "Track Edit layer gain $track_edit_gain_direction"; then
+  echo "ERROR: Track Edit layer gain $track_edit_gain_direction control was not actionable"; exit 1
+fi
+track_edit_gain_changed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_GAIN_CHANGED_XML"; then
+    echo "ERROR: could not observe Track Edit after layer gain edit"; exit 1
+  fi
+  track_edit_gain_current="$(read_track_edit_layer_gain_percent "$TRACK_EDIT_GAIN_CHANGED_XML" 2>/dev/null || true)"
+  if [[ -n "$track_edit_gain_current" && "$track_edit_gain_current" != "$track_edit_gain_before" ]]; then
+    track_edit_gain_changed=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_gain_changed" != "1" ]]; then
+  echo "ERROR: Track Edit layer gain touch did not change the projected sampler value"; exit 1
+fi
+if ! python3 - "$track_edit_gain_before" "$track_edit_gain_current" "$track_edit_gain_expected" "$TRACK_EDIT_GAIN_BEFORE_XML" "$TRACK_EDIT_GAIN_CHANGED_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+before, after, expected = map(float, sys.argv[1:4])
+before_path, after_path = sys.argv[4:]
+if abs(after - expected) > 1.1:
+    raise SystemExit(f"one layer GAIN touch must change 10 percentage points: before={before}, after={after}, expected={expected}")
+def other_values(path):
+    nodes = list(ET.parse(path).getroot().iter("node"))
+    result = {}
+    for description in ("Track Edit layer tuning value", "Track Edit layer pan value"):
+        found = [n for n in nodes if n.attrib.get("content-desc", "") == description]
+        if len(found) != 1:
+            raise SystemExit(f"expected one visible {description!r} in {path}, found {len(found)}")
+        result[description] = found[0].attrib.get("text", "")
+    return result
+before_other, after_other = other_values(before_path), other_values(after_path)
+if before_other != after_other:
+    raise SystemExit(f"changing layer gain unexpectedly changed TUNE/PAN: {before_other!r} -> {after_other!r}")
+print(f"Track Edit layer GAIN field isolation passed: {before:.1f}% -> {after:.1f}%; TUNE/PAN preserved.")
+PY
+then
+  echo "ERROR: Track Edit layer gain changed the wrong amount or altered TUNE/PAN"; cat "$TRACK_EDIT_GAIN_CHANGED_XML"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_GAIN_CHANGED_PNG"; then
+  echo "ERROR: Track Edit layer gain changed screenshot failed"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_GAIN_CHANGED_XML" "Track Edit layer gain $track_edit_gain_inverse"; then
+  echo "ERROR: Track Edit layer gain inverse control was not actionable"; exit 1
+fi
+track_edit_gain_restored=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_GAIN_RESTORED_XML"; then
+    echo "ERROR: could not observe restored Track Edit layer gain"; exit 1
+  fi
+  track_edit_gain_current="$(read_track_edit_layer_gain_percent "$TRACK_EDIT_GAIN_RESTORED_XML" 2>/dev/null || true)"
+  if [[ "$track_edit_gain_current" == "$track_edit_gain_before" ]]; then
+    track_edit_gain_restored=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_gain_restored" != "1" ]]; then
+  echo "ERROR: Track Edit layer gain inverse touch failed to restore the initial sampler value"; exit 1
+fi
+if ! python3 - "$TRACK_EDIT_GAIN_BEFORE_XML" "$TRACK_EDIT_GAIN_RESTORED_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+def values(path):
+    nodes = list(ET.parse(path).getroot().iter("node"))
+    result = {}
+    for description in ("Track Edit layer gain value", "Track Edit layer tuning value", "Track Edit layer pan value"):
+        found = [n for n in nodes if n.attrib.get("content-desc", "") == description]
+        if len(found) != 1:
+            raise SystemExit(f"expected one visible {description!r} in {path}, found {len(found)}")
+        result[description] = found[0].attrib.get("text", "")
+    return result
+before, restored = values(sys.argv[1]), values(sys.argv[2])
+if before != restored:
+    raise SystemExit(f"Track Edit layer GAIN inverse touch failed exact gain/tuning/pan restoration: {before!r} -> {restored!r}")
+print("Track Edit layer GAIN inverse touch restored GAIN/TUNE/PAN exactly.")
+PY
+then
+  echo "ERROR: Track Edit gain round-trip failed complete field restoration"; cat "$TRACK_EDIT_GAIN_RESTORED_XML"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_GAIN_RESTORED_PNG"; then
+  echo "ERROR: Track Edit layer gain restored screenshot failed"; exit 1
+fi
+for evidence in \
+  "$TRACK_EDIT_GAIN_BEFORE_PNG" "$TRACK_EDIT_GAIN_BEFORE_XML" \
+  "$TRACK_EDIT_GAIN_CHANGED_PNG" "$TRACK_EDIT_GAIN_CHANGED_XML" \
+  "$TRACK_EDIT_GAIN_RESTORED_PNG" "$TRACK_EDIT_GAIN_RESTORED_XML"; do
+  if ! test -s "$evidence"; then
+    echo "ERROR: Track Edit layer gain evidence missing/empty: $evidence"; exit 1
+  fi
+done
+echo "Track Edit layer GAIN real-touch edit → exact inverse restore passed."
+
 for evidence in \
   "$TRACK_EDIT_CONTEXT_BEFORE_XML" "$TRACK_EDIT_CONTEXT_REOPENED_XML" \
   "$TRACK_EDIT_BEFORE_PNG" "$TRACK_EDIT_BEFORE_XML" \
