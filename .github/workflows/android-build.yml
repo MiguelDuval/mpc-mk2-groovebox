@@ -693,6 +693,12 @@ jobs:
             /tmp/mpc-groovebox-grid-range-swipe-restored-uiautomator.xml
             /tmp/mpc-groovebox-grid-edit-after-erase.png
             /tmp/mpc-groovebox-grid-edit-after-erase-uiautomator.xml
+            /tmp/mpc-groovebox-grid-select-pad02.png
+            /tmp/mpc-groovebox-grid-select-pad02-uiautomator.xml
+            /tmp/mpc-groovebox-grid-select-pad01-restored.png
+            /tmp/mpc-groovebox-grid-select-pad01-restored-uiautomator.xml
+            /tmp/mpc-groovebox-grid-select-pad01-final.png
+            /tmp/mpc-groovebox-grid-select-pad01-final-uiautomator.xml
             /tmp/mpc-groovebox-grid-zoom-in.png
             /tmp/mpc-groovebox-grid-zoom-in-uiautomator.xml
             /tmp/mpc-groovebox-grid-pad-zoom-in.png

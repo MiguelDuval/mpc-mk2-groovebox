@@ -5383,6 +5383,133 @@ PY
     fi
     echo "Grid DRAW → native note state → ERASE → empty-state round-trip passed."
 
+    # GRID-004: SELECT a different Pad at the same time column, verify the
+    # authoritative selected-pad projection and empty controls, then return to Pad 01.
+    GRID_SELECT_PAD02_PNG="/tmp/mpc-groovebox-grid-select-pad02.png"
+    GRID_SELECT_PAD02_XML="/tmp/mpc-groovebox-grid-select-pad02-uiautomator.xml"
+    GRID_SELECT_PAD02_REMOTE="/sdcard/mpc-groovebox-grid-select-pad02-uiautomator.xml"
+    grid_pad02_y="$(python3 - "$GRID_EDIT_ERASE_XML" "$grid_density_info" "$grid_edit_y" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, density_text, pad01_y_text = sys.argv[1:]
+nodes = list(ET.parse(path).getroot().iter("node"))
+grids = [n for n in nodes if n.attrib.get("content-desc") == "MPC Grid View drum event grid"]
+ranges = [n.attrib.get("content-desc", "") for n in nodes
+          if n.attrib.get("content-desc", "").startswith("Grid visible step range: steps ")]
+if len(grids) != 1 or len(ranges) != 1:
+    raise AssertionError(f"expected Grid canvas/range nodes, got {len(grids)}/{len(ranges)}")
+bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", grids[0].attrib.get("bounds", ""))
+if bounds is None: raise AssertionError(f"invalid Grid bounds: {grids[0].attrib.get('bounds')!r}")
+left, top, right, bottom = map(int, bounds.groups())
+pad_bounds = re.search(r"; pads\s+0*(\d+) through 0*(\d+) of 16$", ranges[0])
+if pad_bounds is None: raise AssertionError(f"invalid Pad-range accessibility state: {ranges[0]!r}")
+first_pad, last_pad = map(int, pad_bounds.groups())
+if (first_pad, last_pad) != (1, 16):
+    raise AssertionError(f"Pad selection fixture expects the full 16-Pad view: {(first_pad,last_pad)!r}")
+densities = re.findall(r"(?:Override|Physical) density:\s*(\d+)", density_text)
+if not densities: raise AssertionError(f"could not parse display density: {density_text!r}")
+density = int(densities[-1])/160.0
+plot_top, plot_bottom = top + 24*density, bottom - 6*density
+cell_height = (plot_bottom - plot_top)/16.0
+expected_pad01_y = plot_top + 15.5*cell_height
+actual_pad01_y = int(pad01_y_text)
+if abs(actual_pad01_y-expected_pad01_y) > 2*density:
+    raise AssertionError(f"Pad 01 touch coordinate no longer matches live Grid layout: {actual_pad01_y} vs {expected_pad01_y}")
+pad02_y = round(expected_pad01_y-cell_height)
+if not top < pad02_y < bottom:
+    raise AssertionError(f"Pad 02 row is outside the Grid view: {pad02_y}")
+print(pad02_y)
+PY
+    )" || { echo "ERROR: could not derive live Pad 02 row for Grid SELECT"; exit 1; }
+
+    if ! tap_visible_description_early "$GRID_EDIT_ERASE_XML" "Grid Select tool"; then
+      echo "ERROR: Grid SELECT tool was not actionable after ERASE"; exit 1
+    fi
+    sleep 0.2
+    if ! adb_bounded 10 shell input tap "$grid_edit_x" "$pad02_y"; then
+      echo "ERROR: real Grid SELECT Pad 02 touch failed"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui "$GRID_SELECT_PAD02_REMOTE" "$GRID_SELECT_PAD02_XML"; then
+      echo "ERROR: Pad 02 selected-state hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_SELECT_PAD02_PNG"; then
+      echo "ERROR: Pad 02 selected-state screenshot failed"; exit 1
+    fi
+    if ! python3 - "$GRID_SELECT_PAD02_XML" "$grid_edit_step" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, step_s = sys.argv[1:]
+step = int(step_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+def one(description):
+    found = [n for n in nodes if n.attrib.get("content-desc") == description]
+    if len(found) != 1:
+        raise AssertionError(f"expected one {description!r}, got {[n.attrib.get('content-desc') for n in nodes if 'Grid selection:' in n.attrib.get('content-desc','')]}")
+    return found[0]
+selection = one(f"Grid selection: PAD 02, STEP {step:02d}, no note")
+parameters = one(f"Grid event parameters: PAD 02, STEP {step:02d}, empty")
+if selection.attrib.get("visible-to-user") == "false" or parameters.attrib.get("visible-to-user") == "false":
+    raise AssertionError("Pad 02 selection projection is not visible")
+for label in ("Grid event velocity plus", "Grid event velocity minus"):
+    control = one(label)
+    if control.attrib.get("enabled") != "false":
+        raise AssertionError(f"{label} must be disabled for the empty Pad 02 cell")
+print(f"Grid SELECT changed authoritative context to empty Pad 02 / Step {step}; value controls disabled.")
+PY
+    then
+      echo "ERROR: Grid SELECT did not expose the empty Pad 02 cell context"; exit 1
+    fi
+
+    GRID_SELECT_PAD01_RESTORED_PNG="/tmp/mpc-groovebox-grid-select-pad01-restored.png"
+    GRID_SELECT_PAD01_RESTORED_XML="/tmp/mpc-groovebox-grid-select-pad01-restored-uiautomator.xml"
+    GRID_SELECT_PAD01_RESTORED_REMOTE="/sdcard/mpc-groovebox-grid-select-pad01-restored-uiautomator.xml"
+    if ! adb_bounded 10 shell input tap "$grid_edit_x" "$grid_edit_y"; then
+      echo "ERROR: real Grid SELECT Pad 01 return touch failed"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui "$GRID_SELECT_PAD01_RESTORED_REMOTE" "$GRID_SELECT_PAD01_RESTORED_XML"; then
+      echo "ERROR: Pad 01 restored-selection hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_SELECT_PAD01_RESTORED_PNG"; then
+      echo "ERROR: Pad 01 restored-selection screenshot failed"; exit 1
+    fi
+    if ! python3 - "$GRID_SELECT_PAD01_RESTORED_XML" "$grid_edit_step" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, step_s = sys.argv[1:]
+step = int(step_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+expected_selection = f"Grid selection: PAD 01, STEP {step:02d}, no note"
+expected_parameters = f"Grid event parameters: PAD 01, STEP {step:02d}, empty"
+for expected in (expected_selection, expected_parameters):
+    found = [n for n in nodes if n.attrib.get("content-desc") == expected]
+    if len(found) != 1:
+        raise AssertionError(f"returning to Pad 01 must restore {expected!r}; got {[n.attrib.get('content-desc') for n in nodes if 'Grid selection:' in n.attrib.get('content-desc','')]}")
+print(f"Grid SELECT returned to Pad 01 / Step {step}; no native event was created or lost.")
+PY
+    then
+      echo "ERROR: Grid selection did not restore Pad 01 and its empty-cell state"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$GRID_SELECT_PAD01_RESTORED_XML" "Grid Draw tool"; then
+      echo "ERROR: Grid DRAW tool could not be restored after Pad-selection round trip"; exit 1
+    fi
+    sleep 0.2
+    GRID_SELECT_PAD01_FINAL_PNG="/tmp/mpc-groovebox-grid-select-pad01-final.png"
+    GRID_SELECT_PAD01_FINAL_XML="/tmp/mpc-groovebox-grid-select-pad01-final-uiautomator.xml"
+    GRID_SELECT_PAD01_FINAL_REMOTE="/sdcard/mpc-groovebox-grid-select-pad01-final-uiautomator.xml"
+    if ! dump_device_ui "$GRID_SELECT_PAD01_FINAL_REMOTE" "$GRID_SELECT_PAD01_FINAL_XML"; then
+      echo "ERROR: final Pad 01 selected state hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_SELECT_PAD01_FINAL_PNG"; then
+      echo "ERROR: final Pad 01 selected-state screenshot failed"; exit 1
+    fi
+    GRID_EDIT_ERASE_XML="$GRID_SELECT_PAD01_FINAL_XML"
+    GRID_EDIT_ERASE_PNG="$GRID_SELECT_PAD01_FINAL_PNG"
+    echo "Grid SELECT Pad 01 → Pad 02 → Pad 01 touch round trip passed; full event/empty state preserved."
+
     # Real touchscreen invokes the Grid function-bar zoom-in control. The app-side
     # semantic Data Dial audit above independently verified zoom in/out restoration
     # for both axes and the complete native-event invariance.
