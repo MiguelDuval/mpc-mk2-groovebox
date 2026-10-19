@@ -4182,11 +4182,40 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_PARAM_REMOTE" "$STEP_TOUCH_PARAM_XML"; then
       echo "ERROR: Step Sequencer hierarchy after PARAM selection failed"; exit 1
     fi
+    step_touch_probability_fields_before="$(python3 - "$STEP_TOUCH_PARAM_XML" "$step_touch_target_number" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s = sys.argv[1:]
+target = int(target_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {target} on"]) != 1:
+    raise AssertionError("Probability baseline lost the active Step event")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
+    raise AssertionError("Probability baseline changed Step 01")
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit probability baseline is missing")
+text = info[0].attrib.get("text", "")
+patterns = [r"\\bVEL\\s+(\\d+)\\b", r"\\bPROB\\s+(\\d+)\\b", r"\\bRAT\\s+(\\d+)x\\b", r"\\bNUDGE\\s+([+-]?\\d+)\\b", r"\\bDUR\\s+(\\d+)\\b"]
+matches = [re.search(p, text) for p in patterns]
+if any(m is None for m in matches):
+    raise AssertionError(f"Malformed Step Edit probability baseline: {text!r}")
+values = [int(m.group(1)) for m in matches]
+print(*values)
+PY
+)" || { echo "ERROR: could not read the complete Step Edit probability baseline"; cat "$STEP_TOUCH_PARAM_XML"; exit 1; }
+    read -r step_touch_prob_velocity_before step_touch_prob_value_before step_touch_prob_ratchet_before step_touch_prob_nudge_before step_touch_prob_duration_before <<< "$step_touch_probability_fields_before"
+    if (( step_touch_prob_value_before != step_touch_probability_before )); then
+      echo "ERROR: Step Edit probability baseline differs from the created note"; exit 1
+    fi
     if (( step_touch_probability_before > 0 )); then
       step_touch_probability_direction="−"
+      step_touch_probability_inverse_direction="+"
       step_touch_probability_expected=$((step_touch_probability_before - 1))
     else
       step_touch_probability_direction="+"
+      step_touch_probability_inverse_direction="−"
       step_touch_probability_expected=1
     fi
     if ! tap_visible_text_early "$STEP_TOUCH_PARAM_XML" "$step_touch_probability_direction"; then
@@ -4202,43 +4231,89 @@ PY
     if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_CHANGED_PNG"; then
       echo "ERROR: Step Sequencer after-parameter screenshot failed"; exit 1
     fi
-    if ! python3 - "$STEP_TOUCH_CHANGED_XML" "$step_touch_target_number" \
-        "$step_touch_velocity_before" "$step_touch_probability_expected" <<'PY'
+    if ! python3 - "$STEP_TOUCH_CHANGED_XML" "$step_touch_target_number" "$step_touch_probability_fields_before" "$step_touch_probability_expected" <<'PY'
 import re
 import sys
 import xml.etree.ElementTree as ET
-path, number_s, velocity_s, expected_s = sys.argv[1:]
-number, velocity, expected = map(int, (number_s, velocity_s, expected_s))
+path, number_s, before_s, expected_s = sys.argv[1:]
+number = int(number_s)
+before = list(map(int, before_s.split()))
+expected = int(expected_s)
 nodes = list(ET.parse(path).getroot().iter("node"))
 if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {number} on"]) != 1:
     raise AssertionError("parameter action unexpectedly removed the Step event")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
+    raise AssertionError("probability adjustment changed the Step 01 reference")
 info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
 if len(info) != 1:
     raise AssertionError("Step Edit parameter value is missing")
 text = info[0].attrib.get("text", "")
-m_step = re.search(rf"\bSTEP\s+0*{number}\b", text)
-m_velocity = re.search(r"\bVEL\s+(\d+)\b", text)
-m_probability = re.search(r"\bPROB\s+(\d+)\b", text)
-if m_step is None or m_velocity is None or m_probability is None:
-    raise AssertionError(f"malformed Step native parameter projection: {text!r}")
-if int(m_velocity.group(1)) != velocity:
-    raise AssertionError("changing probability modified note velocity")
-if int(m_probability.group(1)) != expected:
-    raise AssertionError(f"native probability {m_probability.group(1)} != expected {expected}")
-if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
-    raise AssertionError("probability adjustment changed the Step 01 reference")
-print(f"Step Sequencer probability changed through real PARAM and +/- taps: {expected}.")
+if re.search(rf"\\bSTEP\\s+0*{number}\\b", text) is None:
+    raise AssertionError(f"Step Edit focus lost the active Step: {text!r}")
+patterns = [r"\\bVEL\\s+(\\d+)\\b", r"\\bPROB\\s+(\\d+)\\b", r"\\bRAT\\s+(\\d+)x\\b", r"\\bNUDGE\\s+([+-]?\\d+)\\b", r"\\bDUR\\s+(\\d+)\\b"]
+matches = [re.search(p, text) for p in patterns]
+if any(m is None for m in matches):
+    raise AssertionError(f"Malformed Step Edit state after probability change: {text!r}")
+after = [int(m.group(1)) for m in matches]
+if after[1] != expected:
+    raise AssertionError(f"native probability {after[1]} != expected {expected}")
+if [after[i] for i in (0, 2, 3, 4)] != [before[i] for i in (0, 2, 3, 4)]:
+    raise AssertionError(f"probability edit modified unrelated fields: {before!r} -> {after!r}")
+print(f"Step Edit PROB field isolation passed: {before[1]} -> {after[1]}; other fields preserved.")
 PY
     then
-      echo "ERROR: visible Step Sequencer parameter control did not change native probability by one"; cat "$STEP_TOUCH_CHANGED_XML"; exit 1
+      echo "ERROR: visible Step Sequencer parameter control did not make a field-isolated probability change"; cat "$STEP_TOUCH_CHANGED_XML"; exit 1
     fi
 
+    # Inverse-touch PROB and require exact restoration of the complete event.
+    STEP_TOUCH_PROBABILITY_RESTORED_PNG="/tmp/mpc-groovebox-step-touch-probability-restored.png"
+    STEP_TOUCH_PROBABILITY_RESTORED_XML="/tmp/mpc-groovebox-step-touch-probability-restored-uiautomator.xml"
+    STEP_TOUCH_PROBABILITY_RESTORED_REMOTE="/sdcard/mpc-groovebox-step-touch-probability-restored-uiautomator.xml"
+    if ! tap_visible_text_early "$STEP_TOUCH_CHANGED_XML" "$step_touch_probability_inverse_direction"; then
+      echo "ERROR: Step Edit probability inverse control was not actionable"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$STEP_TOUCH_PROBABILITY_RESTORED_REMOTE" "$STEP_TOUCH_PROBABILITY_RESTORED_XML"; then
+      echo "ERROR: Step Edit after-probability-restore hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_PROBABILITY_RESTORED_PNG"; then
+      echo "ERROR: Step Edit after-probability-restore screenshot failed"; exit 1
+    fi
+    if ! python3 - "$STEP_TOUCH_PROBABILITY_RESTORED_XML" "$step_touch_target_number" "$step_touch_probability_fields_before" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s, before_s = sys.argv[1:]
+target = int(target_s)
+before = list(map(int, before_s.split()))
+nodes = list(ET.parse(path).getroot().iter("node"))
+if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {target} on"]) != 1:
+    raise AssertionError("Probability restore lost the active Step event")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
+    raise AssertionError("Probability restore changed Step 01")
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit projection missing after probability restore")
+text = info[0].attrib.get("text", "")
+patterns = [r"\\bVEL\\s+(\\d+)\\b", r"\\bPROB\\s+(\\d+)\\b", r"\\bRAT\\s+(\\d+)x\\b", r"\\bNUDGE\\s+([+-]?\\d+)\\b", r"\\bDUR\\s+(\\d+)\\b"]
+matches = [re.search(p, text) for p in patterns]
+if any(m is None for m in matches):
+    raise AssertionError(f"Malformed Step Edit state after probability restore: {text!r}")
+restored = [int(m.group(1)) for m in matches]
+if restored != before:
+    raise AssertionError(f"Probability inverse edit failed exact full-field restore: {before!r} -> {restored!r}")
+print(f"Step Edit PROB round trip restored all five fields exactly: {restored!r}.")
+PY
+    then
+      echo "ERROR: Step Edit probability inverse edit failed to restore the full native event"; cat "$STEP_TOUCH_PROBABILITY_RESTORED_XML"; exit 1
+    fi
+    echo "Step Edit PROB real-touch edit → exact inverse restore passed."
 
     # Continue from PROB through RAT → NUDGE → DUR using the same visible
     # Step PARAM/+ controls. Validate the complete native projection after each edit.
     STEP_TOUCH_RATCHET_XML="/tmp/mpc-groovebox-step-touch-ratchet-focus-uiautomator.xml"
     STEP_TOUCH_RATCHET_REMOTE="/sdcard/mpc-groovebox-step-touch-ratchet-focus-uiautomator.xml"
-    if ! tap_visible_text_early "$STEP_TOUCH_CHANGED_XML" "PARAM"; then
+    if ! tap_visible_text_early "$STEP_TOUCH_PROBABILITY_RESTORED_XML" "PARAM"; then
       echo "ERROR: Step Edit PARAM could not select Ratchet"; exit 1
     fi
     sleep 0.15
