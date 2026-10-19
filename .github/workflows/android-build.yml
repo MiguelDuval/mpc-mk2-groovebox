@@ -563,6 +563,10 @@ jobs:
             /tmp/mpc-groovebox-step-touch-page2-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-page1-restored.png
             /tmp/mpc-groovebox-step-touch-page1-restored-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-pad2.png
+            /tmp/mpc-groovebox-step-touch-pad2-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-pad1-restored.png
+            /tmp/mpc-groovebox-step-touch-pad1-restored-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-tuning-before.png
             /tmp/mpc-groovebox-track-edit-tuning-before-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-tuning-changed.png
