@@ -6487,10 +6487,10 @@ if scroll is None:
         "Track Edit layer pan value",
         "Track Edit region",
         "Track Edit velocity",
-        "Track Edit attack value",
-        "Track Edit decay value",
-        "Track Edit sustain value",
-        "Track Edit release value",
+        "Track Edit envelope attack value",
+        "Track Edit envelope decay value",
+        "Track Edit envelope sustain value",
+        "Track Edit envelope release value",
         "Track Edit cutoff",
     }
     scroll_candidates = []
@@ -8006,7 +8006,7 @@ TRACK_EDIT_FILTER_CHECK_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-check-u
 if ! tap_visible_description_early "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit AMP ENV tab"; then
   echo "ERROR: Track Edit AMP ENV tab could not be opened"; exit 1
 fi
-if ! wait_for_track_edit_description_bounded "$TRACK_EDIT_ENV_BASELINE_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit attack value" 6; then
+if ! wait_for_track_edit_description_bounded "$TRACK_EDIT_ENV_BASELINE_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit envelope attack value" 6; then
   echo "ERROR: Track Edit envelope Attack value is not exposed"; exit 1
 fi
 if ! wait_for_track_edit_description_bounded "$TRACK_EDIT_ENV_BASELINE_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit cutoff" 6; then
@@ -8082,12 +8082,12 @@ track_edit_env_before="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_BASELIN
 }
 read -r track_edit_env_attack_before track_edit_env_decay_before track_edit_env_sustain_before track_edit_env_release_before <<< "$track_edit_env_before"
 if (( track_edit_env_attack_before < 1900 )); then
-  track_edit_env_attack_action="Track Edit attack increase"
-  track_edit_env_attack_inverse="Track Edit attack decrease"
+  track_edit_env_attack_action="Track Edit envelope attack increase"
+  track_edit_env_attack_inverse="Track Edit envelope attack decrease"
   track_edit_env_attack_expected=$((track_edit_env_attack_before + 100))
 elif (( track_edit_env_attack_before >= 100 )); then
-  track_edit_env_attack_action="Track Edit attack decrease"
-  track_edit_env_attack_inverse="Track Edit attack increase"
+  track_edit_env_attack_action="Track Edit envelope attack decrease"
+  track_edit_env_attack_inverse="Track Edit envelope attack increase"
   track_edit_env_attack_expected=$((track_edit_env_attack_before - 100))
 else
   echo "ERROR: AMP ENV Attack has no safe adjacent 100 ms value to exercise"; exit 1
@@ -8181,8 +8181,8 @@ exercise_track_edit_envelope_field() {
     *) echo "ERROR: unsupported envelope field in acceptance helper: $field"; return 1 ;;
   esac
   if (( before_value + step <= maximum )); then
-    action="Track Edit $field increase"
-    inverse="Track Edit $field decrease"
+    action="Track Edit envelope $field increase"
+    inverse="Track Edit envelope $field decrease"
     expected=$((before_value + step))
   elif (( before_value >= step )); then
     action="Track Edit $field decrease"

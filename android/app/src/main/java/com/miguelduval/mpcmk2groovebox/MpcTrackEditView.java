@@ -153,6 +153,7 @@ final class MpcTrackEditView extends LinearLayout {
     private final TextView padContextView;
     private final Button editAllLayersButton;
     private final LinearLayout body;
+    private final ScrollView scroll;
     private Tab tab = Tab.GLOBAL;
     private Snapshot snapshot;
 
@@ -195,7 +196,7 @@ final class MpcTrackEditView extends LinearLayout {
         addView(header, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
-        ScrollView scroll = new ScrollView(context);
+        scroll = new ScrollView(context);
         scroll.setFillViewport(true);
         body = column();
         body.setPadding(0, dp(4), 0, dp(4));
@@ -223,6 +224,9 @@ final class MpcTrackEditView extends LinearLayout {
             Button button = actionButton(labels[i], v -> {
                 tab = Tab.values()[index];
                 render();
+                // Each Track Edit context has its own content height. Do not carry
+                // the previous tab's vertical offset into the newly selected tab.
+                scroll.post(() -> scroll.scrollTo(0, 0));
             });
             button.setContentDescription(descriptions[i]);
             tabButtons[i] = button;
