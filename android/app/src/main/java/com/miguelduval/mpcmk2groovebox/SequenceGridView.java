@@ -254,7 +254,9 @@ public final class SequenceGridView extends View {
             }
 
             if (!draggingViewport) {
-                draggingViewport = visibleSteps < COLUMNS
+                // A 16-step page is still only a window when the sequence has
+                // more than 16 steps. Allow horizontal pans at default zoom too.
+                draggingViewport = totalSteps > visibleSteps
                         || visiblePads < ROWS;
             }
             if (!draggingViewport || viewportListener == null) {
@@ -264,7 +266,7 @@ public final class SequenceGridView extends View {
             final float cellWidth = width / visibleSteps;
             final float cellHeight = height / visiblePads;
             final boolean horizontalGesture = Math.abs(dx) >= Math.abs(dy);
-            final int stepShift = horizontalGesture && visibleSteps < COLUMNS
+            final int stepShift = horizontalGesture && totalSteps > visibleSteps
                     ? Math.round(-dx / Math.max(1f, cellWidth))
                     : 0;
             final int padShift = !horizontalGesture && visiblePads < ROWS
