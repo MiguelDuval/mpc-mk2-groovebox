@@ -55,6 +55,10 @@ public:
     SampleRegion padSampleRegion(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
+    // Last rendered source frame for a pad/layer, or -1 when playback is idle.
+    std::int64_t padSamplePlaybackCursorFrame(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex) const;
     std::size_t padSampleFrameCount(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
@@ -213,6 +217,8 @@ private:
                     kPadCount>;
     using SampleRegionGrid =
             std::array<std::array<SampleRegion, kSampleLayerCount>, kPadCount>;
+    using SamplePlaybackCursorGrid =
+            std::array<std::array<std::atomic<std::uint32_t>, kSampleLayerCount>, kPadCount>;
 
     class OutputCallback;
     class InputCallback;
@@ -242,6 +248,7 @@ private:
     std::shared_ptr<oboe::AudioStream> stream_;
     std::atomic<std::uint64_t> outputCallbackCount_{0};
     std::atomic<std::uint64_t> outputCallbackFrames_{0};
+    SamplePlaybackCursorGrid samplePlaybackCursorFrames_{};
     std::atomic<std::uint32_t> outputPeakMilli_{0};
     std::atomic<std::uint32_t> testToneRequestFrames_{0};
     std::atomic<std::int32_t> outputLastErrorCode_{

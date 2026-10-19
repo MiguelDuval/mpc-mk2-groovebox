@@ -241,6 +241,7 @@ public:
             std::atomic<bool>& monitorEnabled,
             std::atomic<std::uint64_t>& outputCallbackCount,
             std::atomic<std::uint64_t>& outputCallbackFrames,
+            AudioEngine::SamplePlaybackCursorGrid& samplePlaybackCursorFrames,
             std::atomic<std::uint32_t>& outputPeakMilli,
             std::atomic<std::uint32_t>& testToneRequestFrames)
             : samples_(std::move(samples)),
@@ -266,6 +267,7 @@ public:
               monitorEnabled_(monitorEnabled),
               outputCallbackCount_(outputCallbackCount),
               outputCallbackFrames_(outputCallbackFrames),
+              samplePlaybackCursorFrames_(samplePlaybackCursorFrames),
               outputPeakMilli_(outputPeakMilli),
               testToneRequestFrames_(testToneRequestFrames) {
     }
@@ -558,6 +560,28 @@ public:
             pendingTriggerEvents_[index].offsetFrames -= numFrames;
         }
 
+        // Publish at block boundaries; the UI reads this telemetry but never mutates
+        // or drives realtime voice state. Prefer the most recently triggered active voice.
+        for (std::size_t pad = 0; pad < AudioEngine::kPadCount; ++pad) {
+            for (std::size_t layer = 0; layer < AudioEngine::kSampleLayerCount; ++layer) {
+                bool foundCursor = false;
+                std::uint64_t youngestAge = 0;
+                std::uint32_t encodedCursor = 0u;
+                for (const auto& voice : voices_[pad]) {
+                    if (!voice.active) continue;
+                    const auto& layerVoice = voice.layers[layer];
+                    if (!layerVoice.active
+                            || (foundCursor && layerVoice.ageFrames >= youngestAge)) continue;
+                    foundCursor = true;
+                    youngestAge = layerVoice.ageFrames;
+                    encodedCursor = encodeSamplePlaybackCursorFrame(
+                            static_cast<std::size_t>(layerVoice.position));
+                }
+                samplePlaybackCursorFrames_[pad][layer].store(
+                        encodedCursor, std::memory_order_relaxed);
+            }
+        }
+
         outputPeakMilli_.store(
                 renderedPeakMilli,
                 std::memory_order_relaxed);
@@ -747,6 +771,7 @@ private:
     std::atomic<bool>& monitorEnabled_;
     std::atomic<std::uint64_t>& outputCallbackCount_;
     std::atomic<std::uint64_t>& outputCallbackFrames_;
+    AudioEngine::SamplePlaybackCursorGrid& samplePlaybackCursorFrames_;
     std::atomic<std::uint32_t>& outputPeakMilli_;
     std::atomic<std::uint32_t>& testToneRequestFrames_;
     std::uint32_t monitorReadSequence_ = 0;
@@ -810,6 +835,7 @@ AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
                 normalizeSampleFilterCutoffMilliHz(padState.filterCutoffHz),
                 std::memory_order_relaxed);
         for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            samplePlaybackCursorFrames_[pad][layer].store(0u, std::memory_order_relaxed);
             const auto& layerState = projectState_.activeDrumProgram().pad(pad).layer(layer);
             padLayerGainMilli_[pad][layer].store(
                     static_cast<std::int32_t>(
@@ -1694,6 +1720,15 @@ SampleRegion AudioEngine::padSampleRegion(
     return projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex).region;
 }
 
+std::int64_t AudioEngine::padSamplePlaybackCursorFrame(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) const {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) return -1;
+    return decodeSamplePlaybackCursorFrame(
+            samplePlaybackCursorFrames_[padIndex][layerIndex].load(
+                    std::memory_order_relaxed));
+}
+
 std::size_t AudioEngine::padSampleFrameCount(
         std::uint8_t padIndex,
         std::uint8_t layerIndex) const {
@@ -2015,6 +2050,9 @@ std::string AudioEngine::stopOutputStream() {
     stream_.reset();
     callback_.reset();
     outputErrorCallback_.reset();
+    for (auto& pad : samplePlaybackCursorFrames_) {
+        for (auto& cursorFrame : pad) cursorFrame.store(0u, std::memory_order_relaxed);
+    }
 
     if (stopResult != oboe::Result::OK) {
         return std::string("Audio stop failed: ") + resultText(stopResult);
@@ -2341,6 +2379,9 @@ std::string AudioEngine::start() {
     outputCallbackCount_.store(0, std::memory_order_relaxed);
     outputCallbackFrames_.store(0, std::memory_order_relaxed);
     outputPeakMilli_.store(0, std::memory_order_relaxed);
+    for (auto& pad : samplePlaybackCursorFrames_) {
+        for (auto& cursorFrame : pad) cursorFrame.store(0u, std::memory_order_relaxed);
+    }
     outputLastErrorCode_.store(
             static_cast<std::int32_t>(oboe::Result::OK),
             std::memory_order_relaxed);
@@ -2406,6 +2447,7 @@ std::string AudioEngine::start() {
             monitorEnabled_,
             outputCallbackCount_,
             outputCallbackFrames_,
+            samplePlaybackCursorFrames_,
             outputPeakMilli_,
             testToneRequestFrames_);
 
