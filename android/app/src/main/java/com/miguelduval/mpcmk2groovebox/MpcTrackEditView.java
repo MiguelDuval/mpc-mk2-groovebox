@@ -223,6 +223,11 @@ final class MpcTrackEditView extends LinearLayout {
             Button button = actionButton(labels[i], v -> {
                 tab = Tab.values()[index];
                 render();
+                // The Samples tab can be scrolled near the bottom of its long
+                // parameter list. Every context tab has its own top-level
+                // controls, so do not inherit the previous tab's scroll offset
+                // (for example, hide ATTACK when switching to AMP ENV).
+                scroll.post(() -> scroll.scrollTo(0, 0));
             });
             button.setContentDescription(descriptions[i]);
             tabButtons[i] = button;
