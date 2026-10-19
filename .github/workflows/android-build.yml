@@ -575,10 +575,14 @@ jobs:
             /tmp/mpc-groovebox-track-edit-tuning-reopened-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-tuning-restored.png
             /tmp/mpc-groovebox-track-edit-tuning-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-gain-before.png
+            /tmp/mpc-groovebox-track-edit-gain-before-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-gain-changed.png
             /tmp/mpc-groovebox-track-edit-gain-changed-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-gain-restored.png
             /tmp/mpc-groovebox-track-edit-gain-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-pan-before.png
+            /tmp/mpc-groovebox-track-edit-pan-before-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-pan-changed.png
             /tmp/mpc-groovebox-track-edit-pan-changed-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-pan-restored.png
