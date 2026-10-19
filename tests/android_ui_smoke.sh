@@ -4855,6 +4855,16 @@ if len(display_text) != 1 or not all(token in display_text[0]
 if "…" in display_text[0] or "..." in display_text[0]:
     raise AssertionError(f"Grid event summary contains ellipsis: {display_text[0]!r}")
 values = list(map(int, match.groups()))
+display_lines = display_text[0].splitlines()
+if len(display_lines) != 2:
+    raise AssertionError(f"Grid field summary must use exactly two visible lines, got {display_lines!r}")
+if not all(label in display_lines[0] for label in ("VEL", "PROB", "RAT")) \
+        or not all(label in display_lines[1] for label in ("NUDGE", "DUR")):
+    raise AssertionError(f"Grid visible line grouping is incomplete: {display_lines!r}")
+duration_visible = re.search(r"DUR\s+(\d+)\s*$", display_lines[1])
+if duration_visible is None or int(duration_visible.group(1)) != values[5]:
+    raise AssertionError(
+        f"Grid visible DUR value must be fully rendered as {values[5]}, got {display_lines[1]!r}")
 if values[0] != step or not 1 <= values[1] <= 127 or not 0 <= values[2] <= 127 \
         or not 1 <= values[3] <= 8 or not -960 <= values[4] <= 960 or values[5] <= 0:
     raise AssertionError(f"Grid event values outside supported native bounds: {values!r}")

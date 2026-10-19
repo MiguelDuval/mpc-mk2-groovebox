@@ -907,3 +907,8 @@ The emulator path taps the actual Track View MUTE button, checks the native `nat
 APK artifact: `12098428540`, 8,228,253 bytes, SHA-256 `41168cb1e1999fb0489fc5ee402c363a333ba32ddad5d63ea2c278c96b83f18a`. Visual evidence artifact: `12098488760`, 2,786,502 bytes, SHA-256 `c9075550b7c5b0b48bfcbdc3611b1aaf7fcbcd4201e2c39fea28bd0a3452fe84`; ZIP integrity passed, 38 files, and the Track View screenshot/XML plus Arrange/Grid screenshot/XML and Browser/SAF evidence were inspected. Physical MPC Studio MkII verification remains pending.
 
 The new fixture is intentionally a test/interaction-acceptance improvement, not a claim that Track View itself edits notes: it verifies the existing MUTE operation does not alter musical event data. The next targeted product workflow is Track Edit sample-layer tuning/gain: change one real supported parameter, verify native/visible state, navigate away and return to the same Pad/Layer and confirm persistence through the existing sampler model. Avoid redesigning the sampler/backend.
+
+
+### 4. Grid event summary readability — FOLLOW-UP PENDING
+
+- Visual evidence from the successful run 39183727230 still showed the one-line parameter text physically ellipsized before the full DUR value. The latest follow-up splits the readout into two lines (VEL/PROB/RAT and NUDGE/DUR) and extends the real-touch accessibility evidence assertion to verify the line grouping and complete rendered Duration value. This layout refinement is unverified until its own exact-SHA Android run passes.

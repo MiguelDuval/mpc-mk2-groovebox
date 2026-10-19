@@ -8301,8 +8301,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 9, TEXT);
         gridEventParameterView.setGravity(Gravity.CENTER_VERTICAL);
         gridEventParameterView.setPadding(dp(8), 0, dp(8), 0);
-        gridEventParameterView.setSingleLine(true);
-        gridEventParameterView.setEllipsize(TextUtils.TruncateAt.END);
+        gridEventParameterView.setSingleLine(false);
+        gridEventParameterView.setMaxLines(2);
+        gridEventParameterView.setEllipsize(null);
+        gridEventParameterView.setIncludeFontPadding(false);
         gridEventParameterView.setBackground(strokeBackground(SURFACE_2, LINE, 6));
         gridEventParameterView.setContentDescription(
                 "Grid event parameters: no note selected");
@@ -8618,11 +8620,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     selectedGridEventStep + 1));
         } else {
             final int duration = parameters[4] > 0 ? parameters[4] : gridTicks;
-            // Pad/step identity is already exposed by the Grid header; keep
-            // the full five-field summary visible instead of truncating DUR.
+            // Pad/step identity is already exposed by the Grid header.
+            // Split the fields across two readable lines so the DUR value is
+            // visible at the actual rendered width, not just in accessibility.
             gridEventParameterView.setText(String.format(
                     Locale.ROOT,
-                    "VEL%d PROB%d RAT%dx NUDGE%+d DUR%d",
+                    "VEL %d  PROB %d  RAT %dx\nNUDGE %+d  DUR %d",
                     parameters[0],
                     parameters[1],
                     parameters[2],
