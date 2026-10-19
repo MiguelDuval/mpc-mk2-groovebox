@@ -405,7 +405,10 @@ final class MpcTrackEditView extends LinearLayout {
                 "PAN", formatPan(snapshot.layerPan), "L", "R",
                 v -> listener.onLayerPan(-1f),
                 v -> listener.onLayerPan(1f)));
-        body.addView(actionButton("CENTER LAYER PAN", v -> listener.onLayerPan(0f)), height(40));
+        Button centerLayerPan = actionButton(
+                "CENTER LAYER PAN", v -> listener.onLayerPan(0f));
+        centerLayerPan.setContentDescription("Track Edit layer pan center");
+        body.addView(centerLayerPan, height(40));
 
         body.addView(infoField("VELOCITY", String.format(
                 Locale.ROOT, "%d — %d", snapshot.velocityMin, snapshot.velocityMax)));
