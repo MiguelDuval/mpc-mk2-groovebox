@@ -1878,26 +1878,22 @@ PY
 }
 
 dump_device_ui() {
-  # Keep exactly one device-side hierarchy file. This smoke captures hundreds
-  # of accessibility snapshots; retaining unique /sdcard XMLs eventually
-  # exhausts the device-side fixture space and can make uiautomator return
-  # without creating its output. Host evidence keeps the caller's unique name.
+  # Capture to one fixed device-side path to avoid exhausting /sdcard with the
+  # hundreds of snapshots in this smoke. Repeat the literal path in each ADB
+  # invocation so caller-local Bash variables cannot make dump and cat diverge.
   local requested_remote_path="$1"
-  local remote_path="/sdcard/mpc-groovebox-current-uiautomator.xml"
   local host_path="$2"
   local log_path="/tmp/mpc-groovebox-uiautomator-dump.log"
   for attempt in {1..3}; do
-    # Remove stale output first so an old successful XML can never mask a
-    # failed current dump. The reusable path prevents per-snapshot accumulation.
-    adb_bounded 5 shell rm -f "$remote_path" >/dev/null 2>&1 || true
-    if ! adb_bounded 20 shell uiautomator dump "$remote_path" > "$log_path" 2>&1; then
+    adb_bounded 5 shell rm -f /sdcard/mpc-groovebox-current-uiautomator.xml >/dev/null 2>&1 || true
+    if ! adb_bounded 20 shell uiautomator dump /sdcard/mpc-groovebox-current-uiautomator.xml > "$log_path" 2>&1; then
       cat "$log_path" || true
-      echo "WARN: emulator UI hierarchy dump attempt $attempt/3 failed (requested $requested_remote_path)"
+      echo "WARN: emulator UI hierarchy dump attempt $attempt/3 failed (requested $requested_remote_path; shared path /sdcard/mpc-groovebox-current-uiautomator.xml)"
       sleep 1
       continue
     fi
-    if ! adb_bounded 10 exec-out cat "$remote_path" > "$host_path"; then
-      echo "WARN: emulator UI hierarchy output missing on attempt $attempt/3 (requested $requested_remote_path; shared path $remote_path)"
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-current-uiautomator.xml > "$host_path"; then
+      echo "WARN: emulator UI hierarchy output missing on attempt $attempt/3 (requested $requested_remote_path; shared path /sdcard/mpc-groovebox-current-uiautomator.xml)"
       cat "$log_path" || true
       sleep 1
       continue
@@ -1916,7 +1912,7 @@ PY
     echo "WARN: emulator UI hierarchy was empty or malformed on attempt $attempt/3: $host_path"
     sleep 1
   done
-  echo "ERROR: could not obtain a valid emulator UI hierarchy after three attempts (requested $requested_remote_path; shared path $remote_path)"
+  echo "ERROR: could not obtain a valid emulator UI hierarchy after three attempts (requested $requested_remote_path; shared path /sdcard/mpc-groovebox-current-uiautomator.xml)"
   cat "$log_path" || true
   return 1
 }
@@ -6482,10 +6478,10 @@ if scroll is None:
         "Track Edit layer pan value",
         "Track Edit region",
         "Track Edit velocity",
-        "Track Edit envelope attack value",
-        "Track Edit envelope decay value",
-        "Track Edit envelope sustain value",
-        "Track Edit envelope release value",
+        "Track Edit attack value",
+        "Track Edit decay value",
+        "Track Edit sustain value",
+        "Track Edit release value",
         "Track Edit cutoff",
     }
     scroll_candidates = []
@@ -7938,14 +7934,14 @@ TRACK_EDIT_FILTER_CHECK_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-check-u
 if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit AMP ENV tab"; then
   echo "ERROR: Track Edit AMP ENV tab could not be opened"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit envelope attack value" 15; then
+if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit attack value" 15; then
   echo "ERROR: Track Edit envelope Attack value is not exposed"; exit 1
 fi
 if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit cutoff" 15; then
   echo "ERROR: Track Edit filter cutoff value is not exposed"; exit 1
 fi
-if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML"; then
-  echo "ERROR: Track Edit AMP ENV baseline hierarchy capture failed"; exit 1
+if [[ ! -s "$TRACK_EDIT_ENV_BASELINE_XML" ]]; then
+  echo "ERROR: Track Edit AMP ENV baseline hierarchy is empty after verified waits"; exit 1
 fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_ENV_BASELINE_PNG"; then
   echo "ERROR: Track Edit AMP ENV baseline screenshot capture failed"; exit 1
@@ -8014,12 +8010,12 @@ track_edit_env_before="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_BASELIN
 }
 read -r track_edit_env_attack_before track_edit_env_decay_before track_edit_env_sustain_before track_edit_env_release_before <<< "$track_edit_env_before"
 if (( track_edit_env_attack_before < 1900 )); then
-  track_edit_env_attack_action="Track Edit envelope attack increase"
-  track_edit_env_attack_inverse="Track Edit envelope attack decrease"
+  track_edit_env_attack_action="Track Edit attack increase"
+  track_edit_env_attack_inverse="Track Edit attack decrease"
   track_edit_env_attack_expected=$((track_edit_env_attack_before + 100))
 elif (( track_edit_env_attack_before >= 100 )); then
-  track_edit_env_attack_action="Track Edit envelope attack decrease"
-  track_edit_env_attack_inverse="Track Edit envelope attack increase"
+  track_edit_env_attack_action="Track Edit attack decrease"
+  track_edit_env_attack_inverse="Track Edit attack increase"
   track_edit_env_attack_expected=$((track_edit_env_attack_before - 100))
 else
   echo "ERROR: AMP ENV Attack has no safe adjacent 100 ms value to exercise"; exit 1
@@ -8113,12 +8109,12 @@ exercise_track_edit_envelope_field() {
     *) echo "ERROR: unsupported envelope field in acceptance helper: $field"; return 1 ;;
   esac
   if (( before_value + step <= maximum )); then
-    action="Track Edit envelope $field increase"
-    inverse="Track Edit envelope $field decrease"
+    action="Track Edit $field increase"
+    inverse="Track Edit $field decrease"
     expected=$((before_value + step))
   elif (( before_value >= step )); then
-    action="Track Edit envelope $field decrease"
-    inverse="Track Edit envelope $field increase"
+    action="Track Edit $field decrease"
+    inverse="Track Edit $field increase"
     expected=$((before_value - step))
   else
     echo "ERROR: $field has no safe adjacent value for the acceptance step $step"; return 1
