@@ -6360,16 +6360,45 @@ scroll_ui_until_description() {
   for ((attempt=1; attempt<=max_swipes; attempt++)); do
     if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
     if python3 - "$hierarchy_path" "$expected_description" <<'PY'
+import re
 import sys
 import xml.etree.ElementTree as ET
 
 path, expected = sys.argv[1], sys.argv[2]
-root = ET.parse(path).getroot()
-if any(n.attrib.get("content-desc", "") == expected
-       and n.attrib.get("clickable") == "true"
-       and n.attrib.get("enabled") == "true"
-       for n in root.iter("node")):
-    raise SystemExit(0)
+nodes = list(ET.parse(path).getroot().iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+
+def rect(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+def intersect(a, b):
+    if a is None or b is None:
+        return None
+    x1, y1, x2, y2 = a
+    bx1, by1, bx2, by2 = b
+    result = (max(x1, bx1), max(y1, by1),
+              min(x2, bx2), min(y2, by2))
+    return result if result[0] < result[2] and result[1] < result[3] else None
+
+for node in nodes:
+    if (node.attrib.get("content-desc") != expected
+            or node.attrib.get("clickable") != "true"
+            or node.attrib.get("enabled") != "true"
+            or node.attrib.get("visible-to-user") == "false"):
+        continue
+    visible = rect(node)
+    if visible is None:
+        continue
+    ancestor = parents.get(node)
+    while ancestor is not None and visible is not None:
+        if (ancestor.attrib.get("class") == "android.widget.ScrollView"
+                or ancestor.attrib.get("scrollable") == "true"):
+            visible = intersect(visible, rect(ancestor))
+        ancestor = parents.get(ancestor)
+    if visible is not None:
+        raise SystemExit(0)
 raise SystemExit(1)
 PY
     then
@@ -6419,6 +6448,11 @@ if scroll is None:
         "Track Edit layer pan value",
         "Track Edit region",
         "Track Edit velocity",
+        "Track Edit envelope attack value",
+        "Track Edit envelope decay value",
+        "Track Edit envelope sustain value",
+        "Track Edit envelope release value",
+        "Track Edit cutoff",
     }
     scroll_candidates = []
     for candidate in nodes:
@@ -6491,14 +6525,46 @@ PY
 
   if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
   if python3 - "$hierarchy_path" "$expected_description" <<'PY'
+import re
 import sys
 import xml.etree.ElementTree as ET
+
 path, expected = sys.argv[1], sys.argv[2]
-root = ET.parse(path).getroot()
-raise SystemExit(0 if any(n.attrib.get("content-desc", "") == expected
-                          and n.attrib.get("clickable") == "true"
-                          and n.attrib.get("enabled") == "true"
-                          for n in root.iter("node")) else 1)
+nodes = list(ET.parse(path).getroot().iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+
+def rect(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+def intersect(a, b):
+    if a is None or b is None:
+        return None
+    x1, y1, x2, y2 = a
+    bx1, by1, bx2, by2 = b
+    result = (max(x1, bx1), max(y1, by1),
+              min(x2, bx2), min(y2, by2))
+    return result if result[0] < result[2] and result[1] < result[3] else None
+
+for node in nodes:
+    if (node.attrib.get("content-desc") != expected
+            or node.attrib.get("clickable") != "true"
+            or node.attrib.get("enabled") != "true"
+            or node.attrib.get("visible-to-user") == "false"):
+        continue
+    visible = rect(node)
+    if visible is None:
+        continue
+    ancestor = parents.get(node)
+    while ancestor is not None and visible is not None:
+        if (ancestor.attrib.get("class") == "android.widget.ScrollView"
+                or ancestor.attrib.get("scrollable") == "true"):
+            visible = intersect(visible, rect(ancestor))
+        ancestor = parents.get(ancestor)
+    if visible is not None:
+        raise SystemExit(0)
+raise SystemExit(1)
 PY
   then
     echo "Track Edit control is exposed after $max_swipes scroll gesture(s): $expected_description"
@@ -7835,7 +7901,7 @@ TRACK_EDIT_FILTER_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-filter-cutoff-rest
 TRACK_EDIT_FILTER_RESTORED_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-restored-uiautomator.xml"
 TRACK_EDIT_FILTER_CHECK_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-check-uiautomator.xml"
 
-if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Envelopes tab"; then
+if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit AMP ENV tab"; then
   echo "ERROR: Track Edit AMP ENV tab could not be opened"; exit 1
 fi
 if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit envelope attack value" 15; then
