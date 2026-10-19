@@ -7126,6 +7126,251 @@ print(re.sub(r"\s+", " ", found[0].attrib.get("text", "")).strip())
 PY
 }
 
+read_track_edit_envelope_filter_state() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+
+def node_text(description):
+    found = [n for n in nodes if n.attrib.get("content-desc", "") == description]
+    if len(found) != 1:
+        raise SystemExit(f"expected one {description!r} value, found {len(found)}")
+    return re.sub(r"\\s+", " ", found[0].attrib.get("text", "")).strip()
+
+def envelope_value(name):
+    text = node_text("Track Edit envelope " + name + " value")
+    match = re.search(r"([0-9]+(?:\\.[0-9]+)?)\\s*ms\\b", text, re.I)
+    if match is None:
+        raise SystemExit(f"could not parse envelope {name} value from {text!r}")
+    return float(match.group(1))
+
+attack = envelope_value("attack")
+decay = envelope_value("decay")
+sustain_text = node_text("Track Edit envelope sustain value")
+sustain_match = re.search(r"([0-9]+(?:\\.[0-9]+)?)\\s*%", sustain_text)
+if sustain_match is None:
+    raise SystemExit(f"could not parse envelope sustain value from {sustain_text!r}")
+sustain = float(sustain_match.group(1))
+release = envelope_value("release")
+cutoff_text = node_text("Track Edit cutoff")
+cutoff_match = re.search(r"([0-9]+(?:\\.[0-9]+)?)\\s*(kHz|Hz)\\b", cutoff_text, re.I)
+if cutoff_match is None:
+    raise SystemExit(f"could not parse filter cutoff value from {cutoff_text!r}")
+cutoff = float(cutoff_match.group(1))
+if cutoff_match.group(2).lower() == "khz":
+    cutoff *= 1000.0
+if not (0 <= attack <= 2000 and 0 <= decay <= 2000 and
+        0 <= sustain <= 100 and 0 <= release <= 2000 and
+        20 <= cutoff <= 20000):
+    raise SystemExit(f"Track Edit envelope/filter projection is outside supported bounds: "
+                     f"{(attack, decay, sustain, release, cutoff)!r}")
+print(*(f"{value:.3f}" for value in (attack, decay, sustain, release, cutoff)))
+PY
+}
+
+assert_track_edit_dsp_delta() {
+  python3 - "$1" "$2" "$3" "$4" <<'PY'
+import sys
+before = list(map(float, sys.argv[1].split()))
+after = list(map(float, sys.argv[2].split()))
+target = int(sys.argv[3])
+delta = float(sys.argv[4])
+if len(before) != 5 or len(after) != 5 or not 0 <= target < 5:
+    raise SystemExit("malformed Track Edit envelope/filter state vector")
+tolerance = 60.0 if target == 4 else 0.11
+expected = before[target] + delta
+if abs(after[target] - expected) > tolerance:
+    raise SystemExit(f"field {target} changed by {after[target]-before[target]} instead of {delta}: "
+                     f"{before!r} -> {after!r}")
+for index, (old, new) in enumerate(zip(before, after)):
+    if index != target and abs(new - old) > (0.11 if index != 4 else 60.0):
+        raise SystemExit(f"editing field {target} altered unrelated field {index}: "
+                         f"{before!r} -> {after!r}")
+PY
+}
+
+assert_track_edit_dsp_equal() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+before = list(map(float, sys.argv[1].split()))
+after = list(map(float, sys.argv[2].split()))
+if len(before) != 5 or len(after) != 5:
+    raise SystemExit("malformed Track Edit envelope/filter state vector")
+for index, (old, new) in enumerate(zip(before, after)):
+    tolerance = 0.11 if index != 4 else 60.0
+    if abs(new - old) > tolerance:
+        raise SystemExit(f"Track Edit state failed restoration at field {index}: "
+                         f"{before!r} -> {after!r}")
+PY
+}
+
+track_edit_dsp_field_round_trip() {
+  local field="$1"
+  local state_index min_value max_value step_value
+  local direction inverse_direction signed_delta
+  local action_description inverse_description action_xml
+  local prefix before_png before_xml before_remote changed_png changed_xml changed_remote
+  local reopened_png reopened_xml reopened_remote restored_png restored_xml restored_remote
+  local state_before state_after changed=0 restored=0
+  prefix="/tmp/mpc-groovebox-track-edit-dsp-$field"
+  before_png="$prefix-before.png"
+  before_xml="$prefix-before-uiautomator.xml"
+  before_remote="/sdcard/$(basename "$before_xml")"
+  changed_png="$prefix-changed.png"
+  changed_xml="$prefix-changed-uiautomator.xml"
+  changed_remote="/sdcard/$(basename "$changed_xml")"
+  reopened_png="$prefix-reopened.png"
+  reopened_xml="$prefix-reopened-uiautomator.xml"
+  reopened_remote="/sdcard/$(basename "$reopened_xml")"
+  restored_png="$prefix-restored.png"
+  restored_xml="$prefix-restored-uiautomator.xml"
+  restored_remote="/sdcard/$(basename "$restored_xml")"
+
+  if ! dump_device_ui "$before_remote" "$before_xml"; then
+    echo "ERROR: Track Edit $field baseline hierarchy capture failed"; exit 1
+  fi
+  if ! adb_bounded 10 exec-out screencap -p > "$before_png"; then
+    echo "ERROR: Track Edit $field baseline screenshot capture failed"; exit 1
+  fi
+  state_before="$(read_track_edit_envelope_filter_state "$before_xml")" || {
+    echo "ERROR: Track Edit $field baseline state could not be parsed"; exit 1;
+  }
+
+  case "$field" in
+    attack) state_index=0; min_value=0; max_value=2000; step_value=100 ;;
+    decay) state_index=1; min_value=0; max_value=2000; step_value=100 ;;
+    sustain) state_index=2; min_value=0; max_value=100; step_value=10 ;;
+    release) state_index=3; min_value=0; max_value=2000; step_value=100 ;;
+    cutoff) state_index=4; min_value=20; max_value=20000; step_value=500 ;;
+    *) echo "ERROR: unsupported Track Edit DSP field $field"; exit 1 ;;
+  esac
+
+  read -r direction signed_delta <<< "$(python3 - "$state_before" "$state_index" "$min_value" "$max_value" "$step_value" <<'PY'
+import sys
+values = list(map(float, sys.argv[1].split()))
+index, minimum, maximum, step = map(float, sys.argv[2:])
+index = int(index)
+value = values[index]
+if value + step <= maximum:
+    print("increase", int(step))
+elif value - step >= minimum:
+    print("decrease", -int(step))
+else:
+    raise SystemExit(f"Track Edit field has no safe adjacent test value: {value}")
+PY
+)" || { echo "ERROR: Track Edit $field has no safe reversible adjacent value"; exit 1; }
+
+  if [[ "$field" == "cutoff" ]]; then
+    action_description="Track Edit filter cutoff $direction"
+    if [[ "$direction" == "increase" ]]; then inverse_direction="decrease"; else inverse_direction="increase"; fi
+    inverse_description="Track Edit filter cutoff $inverse_direction"
+  else
+    action_description="Track Edit envelope $field $direction"
+    if [[ "$direction" == "increase" ]]; then inverse_direction="decrease"; else inverse_direction="increase"; fi
+    inverse_description="Track Edit envelope $field $inverse_direction"
+  fi
+
+  if ! tap_ui_description "$before_xml" "$action_description"; then
+    echo "ERROR: Track Edit $field $direction touch control was not actionable"; exit 1
+  fi
+  for attempt in {1..15}; do
+    if ! dump_device_ui "$changed_remote" "$changed_xml"; then
+      echo "ERROR: Track Edit $field changed hierarchy capture failed"; exit 1
+    fi
+    state_after="$(read_track_edit_envelope_filter_state "$changed_xml" 2>/dev/null || true)"
+    if [[ -n "$state_after" ]] && assert_track_edit_dsp_delta "$state_before" "$state_after" "$state_index" "$signed_delta" >/dev/null 2>&1; then
+      changed=1
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$changed" != "1" ]]; then
+    echo "ERROR: Track Edit $field touch failed one-field native-state mutation"
+    echo "Before=$state_before after=$state_after expectedDelta=$signed_delta"; cat "$changed_xml"; exit 1
+  fi
+  if ! adb_bounded 10 exec-out screencap -p > "$changed_png"; then
+    echo "ERROR: Track Edit $field changed screenshot capture failed"; exit 1
+  fi
+  echo "Track Edit $field field-isolation passed: $state_before -> $state_after (delta $signed_delta)."
+
+  action_xml="$changed_xml"
+  if [[ "$field" == "attack" ]]; then
+    # Exercise the real persistent Track Edit tab bar: leave SAMPLES → AMP ENV
+    # while the changed native attack value is live, then compare the reopened projection.
+    if ! tap_ui_description "$changed_xml" "Track Edit Samples tab"; then
+      echo "ERROR: could not leave AMP ENV for the real Samples tab"; exit 1
+    fi
+    if ! dump_device_ui "$changed_remote" "$changed_xml"; then
+      echo "ERROR: Track Edit Samples tab hierarchy capture failed"; exit 1
+    fi
+    if ! tap_ui_description "$changed_xml" "Track Edit AMP ENV tab"; then
+      echo "ERROR: could not re-enter AMP ENV through the persistent tab bar"; exit 1
+    fi
+    if ! wait_for_ui_description "$reopened_xml" "$reopened_remote" "Track Edit envelope attack value" 20; then
+      echo "ERROR: AMP ENV parameter projection did not return after tab re-entry"; exit 1
+    fi
+    state_after="$(read_track_edit_envelope_filter_state "$reopened_xml")" || {
+      echo "ERROR: Track Edit attack state missing after tab re-entry"; exit 1;
+    }
+    if ! assert_track_edit_dsp_equal "$(python3 - "$state_before" "$signed_delta" "$state_index" <<'PY'
+import sys
+values = list(map(float, sys.argv[1].split()))
+delta, index = float(sys.argv[2]), int(sys.argv[3])
+values[index] += delta
+print(*(f"{value:.3f}" for value in values))
+PY
+)" "$state_after"; then
+      echo "ERROR: Track Edit envelope state did not persist across AMP ENV tab re-entry"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$reopened_png"; then
+      echo "ERROR: Track Edit reopened AMP ENV screenshot capture failed"; exit 1
+    fi
+    action_xml="$reopened_xml"
+    echo "Track Edit ATTACK projection survived SAMPLES → AMP ENV tab re-entry."
+  fi
+
+  if ! tap_ui_description "$action_xml" "$inverse_description"; then
+    echo "ERROR: Track Edit $field inverse touch control was not actionable"; exit 1
+  fi
+  for attempt in {1..15}; do
+    if ! dump_device_ui "$restored_remote" "$restored_xml"; then
+      echo "ERROR: Track Edit $field restored hierarchy capture failed"; exit 1
+    fi
+    state_after="$(read_track_edit_envelope_filter_state "$restored_xml" 2>/dev/null || true)"
+    if [[ -n "$state_after" ]] && assert_track_edit_dsp_equal "$state_before" "$state_after" >/dev/null 2>&1; then
+      restored=1
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$restored" != "1" ]]; then
+    echo "ERROR: Track Edit $field inverse edit did not restore all envelope/filter values"
+    echo "Before=$state_before after=$state_after"; cat "$restored_xml"; exit 1
+  fi
+  if ! adb_bounded 10 exec-out screencap -p > "$restored_png"; then
+    echo "ERROR: Track Edit $field restored screenshot capture failed"; exit 1
+  fi
+  for evidence in "$before_png" "$before_xml" "$changed_png" "$changed_xml" "$restored_png" "$restored_xml"; do
+    if ! test -s "$evidence"; then
+      echo "ERROR: Track Edit $field evidence missing/empty: $evidence"; exit 1
+    fi
+  done
+  if [[ "$field" == "attack" ]]; then
+    for evidence in "$reopened_png" "$reopened_xml"; do
+      if ! test -s "$evidence"; then
+        echo "ERROR: Track Edit attack tab-re-entry evidence missing/empty: $evidence"; exit 1
+      fi
+    done
+  fi
+  if [[ "$field" == "cutoff" ]]; then
+    TRACK_EDIT_DSP_CUTOFF_RESTORED_XML="$restored_xml"
+  fi
+  echo "Track Edit $field real-touch edit → exact inverse restore passed."
+}
+
 read_track_edit_region_bounds() {
   python3 - "$1" <<'PY'
 import re
@@ -7732,6 +7977,38 @@ if [[ "$track_edit_velocity_reentry_gain" != "$track_edit_pan_gain_before" \
 fi
 echo "Track Edit velocity MIN/MAX round trips restored exact bounds and preserved GAIN/TUNE/PAN."
 
+# EDIT-009: cover every implemented amp-envelope setter and filter-cutoff setter
+# with real touchscreen mutations, native-projection field isolation, inverse
+# restoration, and archived changed/restored accessibility + visual evidence.
+echo "Running Track Edit amp envelope/filter cutoff field-isolation → inverse restore acceptance..."
+if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit AMP ENV tab"; then
+  echo "ERROR: Track Edit AMP ENV tab was not actionable"; exit 1
+fi
+if ! wait_for_ui_description "$TRACK_EDIT_DSP_ENV_BASELINE_XML" "$TRACK_EDIT_DSP_ENV_BASELINE_REMOTE" "Track Edit envelope attack value" 20; then
+  echo "ERROR: AMP ENV tab did not expose the implemented envelope controls"; exit 1
+fi
+TRACK_EDIT_DSP_ENV_BASELINE_PNG="/tmp/mpc-groovebox-track-edit-dsp-envelope-baseline.png"
+TRACK_EDIT_DSP_ENV_BASELINE_XML="/tmp/mpc-groovebox-track-edit-dsp-envelope-baseline-uiautomator.xml"
+TRACK_EDIT_DSP_ENV_BASELINE_REMOTE="/sdcard/mpc-groovebox-track-edit-dsp-envelope-baseline-uiautomator.xml"
+if ! dump_device_ui "$TRACK_EDIT_DSP_ENV_BASELINE_REMOTE" "$TRACK_EDIT_DSP_ENV_BASELINE_XML"; then
+  echo "ERROR: Track Edit AMP ENV baseline hierarchy failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_DSP_ENV_BASELINE_PNG"; then
+  echo "ERROR: Track Edit AMP ENV baseline screenshot failed"; exit 1
+fi
+track_edit_dsp_initial="$(read_track_edit_envelope_filter_state "$TRACK_EDIT_DSP_ENV_BASELINE_XML")" || {
+  echo "ERROR: initial Track Edit envelope/filter state could not be parsed"; exit 1;
+}
+echo "Track Edit amp envelope/filter baseline (attack decay sustain release cutoff-Hz): $track_edit_dsp_initial"
+
+for field in attack decay sustain release cutoff; do
+  track_edit_dsp_field_round_trip "$field"
+done
+if ! assert_track_edit_dsp_equal "$track_edit_dsp_initial" "$(read_track_edit_envelope_filter_state "$TRACK_EDIT_DSP_CUTOFF_RESTORED_XML")"; then
+  echo "ERROR: final Track Edit envelope/filter state differs from initial baseline"; exit 1
+fi
+echo "Track Edit EDIT-009 real-touch ATTACK/DECAY/SUSTAIN/RELEASE/CUTOFF field-isolation and inverse-restoration passed."
+
 for evidence in \
   "$TRACK_EDIT_CONTEXT_BEFORE_XML" "$TRACK_EDIT_CONTEXT_REOPENED_XML" \
   "$TRACK_EDIT_BEFORE_PNG" "$TRACK_EDIT_BEFORE_XML" \
@@ -7746,12 +8023,29 @@ for evidence in \
   "$TRACK_EDIT_VELOCITY_MAX_CHANGED_PNG" "$TRACK_EDIT_VELOCITY_MAX_CHANGED_XML" \
   "$TRACK_EDIT_VELOCITY_MAX_RESTORED_PNG" "$TRACK_EDIT_VELOCITY_MAX_RESTORED_XML" \
   "$TRACK_EDIT_VELOCITY_MIN_CHANGED_PNG" "$TRACK_EDIT_VELOCITY_MIN_CHANGED_XML" \
-  "$TRACK_EDIT_VELOCITY_MIN_RESTORED_PNG" "$TRACK_EDIT_VELOCITY_MIN_RESTORED_XML"; do
+  "$TRACK_EDIT_VELOCITY_MIN_RESTORED_PNG" "$TRACK_EDIT_VELOCITY_MIN_RESTORED_XML" \
+  "$TRACK_EDIT_DSP_ENV_BASELINE_PNG" "$TRACK_EDIT_DSP_ENV_BASELINE_XML" \
+  "/tmp/mpc-groovebox-track-edit-dsp-attack-before.png" "/tmp/mpc-groovebox-track-edit-dsp-attack-before-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-attack-changed.png" "/tmp/mpc-groovebox-track-edit-dsp-attack-changed-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-attack-reopened.png" "/tmp/mpc-groovebox-track-edit-dsp-attack-reopened-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-attack-restored.png" "/tmp/mpc-groovebox-track-edit-dsp-attack-restored-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-decay-before.png" "/tmp/mpc-groovebox-track-edit-dsp-decay-before-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-decay-changed.png" "/tmp/mpc-groovebox-track-edit-dsp-decay-changed-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-decay-restored.png" "/tmp/mpc-groovebox-track-edit-dsp-decay-restored-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-sustain-before.png" "/tmp/mpc-groovebox-track-edit-dsp-sustain-before-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-sustain-changed.png" "/tmp/mpc-groovebox-track-edit-dsp-sustain-changed-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-sustain-restored.png" "/tmp/mpc-groovebox-track-edit-dsp-sustain-restored-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-release-before.png" "/tmp/mpc-groovebox-track-edit-dsp-release-before-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-release-changed.png" "/tmp/mpc-groovebox-track-edit-dsp-release-changed-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-release-restored.png" "/tmp/mpc-groovebox-track-edit-dsp-release-restored-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-cutoff-before.png" "/tmp/mpc-groovebox-track-edit-dsp-cutoff-before-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-cutoff-changed.png" "/tmp/mpc-groovebox-track-edit-dsp-cutoff-changed-uiautomator.xml" \
+  "/tmp/mpc-groovebox-track-edit-dsp-cutoff-restored.png" "/tmp/mpc-groovebox-track-edit-dsp-cutoff-restored-uiautomator.xml"; do
   if ! test -s "$evidence"; then
     echo "ERROR: Track Edit runtime evidence missing/empty: $evidence"; exit 1
   fi
 done
-if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit back"; then
+if ! tap_ui_description "$TRACK_EDIT_DSP_CUTOFF_RESTORED_XML" "Track Edit back"; then
   echo "ERROR: Track Edit BACK could not return to Main after restoring tuning"; exit 1
 fi
 if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "$track_edit_return_description" 25; then
