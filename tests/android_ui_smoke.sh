@@ -6508,6 +6508,87 @@ PY
   return 1
 }
 
+# Reverse-scroll the Track Edit editor using live UiAutomator bounds so the
+# upper sample-layer GAIN row is actually present before post-velocity checks.
+# scroll_ui_until_description() deliberately advances toward lower controls;
+# it cannot reveal a row that has been scrolled above the viewport.
+scroll_track_edit_to_layer_gain() {
+  local hierarchy_path="$1" remote_path="$2" max_swipes="${3:-8}"
+  local coordinates swipe_x swipe_from swipe_to
+  for ((attempt=1; attempt<=max_swipes; attempt++)); do
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    if python3 - "$hierarchy_path" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+descriptions = {n.attrib.get("content-desc", "") for n in nodes}
+raise SystemExit(0 if {
+    "Track Edit layer gain value",
+    "Track Edit layer gain decrease",
+    "Track Edit layer tuning value",
+    "Track Edit layer pan value",
+}.issubset(descriptions) else 1)
+PY
+    then
+      echo "Track Edit GAIN/TUNE/PAN fields are visible after $((attempt - 1)) reverse scroll gesture(s)."
+      return 0
+    fi
+
+    if ! coordinates="$(python3 - "$hierarchy_path" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+target = next((n for n in nodes
+               if n.attrib.get("content-desc", "") == "Track Edit layer tuning value"), None)
+if target is None:
+    raise SystemExit("no visible semantic layer parameter is available to locate the Track Edit ScrollView")
+
+scroll = parents.get(target)
+while scroll is not None and not (
+        scroll.attrib.get("class") == "android.widget.ScrollView"
+        and scroll.attrib.get("scrollable") == "true"):
+    scroll = parents.get(scroll)
+if scroll is None:
+    raise SystemExit("visible layer parameter has no scrollable Track Edit ancestor")
+
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     scroll.attrib.get("bounds", ""))
+if match is None:
+    raise SystemExit("Track Edit ScrollView has no valid bounds")
+left, top, right, bottom = map(int, match.groups())
+height = bottom - top
+if right - left < 100 or height < 220:
+    raise SystemExit(f"Track Edit ScrollView viewport is too small for a safe reverse scroll: {(left, top, right, bottom)!r}")
+margin = max(45, min(90, height // 5))
+start_y = top + margin
+end_y = bottom - margin
+if end_y - start_y < 100:
+    raise SystemExit("Track Edit reverse-scroll gesture is too short")
+print((left + right) // 2, start_y, end_y)
+PY
+)"; then
+      echo "ERROR: could not derive a safe reverse-scroll gesture from the live Track Edit hierarchy"
+      cat "$hierarchy_path" || true
+      return 1
+    fi
+    read -r swipe_x swipe_from swipe_to <<< "$coordinates"
+    echo "Restoring upper Track Edit layer viewport using live bounds: x=$swipe_x y=$swipe_from->$swipe_to"
+    if ! adb_bounded 10 shell input swipe "$swipe_x" "$swipe_from" "$swipe_x" "$swipe_to" 350; then
+      echo "ERROR: Track Edit reverse-scroll gesture failed"
+      return 1
+    fi
+    sleep 0.35
+  done
+
+  if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+  echo "ERROR: Track Edit GAIN/TUNE/PAN fields did not return to the hierarchy after $max_swipes reverse scroll gesture(s)"
+  cat "$hierarchy_path" || true
+  return 1
+}
+
 wait_for_successful_audition() {
   local hierarchy_path="$1" remote_path="$2" expected_name="$3" max_attempts="$4"
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
@@ -7420,13 +7501,11 @@ if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_VELOCITY_MIN_RESTORED_P
 fi
 echo "Track Edit velocity MIN changed only the lower bound and inverse-restored the exact range: $track_edit_velocity_range_before_min."
 
-# Re-enter the visible layer controls and confirm the complete Track Edit state
-# still matches the fixture after both independent velocity-range round trips.
-if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer tuning increase" 8; then
-  echo "ERROR: Track Edit tuning controls did not become visible after velocity-range acceptance"; exit 1
-fi
-if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_VELOCITY_REENTRY_XML"; then
-  echo "ERROR: Track Edit post-velocity-range hierarchy capture failed"; exit 1
+# Re-enter the upper layer controls using a direction-aware reverse scroll.
+# The velocity-row smoke leaves GAIN above the viewport; merely waiting for the
+# TUNE+ button can return early while GAIN is still absent from UiAutomator.
+if ! scroll_track_edit_to_layer_gain "$TRACK_EDIT_VELOCITY_REENTRY_XML" "$TRACK_EDIT_VELOCITY_REMOTE" 8; then
+  echo "ERROR: Track Edit upper layer parameters did not become visible after velocity-range acceptance"; exit 1
 fi
 track_edit_velocity_reentry_gain="$(read_track_edit_gain_value "$TRACK_EDIT_VELOCITY_REENTRY_XML")" || {
   echo "ERROR: GAIN value missing after velocity-range edits"; exit 1;
