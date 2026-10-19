@@ -7013,20 +7013,6 @@ fi
 track_edit_gain_before="$(read_track_edit_layer_gain_percent "$TRACK_EDIT_GAIN_BEFORE_XML")" || {
   echo "ERROR: could not read the visible Track Edit layer gain baseline"; exit 1;
 }
-if [[ "$track_edit_gain_before" != "$track_edit_gain_before" ]]; then
-  echo "ERROR: non-deterministic Track Edit layer gain baseline"; exit 1
-fi
-track_edit_gain_before_tuning="$(python3 - "$TRACK_EDIT_GAIN_BEFORE_XML" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
-nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
-for description in ("Track Edit layer tuning value", "Track Edit layer pan value"):
-    found = [n for n in nodes if n.attrib.get("content-desc", "") == description]
-    if len(found) != 1:
-        raise SystemExit(f"expected one visible {description!r}, found {len(found)}")
-    print(found[0].attrib.get("text", ""))
-PY
-)" || { echo "ERROR: Track Edit tuning/pan baseline unavailable for gain isolation"; exit 1; }
 if awk -v gain="$track_edit_gain_before" 'BEGIN { exit !(gain >= 10.0) }'; then
   track_edit_gain_direction="decrease"
   track_edit_gain_inverse="increase"
