@@ -7249,7 +7249,7 @@ print(minimum, maximum)
 PY
 }
 
-if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit velocity" 8; then
+if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer velocity minimum increase" 8; then
   echo "ERROR: Track Edit velocity-range field did not become visible after scrolling"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_VELOCITY_REMOTE" "$TRACK_EDIT_VELOCITY_BASELINE_XML"; then
