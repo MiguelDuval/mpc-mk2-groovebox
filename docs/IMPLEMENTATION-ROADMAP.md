@@ -3,29 +3,25 @@
 ## CURRENT EXECUTION QUEUE — 2026-10-19 (live branch + exact-SHA CI govern)
 
 ### 1. Project SAVE / SAVE AS / OPEN — COMPLETE / RECONFIRMED
-- Android Build #2900 / run 39236521987 passed on exact SHA `a285ed9bcdb3426e71f85a600838f6589bc121d9`: [Actions #2900](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39236521987).
-- Real Android DocumentsUI/SAF saved a v2 Project, mutated the live model and reopened the document with exact canonical domain SHA `4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9`. The fixture covers non-default MIDI events plus Pattern-placement identity/reference/start/length/source-offset; force-stop/relaunch, cancellation without mutation, malformed-file preservation and placement-free valid v1 compatibility passed.
-- APK artifact 12179887151 (9,956,909 bytes; SHA-256 `1a5892b5477471196f0561e957379ebf24d6253db70123612718723157659b76`); UI evidence artifact 12180247158 (17,855,080 bytes; SHA-256 `f6629398bdf5d0f26d148a6e94bdcc87cbfbc73525debff9a58860a9870f7fab`). Both artifacts were downloaded; ZIP evidence integrity passed and the Step Edit/page-navigation screenshots and XML hierarchies were inspected.
-- The earlier Build #2835 cancellation remains correctly classified as cancelled—not pass or implementation failure—and is superseded by completed #2856/#2893/#2900 coverage.
+- Android Build #2901 / run 39242015786 passed on exact SHA `a681303fe3d411c0df99d4ce7dc90e8f2caaac76`: [Actions #2901](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39242015786).
+- Real Android DocumentsUI/SAF saved a v2 Project, mutated the live model and reopened it with exact canonical domain SHA `4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9`. The fixture covers non-default MIDI events and Pattern-placement identity/reference/start/length/source-offset; force-stop/relaunch, cancellation without mutation, malformed-file preservation and placement-free v1 compatibility passed.
+- APK artifact 12182290674 (9,956,909 bytes; SHA-256 `83797a8c4a48a45a3c02e358f8ae5f68f72f470111d950b9e163e3abae85c64e`); UI evidence artifact 12183205363 (18,207,198 bytes; SHA-256 `6e0359c02c5cde3ca1e95a57f5aa2747d3392c1fe69495d871e01aebe8905597`). Both downloaded; evidence ZIP integrity passed. The PAD/page screenshots and accessibility hierarchies were inspected.
+- The earlier Build #2835 cancellation remains correctly classified as cancelled—not pass or implementation failure—and is superseded by completed #2856/#2893/#2900/#2901 coverage.
 
-### 2. Grid/Step Edit field isolation and STEP-002 — VERIFIED / EXACT-SHA
-- Build #2900 on exact SHA `a285ed9bcdb3426e71f85a600838f6589bc121d9` passed the full Android emulator smoke.
-- Grid VEL / PROB / RAT / NUDGE / DUR each changed and restored one native field at a time. Step Edit VEL changed 100 → 101 and inverse-restored; PROB changed 127 → 126 and inverse-restored; RAT changed 1 → 2 and inverse-restored; NUDGE and DURATION round trips preserved all unrelated fields. Step 01 and Pattern fixtures remained intact.
-- STEP-002 page navigation was exercised through real touchscreen taps: page 1 → page 2 selected absolute Step 18 in the matching relative column, then page 2 → page 1 restored absolute Step 2. Both pages preserved the empty-step fixture; the full application smoke and upload of APK/UI evidence completed successfully.
+### 2. Grid / Step Edit parameters and STEP-001/002 — VERIFIED / EXACT-SHA
+- Build #2901 on exact SHA `a681303fe3d411c0df99d4ce7dc90e8f2caaac76` passed the full Android emulator smoke.
+- Grid VEL/PROB/RAT/NUDGE/DUR each changed and restored one native field at a time. Step Edit VEL 100→101→100, PROB 127→126→127, RAT 1→2→1, NUDGE and DURATION isolation round trips passed; unrelated fields and Step 01 remained unchanged.
+- STEP-002 page navigation passed via real touchscreen taps page 1→page 2→page 1 (absolute Step 2→18→2), preserving relative column, empty fixture and Pattern state.
+- STEP-001 Pad selection passed via real touchscreen PAD + / PAD −: Pad 1→2→1 preserved the absolute Step cursor, the Pad 2 empty cell matched the native Step Edit projection, and returning to Pad 1 preserved the temporary empty target plus Step 01.
 
-### 3. NEXT SLICE — STEP-001 Pad selection, real-touch state consistency
-- PR #23 HEAD `a681303fe3d411c0df99d4ce7dc90e8f2caaac76` contains real touchscreen PAD + / PAD − acceptance. Android Build #2901 / run 39242015786 is in progress; do not mark STEP-001 verified until its full emulator smoke passes on that exact SHA.
-- Assertions preserve the absolute Step cursor, confirm that Pad 2's visible active/empty cell agrees with the authoritative Step Edit parameter projection, then switch back to Pad 1 and verify the empty target plus Step 01 are unchanged.
-- This is acceptance work on existing handlers, not a new Pad-selection implementation.
+### 3. NEXT SLICE — EDIT-004 / EDIT-005 Track Edit layer GAIN / PAN touch field-isolation
+- Isolated candidate branch `feature/track-edit-layer-pan-acceptance` adds acceptance on existing native-backed controls, without duplicate parameter state. GAIN +/- must change exactly 10 percentage points and inverse-restore GAIN/TUNE/PAN.
+- PAN starts from the verified centered fixture, changes C→L100 through the actual L button, then uses CENTER LAYER PAN to restore C; the test preserves and compares GAIN/TUNE/PAN across all three states. The center control now carries an explicit accessibility description to support reliable real-touch targeting.
+- Before/changed/restored screenshots and accessibility hierarchies for both controls are in the workflow evidence list. This candidate is not yet integrated or verified. After structure checks, fast-forward it to PR #23 only if the live PR head matches the expected SHA, then require a successful Android Build on the resulting exact SHA before marking either action complete.
 
-### 4. PREPARED FOLLOW-UP — EDIT-004 sample-layer GAIN field-isolation/restore
-- Isolated branch `feature/track-edit-layer-gain-acceptance` adds a real-touch GAIN +/- round trip to the existing Track Edit Samples workflow.
-- The test reads the visible/native-authoritative GAIN projection, requires exactly one 10-percentage-point change, asserts TUNE and PAN remain unchanged, then inverse-touches and compares GAIN/TUNE/PAN exactly. Before/changed/restored screenshot and UI-hierarchy paths are added to the evidence artifact.
-- This candidate is not yet integrated or verified. Wait for STEP-001 Build #2901 to resolve, then integrate by fast-forward into PR #23 and require CI on the resulting exact SHA.
-
-### 5. Remaining explicit boundaries
+### 4. Remaining explicit boundaries
 - Physical MPC Studio MkII acceptance is **PENDING** and must not be inferred from emulator results.
-- Project provider overwrite/write-failure recovery, independently opening two saved Projects, and external sample PCM relinking remain uncovered. Address only when they become the highest-value next slice or a regression is found.
+- Project provider overwrite/write-failure recovery, opening two saved Projects independently, and external sample PCM relinking remain uncovered.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 
