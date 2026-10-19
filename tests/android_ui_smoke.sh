@@ -7152,7 +7152,7 @@ TRACK_EDIT_PAN_CHANGED_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-changed-uiau
 TRACK_EDIT_PAN_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-pan-restored.png"
 TRACK_EDIT_PAN_RESTORED_XML="/tmp/mpc-groovebox-track-edit-pan-restored-uiautomator.xml"
 TRACK_EDIT_PAN_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-restored-uiautomator.xml"
-if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer pan decrease" 8; then
+if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer pan center" 8; then
   echo "ERROR: Track Edit layer PAN control did not become actionable after scrolling"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_PAN_BEFORE_REMOTE" "$TRACK_EDIT_PAN_BEFORE_XML"; then
@@ -7228,7 +7228,7 @@ fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PAN_CHANGED_PNG"; then
   echo "ERROR: Track Edit layer pan changed screenshot failed"; exit 1
 fi
-if ! tap_ui_text "$TRACK_EDIT_PAN_CHANGED_XML" "CENTER LAYER PAN"; then
+if ! tap_ui_description "$TRACK_EDIT_PAN_CHANGED_XML" "Track Edit layer pan center"; then
   echo "ERROR: Track Edit CENTER LAYER PAN control was not actionable"; exit 1
 fi
 track_edit_pan_restored=0
