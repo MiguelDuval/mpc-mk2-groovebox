@@ -539,6 +539,10 @@ jobs:
             /tmp/mpc-groovebox-step-touch-before-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-after-add.png
             /tmp/mpc-groovebox-step-touch-after-add-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-velocity-changed.png
+            /tmp/mpc-groovebox-step-touch-velocity-changed-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-velocity-restored.png
+            /tmp/mpc-groovebox-step-touch-velocity-restored-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-after-parameter.png
             /tmp/mpc-groovebox-step-touch-after-parameter-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-ratchet-focus.png

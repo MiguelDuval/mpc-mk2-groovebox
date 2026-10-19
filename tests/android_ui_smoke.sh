@@ -4043,8 +4043,137 @@ PY
     read -r step_touch_velocity_before step_touch_probability_before <<< "$step_touch_add_state"
     echo "Step Sequencer DRAW verified: PAD 01 / STEP $step_touch_target_number VEL=$step_touch_velocity_before PROB=$step_touch_probability_before."
 
-    # Force probability focus via the visible PARAM function from known VEL focus.
-    if ! tap_visible_text_early "$STEP_TOUCH_ADDED_XML" "PARAM"; then
+    # Verify the default VEL-focused Step Edit control before switching PARAM.
+    # Change only velocity through a real +/- touch, restore it, and compare all
+    # five native event fields so the next probability check starts from baseline.
+    STEP_TOUCH_VELOCITY_CHANGED_XML="/tmp/mpc-groovebox-step-touch-velocity-changed-uiautomator.xml"
+    STEP_TOUCH_VELOCITY_CHANGED_REMOTE="/sdcard/mpc-groovebox-step-touch-velocity-changed-uiautomator.xml"
+    STEP_TOUCH_VELOCITY_CHANGED_PNG="/tmp/mpc-groovebox-step-touch-velocity-changed.png"
+    STEP_TOUCH_VELOCITY_RESTORED_XML="/tmp/mpc-groovebox-step-touch-velocity-restored-uiautomator.xml"
+    STEP_TOUCH_VELOCITY_RESTORED_REMOTE="/sdcard/mpc-groovebox-step-touch-velocity-restored-uiautomator.xml"
+    STEP_TOUCH_VELOCITY_RESTORED_PNG="/tmp/mpc-groovebox-step-touch-velocity-restored.png"
+    step_touch_velocity_fields_before="$(python3 - "$STEP_TOUCH_ADDED_XML" "$step_touch_target_number" "$step_touch_velocity_before" "$step_touch_probability_before" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s, known_velocity_s, known_probability_s = sys.argv[1:]
+target = int(target_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {target} on"]) != 1:
+    raise AssertionError("Velocity focus lost selected Step event")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
+    raise AssertionError("Velocity baseline changed Step 01")
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit Velocity projection missing")
+text = info[0].attrib.get("text", "")
+if re.search(rf"\bSTEP\s+0*{target}\b", text) is None:
+    raise AssertionError(f"Velocity focus does not match Step {target}: {text!r}")
+patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b", r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b", r"\bDUR\s+(\d+)\b"]
+matches = [re.search(p, text) for p in patterns]
+if any(m is None for m in matches):
+    raise AssertionError(f"Malformed Velocity baseline: {text!r}")
+values = [int(m.group(1)) for m in matches]
+if values[0] != int(known_velocity_s) or values[1] != int(known_probability_s):
+    raise AssertionError(f"Initial DRAW values differ from native projection: {values!r}")
+if not (1 <= values[0] <= 127 and 0 <= values[1] <= 127 and 1 <= values[2] <= 8 and -960 <= values[3] <= 960 and values[4] > 0):
+    raise AssertionError(f"Velocity baseline out of range: {values!r}")
+print(*values)
+PY
+)" || { echo "ERROR: could not read complete Step Edit Velocity baseline"; cat "$STEP_TOUCH_ADDED_XML"; exit 1; }
+    read -r step_touch_velocity_value_before step_touch_velocity_probability_before step_touch_velocity_ratchet_before step_touch_velocity_nudge_before step_touch_velocity_duration_before <<< "$step_touch_velocity_fields_before"
+    if (( step_touch_velocity_value_before < 127 )); then
+      step_touch_velocity_direction="+"
+      step_touch_velocity_inverse_direction="−"
+      step_touch_velocity_expected=$((step_touch_velocity_value_before + 1))
+    else
+      step_touch_velocity_direction="−"
+      step_touch_velocity_inverse_direction="+"
+      step_touch_velocity_expected=$((step_touch_velocity_value_before - 1))
+    fi
+    if ! tap_visible_text_early "$STEP_TOUCH_ADDED_XML" "$step_touch_velocity_direction"; then
+      echo "ERROR: Step Edit Velocity +/- control was not actionable"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$STEP_TOUCH_VELOCITY_CHANGED_REMOTE" "$STEP_TOUCH_VELOCITY_CHANGED_XML"; then
+      echo "ERROR: Step Edit after-Velocity hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_VELOCITY_CHANGED_PNG"; then
+      echo "ERROR: Step Edit after-Velocity screenshot failed"; exit 1
+    fi
+    if ! python3 - "$STEP_TOUCH_VELOCITY_CHANGED_XML" "$step_touch_target_number" "$step_touch_velocity_fields_before" "$step_touch_velocity_expected" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s, before_s, expected_s = sys.argv[1:]
+target = int(target_s)
+before = list(map(int, before_s.split()))
+expected = int(expected_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {target} on"]) != 1:
+    raise AssertionError("Velocity edit lost selected Step event")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
+    raise AssertionError("Velocity edit changed Step 01")
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit projection missing after Velocity")
+text = info[0].attrib.get("text", "")
+patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b", r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b", r"\bDUR\s+(\d+)\b"]
+matches = [re.search(p, text) for p in patterns]
+if any(m is None for m in matches):
+    raise AssertionError(f"Malformed Step Edit state after Velocity: {text!r}")
+after = [int(m.group(1)) for m in matches]
+if after[0] != expected:
+    raise AssertionError(f"Velocity must change by one: {before[0]} -> {after[0]}, expected {expected}")
+if after[1:] != before[1:]:
+    raise AssertionError(f"Velocity edit modified unrelated fields: {before!r} -> {after!r}")
+print(f"Step Edit VEL field isolation passed: {before[0]} -> {after[0]}; other four fields preserved.")
+PY
+    then
+      echo "ERROR: Step Edit Velocity did not make the exact native field-only change"; cat "$STEP_TOUCH_VELOCITY_CHANGED_XML"; exit 1
+    fi
+    if ! tap_visible_text_early "$STEP_TOUCH_VELOCITY_CHANGED_XML" "$step_touch_velocity_inverse_direction"; then
+      echo "ERROR: Step Edit Velocity inverse control was not actionable"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$STEP_TOUCH_VELOCITY_RESTORED_REMOTE" "$STEP_TOUCH_VELOCITY_RESTORED_XML"; then
+      echo "ERROR: Step Edit after-Velocity-restore hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_VELOCITY_RESTORED_PNG"; then
+      echo "ERROR: Step Edit after-Velocity-restore screenshot failed"; exit 1
+    fi
+    if ! python3 - "$STEP_TOUCH_VELOCITY_RESTORED_XML" "$step_touch_target_number" "$step_touch_velocity_fields_before" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s, before_s = sys.argv[1:]
+target = int(target_s)
+before = list(map(int, before_s.split()))
+nodes = list(ET.parse(path).getroot().iter("node"))
+if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {target} on"]) != 1:
+    raise AssertionError("Velocity restore lost selected Step event")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
+    raise AssertionError("Velocity restore changed Step 01")
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit projection missing after Velocity restore")
+text = info[0].attrib.get("text", "")
+patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b", r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b", r"\bDUR\s+(\d+)\b"]
+matches = [re.search(p, text) for p in patterns]
+if any(m is None for m in matches):
+    raise AssertionError(f"Malformed Step Edit state after Velocity restore: {text!r}")
+restored = [int(m.group(1)) for m in matches]
+if restored != before:
+    raise AssertionError(f"Velocity inverse edit failed full-field restore: {before!r} -> {restored!r}")
+print(f"Step Edit VEL round trip restored all five fields exactly: {restored!r}.")
+PY
+    then
+      echo "ERROR: Step Edit Velocity inverse edit failed to restore the full native event"; cat "$STEP_TOUCH_VELOCITY_RESTORED_XML"; exit 1
+    fi
+    echo "Step Edit VELOCITY real-touch edit → exact inverse restore passed."
+
+    # Start probability acceptance from the restored VEL baseline.
+    if ! tap_visible_text_early "$STEP_TOUCH_VELOCITY_RESTORED_XML" "PARAM"; then
       echo "ERROR: Step Sequencer PARAM function could not be tapped"; exit 1
     fi
     sleep 0.2

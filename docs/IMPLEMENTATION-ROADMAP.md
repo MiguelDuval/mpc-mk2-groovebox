@@ -9,20 +9,23 @@ Older queue entries below are historical snapshots. Read the status here first, 
 - Android Build #2856 / run 39162451542 passed on exact SHA 617511efb820e96c6d9576051fa30012a3368db1: [Actions #2856](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39162451542).
 - Real Android DocumentsUI/SAF acceptance saved a v2 Project, mutated the live model, reopened it and compared the canonical domain SHA. Fixture: two non-default MIDI notes and placement project-persistence-clip-01 → sequence-1-track-1-pattern-1, start 480, length 720, source offset 120. Exact state SHA: 4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9.
 - The same run passed force-stop/relaunch → Open, SAVE AS/Open cancellation without state mutation, malformed-file rejection without replacing the active model, and placement-free runtime-valid v1 Open with zero placements and canonical-v2 state-oracle equality.
+- Reconfirmed by Android Build #2893 / run 39232129363 on exact SHA 0d0558704ed73f8c6c27c528178cc049858d2386: the complete real SAF save/open, canonical digest comparison, force-stop/relaunch, cancellation, malformed file and v1 compatibility scenarios all passed again. APK artifact 12178252131; UI evidence artifact 12178600540.
 - Earlier Build #2835 / run 39139658033 was cancelled during emulator smoke on prior SHA 450bca9aac99adc47c61d14d3abc76a77c3cf439; it was neither a failure nor a pass. Build #2856 superseded it. APK artifact 12149263768; UI evidence artifact 12150136466.
 - Remaining Project boundaries: provider overwrite/write-failure recovery, independently opening two saved Projects, and external sample PCM relinking are not covered. Physical MPC Studio MkII validation is separate and pending.
 
-### 2. Step Edit NUDGE / DURATION — VERIFIED; Grid five-field editing — ACCEPTANCE PENDING
+### 2. Project lifecycle, Grid parameters and Step Edit RAT/NUDGE/DURATION — VERIFIED / EXACT-SHA
 
-- Android Build #2858 / run 39172036811 passed on exact SHA `d8d1a25ce2d83d1b669447dcf9a2c0fbddf9161c`: [Actions #2858](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39172036811). It includes the real-touch Step Edit NUDGE/DURATION route, Grid VEL +/− isolation/restore, native/domain/unit tests, APK upload and emulator visual-evidence upload.
-- The latest code expands Grid's selected-event strip to PARAM → VEL / PROB / RAT / NUDGE / DUR, and routes each +/- control to the existing native setter. Limits follow the native contract: VEL 1–127, PROB 0–127, RAT 1–8, NUDGE −960…+960 ticks, DUR one-quarter-grid…four grids.
-- The new smoke sequence will real-touch each field, change one field at a time, compare the complete five-parameter event projection, restore it exactly, then ERASE and verify disabled empty-state controls. Dedicated before/changed/restored screenshots and accessibility hierarchies are archived for PROB, RAT, NUDGE and DUR as well as VEL.
-- This all-five-field expansion is **not verified until Android Build on its resulting exact SHA passes**. Do not infer success from #2858, whose SHA predates this expansion.
+- Android Build #2893 / run 39232129363 passed on exact SHA 0d0558704ed73f8c6c27c528178cc049858d2386: [Actions #2893](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39232129363).
+- The complete Project lifecycle ran against real Android DocumentsUI/SAF. It saved a v2 file with two non-default MIDI events and the Pattern placement identity/reference/start 480/length 720/source offset 120, mutated the live model, reopened and restored the canonical state hash 4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9, then passed force-stop/relaunch, Save As/Open cancellation, malformed-file rejection and placement-free valid v1 load.
+- Grid VEL / PROB / RAT / NUDGE / DUR each changed and restored one native field at a time, preserving the other four fields; DRAW/ERASE and empty-state controls also passed. Step Edit RAT changed 1 → 2 by real touch and inverse-restored the complete five-field event. Step Edit NUDGE and DURATION also passed real-touch field isolation/restoration.
+- The earlier 210-second audit deadline was insufficient for the expanded suite; the bounded timeout is 360 seconds. Run #2893 completed the application-side UI audit and the full acceptance suite without weakening assertions.
+- APK artifact 12178252131 (SHA-256 1c9b42a8cd0ff1e9de4a7b2685de60f41da1e59e56d318843b30c049cb2791d1); UI evidence artifact 12178600540 (SHA-256 360ade26688380e650a8c2c312bc3ced1311021a16b3e9b1fae916da92b0edb7). Physical MPC Studio MkII tests remain separate and pending.
 
-### 3. NEXT PRODUCT SLICE — follow current Grid acceptance with the next live action-catalog gap
+### 3. NEXT SLICE — STEP-005 Step Edit VELOCITY field-isolation/restore
 
-- Keep Grid Drum-only and native-authoritative. Do not claim Keygroup/Plugin/MIDI/CV piano-roll support or physical MPC Studio MkII acceptance from emulator evidence.
-- After the five-field Grid smoke is green, select the next highest-value incomplete action from the live catalog and current source/test coverage; avoid returning to completed Project persistence or already-verified Grid velocity work.
+- The current candidate extends the real Step Sequencer acceptance at the default VEL focus: +/- changes velocity by exactly one supported value, the other native PROB/RAT/NUDGE/DUR fields remain exact, and the inverse touch restores the full baseline before the existing probability route runs.
+- Require a successful Android Build on this candidate's own exact SHA before marking STEP-005 verified. Evidence paths archive changed/restored hierarchy and screenshots; no product-side duplicate state or architecture change is introduced.
+- After velocity passes, take the next bounded step from the live action catalog; no need to revisit Project persistence or Grid fields unless a new regression appears.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 

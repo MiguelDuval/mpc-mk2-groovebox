@@ -7,6 +7,7 @@
 
 - Repository: `MiguelDuval/mpc-mk2-groovebox`; working branch: `feature/mpc-one-ui-fidelity`.
 - PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains **OPEN**, base `fix/ui-shell-format-width-startup`; not merged or retargeted.
+- Latest completed exact-SHA Android Build #2893 / run 39232129363 passed on 0d0558704ed73f8c6c27c528178cc049858d2386: the full Project lifecycle, Grid five-field mutation/restoration and Step Edit RAT/NUDGE/DURATION acceptance completed. APK artifact 12178252131; UI evidence artifact 12178600540. This checkpoint's follow-up adds real-touch Step Edit VEL isolation/restoration and must receive its own exact-SHA result before STEP-005 is marked complete.
 - The implementation's user-facing Project SAVE / SAVE AS / OPEN route is present in `MainActivity.java`, using Android SAF and native serializer/loader calls. The native loader validates a candidate, stops transport/audio as needed, clears runtime sample buffers and incompatible edit history, then replaces model state. Sample PCM is external; assigned WAV data may need reloading/relinking.
 - Project SAVE / SAVE AS / OPEN lifecycle is now VERIFIED by Android Build #2856 / run 39162451542 on exact HEAD 617511efb820e96c6d9576051fa30012a3368db1 (run completed successfully; [Actions](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39162451542)). The real DocumentsUI/SAF flow restored the exact canonical domain SHA 4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9, including two non-default MIDI events and placement identity/reference/start 480/length 720/source offset 120. The same extended smoke passed force-stop/relaunch → Open, SAVE AS/Open cancellation with unchanged state SHA, malformed-load rejection without active-state mutation, and placement-free runtime-valid v1 Open with zero placements and canonical-v2 state-oracle equality.
 - Historical note: Build #2808 predates the Android Project UI route and is not proof of Project UI integration. The current acceptance is proven by Build #2856, not by the older codec-only result. APK artifact 12149263768 (9,956,909 bytes; SHA-256 ecca25dd5a02c0d8eb02fd0d19a13a11e68cb0e38558c11ec1a5ddceddd376f0) and visual-evidence artifact 12150136466 (12,168,362 bytes; SHA-256 662d8ff8a923c8f186109b90845fb02d676216d662e1017da7f221b9fe51cdf5) are unexpired.
@@ -19,11 +20,12 @@
 
 ## Current execution queue — 2026-10-19
 
-1. Project lifecycle acceptance passed on exact SHA 617511efb820e96c6d9576051fa30012a3368db1, Android Build #2856 / run 39162451542; full details and artifact identities are recorded above.
-2. Android Build #2858 / run 39172036811 passed on exact SHA d8d1a25ce2d83d1b669447dcf9a2c0fbddf9161c, verifying Step Edit NUDGE/DURATION and Grid velocity field isolation via real emulator touches.
-3. The latest feature-branch change expands Grid PARAM cycling and real-touch field isolation/restoration to VEL, PROB, RAT, NUDGE and DUR. Its exact-SHA emulator build is pending; inspect the live Action and artifacts before claiming this expanded slice verified.
+1. Project SAVE / SAVE AS / OPEN passed again on exact SHA 0d0558704ed73f8c6c27c528178cc049858d2386, Android Build #2893 / run 39232129363. Real SAF save, canonical state restoration, process restart/open, both cancellation paths, malformed-file preservation, and supported placement-free v1 all passed. State SHA: 4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9.
+2. Grid all-five-field edit/restore and DRAW/ERASE passed on that same SHA. Step Edit RAT real-touch mutation and exact inverse restore passed with the four unrelated native fields preserved. Step Edit NUDGE and DURATION passed in the same run.
+3. This checkpoint adds Step Edit VELOCITY real-touch mutation and inverse restore, verifying that PROB/RAT/NUDGE/DUR stay unchanged and the full five-field baseline returns exactly. Wait for the new candidate's own exact-SHA Actions before declaring STEP-005 done.
+4. After Step Edit VELOCITY is verified, continue with one incomplete user action from the live catalog (for example, STEP-002 step-page/bar navigation); avoid repeating completed Project/Grid scenarios absent a regression.
 
-PR #23 remains open against fix/ui-shell-format-width-startup; main must remain untouched. Physical MPC Studio MkII validation remains PENDING. Inspect the new exact-SHA Action for the expanded all-five-field Grid test before treating that addition as green.
+PR #23 remains open against fix/ui-shell-format-width-startup; main must remain untouched. Physical MPC Studio MkII validation remains PENDING.
 
 ## Completed in this session
 
