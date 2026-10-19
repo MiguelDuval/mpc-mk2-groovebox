@@ -4883,9 +4883,24 @@ if len(matches) != 1:
     raise AssertionError(f"expected one Grid viewport range label, got {matches!r}")
 match = re.fullmatch(r"(\d+)[–-](\d+)/(\d+)", matches[0])
 start, end, total = map(int, match.groups())
-if start < 1 or end - start != 15 or end > total:
-    raise AssertionError(f"invalid 16-step Grid range: {matches[0]!r}")
+if start < 1 or end < start or end - start >= 16 or end > total:
+    raise AssertionError(f"invalid Grid viewport range: {matches[0]!r}")
 print(start, end, total)
+PY
+    }
+
+    grid_event_read_projection() {
+      python3 - "$1" "$grid_edit_step" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, step_s = sys.argv[1:]
+expected_prefix = f"Grid event parameters: PAD 01, STEP {int(step_s):02d}, "
+nodes = list(ET.parse(path).getroot().iter("node"))
+found = [n.attrib.get("content-desc", "") for n in nodes
+         if n.attrib.get("content-desc", "").startswith(expected_prefix)]
+if len(found) != 1:
+    raise AssertionError(f"expected one selected event projection {expected_prefix!r}, got {found!r}")
+print(found[0])
 PY
     }
 
@@ -5345,6 +5360,53 @@ PY
     fi
     echo "Grid DRAW → native note state → ERASE → empty-state round-trip passed."
 
+    # Real touchscreen invokes the Grid function-bar zoom-in control. The app-side
+    # semantic Data Dial audit above independently verified zoom in/out restoration
+    # for both axes and the complete native-event invariance.
+    GRID_EDIT_ZOOM_PNG="/tmp/mpc-groovebox-grid-zoom-in.png"
+    GRID_EDIT_ZOOM_XML="/tmp/mpc-groovebox-grid-zoom-in-uiautomator.xml"
+    GRID_EDIT_ZOOM_REMOTE="/sdcard/mpc-groovebox-grid-zoom-in-uiautomator.xml"
+    grid_range_before_zoom="$(grid_event_read_range "$GRID_EDIT_ERASE_XML")" || {
+      echo "ERROR: Grid range unavailable before zoom-in"; exit 1;
+    }
+    grid_projection_before_zoom="$(grid_event_read_projection "$GRID_EDIT_ERASE_XML")" || {
+      echo "ERROR: Grid empty-event projection unavailable before zoom-in"; exit 1;
+    }
+    if ! tap_visible_text_early "$GRID_EDIT_ERASE_XML" "ZOOM H"; then
+      echo "ERROR: Grid ZOOM H function-bar action was not actionable"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui "$GRID_EDIT_ZOOM_REMOTE" "$GRID_EDIT_ZOOM_XML"; then
+      echo "ERROR: Grid zoom-in accessibility hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_ZOOM_PNG"; then
+      echo "ERROR: Grid zoom-in screenshot capture failed"; exit 1
+    fi
+    grid_range_after_zoom="$(grid_event_read_range "$GRID_EDIT_ZOOM_XML")" || {
+      echo "ERROR: Grid range unavailable after zoom-in"; exit 1;
+    }
+    grid_projection_after_zoom="$(grid_event_read_projection "$GRID_EDIT_ZOOM_XML")" || {
+      echo "ERROR: selected event projection unavailable after zoom-in"; exit 1;
+    }
+    if ! python3 - "$grid_range_before_zoom" "$grid_range_after_zoom" "$grid_projection_before_zoom" "$grid_projection_after_zoom" "$grid_edit_step" <<'PY'
+import sys
+before = tuple(map(int, sys.argv[1].split()))
+after = tuple(map(int, sys.argv[2].split()))
+step = int(sys.argv[5])
+before_count, after_count = before[1]-before[0]+1, after[1]-after[0]+1
+if after[2] != before[2] or not 1 <= after_count < before_count:
+    raise AssertionError(f"Grid ZOOM H must narrow only the viewport window: {before!r} -> {after!r}")
+if not after[0] <= step <= after[1]:
+    raise AssertionError(f"Grid zoom lost the selected step {step}: viewport {after!r}")
+if sys.argv[3] != sys.argv[4]:
+    raise AssertionError(f"Grid zoom mutated the selected event: {sys.argv[3]!r} -> {sys.argv[4]!r}")
+print(f"Grid ZOOM H touchscreen action narrowed the viewport {before!r} -> {after!r} and preserved selected event.")
+PY
+    then
+      echo "ERROR: Grid zoom-in changed musical state or failed to narrow the viewport"; exit 1
+    fi
+    echo "Grid ZOOM H touch acceptance passed: visible steps narrowed and selected event stayed empty and unchanged."
+
     if ! adb_bounded 10 shell run-as "$PACKAGE" \
         touch cache/mpc-arrange-grid-focus-capture-release; then
       echo "ERROR: could not release app-side Arrangement-to-Grid capture checkpoint"
@@ -5534,6 +5596,10 @@ PY
     fi
     if ! grep -Fq -- "UI_GRID_HARDWARE_PARAMETER_ACCEPTANCE_COMPLETE:" <<<"$log_snapshot"; then
       echo "ERROR: UI audit completed without Grid Data Dial/Shift parameter acceptance"
+      exit 1
+    fi
+    if ! grep -Fq -- "UI_GRID_ZOOM_ACCEPTANCE_COMPLETE:" <<<"$log_snapshot"; then
+      echo "ERROR: UI audit completed without Grid horizontal/vertical zoom acceptance"
       exit 1
     fi
     if [ "$arrangement_back_capture_done" -ne 1 ] \

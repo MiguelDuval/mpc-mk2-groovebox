@@ -14850,12 +14850,52 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int[] finalState = nativeSequenceGetStepParameters(pad, 0, gridTicks);
         final boolean completeEventRestored = Arrays.equals(baseline, finalState);
 
+        final int originalGridStartStep = sequenceGridStartStep;
+        final int originalGridVisibleSteps = sequenceGridVisibleSteps;
+        final int originalGridStartPad = sequenceGridStartPad;
+        final int originalGridVisiblePads = sequenceGridVisiblePads;
+
+        onHardwareAction(MpcStudioMk2SemanticActions.ZOOM_CONTEXT, 0, 0, 0);
+        onHardwareAction(MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA, 1, 0, 0);
+        final boolean horizontalZoomIn = sequenceGridVisibleSteps < originalGridVisibleSteps;
+        final boolean horizontalEventUnchanged = Arrays.equals(
+                baseline, nativeSequenceGetStepParameters(pad, 0, gridTicks));
+        onHardwareAction(MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA, -1, 0, 0);
+        final boolean horizontalZoomRestored =
+                sequenceGridStartStep == originalGridStartStep
+                        && sequenceGridVisibleSteps == originalGridVisibleSteps;
+        final boolean horizontalZoomEventUnchanged = Arrays.equals(
+                baseline, nativeSequenceGetStepParameters(pad, 0, gridTicks));
+
+        onHardwareAction(MpcStudioMk2SemanticActions.ZOOM_CONTEXT, 1, 0, 0);
+        onHardwareAction(MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA, 1, 0, 0);
+        final boolean verticalZoomIn = sequenceGridVisiblePads < originalGridVisiblePads;
+        final boolean verticalEventUnchanged = Arrays.equals(
+                baseline, nativeSequenceGetStepParameters(pad, 0, gridTicks));
+        onHardwareAction(MpcStudioMk2SemanticActions.ADJUST_VALUE_DELTA, -1, 0, 0);
+        final boolean verticalZoomRestored =
+                sequenceGridStartPad == originalGridStartPad
+                        && sequenceGridVisiblePads == originalGridVisiblePads;
+        final boolean verticalZoomEventUnchanged = Arrays.equals(
+                baseline, nativeSequenceGetStepParameters(pad, 0, gridTicks));
+
+        final boolean zoomEventUnchanged = horizontalEventUnchanged
+                && horizontalZoomEventUnchanged
+                && verticalEventUnchanged
+                && verticalZoomEventUnchanged;
         showSequenceStepPage();
         if (!parameterBoundsClamp || !probabilityFocus || !probabilityFieldIsolated
                 || !probabilityRestoredExactly || !nudgeFocus
-                || !nudgeFieldIsolated || !completeEventRestored) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Grid hardware parameter path"
+                || !nudgeFieldIsolated || !completeEventRestored
+                || !horizontalZoomIn || !horizontalZoomRestored
+                || !verticalZoomIn || !verticalZoomRestored || !zoomEventUnchanged) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Grid hardware parameter/zoom path"
                     + " | parameterBoundsClamp=" + parameterBoundsClamp
+                    + " | horizontalZoomIn=" + horizontalZoomIn
+                    + " | horizontalZoomRestored=" + horizontalZoomRestored
+                    + " | verticalZoomIn=" + verticalZoomIn
+                    + " | verticalZoomRestored=" + verticalZoomRestored
+                    + " | zoomEventUnchanged=" + zoomEventUnchanged
                     + " | probabilityFocus=" + probabilityFocus
                     + " | probabilityFieldIsolated=" + probabilityFieldIsolated
                     + " | probabilityRestoredExactly=" + probabilityRestoredExactly
@@ -14873,6 +14913,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 + " | fineNudgeDeltaIsolated=true"
                 + " | allParameterBoundsClamp=true"
                 + " | completeEventRestored=true");
+        Log.i(TAG, "UI_GRID_ZOOM_ACCEPTANCE_COMPLETE:"
+                + " horizontalInOutRestored=true"
+                + " | verticalInOutRestored=true"
+                + " | completeEventUnchanged=true");
         return true;
     }
 

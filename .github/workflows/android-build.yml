@@ -693,6 +693,8 @@ jobs:
             /tmp/mpc-groovebox-grid-range-swipe-restored-uiautomator.xml
             /tmp/mpc-groovebox-grid-edit-after-erase.png
             /tmp/mpc-groovebox-grid-edit-after-erase-uiautomator.xml
+            /tmp/mpc-groovebox-grid-zoom-in.png
+            /tmp/mpc-groovebox-grid-zoom-in-uiautomator.xml
             /tmp/mpc-groovebox-arrange-back.png
             /tmp/mpc-groovebox-arrange-back-uiautomator.xml
             /tmp/mpc-groovebox-arrange-grid-reentry.png
