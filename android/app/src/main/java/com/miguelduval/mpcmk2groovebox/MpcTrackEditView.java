@@ -488,12 +488,24 @@ final class MpcTrackEditView extends LinearLayout {
         body.addView(sectionLabel("FILTER"));
         body.addView(infoField("CUTOFF", formatCutoff(snapshot.filterCutoff)));
         LinearLayout filter = row();
-        filter.addView(parameterButton("−500", v -> listener.onFilterDelta(-500)));
-        filter.addView(parameterButton("+500", v -> listener.onFilterDelta(500)));
-        filter.addView(parameterButton("3K", v -> listener.onFilterSet(3000)));
-        filter.addView(parameterButton("6K", v -> listener.onFilterSet(6000)));
-        filter.addView(parameterButton("12K", v -> listener.onFilterSet(12000)));
-        filter.addView(parameterButton("20K", v -> listener.onFilterSet(20000)));
+        Button cutoffDecrease = parameterButton("−500", v -> listener.onFilterDelta(-500));
+        cutoffDecrease.setContentDescription("Track Edit filter cutoff decrease");
+        filter.addView(cutoffDecrease);
+        Button cutoffIncrease = parameterButton("+500", v -> listener.onFilterDelta(500));
+        cutoffIncrease.setContentDescription("Track Edit filter cutoff increase");
+        filter.addView(cutoffIncrease);
+        Button cutoff3k = parameterButton("3K", v -> listener.onFilterSet(3000));
+        cutoff3k.setContentDescription("Track Edit filter cutoff preset 3000 Hz");
+        filter.addView(cutoff3k);
+        Button cutoff6k = parameterButton("6K", v -> listener.onFilterSet(6000));
+        cutoff6k.setContentDescription("Track Edit filter cutoff preset 6000 Hz");
+        filter.addView(cutoff6k);
+        Button cutoff12k = parameterButton("12K", v -> listener.onFilterSet(12000));
+        cutoff12k.setContentDescription("Track Edit filter cutoff preset 12000 Hz");
+        filter.addView(cutoff12k);
+        Button cutoff20k = parameterButton("20K", v -> listener.onFilterSet(20000));
+        cutoff20k.setContentDescription("Track Edit filter cutoff preset 20000 Hz");
+        filter.addView(cutoff20k);
         body.addView(filter, height(42));
     }
 
