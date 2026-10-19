@@ -7004,6 +7004,9 @@ TRACK_EDIT_GAIN_CHANGED_REMOTE="/sdcard/mpc-groovebox-track-edit-gain-changed-ui
 TRACK_EDIT_GAIN_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-gain-restored.png"
 TRACK_EDIT_GAIN_RESTORED_XML="/tmp/mpc-groovebox-track-edit-gain-restored-uiautomator.xml"
 TRACK_EDIT_GAIN_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-gain-restored-uiautomator.xml"
+if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer gain increase" 8; then
+  echo "ERROR: Track Edit layer gain control did not become actionable after scrolling"; exit 1
+fi
 if ! dump_device_ui "$TRACK_EDIT_GAIN_BEFORE_REMOTE" "$TRACK_EDIT_GAIN_BEFORE_XML"; then
   echo "ERROR: Track Edit layer gain baseline hierarchy failed"; exit 1
 fi
@@ -7044,7 +7047,7 @@ import sys
 import xml.etree.ElementTree as ET
 before, after, expected = map(float, sys.argv[1:4])
 before_path, after_path = sys.argv[4:]
-if abs(after - expected) > 1.1:
+if abs(after - expected) > 0.1:
     raise SystemExit(f"one layer GAIN touch must change 10 percentage points: before={before}, after={after}, expected={expected}")
 def other_values(path):
     nodes = list(ET.parse(path).getroot().iter("node"))
