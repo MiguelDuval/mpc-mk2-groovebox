@@ -10080,7 +10080,7 @@ fi
 if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
   echo "ERROR: could not capture Main before Sample Edit"; exit 1
 fi
-if ! tap_ui_description "$DUMP" "SAMPLE"; then
+if ! tap_ui_text "$DUMP" "SAMPLE"; then
   echo "ERROR: Main's Sample Edit action was not actionable after assignment"; exit 1
 fi
 if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "Sample waveform editor" 20; then
@@ -10122,7 +10122,7 @@ if (( samp_cursor_start != 0 || samp_cursor_end != SAMP_CURSOR_EXPECTED_TOTAL ||
   echo "Expected=0 $SAMP_CURSOR_EXPECTED_TOTAL $SAMP_CURSOR_EXPECTED_TOTAL -1; actual=$samp_cursor_state"; exit 1
 fi
 
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "S +1K"; then
+if ! tap_ui_text "$SAMP_CURSOR_BEFORE_XML" "S +1K"; then
   echo "ERROR: Start +1K real-touch control was not actionable"; exit 1
 fi
 samp_cursor_start_changed=0
@@ -10139,7 +10139,7 @@ for attempt in {1..10}; do
 done
 if [[ "$samp_cursor_start_changed" != "1" ]]; then echo "ERROR: Start +1K failed to change only the region start; state=$samp_cursor_state"; exit 1; fi
 
-if ! tap_ui_description "$SAMP_CURSOR_REGION_XML" "E −1K"; then
+if ! tap_ui_text "$SAMP_CURSOR_REGION_XML" "E −1K"; then
   echo "ERROR: End −1K real-touch control was not actionable"; exit 1
 fi
 samp_cursor_region_changed=0
@@ -10158,7 +10158,7 @@ if [[ "$samp_cursor_region_changed" != "1" ]]; then echo "ERROR: End −1K faile
 if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CURSOR_REGION_PNG"; then echo "ERROR: could not capture adjusted-region screenshot"; exit 1; fi
 if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_REGION_XML"; then echo "ERROR: could not capture adjusted-region hierarchy"; exit 1; fi
 
-if ! tap_ui_description "$SAMP_CURSOR_REGION_XML" "PLAY"; then echo "ERROR: Sample Edit PLAY button was not actionable"; exit 1; fi
+if ! tap_ui_text "$SAMP_CURSOR_REGION_XML" "PLAY"; then echo "ERROR: Sample Edit PLAY button was not actionable"; exit 1; fi
 samp_cursor_seen=0
 samp_cursor_progressed=0
 samp_cursor_first=-1
