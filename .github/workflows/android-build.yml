@@ -799,5 +799,15 @@ jobs:
             /tmp/mpc-groovebox-track-edit-envelope-release-changed-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-envelope-release-restored.png
             /tmp/mpc-groovebox-track-edit-envelope-release-restored-uiautomator.xml
+            /tmp/mpc-groovebox-sample-playback-cursor-before.png
+            /tmp/mpc-groovebox-sample-playback-cursor-before-uiautomator.xml
+            /tmp/mpc-groovebox-sample-playback-cursor-region-changed.png
+            /tmp/mpc-groovebox-sample-playback-cursor-region-changed-uiautomator.xml
+            /tmp/mpc-groovebox-sample-playback-cursor-during.png
+            /tmp/mpc-groovebox-sample-playback-cursor-during-uiautomator.xml
+            /tmp/mpc-groovebox-sample-playback-cursor-progressed.png
+            /tmp/mpc-groovebox-sample-playback-cursor-progressed-uiautomator.xml
+            /tmp/mpc-groovebox-sample-playback-cursor-stopped.png
+            /tmp/mpc-groovebox-sample-playback-cursor-stopped-uiautomator.xml
           if-no-files-found: warn
           archive: true
