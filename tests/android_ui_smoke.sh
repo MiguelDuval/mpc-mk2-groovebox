@@ -7105,6 +7105,102 @@ if [[ "$track_edit_gain_final" != "$track_edit_gain_before" \
 fi
 echo "Track Edit layer GAIN real-touch field isolation passed: $track_edit_gain_before% -> $track_edit_gain_expected% -> $track_edit_gain_final%; TUNE/PAN preserved."
 
+# EDIT-005: set a real sample-layer pan value, then restore the fixture's original
+# centered pan while proving that GAIN and TUNE remain untouched.
+echo "Running Track Edit sample-layer PAN field-isolation → center restore runtime test..."
+TRACK_EDIT_PAN_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-pan-changed.png"
+TRACK_EDIT_PAN_CHANGED_XML="/tmp/mpc-groovebox-track-edit-pan-changed-uiautomator.xml"
+TRACK_EDIT_PAN_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-changed-uiautomator.xml"
+TRACK_EDIT_PAN_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-pan-restored.png"
+TRACK_EDIT_PAN_RESTORED_XML="/tmp/mpc-groovebox-track-edit-pan-restored-uiautomator.xml"
+TRACK_EDIT_PAN_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-restored-uiautomator.xml"
+
+track_edit_pan_before="$(read_track_edit_pan_value "$TRACK_EDIT_GAIN_RESTORED_XML")" || {
+  echo "ERROR: initial Track Edit layer pan could not be read"; exit 1;
+}
+track_edit_pan_gain_before="$(read_track_edit_gain_value "$TRACK_EDIT_GAIN_RESTORED_XML")" || {
+  echo "ERROR: GAIN baseline missing before PAN acceptance"; exit 1;
+}
+track_edit_pan_tuning_before="$(read_track_edit_tuning_value "$TRACK_EDIT_GAIN_RESTORED_XML")" || {
+  echo "ERROR: TUNE baseline missing before PAN acceptance"; exit 1;
+}
+if [[ "$track_edit_pan_before" != "PAN C" ]]; then
+  echo "ERROR: PAN acceptance fixture must begin centered so its inverse touch can restore exact state"
+  echo "Initial layer pan=$track_edit_pan_before"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_GAIN_RESTORED_XML" "Track Edit layer pan decrease"; then
+  echo "ERROR: Track Edit layer PAN-left control was not actionable"; exit 1
+fi
+track_edit_pan_changed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_PAN_REMOTE" "$TRACK_EDIT_PAN_CHANGED_XML"; then
+    echo "ERROR: Track Edit changed PAN hierarchy capture failed"; exit 1
+  fi
+  track_edit_pan_current="$(read_track_edit_pan_value "$TRACK_EDIT_PAN_CHANGED_XML" 2>/dev/null || true)"
+  if [[ "$track_edit_pan_current" == "PAN L100" ]]; then
+    track_edit_pan_changed=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_pan_changed" != "1" ]]; then
+  echo "ERROR: Track Edit PAN-left touch did not set full-left pan"
+  echo "Before=$track_edit_pan_before expected=PAN L100 actual=$track_edit_pan_current"; exit 1
+fi
+track_edit_pan_gain_changed="$(read_track_edit_gain_value "$TRACK_EDIT_PAN_CHANGED_XML")" || {
+  echo "ERROR: GAIN projection missing after PAN edit"; exit 1;
+}
+track_edit_pan_tuning_changed="$(read_track_edit_tuning_value "$TRACK_EDIT_PAN_CHANGED_XML")" || {
+  echo "ERROR: TUNE projection missing after PAN edit"; exit 1;
+}
+if [[ "$track_edit_pan_gain_changed" != "$track_edit_pan_gain_before" \
+    || "$track_edit_pan_tuning_changed" != "$track_edit_pan_tuning_before" ]]; then
+  echo "ERROR: sample-layer PAN edit modified unrelated GAIN/TUNE fields"
+  echo "Gain: $track_edit_pan_gain_before -> $track_edit_pan_gain_changed"
+  echo "Tune: $track_edit_pan_tuning_before -> $track_edit_pan_tuning_changed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PAN_CHANGED_PNG"; then
+  echo "ERROR: Track Edit changed PAN screenshot capture failed"; exit 1
+fi
+if ! tap_ui_text "$TRACK_EDIT_PAN_CHANGED_XML" "CENTER LAYER PAN"; then
+  echo "ERROR: Track Edit CENTER LAYER PAN control was not actionable"; exit 1
+fi
+track_edit_pan_restored=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_PAN_REMOTE" "$TRACK_EDIT_PAN_CHANGED_XML"; then
+    echo "ERROR: Track Edit PAN restoration hierarchy capture failed"; exit 1
+  fi
+  track_edit_pan_current="$(read_track_edit_pan_value "$TRACK_EDIT_PAN_CHANGED_XML" 2>/dev/null || true)"
+  if [[ "$track_edit_pan_current" == "$track_edit_pan_before" ]]; then
+    track_edit_pan_restored=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_pan_restored" != "1" ]]; then
+  echo "ERROR: Track Edit center-pan touch did not restore the original pan"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_PAN_RESTORED_REMOTE" "$TRACK_EDIT_PAN_RESTORED_XML"; then
+  echo "ERROR: Track Edit restored PAN hierarchy capture failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PAN_RESTORED_PNG"; then
+  echo "ERROR: Track Edit restored PAN screenshot capture failed"; exit 1
+fi
+track_edit_pan_final="$(read_track_edit_pan_value "$TRACK_EDIT_PAN_RESTORED_XML")" || {
+  echo "ERROR: restored PAN value could not be read"; exit 1;
+}
+track_edit_pan_gain_final="$(read_track_edit_gain_value "$TRACK_EDIT_PAN_RESTORED_XML")" || {
+  echo "ERROR: GAIN projection missing after PAN restore"; exit 1;
+}
+track_edit_pan_tuning_final="$(read_track_edit_tuning_value "$TRACK_EDIT_PAN_RESTORED_XML")" || {
+  echo "ERROR: TUNE projection missing after PAN restore"; exit 1;
+}
+if [[ "$track_edit_pan_final" != "$track_edit_pan_before" \
+    || "$track_edit_pan_gain_final" != "$track_edit_pan_gain_before" \
+    || "$track_edit_pan_tuning_final" != "$track_edit_pan_tuning_before" ]]; then
+  echo "ERROR: PAN inverse edit failed to restore original PAN/GAIN/TUNE state"
+  echo "PAN: $track_edit_pan_before -> $track_edit_pan_final; GAIN: $track_edit_pan_gain_before -> $track_edit_pan_gain_final; TUNE: $track_edit_pan_tuning_before -> $track_edit_pan_tuning_final"; exit 1
+fi
+echo "Track Edit layer PAN real-touch field isolation passed: PAN C → PAN L100 → PAN C; GAIN/TUNE preserved."
+
 for evidence in \
   "$TRACK_EDIT_CONTEXT_BEFORE_XML" "$TRACK_EDIT_CONTEXT_REOPENED_XML" \
   "$TRACK_EDIT_BEFORE_PNG" "$TRACK_EDIT_BEFORE_XML" \
@@ -7112,12 +7208,14 @@ for evidence in \
   "$TRACK_EDIT_REOPENED_PNG" "$TRACK_EDIT_REOPENED_XML" \
   "$TRACK_EDIT_RESTORED_PNG" "$TRACK_EDIT_RESTORED_XML" \
   "$TRACK_EDIT_GAIN_CHANGED_PNG" "$TRACK_EDIT_GAIN_CHANGED_XML" \
-  "$TRACK_EDIT_GAIN_RESTORED_PNG" "$TRACK_EDIT_GAIN_RESTORED_XML"; do
+  "$TRACK_EDIT_GAIN_RESTORED_PNG" "$TRACK_EDIT_GAIN_RESTORED_XML" \
+  "$TRACK_EDIT_PAN_CHANGED_PNG" "$TRACK_EDIT_PAN_CHANGED_XML" \
+  "$TRACK_EDIT_PAN_RESTORED_PNG" "$TRACK_EDIT_PAN_RESTORED_XML"; do
   if ! test -s "$evidence"; then
     echo "ERROR: Track Edit runtime evidence missing/empty: $evidence"; exit 1
   fi
 done
-if ! tap_ui_description "$TRACK_EDIT_GAIN_RESTORED_XML" "Track Edit back"; then
+if ! tap_ui_description "$TRACK_EDIT_PAN_RESTORED_XML" "Track Edit back"; then
   echo "ERROR: Track Edit BACK could not return to Main after restoring tuning"; exit 1
 fi
 if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "$track_edit_return_description" 25; then
@@ -7125,7 +7223,7 @@ if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "$track_edit_return_descript
   cat "$DUMP" || true
   exit 1
 fi
-echo "Track Edit layer tuning persistence/restore and GAIN field-isolation/restore passed."
+echo "Track Edit layer tuning persistence/restore plus GAIN/PAN field-isolation and inverse restoration passed."
 
 
 # The previous smoke ends with the Browser rail highlighted while the workspace
