@@ -7818,6 +7818,239 @@ if [[ "$track_edit_velocity_reentry_gain" != "$track_edit_pan_gain_before" \
 fi
 echo "Track Edit velocity MIN/MAX round trips restored exact bounds and preserved GAIN/TUNE/PAN."
 
+# EDIT-009: exercise one amp-envelope parameter and the filter cutoff through
+# semantic UI controls; verify field isolation and inverse restoration from native-backed values.
+echo "Opening Track Edit AMP ENV for envelope/filter real-touch acceptance..."
+TRACK_EDIT_ENV_BASELINE_PNG="/tmp/mpc-groovebox-track-edit-envelope-filter-before.png"
+TRACK_EDIT_ENV_BASELINE_XML="/tmp/mpc-groovebox-track-edit-envelope-filter-before-uiautomator.xml"
+TRACK_EDIT_ENV_REMOTE="/sdcard/mpc-groovebox-track-edit-envelope-filter-uiautomator.xml"
+TRACK_EDIT_ENV_ATTACK_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-envelope-attack-changed.png"
+TRACK_EDIT_ENV_ATTACK_CHANGED_XML="/tmp/mpc-groovebox-track-edit-envelope-attack-changed-uiautomator.xml"
+TRACK_EDIT_ENV_ATTACK_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-envelope-attack-restored.png"
+TRACK_EDIT_ENV_ATTACK_RESTORED_XML="/tmp/mpc-groovebox-track-edit-envelope-attack-restored-uiautomator.xml"
+TRACK_EDIT_ENV_ATTACK_CHECK_XML="/tmp/mpc-groovebox-track-edit-envelope-attack-check-uiautomator.xml"
+TRACK_EDIT_FILTER_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-filter-cutoff-changed.png"
+TRACK_EDIT_FILTER_CHANGED_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-changed-uiautomator.xml"
+TRACK_EDIT_FILTER_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-filter-cutoff-restored.png"
+TRACK_EDIT_FILTER_RESTORED_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-restored-uiautomator.xml"
+TRACK_EDIT_FILTER_CHECK_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-check-uiautomator.xml"
+
+if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Envelopes tab"; then
+  echo "ERROR: Track Edit AMP ENV tab could not be opened"; exit 1
+fi
+if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit envelope attack value" 15; then
+  echo "ERROR: Track Edit envelope Attack value is not exposed"; exit 1
+fi
+if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit cutoff" 15; then
+  echo "ERROR: Track Edit filter cutoff value is not exposed"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML"; then
+  echo "ERROR: Track Edit AMP ENV baseline hierarchy capture failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_ENV_BASELINE_PNG"; then
+  echo "ERROR: Track Edit AMP ENV baseline screenshot capture failed"; exit 1
+fi
+
+read_track_edit_envelope_state() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+specs = (
+    ("attack", re.compile(r"([0-9]+(?:\.[0-9]+)?)\s*ms\b")),
+    ("decay", re.compile(r"([0-9]+(?:\.[0-9]+)?)\s*ms\b")),
+    ("sustain", re.compile(r"([0-9]+(?:\.[0-9]+)?)\s*%")),
+    ("release", re.compile(r"([0-9]+(?:\.[0-9]+)?)\s*ms\b")),
+)
+values = []
+for name, pattern in specs:
+    description = "Track Edit envelope " + name + " value"
+    found = [n for n in root.iter("node")
+             if n.attrib.get("content-desc", "") == description]
+    if len(found) != 1:
+        raise SystemExit(f"expected one {description}, found {len(found)}")
+    value_text = found[0].attrib.get("text", "")
+    match = pattern.search(value_text)
+    if match is None:
+        raise SystemExit(f"could not parse {description} from {value_text!r}")
+    values.append(int(round(float(match.group(1)))))
+if not (0 <= values[0] <= 2000 and 0 <= values[1] <= 2000
+        and 0 <= values[2] <= 100 and 0 <= values[3] <= 2000):
+    raise SystemExit(f"envelope value outside supported bounds: {values!r}")
+print(" ".join(map(str, values)))
+PY
+}
+
+read_track_edit_filter_cutoff_hz() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+found = [n for n in root.iter("node")
+         if n.attrib.get("content-desc", "") == "Track Edit cutoff"]
+if len(found) != 1:
+    raise SystemExit(f"expected one Track Edit cutoff field, found {len(found)}")
+value_text = found[0].attrib.get("text", "")
+khz = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*kHz\b", value_text, re.I)
+if khz:
+    value = int(round(float(khz.group(1)) * 1000.0))
+else:
+    hz = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*Hz\b", value_text, re.I)
+    if hz is None:
+        raise SystemExit(f"could not parse filter cutoff from {value_text!r}")
+    value = int(round(float(hz.group(1))))
+if not 20 <= value <= 20000:
+    raise SystemExit(f"filter cutoff outside supported bounds: {value}")
+print(value)
+PY
+}
+
+track_edit_env_before="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_BASELINE_XML")" || {
+  echo "ERROR: initial Track Edit envelope state could not be read"; exit 1;
+}
+read -r track_edit_env_attack_before track_edit_env_decay_before track_edit_env_sustain_before track_edit_env_release_before <<< "$track_edit_env_before"
+if (( track_edit_env_attack_before < 1900 )); then
+  track_edit_env_attack_action="Track Edit envelope attack increase"
+  track_edit_env_attack_inverse="Track Edit envelope attack decrease"
+  track_edit_env_attack_expected=$((track_edit_env_attack_before + 100))
+elif (( track_edit_env_attack_before >= 100 )); then
+  track_edit_env_attack_action="Track Edit envelope attack decrease"
+  track_edit_env_attack_inverse="Track Edit envelope attack increase"
+  track_edit_env_attack_expected=$((track_edit_env_attack_before - 100))
+else
+  echo "ERROR: AMP ENV Attack has no safe adjacent 100 ms value to exercise"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_ENV_BASELINE_XML" "$track_edit_env_attack_action"; then
+  echo "ERROR: Track Edit AMP ENV Attack control was not actionable"; exit 1
+fi
+track_edit_env_attack_changed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML"; then
+    echo "ERROR: Track Edit changed Attack hierarchy capture failed"; exit 1
+  fi
+  track_edit_env_current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML" 2>/dev/null || true)"
+  if [[ -n "$track_edit_env_current" ]]; then
+    read -r track_edit_env_attack_current track_edit_env_decay_current track_edit_env_sustain_current track_edit_env_release_current <<< "$track_edit_env_current"
+    if (( track_edit_env_attack_current == track_edit_env_attack_expected \
+        && track_edit_env_decay_current == track_edit_env_decay_before \
+        && track_edit_env_sustain_current == track_edit_env_sustain_before \
+        && track_edit_env_release_current == track_edit_env_release_before )); then
+      track_edit_env_attack_changed=1; break
+    fi
+  fi
+  sleep 1
+done
+if [[ "$track_edit_env_attack_changed" != "1" ]]; then
+  echo "ERROR: Attack edit changed an unexpected envelope field or did not reach its adjacent value"
+  echo "Before=$track_edit_env_before expected Attack=$track_edit_env_attack_expected actual=$track_edit_env_current"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_ENV_ATTACK_CHANGED_PNG"; then
+  echo "ERROR: Track Edit changed Attack screenshot capture failed"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML" "$track_edit_env_attack_inverse"; then
+  echo "ERROR: Track Edit AMP ENV Attack inverse control was not actionable"; exit 1
+fi
+track_edit_env_attack_restored=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_ATTACK_CHECK_XML"; then
+    echo "ERROR: Track Edit Attack restoration hierarchy capture failed"; exit 1
+  fi
+  track_edit_env_current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_ATTACK_CHECK_XML" 2>/dev/null || true)"
+  if [[ "$track_edit_env_current" == "$track_edit_env_before" ]]; then
+    track_edit_env_attack_restored=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_env_attack_restored" != "1" ]]; then
+  echo "ERROR: Attack inverse touch did not restore the exact original envelope"
+  echo "Before=$track_edit_env_before actual=$track_edit_env_current"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML"; then
+  echo "ERROR: restored Attack hierarchy capture failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_ENV_ATTACK_RESTORED_PNG"; then
+  echo "ERROR: restored Attack screenshot capture failed"; exit 1
+fi
+echo "Track Edit AMP ENV Attack real-touch field isolation and exact restore passed: $track_edit_env_before."
+
+track_edit_filter_before="$(read_track_edit_filter_cutoff_hz "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML")" || {
+  echo "ERROR: initial Track Edit filter cutoff could not be read"; exit 1;
+}
+track_edit_filter_envelope_before="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML")" || {
+  echo "ERROR: envelope state after Attack restore could not be read"; exit 1;
+}
+if [[ "$track_edit_filter_envelope_before" != "$track_edit_env_before" ]]; then
+  echo "ERROR: Attack inverse touch left a non-baseline envelope state"; exit 1
+fi
+if (( track_edit_filter_before <= 19500 )); then
+  track_edit_filter_action="Track Edit filter cutoff increase"
+  track_edit_filter_inverse="Track Edit filter cutoff decrease"
+  track_edit_filter_expected=$((track_edit_filter_before + 500))
+elif (( track_edit_filter_before >= 520 )); then
+  track_edit_filter_action="Track Edit filter cutoff decrease"
+  track_edit_filter_inverse="Track Edit filter cutoff increase"
+  track_edit_filter_expected=$((track_edit_filter_before - 500))
+else
+  echo "ERROR: filter cutoff has no safe adjacent 500 Hz value to exercise"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML" "$track_edit_filter_action"; then
+  echo "ERROR: Track Edit filter cutoff control was not actionable"; exit 1
+fi
+track_edit_filter_changed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_FILTER_CHANGED_XML"; then
+    echo "ERROR: Track Edit changed filter hierarchy capture failed"; exit 1
+  fi
+  track_edit_filter_current="$(read_track_edit_filter_cutoff_hz "$TRACK_EDIT_FILTER_CHANGED_XML" 2>/dev/null || true)"
+  track_edit_filter_envelope_current="$(read_track_edit_envelope_state "$TRACK_EDIT_FILTER_CHANGED_XML" 2>/dev/null || true)"
+  if [[ -n "$track_edit_filter_current" && -n "$track_edit_filter_envelope_current" ]]; then
+    if (( track_edit_filter_current == track_edit_filter_expected )) \
+        && [[ "$track_edit_filter_envelope_current" == "$track_edit_env_before" ]]; then
+      track_edit_filter_changed=1; break
+    fi
+  fi
+  sleep 1
+done
+if [[ "$track_edit_filter_changed" != "1" ]]; then
+  echo "ERROR: filter cutoff edit failed to change only cutoff by 500 Hz"
+  echo "Before=$track_edit_filter_before expected=$track_edit_filter_expected actual=$track_edit_filter_current; envelope=$track_edit_filter_envelope_current"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_FILTER_CHANGED_PNG"; then
+  echo "ERROR: Track Edit changed filter screenshot capture failed"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_FILTER_CHANGED_XML" "$track_edit_filter_inverse"; then
+  echo "ERROR: Track Edit filter cutoff inverse control was not actionable"; exit 1
+fi
+track_edit_filter_restored=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_FILTER_CHECK_XML"; then
+    echo "ERROR: Track Edit filter restoration hierarchy capture failed"; exit 1
+  fi
+  track_edit_filter_current="$(read_track_edit_filter_cutoff_hz "$TRACK_EDIT_FILTER_CHECK_XML" 2>/dev/null || true)"
+  track_edit_filter_envelope_current="$(read_track_edit_envelope_state "$TRACK_EDIT_FILTER_CHECK_XML" 2>/dev/null || true)"
+  if [[ "$track_edit_filter_current" == "$track_edit_filter_before" \
+      && "$track_edit_filter_envelope_current" == "$track_edit_env_before" ]]; then
+    track_edit_filter_restored=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_filter_restored" != "1" ]]; then
+  echo "ERROR: filter inverse touch did not restore the exact cutoff/envelope state"
+  echo "Before=$track_edit_filter_before actual=$track_edit_filter_current; envelope=$track_edit_filter_envelope_current"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_FILTER_RESTORED_XML"; then
+  echo "ERROR: restored filter hierarchy capture failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_FILTER_RESTORED_PNG"; then
+  echo "ERROR: restored filter screenshot capture failed"; exit 1
+fi
+echo "Track Edit filter cutoff real-touch field isolation and exact restore passed: $track_edit_filter_before Hz; AMP ENV preserved."
+echo "Track Edit EDIT-009 AMP ENV/filter acceptance passed with inverse-restored state."
+
 for evidence in \
   "$TRACK_EDIT_CONTEXT_BEFORE_XML" "$TRACK_EDIT_CONTEXT_REOPENED_XML" \
   "$TRACK_EDIT_BEFORE_PNG" "$TRACK_EDIT_BEFORE_XML" \
@@ -7832,7 +8065,12 @@ for evidence in \
   "$TRACK_EDIT_VELOCITY_MAX_CHANGED_PNG" "$TRACK_EDIT_VELOCITY_MAX_CHANGED_XML" \
   "$TRACK_EDIT_VELOCITY_MAX_RESTORED_PNG" "$TRACK_EDIT_VELOCITY_MAX_RESTORED_XML" \
   "$TRACK_EDIT_VELOCITY_MIN_CHANGED_PNG" "$TRACK_EDIT_VELOCITY_MIN_CHANGED_XML" \
-  "$TRACK_EDIT_VELOCITY_MIN_RESTORED_PNG" "$TRACK_EDIT_VELOCITY_MIN_RESTORED_XML"; do
+  "$TRACK_EDIT_VELOCITY_MIN_RESTORED_PNG" "$TRACK_EDIT_VELOCITY_MIN_RESTORED_XML" \
+  "$TRACK_EDIT_ENV_BASELINE_PNG" "$TRACK_EDIT_ENV_BASELINE_XML" \
+  "$TRACK_EDIT_ENV_ATTACK_CHANGED_PNG" "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML" \
+  "$TRACK_EDIT_ENV_ATTACK_RESTORED_PNG" "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML" \
+  "$TRACK_EDIT_FILTER_CHANGED_PNG" "$TRACK_EDIT_FILTER_CHANGED_XML" \
+  "$TRACK_EDIT_FILTER_RESTORED_PNG" "$TRACK_EDIT_FILTER_RESTORED_XML"; do
   if ! test -s "$evidence"; then
     echo "ERROR: Track Edit runtime evidence missing/empty: $evidence"; exit 1
   fi

@@ -32,13 +32,18 @@ Older queue entries below are historical snapshots. Read the status here first, 
 - Real-touch GAIN changed 100% → 90% → 100% with TUNE/PAN unchanged. Real-touch PAN changed C → L100 → C while GAIN/TUNE remained unchanged.
 - APK artifact 12183172318 (9,956,909 bytes; SHA-256 `50b118babbd6f89b305d8addeffdcbc40f72e37e07fbc09ea197b5e9d77d60c8`); UI evidence artifact 12183699319. The ZIP evidence integrity check passed and gain/pan changed/restored screenshots and accessibility XML were inspected.
 
-### 5. NEXT PRODUCT SLICE — repair EDIT-007 scrolling precondition, then verify velocity ranges
+### 5. EDIT-007/008 Track Edit velocity ranges and sample region — VERIFIED / EXACT-SHA
 
-- Android Build #2903 / run 39251501163 on exact PR SHA `534fdf35d9fe3f67c0ab62e93392489a0d208fe3` failed at the start of EDIT-007: the existing scroll helper could not derive a safe gesture because `Track Edit Samples waveform` was no longer exposed by UiAutomator after the content had scrolled below it. It did not attempt either MIN or MAX mutation. APK build/upload and shell syntax passed; do not classify this as a product velocity-range failure.
-- Root cause fixed in isolated branch `feature/scroll-helper-fix`: keep the original waveform-ancestor path when available, but fall back to resolving the visible scrollable editor using semantic GAIN/TUNE/PAN/REGION descendants and current hierarchy bounds.
-- Integrate this narrow test-harness fix against current PR HEAD `534fdf35d9fe3f67c0ab62e93392489a0d208fe3` with an expected-SHA fast-forward only. Require a full successful exact-SHA Android Build and inspect velocity-range changed/restored screenshots/XML before marking EDIT-007 verified.
-- EDIT-008 sample-region Start/End acceptance has been prepared on `feature/track-edit-region-acceptance`, but its branch predates the scrolling fix; reconcile it only after EDIT-007 passes.
+- Android Build #2907 / run 39286224809 succeeded on exact SHA `b0b6e66bd69d051595fcddd8d048b60a38eed06c`: [Actions #2907](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39286224809).
+- EDIT-007 verified real-touch MIN/MAX one-step changes and inverse restoration, valid `0 ≤ MIN ≤ MAX ≤ 127`, and preservation of GAIN/TUNE/PAN. Both bounds started at 0–127; the tests moved each inward and restored it. Screenshots/XML are in UI evidence artifact 12204147729. APK artifact 12203303406.
+- EDIT-008 verified real Start/End control changes independently, preserved the opposite boundary and unrelated GAIN/TUNE/PAN values, and restored the exact region. The smoke log confirms `Track Edit sample region Start/End real-touch isolation and exact restoration passed`; screenshot/hierarchy evidence is included in the same artifact.
+- Build #2909 / run 39287062251 was cancelled during an early native test on the same SHA, before Android UI smoke. It is not counted as a pass or a product failure; #2907 is the complete authoritative run.
 
+### 6. NEXT PRODUCT SLICE — EDIT-009 AMP ENV / FILTER CUTOFF — IMPLEMENTED; EXACT-SHA CI PENDING
+
+- The existing Track Edit AMP ENV tab already dispatches Attack/Decay/Sustain/Release and filter cutoff edits into native-backed pad state. This slice adds accessible semantic IDs for filter controls and real-emulator acceptance: change Attack by one 100 ms step while preserving the other envelope fields, inverse-restore the exact envelope, change filter cutoff by 500 Hz while preserving envelope state, then inverse-restore the exact cutoff.
+- The smoke requires changed/restored screenshots and accessibility hierarchies in the UI artifact. Do not mark EDIT-009 verified until Android Build completes successfully on the resulting PR HEAD and the requested evidence files are present.
+- No audio callback, sampler engine, MIDI transport or realtime path is changed.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 

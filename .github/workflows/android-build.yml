@@ -777,5 +777,15 @@ jobs:
             /tmp/mpc-groovebox-project-open-cancel-picker-uiautomator.xml
             /tmp/mpc-groovebox-project-reopened.png
             /tmp/mpc-groovebox-project-reopened-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-envelope-filter-before.png
+            /tmp/mpc-groovebox-track-edit-envelope-filter-before-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-envelope-attack-changed.png
+            /tmp/mpc-groovebox-track-edit-envelope-attack-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-envelope-attack-restored.png
+            /tmp/mpc-groovebox-track-edit-envelope-attack-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-filter-cutoff-changed.png
+            /tmp/mpc-groovebox-track-edit-filter-cutoff-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-filter-cutoff-restored.png
+            /tmp/mpc-groovebox-track-edit-filter-cutoff-restored-uiautomator.xml
           if-no-files-found: warn
           archive: true
