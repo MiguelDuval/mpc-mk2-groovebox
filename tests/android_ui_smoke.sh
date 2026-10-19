@@ -1591,6 +1591,12 @@ for required in \
   "Track Edit Effects tab" \
   "Track Edit Edit All Layers RESERVED" \
   "Track Edit Samples waveform" \
+  "Track Edit filter cutoff decrease" \
+  "Track Edit filter cutoff increase" \
+  "Track Edit filter cutoff preset 3000 Hz" \
+  "Track Edit filter cutoff preset 6000 Hz" \
+  "Track Edit filter cutoff preset 12000 Hz" \
+  "Track Edit filter cutoff preset 20000 Hz" \
   "LAYER %d/8" \
   "layer tuning" \
   'Track Edit " + semanticName + " value' \
@@ -7138,11 +7144,11 @@ def node_text(description):
     found = [n for n in nodes if n.attrib.get("content-desc", "") == description]
     if len(found) != 1:
         raise SystemExit(f"expected one {description!r} value, found {len(found)}")
-    return re.sub(r"\\s+", " ", found[0].attrib.get("text", "")).strip()
+    return re.sub(r"\s+", " ", found[0].attrib.get("text", "")).strip()
 
 def envelope_value(name):
     text = node_text("Track Edit envelope " + name + " value")
-    match = re.search(r"([0-9]+(?:\\.[0-9]+)?)\\s*ms\\b", text, re.I)
+    match = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*ms\b", text, re.I)
     if match is None:
         raise SystemExit(f"could not parse envelope {name} value from {text!r}")
     return float(match.group(1))
@@ -7150,13 +7156,13 @@ def envelope_value(name):
 attack = envelope_value("attack")
 decay = envelope_value("decay")
 sustain_text = node_text("Track Edit envelope sustain value")
-sustain_match = re.search(r"([0-9]+(?:\\.[0-9]+)?)\\s*%", sustain_text)
+sustain_match = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*%", sustain_text)
 if sustain_match is None:
     raise SystemExit(f"could not parse envelope sustain value from {sustain_text!r}")
 sustain = float(sustain_match.group(1))
 release = envelope_value("release")
 cutoff_text = node_text("Track Edit cutoff")
-cutoff_match = re.search(r"([0-9]+(?:\\.[0-9]+)?)\\s*(kHz|Hz)\\b", cutoff_text, re.I)
+cutoff_match = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*(kHz|Hz)\b", cutoff_text, re.I)
 if cutoff_match is None:
     raise SystemExit(f"could not parse filter cutoff value from {cutoff_text!r}")
 cutoff = float(cutoff_match.group(1))
@@ -7210,8 +7216,8 @@ PY
 track_edit_dsp_field_round_trip() {
   local field="$1"
   local state_index min_value max_value step_value
-  local direction inverse_direction signed_delta
-  local action_description inverse_description action_xml
+  local direction inverse_direction signed_delta direction_choice
+  local action_description inverse_description action_xml tab_xml tab_remote
   local prefix before_png before_xml before_remote changed_png changed_xml changed_remote
   local reopened_png reopened_xml reopened_remote restored_png restored_xml restored_remote
   local state_before state_after changed=0 restored=0
@@ -7304,10 +7310,12 @@ PY
     if ! tap_ui_description "$changed_xml" "Track Edit Samples tab"; then
       echo "ERROR: could not leave AMP ENV for the real Samples tab"; exit 1
     fi
-    if ! dump_device_ui "$changed_remote" "$changed_xml"; then
+    tab_xml="$prefix-samples-tab-uiautomator.xml"
+    tab_remote="/sdcard/$(basename "$tab_xml")"
+    if ! dump_device_ui "$tab_remote" "$tab_xml"; then
       echo "ERROR: Track Edit Samples tab hierarchy capture failed"; exit 1
     fi
-    if ! tap_ui_description "$changed_xml" "Track Edit AMP ENV tab"; then
+    if ! tap_ui_description "$tab_xml" "Track Edit AMP ENV tab"; then
       echo "ERROR: could not re-enter AMP ENV through the persistent tab bar"; exit 1
     fi
     if ! wait_for_ui_description "$reopened_xml" "$reopened_remote" "Track Edit envelope attack value" 20; then
