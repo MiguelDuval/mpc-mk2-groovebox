@@ -6388,7 +6388,11 @@ scroll_ui_until_description() {
   local hierarchy_path="$1" remote_path="$2" expected_description="$3" max_swipes="${4:-8}"
   local coordinates swipe_x swipe_from swipe_to
   for ((attempt=1; attempt<=max_swipes; attempt++)); do
-    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    if [[ "$expected_description" =~ ^Track\ Edit\ (attack|decay|sustain|release|filter\ cutoff)\ (increase|decrease)$ ]]; then
+      if ! track_edit_dump_ui_bounded "$remote_path" "$hierarchy_path"; then return 1; fi
+    else
+      if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    fi
     if python3 - "$hierarchy_path" "$expected_description" <<'PY'
 import re
 import sys
@@ -7917,6 +7921,69 @@ echo "Track Edit velocity MIN/MAX round trips restored exact bounds and preserve
 # EDIT-009: exercise one amp-envelope parameter and the filter cutoff through
 # semantic UI controls; verify field isolation and inverse restoration from native-backed values.
 echo "Opening Track Edit AMP ENV for envelope/filter real-touch acceptance..."
+# These helpers isolate the ADSR test from the generic UI dump's nested retries.
+# One capture is hard-bounded (2s cleanup + 8s dump + 5s transfer); 6 attempts
+# yield actionable failure evidence instead of silently consuming the smoke timeout.
+track_edit_dump_ui_bounded() {
+  local requested_remote_path="$1" host_path="$2"
+  local shared_remote_path="/sdcard/mpc-groovebox-current-uiautomator.xml"
+  local log_path="/tmp/mpc-groovebox-track-edit-bounded-uiautomator.log"
+
+  adb_bounded 2 shell rm -f "$shared_remote_path" >/dev/null 2>&1 || true
+  if ! adb_bounded 8 shell uiautomator dump "$shared_remote_path" > "$log_path" 2>&1; then
+    echo "WARN: bounded Track Edit UI dump failed for $requested_remote_path"
+    cat "$log_path" || true
+    return 1
+  fi
+  if ! adb_bounded 5 exec-out cat "$shared_remote_path" > "$host_path"; then
+    echo "WARN: bounded Track Edit UI transfer failed for $requested_remote_path"
+    return 1
+  fi
+  if ! python3 - "$host_path" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+try:
+    root = ET.parse(sys.argv[1]).getroot()
+except (OSError, ET.ParseError) as exc:
+    print(f"invalid Track Edit hierarchy: {exc}", file=sys.stderr)
+    raise SystemExit(1)
+if not list(root.iter("node")):
+    raise SystemExit("Track Edit hierarchy has no accessibility nodes")
+PY
+  then
+    echo "WARN: bounded Track Edit UI dump produced invalid hierarchy: $host_path"
+    cat "$log_path" || true
+    return 1
+  fi
+  return 0
+}
+
+wait_for_track_edit_description_bounded() {
+  local host_path="$1" remote_path="$2" expected_description="$3" max_attempts="\${4:-6}"
+  for ((attempt=1; attempt<=max_attempts; attempt++)); do
+    if track_edit_dump_ui_bounded "$remote_path" "$host_path"; then
+      if python3 - "$host_path" "$expected_description" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, expected = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+raise SystemExit(0 if any(
+    n.attrib.get("content-desc", "").startswith(expected)
+    for n in root.iter("node")
+) else 1)
+PY
+      then
+        echo "Track Edit AMP ENV target found on bounded attempt $attempt: $expected_description"
+        return 0
+      fi
+    fi
+    sleep 1
+  done
+  echo "ERROR: Track Edit AMP ENV target not exposed after $max_attempts bounded captures: $expected_description"
+  cat "$host_path" || true
+  return 1
+}
+
 TRACK_EDIT_ENV_BASELINE_PNG="/tmp/mpc-groovebox-track-edit-envelope-filter-before.png"
 TRACK_EDIT_ENV_BASELINE_XML="/tmp/mpc-groovebox-track-edit-envelope-filter-before-uiautomator.xml"
 TRACK_EDIT_ENV_REMOTE="/sdcard/mpc-groovebox-track-edit-envelope-filter-uiautomator.xml"
@@ -7931,13 +7998,13 @@ TRACK_EDIT_FILTER_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-filter-cutoff-rest
 TRACK_EDIT_FILTER_RESTORED_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-restored-uiautomator.xml"
 TRACK_EDIT_FILTER_CHECK_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-check-uiautomator.xml"
 
-if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit AMP ENV tab"; then
+if ! tap_visible_description_early "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit AMP ENV tab"; then
   echo "ERROR: Track Edit AMP ENV tab could not be opened"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_ENV_BASELINE_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit attack value" 15; then
+if ! wait_for_track_edit_description_bounded "$TRACK_EDIT_ENV_BASELINE_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit attack value" 6; then
   echo "ERROR: Track Edit envelope Attack value is not exposed"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_ENV_BASELINE_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit cutoff" 15; then
+if ! wait_for_track_edit_description_bounded "$TRACK_EDIT_ENV_BASELINE_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit cutoff" 6; then
   echo "ERROR: Track Edit filter cutoff value is not exposed"; exit 1
 fi
 if [[ ! -s "$TRACK_EDIT_ENV_BASELINE_XML" ]]; then
@@ -8020,12 +8087,12 @@ elif (( track_edit_env_attack_before >= 100 )); then
 else
   echo "ERROR: AMP ENV Attack has no safe adjacent 100 ms value to exercise"; exit 1
 fi
-if ! tap_ui_description "$TRACK_EDIT_ENV_BASELINE_XML" "$track_edit_env_attack_action"; then
+if ! tap_visible_description_early "$TRACK_EDIT_ENV_BASELINE_XML" "$track_edit_env_attack_action"; then
   echo "ERROR: Track Edit AMP ENV Attack control was not actionable"; exit 1
 fi
 track_edit_env_attack_changed=0
-for attempt in {1..15}; do
-  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML"; then
+for attempt in {1..6}; do
+  if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML"; then
     echo "ERROR: Track Edit changed Attack hierarchy capture failed"; exit 1
   fi
   track_edit_env_current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML" 2>/dev/null || true)"
@@ -8047,12 +8114,12 @@ fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_ENV_ATTACK_CHANGED_PNG"; then
   echo "ERROR: Track Edit changed Attack screenshot capture failed"; exit 1
 fi
-if ! tap_ui_description "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML" "$track_edit_env_attack_inverse"; then
+if ! tap_visible_description_early "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML" "$track_edit_env_attack_inverse"; then
   echo "ERROR: Track Edit AMP ENV Attack inverse control was not actionable"; exit 1
 fi
 track_edit_env_attack_restored=0
-for attempt in {1..15}; do
-  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_ATTACK_CHECK_XML"; then
+for attempt in {1..6}; do
+  if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_ATTACK_CHECK_XML"; then
     echo "ERROR: Track Edit Attack restoration hierarchy capture failed"; exit 1
   fi
   track_edit_env_current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_ATTACK_CHECK_XML" 2>/dev/null || true)"
@@ -8065,7 +8132,7 @@ if [[ "$track_edit_env_attack_restored" != "1" ]]; then
   echo "ERROR: Attack inverse touch did not restore the exact original envelope"
   echo "Before=$track_edit_env_before actual=$track_edit_env_current"; exit 1
 fi
-if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML"; then
+if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML"; then
   echo "ERROR: restored Attack hierarchy capture failed"; exit 1
 fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_ENV_ATTACK_RESTORED_PNG"; then
@@ -8123,11 +8190,11 @@ exercise_track_edit_envelope_field() {
   if ! scroll_ui_until_description "$TRACK_EDIT_ENV_WORK_XML" "$TRACK_EDIT_ENV_REMOTE" "$action" 8; then
     echo "ERROR: Track Edit $field action did not become visible after bounded scrolling"; return 1
   fi
-  if ! tap_ui_description "$TRACK_EDIT_ENV_WORK_XML" "$action"; then
+  if ! tap_visible_description_early "$TRACK_EDIT_ENV_WORK_XML" "$action"; then
     echo "ERROR: Track Edit $field real-touch action failed"; return 1
   fi
-  for attempt in {1..15}; do
-    if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_CHECK_XML"; then
+  for attempt in {1..6}; do
+    if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_CHECK_XML"; then
       echo "ERROR: Track Edit $field changed-state hierarchy capture failed"; return 1
     fi
     current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_CHECK_XML" 2>/dev/null || true)"
@@ -8152,7 +8219,7 @@ exercise_track_edit_envelope_field() {
     echo "ERROR: $field real-touch did not change only its expected envelope field"
     echo "Before=$before expected=$expected actual=$current"; return 1
   fi
-  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$changed_xml"; then
+  if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$changed_xml"; then
     echo "ERROR: Track Edit $field changed-state evidence capture failed"; return 1
   fi
   if ! adb_bounded 10 exec-out screencap -p > "$changed_png"; then
@@ -8162,11 +8229,11 @@ exercise_track_edit_envelope_field() {
   if ! scroll_ui_until_description "$TRACK_EDIT_ENV_WORK_XML" "$TRACK_EDIT_ENV_REMOTE" "$inverse" 8; then
     echo "ERROR: Track Edit $field inverse action did not become visible"; return 1
   fi
-  if ! tap_ui_description "$TRACK_EDIT_ENV_WORK_XML" "$inverse"; then
+  if ! tap_visible_description_early "$TRACK_EDIT_ENV_WORK_XML" "$inverse"; then
     echo "ERROR: Track Edit $field inverse touch failed"; return 1
   fi
-  for attempt in {1..15}; do
-    if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_CHECK_XML"; then
+  for attempt in {1..6}; do
+    if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_CHECK_XML"; then
       echo "ERROR: Track Edit $field restoration hierarchy capture failed"; return 1
     fi
     current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_CHECK_XML" 2>/dev/null || true)"
@@ -8177,7 +8244,7 @@ exercise_track_edit_envelope_field() {
     echo "ERROR: Track Edit $field inverse touch did not restore exact ADSR state"
     echo "Before=$before actual=$current"; return 1
   fi
-  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$restored_xml"; then
+  if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$restored_xml"; then
     echo "ERROR: Track Edit $field restored-state evidence capture failed"; return 1
   fi
   if ! adb_bounded 10 exec-out screencap -p > "$restored_png"; then
@@ -8219,12 +8286,12 @@ fi
 if ! scroll_ui_until_description "$TRACK_EDIT_FILTER_CHECK_XML" "$TRACK_EDIT_ENV_REMOTE" "$track_edit_filter_action" 8; then
   echo "ERROR: Track Edit filter cutoff action did not become visible after bounded scrolling"; exit 1
 fi
-if ! tap_ui_description "$TRACK_EDIT_FILTER_CHECK_XML" "$track_edit_filter_action"; then
+if ! tap_visible_description_early "$TRACK_EDIT_FILTER_CHECK_XML" "$track_edit_filter_action"; then
   echo "ERROR: Track Edit filter cutoff control was not actionable"; exit 1
 fi
 track_edit_filter_changed=0
-for attempt in {1..15}; do
-  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_FILTER_CHANGED_XML"; then
+for attempt in {1..6}; do
+  if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_FILTER_CHANGED_XML"; then
     echo "ERROR: Track Edit changed filter hierarchy capture failed"; exit 1
   fi
   track_edit_filter_current="$(read_track_edit_filter_cutoff_hz "$TRACK_EDIT_FILTER_CHANGED_XML" 2>/dev/null || true)"
@@ -8244,12 +8311,12 @@ fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_FILTER_CHANGED_PNG"; then
   echo "ERROR: Track Edit changed filter screenshot capture failed"; exit 1
 fi
-if ! tap_ui_description "$TRACK_EDIT_FILTER_CHANGED_XML" "$track_edit_filter_inverse"; then
+if ! tap_visible_description_early "$TRACK_EDIT_FILTER_CHANGED_XML" "$track_edit_filter_inverse"; then
   echo "ERROR: Track Edit filter cutoff inverse control was not actionable"; exit 1
 fi
 track_edit_filter_restored=0
-for attempt in {1..15}; do
-  if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_FILTER_CHECK_XML"; then
+for attempt in {1..6}; do
+  if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_FILTER_CHECK_XML"; then
     echo "ERROR: Track Edit filter restoration hierarchy capture failed"; exit 1
   fi
   track_edit_filter_current="$(read_track_edit_filter_cutoff_hz "$TRACK_EDIT_FILTER_CHECK_XML" 2>/dev/null || true)"
@@ -8264,7 +8331,7 @@ if [[ "$track_edit_filter_restored" != "1" ]]; then
   echo "ERROR: filter inverse touch did not restore the exact cutoff/envelope state"
   echo "Before=$track_edit_filter_before actual=$track_edit_filter_current; envelope=$track_edit_filter_envelope_current"; exit 1
 fi
-if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_FILTER_RESTORED_XML"; then
+if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_FILTER_RESTORED_XML"; then
   echo "ERROR: restored filter hierarchy capture failed"; exit 1
 fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_FILTER_RESTORED_PNG"; then
