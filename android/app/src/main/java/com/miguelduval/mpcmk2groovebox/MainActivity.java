@@ -11163,6 +11163,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ? frames * 1000.0f / sampleRate
                         : 0.0f);
         sampleWaveform.setRecording(false);
+        sampleWaveform.setPlayhead(-1f);
+        samplePlaybackCursorAccessibilityBucket = -1;
     }
 
     private void startSamplePlaybackCursorUpdates() {
@@ -11173,7 +11175,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     if (!"SAMPLE".equals(currentPage) || sampleWaveform == null) {
                         if (sampleWaveform != null) sampleWaveform.setPlayhead(-1f);
                         waveformUiHandler.removeCallbacks(this);
-                        samplePlaybackCursorAccessibilityBucket = -1;
+                        if (samplePlaybackCursorAccessibilityBucket != -1) {
+                            samplePlaybackCursorAccessibilityBucket = -1;
+                            refreshRegionInfo();
+                        }
                         return;
                     }
                     final long totalFrames = nativeAudioGetPadSampleFrameCount(
@@ -11207,6 +11212,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             };
         }
         waveformUiHandler.removeCallbacks(samplePlaybackCursorUpdater);
+        samplePlaybackCursorAccessibilityBucket = -1;
         waveformUiHandler.post(samplePlaybackCursorUpdater);
     }
 
@@ -16565,7 +16571,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     @Override
     protected void onDestroy() {
-        waveformUiHandler.removeCallbacks(samplePlaybackCursorUpdater);
+        if (samplePlaybackCursorUpdater != null) {
+            waveformUiHandler.removeCallbacks(samplePlaybackCursorUpdater);
+        }
         destroyed = true;
         stopBrowserPreview();
         if (recordingWaveformUpdater != null) {
