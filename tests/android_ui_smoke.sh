@@ -7997,6 +7997,9 @@ elif (( track_edit_filter_before >= 520 )); then
 else
   echo "ERROR: filter cutoff has no safe adjacent 500 Hz value to exercise"; exit 1
 fi
+if ! scroll_ui_until_description "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML" "$TRACK_EDIT_ENV_REMOTE" "$track_edit_filter_action" 8; then
+  echo "ERROR: Track Edit filter cutoff action did not become visible after bounded scrolling"; exit 1
+fi
 if ! tap_ui_description "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML" "$track_edit_filter_action"; then
   echo "ERROR: Track Edit filter cutoff control was not actionable"; exit 1
 fi
