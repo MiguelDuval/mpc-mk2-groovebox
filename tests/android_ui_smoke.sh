@@ -7919,8 +7919,11 @@ fi
 if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit cutoff value value" 15; then
   echo "ERROR: Track Edit filter cutoff value is not exposed"; exit 1
 fi
-if ! dump_device_ui "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML"; then
-  echo "ERROR: Track Edit AMP ENV baseline hierarchy capture failed"; exit 1
+# wait_for_ui_description just captured a hierarchy containing both the Attack and
+# cutoff value nodes. Reusing that exact verified dump avoids a redundant ADB call
+# that can fail transiently on the emulator immediately after a UI transition.
+if [[ ! -s "$TRACK_EDIT_ENV_BASELINE_XML" ]]; then
+  echo "ERROR: Track Edit AMP ENV baseline hierarchy is empty after verified waits"; exit 1
 fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_ENV_BASELINE_PNG"; then
   echo "ERROR: Track Edit AMP ENV baseline screenshot capture failed"; exit 1
