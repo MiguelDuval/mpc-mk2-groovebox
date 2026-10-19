@@ -4116,11 +4116,140 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_RATCHET_REMOTE" "$STEP_TOUCH_RATCHET_XML"; then
       echo "ERROR: Step Edit Ratchet-focus hierarchy failed"; exit 1
     fi
+    STEP_TOUCH_RATCHET_FOCUS_PNG="/tmp/mpc-groovebox-step-touch-ratchet-focus.png"
+    STEP_TOUCH_RATCHET_CHANGED_XML="/tmp/mpc-groovebox-step-touch-ratchet-changed-uiautomator.xml"
+    STEP_TOUCH_RATCHET_CHANGED_REMOTE="/sdcard/mpc-groovebox-step-touch-ratchet-changed-uiautomator.xml"
+    STEP_TOUCH_RATCHET_CHANGED_PNG="/tmp/mpc-groovebox-step-touch-ratchet-changed.png"
+    STEP_TOUCH_RATCHET_RESTORED_XML="/tmp/mpc-groovebox-step-touch-ratchet-restored-uiautomator.xml"
+    STEP_TOUCH_RATCHET_RESTORED_REMOTE="/sdcard/mpc-groovebox-step-touch-ratchet-restored-uiautomator.xml"
+    STEP_TOUCH_RATCHET_RESTORED_PNG="/tmp/mpc-groovebox-step-touch-ratchet-restored.png"
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_RATCHET_FOCUS_PNG"; then
+      echo "ERROR: Step Edit Ratchet-focus screenshot failed"; exit 1
+    fi
+
+    step_touch_ratchet_timing_before="$(python3 - "$STEP_TOUCH_RATCHET_XML" "$step_touch_target_number" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s = sys.argv[1:]
+target = int(target_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {target} on"]) != 1:
+    raise AssertionError("Ratchet focus lost selected Step event")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
+    raise AssertionError("Ratchet focus changed Step 01")
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit Ratchet projection missing")
+text = info[0].attrib.get("text", "")
+if re.search(rf"\bSTEP\s+0*{target}\b", text) is None:
+    raise AssertionError(f"Ratchet focus does not match Step {target}: {text!r}")
+patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b", r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b", r"\bDUR\s+(\d+)\b"]
+matches = [re.search(p, text) for p in patterns]
+if any(m is None for m in matches):
+    raise AssertionError(f"Malformed Ratchet baseline: {text!r}")
+values = [int(m.group(1)) for m in matches]
+if not (1 <= values[0] <= 127 and 0 <= values[1] <= 127 and 1 <= values[2] <= 8 and -960 <= values[3] <= 960 and values[4] > 0):
+    raise AssertionError(f"Ratchet baseline out of range: {values!r}")
+print(*values)
+PY
+)" || { echo "ERROR: could not read Step Edit Ratchet baseline"; cat "$STEP_TOUCH_RATCHET_XML"; exit 1; }
+    read -r step_touch_ratchet_velocity_before step_touch_ratchet_probability_before step_touch_ratchet_before step_touch_ratchet_nudge_before step_touch_ratchet_duration_before <<< "$step_touch_ratchet_timing_before"
+    if (( step_touch_ratchet_before < 8 )); then
+      step_touch_ratchet_direction="+"
+      step_touch_ratchet_inverse_direction="−"
+      step_touch_ratchet_expected=$((step_touch_ratchet_before + 1))
+    else
+      step_touch_ratchet_direction="−"
+      step_touch_ratchet_inverse_direction="+"
+      step_touch_ratchet_expected=$((step_touch_ratchet_before - 1))
+    fi
+    if ! tap_visible_text_early "$STEP_TOUCH_RATCHET_XML" "$step_touch_ratchet_direction"; then
+      echo "ERROR: Step Edit Ratchet +/- control was not actionable"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$STEP_TOUCH_RATCHET_CHANGED_REMOTE" "$STEP_TOUCH_RATCHET_CHANGED_XML"; then
+      echo "ERROR: Step Edit after-Ratchet hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_RATCHET_CHANGED_PNG"; then
+      echo "ERROR: Step Edit after-Ratchet screenshot failed"; exit 1
+    fi
+    if ! python3 - "$STEP_TOUCH_RATCHET_CHANGED_XML" "$step_touch_target_number" "$step_touch_ratchet_timing_before" "$step_touch_ratchet_expected" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s, before_s, expected_s = sys.argv[1:]
+target = int(target_s)
+before = list(map(int, before_s.split()))
+expected = int(expected_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {target} on"]) != 1:
+    raise AssertionError("Ratchet edit lost selected Step event")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
+    raise AssertionError("Ratchet edit changed Step 01")
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit projection missing after Ratchet")
+text = info[0].attrib.get("text", "")
+patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b", r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b", r"\bDUR\s+(\d+)\b"]
+matches = [re.search(p, text) for p in patterns]
+if any(m is None for m in matches):
+    raise AssertionError(f"Malformed Step Edit state after Ratchet: {text!r}")
+after = [int(m.group(1)) for m in matches]
+if after[2] != expected:
+    raise AssertionError(f"Ratchet must change by one: {before[2]} -> {after[2]}, expected {expected}")
+if [after[0], after[1], after[3], after[4]] != [before[0], before[1], before[3], before[4]]:
+    raise AssertionError(f"Ratchet modified unrelated fields: {before!r} -> {after!r}")
+print(f"Step Edit RAT field isolation passed: {before[2]} -> {after[2]}; other fields preserved.")
+PY
+    then
+      echo "ERROR: Step Edit Ratchet did not make the exact native field-only change"; cat "$STEP_TOUCH_RATCHET_CHANGED_XML"; exit 1
+    fi
+
+    if ! tap_visible_text_early "$STEP_TOUCH_RATCHET_CHANGED_XML" "$step_touch_ratchet_inverse_direction"; then
+      echo "ERROR: Step Edit Ratchet inverse control was not actionable"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$STEP_TOUCH_RATCHET_RESTORED_REMOTE" "$STEP_TOUCH_RATCHET_RESTORED_XML"; then
+      echo "ERROR: Step Edit after-Ratchet-restore hierarchy failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_RATCHET_RESTORED_PNG"; then
+      echo "ERROR: Step Edit after-Ratchet-restore screenshot failed"; exit 1
+    fi
+    if ! python3 - "$STEP_TOUCH_RATCHET_RESTORED_XML" "$step_touch_target_number" "$step_touch_ratchet_timing_before" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s, before_s = sys.argv[1:]
+target = int(target_s)
+before = list(map(int, before_s.split()))
+nodes = list(ET.parse(path).getroot().iter("node"))
+if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {target} on"]) != 1:
+    raise AssertionError("Ratchet restore lost selected Step event")
+if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
+    raise AssertionError("Ratchet restore changed Step 01")
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit projection missing after Ratchet restore")
+text = info[0].attrib.get("text", "")
+patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b", r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b", r"\bDUR\s+(\d+)\b"]
+matches = [re.search(p, text) for p in patterns]
+if any(m is None for m in matches):
+    raise AssertionError(f"Malformed Step Edit state after Ratchet restore: {text!r}")
+restored = [int(m.group(1)) for m in matches]
+if restored != before:
+    raise AssertionError(f"Ratchet inverse edit failed full-field restore: {before!r} -> {restored!r}")
+print(f"Step Edit RAT round trip restored all five fields exactly: {restored!r}.")
+PY
+    then
+      echo "ERROR: Step Edit Ratchet inverse edit failed to restore the full native event"; cat "$STEP_TOUCH_RATCHET_RESTORED_XML"; exit 1
+    fi
 
     STEP_TOUCH_NUDGE_FOCUS_XML="/tmp/mpc-groovebox-step-touch-nudge-focus-uiautomator.xml"
     STEP_TOUCH_NUDGE_FOCUS_REMOTE="/sdcard/mpc-groovebox-step-touch-nudge-focus-uiautomator.xml"
-    if ! tap_visible_text_early "$STEP_TOUCH_RATCHET_XML" "PARAM"; then
-      echo "ERROR: Step Edit PARAM could not select Nudge"; exit 1
+    echo "Step Edit RAT real-touch edit → exact inverse restore passed."
+    if ! tap_visible_text_early "$STEP_TOUCH_RATCHET_RESTORED_XML" "PARAM"; then
+      echo "ERROR: Step Edit PARAM could not select Nudge after Ratchet restore"; exit 1
     fi
     sleep 0.15
     if ! dump_device_ui "$STEP_TOUCH_NUDGE_FOCUS_REMOTE" "$STEP_TOUCH_NUDGE_FOCUS_XML"; then
