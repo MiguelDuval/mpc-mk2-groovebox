@@ -6973,6 +6973,9 @@ fi
 # EDIT-004: mutate only sample-layer gain through the real Track Edit touch controls,
 # confirm TUNE/PAN remain unchanged, then inverse-touch and restore the original value.
 echo "Running Track Edit sample-layer gain field-isolation → inverse restore runtime test..."
+TRACK_EDIT_GAIN_BEFORE_PNG="/tmp/mpc-groovebox-track-edit-gain-before.png"
+TRACK_EDIT_GAIN_BEFORE_XML="/tmp/mpc-groovebox-track-edit-gain-before-uiautomator.xml"
+TRACK_EDIT_GAIN_BEFORE_REMOTE="/sdcard/mpc-groovebox-track-edit-gain-before-uiautomator.xml"
 TRACK_EDIT_GAIN_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-gain-changed.png"
 TRACK_EDIT_GAIN_CHANGED_XML="/tmp/mpc-groovebox-track-edit-gain-changed-uiautomator.xml"
 TRACK_EDIT_GAIN_REMOTE="/sdcard/mpc-groovebox-track-edit-gain-changed-uiautomator.xml"
@@ -7014,13 +7017,22 @@ print(re.sub(r"\s+", " ", found[0].attrib.get("text", "")).strip())
 PY
 }
 
-track_edit_gain_before="$(read_track_edit_gain_value "$TRACK_EDIT_RESTORED_XML")" || {
+if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer gain increase" 8; then
+  echo "ERROR: Track Edit layer GAIN control did not become actionable after scrolling"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_GAIN_BEFORE_REMOTE" "$TRACK_EDIT_GAIN_BEFORE_XML"; then
+  echo "ERROR: Track Edit gain baseline hierarchy failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_GAIN_BEFORE_PNG"; then
+  echo "ERROR: Track Edit gain baseline screenshot failed"; exit 1
+fi
+track_edit_gain_before="$(read_track_edit_gain_value "$TRACK_EDIT_GAIN_BEFORE_XML")" || {
   echo "ERROR: initial Track Edit layer gain could not be read"; exit 1;
 }
-track_edit_gain_tuning_before="$(read_track_edit_tuning_value "$TRACK_EDIT_RESTORED_XML")" || {
+track_edit_gain_tuning_before="$(read_track_edit_tuning_value "$TRACK_EDIT_GAIN_BEFORE_XML")" || {
   echo "ERROR: TUNE baseline missing before gain acceptance"; exit 1;
 }
-track_edit_gain_pan_before="$(read_track_edit_pan_value "$TRACK_EDIT_RESTORED_XML")" || {
+track_edit_gain_pan_before="$(read_track_edit_pan_value "$TRACK_EDIT_GAIN_BEFORE_XML")" || {
   echo "ERROR: PAN baseline missing before gain acceptance"; exit 1;
 }
 if (( track_edit_gain_before >= 10 )); then
@@ -7032,7 +7044,7 @@ else
   track_edit_gain_inverse_direction="decrease"
   track_edit_gain_expected=$((track_edit_gain_before + 10))
 fi
-if ! tap_ui_description "$TRACK_EDIT_RESTORED_XML" "Track Edit layer gain $track_edit_gain_direction"; then
+if ! tap_ui_description "$TRACK_EDIT_GAIN_BEFORE_XML" "Track Edit layer gain $track_edit_gain_direction"; then
   echo "ERROR: Track Edit layer gain $track_edit_gain_direction was not actionable"; exit 1
 fi
 track_edit_gain_changed=0
@@ -7108,6 +7120,9 @@ echo "Track Edit layer GAIN real-touch field isolation passed: $track_edit_gain_
 # EDIT-005: set a real sample-layer pan value, then restore the fixture's original
 # centered pan while proving that GAIN and TUNE remain untouched.
 echo "Running Track Edit sample-layer PAN field-isolation → center restore runtime test..."
+TRACK_EDIT_PAN_BEFORE_PNG="/tmp/mpc-groovebox-track-edit-pan-before.png"
+TRACK_EDIT_PAN_BEFORE_XML="/tmp/mpc-groovebox-track-edit-pan-before-uiautomator.xml"
+TRACK_EDIT_PAN_BEFORE_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-before-uiautomator.xml"
 TRACK_EDIT_PAN_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-pan-changed.png"
 TRACK_EDIT_PAN_CHANGED_XML="/tmp/mpc-groovebox-track-edit-pan-changed-uiautomator.xml"
 TRACK_EDIT_PAN_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-changed-uiautomator.xml"
@@ -7117,20 +7132,29 @@ TRACK_EDIT_PAN_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-restored-ui
 TRACK_EDIT_PAN_RESTORE_CHECK_XML="/tmp/mpc-groovebox-track-edit-pan-restore-check-uiautomator.xml"
 TRACK_EDIT_PAN_RESTORE_CHECK_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-restore-check-uiautomator.xml"
 
-track_edit_pan_before="$(read_track_edit_pan_value "$TRACK_EDIT_GAIN_RESTORED_XML")" || {
+if ! scroll_ui_until_description "$TRACK_EDIT_XML" "$TRACK_EDIT_REMOTE" "Track Edit layer pan center" 8; then
+  echo "ERROR: Track Edit layer PAN center control did not become actionable after scrolling"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_PAN_BEFORE_REMOTE" "$TRACK_EDIT_PAN_BEFORE_XML"; then
+  echo "ERROR: Track Edit pan baseline hierarchy failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PAN_BEFORE_PNG"; then
+  echo "ERROR: Track Edit pan baseline screenshot failed"; exit 1
+fi
+track_edit_pan_before="$(read_track_edit_pan_value "$TRACK_EDIT_PAN_BEFORE_XML")" || {
   echo "ERROR: initial Track Edit layer pan could not be read"; exit 1;
 }
-track_edit_pan_gain_before="$(read_track_edit_gain_value "$TRACK_EDIT_GAIN_RESTORED_XML")" || {
+track_edit_pan_gain_before="$(read_track_edit_gain_value "$TRACK_EDIT_PAN_BEFORE_XML")" || {
   echo "ERROR: GAIN baseline missing before PAN acceptance"; exit 1;
 }
-track_edit_pan_tuning_before="$(read_track_edit_tuning_value "$TRACK_EDIT_GAIN_RESTORED_XML")" || {
+track_edit_pan_tuning_before="$(read_track_edit_tuning_value "$TRACK_EDIT_PAN_BEFORE_XML")" || {
   echo "ERROR: TUNE baseline missing before PAN acceptance"; exit 1;
 }
 if [[ "$track_edit_pan_before" != "PAN C" ]]; then
   echo "ERROR: PAN acceptance fixture must begin centered so its inverse touch can restore exact state"
   echo "Initial layer pan=$track_edit_pan_before"; exit 1
 fi
-if ! tap_ui_description "$TRACK_EDIT_GAIN_RESTORED_XML" "Track Edit layer pan decrease"; then
+if ! tap_ui_description "$TRACK_EDIT_PAN_BEFORE_XML" "Track Edit layer pan decrease"; then
   echo "ERROR: Track Edit layer PAN-left control was not actionable"; exit 1
 fi
 track_edit_pan_changed=0
@@ -7163,7 +7187,7 @@ fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PAN_CHANGED_PNG"; then
   echo "ERROR: Track Edit changed PAN screenshot capture failed"; exit 1
 fi
-if ! tap_ui_text "$TRACK_EDIT_PAN_CHANGED_XML" "CENTER LAYER PAN"; then
+if ! tap_ui_description "$TRACK_EDIT_PAN_CHANGED_XML" "Track Edit layer pan center"; then
   echo "ERROR: Track Edit CENTER LAYER PAN control was not actionable"; exit 1
 fi
 track_edit_pan_restored=0
@@ -7206,6 +7230,8 @@ echo "Track Edit layer PAN real-touch field isolation passed: PAN C → PAN L100
 for evidence in \
   "$TRACK_EDIT_CONTEXT_BEFORE_XML" "$TRACK_EDIT_CONTEXT_REOPENED_XML" \
   "$TRACK_EDIT_BEFORE_PNG" "$TRACK_EDIT_BEFORE_XML" \
+  "$TRACK_EDIT_GAIN_BEFORE_PNG" "$TRACK_EDIT_GAIN_BEFORE_XML" \
+  "$TRACK_EDIT_PAN_BEFORE_PNG" "$TRACK_EDIT_PAN_BEFORE_XML" \
   "$TRACK_EDIT_CHANGED_PNG" "$TRACK_EDIT_CHANGED_XML" \
   "$TRACK_EDIT_REOPENED_PNG" "$TRACK_EDIT_REOPENED_XML" \
   "$TRACK_EDIT_RESTORED_PNG" "$TRACK_EDIT_RESTORED_XML" \
