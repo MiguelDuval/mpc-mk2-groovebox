@@ -7114,6 +7114,8 @@ TRACK_EDIT_PAN_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-changed-uiautomator.
 TRACK_EDIT_PAN_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-pan-restored.png"
 TRACK_EDIT_PAN_RESTORED_XML="/tmp/mpc-groovebox-track-edit-pan-restored-uiautomator.xml"
 TRACK_EDIT_PAN_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-restored-uiautomator.xml"
+TRACK_EDIT_PAN_RESTORE_CHECK_XML="/tmp/mpc-groovebox-track-edit-pan-restore-check-uiautomator.xml"
+TRACK_EDIT_PAN_RESTORE_CHECK_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-restore-check-uiautomator.xml"
 
 track_edit_pan_before="$(read_track_edit_pan_value "$TRACK_EDIT_GAIN_RESTORED_XML")" || {
   echo "ERROR: initial Track Edit layer pan could not be read"; exit 1;
@@ -7166,10 +7168,10 @@ if ! tap_ui_text "$TRACK_EDIT_PAN_CHANGED_XML" "CENTER LAYER PAN"; then
 fi
 track_edit_pan_restored=0
 for attempt in {1..15}; do
-  if ! dump_device_ui "$TRACK_EDIT_PAN_REMOTE" "$TRACK_EDIT_PAN_CHANGED_XML"; then
+  if ! dump_device_ui "$TRACK_EDIT_PAN_RESTORE_CHECK_REMOTE" "$TRACK_EDIT_PAN_RESTORE_CHECK_XML"; then
     echo "ERROR: Track Edit PAN restoration hierarchy capture failed"; exit 1
   fi
-  track_edit_pan_current="$(read_track_edit_pan_value "$TRACK_EDIT_PAN_CHANGED_XML" 2>/dev/null || true)"
+  track_edit_pan_current="$(read_track_edit_pan_value "$TRACK_EDIT_PAN_RESTORE_CHECK_XML" 2>/dev/null || true)"
   if [[ "$track_edit_pan_current" == "$track_edit_pan_before" ]]; then
     track_edit_pan_restored=1; break
   fi
