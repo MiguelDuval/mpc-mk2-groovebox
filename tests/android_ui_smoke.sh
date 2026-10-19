@@ -1591,6 +1591,7 @@ for required in \
   "Track Edit Effects tab" \
   "Track Edit Edit All Layers RESERVED" \
   "Track Edit Samples waveform" \
+  "Track Edit layer pan center" \
   "LAYER %d/8" \
   "layer tuning" \
   'Track Edit " + semanticName + " value' \
@@ -6508,6 +6509,84 @@ PY
   return 1
 }
 
+# Scroll further down using a visible pan-value descendant when the real
+# CENTER LAYER PAN action sits just below the current Track Edit viewport.
+# This uses current ScrollView bounds, not guessed full-screen coordinates.
+scroll_track_edit_to_layer_pan_center() {
+  local hierarchy_path="$1" remote_path="$2" max_swipes="${3:-4}"
+  local coordinates swipe_x swipe_from swipe_to
+  for ((attempt=1; attempt<=max_swipes; attempt++)); do
+    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    if python3 - "$hierarchy_path" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+raise SystemExit(0 if any(
+    n.attrib.get("content-desc", "") == "Track Edit layer pan center"
+    and n.attrib.get("clickable") == "true"
+    and n.attrib.get("enabled") == "true"
+    and n.attrib.get("visible-to-user") != "false"
+    for n in nodes) else 1)
+PY
+    then
+      echo "Track Edit CENTER LAYER PAN action is visible after $((attempt - 1)) bounded scroll gesture(s)."
+      return 0
+    fi
+
+    if ! coordinates="$(python3 - "$hierarchy_path" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+target = next((n for n in nodes
+               if n.attrib.get("content-desc", "") == "Track Edit layer pan value"), None)
+if target is None:
+    raise SystemExit("Track Edit PAN value is not visible for deriving a safe scroll gesture")
+scroll = parents.get(target)
+while scroll is not None and not (
+        scroll.attrib.get("class") == "android.widget.ScrollView"
+        and scroll.attrib.get("scrollable") == "true"):
+    scroll = parents.get(scroll)
+if scroll is None:
+    raise SystemExit("Track Edit PAN value has no scrollable editor ancestor")
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     scroll.attrib.get("bounds", ""))
+if match is None:
+    raise SystemExit("Track Edit ScrollView bounds are invalid")
+left, top, right, bottom = map(int, match.groups())
+height = bottom - top
+if right - left < 100 or height < 220:
+    raise SystemExit("Track Edit ScrollView is too small for a safe pan-center reveal")
+margin = max(45, min(90, height // 5))
+start_y = bottom - margin
+distance = max(95, min(180, height // 4))
+end_y = max(top + margin, start_y - distance)
+if start_y - end_y < 85:
+    raise SystemExit("Track Edit pan-center reveal gesture is too short")
+print((left + right) // 2, start_y, end_y)
+PY
+)"; then
+      echo "ERROR: could not derive a safe live-bounds scroll to Track Edit CENTER LAYER PAN"
+      cat "$hierarchy_path" || true
+      return 1
+    fi
+    read -r swipe_x swipe_from swipe_to <<< "$coordinates"
+    echo "Revealing Track Edit CENTER LAYER PAN from the visible PAN row: x=$swipe_x y=$swipe_from->$swipe_to"
+    if ! adb_bounded 10 shell input swipe "$swipe_x" "$swipe_from" "$swipe_x" "$swipe_to" 350; then
+      echo "ERROR: Track Edit pan-center scroll gesture failed"
+      return 1
+    fi
+    sleep 0.35
+  done
+
+  if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+  echo "ERROR: Track Edit CENTER LAYER PAN stayed outside the viewport after $max_swipes bounded scroll gesture(s)"
+  cat "$hierarchy_path" || true
+  return 1
+}
+
 # Reverse-scroll the Track Edit editor using live UiAutomator bounds so the
 # upper sample-layer GAIN row is actually present before post-velocity checks.
 # scroll_ui_until_description() deliberately advances toward lower controls;
@@ -6523,6 +6602,7 @@ import xml.etree.ElementTree as ET
 nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
 descriptions = {n.attrib.get("content-desc", "") for n in nodes}
 raise SystemExit(0 if {
+    "Track Edit region",
     "Track Edit layer gain value",
     "Track Edit layer gain decrease",
     "Track Edit layer tuning value",
@@ -6530,7 +6610,7 @@ raise SystemExit(0 if {
 }.issubset(descriptions) else 1)
 PY
     then
-      echo "Track Edit GAIN/TUNE/PAN fields are visible after $((attempt - 1)) reverse scroll gesture(s)."
+      echo "Track Edit REGION/GAIN/TUNE/PAN fields are visible after $((attempt - 1)) reverse scroll gesture(s)."
       return 0
     fi
 
@@ -7297,7 +7377,10 @@ fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PAN_CHANGED_PNG"; then
   echo "ERROR: Track Edit changed PAN screenshot capture failed"; exit 1
 fi
-if ! tap_ui_text "$TRACK_EDIT_PAN_CHANGED_XML" "CENTER LAYER PAN"; then
+if ! scroll_track_edit_to_layer_pan_center "$TRACK_EDIT_PAN_CHANGED_XML" "$TRACK_EDIT_PAN_REMOTE" 4; then
+  echo "ERROR: Track Edit CENTER LAYER PAN did not become visible after bounded scrolling"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_PAN_CHANGED_XML" "Track Edit layer pan center"; then
   echo "ERROR: Track Edit CENTER LAYER PAN control was not actionable"; exit 1
 fi
 track_edit_pan_restored=0
@@ -7358,7 +7441,10 @@ TRACK_EDIT_REGION_END_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-region-e
 TRACK_EDIT_REGION_CHECK_XML="/tmp/mpc-groovebox-track-edit-region-check-uiautomator.xml"
 TRACK_EDIT_REGION_CHECK_REMOTE="/sdcard/mpc-groovebox-track-edit-region-check-uiautomator.xml"
 
-if ! dump_device_ui "$TRACK_EDIT_PAN_RESTORED_REMOTE" "$TRACK_EDIT_REGION_BEFORE_XML"; then
+if ! scroll_track_edit_to_layer_gain "$TRACK_EDIT_REGION_BEFORE_XML" "$TRACK_EDIT_REGION_BEFORE_REMOTE" 8; then
+  echo "ERROR: Track Edit REGION/GAIN/TUNE/PAN fields did not return to the visible upper-layer viewport"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_REGION_BEFORE_REMOTE" "$TRACK_EDIT_REGION_BEFORE_XML"; then
   echo "ERROR: Track Edit sample-region baseline hierarchy failed"; exit 1
 fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_BEFORE_PNG"; then
