@@ -9673,10 +9673,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 first,
                 last,
                 totalSteps));
-        final int firstPad = MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_PADS
-                - sequenceGridStartPad - sequenceGridVisiblePads + 1;
-        final int lastPad = MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_PADS
-                - sequenceGridStartPad;
+        final int firstPad = MpcSequenceZoomPolicy.gridFirstVisiblePad(
+                sequenceGridStartPad, sequenceGridVisiblePads);
+        final int lastPad = MpcSequenceZoomPolicy.gridLastVisiblePad(
+                sequenceGridStartPad, sequenceGridVisiblePads);
         pageInfo.setContentDescription(String.format(
                 Locale.ROOT,
                 "Grid visible step range: steps %02d through %02d of %02d; pads %02d through %02d of 16",

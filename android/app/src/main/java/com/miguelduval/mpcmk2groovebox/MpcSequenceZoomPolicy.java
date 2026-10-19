@@ -66,6 +66,30 @@ final class MpcSequenceZoomPolicy {
                 nonNegativeTick / stepTicks);
     }
 
+    static int gridFirstVisiblePad(int firstPad, int visiblePads) {
+        final int boundedVisible = clamp(
+                visiblePads,
+                MIN_GRID_VISIBLE_PADS,
+                MAX_GRID_VISIBLE_PADS);
+        final int boundedFirst = clamp(
+                firstPad,
+                0,
+                MAX_GRID_VISIBLE_PADS - boundedVisible);
+        return MAX_GRID_VISIBLE_PADS - boundedFirst - boundedVisible + 1;
+    }
+
+    static int gridLastVisiblePad(int firstPad, int visiblePads) {
+        final int boundedVisible = clamp(
+                visiblePads,
+                MIN_GRID_VISIBLE_PADS,
+                MAX_GRID_VISIBLE_PADS);
+        final int boundedFirst = clamp(
+                firstPad,
+                0,
+                MAX_GRID_VISIBLE_PADS - boundedVisible);
+        return MAX_GRID_VISIBLE_PADS - boundedFirst;
+    }
+
     static int gridStartForStep(int stepIndex, int visibleSteps, int totalSteps) {
         final int boundedTotal = Math.max(1, totalSteps);
         final int boundedVisible = clamp(visibleSteps, 1, boundedTotal);

@@ -33,6 +33,26 @@ public final class MpcSequenceZoomPolicyTest {
     }
 
     @Test
+    public void visiblePadRangeMapsTopDownRowsAndClampsInvalidViewportInputs() {
+        assertEquals(1, MpcSequenceZoomPolicy.gridFirstVisiblePad(0, 16));
+        assertEquals(16, MpcSequenceZoomPolicy.gridLastVisiblePad(0, 16));
+
+        // With 12 visible Pads, firstPad 4 shows Pad 12 at the top and
+        // Pad 01 at the bottom. Panning to firstPad 0 exposes Pads 05–16.
+        assertEquals(1, MpcSequenceZoomPolicy.gridFirstVisiblePad(4, 12));
+        assertEquals(12, MpcSequenceZoomPolicy.gridLastVisiblePad(4, 12));
+        assertEquals(5, MpcSequenceZoomPolicy.gridFirstVisiblePad(0, 12));
+        assertEquals(16, MpcSequenceZoomPolicy.gridLastVisiblePad(0, 12));
+
+        assertEquals(1, MpcSequenceZoomPolicy.gridFirstVisiblePad(99, 12));
+        assertEquals(16, MpcSequenceZoomPolicy.gridLastVisiblePad(-5, 12));
+        assertEquals(1, MpcSequenceZoomPolicy.gridFirstVisiblePad(100, 1));
+        assertEquals(1, MpcSequenceZoomPolicy.gridLastVisiblePad(100, 1));
+        assertEquals(1, MpcSequenceZoomPolicy.gridFirstVisiblePad(-1, 0));
+        assertEquals(16, MpcSequenceZoomPolicy.gridLastVisiblePad(-1, 100));
+    }
+
+    @Test
     public void arrangementTickMapsToTheCorrectBoundedGridStep() {
         assertEquals(0, MpcSequenceZoomPolicy.stepIndexForTick(0, 120, 64));
         assertEquals(40, MpcSequenceZoomPolicy.stepIndexForTick(4_800, 120, 64));
