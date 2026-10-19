@@ -4744,7 +4744,7 @@ target = int(target_s)
 nodes = list(ET.parse(path).getroot().iter("node"))
 pad = [n for n in nodes if n.attrib.get("text", "").strip() == "PAD 02"]
 if len(pad) != 1:
-    raise AssertionError(f"PAD + did not select Pad 2: {[(n.attrib.get("text"), n.attrib.get("content-desc")) for n in nodes if "PAD" in n.attrib.get("text", "")]!r}")
+    raise AssertionError("PAD + did not select Pad 2; visible pad labels: " + repr([(n.attrib.get("text", ""), n.attrib.get("content-desc", "")) for n in nodes if "PAD" in n.attrib.get("text", "")]))
 info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
 if len(info) != 1:
     raise AssertionError("Step Edit event information missing after Pad selection")
