@@ -14999,7 +14999,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        final View waveform = findViewWithContentDescription(
+        final View waveform = findViewWithContentDescriptionPrefix(
                 getWindow().getDecorView(), "Sample waveform editor");
         if (waveform == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: sample waveform editor");
@@ -15017,7 +15017,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         if (findViewWithExactText(getWindow().getDecorView(), "ENV") == null
                 || findViewWithExactText(getWindow().getDecorView(), "FILTER") == null
-                || findViewWithContentDescription(
+                || findViewWithContentDescriptionPrefix(
                         getWindow().getDecorView(), "Sample waveform editor") == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: sample waveform editor");
             return;
@@ -15183,6 +15183,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             for (int i = 0; i < group.getChildCount(); i++) {
                 View match = findViewWithContentDescription(
                         group.getChildAt(i), expectedDescription);
+                if (match != null) return match;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds a view whose accessibility description starts with a stable semantic prefix.
+     * WaveformView includes live viewport bounds after this prefix, so its full description
+     * is intentionally dynamic while the semantic target remains stable for audits.
+     */
+    private View findViewWithContentDescriptionPrefix(View view, String prefix) {
+        if (view == null || prefix == null) return null;
+
+        final CharSequence actual = view.getContentDescription();
+        if (actual != null && actual.toString().startsWith(prefix)) {
+            return view;
+        }
+
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View match = findViewWithContentDescriptionPrefix(
+                        group.getChildAt(i), prefix);
                 if (match != null) return match;
             }
         }
