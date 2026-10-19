@@ -236,6 +236,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final Button[] modeButtons = new Button[7];
     private final Handler waveformUiHandler = new Handler(Looper.getMainLooper());
     private Runnable recordingWaveformUpdater;
+    private Runnable playbackWaveformUpdater;
     private WaveformView sampleWaveform;
     private WaveformView mainTrackWaveform;
     private Button mainTrackSamplePrimaryButton;
@@ -445,6 +446,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native long nativeAudioGetPadSampleRegionStart(int pad, int layer);
     private static native long nativeAudioGetPadSampleRegionEnd(int pad, int layer);
     private static native long nativeAudioGetPadSampleFrameCount(int pad, int layer);
+    private static native long nativeAudioGetPadLayerPlaybackFrame(int pad, int layer);
     private static native String nativeAudioGetPadSampleName(int pad, int layer);
     private static native int nativeAudioGetPadSampleRate(int pad, int layer);
     private static native float[] nativeAudioGetPadWaveformPeaks(
@@ -11042,12 +11044,59 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             }
             nativeAudioTriggerPad(pad, velocity);
+            startSamplePlaybackCursorUpdates(pad, selectedLayer);
             setBottomStatus("AUDITION • Pad " + (pad + 1)
                     + " • velocity " + velocity
                     + " | " + nativeAudioStatus());
         } else {
             setBottomStatus("Audio engine still starting");
         }
+    }
+
+    private void startSamplePlaybackCursorUpdates(final int pad, final int layer) {
+        if (playbackWaveformUpdater != null) {
+            waveformUiHandler.removeCallbacks(playbackWaveformUpdater);
+        }
+        final long firstFrameDeadlineMs =
+                android.os.SystemClock.elapsedRealtime() + 350L;
+        playbackWaveformUpdater = new Runnable() {
+            private boolean sawActiveCursor;
+
+            @Override public void run() {
+                if (destroyed || !startupComplete
+                        || selectedPad != pad || selectedLayer != layer) {
+                    updateSamplePlaybackCursor(-1L, 0L);
+                    playbackWaveformUpdater = null;
+                    return;
+                }
+                final long totalFrames = nativeAudioGetPadSampleFrameCount(pad, layer);
+                final long frame = nativeAudioGetPadLayerPlaybackFrame(pad, layer);
+                if (frame >= 0L && totalFrames > 0L) {
+                    sawActiveCursor = true;
+                    updateSamplePlaybackCursor(frame, totalFrames);
+                    waveformUiHandler.postDelayed(this, 33L);
+                    return;
+                }
+                if (!sawActiveCursor
+                        && android.os.SystemClock.elapsedRealtime() < firstFrameDeadlineMs) {
+                    updateSamplePlaybackCursor(-1L, totalFrames);
+                    waveformUiHandler.postDelayed(this, 16L);
+                    return;
+                }
+                updateSamplePlaybackCursor(-1L, totalFrames);
+                playbackWaveformUpdater = null;
+            }
+        };
+        waveformUiHandler.post(playbackWaveformUpdater);
+    }
+
+    private void updateSamplePlaybackCursor(long frame, long totalFrames) {
+        final float normalized = frame >= 0L && totalFrames > 0L
+                ? Math.max(0.0f, Math.min(1.0f, frame / (float) totalFrames))
+                : -1.0f;
+        if (mainTrackWaveform != null) mainTrackWaveform.setPlayhead(normalized);
+        if (sampleWaveform != null) sampleWaveform.setPlayhead(normalized);
+        if (mainTrackEditView != null) mainTrackEditView.setPlaybackCursor(frame, totalFrames);
     }
 
     private void refreshPadSelectionVisuals() {
@@ -16519,6 +16568,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         stopBrowserPreview();
         if (recordingWaveformUpdater != null) {
             waveformUiHandler.removeCallbacks(recordingWaveformUpdater);
+        }
+        if (playbackWaveformUpdater != null) {
+            waveformUiHandler.removeCallbacks(playbackWaveformUpdater);
         }
         startupExecutor.shutdownNow();
         projectIoExecutor.shutdownNow();

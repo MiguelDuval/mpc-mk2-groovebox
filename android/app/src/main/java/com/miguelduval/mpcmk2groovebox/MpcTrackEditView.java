@@ -150,6 +150,8 @@ final class MpcTrackEditView extends LinearLayout {
     private final Listener listener;
     private final Button[] tabButtons = new Button[Tab.values().length];
     private final TextView contextView;
+    private WaveformView sampleLayerWaveform;
+    private TextView playbackCursorInfo;
     private final TextView padContextView;
     private final Button editAllLayersButton;
     private final LinearLayout body;
@@ -356,6 +358,7 @@ final class MpcTrackEditView extends LinearLayout {
                         : "NO SAMPLE • ASSIGN FROM BROWSER / SAMPLER"));
 
         WaveformView waveform = new WaveformView(getContext());
+        sampleLayerWaveform = waveform;
         waveform.setContentDescription("Track Edit Samples waveform");
         waveform.setEditable(snapshot.sampleFrames > 0);
         waveform.setMinimumHeight(dp(126));
@@ -378,6 +381,13 @@ final class MpcTrackEditView extends LinearLayout {
         }
         body.addView(waveform, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(134)));
+
+        playbackCursorInfo = label("PLAYHEAD • STOPPED", 8, MUTED);
+        playbackCursorInfo.setSingleLine(true);
+        playbackCursorInfo.setContentDescription(
+                "Track Edit sample playback cursor inactive");
+        body.addView(playbackCursorInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
         body.addView(infoField("REGION",
                 snapshot.sampleFrames > 0
@@ -510,6 +520,25 @@ final class MpcTrackEditView extends LinearLayout {
         cutoff20k.setContentDescription("Track Edit filter cutoff 20000 Hz");
         filter.addView(cutoff20k);
         body.addView(filter, height(42));
+    }
+
+    void setPlaybackCursor(long frame, long totalFrames) {
+        final boolean active = frame >= 0L && totalFrames > 0L;
+        final float normalized = active
+                ? clamp01(frame / (float) totalFrames) : -1.0f;
+        if (sampleLayerWaveform != null) sampleLayerWaveform.setPlayhead(normalized);
+        if (playbackCursorInfo == null) return;
+        if (active) {
+            playbackCursorInfo.setText(String.format(
+                    Locale.ROOT, "PLAYHEAD • %d / %d", frame, totalFrames));
+            playbackCursorInfo.setContentDescription(
+                    "Track Edit sample playback cursor frame: "
+                            + frame + " of " + totalFrames);
+        } else {
+            playbackCursorInfo.setText("PLAYHEAD • STOPPED");
+            playbackCursorInfo.setContentDescription(
+                    "Track Edit sample playback cursor inactive");
+        }
     }
 
     private void renderReserved(String heading, String message) {

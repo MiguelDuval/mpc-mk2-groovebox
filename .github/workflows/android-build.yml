@@ -787,5 +787,9 @@ jobs:
             /tmp/mpc-groovebox-track-edit-filter-cutoff-changed-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-filter-cutoff-restored.png
             /tmp/mpc-groovebox-track-edit-filter-cutoff-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-playhead-active.png
+            /tmp/mpc-groovebox-track-edit-playhead-active-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-playhead-stopped.png
+            /tmp/mpc-groovebox-track-edit-playhead-stopped-uiautomator.xml
           if-no-files-found: warn
           archive: true

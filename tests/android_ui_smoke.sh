@@ -5945,6 +5945,28 @@ if ! file "$LOCAL_SAMPLE_HOST" | grep -Fq -- "WAVE"; then
   file "$LOCAL_SAMPLE_HOST" || true
   exit 1
 fi
+python3 - "$LOCAL_SAMPLE_HOST" <<'PY'
+import os
+import pathlib
+import wave
+import sys
+
+path = pathlib.Path(sys.argv[1])
+with wave.open(str(path), "rb") as source:
+    params = source.getparams()
+    frames = source.readframes(source.getnframes())
+    if params.nframes <= 0 or not frames:
+        raise SystemExit("Browser cursor fixture source WAV contains no frames")
+repeats = 64
+extended = path.with_name(path.stem + "-playhead" + path.suffix)
+with wave.open(str(extended), "wb") as target:
+    target.setparams((params.nchannels, params.sampwidth, params.framerate,
+                      0, params.comptype, params.compname))
+    target.writeframes(frames * repeats)
+os.replace(extended, path)
+with wave.open(str(path), "rb") as check:
+    print(f"Extended Browser WAV fixture for cursor acceptance: {check.getnframes()} frames / {check.getnframes() / check.getframerate():.2f} s")
+PY
 if ! adb_bounded 10 shell mkdir -p /sdcard/Music; then
   echo "ERROR: could not prepare emulator Music folder"
   exit 1
@@ -7684,6 +7706,99 @@ if [[ "$track_edit_region_gain_restored" != "$track_edit_region_gain_before" || 
 fi
 echo "Track Edit sample region Start/End real-touch isolation and exact restoration passed: $track_edit_region_before."
 
+# SAMP-007: Pad AUDITION publishes an advancing native-backed cursor inside the region.
+echo "Running SAMP-007 Track Edit region audition/playhead runtime test..."
+TRACK_EDIT_PLAYHEAD_REMOTE="/sdcard/mpc-groovebox-track-edit-playhead-uiautomator.xml"
+TRACK_EDIT_PLAYHEAD_XML="/tmp/mpc-groovebox-track-edit-playhead-uiautomator.xml"
+TRACK_EDIT_PLAYHEAD_ACTIVE_PNG="/tmp/mpc-groovebox-track-edit-playhead-active.png"
+TRACK_EDIT_PLAYHEAD_ACTIVE_XML="/tmp/mpc-groovebox-track-edit-playhead-active-uiautomator.xml"
+TRACK_EDIT_PLAYHEAD_STOPPED_PNG="/tmp/mpc-groovebox-track-edit-playhead-stopped.png"
+TRACK_EDIT_PLAYHEAD_STOPPED_XML="/tmp/mpc-groovebox-track-edit-playhead-stopped-uiautomator.xml"
+TRACK_EDIT_PLAYHEAD_STATE_XML="/tmp/mpc-groovebox-track-edit-playhead-state-uiautomator.xml"
+
+track_edit_playhead_region_before="$(read_track_edit_region_bounds "$TRACK_EDIT_REGION_END_RESTORED_XML")" || {
+  echo "ERROR: restored sample region cannot be read before audition"; exit 1;
+}
+read -r track_edit_playhead_start track_edit_playhead_end track_edit_playhead_total <<< "$track_edit_playhead_region_before"
+if ! tap_ui_text "$TRACK_EDIT_REGION_END_RESTORED_XML" "AUDITION"; then
+  echo "ERROR: Track Edit AUDITION Function Bar button was not actionable"; exit 1
+fi
+track_edit_playhead_advanced=0
+track_edit_playhead_last=-1
+track_edit_playhead_active_xml=""
+for attempt in {1..20}; do
+  if ! dump_device_ui "$TRACK_EDIT_PLAYHEAD_REMOTE" "$TRACK_EDIT_PLAYHEAD_XML"; then
+    sleep 0.1
+    continue
+  fi
+  track_edit_playhead_sample="$(python3 - "$TRACK_EDIT_PLAYHEAD_XML" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+pattern = re.compile(r"Track Edit sample playback cursor frame:\s*(\d+)\s+of\s+(\d+)")
+for node in root.iter("node"):
+    match = pattern.fullmatch(node.attrib.get("content-desc", ""))
+    if match:
+        print(match.group(1), match.group(2))
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+)" || track_edit_playhead_sample=""
+  if [[ -n "$track_edit_playhead_sample" ]]; then
+    read -r track_edit_playhead_frame track_edit_playhead_frame_count <<< "$track_edit_playhead_sample"
+    if (( track_edit_playhead_frame_count != track_edit_playhead_total \
+        || track_edit_playhead_frame < track_edit_playhead_start \
+        || track_edit_playhead_frame >= track_edit_playhead_end )); then
+      echo "ERROR: playback cursor escaped the sample region: frame=$track_edit_playhead_frame region=$track_edit_playhead_start..$track_edit_playhead_end total=$track_edit_playhead_frame_count"; exit 1
+    fi
+    if [[ "$track_edit_playhead_last" -ge 0 && "$track_edit_playhead_frame" -gt "$track_edit_playhead_last" ]]; then
+      track_edit_playhead_advanced=1
+      track_edit_playhead_active_xml="$TRACK_EDIT_PLAYHEAD_XML"
+      break
+    fi
+    track_edit_playhead_last="$track_edit_playhead_frame"
+  fi
+  sleep 0.1
+done
+if [[ "$track_edit_playhead_advanced" != "1" ]]; then
+  echo "ERROR: AUDITION did not expose an advancing playback cursor in the sample region"; exit 1
+fi
+if ! cp "$track_edit_playhead_active_xml" "$TRACK_EDIT_PLAYHEAD_ACTIVE_XML"; then
+  echo "ERROR: active playhead hierarchy copy failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PLAYHEAD_ACTIVE_PNG"; then
+  echo "ERROR: active playhead screenshot capture failed"; exit 1
+fi
+
+track_edit_playhead_stopped=0
+for attempt in {1..60}; do
+  if ! dump_device_ui "$TRACK_EDIT_PLAYHEAD_REMOTE" "$TRACK_EDIT_PLAYHEAD_STATE_XML"; then
+    sleep 0.1
+    continue
+  fi
+  if grep -Fq 'Track Edit sample playback cursor inactive' "$TRACK_EDIT_PLAYHEAD_STATE_XML"; then
+    track_edit_playhead_stopped=1; break
+  fi
+  sleep 0.1
+done
+if [[ "$track_edit_playhead_stopped" != "1" ]]; then
+  echo "ERROR: playback cursor did not return to inactive at sample end"; exit 1
+fi
+if ! cp "$TRACK_EDIT_PLAYHEAD_STATE_XML" "$TRACK_EDIT_PLAYHEAD_STOPPED_XML"; then
+  echo "ERROR: stopped playhead hierarchy copy failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PLAYHEAD_STOPPED_PNG"; then
+  echo "ERROR: stopped playhead screenshot capture failed"; exit 1
+fi
+track_edit_playhead_region_after="$(read_track_edit_region_bounds "$TRACK_EDIT_PLAYHEAD_STOPPED_XML")" || {
+  echo "ERROR: region unavailable after audition"; exit 1;
+}
+if [[ "$track_edit_playhead_region_after" != "$track_edit_playhead_region_before" ]]; then
+  echo "ERROR: AUDITION mutated sample region: before=$track_edit_playhead_region_before after=$track_edit_playhead_region_after"; exit 1
+fi
+echo "SAMP-007 real-touch AUDITION cursor advanced within the sample region and cleared at completion; exact region preserved: $track_edit_playhead_region_before."
+
 # EDIT-007: verify both sample-layer velocity-range bounds are native-backed,
 # field-isolated, and inverse-restorable through real on-screen touch controls.
 echo "Running Track Edit sample-layer velocity MIN/MAX field-isolation → restore runtime test..."
@@ -8148,7 +8263,9 @@ for evidence in \
   "$TRACK_EDIT_ENV_ATTACK_CHANGED_PNG" "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML" \
   "$TRACK_EDIT_ENV_ATTACK_RESTORED_PNG" "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML" \
   "$TRACK_EDIT_FILTER_CHANGED_PNG" "$TRACK_EDIT_FILTER_CHANGED_XML" \
-  "$TRACK_EDIT_FILTER_RESTORED_PNG" "$TRACK_EDIT_FILTER_RESTORED_XML"; do
+  "$TRACK_EDIT_FILTER_RESTORED_PNG" "$TRACK_EDIT_FILTER_RESTORED_XML" \
+  "$TRACK_EDIT_PLAYHEAD_ACTIVE_PNG" "$TRACK_EDIT_PLAYHEAD_ACTIVE_XML" \
+  "$TRACK_EDIT_PLAYHEAD_STOPPED_PNG" "$TRACK_EDIT_PLAYHEAD_STOPPED_XML"; do
   if ! test -s "$evidence"; then
     echo "ERROR: Track Edit runtime evidence missing/empty: $evidence"; exit 1
   fi
