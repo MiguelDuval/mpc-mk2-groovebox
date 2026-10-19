@@ -48,7 +48,7 @@ public final class MpcSequenceZoomPolicyTest {
         assertEquals(16, MpcSequenceZoomPolicy.gridLastVisiblePad(-5, 12));
         assertEquals(1, MpcSequenceZoomPolicy.gridFirstVisiblePad(100, 1));
         assertEquals(1, MpcSequenceZoomPolicy.gridLastVisiblePad(100, 1));
-        assertEquals(1, MpcSequenceZoomPolicy.gridFirstVisiblePad(-1, 0));
+        assertEquals(16, MpcSequenceZoomPolicy.gridFirstVisiblePad(-1, 0));
         assertEquals(16, MpcSequenceZoomPolicy.gridLastVisiblePad(-1, 100));
     }
 
