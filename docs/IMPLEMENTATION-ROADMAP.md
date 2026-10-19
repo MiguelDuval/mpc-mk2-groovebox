@@ -32,11 +32,13 @@ Older queue entries below are historical snapshots. Read the status here first, 
 - Real-touch GAIN changed 100% → 90% → 100% with TUNE/PAN unchanged. Real-touch PAN changed C → L100 → C while GAIN/TUNE remained unchanged.
 - APK artifact 12183172318 (9,956,909 bytes; SHA-256 `50b118babbd6f89b305d8addeffdcbc40f72e37e07fbc09ea197b5e9d77d60c8`); UI evidence artifact 12183699319. The ZIP evidence integrity check passed and gain/pan changed/restored screenshots and accessibility XML were inspected.
 
-### 5. NEXT PRODUCT SLICE — EDIT-007 Track Edit velocity ranges
+### 5. NEXT PRODUCT SLICE — repair EDIT-007 scrolling precondition, then verify velocity ranges
 
-- An isolated candidate adds explicit semantic accessibility identifiers to the existing MIN−/MIN+/MAX−/MAX+ controls. The smoke scrolls toward the actionable minimum-increase button rather than treating the static VELOCITY label as a clickable target.
-- Real-touch acceptance changes MAX by one while preserving MIN, inverse-restores it, then changes MIN by one while preserving MAX and inverse-restores it. Both endpoints must remain in 0..127 with MIN ≤ MAX; the exact original pair must be restored and GAIN/TUNE/PAN must remain unchanged.
-- The candidate has not yet received exact-PR-SHA CI. Keep the existing Android Project lifecycle and all prior UI acceptance green before marking EDIT-007 verified.
+- Android Build #2903 / run 39251501163 on exact PR SHA `534fdf35d9fe3f67c0ab62e93392489a0d208fe3` failed at the start of EDIT-007: the existing scroll helper could not derive a safe gesture because `Track Edit Samples waveform` was no longer exposed by UiAutomator after the content had scrolled below it. It did not attempt either MIN or MAX mutation. APK build/upload and shell syntax passed; do not classify this as a product velocity-range failure.
+- Root cause fixed in isolated branch `feature/scroll-helper-fix`: keep the original waveform-ancestor path when available, but fall back to resolving the visible scrollable editor using semantic GAIN/TUNE/PAN/REGION descendants and current hierarchy bounds.
+- Integrate this narrow test-harness fix against current PR HEAD `534fdf35d9fe3f67c0ab62e93392489a0d208fe3` with an expected-SHA fast-forward only. Require a full successful exact-SHA Android Build and inspect velocity-range changed/restored screenshots/XML before marking EDIT-007 verified.
+- EDIT-008 sample-region Start/End acceptance has been prepared on `feature/track-edit-region-acceptance`, but its branch predates the scrolling fix; reconcile it only after EDIT-007 passes.
+
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 
