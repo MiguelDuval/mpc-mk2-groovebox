@@ -4628,6 +4628,85 @@ PY
       echo "ERROR: Step Sequencer did not restore the native empty-step state"; cat "$STEP_TOUCH_ERASED_XML"; exit 1
     fi
 
+    # Verify page navigation through real touchscreen input after the edit round-trip.
+    # The selected relative column must remain empty and map to the matching column on page 2,
+    # then return to the same absolute Step without changing Pattern data.
+    STEP_TOUCH_PAGE2_PNG="/tmp/mpc-groovebox-step-touch-page2.png"
+    STEP_TOUCH_PAGE2_XML="/tmp/mpc-groovebox-step-touch-page2-uiautomator.xml"
+    STEP_TOUCH_PAGE2_REMOTE="/sdcard/mpc-groovebox-step-touch-page2-uiautomator.xml"
+    if ! tap_visible_description_early "$STEP_TOUCH_ERASED_XML" "MPC Step Sequencer next 16-step page"; then
+      echo "ERROR: real touchscreen tap could not open the next Step page"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$STEP_TOUCH_PAGE2_REMOTE" "$STEP_TOUCH_PAGE2_XML"; then
+      echo "ERROR: Step page 2 hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_PAGE2_PNG"; then
+      echo "ERROR: Step page 2 screenshot failed"; exit 1
+    fi
+    if ! python3 - "$STEP_TOUCH_PAGE2_XML" "$step_touch_target_number" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, relative_s = sys.argv[1:]
+relative = int(relative_s)
+absolute_step = relative + 16
+nodes = list(ET.parse(path).getroot().iter("node"))
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit event context missing on page 2")
+text = info[0].attrib.get("text", "")
+if re.search(rf"\bSTEP\s+0*{absolute_step}\b", text) is None or "EMPTY" not in text:
+    raise AssertionError(f"Page 2 did not preserve the relative selection as empty absolute step {absolute_step}: {text!r}")
+if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {relative} off"]) != 1:
+    raise AssertionError("Corresponding page-2 cell is not empty")
+previous = [n for n in nodes if n.attrib.get("content-desc") == "MPC Step Sequencer previous 16-step page"]
+if len(previous) != 1 or previous[0].attrib.get("enabled") != "true" or previous[0].attrib.get("visible-to-user") == "false":
+    raise AssertionError("Page 2 does not expose an actionable previous-page control")
+print(f"Real-touch Step page 1 → page 2 preserved cursor at absolute step {absolute_step}, empty.")
+PY
+    then
+      echo "ERROR: real-touch Step page forward navigation failed state assertions"; cat "$STEP_TOUCH_PAGE2_XML"; exit 1
+    fi
+
+    STEP_TOUCH_PAGE1_RESTORED_PNG="/tmp/mpc-groovebox-step-touch-page1-restored.png"
+    STEP_TOUCH_PAGE1_RESTORED_XML="/tmp/mpc-groovebox-step-touch-page1-restored-uiautomator.xml"
+    STEP_TOUCH_PAGE1_RESTORED_REMOTE="/sdcard/mpc-groovebox-step-touch-page1-restored-uiautomator.xml"
+    if ! tap_visible_description_early "$STEP_TOUCH_PAGE2_XML" "MPC Step Sequencer previous 16-step page"; then
+      echo "ERROR: real touchscreen tap could not return to the original Step page"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$STEP_TOUCH_PAGE1_RESTORED_REMOTE" "$STEP_TOUCH_PAGE1_RESTORED_XML"; then
+      echo "ERROR: restored Step page 1 hierarchy capture failed"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_PAGE1_RESTORED_PNG"; then
+      echo "ERROR: restored Step page 1 screenshot failed"; exit 1
+    fi
+    if ! python3 - "$STEP_TOUCH_PAGE1_RESTORED_XML" "$step_touch_target_number" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, target_s = sys.argv[1:]
+target = int(target_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event information"]
+if len(info) != 1:
+    raise AssertionError("Step Edit event context missing after returning to page 1")
+text = info[0].attrib.get("text", "")
+if re.search(rf"\bSTEP\s+0*{target}\b", text) is None or "EMPTY" not in text:
+    raise AssertionError(f"Returning to page 1 did not restore the original empty selection: {text!r}")
+for description in (f"Pad 1 step {target} off", "Pad 1 step 1 off"):
+    if len([n for n in nodes if n.attrib.get("content-desc") == description]) != 1:
+        raise AssertionError(f"Page return changed or lost expected empty cell: {description!r}")
+next_page = [n for n in nodes if n.attrib.get("content-desc") == "MPC Step Sequencer next 16-step page"]
+if len(next_page) != 1 or next_page[0].attrib.get("enabled") != "true" or next_page[0].attrib.get("visible-to-user") == "false":
+    raise AssertionError("Returned page 1 does not expose an actionable next-page control")
+print(f"Real-touch Step page 2 → page 1 restored selected empty step {target}; event fixture unchanged.")
+PY
+    then
+      echo "ERROR: real-touch Step page return failed state assertions"; cat "$STEP_TOUCH_PAGE1_RESTORED_XML"; exit 1
+    fi
+
     if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'echo $step_touch_target_number > cache/mpc-step-touch-target'"; then
       echo "ERROR: could not report the Step target to the native audit"; exit 1
     fi
