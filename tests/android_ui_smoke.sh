@@ -6461,7 +6461,7 @@ if scroll is None:
         "Track Edit decay value",
         "Track Edit sustain value",
         "Track Edit release value",
-        "Track Edit cutoff value value",
+        "Track Edit cutoff",
     }
     scroll_candidates = []
     for candidate in nodes:
@@ -7916,7 +7916,7 @@ fi
 if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit attack value" 15; then
   echo "ERROR: Track Edit envelope Attack value is not exposed"; exit 1
 fi
-if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit cutoff value value" 15; then
+if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit cutoff" 15; then
   echo "ERROR: Track Edit filter cutoff value is not exposed"; exit 1
 fi
 # wait_for_ui_description just captured a hierarchy containing both the Attack and
@@ -7969,9 +7969,9 @@ import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
 found = [n for n in root.iter("node")
-         if n.attrib.get("content-desc", "") == "Track Edit cutoff value value"]
+         if n.attrib.get("content-desc", "") == "Track Edit cutoff"]
 if len(found) != 1:
-    raise SystemExit(f"expected one Track Edit cutoff value value field, found {len(found)}")
+    raise SystemExit(f"expected one Track Edit cutoff field, found {len(found)}")
 value_text = found[0].attrib.get("text", "")
 khz = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*kHz\b", value_text, re.I)
 if khz:
