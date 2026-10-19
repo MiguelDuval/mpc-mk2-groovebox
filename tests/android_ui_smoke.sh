@@ -1878,16 +1878,22 @@ PY
 }
 
 dump_device_ui() {
-  local remote_path="$1"
+  # Keep exactly one device-side hierarchy file. This smoke captures hundreds
+  # of accessibility snapshots; retaining a unique /sdcard XML per snapshot
+  # eventually makes later uiautomator dumps report success without creating
+  # the requested file. Host-side evidence remains uniquely named by callers.
+  local requested_remote_path="$1"
+  local remote_path="/sdcard/mpc-groovebox-current-uiautomator.xml"
   local host_path="$2"
   local log_path="/tmp/mpc-groovebox-uiautomator-dump.log"
   if ! adb_bounded 20 shell uiautomator dump "$remote_path" > "$log_path" 2>&1; then
     cat "$log_path" || true
-    echo "ERROR: could not dump emulator UI hierarchy: $remote_path"
+    echo "ERROR: could not dump emulator UI hierarchy (requested $requested_remote_path; shared path $remote_path)"
     return 1
   fi
   if ! adb_bounded 10 exec-out cat "$remote_path" > "$host_path"; then
-    echo "ERROR: could not retrieve emulator UI hierarchy: $remote_path"
+    echo "ERROR: could not retrieve emulator UI hierarchy (requested $requested_remote_path; shared path $remote_path)"
+    cat "$log_path" || true
     return 1
   fi
   if ! test -s "$host_path"; then
