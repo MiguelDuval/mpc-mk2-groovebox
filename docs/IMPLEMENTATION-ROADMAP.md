@@ -26,11 +26,17 @@ Older queue entries below are historical snapshots. Read the status here first, 
 - Real PAD + selected Pad 2; the selected absolute Step 02 and its empty state remained consistent with the visible cell projection. Real PAD − restored Pad 1 and Step 02; Step 01 remained unchanged and no Pattern event was created or modified.
 - APK artifact 12182290674 (9,956,909 bytes, SHA-256 `83797a8c4a48a45a3c02e358f8ae5f68f72f470111d950b9e163e3abae85c64e`); UI evidence 12183205363 (SHA-256 `6e0359c02c5cde3ca1e95a57f5aa2747d3392c1fe69495d871e01aebe8905597`). Pad 2/Pad 1 screenshots and accessibility XML downloaded and inspected.
 
-### 4. NEXT PRODUCT SLICE — Track Edit layer parameter field isolation
+### 4. EDIT-004/005 Track Edit layer GAIN/PAN — VERIFIED / EXACT-SHA
 
-- Android Build #2901 verified STEP-001 on exact PR SHA `a681303fe3d411c0df99d4ce7dc90e8f2caaac76`.
-- A broader real-touch Track Edit candidate is isolated on `feature/track-edit-velocity-range-acceptance`, not yet part of PR #23. It covers GAIN ±10 percentage points with inverse restore, PAN center → L100 → center, and velocity MIN/MAX one-unit field-isolation/restore. Each action asserts unrelated fields and archives changed/restored evidence.
-- Do not mark EDIT-004, EDIT-005 or EDIT-007 verified until the resulting PR head's own Android Build passes the emulator smoke and changed/restored screenshot + XML evidence is inspected. No native production behavior is inferred from script-only staging.
+- Android Build #2902 / run 39244891264 passed on exact SHA `b2aa9cacf21a99b1ad51ef4046e55e9537a8754a`: [Actions #2902](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39244891264).
+- Real-touch GAIN changed 100% → 90% → 100% with TUNE/PAN unchanged. Real-touch PAN changed C → L100 → C while GAIN/TUNE remained unchanged.
+- APK artifact 12183172318 (9,956,909 bytes; SHA-256 `50b118babbd6f89b305d8addeffdcbc40f72e37e07fbc09ea197b5e9d77d60c8`); UI evidence artifact 12183699319. The ZIP evidence integrity check passed and gain/pan changed/restored screenshots and accessibility XML were inspected.
+
+### 5. NEXT PRODUCT SLICE — EDIT-007 Track Edit velocity ranges
+
+- An isolated candidate adds explicit semantic accessibility identifiers to the existing MIN−/MIN+/MAX−/MAX+ controls. The smoke scrolls toward the actionable minimum-increase button rather than treating the static VELOCITY label as a clickable target.
+- Real-touch acceptance changes MAX by one while preserving MIN, inverse-restores it, then changes MIN by one while preserving MAX and inverse-restores it. Both endpoints must remain in 0..127 with MIN ≤ MAX; the exact original pair must be restored and GAIN/TUNE/PAN must remain unchanged.
+- The candidate has not yet received exact-PR-SHA CI. Keep the existing Android Project lifecycle and all prior UI acceptance green before marking EDIT-007 verified.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 
