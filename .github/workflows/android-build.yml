@@ -581,6 +581,12 @@ jobs:
             /tmp/mpc-groovebox-track-edit-gain-changed-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-gain-restored.png
             /tmp/mpc-groovebox-track-edit-gain-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-pan-before.png
+            /tmp/mpc-groovebox-track-edit-pan-before-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-pan-changed.png
+            /tmp/mpc-groovebox-track-edit-pan-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-pan-restored.png
+            /tmp/mpc-groovebox-track-edit-pan-restored-uiautomator.xml
             /tmp/mpc-groovebox-track-view-muted.png
             /tmp/mpc-groovebox-track-view-muted-uiautomator.xml
             /tmp/mpc-groovebox-arrange-grid-focus.png
