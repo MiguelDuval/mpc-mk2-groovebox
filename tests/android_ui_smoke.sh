@@ -4656,14 +4656,27 @@ info = [n for n in nodes if n.attrib.get("content-desc") == "Step Edit event inf
 if len(info) != 1:
     raise AssertionError("Step Edit event context missing on page 2")
 text = info[0].attrib.get("text", "")
-if re.search(rf"\bSTEP\s+0*{absolute_step}\b", text) is None or "EMPTY" not in text:
-    raise AssertionError(f"Page 2 did not preserve the relative selection as empty absolute step {absolute_step}: {text!r}")
-if len([n for n in nodes if n.attrib.get("content-desc") == f"Pad 1 step {relative} off"]) != 1:
-    raise AssertionError("Corresponding page-2 cell is not empty")
+if re.search(rf"\bSTEP\s+0*{absolute_step}\b", text) is None:
+    raise AssertionError(f"Page 2 selection is not absolute step {absolute_step}: {text!r}")
+cell_desc = f"Pad 1 step {relative}"
+cells = [n.attrib.get("content-desc", "") for n in nodes
+         if n.attrib.get("content-desc", "") in (cell_desc + " on", cell_desc + " off")]
+if len(cells) != 1:
+    raise AssertionError(f"Page 2 target column is missing or duplicated: {cells!r}")
+cell_is_active = cells[0].endswith(" on")
+if cell_is_active == ("EMPTY" in text):
+    raise AssertionError(f"Step information and visible active-cell state disagree: cell={cells[0]!r}, info={text!r}")
+if not cell_is_active:
+    if "EMPTY" not in text:
+        raise AssertionError(f"Empty page-2 cell should be selected as EMPTY: {text!r}")
+else:
+    patterns = [r"\bVEL\s+(\d+)\b", r"\bPROB\s+(\d+)\b", r"\bRAT\s+(\d+)x\b", r"\bNUDGE\s+([+-]?\d+)\b", r"\bDUR\s+(\d+)\b"]
+    if any(re.search(p, text) is None for p in patterns):
+        raise AssertionError(f"Active page-2 event has incomplete native fields: {text!r}")
 previous = [n for n in nodes if n.attrib.get("content-desc") == "MPC Step Sequencer previous 16-step page"]
 if len(previous) != 1 or previous[0].attrib.get("enabled") != "true" or previous[0].attrib.get("visible-to-user") == "false":
     raise AssertionError("Page 2 does not expose an actionable previous-page control")
-print(f"Real-touch Step page 1 → page 2 preserved cursor at absolute step {absolute_step}, empty.")
+print(f"Real-touch Step page 1 → page 2 preserved cursor at absolute step {absolute_step}; targetActive={cell_is_active}.")
 PY
     then
       echo "ERROR: real-touch Step page forward navigation failed state assertions"; cat "$STEP_TOUCH_PAGE2_XML"; exit 1
