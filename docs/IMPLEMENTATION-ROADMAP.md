@@ -20,14 +20,15 @@ Older queue entries below are historical snapshots. Read the status here first, 
 - The page navigation touch sequence moved the absolute cursor from Step 02 on page 1 to Step 18 on page 2 and back to Step 02 without changing note state. Changed/restored screenshots and accessibility hierarchies are included in UI evidence 12180247158.
 - Grid five-field edit/restore plus DRAW/ERASE and the already-implemented Step RAT/NUDGE/DURATION acceptance also remained green in the full workflow. Physical controller validation remains separate.
 
-### 3. STEP-001 Pad selection — EXACT-SHA ACCEPTANCE IN PROGRESS
+### 3. STEP-001 Pad selection — VERIFIED / EXACT-SHA
 
-- The real PAD + / PAD − touch round trip is now in the PR candidate at SHA `a681303fe3d411c0df99d4ce7dc90e8f2caaac76`.
-- Android Build #2901 / run 39242015786 is running on that exact SHA. Do not mark STEP-001 verified until its emulator smoke and visual-evidence upload finish successfully; an uploaded APK or successful compilation alone is not enough.
+- Android Build #2901 / run 39242015786 passed on exact SHA `a681303fe3d411c0df99d4ce7dc90e8f2caaac76`: [Actions #2901](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39242015786).
+- Real PAD + selected Pad 2; the selected absolute Step 02 and its empty state remained consistent with the visible cell projection. Real PAD − restored Pad 1 and Step 02; Step 01 remained unchanged and no Pattern event was created or modified.
+- APK artifact 12182290674 (9,956,909 bytes, SHA-256 `83797a8c4a48a45a3c02e358f8ae5f68f72f470111d950b9e163e3abae85c64e`); UI evidence 12183205363 (SHA-256 `6e0359c02c5cde3ca1e95a57f5aa2747d3392c1fe69495d871e01aebe8905597`). Pad 2/Pad 1 screenshots and accessibility XML downloaded and inspected.
 
 ### 4. NEXT PRODUCT SLICE — Track Edit layer GAIN and PAN field isolation
 
-- A bounded real-touch GAIN/PAN acceptance candidate is staged on isolated branch `feature/track-edit-pan-acceptance`, not yet part of PR #23.
+- Android Build #2901 now verifies STEP-001 on exact PR SHA `a681303fe3d411c0df99d4ce7dc90e8f2caaac76`. The bounded real-touch GAIN/PAN acceptance candidate remains isolated on `feature/track-edit-pan-acceptance`, not yet part of PR #23.
 - GAIN changes by one 10-percentage-point step and inverse-restores the baseline while checking TUNE/PAN. PAN moves center → full left → center while checking GAIN/TUNE. Both archive changed/restored hierarchy and screenshot evidence.
 - After Build #2901 concludes, integrate the candidate against the then-current PR HEAD using a safe expected-SHA update, then require an exact-SHA Android Build before marking EDIT-004/EDIT-005 verified. No production status is inferred from the isolated branch.
 
