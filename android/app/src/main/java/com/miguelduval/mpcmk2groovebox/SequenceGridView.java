@@ -158,6 +158,10 @@ public final class SequenceGridView extends View {
                     paint);
         }
 
+        // Sixteen pad labels can occupy a cell only ~18 px tall on the
+        // landscape emulator. Scale the label to its row instead of painting
+        // 9dp text across adjacent pads at high display densities.
+        paint.setTextSize(Math.max(dp(4), Math.min(dp(9), cellHeight * 0.62f)));
         paint.setStyle(Paint.Style.FILL);
         for (int row = 0; row < visiblePads; row++) {
             final float centerY = top + row * cellHeight + cellHeight * 0.5f;

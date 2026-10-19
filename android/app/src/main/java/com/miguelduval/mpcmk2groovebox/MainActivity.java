@@ -9703,7 +9703,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSequenceGrid();
         setBottomStatus(
                 "GRID ZOOM H • "
-                        + sequenceGridStartStep + 1
+                        + (sequenceGridStartStep + 1)
                         + "–"
                         + Math.min(
                                 sequenceGridTotalSteps(),
