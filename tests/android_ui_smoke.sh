@@ -7901,7 +7901,7 @@ TRACK_EDIT_FILTER_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-filter-cutoff-rest
 TRACK_EDIT_FILTER_RESTORED_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-restored-uiautomator.xml"
 TRACK_EDIT_FILTER_CHECK_XML="/tmp/mpc-groovebox-track-edit-filter-cutoff-check-uiautomator.xml"
 
-if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Envelopes tab"; then
+if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit AMP ENV tab"; then
   echo "ERROR: Track Edit AMP ENV tab could not be opened"; exit 1
 fi
 if ! wait_for_ui_description "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_BASELINE_XML" "Track Edit envelope attack value" 15; then
