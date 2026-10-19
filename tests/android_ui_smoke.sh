@@ -7126,6 +7126,28 @@ print(re.sub(r"\s+", " ", found[0].attrib.get("text", "")).strip())
 PY
 }
 
+read_track_edit_region_bounds() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+found = [n for n in nodes
+         if n.attrib.get("content-desc", "") == "Track Edit region"]
+if len(found) != 1:
+    raise SystemExit(f"expected one Track Edit region field, found {len(found)}")
+text = re.sub(r"\s+", " ", found[0].attrib.get("text", "")).strip()
+match = re.search(r"\bS\s+(\d+)\s*•\s*E\s+(\d+)\s*•\s*(\d+)\s+frames\b", text)
+if match is None:
+    raise SystemExit(f"could not parse sample region start/end/total from {text!r}")
+start, end, total = map(int, match.groups())
+if not 0 <= start < end <= total:
+    raise SystemExit(f"invalid sample region: start={start}, end={end}, total={total}")
+print(start, end, total)
+PY
+}
+
+
 track_edit_gain_before="$(read_track_edit_gain_value "$TRACK_EDIT_RESTORED_XML")" || {
   echo "ERROR: initial Track Edit layer gain could not be read"; exit 1;
 }
@@ -7314,6 +7336,192 @@ if [[ "$track_edit_pan_final" != "$track_edit_pan_before" \
   echo "PAN: $track_edit_pan_before -> $track_edit_pan_final; GAIN: $track_edit_pan_gain_before -> $track_edit_pan_gain_final; TUNE: $track_edit_pan_tuning_before -> $track_edit_pan_tuning_final"; exit 1
 fi
 echo "Track Edit layer PAN real-touch field isolation passed: PAN C → PAN L100 → PAN C; GAIN/TUNE preserved."
+
+# EDIT-008: mutate sample-layer region start/end through their real 1K controls,
+# prove one boundary changes at a time and restore the exact native region.
+echo "Running Track Edit sample-region Start/End field-isolation → exact restore runtime test..."
+TRACK_EDIT_REGION_BEFORE_PNG="/tmp/mpc-groovebox-track-edit-region-before.png"
+TRACK_EDIT_REGION_BEFORE_XML="/tmp/mpc-groovebox-track-edit-region-before-uiautomator.xml"
+TRACK_EDIT_REGION_BEFORE_REMOTE="/sdcard/mpc-groovebox-track-edit-region-before-uiautomator.xml"
+TRACK_EDIT_REGION_START_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-region-start-changed.png"
+TRACK_EDIT_REGION_START_CHANGED_XML="/tmp/mpc-groovebox-track-edit-region-start-changed-uiautomator.xml"
+TRACK_EDIT_REGION_START_CHANGED_REMOTE="/sdcard/mpc-groovebox-track-edit-region-start-changed-uiautomator.xml"
+TRACK_EDIT_REGION_START_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-region-start-restored.png"
+TRACK_EDIT_REGION_START_RESTORED_XML="/tmp/mpc-groovebox-track-edit-region-start-restored-uiautomator.xml"
+TRACK_EDIT_REGION_START_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-region-start-restored-uiautomator.xml"
+TRACK_EDIT_REGION_END_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-region-end-changed.png"
+TRACK_EDIT_REGION_END_CHANGED_XML="/tmp/mpc-groovebox-track-edit-region-end-changed-uiautomator.xml"
+TRACK_EDIT_REGION_END_CHANGED_REMOTE="/sdcard/mpc-groovebox-track-edit-region-end-changed-uiautomator.xml"
+TRACK_EDIT_REGION_END_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-region-end-restored.png"
+TRACK_EDIT_REGION_END_RESTORED_XML="/tmp/mpc-groovebox-track-edit-region-end-restored-uiautomator.xml"
+TRACK_EDIT_REGION_END_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-region-end-restored-uiautomator.xml"
+TRACK_EDIT_REGION_CHECK_XML="/tmp/mpc-groovebox-track-edit-region-check-uiautomator.xml"
+TRACK_EDIT_REGION_CHECK_REMOTE="/sdcard/mpc-groovebox-track-edit-region-check-uiautomator.xml"
+
+if ! dump_device_ui "$TRACK_EDIT_PAN_RESTORED_REMOTE" "$TRACK_EDIT_REGION_BEFORE_XML"; then
+  echo "ERROR: Track Edit sample-region baseline hierarchy failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_BEFORE_PNG"; then
+  echo "ERROR: Track Edit sample-region baseline screenshot failed"; exit 1
+fi
+track_edit_region_before="$(read_track_edit_region_bounds "$TRACK_EDIT_REGION_BEFORE_XML")" || {
+  echo "ERROR: initial Track Edit sample-region values could not be read"; exit 1;
+}
+read -r track_edit_region_start_before track_edit_region_end_before track_edit_region_total_before <<< "$track_edit_region_before"
+track_edit_region_gain_before="$(read_track_edit_gain_value "$TRACK_EDIT_REGION_BEFORE_XML")" || {
+  echo "ERROR: GAIN baseline missing before sample-region acceptance"; exit 1;
+}
+track_edit_region_tuning_before="$(read_track_edit_tuning_value "$TRACK_EDIT_REGION_BEFORE_XML")" || {
+  echo "ERROR: TUNE baseline missing before sample-region acceptance"; exit 1;
+}
+track_edit_region_pan_before="$(read_track_edit_pan_value "$TRACK_EDIT_REGION_BEFORE_XML")" || {
+  echo "ERROR: PAN baseline missing before sample-region acceptance"; exit 1;
+}
+
+# Choose a safe ±1000-frame move for Start without changing End.
+if (( track_edit_region_end_before - track_edit_region_start_before > 1000 )); then
+  track_edit_region_start_direction="increase"
+  track_edit_region_start_inverse="decrease"
+  track_edit_region_start_expected=$((track_edit_region_start_before + 1000))
+elif (( track_edit_region_start_before >= 1000 )); then
+  track_edit_region_start_direction="decrease"
+  track_edit_region_start_inverse="increase"
+  track_edit_region_start_expected=$((track_edit_region_start_before - 1000))
+else
+  echo "ERROR: sample-region fixture has no safe 1000-frame Start move"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_REGION_BEFORE_XML" "Track Edit layer region start $track_edit_region_start_direction"; then
+  echo "ERROR: Track Edit region Start control was not actionable"; exit 1
+fi
+track_edit_region_start_changed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_REGION_CHECK_REMOTE" "$TRACK_EDIT_REGION_CHECK_XML"; then
+    echo "ERROR: could not observe sample-region Start edit"; exit 1
+  fi
+  track_edit_region_current="$(read_track_edit_region_bounds "$TRACK_EDIT_REGION_CHECK_XML" 2>/dev/null || true)"
+  if [[ -n "$track_edit_region_current" ]]; then
+    read -r track_edit_region_start_current track_edit_region_end_current track_edit_region_total_current <<< "$track_edit_region_current"
+    if (( track_edit_region_start_current == track_edit_region_start_expected && track_edit_region_end_current == track_edit_region_end_before && track_edit_region_total_current == track_edit_region_total_before )); then
+      track_edit_region_start_changed=1; break
+    fi
+  fi
+  sleep 1
+done
+if [[ "$track_edit_region_start_changed" != "1" ]]; then
+  echo "ERROR: Start touch did not change only the start frame by exactly 1000"
+  echo "Before=$track_edit_region_before expected=$track_edit_region_start_expected — $track_edit_region_end_before actual=$track_edit_region_current"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_REGION_START_CHANGED_REMOTE" "$TRACK_EDIT_REGION_START_CHANGED_XML"; then
+  echo "ERROR: changed region Start hierarchy capture failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_START_CHANGED_PNG"; then
+  echo "ERROR: changed region Start screenshot capture failed"; exit 1
+fi
+track_edit_region_gain_changed="$(read_track_edit_gain_value "$TRACK_EDIT_REGION_START_CHANGED_XML")" || { echo "ERROR: GAIN missing after Start edit"; exit 1; }
+track_edit_region_tuning_changed="$(read_track_edit_tuning_value "$TRACK_EDIT_REGION_START_CHANGED_XML")" || { echo "ERROR: TUNE missing after Start edit"; exit 1; }
+track_edit_region_pan_changed="$(read_track_edit_pan_value "$TRACK_EDIT_REGION_START_CHANGED_XML")" || { echo "ERROR: PAN missing after Start edit"; exit 1; }
+if [[ "$track_edit_region_gain_changed" != "$track_edit_region_gain_before" || "$track_edit_region_tuning_changed" != "$track_edit_region_tuning_before" || "$track_edit_region_pan_changed" != "$track_edit_region_pan_before" ]]; then
+  echo "ERROR: region Start edit modified unrelated GAIN/TUNE/PAN state"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_REGION_START_CHANGED_XML" "Track Edit layer region start $track_edit_region_start_inverse"; then
+  echo "ERROR: inverse region Start control was not actionable"; exit 1
+fi
+track_edit_region_start_restored=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_REGION_CHECK_REMOTE" "$TRACK_EDIT_REGION_CHECK_XML"; then
+    echo "ERROR: could not observe region Start restoration"; exit 1
+  fi
+  track_edit_region_current="$(read_track_edit_region_bounds "$TRACK_EDIT_REGION_CHECK_XML" 2>/dev/null || true)"
+  if [[ "$track_edit_region_current" == "$track_edit_region_before" ]]; then
+    track_edit_region_start_restored=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_region_start_restored" != "1" ]]; then
+  echo "ERROR: inverse Start touch did not restore the exact region"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_REGION_START_RESTORED_REMOTE" "$TRACK_EDIT_REGION_START_RESTORED_XML"; then
+  echo "ERROR: restored region Start hierarchy capture failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_START_RESTORED_PNG"; then
+  echo "ERROR: restored region Start screenshot capture failed"; exit 1
+fi
+
+# Choose a safe ±1000-frame End move without changing Start.
+if (( track_edit_region_end_before - track_edit_region_start_before > 1000 )); then
+  track_edit_region_end_direction="decrease"
+  track_edit_region_end_inverse="increase"
+  track_edit_region_end_expected=$((track_edit_region_end_before - 1000))
+elif (( track_edit_region_total_before - track_edit_region_end_before >= 1000 )); then
+  track_edit_region_end_direction="increase"
+  track_edit_region_end_inverse="decrease"
+  track_edit_region_end_expected=$((track_edit_region_end_before + 1000))
+else
+  echo "ERROR: sample-region fixture has no safe 1000-frame End move"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_REGION_START_RESTORED_XML" "Track Edit layer region end $track_edit_region_end_direction"; then
+  echo "ERROR: Track Edit region End control was not actionable"; exit 1
+fi
+track_edit_region_end_changed=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_REGION_CHECK_REMOTE" "$TRACK_EDIT_REGION_CHECK_XML"; then
+    echo "ERROR: could not observe sample-region End edit"; exit 1
+  fi
+  track_edit_region_current="$(read_track_edit_region_bounds "$TRACK_EDIT_REGION_CHECK_XML" 2>/dev/null || true)"
+  if [[ -n "$track_edit_region_current" ]]; then
+    read -r track_edit_region_start_current track_edit_region_end_current track_edit_region_total_current <<< "$track_edit_region_current"
+    if (( track_edit_region_start_current == track_edit_region_start_before && track_edit_region_end_current == track_edit_region_end_expected && track_edit_region_total_current == track_edit_region_total_before )); then
+      track_edit_region_end_changed=1; break
+    fi
+  fi
+  sleep 1
+done
+if [[ "$track_edit_region_end_changed" != "1" ]]; then
+  echo "ERROR: End touch did not change only the end frame by exactly 1000"
+  echo "Before=$track_edit_region_before expected=$track_edit_region_start_before — $track_edit_region_end_expected actual=$track_edit_region_current"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_REGION_END_CHANGED_REMOTE" "$TRACK_EDIT_REGION_END_CHANGED_XML"; then
+  echo "ERROR: changed region End hierarchy capture failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_END_CHANGED_PNG"; then
+  echo "ERROR: changed region End screenshot capture failed"; exit 1
+fi
+track_edit_region_gain_changed="$(read_track_edit_gain_value "$TRACK_EDIT_REGION_END_CHANGED_XML")" || { echo "ERROR: GAIN missing after End edit"; exit 1; }
+track_edit_region_tuning_changed="$(read_track_edit_tuning_value "$TRACK_EDIT_REGION_END_CHANGED_XML")" || { echo "ERROR: TUNE missing after End edit"; exit 1; }
+track_edit_region_pan_changed="$(read_track_edit_pan_value "$TRACK_EDIT_REGION_END_CHANGED_XML")" || { echo "ERROR: PAN missing after End edit"; exit 1; }
+if [[ "$track_edit_region_gain_changed" != "$track_edit_region_gain_before" || "$track_edit_region_tuning_changed" != "$track_edit_region_tuning_before" || "$track_edit_region_pan_changed" != "$track_edit_region_pan_before" ]]; then
+  echo "ERROR: region End edit modified unrelated GAIN/TUNE/PAN state"; exit 1
+fi
+if ! tap_ui_description "$TRACK_EDIT_REGION_END_CHANGED_XML" "Track Edit layer region end $track_edit_region_end_inverse"; then
+  echo "ERROR: inverse region End control was not actionable"; exit 1
+fi
+track_edit_region_end_restored=0
+for attempt in {1..15}; do
+  if ! dump_device_ui "$TRACK_EDIT_REGION_CHECK_REMOTE" "$TRACK_EDIT_REGION_CHECK_XML"; then
+    echo "ERROR: could not observe region End restoration"; exit 1
+  fi
+  track_edit_region_current="$(read_track_edit_region_bounds "$TRACK_EDIT_REGION_CHECK_XML" 2>/dev/null || true)"
+  if [[ "$track_edit_region_current" == "$track_edit_region_before" ]]; then
+    track_edit_region_end_restored=1; break
+  fi
+  sleep 1
+done
+if [[ "$track_edit_region_end_restored" != "1" ]]; then
+  echo "ERROR: inverse End touch did not restore the exact region"; exit 1
+fi
+if ! dump_device_ui "$TRACK_EDIT_REGION_END_RESTORED_REMOTE" "$TRACK_EDIT_REGION_END_RESTORED_XML"; then
+  echo "ERROR: restored region End hierarchy capture failed"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_END_RESTORED_PNG"; then
+  echo "ERROR: restored region End screenshot capture failed"; exit 1
+fi
+track_edit_region_gain_restored="$(read_track_edit_gain_value "$TRACK_EDIT_REGION_END_RESTORED_XML")" || { echo "ERROR: restored GAIN missing"; exit 1; }
+track_edit_region_tuning_restored="$(read_track_edit_tuning_value "$TRACK_EDIT_REGION_END_RESTORED_XML")" || { echo "ERROR: restored TUNE missing"; exit 1; }
+track_edit_region_pan_restored="$(read_track_edit_pan_value "$TRACK_EDIT_REGION_END_RESTORED_XML")" || { echo "ERROR: restored PAN missing"; exit 1; }
+if [[ "$track_edit_region_gain_restored" != "$track_edit_region_gain_before" || "$track_edit_region_tuning_restored" != "$track_edit_region_tuning_before" || "$track_edit_region_pan_restored" != "$track_edit_region_pan_before" ]]; then
+  echo "ERROR: sample-region round-trip did not preserve GAIN/TUNE/PAN"; exit 1
+fi
+echo "Track Edit sample region Start/End real-touch isolation and exact restoration passed: $track_edit_region_before."
 
 # EDIT-007: verify both sample-layer velocity-range bounds are native-backed,
 # field-isolated, and inverse-restorable through real on-screen touch controls.
