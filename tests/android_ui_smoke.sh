@@ -6400,16 +6400,47 @@ def intersection(a, b):
 
 waveform = next((n for n in nodes
                  if n.attrib.get("content-desc") == "Track Edit Samples waveform"), None)
-if waveform is None:
-    raise SystemExit("Track Edit Samples waveform is not yet in the hierarchy")
+scroll = None
+if waveform is not None:
+    scroll = parents.get(waveform)
+    while scroll is not None and not (
+            scroll.attrib.get("class") == "android.widget.ScrollView"
+            and scroll.attrib.get("scrollable") == "true"):
+        scroll = parents.get(scroll)
 
-scroll = parents.get(waveform)
-while scroll is not None and not (
-        scroll.attrib.get("class") == "android.widget.ScrollView"
-        and scroll.attrib.get("scrollable") == "true"):
-    scroll = parents.get(scroll)
 if scroll is None:
-    raise SystemExit("Track Edit waveform has no scrollable ancestor")
+    # UiAutomator can omit the waveform after the Track Edit ScrollView has
+    # already been scrolled below it. In that state, resolve the same editor
+    # viewport from stable semantic children rather than failing or guessing.
+    semantic_markers = {
+        "Track Edit layer gain value",
+        "Track Edit layer tuning value",
+        "Track Edit layer pan value",
+        "Track Edit region",
+        "Track Edit velocity",
+    }
+    scroll_candidates = []
+    for candidate in nodes:
+        if (candidate.attrib.get("class") != "android.widget.ScrollView"
+                or candidate.attrib.get("scrollable") != "true"
+                or candidate.attrib.get("visible-to-user") == "false"):
+            continue
+        candidate_bounds = rect(candidate)
+        if candidate_bounds is None:
+            continue
+        descriptions = [n.attrib.get("content-desc", "")
+                        for n in candidate.iter("node")]
+        marker_count = sum(1 for marker in semantic_markers
+                           if marker in descriptions)
+        if marker_count:
+            width = candidate_bounds[2] - candidate_bounds[0]
+            height = candidate_bounds[3] - candidate_bounds[1]
+            scroll_candidates.append((marker_count, width * height, candidate))
+    if not scroll_candidates:
+        raise SystemExit(
+            "Track Edit ScrollView is unavailable and no visible scrollable "
+            "container exposes the current layer parameters")
+    scroll = max(scroll_candidates, key=lambda entry: (entry[0], entry[1]))[2]
 
 viewport = rect(scroll)
 if viewport is None:
