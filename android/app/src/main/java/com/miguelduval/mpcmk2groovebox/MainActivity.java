@@ -8301,6 +8301,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 9, TEXT);
         gridEventParameterView.setGravity(Gravity.CENTER_VERTICAL);
         gridEventParameterView.setPadding(dp(8), 0, dp(8), 0);
+        gridEventParameterView.setTextSize(8);
         gridEventParameterView.setSingleLine(true);
         gridEventParameterView.setEllipsize(TextUtils.TruncateAt.END);
         gridEventParameterView.setBackground(strokeBackground(SURFACE_2, LINE, 6));
@@ -8314,17 +8315,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         gridEventParameterCycleButton.setContentDescription(
                 "Grid event parameter cycle");
         eventParameterRow.addView(gridEventParameterCycleButton,
-                new LinearLayout.LayoutParams(dp(78), dp(40)));
+                new LinearLayout.LayoutParams(dp(66), dp(40)));
 
         gridEventParameterMinusButton = actionButton(
                 "VEL −", v -> adjustSelectedGridParameter(-1));
         eventParameterRow.addView(gridEventParameterMinusButton,
-                new LinearLayout.LayoutParams(dp(72), dp(40)));
+                new LinearLayout.LayoutParams(dp(54), dp(40)));
 
         gridEventParameterPlusButton = actionButton(
                 "VEL +", v -> adjustSelectedGridParameter(1));
         eventParameterRow.addView(gridEventParameterPlusButton,
-                new LinearLayout.LayoutParams(dp(72), dp(40)));
+                new LinearLayout.LayoutParams(dp(54), dp(40)));
 
         page.addView(eventParameterRow, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
