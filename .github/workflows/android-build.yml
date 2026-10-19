@@ -583,6 +583,16 @@ jobs:
             /tmp/mpc-groovebox-track-edit-pan-changed-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-pan-restored.png
             /tmp/mpc-groovebox-track-edit-pan-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-region-before.png
+            /tmp/mpc-groovebox-track-edit-region-before-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-region-start-changed.png
+            /tmp/mpc-groovebox-track-edit-region-start-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-region-start-restored.png
+            /tmp/mpc-groovebox-track-edit-region-start-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-region-end-changed.png
+            /tmp/mpc-groovebox-track-edit-region-end-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-region-end-restored.png
+            /tmp/mpc-groovebox-track-edit-region-end-restored-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-velocity-range-before.png
             /tmp/mpc-groovebox-track-edit-velocity-range-before-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-velocity-max-changed.png
