@@ -6979,6 +6979,8 @@ TRACK_EDIT_GAIN_REMOTE="/sdcard/mpc-groovebox-track-edit-gain-changed-uiautomato
 TRACK_EDIT_GAIN_RESTORED_PNG="/tmp/mpc-groovebox-track-edit-gain-restored.png"
 TRACK_EDIT_GAIN_RESTORED_XML="/tmp/mpc-groovebox-track-edit-gain-restored-uiautomator.xml"
 TRACK_EDIT_GAIN_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-gain-restored-uiautomator.xml"
+TRACK_EDIT_GAIN_RESTORE_CHECK_XML="/tmp/mpc-groovebox-track-edit-gain-restore-check-uiautomator.xml"
+TRACK_EDIT_GAIN_RESTORE_CHECK_REMOTE="/sdcard/mpc-groovebox-track-edit-gain-restore-check-uiautomator.xml"
 
 read_track_edit_gain_value() {
   python3 - "$1" <<'PY'
@@ -7068,10 +7070,10 @@ if ! tap_ui_description "$TRACK_EDIT_GAIN_CHANGED_XML" "Track Edit layer gain $t
 fi
 track_edit_gain_restored=0
 for attempt in {1..15}; do
-  if ! dump_device_ui "$TRACK_EDIT_GAIN_REMOTE" "$TRACK_EDIT_GAIN_CHANGED_XML"; then
+  if ! dump_device_ui "$TRACK_EDIT_GAIN_RESTORE_CHECK_REMOTE" "$TRACK_EDIT_GAIN_RESTORE_CHECK_XML"; then
     echo "ERROR: Track Edit gain restoration hierarchy capture failed"; exit 1
   fi
-  track_edit_gain_current="$(read_track_edit_gain_value "$TRACK_EDIT_GAIN_CHANGED_XML" 2>/dev/null || true)"
+  track_edit_gain_current="$(read_track_edit_gain_value "$TRACK_EDIT_GAIN_RESTORE_CHECK_XML" 2>/dev/null || true)"
   if [[ "$track_edit_gain_current" == "$track_edit_gain_before" ]]; then
     track_edit_gain_restored=1; break
   fi
