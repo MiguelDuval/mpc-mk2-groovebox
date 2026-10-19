@@ -7248,7 +7248,7 @@ track_edit_dsp_field_round_trip() {
     *) echo "ERROR: unsupported Track Edit DSP field $field"; exit 1 ;;
   esac
 
-  read -r direction signed_delta <<< "$(python3 - "$state_before" "$state_index" "$min_value" "$max_value" "$step_value" <<'PY'
+  direction_choice="$(python3 - "$state_before" "$state_index" "$min_value" "$max_value" "$step_value" <<'PY'
 import sys
 values = list(map(float, sys.argv[1].split()))
 index, minimum, maximum, step = map(float, sys.argv[2:])
@@ -7262,6 +7262,7 @@ else:
     raise SystemExit(f"Track Edit field has no safe adjacent test value: {value}")
 PY
 )" || { echo "ERROR: Track Edit $field has no safe reversible adjacent value"; exit 1; }
+  read -r direction signed_delta <<< "$direction_choice"
 
   if [[ "$field" == "cutoff" ]]; then
     action_description="Track Edit filter cutoff $direction"
@@ -7981,15 +7982,15 @@ echo "Track Edit velocity MIN/MAX round trips restored exact bounds and preserve
 # with real touchscreen mutations, native-projection field isolation, inverse
 # restoration, and archived changed/restored accessibility + visual evidence.
 echo "Running Track Edit amp envelope/filter cutoff field-isolation → inverse restore acceptance..."
+TRACK_EDIT_DSP_ENV_BASELINE_PNG="/tmp/mpc-groovebox-track-edit-dsp-envelope-baseline.png"
+TRACK_EDIT_DSP_ENV_BASELINE_XML="/tmp/mpc-groovebox-track-edit-dsp-envelope-baseline-uiautomator.xml"
+TRACK_EDIT_DSP_ENV_BASELINE_REMOTE="/sdcard/mpc-groovebox-track-edit-dsp-envelope-baseline-uiautomator.xml"
 if ! tap_ui_description "$TRACK_EDIT_VELOCITY_REENTRY_XML" "Track Edit AMP ENV tab"; then
   echo "ERROR: Track Edit AMP ENV tab was not actionable"; exit 1
 fi
 if ! wait_for_ui_description "$TRACK_EDIT_DSP_ENV_BASELINE_XML" "$TRACK_EDIT_DSP_ENV_BASELINE_REMOTE" "Track Edit envelope attack value" 20; then
   echo "ERROR: AMP ENV tab did not expose the implemented envelope controls"; exit 1
 fi
-TRACK_EDIT_DSP_ENV_BASELINE_PNG="/tmp/mpc-groovebox-track-edit-dsp-envelope-baseline.png"
-TRACK_EDIT_DSP_ENV_BASELINE_XML="/tmp/mpc-groovebox-track-edit-dsp-envelope-baseline-uiautomator.xml"
-TRACK_EDIT_DSP_ENV_BASELINE_REMOTE="/sdcard/mpc-groovebox-track-edit-dsp-envelope-baseline-uiautomator.xml"
 if ! dump_device_ui "$TRACK_EDIT_DSP_ENV_BASELINE_REMOTE" "$TRACK_EDIT_DSP_ENV_BASELINE_XML"; then
   echo "ERROR: Track Edit AMP ENV baseline hierarchy failed"; exit 1
 fi
