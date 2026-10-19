@@ -7126,7 +7126,7 @@ for evidence in \
     echo "ERROR: Track Edit runtime evidence missing/empty: $evidence"; exit 1
   fi
 done
-if ! tap_ui_description "$TRACK_EDIT_RESTORED_XML" "Track Edit back"; then
+if ! tap_ui_description "$TRACK_EDIT_GAIN_RESTORED_XML" "Track Edit back"; then
   echo "ERROR: Track Edit BACK could not return to Main after restoring tuning"; exit 1
 fi
 if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "$track_edit_return_description" 25; then
@@ -7134,7 +7134,7 @@ if ! wait_for_ui_description "$DUMP" "$DEVICE_DUMP" "$track_edit_return_descript
   cat "$DUMP" || true
   exit 1
 fi
-echo "Track Edit layer tuning → native state → leave/re-enter persistence → original value restore passed."
+echo "Track Edit layer TUNE leave/re-enter/restore and GAIN real-touch field-isolation/restore passed."
 
 
 # The previous smoke ends with the Browser rail highlighted while the workspace
