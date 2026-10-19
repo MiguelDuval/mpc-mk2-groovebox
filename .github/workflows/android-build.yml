@@ -593,6 +593,40 @@ jobs:
             /tmp/mpc-groovebox-track-edit-region-end-changed-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-region-end-restored.png
             /tmp/mpc-groovebox-track-edit-region-end-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-envelope-baseline.png
+            /tmp/mpc-groovebox-track-edit-dsp-envelope-baseline-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-attack-before.png
+            /tmp/mpc-groovebox-track-edit-dsp-attack-before-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-attack-changed.png
+            /tmp/mpc-groovebox-track-edit-dsp-attack-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-attack-reopened.png
+            /tmp/mpc-groovebox-track-edit-dsp-attack-reopened-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-attack-restored.png
+            /tmp/mpc-groovebox-track-edit-dsp-attack-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-decay-before.png
+            /tmp/mpc-groovebox-track-edit-dsp-decay-before-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-decay-changed.png
+            /tmp/mpc-groovebox-track-edit-dsp-decay-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-decay-restored.png
+            /tmp/mpc-groovebox-track-edit-dsp-decay-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-sustain-before.png
+            /tmp/mpc-groovebox-track-edit-dsp-sustain-before-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-sustain-changed.png
+            /tmp/mpc-groovebox-track-edit-dsp-sustain-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-sustain-restored.png
+            /tmp/mpc-groovebox-track-edit-dsp-sustain-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-release-before.png
+            /tmp/mpc-groovebox-track-edit-dsp-release-before-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-release-changed.png
+            /tmp/mpc-groovebox-track-edit-dsp-release-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-release-restored.png
+            /tmp/mpc-groovebox-track-edit-dsp-release-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-cutoff-before.png
+            /tmp/mpc-groovebox-track-edit-dsp-cutoff-before-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-cutoff-changed.png
+            /tmp/mpc-groovebox-track-edit-dsp-cutoff-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-dsp-cutoff-restored.png
+            /tmp/mpc-groovebox-track-edit-dsp-cutoff-restored-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-velocity-range-before.png
             /tmp/mpc-groovebox-track-edit-velocity-range-before-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-velocity-max-changed.png
