@@ -9225,7 +9225,7 @@ found = [n for n in nodes
 if len(found) != 1:
     raise SystemExit(f"expected one Sample Edit frame-state node, found {len(found)}")
 text = found[0].attrib.get("text", "")
-match = re.search(r"Region\\s+(\\d+)\\s*→\\s*(\\d+)\\s*/\\s*(\\d+)\\s+frames", text)
+match = re.search(r"Region\s+(\d+)\s*→\s*(\d+)\s*/\s*(\d+)\s+frames", text)
 if not match:
     raise SystemExit(f"could not parse Sample Edit region/frame state: {text!r}")
 print(" ".join(match.groups()))
