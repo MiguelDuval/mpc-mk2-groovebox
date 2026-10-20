@@ -1,49 +1,31 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-19 (live branch + exact-SHA CI govern)
+## CURRENT EXECUTION QUEUE — 2026-10-20 (live branch and exact-SHA Actions govern)
 
-Older queue entries below are historical snapshots. Read the status here first, then inspect live GitHub before starting work.
+Read this queue first. Older dated entries below are historical snapshots, not claims about the current branch.
 
-### 1. Project SAVE / SAVE AS / OPEN — COMPLETE / EXACT-SHA VERIFIED
+### 1. Project SAVE / SAVE AS / OPEN — HISTORICALLY VERIFIED; CURRENT-HEAD RECHECK PENDING
 
-- The lifecycle passed Build #2856 / run 39162451542 and was reconfirmed by Build #2893 / run 39232129363 and Build #2900 / run 39236521987. Latest pass: exact SHA `a285ed9bcdb3426e71f85a600838f6589bc121d9`, [Actions #2900](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39236521987).
-- Real Android DocumentsUI/SAF acceptance saved a v2 Project, changed the live model, reopened it and matched canonical state SHA `4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9`. Fixture includes two non-default MIDI events and placement `project-persistence-clip-01` → `sequence-1-track-1-pattern-1`, start 480, length 720, source offset 120.
-- The full smoke also covered force-stop/relaunch → Open, SAVE AS/Open cancellation without state mutation, malformed-file rejection without replacing the current Project, and placement-free supported v1 Open with canonical-v2 oracle equality.
-- Latest artifacts: APK 12179887151 (9,956,909 bytes, SHA-256 `1a5892b5477471196f0561e957379ebf24d6253db70123612718723157659b76`); UI evidence 12180247158 (SHA-256 `f6629398bdf5d0f26d148a6e94bdcc87cbfbc73525debff9a58860a9870f7fab`). Archived Project save/mutate/reopen hierarchies and screenshots are present.
-- Remaining boundaries: provider overwrite/write-failure recovery, independently opening two saved Projects, and external sample PCM relinking are not covered. Physical MPC Studio MkII validation remains separate and pending.
+- The complete lifecycle has historical exact-SHA successes, including Build #2900 / run 39236521987. Those runs establish prior behavior, not the current HEAD.
+- The current full emulator smoke must still prove real SAF save, mutate, open, exact canonical state equality including MIDI events and Pattern placement ID/parameters, force-stop/relaunch/open, cancelled SAVE AS and OPEN without state mutation, malformed-file rejection without current-project damage, and supported placement-free v1 compatibility.
+- Active Android Build #2972 / run 39495867515 is on older SHA `be2f9e2b1e00fe4795afd37780383bb261cbc678`; 54 pre-smoke workflow checks passed and its emulator smoke is still in progress, with no conclusion. It predates the current Sample Edit crop/chop acceptance and must not be used to verify those changes.
+- Current checkpoint HEAD before this roadmap edit is `6d0ccae59c6cd5b3304e246e3572e20d7a8960c1`. Run #2990 / 39499184619 is pending on that exact SHA. Re-fetch Actions after this documentation commit because the feature HEAD will advance again.
 
-### 2. Step Edit VEL / PROB and 16-step page navigation — VERIFIED / EXACT-SHA
+### 2. SAMP-008 Sample Edit CROP — IMPLEMENTED; EXACT-SHA ACCEPTANCE PENDING
 
-- Android Build #2900 / run 39236521987 passed on exact SHA `a285ed9bcdb3426e71f85a600838f6589bc121d9`.
-- The real-touch VEL round trip changed 100 → 101 → 100; the other native PROB/RAT/NUDGE/DUR values remained unchanged and the complete five-field baseline was restored.
-- The real-touch PROB round trip changed 127 → 126 → 127; unrelated VEL/RAT/NUDGE/DUR fields and the Step 01 fixture remained intact.
-- The page navigation touch sequence moved the absolute cursor from Step 02 on page 1 to Step 18 on page 2 and back to Step 02 without changing note state. Changed/restored screenshots and accessibility hierarchies are included in UI evidence 12180247158.
-- Grid five-field edit/restore plus DRAW/ERASE and the already-implemented Step RAT/NUDGE/DURATION acceptance also remained green in the full workflow. Physical controller validation remains separate.
+- The real Android picker-return WAV is the disposable fixture. The smoke touches Start +1000, touches CROP, verifies the native PCM frame count decreases by exactly 1000 and the active region resets to `0..newTotal`, and captures before/selected/cropped screenshots plus accessibility hierarchies.
+- This acceptance is placed before the following USER FOLDER process restart so its destructive sample mutation cannot contaminate the later Browser persistence checks. Sample Edit has no separate crop-undo path established here; the test relies on an isolated disposable sample and subsequent process restart, not a claim that Undo is supported.
 
-### 3. STEP-001 Pad selection — VERIFIED / EXACT-SHA
+### 3. SAMP-009 Sample Edit CHOP — IMPLEMENTED; EXACT-SHA ACCEPTANCE PENDING
 
-- Android Build #2901 / run 39242015786 passed on exact SHA `a681303fe3d411c0df99d4ce7dc90e8f2caaac76`: [Actions #2901](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39242015786).
-- Real PAD + selected Pad 2; the selected absolute Step 02 and its empty state remained consistent with the visible cell projection. Real PAD − restored Pad 1 and Step 02; Step 01 remained unchanged and no Pattern event was created or modified.
-- APK artifact 12182290674 (9,956,909 bytes, SHA-256 `83797a8c4a48a45a3c02e358f8ae5f68f72f470111d950b9e163e3abae85c64e`); UI evidence 12183205363 (SHA-256 `6e0359c02c5cde3ca1e95a57f5aa2747d3392c1fe69495d871e01aebe8905597`). Pad 2/Pad 1 screenshots and accessibility XML downloaded and inspected.
+- Chop now validates source/destinations before mutation, stops the output stream around the control-thread pad/region-grid update, restarts it afterward, and aborts without mutating when stopping/closing the stream reports an error. It does not change the realtime callback.
+- The emulator smoke performs real CH4, CH8 and CH16 touches from a full source region. Each operation is preceded by FULL to restore Pad 01's region, and post-mutation native getters must prove every destination pad's exact start/end/frame count with no gaps/overlaps and complete source coverage. Post-operation screenshots/XML are archived.
+- Native plan tests additionally assert exact contiguous, positive slices for uneven 1,027-frame input at all supported counts. Do not mark SAMP-009 verified until current exact-SHA CI finishes successfully.
 
-### 4. EDIT-004/005 Track Edit layer GAIN/PAN — VERIFIED / EXACT-SHA
+### 4. NEXT ACTION
 
-- Android Build #2902 / run 39244891264 passed on exact SHA `b2aa9cacf21a99b1ad51ef4046e55e9537a8754a`: [Actions #2902](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39244891264).
-- Real-touch GAIN changed 100% → 90% → 100% with TUNE/PAN unchanged. Real-touch PAN changed C → L100 → C while GAIN/TUNE remained unchanged.
-- APK artifact 12183172318 (9,956,909 bytes; SHA-256 `50b118babbd6f89b305d8addeffdcbc40f72e37e07fbc09ea197b5e9d77d60c8`); UI evidence artifact 12183699319. The ZIP evidence integrity check passed and gain/pan changed/restored screenshots and accessibility XML were inspected.
-
-### 5. EDIT-007/008 Track Edit velocity ranges and sample region — VERIFIED / EXACT-SHA
-
-- Android Build #2907 / run 39286224809 succeeded on exact SHA `b0b6e66bd69d051595fcddd8d048b60a38eed06c`: [Actions #2907](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39286224809).
-- EDIT-007 verified real-touch MIN/MAX one-step changes and inverse restoration, valid `0 ≤ MIN ≤ MAX ≤ 127`, and preservation of GAIN/TUNE/PAN. Both bounds started at 0–127; the tests moved each inward and restored it. Screenshots/XML are in UI evidence artifact 12204147729. APK artifact 12203303406.
-- EDIT-008 verified real Start/End control changes independently, preserved the opposite boundary and unrelated GAIN/TUNE/PAN values, and restored the exact region. The smoke log confirms `Track Edit sample region Start/End real-touch isolation and exact restoration passed`; screenshot/hierarchy evidence is included in the same artifact.
-- Build #2909 / run 39287062251 was cancelled during an early native test on the same SHA, before Android UI smoke. It is not counted as a pass or a product failure; #2907 is the complete authoritative run.
-
-### 6. NEXT PRODUCT SLICE — EDIT-009 AMP ENV / FILTER CUTOFF — IMPLEMENTED; EXACT-SHA CI PENDING
-
-- The existing Track Edit AMP ENV tab already dispatches Attack/Decay/Sustain/Release and filter cutoff edits into native-backed pad state. This slice adds accessible semantic IDs for filter controls and real-emulator acceptance: change Attack by one 100 ms step while preserving the other envelope fields, inverse-restore the exact envelope, change filter cutoff by 500 Hz while preserving envelope state, then inverse-restore the exact cutoff.
-- The smoke requires changed/restored screenshots and accessibility hierarchies in the UI artifact. Do not mark EDIT-009 verified until Android Build completes successfully on the resulting PR HEAD and the requested evidence files are present.
-- No audio callback, sampler engine, MIDI transport or realtime path is changed.
+- First inspect the earliest real failure or the complete exact-HEAD run. Fix the root cause without weakening assertions. A successful current-SHA full smoke must finish Project lifecycle acceptance before moving to SAMP-010 waveform zoom/audition.
+- Physical MPC Studio MkII verification remains a separate pending acceptance step; emulator results do not count as device tests.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 
