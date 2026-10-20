@@ -1950,18 +1950,24 @@ FAVORITE_TREE_RESTORED_XML="/tmp/mpc-groovebox-browser-favorite-tree-restored-ui
 FAVORITE_TREE_RESTORED_REMOTE="/sdcard/mpc-groovebox-browser-favorite-tree-restored-uiautomator.xml"
 FAVORITE_PREFS_HOST="/tmp/mpc-browser-favorite-prefs.xml"
 TREE_PREFS_HOST="/tmp/mpc-browser-storage-seed.xml"
-NOMEDIA_FIXTURE_HOST="/tmp/mpc-browser-empty-nomedia"
-if ! : > "$NOMEDIA_FIXTURE_HOST"; then echo "ERROR: could not create host .nomedia fixture"; exit 1; fi
+# Some emulator shared-storage FUSE configurations reject creating .nomedia
+# with adb sync even when the fixture directory is writable. Try the marker
+# through the remote shell; the MediaStore exclusion query after WAV creation
+# remains the authoritative check when this platform denies it.
+try_create_browser_nomedia_marker() {
+  local directory="$1" marker="$directory/.nomedia"
+  if adb_bounded 10 shell touch "$marker" && adb_bounded 5 shell test -f "$marker"; then
+    echo "Created Browser fixture .nomedia marker: $marker"
+  else
+    echo "WARN: shared-storage FUSE rejected $marker; strict MediaStore exclusion assertions will prove whether the WAV fixtures stayed out of the local catalog."
+  fi
+  return 0
+}
 
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
   echo "ERROR: could not create user-folder test fixture"; exit 1
 fi
-if ! adb_bounded 10 push "$NOMEDIA_FIXTURE_HOST" "$TREE_FOLDER_DEVICE/.nomedia"; then
-  echo "ERROR: could not protect the tree fixture from MediaStore indexing via adb push"; exit 1
-fi
-if ! adb_bounded 5 shell test -f "$TREE_FOLDER_DEVICE/.nomedia"; then
-  echo "ERROR: tree fixture .nomedia marker is not present after adb push"; exit 1
-fi
+try_create_browser_nomedia_marker "$TREE_FOLDER_DEVICE"
 cat > "$TREE_PREFS_HOST" <<EOF
 <?xml version='1.0' encoding='utf-8' standalone='yes' ?>
 <map>
@@ -9103,24 +9109,14 @@ echo "Running Android user document-tree → Browser results → persisted grant
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
   echo "ERROR: could not create user-folder test fixture"; exit 1
 fi
-if ! adb_bounded 10 push "$NOMEDIA_FIXTURE_HOST" "$TREE_FOLDER_DEVICE/.nomedia"; then
-  echo "ERROR: could not protect the tree fixture from MediaStore indexing via adb push"; exit 1
-fi
-if ! adb_bounded 5 shell test -f "$TREE_FOLDER_DEVICE/.nomedia"; then
-  echo "ERROR: tree fixture .nomedia marker is not present after adb push"; exit 1
-fi
+try_create_browser_nomedia_marker "$TREE_FOLDER_DEVICE"
 if ! adb_bounded 30 push "$LOCAL_SAMPLE_HOST" "$TREE_SAMPLE_DEVICE"; then
   echo "ERROR: could not copy USER FOLDER-only WAV fixture"; exit 1
 fi
 if ! adb_bounded 10 shell mkdir -p "$FAVORITE_FOLDER_DEVICE"; then
   echo "ERROR: could not create separate FAVORITE 1 fixture folder"; exit 1
 fi
-if ! adb_bounded 10 push "$NOMEDIA_FIXTURE_HOST" "$FAVORITE_FOLDER_DEVICE/.nomedia"; then
-  echo "ERROR: could not protect FAVORITE 1 fixture from MediaStore indexing via adb push"; exit 1
-fi
-if ! adb_bounded 5 shell test -f "$FAVORITE_FOLDER_DEVICE/.nomedia"; then
-  echo "ERROR: FAVORITE 1 .nomedia marker is not present after adb push"; exit 1
-fi
+try_create_browser_nomedia_marker "$FAVORITE_FOLDER_DEVICE"
 if ! adb_bounded 30 push "$LOCAL_SAMPLE_HOST" "$FAVORITE_SAMPLE_DEVICE"; then
   echo "ERROR: could not copy FAVORITE 1-only WAV fixture"; exit 1
 fi
