@@ -1841,14 +1841,16 @@ PY
 }
 
 
-# Dispatch only an accessibility-verified tap. Launching Android DocumentsUI
-# can leave the synchronous "adb shell input tap" client hung during emulator
-# Activity handoff; detach the device-side input command and verify the intended
-# foreground Activity separately at the call site.
+# Dispatch only an accessibility-verified tap. Do not background a command on
+# the Android device shell: that can keep the ADB shell transport alive during
+# the Activity transition. Detach the host-side ADB client instead, and let the
+# caller verify that the intended Android Activity actually became foreground.
 tap_visible_description_detached() {
   local hierarchy_path="$1"
   local expected_description="$2"
   local coordinates tap_x tap_y
+  local status_path="/tmp/mpc-groovebox-detached-tap.status"
+  local log_path="/tmp/mpc-groovebox-detached-tap.log"
   if ! coordinates="$(python3 - "$hierarchy_path" "$expected_description" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
@@ -1874,11 +1876,15 @@ PY
     return 1
   fi
   read -r tap_x tap_y <<< "$coordinates"
-  if ! adb_bounded 10 shell "nohup input tap $tap_x $tap_y </dev/null >/dev/null 2>&1 &"; then
-    echo "ERROR: could not dispatch detached input tap for $expected_description"
-    return 1
-  fi
-  echo "Dispatched detached verified tap for $expected_description at $tap_x,$tap_y"
+  rm -f "$status_path" "$log_path"
+  (
+    adb_bounded 10 shell input tap "$tap_x" "$tap_y"
+    tap_status=$?
+    printf '%s\\n' "$tap_status" > "$status_path"
+    exit "$tap_status"
+  ) </dev/null >"$log_path" 2>&1 &
+  ASYNC_UI_TAP_PID=$!
+  echo "Dispatched host-detached, accessibility-verified tap for $expected_description at $tap_x,$tap_y (pid=$ASYNC_UI_TAP_PID)"
 }
 
 tap_visible_text_early() {
@@ -9439,16 +9445,40 @@ if ! tap_visible_description_detached "$FAVORITE_TREE_RESULTS_XML" "MPC Browser 
 fi
 
 favorite_picker_activity=""
+favorite_picker_opened=0
 for favorite_picker_attempt in {1..20}; do
+  echo "Waiting for Android DocumentsUI foreground ($favorite_picker_attempt/20)..."
   favorite_picker_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
     | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
-  if grep -Fq -- "com.android.documentsui" <<<"$favorite_picker_activity"; then break; fi
+  if grep -Fq -- "com.android.documentsui" <<<"$favorite_picker_activity"; then
+    favorite_picker_opened=1
+    echo "Android DocumentsUI is foreground after FAVORITE 1 Choose Folder."
+    break
+  fi
+  if [[ -f /tmp/mpc-groovebox-detached-tap.status ]]; then
+    tap_status="$(cat /tmp/mpc-groovebox-detached-tap.status)"
+    if [[ "$tap_status" != "0" ]]; then
+      echo "WARN: background tap client exited with status $tap_status before DocumentsUI was observed."
+      cat /tmp/mpc-groovebox-detached-tap.log || true
+    fi
+  fi
   sleep 1
 done
-if ! grep -Fq -- "com.android.documentsui" <<<"$favorite_picker_activity"; then
-  echo "ERROR: FAVORITE 1 did not launch an external document-tree picker"
-  printf '%s\n' "$favorite_picker_activity"
+if [[ "$favorite_picker_opened" != "1" ]]; then
+  echo "ERROR: DocumentsUI did not become foreground within 20 bounded checks after FAVORITE 1 Choose Folder."
+  printf '%s\\n' "$favorite_picker_activity"
+  if [[ -f /tmp/mpc-groovebox-detached-tap.log ]]; then cat /tmp/mpc-groovebox-detached-tap.log || true; fi
   exit 1
+fi
+# The Activity transition is authoritative. Reap the background tap client, or
+# abandon its host waiter if ADB itself remains blocked during the handoff.
+for tap_settle_attempt in {1..3}; do
+  [[ -f /tmp/mpc-groovebox-detached-tap.status ]] && break
+  sleep 1
+done
+if [[ ! -f /tmp/mpc-groovebox-detached-tap.status ]]; then
+  kill "$ASYNC_UI_TAP_PID" >/dev/null 2>&1 || true
+  echo "WARN: ADB tap client remained blocked after DocumentsUI opened; detached host waiter stopped."
 fi
 if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
   echo "ERROR: could not inspect the FAVORITE 1 document-tree picker"; exit 1
