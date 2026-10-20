@@ -72,6 +72,7 @@ final class MpcBrowserView extends LinearLayout {
     private boolean userFolderAccessReady;
     private boolean userFolderScanComplete;
     private boolean userFolderScanFailed;
+    private boolean showFileSize = true;
 
     MpcBrowserView(Context context) {
         super(context);
@@ -227,6 +228,12 @@ final class MpcBrowserView extends LinearLayout {
 
     void setListener(Listener listener) {
         this.listener = listener;
+    }
+
+    void setShowFileSize(boolean show) {
+        if (showFileSize == show) return;
+        showFileSize = show;
+        renderResults();
     }
 
     void auditionSelectedFile() {
@@ -739,7 +746,8 @@ final class MpcBrowserView extends LinearLayout {
         main.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(main, new LayoutParams(0, dp(getContext(), 34), 1));
 
-        final TextView sub = info(getContext(), file.metadataLine());
+        final TextView sub = info(getContext(), file.metadataLine(showFileSize));
+        sub.setContentDescription("MPC Browser metadata " + file.displayName());
         sub.setTextSize(8);
         sub.setSingleLine(true);
         sub.setEllipsize(TextUtils.TruncateAt.END);

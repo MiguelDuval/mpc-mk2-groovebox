@@ -58,9 +58,14 @@ final class MpcBrowserFile {
     }
 
     String metadataLine() {
-        final String size = sizeBytes < 0 ? "SIZE UNKNOWN" : formatSize(sizeBytes);
+        return metadataLine(true);
+    }
+
+    String metadataLine(boolean showFileSize) {
         final String duration = durationMs <= 0
                 ? "DURATION UNKNOWN" : formatDuration(durationMs);
+        if (!showFileSize) return duration + " • WAV";
+        final String size = sizeBytes < 0 ? "SIZE UNKNOWN" : formatSize(sizeBytes);
         return size + " • " + duration + " • WAV";
     }
 

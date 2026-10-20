@@ -2,6 +2,7 @@ package com.miguelduval.mpcmk2groovebox;
 
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -33,6 +34,14 @@ public final class MpcBrowserFileTest {
         assertTrue(kick.matchesBrowserQuery("CONTENT", "MY FILES", "ALL", "kick"));
         assertFalse(kick.matchesBrowserQuery("PLACES", "INTERNAL", "PROJECTS", ""));
         assertFalse(kick.matchesBrowserQuery("PLACES", "INTERNAL", "ALL", "snare"));
+    }
+
+    @Test
+    public void fileSizeVisibilityOptionHidesOnlySizeMetadata() {
+        MpcBrowserFile kick = sample("Kick_Main.wav");
+        assertEquals("46.9 KB • 0:01 • WAV", kick.metadataLine(true));
+        assertEquals("0:01 • WAV", kick.metadataLine(false));
+        assertEquals(kick.metadataLine(true), kick.metadataLine());
     }
 
     @Test

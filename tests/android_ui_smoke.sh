@@ -8686,6 +8686,9 @@ for category in DRUMS INSTRUMENTS DEMOS; do
   if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
     echo "ERROR: could not capture Browser CONTENT/$category hierarchy"; exit 1
   fi
+  if ! cp "$BROWSER_LOCAL_XML" "/tmp/mpc-groovebox-browser-content-$category_lower-uiautomator.xml"; then
+    echo "ERROR: could not archive Browser CONTENT/$category hierarchy"; exit 1
+  fi
   if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "UNAVAILABLE"; then
     echo "ERROR: Browser CONTENT/$category category/results contract failed"; exit 1
   fi
@@ -8695,6 +8698,7 @@ for category in DRUMS INSTRUMENTS DEMOS; do
 done
 
 for category in SAMPLES "MY FILES"; do
+  category_lower="$(printf '%s' "$category" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')"
   if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser navigation CONTENT $category"; then
     echo "ERROR: supported Browser CONTENT/$category navigation row was not actionable"; exit 1
   fi
@@ -8708,8 +8712,107 @@ for category in SAMPLES "MY FILES"; do
   if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "AVAILABLE"; then
     echo "ERROR: Browser CONTENT/$category provider/results contract failed"; exit 1
   fi
+  if ! cp "$BROWSER_LOCAL_XML" "/tmp/mpc-groovebox-browser-content-$category_lower-uiautomator.xml"; then
+    echo "ERROR: could not archive Browser CONTENT/$category hierarchy"; exit 1
+  fi
+  if ! adb_bounded 10 exec-out screencap -p > "/tmp/mpc-groovebox-browser-content-$category_lower.png"; then
+    echo "ERROR: could not capture Browser CONTENT/$category screenshot"; exit 1
+  fi
 done
 echo "BROW-003 local Content categories show real WAVs only in supported providers."
+
+echo "Running BROW-012 real Browser Options file-size visibility and persistence..."
+assert_browser_file_size_visibility() {
+  python3 - "$1" "$2" "$3" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, sample_name, expected = sys.argv[1:]
+root = ET.parse(path).getroot()
+matches = [node for node in root.iter("node")
+           if node.attrib.get("content-desc") == f"MPC Browser metadata {sample_name}"]
+if len(matches) != 1:
+    raise SystemExit(f"expected one metadata field for {sample_name}, found {len(matches)}")
+parts = matches[0].attrib.get("text", "").split(" • ")
+if not parts or parts[-1] != "WAV":
+    raise SystemExit(f"unexpected Browser metadata row: {parts!r}")
+size = re.compile(r"^(?:[0-9]+(?:\.[0-9]+)? (?:B|KB|MB)|SIZE UNKNOWN)$")
+if expected == "SHOWN":
+    if not size.fullmatch(parts[0]):
+        raise SystemExit(f"file-size metadata should be present, got {parts!r}")
+elif expected == "HIDDEN":
+    if len(parts) != 2 or size.fullmatch(parts[0]):
+        raise SystemExit(f"file-size metadata should be absent, got {parts!r}")
+else:
+    raise SystemExit(f"unknown visibility expectation {expected}")
+print(f"Browser file-size metadata {expected.lower()} verified: {' • '.join(parts)}")
+PY
+}
+assert_browser_file_size_option_checked() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, expected = sys.argv[1:]
+nodes = [node for node in ET.parse(path).getroot().iter("node")
+         if node.attrib.get("content-desc") == "MPC Browser Option Show file size"]
+if len(nodes) != 1:
+    raise SystemExit(f"expected one Show file size checkbox, found {len(nodes)}")
+node = nodes[0]
+if node.attrib.get("checked") != expected:
+    raise SystemExit(f"Show file size checked={node.attrib.get('checked')!r}, expected {expected!r}")
+if node.attrib.get("enabled") != "true":
+    raise SystemExit("Show file size option isn't enabled")
+PY
+}
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then exit 1; fi
+if ! assert_browser_file_size_visibility "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" "SHOWN"; then
+  echo "ERROR: Browser file-size metadata should be visible by default"; exit 1
+fi
+if ! cp "$BROWSER_LOCAL_XML" /tmp/mpc-groovebox-browser-file-size-before-uiautomator.xml; then exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-file-size-before.png; then exit 1; fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options"; then
+  echo "ERROR: Browser Options button was not actionable"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE"     "MPC Browser Option Show file size" 10; then
+  echo "ERROR: Show file size checkbox didn't appear"; exit 1
+fi
+if ! assert_browser_file_size_option_checked "$BROWSER_LOCAL_XML" "true"; then exit 1; fi
+if ! cp "$BROWSER_LOCAL_XML" /tmp/mpc-groovebox-browser-options-file-size-default-uiautomator.xml; then exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-options-file-size-default.png; then exit 1; fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Option Show file size"; then
+  echo "ERROR: Show file size checkbox couldn't be toggled off"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE"     "MPC Browser Options close" 10; then exit 1; fi
+if ! assert_browser_file_size_option_checked "$BROWSER_LOCAL_XML" "false"; then exit 1; fi
+if ! cp "$BROWSER_LOCAL_XML" /tmp/mpc-groovebox-browser-options-file-size-hidden-uiautomator.xml; then exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-options-file-size-hidden.png; then exit 1; fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options close"; then exit 1; fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE"     "MPC Browser file $LOCAL_SAMPLE_NAME" 12; then exit 1; fi
+if ! assert_browser_file_size_visibility "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" "HIDDEN"; then
+  echo "ERROR: Show file size toggle didn't remove the size metadata"; exit 1
+fi
+if ! cp "$BROWSER_LOCAL_XML" /tmp/mpc-groovebox-browser-file-size-hidden-uiautomator.xml; then exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-file-size-hidden.png; then exit 1; fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options"; then exit 1; fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE"     "MPC Browser Option Show file size" 10; then exit 1; fi
+if ! assert_browser_file_size_option_checked "$BROWSER_LOCAL_XML" "false"; then
+  echo "ERROR: Browser Options didn't retain the saved file-size setting"; exit 1
+fi
+if ! cp "$BROWSER_LOCAL_XML" /tmp/mpc-groovebox-browser-options-file-size-persisted-hidden-uiautomator.xml; then exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-options-file-size-persisted-hidden.png; then exit 1; fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Option Show file size"; then exit 1; fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE"     "MPC Browser Options close" 10; then exit 1; fi
+if ! assert_browser_file_size_option_checked "$BROWSER_LOCAL_XML" "true"; then exit 1; fi
+if ! cp "$BROWSER_LOCAL_XML" /tmp/mpc-groovebox-browser-options-file-size-restored-uiautomator.xml; then exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-options-file-size-restored.png; then exit 1; fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options close"; then exit 1; fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE"     "MPC Browser file $LOCAL_SAMPLE_NAME" 12; then exit 1; fi
+if ! assert_browser_file_size_visibility "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" "SHOWN"; then
+  echo "ERROR: Show file size toggle didn't restore the real file metadata"; exit 1
+fi
+if ! cp "$BROWSER_LOCAL_XML" /tmp/mpc-groovebox-browser-file-size-restored-uiautomator.xml; then exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-file-size-restored.png; then exit 1; fi
+echo "BROW-012 Show file size toggled metadata, persisted on reopen, and restored."
 
 # Exercise the real on-screen Search field against the indexed MediaStore rows.
 # Positive and negative queries must change the visible result set, not only the
@@ -8830,6 +8933,8 @@ if ! assert_browser_selection_did_not_assign "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE
   echo "ERROR: BROW-007 selection must not imply sample assignment"; exit 1
 fi
 echo "BROW-007 real-touch select changed selection state without changing sampler assignment."
+if ! cp "$BROWSER_LOCAL_XML" /tmp/mpc-groovebox-browser-local-selected-uiautomator.xml; then exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-local-selected.png; then exit 1; fi
 
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser audition selected local WAV file"; then exit 1; fi
 if ! wait_for_successful_audition "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
@@ -8841,6 +8946,8 @@ if ! assert_browser_selection_did_not_assign "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE
   echo "ERROR: BROW-008 audition must not change the Pad/Layer sample assignment"; exit 1
 fi
 echo "BROW-008 real WAV audition preserved the existing Pad/Layer assignment."
+if ! cp "$BROWSER_LOCAL_XML" /tmp/mpc-groovebox-browser-local-auditioned-uiautomator.xml; then exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-local-auditioned.png; then exit 1; fi
 
 if ! tap_ui_description "$BROWSER_LOCAL_XML" \
     "MPC Browser assign selected local WAV to target Pad/Layer"; then exit 1; fi

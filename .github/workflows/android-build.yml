@@ -748,6 +748,34 @@ jobs:
             /tmp/mpc-groovebox-storage-picker-activity.txt
             /tmp/mpc-groovebox-browser-local-results.png
             /tmp/mpc-groovebox-browser-local-results-uiautomator.xml
+            /tmp/mpc-groovebox-browser-content-drums.png
+            /tmp/mpc-groovebox-browser-content-drums-uiautomator.xml
+            /tmp/mpc-groovebox-browser-content-instruments.png
+            /tmp/mpc-groovebox-browser-content-instruments-uiautomator.xml
+            /tmp/mpc-groovebox-browser-content-demos.png
+            /tmp/mpc-groovebox-browser-content-demos-uiautomator.xml
+            /tmp/mpc-groovebox-browser-content-samples.png
+            /tmp/mpc-groovebox-browser-content-samples-uiautomator.xml
+            /tmp/mpc-groovebox-browser-content-my-files.png
+            /tmp/mpc-groovebox-browser-content-my-files-uiautomator.xml
+            /tmp/mpc-groovebox-browser-file-size-before.png
+            /tmp/mpc-groovebox-browser-file-size-before-uiautomator.xml
+            /tmp/mpc-groovebox-browser-file-size-hidden.png
+            /tmp/mpc-groovebox-browser-file-size-hidden-uiautomator.xml
+            /tmp/mpc-groovebox-browser-file-size-restored.png
+            /tmp/mpc-groovebox-browser-file-size-restored-uiautomator.xml
+            /tmp/mpc-groovebox-browser-options-file-size-default.png
+            /tmp/mpc-groovebox-browser-options-file-size-default-uiautomator.xml
+            /tmp/mpc-groovebox-browser-options-file-size-hidden.png
+            /tmp/mpc-groovebox-browser-options-file-size-hidden-uiautomator.xml
+            /tmp/mpc-groovebox-browser-options-file-size-persisted-hidden.png
+            /tmp/mpc-groovebox-browser-options-file-size-persisted-hidden-uiautomator.xml
+            /tmp/mpc-groovebox-browser-options-file-size-restored.png
+            /tmp/mpc-groovebox-browser-options-file-size-restored-uiautomator.xml
+            /tmp/mpc-groovebox-browser-local-selected.png
+            /tmp/mpc-groovebox-browser-local-selected-uiautomator.xml
+            /tmp/mpc-groovebox-browser-local-auditioned.png
+            /tmp/mpc-groovebox-browser-local-auditioned-uiautomator.xml
             /tmp/mpc-groovebox-picker-select-source.png
             /tmp/mpc-groovebox-picker-select-source-uiautomator.xml
             /tmp/mpc-groovebox-picker-select-source-activity.txt

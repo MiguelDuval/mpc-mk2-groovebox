@@ -5685,6 +5685,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         browserView = new MpcBrowserView(this);
+        browserView.setShowFileSize(getSharedPreferences(
+                "mpc_browser_options", MODE_PRIVATE).getBoolean("show_file_size", true));
         browserView.setListener(new MpcBrowserView.Listener() {
             @Override
             public void onSectionSelected(String section) {
@@ -6425,14 +6427,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "Hide system folders",
                 "Clear unused samples on load"
         };
+        final android.content.SharedPreferences optionsPreferences =
+                getSharedPreferences("mpc_browser_options", MODE_PRIVATE);
+        final boolean showFileSize = optionsPreferences.getBoolean("show_file_size", true);
 
         LinearLayout body = column();
         body.setPadding(dp(16), dp(4), dp(16), dp(2));
         body.setContentDescription("MPC Browser Options");
 
         TextView notice = label(
-                "FILE PROVIDER: PARTIAL • options are exposed as MPC taxonomy only; "
-                        + "unsupported provider behaviors remain inactive.",
+                "Show file size is active and saved locally. Other options stay disabled "
+                        + "until their providers/actions exist.",
                 10, MUTED);
         notice.setPadding(0, 0, 0, dp(10));
         body.addView(notice);
@@ -6443,8 +6448,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             check.setTextColor(TEXT);
             check.setTextSize(11);
             check.setContentDescription("MPC Browser Option " + labelText);
-            check.setEnabled(false);
-            check.setAlpha(0.55f);
+            final boolean fileSizeOption = "Show file size".equals(labelText);
+            check.setEnabled(fileSizeOption);
+            check.setAlpha(fileSizeOption ? 1.0f : 0.55f);
+            check.setChecked(fileSizeOption && showFileSize);
+            if (fileSizeOption) {
+                check.setOnCheckedChangeListener((button, checked) -> {
+                    optionsPreferences.edit().putBoolean("show_file_size", checked).apply();
+                    if (browserView != null) browserView.setShowFileSize(checked);
+                    setBottomStatus("BROWSER • file size " + (checked ? "shown" : "hidden"));
+                });
+            }
             body.addView(check, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
         }
