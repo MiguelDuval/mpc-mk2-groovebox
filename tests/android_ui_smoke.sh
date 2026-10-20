@@ -1877,14 +1877,16 @@ PY
   fi
   read -r tap_x tap_y <<< "$coordinates"
   rm -f "$status_path" "$log_path"
-  (
-    adb_bounded 10 shell input tap "$tap_x" "$tap_y"
+  setsid bash -c '
+    status_path="$1"
+    shift
+    timeout --signal=TERM --kill-after=3s 10s adb shell input tap "$@"
     tap_status=$?
-    printf '%s\\n' "$tap_status" > "$status_path"
+    printf "%s\\n" "$tap_status" > "$status_path"
     exit "$tap_status"
-  ) </dev/null >"$log_path" 2>&1 &
+  ' mpc-browser-tap "$status_path" "$tap_x" "$tap_y" </dev/null >"$log_path" 2>&1 &
   ASYNC_UI_TAP_PID=$!
-  echo "Dispatched host-detached, accessibility-verified tap for $expected_description at $tap_x,$tap_y (pid=$ASYNC_UI_TAP_PID)"
+  echo "Dispatched isolated host-side ADB tap for $expected_description at $tap_x,$tap_y (pid=$ASYNC_UI_TAP_PID)"
 }
 
 tap_visible_text_early() {
@@ -9501,16 +9503,29 @@ if [[ "$favorite_picker_opened" != "1" ]]; then
   if [[ -f /tmp/mpc-groovebox-detached-tap.log ]]; then cat /tmp/mpc-groovebox-detached-tap.log || true; fi
   exit 1
 fi
-# The Activity transition is authoritative. Reap the background tap client, or
-# abandon its host waiter if ADB itself remains blocked during the handoff.
+# The Activity transition is authoritative. A system picker can interrupt the
+# ADB shell request even after the tap successfully reached DocumentsUI. The
+# tap runs in its own process group so we can reap the complete host process tree
+# without leaving an adb/timeout child to starve every subsequent UI dump.
 for tap_settle_attempt in {1..3}; do
   [[ -f /tmp/mpc-groovebox-detached-tap.status ]] && break
   sleep 1
 done
-if [[ ! -f /tmp/mpc-groovebox-detached-tap.status ]]; then
-  kill "$ASYNC_UI_TAP_PID" >/dev/null 2>&1 || true
-  echo "WARN: ADB tap client remained blocked after DocumentsUI opened; detached host waiter stopped."
+if [[ -f /tmp/mpc-groovebox-detached-tap.status ]]; then
+  tap_status="$(cat /tmp/mpc-groovebox-detached-tap.status)"
+  if [[ "$tap_status" != "0" ]]; then
+    echo "WARN: ADB tap ended with status $tap_status after DocumentsUI opened."
+    cat /tmp/mpc-groovebox-detached-tap.log || true
+  fi
+elif kill -0 "$ASYNC_UI_TAP_PID" >/dev/null 2>&1; then
+  echo "WARN: stopping the isolated ADB tap process group after DocumentsUI foreground confirmation."
+  kill -TERM -- "-$ASYNC_UI_TAP_PID" >/dev/null 2>&1 || true
+  sleep 1
+  kill -KILL -- "-$ASYNC_UI_TAP_PID" >/dev/null 2>&1 || true
+  wait "$ASYNC_UI_TAP_PID" 2>/dev/null || true
+  echo "Isolated ADB tap process group reaped; continuing with a fresh bounded DocumentsUI hierarchy capture."
 fi
+echo "Capturing FAVORITE 1 DocumentsUI hierarchy after verified foreground transition..."
 if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
   echo "ERROR: could not inspect the FAVORITE 1 document-tree picker"; exit 1
 fi
