@@ -9443,30 +9443,25 @@ if ! run_sample_chop_acceptance 4 "$sample_crop_expected_frames" \
     "$SAMPLE_CROP_CROPPED_XML" "$SAMPLE_CHOPPED_PNG" \
     "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_REMOTE"; then exit 1; fi
 
-# CH8 and CH16 target the same first 1..N pads; reset only Pad 01's region to
-# the full shared PCM buffer before each action so the plan is independent and
-# destination-assignment collision validation remains meaningful.
-for next_chop_count in 8 16; do
-  if ! tap_ui_description "$SAMPLE_CHOPPED_XML" "Sample Edit restore full sample region"; then
-    echo "ERROR: Sample Edit FULL action was not actionable before CH$next_chop_count"; exit 1
-  fi
-  if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_REMOTE" \
-      "0 $sample_crop_expected_frames $sample_crop_expected_frames" 15; then exit 1; fi
-  if (( next_chop_count == 8 )); then
-    if ! run_sample_chop_acceptance 8 "$sample_crop_expected_frames" \
-        "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_8_PNG" \
-        "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE"; then exit 1; fi
-  else
-    if ! tap_ui_description "$SAMPLE_CHOPPED_8_XML" "Sample Edit restore full sample region"; then
-      echo "ERROR: Sample Edit FULL action was not actionable before CH16"; exit 1
-    fi
-    if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE" \
-        "0 $sample_crop_expected_frames $sample_crop_expected_frames" 15; then exit 1; fi
-    if ! run_sample_chop_acceptance 16 "$sample_crop_expected_frames" \
-        "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_16_PNG" \
-        "$SAMPLE_CHOPPED_16_XML" "$SAMPLE_CHOPPED_16_REMOTE"; then exit 1; fi
-  fi
-done
+# CH8 and CH16 target the same first 1..N pads. Reset only Pad 01's
+# region via each fresh hierarchy while reusing the same immutable source PCM.
+if ! tap_ui_description "$SAMPLE_CHOPPED_XML" "Sample Edit restore full sample region"; then
+  echo "ERROR: Sample Edit FULL action was not actionable before CH8"; exit 1
+fi
+if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_REMOTE" \
+    "0 $sample_crop_expected_frames $sample_crop_expected_frames" 15; then exit 1; fi
+if ! run_sample_chop_acceptance 8 "$sample_crop_expected_frames" \
+    "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_8_PNG" \
+    "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE"; then exit 1; fi
+
+if ! tap_ui_description "$SAMPLE_CHOPPED_8_XML" "Sample Edit restore full sample region"; then
+  echo "ERROR: Sample Edit FULL action was not actionable before CH16"; exit 1
+fi
+if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE" \
+    "0 $sample_crop_expected_frames $sample_crop_expected_frames" 15; then exit 1; fi
+if ! run_sample_chop_acceptance 16 "$sample_crop_expected_frames" \
+    "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_16_PNG" \
+    "$SAMPLE_CHOPPED_16_XML" "$SAMPLE_CHOPPED_16_REMOTE"; then exit 1; fi
 
 echo "Running Android user document-tree → Browser results → persisted grant restoration..."
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
