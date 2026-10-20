@@ -149,14 +149,18 @@ jobs:
           build/native-tests/mpc_locate_policy_tests
 
       - name: Test Android LCD renderer signature
+        timeout-minutes: 12
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcStudioMk2LcdRendererTest
       - name: Test Android sequence zoom and Step page focus policies
+        timeout-minutes: 12
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest --tests com.miguelduval.mpcmk2groovebox.MpcSequenceStepPagePolicyTest
 
       - name: Test MPC Menu Project route catalog
+        timeout-minutes: 12
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcModeRegistryTest
 
       - name: Test local Browser WAV filtering policy
+        timeout-minutes: 12
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest
 
       - name: Test MPC Studio MkII semantic routing
@@ -495,6 +499,7 @@ jobs:
           build/native-tests/mpc_edit_history_tests
 
       - name: Assemble debug APK
+        timeout-minutes: 15
         run: gradle --no-daemon :app:assembleDebug
 
       - name: Upload debug APK
@@ -510,6 +515,7 @@ jobs:
         run: bash -n tests/android_ui_smoke.sh
 
       - name: Run Android emulator smoke test
+        timeout-minutes: 35
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 31
