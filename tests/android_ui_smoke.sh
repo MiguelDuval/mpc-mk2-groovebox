@@ -1796,7 +1796,52 @@ done
 adb_bounded() {
   local seconds="$1"
   shift
-  timeout --signal=TERM --kill-after=3s "${seconds}s" adb "$@"
+  # ADB/UIAutomator occasionally leaves its host client or a child process
+  # alive past GNU timeout's deadline. Give every call its own process group so
+  # the per-command limit can terminate the entire local process tree, report
+  # the exact blocked command, and return control to the smoke assertions.
+  python3 - "$seconds" "$@" <<'PY_ADB_BOUNDED'
+import os
+import signal
+import subprocess
+import sys
+from shlex import join
+
+seconds = float(sys.argv[1])
+command = ["adb", *sys.argv[2:]]
+try:
+    process = subprocess.Popen(command, start_new_session=True)
+except OSError as exc:
+    print(f"ERROR: unable to start bounded ADB command: {exc}", file=sys.stderr)
+    raise SystemExit(127)
+
+try:
+    return_code = process.wait(timeout=seconds)
+except subprocess.TimeoutExpired:
+    print(
+        f"ERROR: adb command timed out after {seconds:g}s; "
+        f"terminating process group: {join(command)}",
+        file=sys.stderr,
+        flush=True,
+    )
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        process.wait(timeout=2.0)
+    except subprocess.TimeoutExpired:
+        pass
+    # The direct adb client may exit while a local descendant still owns the
+    # process group. Kill any survivor without an unbounded final wait.
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    raise SystemExit(124)
+
+raise SystemExit(return_code if return_code >= 0 else 128 - return_code)
+PY_ADB_BOUNDED
 }
 
 # Keep UI dumping available before startup checks run; Bash executes top-level
