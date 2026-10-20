@@ -9384,14 +9384,17 @@ echo "Android document-tree selection, real WAV results, filters and USER FOLDER
 
 # Assign FAVORITE 1 through the real Browser action and Android DocumentsUI tree picker.
 # Use a separate Favorite-only WAV so isolation from USER FOLDER and MediaStore is proven.
-if ! tap_ui_description "$TREE_RESTORED_XML" "MPC Browser navigation PLACES FAVORITE 1"; then
-  echo "ERROR: FAVORITE 1 navigation entry was not actionable"; exit 1
+echo "Starting FAVORITE 1 navigation using the freshly captured USER FOLDER hierarchy..."
+if ! tap_visible_description_early "$TREE_RESTORED_XML" "MPC Browser navigation PLACES FAVORITE 1"; then
+  echo "ERROR: FAVORITE 1 navigation entry was not actionable in the freshly captured hierarchy"; exit 1
 fi
+echo "FAVORITE 1 navigation tap completed; waiting for its Choose Folder action..."
 if ! wait_for_ui_description "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" \
     "MPC Browser choose a local folder for FAVORITE 1" 15; then
   echo "ERROR: unconfigured FAVORITE 1 did not expose its Choose Folder action"; exit 1
 fi
-if ! tap_ui_description "$FAVORITE_TREE_RESULTS_XML" "MPC Browser choose a local folder for FAVORITE 1"; then
+echo "FAVORITE 1 Choose Folder is exposed in the current hierarchy; tapping that verified target..."
+if ! tap_visible_description_early "$FAVORITE_TREE_RESULTS_XML" "MPC Browser choose a local folder for FAVORITE 1"; then
   echo "ERROR: FAVORITE 1 Choose Folder did not launch Android DocumentsUI"; exit 1
 fi
 
