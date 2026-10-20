@@ -9257,10 +9257,10 @@ fi
 if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then
   echo "ERROR: could not open MPC Menu for Sample Edit crop acceptance"; exit 1
 fi
-if ! wait_for_ui_description "$SAMPLE_CROP_MENU_XML" "$SAMPLE_CROP_MENU_REMOTE" "SAMPLE EDIT mode" 15; then
+if ! wait_for_ui_description "$SAMPLE_CROP_MENU_XML" "$SAMPLE_CROP_MENU_REMOTE" "SAMPLE mode" 15; then
   echo "ERROR: MPC Menu did not expose the semantic SAMPLE EDIT route"; exit 1
 fi
-if ! tap_ui_description "$SAMPLE_CROP_MENU_XML" "SAMPLE EDIT mode"; then
+if ! tap_ui_description "$SAMPLE_CROP_MENU_XML" "SAMPLE mode"; then
   echo "ERROR: SAMPLE EDIT Menu route was not actionable"; exit 1
 fi
 if ! wait_for_ui_description "$SAMPLE_CROP_BASELINE_XML" "$SAMPLE_CROP_BASELINE_REMOTE" \
@@ -9322,7 +9322,6 @@ if ! dump_device_ui "$SAMPLE_CROP_CROPPED_REMOTE" "$SAMPLE_CROP_CROPPED_XML"; th
 fi
 echo "SAMP-008 real-touch CROP passed: source=$sample_crop_total_before frames, selected start=1000, cropped PCM=$sample_crop_expected_frames frames; native region reset to 0..$sample_crop_expected_frames."
 
-echo "Running Android user document-tree → Browser results → persisted grant restoration..."
 echo "Running Android user document-tree → Browser results → persisted grant restoration..."
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
   echo "ERROR: could not create user-folder test fixture"; exit 1
