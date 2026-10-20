@@ -6517,7 +6517,7 @@ nodes = list(root.iter("node"))
 parents = {child: parent for parent in nodes for child in list(parent)}
 
 def rect(node):
-    match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
                          node.attrib.get("bounds", ""))
     return tuple(map(int, match.groups())) if match else None
 
@@ -6640,7 +6640,8 @@ start_y, swipe_x = max(candidates) if not toward_upper else min(candidates)
 if abs(start_y - destination_y) < 85:
     raise SystemExit("Available Track Edit scroll gesture is too short")
 print(swipe_x, start_y, destination_y)
-PY)"; then
+PY
+)"; then
       echo "ERROR: could not derive a safe Track Edit scroll gesture from live UI bounds"
       return 1
     fi
