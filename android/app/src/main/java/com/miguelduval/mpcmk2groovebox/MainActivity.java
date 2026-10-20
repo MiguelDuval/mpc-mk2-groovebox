@@ -5108,9 +5108,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Button sampleEditCrop = actionButton("CROP", v -> cropRegion());
         sampleEditCrop.setContentDescription("Sample Edit crop selected sample region");
         row2.addView(sampleEditCrop, weight());
-        row2.addView(actionButton("CH4", v -> chop(4)), weight());
-        row2.addView(actionButton("CH8", v -> chop(8)), weight());
-        row2.addView(actionButton("CH16", v -> chop(16)), weight());
+        Button chop4 = actionButton("CH4", v -> chop(4));
+        chop4.setContentDescription("Sample Edit chop into 4 slices");
+        row2.addView(chop4, weight());
+        Button chop8 = actionButton("CH8", v -> chop(8));
+        chop8.setContentDescription("Sample Edit chop into 8 slices");
+        row2.addView(chop8, weight());
+        Button chop16 = actionButton("CH16", v -> chop(16));
+        chop16.setContentDescription("Sample Edit chop into 16 slices");
+        row2.addView(chop16, weight());
         row2.addView(actionButton("PLAY", v -> selectAndTriggerPad(selectedPad, 112)), weight());
         row2.addView(actionButton("ZOOM+", v -> {
             if (sampleWaveform != null) sampleWaveform.zoomIn();
@@ -11274,10 +11280,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void chop(int count) {
-        setBottomStatus(nativeAudioChopPadSampleToPads(
-                selectedPad, selectedLayer, count));
+        final int sourcePad = selectedPad;
+        final int sourceLayer = selectedLayer;
+        final long sourceStart = nativeAudioGetPadSampleRegionStart(sourcePad, sourceLayer);
+        final long sourceEnd = nativeAudioGetPadSampleRegionEnd(sourcePad, sourceLayer);
+        final long sourceFrames = nativeAudioGetPadSampleFrameCount(sourcePad, sourceLayer);
+        final String result = nativeAudioChopPadSampleToPads(sourcePad, sourceLayer, count);
+        setBottomStatus(result);
         refreshAllInspectorState();
         refreshSampleWaveform();
+
+        // Record the actual post-mutation native projection for the bounded
+        // Android acceptance. These getters are the same authoritative
+        // state consumed by the inspector; the marker is emitted only when
+        // the native operation reports success.
+        if (result != null && result.startsWith("Chop complete:")) {
+            final StringBuilder destinations = new StringBuilder();
+            for (int pad = 0; pad < count; pad++) {
+                if (pad > 0) destinations.append(',');
+                final long total = nativeAudioGetPadSampleFrameCount(pad, 0);
+                final long start = nativeAudioGetPadSampleRegionStart(pad, 0);
+                final long end = nativeAudioGetPadSampleRegionEnd(pad, 0);
+                destinations.append(pad + 1)
+                        .append(':').append(start).append('-').append(end)
+                        .append('/').append(total);
+            }
+            Log.i(TAG, "SAMPLE_CHOP_ASSIGNMENT sourcePad=" + (sourcePad + 1)
+                    + " sourceLayer=" + (sourceLayer + 1)
+                    + " sourceStart=" + sourceStart
+                    + " sourceEnd=" + sourceEnd
+                    + " sourceFrames=" + sourceFrames
+                    + " chopCount=" + count
+                    + " destinations=" + destinations);
+        }
     }
 
     private void setEnvelope(float attack, float decay, float sustain, float release) {
