@@ -5801,7 +5801,7 @@ PY
   if [ "$arrangement_back_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_ARRANGEMENT_BACK_CAPTURE_READY" <<<"$log_snapshot"; then
     echo "Capturing actual Arrangement after Grid BACK..."
-    if ! capture_ui_screenshot /tmp/mpc-groovebox-arrange-back.png; then echo "ERROR: Arrange-after-BACK screenshot failed"; exit 1; fi 10; then
+    if ! capture_ui_screenshot /tmp/mpc-groovebox-arrange-back.png 10; then echo "ERROR: Arrange-after-BACK screenshot failed"; exit 1; fi
     if ! timeout --signal=TERM --kill-after=3s 30s adb shell uiautomator dump /sdcard/mpc-groovebox-arrange-back-uiautomator.xml > /tmp/mpc-groovebox-arrange-back-uiautomator.log 2>&1; then cat /tmp/mpc-groovebox-arrange-back-uiautomator.log || true; echo "ERROR: Arrange-after-BACK hierarchy dump failed"; exit 1; fi
     if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-arrange-back-uiautomator.xml > /tmp/mpc-groovebox-arrange-back-uiautomator.xml; then echo "ERROR: Arrange-after-BACK hierarchy retrieval failed"; exit 1; fi
     if ! test -s /tmp/mpc-groovebox-arrange-back.png || ! test -s /tmp/mpc-groovebox-arrange-back-uiautomator.xml; then echo "ERROR: Arrange-after-BACK evidence is empty"; exit 1; fi
@@ -5835,7 +5835,7 @@ PY
   if [ "$arrangement_grid_reentry_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_ARRANGEMENT_GRID_BACK_REENTRY_CAPTURE_READY" <<<"$log_snapshot"; then
     echo "Capturing Grid after reopening same Arrangement event..."
-    if ! capture_ui_screenshot /tmp/mpc-groovebox-arrange-grid-reentry.png; then echo "ERROR: Grid re-entry screenshot failed"; exit 1; fi 10; then
+    if ! capture_ui_screenshot /tmp/mpc-groovebox-arrange-grid-reentry.png 10; then echo "ERROR: Grid re-entry screenshot failed"; exit 1; fi
     if ! timeout --signal=TERM --kill-after=3s 30s adb shell uiautomator dump /sdcard/mpc-groovebox-arrange-grid-reentry-uiautomator.xml > /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.log 2>&1; then cat /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.log || true; echo "ERROR: Grid re-entry hierarchy dump failed"; exit 1; fi
     if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-arrange-grid-reentry-uiautomator.xml > /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml; then echo "ERROR: Grid re-entry hierarchy retrieval failed"; exit 1; fi
     if ! test -s /tmp/mpc-groovebox-arrange-grid-reentry.png || ! test -s /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml; then echo "ERROR: Grid re-entry evidence is empty"; exit 1; fi
