@@ -9198,6 +9198,131 @@ if ! dump_device_ui "$PICKER_RETURN_REMOTE" "$PICKER_RETURN_XML"; then
 fi
 echo "Android Document Picker select → return → Pad/Layer assignment passed."
 
+# SAMP-008: exercise the destructive Sample Edit crop through real UI touches.
+# The picker-return fixture is assigned to PAD 01 / LAYER 01 and remains in
+# memory here; the following USER FOLDER acceptance deliberately force-stops
+# the app, so this fixture mutation cannot contaminate later Browser tests.
+SAMPLE_CROP_MENU_XML="/tmp/mpc-groovebox-sample-crop-menu-uiautomator.xml"
+SAMPLE_CROP_MENU_REMOTE="/sdcard/mpc-groovebox-sample-crop-menu-uiautomator.xml"
+SAMPLE_CROP_BASELINE_XML="/tmp/mpc-groovebox-sample-crop-baseline-uiautomator.xml"
+SAMPLE_CROP_BASELINE_REMOTE="/sdcard/mpc-groovebox-sample-crop-baseline-uiautomator.xml"
+SAMPLE_CROP_REGION_CHANGED_PNG="/tmp/mpc-groovebox-sample-crop-region-selected.png"
+SAMPLE_CROP_REGION_CHANGED_XML="/tmp/mpc-groovebox-sample-crop-region-selected-uiautomator.xml"
+SAMPLE_CROP_REGION_CHANGED_REMOTE="/sdcard/mpc-groovebox-sample-crop-region-selected-uiautomator.xml"
+SAMPLE_CROP_CROPPED_PNG="/tmp/mpc-groovebox-sample-crop-cropped.png"
+SAMPLE_CROP_CROPPED_XML="/tmp/mpc-groovebox-sample-crop-cropped-uiautomator.xml"
+SAMPLE_CROP_CROPPED_REMOTE="/sdcard/mpc-groovebox-sample-crop-cropped-uiautomator.xml"
+
+read_sample_edit_region_frames() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+found = [n for n in nodes
+         if n.attrib.get("content-desc", "") == "Sample Edit region and frame count"]
+if len(found) != 1:
+    raise SystemExit(f"expected one Sample Edit frame-state node, found {len(found)}")
+text = found[0].attrib.get("text", "")
+match = re.search(r"Region\\s+(\\d+)\\s*→\\s*(\\d+)\\s*/\\s*(\\d+)\\s+frames", text)
+if not match:
+    raise SystemExit(f"could not parse Sample Edit region/frame state: {text!r}")
+print(" ".join(match.groups()))
+PY
+}
+
+wait_for_sample_edit_region_state() {
+  local host_path="$1" remote_path="$2" expected="$3" max_attempts="${4:-15}"
+  local current=""
+  for ((sample_crop_attempt=1; sample_crop_attempt<=max_attempts; sample_crop_attempt++)); do
+    if dump_device_ui "$remote_path" "$host_path"; then
+      current="$(read_sample_edit_region_frames "$host_path" 2>/dev/null || true)"
+      if [[ "$current" == "$expected" ]]; then
+        echo "Sample Edit native region/frame state matched after attempt $sample_crop_attempt: $current"
+        return 0
+      fi
+    fi
+    sleep 1
+  done
+  echo "ERROR: Sample Edit region/frame state did not reach '$expected' (last='$current')"
+  cat "$host_path" || true
+  return 1
+}
+
+echo "Running SAMP-008 Sample Edit real-touch region → CROP → native PCM frame-count acceptance..."
+if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
+  echo "ERROR: could not capture Browser before entering Sample Edit crop acceptance"; exit 1
+fi
+if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then
+  echo "ERROR: could not open MPC Menu for Sample Edit crop acceptance"; exit 1
+fi
+if ! wait_for_ui_description "$SAMPLE_CROP_MENU_XML" "$SAMPLE_CROP_MENU_REMOTE" "SAMPLE EDIT mode" 15; then
+  echo "ERROR: MPC Menu did not expose the semantic SAMPLE EDIT route"; exit 1
+fi
+if ! tap_ui_description "$SAMPLE_CROP_MENU_XML" "SAMPLE EDIT mode"; then
+  echo "ERROR: SAMPLE EDIT Menu route was not actionable"; exit 1
+fi
+if ! wait_for_ui_description "$SAMPLE_CROP_BASELINE_XML" "$SAMPLE_CROP_BASELINE_REMOTE" \
+    "Sample Edit crop selected sample region" 20; then
+  echo "ERROR: Sample Edit did not expose the accessible CROP action"; exit 1
+fi
+if ! dump_device_ui "$SAMPLE_CROP_BASELINE_REMOTE" "$SAMPLE_CROP_BASELINE_XML"; then
+  echo "ERROR: could not capture Sample Edit crop baseline hierarchy"; exit 1
+fi
+sample_crop_before_state="$(read_sample_edit_region_frames "$SAMPLE_CROP_BASELINE_XML")" || {
+  echo "ERROR: the real Pad/Layer sample frame state is unavailable before crop"; exit 1;
+}
+read -r sample_crop_start_before sample_crop_end_before sample_crop_total_before <<< "$sample_crop_before_state"
+if (( sample_crop_total_before <= 1000 )); then
+  echo "ERROR: SAMP-008 fixture must contain >1000 PCM frames; got $sample_crop_before_state"; exit 1
+fi
+if (( sample_crop_start_before != 0 || sample_crop_end_before != sample_crop_total_before )); then
+  if ! tap_ui_description "$SAMPLE_CROP_BASELINE_XML" "Sample Edit restore full sample region"; then
+    echo "ERROR: Sample Edit FULL action was not actionable before crop"; exit 1
+  fi
+  if ! wait_for_sample_edit_region_state "$SAMPLE_CROP_BASELINE_XML" "$SAMPLE_CROP_BASELINE_REMOTE" \
+      "0 $sample_crop_total_before $sample_crop_total_before" 15; then exit 1; fi
+  sample_crop_start_before=0
+  sample_crop_end_before="$sample_crop_total_before"
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-sample-crop-before.png; then
+  echo "ERROR: could not capture full-region Sample Edit baseline screenshot"; exit 1
+fi
+
+# A real +1000-frame Start touch creates a deterministic non-full region.
+# CROP must replace PCM with exactly that region and reset Start/End to 0..newTotal.
+if ! tap_ui_description "$SAMPLE_CROP_BASELINE_XML" "Sample Edit increase region start by 1000 frames"; then
+  echo "ERROR: Sample Edit Start +1000 action was not actionable"; exit 1
+fi
+if ! wait_for_sample_edit_region_state "$SAMPLE_CROP_REGION_CHANGED_XML" "$SAMPLE_CROP_REGION_CHANGED_REMOTE" \
+    "1000 $sample_crop_total_before $sample_crop_total_before" 15; then exit 1; fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMPLE_CROP_REGION_CHANGED_PNG"; then
+  echo "ERROR: could not capture selected crop-region screenshot"; exit 1
+fi
+if ! dump_device_ui "$SAMPLE_CROP_REGION_CHANGED_REMOTE" "$SAMPLE_CROP_REGION_CHANGED_XML"; then
+  echo "ERROR: could not capture selected crop-region hierarchy"; exit 1
+fi
+sample_crop_expected_frames=$((sample_crop_total_before - 1000))
+if (( sample_crop_expected_frames <= 0 )); then
+  echo "ERROR: computed crop length must be positive"; exit 1
+fi
+if ! tap_ui_description "$SAMPLE_CROP_REGION_CHANGED_XML" "Sample Edit crop selected sample region"; then
+  echo "ERROR: real Sample Edit CROP action was not actionable"; exit 1
+fi
+if ! wait_for_sample_edit_region_state "$SAMPLE_CROP_CROPPED_XML" "$SAMPLE_CROP_CROPPED_REMOTE" \
+    "0 $sample_crop_expected_frames $sample_crop_expected_frames" 20; then
+  echo "ERROR: CROP did not replace PCM with the selected Start/End frame range"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > "$SAMPLE_CROP_CROPPED_PNG"; then
+  echo "ERROR: could not capture post-CROP screenshot"; exit 1
+fi
+if ! dump_device_ui "$SAMPLE_CROP_CROPPED_REMOTE" "$SAMPLE_CROP_CROPPED_XML"; then
+  echo "ERROR: could not capture post-CROP hierarchy"; exit 1
+fi
+echo "SAMP-008 real-touch CROP passed: source=$sample_crop_total_before frames, selected start=1000, cropped PCM=$sample_crop_expected_frames frames; native region reset to 0..$sample_crop_expected_frames."
+
+echo "Running Android user document-tree → Browser results → persisted grant restoration..."
 echo "Running Android user document-tree → Browser results → persisted grant restoration..."
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
   echo "ERROR: could not create user-folder test fixture"; exit 1
