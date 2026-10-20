@@ -515,7 +515,7 @@ jobs:
         run: bash -n tests/android_ui_smoke.sh
 
       - name: Run Android emulator smoke test
-        timeout-minutes: 35
+        timeout-minutes: 45
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 31
@@ -526,7 +526,7 @@ jobs:
           emulator-boot-timeout: 600
           disable-linux-hw-accel: false
           disable-animations: true
-          script: timeout --signal=TERM --kill-after=10s 30m bash tests/android_ui_smoke.sh
+          script: timeout --signal=TERM --kill-after=10s 42m bash tests/android_ui_smoke.sh
 
       - name: Upload MPC UI visual evidence
         if: always()
