@@ -615,6 +615,8 @@ jobs:
             /tmp/mpc-groovebox-sample-crop-region-selected-uiautomator.xml
             /tmp/mpc-groovebox-sample-crop-cropped.png
             /tmp/mpc-groovebox-sample-crop-cropped-uiautomator.xml
+            /tmp/mpc-groovebox-sample-chop-4-slices.png
+            /tmp/mpc-groovebox-sample-chop-4-slices-uiautomator.xml
             /tmp/mpc-groovebox-track-view-muted.png
             /tmp/mpc-groovebox-track-view-muted-uiautomator.xml
             /tmp/mpc-groovebox-arrange-grid-focus.png
