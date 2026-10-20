@@ -8012,9 +8012,9 @@ fi
 if ! wait_for_track_edit_description_bounded "$TRACK_EDIT_ENV_BASELINE_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit envelope attack value" 6; then
   echo "ERROR: Track Edit envelope Attack value is not exposed"; exit 1
 fi
-if ! wait_for_track_edit_description_bounded "$TRACK_EDIT_ENV_BASELINE_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit cutoff" 6; then
-  echo "ERROR: Track Edit filter cutoff value is not exposed"; exit 1
-fi
+# Keep the baseline hierarchy at the top: Android UIAutomator only reports
+# visible descendants of this ScrollView, so the lower filter field is captured
+# separately after a bounded real scroll rather than required in the ADSR dump.
 if [[ ! -s "$TRACK_EDIT_ENV_BASELINE_XML" ]]; then
   echo "ERROR: Track Edit AMP ENV baseline hierarchy is empty after verified waits"; exit 1
 fi
@@ -8271,15 +8271,16 @@ if ! exercise_track_edit_envelope_field "release" 100 "$TRACK_EDIT_ENV_SUSTAIN_R
     "$TRACK_EDIT_ENV_RELEASE_CHANGED_PNG" "$TRACK_EDIT_ENV_RELEASE_CHANGED_XML" \
     "$TRACK_EDIT_ENV_RELEASE_RESTORED_PNG" "$TRACK_EDIT_ENV_RELEASE_RESTORED_XML"; then exit 1; fi
 
-track_edit_filter_before="$(read_track_edit_filter_cutoff_hz "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML")" || {
-  echo "ERROR: initial Track Edit filter cutoff could not be read"; exit 1;
-}
-track_edit_filter_envelope_before="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML")" || {
-  echo "ERROR: envelope state after Attack restore could not be read"; exit 1;
-}
-if [[ "$track_edit_filter_envelope_before" != "$track_edit_env_before" ]]; then
-  echo "ERROR: Attack inverse touch left a non-baseline envelope state"; exit 1
+# The filter controls live below the visible ADSR rows. Capture its own baseline
+# after scrolling to the real control; do not expect an off-screen node in the
+# top-of-scroll hierarchy.
+track_edit_filter_envelope_before="$track_edit_env_before"
+if ! scroll_ui_until_description "$TRACK_EDIT_FILTER_CHECK_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit filter cutoff decrease" 8; then
+  echo "ERROR: Track Edit filter cutoff controls did not become visible after bounded scrolling"; exit 1
 fi
+track_edit_filter_before="$(read_track_edit_filter_cutoff_hz "$TRACK_EDIT_FILTER_CHECK_XML")" || {
+  echo "ERROR: initial Track Edit filter cutoff could not be read after scrolling to the filter"; exit 1;
+}
 if (( track_edit_filter_before <= 19500 )); then
   track_edit_filter_action="Track Edit filter cutoff increase"
   track_edit_filter_inverse="Track Edit filter cutoff decrease"
@@ -8291,9 +8292,6 @@ elif (( track_edit_filter_before >= 520 )); then
 else
   echo "ERROR: filter cutoff has no safe adjacent 500 Hz value to exercise"; exit 1
 fi
-if ! scroll_ui_until_description "$TRACK_EDIT_FILTER_CHECK_XML" "$TRACK_EDIT_ENV_REMOTE" "$track_edit_filter_action" 8; then
-  echo "ERROR: Track Edit filter cutoff action did not become visible after bounded scrolling"; exit 1
-fi
 if ! tap_visible_description_early "$TRACK_EDIT_FILTER_CHECK_XML" "$track_edit_filter_action"; then
   echo "ERROR: Track Edit filter cutoff control was not actionable"; exit 1
 fi
@@ -8303,23 +8301,33 @@ for attempt in {1..6}; do
     echo "ERROR: Track Edit changed filter hierarchy capture failed"; exit 1
   fi
   track_edit_filter_current="$(read_track_edit_filter_cutoff_hz "$TRACK_EDIT_FILTER_CHANGED_XML" 2>/dev/null || true)"
-  track_edit_filter_envelope_current="$(read_track_edit_envelope_state "$TRACK_EDIT_FILTER_CHANGED_XML" 2>/dev/null || true)"
-  if [[ -n "$track_edit_filter_current" && -n "$track_edit_filter_envelope_current" ]]; then
-    if (( track_edit_filter_current == track_edit_filter_expected )) \
-        && [[ "$track_edit_filter_envelope_current" == "$track_edit_env_before" ]]; then
-      track_edit_filter_changed=1; break
-    fi
+  if [[ -n "$track_edit_filter_current" ]] && (( track_edit_filter_current == track_edit_filter_expected )); then
+    track_edit_filter_changed=1; break
   fi
   sleep 1
 done
 if [[ "$track_edit_filter_changed" != "1" ]]; then
-  echo "ERROR: filter cutoff edit failed to change only cutoff by 500 Hz"
-  echo "Before=$track_edit_filter_before expected=$track_edit_filter_expected actual=$track_edit_filter_current; envelope=$track_edit_filter_envelope_current"; exit 1
+  echo "ERROR: filter cutoff edit failed to reach the expected adjacent 500 Hz value"
+  echo "Before=$track_edit_filter_before expected=$track_edit_filter_expected actual=$track_edit_filter_current"; exit 1
 fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_FILTER_CHANGED_PNG"; then
   echo "ERROR: Track Edit changed filter screenshot capture failed"; exit 1
 fi
-if ! tap_visible_description_early "$TRACK_EDIT_FILTER_CHANGED_XML" "$track_edit_filter_inverse"; then
+
+# Prove ADSR stayed unchanged from its own visible viewport. Then return to the
+# lower filter controls using a fresh hierarchy before activating the inverse.
+if ! scroll_ui_until_description "$TRACK_EDIT_ENV_CHECK_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit envelope attack decrease" 8; then
+  echo "ERROR: Track Edit ADSR values could not be brought back into view after the filter edit"; exit 1
+fi
+track_edit_filter_envelope_current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_CHECK_XML" 2>/dev/null || true)"
+if [[ "$track_edit_filter_envelope_current" != "$track_edit_filter_envelope_before" ]]; then
+  echo "ERROR: filter cutoff edit changed the ADSR envelope state"
+  echo "Before=$track_edit_filter_envelope_before actual=$track_edit_filter_envelope_current"; exit 1
+fi
+if ! scroll_ui_until_description "$TRACK_EDIT_FILTER_CHECK_XML" "$TRACK_EDIT_ENV_REMOTE" "$track_edit_filter_inverse" 8; then
+  echo "ERROR: Track Edit filter cutoff inverse control did not become visible"; exit 1
+fi
+if ! tap_visible_description_early "$TRACK_EDIT_FILTER_CHECK_XML" "$track_edit_filter_inverse"; then
   echo "ERROR: Track Edit filter cutoff inverse control was not actionable"; exit 1
 fi
 track_edit_filter_restored=0
@@ -8328,22 +8336,29 @@ for attempt in {1..6}; do
     echo "ERROR: Track Edit filter restoration hierarchy capture failed"; exit 1
   fi
   track_edit_filter_current="$(read_track_edit_filter_cutoff_hz "$TRACK_EDIT_FILTER_CHECK_XML" 2>/dev/null || true)"
-  track_edit_filter_envelope_current="$(read_track_edit_envelope_state "$TRACK_EDIT_FILTER_CHECK_XML" 2>/dev/null || true)"
-  if [[ "$track_edit_filter_current" == "$track_edit_filter_before" \
-      && "$track_edit_filter_envelope_current" == "$track_edit_env_before" ]]; then
+  if [[ "$track_edit_filter_current" == "$track_edit_filter_before" ]]; then
     track_edit_filter_restored=1; break
   fi
   sleep 1
 done
 if [[ "$track_edit_filter_restored" != "1" ]]; then
-  echo "ERROR: filter inverse touch did not restore the exact cutoff/envelope state"
-  echo "Before=$track_edit_filter_before actual=$track_edit_filter_current; envelope=$track_edit_filter_envelope_current"; exit 1
+  echo "ERROR: filter inverse touch did not restore the exact cutoff"
+  echo "Before=$track_edit_filter_before actual=$track_edit_filter_current"; exit 1
 fi
 if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_FILTER_RESTORED_XML"; then
   echo "ERROR: restored filter hierarchy capture failed"; exit 1
 fi
 if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_FILTER_RESTORED_PNG"; then
   echo "ERROR: restored filter screenshot capture failed"; exit 1
+fi
+
+if ! scroll_ui_until_description "$TRACK_EDIT_ENV_CHECK_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit envelope attack decrease" 8; then
+  echo "ERROR: Track Edit ADSR values could not be brought back into view after filter restoration"; exit 1
+fi
+track_edit_filter_envelope_current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_CHECK_XML" 2>/dev/null || true)"
+if [[ "$track_edit_filter_envelope_current" != "$track_edit_filter_envelope_before" ]]; then
+  echo "ERROR: filter inverse touch did not preserve the exact ADSR envelope state"
+  echo "Before=$track_edit_filter_envelope_before actual=$track_edit_filter_envelope_current"; exit 1
 fi
 echo "Track Edit filter cutoff real-touch field isolation and exact restore passed: $track_edit_filter_before Hz; AMP ENV preserved."
 echo "Track Edit EDIT-009 AMP ENV/filter acceptance passed with inverse-restored state."
