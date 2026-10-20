@@ -1796,17 +1796,10 @@ done
 adb_bounded() {
   local seconds="$1"
   shift
-  # ADB/UIAutomator occasionally leaves its host client or a child process
-  # alive past GNU timeout's deadline. Give every call its own process group so
-  # the per-command limit can terminate the entire local process tree, report
-  # the exact blocked command, and return control to the smoke assertions.
+  # Enforce each host-side ADB deadline and kill its entire process group.
   python3 - "$seconds" "$@" <<'PY_ADB_BOUNDED'
-import os
-import signal
-import subprocess
-import sys
+import os, signal, subprocess, sys
 from shlex import join
-
 seconds = float(sys.argv[1])
 command = ["adb", *sys.argv[2:]]
 try:
@@ -1814,34 +1807,85 @@ try:
 except OSError as exc:
     print(f"ERROR: unable to start bounded ADB command: {exc}", file=sys.stderr)
     raise SystemExit(127)
-
 try:
-    return_code = process.wait(timeout=seconds)
+    rc = process.wait(timeout=seconds)
 except subprocess.TimeoutExpired:
-    print(
-        f"ERROR: adb command timed out after {seconds:g}s; "
-        f"terminating process group: {join(command)}",
-        file=sys.stderr,
-        flush=True,
-    )
-    try:
-        os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
-    try:
-        process.wait(timeout=2.0)
-    except subprocess.TimeoutExpired:
-        pass
-    # The direct adb client may exit while a local descendant still owns the
-    # process group. Kill any survivor without an unbounded final wait.
-    try:
-        os.killpg(process.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
+    print(f"ERROR: adb command timed out after {seconds:g}s; terminating process group: {join(command)}", file=sys.stderr, flush=True)
+    try: os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError: pass
+    try: process.wait(timeout=2.0)
+    except subprocess.TimeoutExpired: pass
+    try: os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError: pass
     raise SystemExit(124)
-
-raise SystemExit(return_code if return_code >= 0 else 128 - return_code)
+raise SystemExit(rc if rc >= 0 else 128 - rc)
 PY_ADB_BOUNDED
+}
+
+capture_ui_screenshot() {
+  local screenshot_path="$1" timeout_seconds="${2:-10}" filename="${1##*/}"
+  # Milestones only. All touches, getters and assertions still run.
+  case "$filename" in
+    mpc-groovebox-startup.png|\
+    mpc-groovebox-main-ready.png|\
+    mpc-groovebox-step-touch-before.png|\
+    mpc-groovebox-step-touch-after-add.png|\
+    mpc-groovebox-step-touch-velocity-changed.png|\
+    mpc-groovebox-step-touch-velocity-restored.png|\
+    mpc-groovebox-step-touch-ratchet-changed.png|\
+    mpc-groovebox-step-touch-duration-changed.png|\
+    mpc-groovebox-step-touch-after-erase.png|\
+    mpc-groovebox-step-touch-page2.png|\
+    mpc-groovebox-step-touch-pad2.png|\
+    mpc-groovebox-track-view-muted.png|\
+    mpc-groovebox-arrange-grid-focus.png|\
+    mpc-groovebox-arrange-event-selected.png|\
+    mpc-groovebox-arrange-event-moved.png|\
+    mpc-groovebox-arrange-event-restored.png|\
+    mpc-groovebox-arrange-event-duplicated.png|\
+    mpc-groovebox-arrange-event-pasted.png|\
+    mpc-groovebox-arrange-event-cut.png|\
+    mpc-groovebox-arrange-placement-split.png|\
+    mpc-groovebox-arrange-placement-flow-final.png|\
+    mpc-groovebox-arrange-placement-duplicate.png|\
+    mpc-groovebox-arrange-loop-changed.png|\
+    mpc-groovebox-grid-edit-after-draw.png|\
+    mpc-groovebox-browser.png|\
+    mpc-groovebox-browser-local-results.png|\
+    mpc-groovebox-picker-select-source.png|\
+    mpc-groovebox-browser-picker-assignment.png|\
+    mpc-groovebox-browser-tree-picker.png|\
+    mpc-groovebox-browser-tree-root.png|\
+    mpc-groovebox-browser-tree-restored.png|\
+    mpc-groovebox-browser-favorite-tree-picker.png|\
+    mpc-groovebox-browser-favorite-tree-root.png|\
+    mpc-groovebox-browser-favorite-tree-results.png|\
+    mpc-groovebox-browser-favorite-tree-restored.png|\
+    mpc-groovebox-storage-picker.png|\
+    mpc-groovebox-track-edit-tuning-before.png|\
+    mpc-groovebox-track-edit-tuning-changed.png|\
+    mpc-groovebox-track-edit-tuning-reopened.png|\
+    mpc-groovebox-track-edit-tuning-restored.png|\
+    mpc-groovebox-track-edit-gain-changed.png|\
+    mpc-groovebox-track-edit-pan-changed.png|\
+    mpc-groovebox-track-edit-region-start-changed.png|\
+    mpc-groovebox-track-edit-region-end-changed.png|\
+    mpc-groovebox-track-edit-velocity-min-changed.png|\
+    mpc-groovebox-track-edit-velocity-max-changed.png|\
+    mpc-groovebox-track-edit-envelope-filter-before.png|\
+    mpc-groovebox-track-edit-envelope-attack-changed.png|\
+    mpc-groovebox-track-edit-filter-cutoff-changed.png|\
+    mpc-groovebox-sample-crop-*.png|\
+    mpc-groovebox-sample-chop-*.png|\
+    mpc-groovebox-project-*.png|\
+    mpc-groovebox-*-cancel*.png)
+      adb_bounded "$timeout_seconds" exec-out screencap -p > "$screenshot_path"
+      ;;
+    *)
+      rm -f "$screenshot_path"
+      return 0
+      ;;
+  esac
 }
 
 # Keep UI dumping available before startup checks run; Bash executes top-level
@@ -1968,43 +2012,40 @@ PY
 }
 
 dump_device_ui() {
-  # Capture to one fixed device-side path to avoid exhausting /sdcard with the
-  # hundreds of snapshots in this smoke. Repeat the literal path in each ADB
-  # invocation so caller-local Bash variables cannot make dump and cat diverge.
-  local requested_remote_path="$1"
-  local host_path="$2"
+  # Total wall-clock budget for cleanup + UIAutomator + transfer, not nested retry budgets.
+  local requested_remote_path="$1" host_path="$2"
+  local timeout_seconds="${3:-8}" deadline=$((SECONDS + ${3:-8})) remaining
   local log_path="/tmp/mpc-groovebox-uiautomator-dump.log"
-  for attempt in {1..3}; do
-    adb_bounded 5 shell rm -f /sdcard/mpc-groovebox-current-uiautomator.xml >/dev/null 2>&1 || true
-    if ! adb_bounded 20 shell uiautomator dump /sdcard/mpc-groovebox-current-uiautomator.xml > "$log_path" 2>&1; then
-      cat "$log_path" || true
-      echo "WARN: emulator UI hierarchy dump attempt $attempt/3 failed (requested $requested_remote_path; shared path /sdcard/mpc-groovebox-current-uiautomator.xml)"
-      sleep 1
-      continue
-    fi
-    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-current-uiautomator.xml > "$host_path"; then
-      echo "WARN: emulator UI hierarchy output missing on attempt $attempt/3 (requested $requested_remote_path; shared path /sdcard/mpc-groovebox-current-uiautomator.xml)"
-      cat "$log_path" || true
-      sleep 1
-      continue
-    fi
-    if test -s "$host_path" && python3 - "$host_path" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
+  local shared_remote_path="/sdcard/mpc-groovebox-current-uiautomator.xml"
+  rm -f "$host_path"
+  remaining=$((deadline - SECONDS)); (( remaining > 0 )) || return 1
+  adb_bounded "$remaining" shell rm -f "$shared_remote_path" >/dev/null 2>&1 || true
+  remaining=$((deadline - SECONDS))
+  if (( remaining <= 0 )); then echo "ERROR: UI hierarchy deadline expired before dump ($requested_remote_path)"; return 1; fi
+  if ! adb_bounded "$remaining" shell uiautomator dump "$shared_remote_path" > "$log_path" 2>&1; then
+    echo "ERROR: bounded UI hierarchy dump failed ($requested_remote_path; budget ${timeout_seconds}s)"
+    cat "$log_path" || true
+    return 1
+  fi
+  remaining=$((deadline - SECONDS))
+  if (( remaining <= 0 )); then echo "ERROR: UI hierarchy deadline expired before transfer ($requested_remote_path)"; return 1; fi
+  if ! adb_bounded "$remaining" exec-out cat "$shared_remote_path" > "$host_path"; then
+    echo "ERROR: bounded UI hierarchy transfer failed ($requested_remote_path)"; return 1
+  fi
+  if ! test -s "$host_path" || ! python3 - "$host_path" <<'PY'
+import sys, xml.etree.ElementTree as ET
 try:
     ET.parse(sys.argv[1])
-except (OSError, ET.ParseError):
+except (OSError, ET.ParseError) as exc:
+    print(f"invalid UI hierarchy: {exc}", file=sys.stderr)
     raise SystemExit(1)
 PY
-    then
-      return 0
-    fi
-    echo "WARN: emulator UI hierarchy was empty or malformed on attempt $attempt/3: $host_path"
-    sleep 1
-  done
-  echo "ERROR: could not obtain a valid emulator UI hierarchy after three attempts (requested $requested_remote_path; shared path /sdcard/mpc-groovebox-current-uiautomator.xml)"
-  cat "$log_path" || true
-  return 1
+  then
+    echo "ERROR: empty or malformed UI hierarchy ($requested_remote_path)"
+    cat "$log_path" || true
+    return 1
+  fi
+  return 0
 }
 
 echo "Installing debug APK (hard limit 120s)..."
@@ -2161,7 +2202,7 @@ PY
 fi
 
 echo "Capturing startup UI screenshot after the system-overlay check..."
-if ! adb_bounded 15 exec-out screencap -p > /tmp/mpc-groovebox-startup.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-startup.png 15; then
   echo "ERROR: startup screenshot capture failed or timed out after 15s"
   exit 1
 fi
@@ -2198,7 +2239,7 @@ while (( SECONDS < audit_deadline )); do
     if ! dump_device_ui "$ARRANGE_LOOP_BEFORE_REMOTE" "$ARRANGE_LOOP_BEFORE_XML"; then
       echo "ERROR: Arrange loop initial accessibility hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_LOOP_BEFORE_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_LOOP_BEFORE_PNG" 10; then
       echo "ERROR: Arrange loop initial screenshot failed"; exit 1
     fi
     loop_ready_line="$(grep -F -- 'UI_ARRANGE_LOOP_TOUCH_CAPTURE_READY:' <<<"$log_snapshot" | tail -n 1)"
@@ -2263,7 +2304,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_SELECTED_REMOTE" "$ARRANGE_EVENT_SELECTED_XML"; then
       echo "ERROR: Arrangement selected-event hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_SELECTED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_SELECTED_PNG" 10; then
       echo "ERROR: Arrangement selected-event screenshot failed"; exit 1
     fi
     if ! python3 - "$ARRANGE_EVENT_SELECTED_XML" "$arrange_event_track" "$arrange_event_tick" "$arrange_event_note" <<'PY'
@@ -2291,7 +2332,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_MOVED_REMOTE" "$ARRANGE_EVENT_MOVED_XML"; then
       echo "ERROR: Arrangement moved-state hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_MOVED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_MOVED_PNG" 10; then
       echo "ERROR: Arrangement moved-state screenshot failed"; exit 1
     fi
     if ! python3 - "$ARRANGE_EVENT_MOVED_XML" "$arrange_event_track" "$((arrange_event_tick + arrange_event_grid))" "$arrange_event_note" <<'PY'
@@ -2316,7 +2357,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_RESTORED_REMOTE" "$ARRANGE_EVENT_RESTORED_XML"; then
       echo "ERROR: Arrangement restored-state hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_RESTORED_PNG" 10; then
       echo "ERROR: Arrangement restored-state screenshot failed"; exit 1
     fi
     if ! python3 - "$ARRANGE_EVENT_RESTORED_XML" "$arrange_event_track" "$arrange_event_tick" "$arrange_event_note" <<'PY'
@@ -2440,7 +2481,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_DUPLICATED_REMOTE" "$ARRANGE_EVENT_DUPLICATED_XML"; then
       echo "ERROR: duplicated Arrangement hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_DUPLICATED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_DUPLICATED_PNG" 10; then
       echo "ERROR: duplicated Arrangement screenshot failed"; exit 1
     fi
     arrangement_event_duplicate_line="$(arrangement_event_state_line DUPLICATE)"
@@ -2461,7 +2502,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_DUP_UNDO_REMOTE" "$ARRANGE_EVENT_DUP_UNDO_XML"; then
       echo "ERROR: duplicate-UNDO Arrangement hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_DUP_UNDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_DUP_UNDO_PNG" 10; then
       echo "ERROR: duplicate-UNDO Arrangement screenshot failed"; exit 1
     fi
     arrangement_event_undo_line="$(arrangement_event_state_line UNDO)"
@@ -2482,7 +2523,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_DUP_REDO_REMOTE" "$ARRANGE_EVENT_DUP_REDO_XML"; then
       echo "ERROR: duplicate-REDO Arrangement hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_DUP_REDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_DUP_REDO_PNG" 10; then
       echo "ERROR: duplicate-REDO Arrangement screenshot failed"; exit 1
     fi
     arrangement_event_redo_line="$(arrangement_event_state_line REDO)"
@@ -2503,7 +2544,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_DUP_RESTORED_REMOTE" "$ARRANGE_EVENT_DUP_RESTORED_XML"; then
       echo "ERROR: final duplicate-restore Arrangement hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_DUP_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_DUP_RESTORED_PNG" 10; then
       echo "ERROR: final duplicate-restore Arrangement screenshot failed"; exit 1
     fi
     arrangement_event_final_undo_line="$(arrangement_event_state_line UNDO)"
@@ -2527,7 +2568,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_COPIED_REMOTE" "$ARRANGE_EVENT_COPIED_XML"; then
       echo "ERROR: Arrangement copied-state hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_COPIED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_COPIED_PNG" 10; then
       echo "ERROR: Arrangement copied-state screenshot failed"; exit 1
     fi
     arrangement_event_copy_line="$(arrangement_event_state_line COPY)"
@@ -2565,7 +2606,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_PASTED_REMOTE" "$ARRANGE_EVENT_PASTED_XML"; then
       echo "ERROR: Arrangement pasted-state hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_PASTED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_PASTED_PNG" 10; then
       echo "ERROR: Arrangement pasted-state screenshot failed"; exit 1
     fi
     arrangement_event_paste_line="$(arrangement_event_state_line PASTE)"
@@ -2586,7 +2627,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_PASTE_UNDO_REMOTE" "$ARRANGE_EVENT_PASTE_UNDO_XML"; then
       echo "ERROR: PASTE UNDO hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_PASTE_UNDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_PASTE_UNDO_PNG" 10; then
       echo "ERROR: PASTE UNDO screenshot failed"; exit 1
     fi
     arrangement_event_paste_undo_line="$(arrangement_event_state_line UNDO)"
@@ -2607,7 +2648,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_PASTE_REDO_REMOTE" "$ARRANGE_EVENT_PASTE_REDO_XML"; then
       echo "ERROR: PASTE REDO hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_PASTE_REDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_PASTE_REDO_PNG" 10; then
       echo "ERROR: PASTE REDO screenshot failed"; exit 1
     fi
     arrangement_event_paste_redo_line="$(arrangement_event_state_line REDO)"
@@ -2628,7 +2669,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_PASTE_RESTORED_REMOTE" "$ARRANGE_EVENT_PASTE_RESTORED_XML"; then
       echo "ERROR: final PASTE cleanup hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_PASTE_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_PASTE_RESTORED_PNG" 10; then
       echo "ERROR: final PASTE cleanup screenshot failed"; exit 1
     fi
     arrangement_event_paste_final_undo_line="$(arrangement_event_state_line UNDO)"
@@ -2687,7 +2728,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_CUT_REMOTE" "$ARRANGE_EVENT_CUT_XML"; then
       echo "ERROR: Arrangement CUT hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_CUT_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_CUT_PNG" 10; then
       echo "ERROR: Arrangement CUT screenshot failed"; exit 1
     fi
     arrangement_event_cut_line="$(arrangement_event_state_line CUT)"
@@ -2707,7 +2748,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_CUT_UNDO_REMOTE" "$ARRANGE_EVENT_CUT_UNDO_XML"; then
       echo "ERROR: CUT UNDO hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_CUT_UNDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_CUT_UNDO_PNG" 10; then
       echo "ERROR: CUT UNDO screenshot failed"; exit 1
     fi
     arrangement_event_cut_undo_line="$(arrangement_event_state_line UNDO)"
@@ -2728,7 +2769,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_CUT_REDO_REMOTE" "$ARRANGE_EVENT_CUT_REDO_XML"; then
       echo "ERROR: CUT REDO hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_CUT_REDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_CUT_REDO_PNG" 10; then
       echo "ERROR: CUT REDO screenshot failed"; exit 1
     fi
     arrangement_event_cut_redo_line="$(arrangement_event_state_line REDO)"
@@ -2748,7 +2789,7 @@ PY
     if ! dump_device_ui "$ARRANGE_EVENT_CUT_RESTORED_REMOTE" "$ARRANGE_EVENT_CUT_RESTORED_XML"; then
       echo "ERROR: final CUT restoration hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_EVENT_CUT_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_EVENT_CUT_RESTORED_PNG" 10; then
       echo "ERROR: final CUT restoration screenshot failed"; exit 1
     fi
     arrangement_event_cut_final_undo_line="$(arrangement_event_state_line UNDO)"
@@ -2773,7 +2814,7 @@ PY
     if ! dump_device_ui "$ARRANGE_CURSOR_CUT_REMOTE" "$ARRANGE_CURSOR_CUT_XML"; then
       echo "ERROR: second CUT hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_CUT_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_CURSOR_CUT_PNG" 10; then
       echo "ERROR: second CUT screenshot failed"; exit 1
     fi
     arrangement_cursor_cut_line="$(arrangement_event_state_line CUT)"
@@ -2856,7 +2897,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PASTE_CURSOR_REMOTE" "$ARRANGE_PASTE_CURSOR_XML"; then
       echo "ERROR: paste cursor hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PASTE_CURSOR_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PASTE_CURSOR_PNG" 10; then
       echo "ERROR: paste cursor screenshot failed"; exit 1
     fi
     arrangement_cursor_line="$(arrangement_insertion_target_line)"
@@ -2915,7 +2956,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_SPLIT_REMOTE" "$ARRANGE_PLACEMENT_SPLIT_XML"; then
       echo "ERROR: placement split accessibility hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_SPLIT_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_SPLIT_PNG" 10; then
       echo "ERROR: placement split screenshot failed"; exit 1
     fi
     arrangement_placement_split_line="$(arrangement_placement_state_line SPLIT)"
@@ -2989,7 +3030,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_UNDO_REMOTE" "$ARRANGE_PLACEMENT_UNDO_XML"; then
       echo "ERROR: placement split UNDO hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_UNDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_UNDO_PNG" 10; then
       echo "ERROR: placement split UNDO screenshot failed"; exit 1
     fi
     arrangement_placement_undo_line="$(arrangement_placement_state_line UNDO)"
@@ -3027,7 +3068,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_REDO_REMOTE" "$ARRANGE_PLACEMENT_REDO_XML"; then
       echo "ERROR: placement split REDO hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_REDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_REDO_PNG" 10; then
       echo "ERROR: placement split REDO screenshot failed"; exit 1
     fi
     arrangement_placement_redo_line="$(arrangement_placement_state_line REDO)"
@@ -3061,7 +3102,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_RESTORED_REMOTE" "$ARRANGE_PLACEMENT_RESTORED_XML"; then
       echo "ERROR: final placement split restoration hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_RESTORED_PNG" 10; then
       echo "ERROR: final placement split restoration screenshot failed"; exit 1
     fi
     arrangement_placement_restored_line="$(arrangement_placement_state_line UNDO)"
@@ -3096,7 +3137,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_SPLIT_REMOTE" "$ARRANGE_PLACEMENT_FLOW_SPLIT_XML"; then
       echo "ERROR: lifecycle SPLIT hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_SPLIT_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_FLOW_SPLIT_PNG" 10; then
       echo "ERROR: lifecycle SPLIT screenshot capture failed"; exit 1
     fi
     arrangement_placement_flow_split_line="$(arrangement_placement_state_line SPLIT)"
@@ -3115,7 +3156,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_DELETE_REMOTE" "$ARRANGE_PLACEMENT_FLOW_DELETE_XML"; then
       echo "ERROR: lifecycle clip-delete hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_DELETE_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_FLOW_DELETE_PNG" 10; then
       echo "ERROR: lifecycle clip-delete screenshot capture failed"; exit 1
     fi
     arrangement_placement_flow_delete_line="$(arrangement_placement_state_line DELETE)"
@@ -3134,7 +3175,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_PLACE_REMOTE" "$ARRANGE_PLACEMENT_FLOW_PLACE_XML"; then
       echo "ERROR: lifecycle PLACE hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_PLACE_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_FLOW_PLACE_PNG" 10; then
       echo "ERROR: lifecycle PLACE screenshot capture failed"; exit 1
     fi
     arrangement_placement_flow_place_line="$(arrangement_placement_state_line PLACE)"
@@ -3153,7 +3194,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_MOVE_REMOTE" "$ARRANGE_PLACEMENT_FLOW_MOVE_XML"; then
       echo "ERROR: lifecycle MOVE hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_MOVE_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_FLOW_MOVE_PNG" 10; then
       echo "ERROR: lifecycle MOVE screenshot capture failed"; exit 1
     fi
     arrangement_placement_flow_move_line="$(arrangement_placement_state_line MOVE)"
@@ -3277,7 +3318,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_DUP_REMOTE" "$ARRANGE_PLACEMENT_DUP_XML"; then
       echo "ERROR: Arrangement CLIP DUP hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_DUP_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_DUP_PNG" 10; then
       echo "ERROR: Arrangement CLIP DUP screenshot capture failed"; exit 1
     fi
     arrangement_placement_duplicate_line="$(arrangement_placement_state_line DUPLICATE)"
@@ -3355,7 +3396,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_DUP_UNDO_REMOTE" "$ARRANGE_PLACEMENT_DUP_UNDO_XML"; then
       echo "ERROR: Arrangement CLIP DUP UNDO hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_DUP_UNDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_DUP_UNDO_PNG" 10; then
       echo "ERROR: Arrangement CLIP DUP UNDO screenshot capture failed"; exit 1
     fi
     arrangement_placement_duplicate_undo_line="$(arrangement_placement_state_line UNDO)"
@@ -3400,7 +3441,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_DUP_REDO_REMOTE" "$ARRANGE_PLACEMENT_DUP_REDO_XML"; then
       echo "ERROR: Arrangement CLIP DUP REDO hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_DUP_REDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_DUP_REDO_PNG" 10; then
       echo "ERROR: Arrangement CLIP DUP REDO screenshot capture failed"; exit 1
     fi
     arrangement_placement_duplicate_redo_line="$(arrangement_placement_state_line REDO)"
@@ -3431,7 +3472,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_DUP_RESTORED_REMOTE" "$ARRANGE_PLACEMENT_DUP_RESTORED_XML"; then
       echo "ERROR: final CLIP DUP cleanup hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_DUP_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_DUP_RESTORED_PNG" 10; then
       echo "ERROR: final CLIP DUP cleanup screenshot capture failed"; exit 1
     fi
     arrangement_placement_duplicate_restored_line="$(arrangement_placement_state_line UNDO)"
@@ -3462,7 +3503,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_UNDO_REMOTE" "$ARRANGE_PLACEMENT_FLOW_UNDO_XML"; then
       echo "ERROR: clip MOVE UNDO hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_UNDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_FLOW_UNDO_PNG" 10; then
       echo "ERROR: clip MOVE UNDO screenshot capture failed"; exit 1
     fi
     arrangement_placement_flow_undo_line="$(arrangement_placement_state_line UNDO)"
@@ -3500,7 +3541,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_REDO_REMOTE" "$ARRANGE_PLACEMENT_FLOW_REDO_XML"; then
       echo "ERROR: clip MOVE REDO hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_REDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_FLOW_REDO_PNG" 10; then
       echo "ERROR: clip MOVE REDO screenshot capture failed"; exit 1
     fi
     arrangement_placement_flow_redo_line="$(arrangement_placement_state_line REDO)"
@@ -3531,7 +3572,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_MOVE_RESTORED_REMOTE" "$ARRANGE_PLACEMENT_FLOW_MOVE_RESTORED_XML"; then
       echo "ERROR: final clip MOVE restoration hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_MOVE_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_FLOW_MOVE_RESTORED_PNG" 10; then
       echo "ERROR: final clip MOVE restoration screenshot capture failed"; exit 1
     fi
     arrangement_placement_flow_move_restored_line="$(arrangement_placement_state_line UNDO)"
@@ -3562,7 +3603,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_PLACE_RESTORED_REMOTE" "$ARRANGE_PLACEMENT_FLOW_PLACE_RESTORED_XML"; then
       echo "ERROR: PLACE UNDO hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_PLACE_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_FLOW_PLACE_RESTORED_PNG" 10; then
       echo "ERROR: PLACE UNDO screenshot capture failed"; exit 1
     fi
     arrangement_placement_flow_place_restored_line="$(arrangement_placement_state_line UNDO)"
@@ -3593,7 +3634,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_DELETE_RESTORED_REMOTE" "$ARRANGE_PLACEMENT_FLOW_DELETE_RESTORED_XML"; then
       echo "ERROR: CLIP DEL UNDO hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_DELETE_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_FLOW_DELETE_RESTORED_PNG" 10; then
       echo "ERROR: CLIP DEL UNDO screenshot capture failed"; exit 1
     fi
     arrangement_placement_flow_delete_restored_line="$(arrangement_placement_state_line UNDO)"
@@ -3624,7 +3665,7 @@ PY
     if ! dump_device_ui "$ARRANGE_PLACEMENT_FLOW_FINAL_REMOTE" "$ARRANGE_PLACEMENT_FLOW_FINAL_XML"; then
       echo "ERROR: final placement lifecycle hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_PLACEMENT_FLOW_FINAL_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_PLACEMENT_FLOW_FINAL_PNG" 10; then
       echo "ERROR: final placement lifecycle screenshot capture failed"; exit 1
     fi
     arrangement_placement_flow_final_line="$(arrangement_placement_state_line UNDO)"
@@ -3659,7 +3700,7 @@ PY
     if ! dump_device_ui "$ARRANGE_CURSOR_PASTED_REMOTE" "$ARRANGE_CURSOR_PASTED_XML"; then
       echo "ERROR: cursor-pasted hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_PASTED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_CURSOR_PASTED_PNG" 10; then
       echo "ERROR: cursor-pasted screenshot failed"; exit 1
     fi
     arrangement_cursor_paste_line="$(arrangement_event_state_line PASTE)"
@@ -3709,7 +3750,7 @@ PY
     if ! dump_device_ui "$ARRANGE_CURSOR_UNDO_REMOTE" "$ARRANGE_CURSOR_UNDO_XML"; then
       echo "ERROR: cursor PASTE UNDO hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_UNDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_CURSOR_UNDO_PNG" 10; then
       echo "ERROR: cursor PASTE UNDO screenshot failed"; exit 1
     fi
     arrangement_cursor_undo_line="$(arrangement_event_state_line UNDO)"
@@ -3756,7 +3797,7 @@ PY
     if ! dump_device_ui "$ARRANGE_CURSOR_REDO_REMOTE" "$ARRANGE_CURSOR_REDO_XML"; then
       echo "ERROR: cursor PASTE REDO hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_REDO_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_CURSOR_REDO_PNG" 10; then
       echo "ERROR: cursor PASTE REDO screenshot failed"; exit 1
     fi
     arrangement_cursor_redo_line="$(arrangement_event_state_line REDO)"
@@ -3803,7 +3844,7 @@ PY
     if ! dump_device_ui "$ARRANGE_CURSOR_RESTORED_REMOTE" "$ARRANGE_CURSOR_RESTORED_XML"; then
       echo "ERROR: cursor PASTE final-undo hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_CURSOR_RESTORED_PNG" 10; then
       echo "ERROR: cursor PASTE final-undo screenshot failed"; exit 1
     fi
     arrangement_cursor_final_undo_line="$(arrangement_event_state_line UNDO)"
@@ -3845,7 +3886,7 @@ PY
     if ! dump_device_ui "$ARRANGE_CURSOR_FINAL_REMOTE" "$ARRANGE_CURSOR_FINAL_XML"; then
       echo "ERROR: final CUT undo hierarchy failed after cursor-paste cycle"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_CURSOR_FINAL_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_CURSOR_FINAL_PNG" 10; then
       echo "ERROR: final CUT undo screenshot failed after cursor-paste cycle"; exit 1
     fi
     arrangement_cursor_final_cut_undo_line="$(arrangement_event_state_line UNDO)"
@@ -3940,7 +3981,7 @@ PY
     if ! dump_device_ui "$ARRANGE_LOOP_CHANGED_REMOTE" "$ARRANGE_LOOP_CHANGED_XML"; then
       echo "ERROR: Arrange loop changed-state hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_LOOP_CHANGED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_LOOP_CHANGED_PNG" 10; then
       echo "ERROR: Arrange loop changed-state screenshot failed"; exit 1
     fi
 
@@ -4017,7 +4058,7 @@ PY
     if ! dump_device_ui "$ARRANGE_LOOP_RESTORED_REMOTE" "$ARRANGE_LOOP_RESTORED_XML"; then
       echo "ERROR: Arrange loop restored-state hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$ARRANGE_LOOP_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$ARRANGE_LOOP_RESTORED_PNG" 10; then
       echo "ERROR: Arrange loop restored-state screenshot failed"; exit 1
     fi
 
@@ -4044,7 +4085,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_BEFORE_REMOTE" "$STEP_TOUCH_BEFORE_XML"; then
       echo "ERROR: Step Sequencer initial accessibility hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_BEFORE_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_BEFORE_PNG" 10; then
       echo "ERROR: Step Sequencer initial screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_BEFORE_XML" <<'PY'
@@ -4140,7 +4181,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_ADDED_REMOTE" "$STEP_TOUCH_ADDED_XML"; then
       echo "ERROR: Step Sequencer after-add hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_ADDED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_ADDED_PNG" 10; then
       echo "ERROR: Step Sequencer after-add screenshot failed"; exit 1
     fi
     step_touch_add_state="$(python3 - "$STEP_TOUCH_ADDED_XML" "$step_touch_target_number" <<'PY'
@@ -4227,7 +4268,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_VELOCITY_CHANGED_REMOTE" "$STEP_TOUCH_VELOCITY_CHANGED_XML"; then
       echo "ERROR: Step Edit after-Velocity hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_VELOCITY_CHANGED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_VELOCITY_CHANGED_PNG" 10; then
       echo "ERROR: Step Edit after-Velocity screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_VELOCITY_CHANGED_XML" "$step_touch_target_number" "$step_touch_velocity_fields_before" "$step_touch_velocity_expected" <<'PY'
@@ -4268,7 +4309,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_VELOCITY_RESTORED_REMOTE" "$STEP_TOUCH_VELOCITY_RESTORED_XML"; then
       echo "ERROR: Step Edit after-Velocity-restore hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_VELOCITY_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_VELOCITY_RESTORED_PNG" 10; then
       echo "ERROR: Step Edit after-Velocity-restore screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_VELOCITY_RESTORED_XML" "$step_touch_target_number" "$step_touch_velocity_fields_before" <<'PY'
@@ -4357,7 +4398,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_CHANGED_REMOTE" "$STEP_TOUCH_CHANGED_XML"; then
       echo "ERROR: Step Sequencer after-parameter hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_CHANGED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_CHANGED_PNG" 10; then
       echo "ERROR: Step Sequencer after-parameter screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_CHANGED_XML" "$step_touch_target_number" "$step_touch_probability_fields_before" "$step_touch_probability_expected" <<'PY'
@@ -4405,7 +4446,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_PROBABILITY_RESTORED_REMOTE" "$STEP_TOUCH_PROBABILITY_RESTORED_XML"; then
       echo "ERROR: Step Edit after-probability-restore hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_PROBABILITY_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_PROBABILITY_RESTORED_PNG" 10; then
       echo "ERROR: Step Edit after-probability-restore screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_PROBABILITY_RESTORED_XML" "$step_touch_target_number" "$step_touch_probability_fields_before" <<'PY'
@@ -4456,7 +4497,7 @@ PY
     STEP_TOUCH_RATCHET_RESTORED_XML="/tmp/mpc-groovebox-step-touch-ratchet-restored-uiautomator.xml"
     STEP_TOUCH_RATCHET_RESTORED_REMOTE="/sdcard/mpc-groovebox-step-touch-ratchet-restored-uiautomator.xml"
     STEP_TOUCH_RATCHET_RESTORED_PNG="/tmp/mpc-groovebox-step-touch-ratchet-restored.png"
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_RATCHET_FOCUS_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_RATCHET_FOCUS_PNG" 10; then
       echo "ERROR: Step Edit Ratchet-focus screenshot failed"; exit 1
     fi
 
@@ -4504,7 +4545,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_RATCHET_CHANGED_REMOTE" "$STEP_TOUCH_RATCHET_CHANGED_XML"; then
       echo "ERROR: Step Edit after-Ratchet hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_RATCHET_CHANGED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_RATCHET_CHANGED_PNG" 10; then
       echo "ERROR: Step Edit after-Ratchet screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_RATCHET_CHANGED_XML" "$step_touch_target_number" "$step_touch_ratchet_timing_before" "$step_touch_ratchet_expected" <<'PY'
@@ -4546,7 +4587,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_RATCHET_RESTORED_REMOTE" "$STEP_TOUCH_RATCHET_RESTORED_XML"; then
       echo "ERROR: Step Edit after-Ratchet-restore hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_RATCHET_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_RATCHET_RESTORED_PNG" 10; then
       echo "ERROR: Step Edit after-Ratchet-restore screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_RATCHET_RESTORED_XML" "$step_touch_target_number" "$step_touch_ratchet_timing_before" <<'PY'
@@ -4626,7 +4667,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_NUDGE_CHANGED_REMOTE" "$STEP_TOUCH_NUDGE_CHANGED_XML"; then
       echo "ERROR: Step Edit after-Nudge hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_NUDGE_CHANGED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_NUDGE_CHANGED_PNG" 10; then
       echo "ERROR: Step Edit after-Nudge screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_NUDGE_CHANGED_XML" "$step_touch_target_number" "$step_touch_timing_before" <<'PY'
@@ -4683,7 +4724,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_DURATION_CHANGED_REMOTE" "$STEP_TOUCH_DURATION_CHANGED_XML"; then
       echo "ERROR: Step Edit after-Duration hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_DURATION_CHANGED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_DURATION_CHANGED_PNG" 10; then
       echo "ERROR: Step Edit after-Duration screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_NUDGE_CHANGED_XML" "$STEP_TOUCH_DURATION_CHANGED_XML" "$step_touch_target_number" <<'PY'
@@ -4734,7 +4775,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_ERASED_REMOTE" "$STEP_TOUCH_ERASED_XML"; then
       echo "ERROR: Step Sequencer after-erase hierarchy failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_ERASED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_ERASED_PNG" 10; then
       echo "ERROR: Step Sequencer after-erase screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_ERASED_XML" "$step_touch_target_number" <<'PY'
@@ -4770,7 +4811,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_PAGE2_REMOTE" "$STEP_TOUCH_PAGE2_XML"; then
       echo "ERROR: Step page 2 hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_PAGE2_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_PAGE2_PNG" 10; then
       echo "ERROR: Step page 2 screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_PAGE2_XML" "$step_touch_target_number" <<'PY'
@@ -4821,7 +4862,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_PAGE1_RESTORED_REMOTE" "$STEP_TOUCH_PAGE1_RESTORED_XML"; then
       echo "ERROR: restored Step page 1 hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_PAGE1_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_PAGE1_RESTORED_PNG" 10; then
       echo "ERROR: restored Step page 1 screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_PAGE1_RESTORED_XML" "$step_touch_target_number" <<'PY'
@@ -4861,7 +4902,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_PAD2_REMOTE" "$STEP_TOUCH_PAD2_XML"; then
       echo "ERROR: Pad 2 hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_PAD2_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_PAD2_PNG" 10; then
       echo "ERROR: Pad 2 screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_PAD2_XML" "$step_touch_target_number" <<'PY'
@@ -4908,7 +4949,7 @@ PY
     if ! dump_device_ui "$STEP_TOUCH_PAD1_RESTORED_REMOTE" "$STEP_TOUCH_PAD1_RESTORED_XML"; then
       echo "ERROR: restored Pad 1 hierarchy capture failed"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$STEP_TOUCH_PAD1_RESTORED_PNG"; then
+    if ! capture_ui_screenshot "$STEP_TOUCH_PAD1_RESTORED_PNG" 10; then
       echo "ERROR: restored Pad 1 screenshot failed"; exit 1
     fi
     if ! python3 - "$STEP_TOUCH_PAD1_RESTORED_XML" "$step_touch_target_number" <<'PY'
@@ -4949,7 +4990,7 @@ PY
   if [ "$main_runtime_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_MAIN_CAPTURE_READY" <<<"$log_snapshot"; then
     echo "Capturing ready Main workspace and Android accessibility hierarchy..."
-    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-main-ready.png; then
+    if ! capture_ui_screenshot /tmp/mpc-groovebox-main-ready.png 10; then
       echo "ERROR: ready Main screenshot capture failed"
       exit 1
     fi
@@ -5089,7 +5130,7 @@ PY
   if [ "$browser_runtime_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_BROWSER_CAPTURE_READY" <<<"$log_snapshot"; then
     echo "Capturing actual rendered Browser screen and Android accessibility hierarchy..."
-    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-device.png; then
+    if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-device.png 10; then
       echo "ERROR: real Browser emulator screenshot capture failed"
       exit 1
     fi
@@ -5191,7 +5232,7 @@ PY
   if [ "$track_view_mute_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_TRACK_VIEW_MUTED_CAPTURE_READY:" <<<"$log_snapshot"; then
     echo "Capturing Track View mute state and Android accessibility hierarchy..."
-    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-track-view-muted.png; then
+    if ! capture_ui_screenshot /tmp/mpc-groovebox-track-view-muted.png 10; then
       echo "ERROR: Track View mute-state screenshot capture failed"; exit 1
     fi
     if ! timeout --signal=TERM --kill-after=3s 30s \
@@ -5257,7 +5298,7 @@ PY
   if [ "$arrangement_grid_focus_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY" <<<"$log_snapshot"; then
     echo "Capturing Arrangement-to-Grid focused-step screenshot and accessibility hierarchy..."
-    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-arrange-grid-focus.png; then
+    if ! capture_ui_screenshot /tmp/mpc-groovebox-arrange-grid-focus.png 10; then
       echo "ERROR: Arrangement-to-Grid focus screenshot capture failed"
       exit 1
     fi
@@ -5447,7 +5488,7 @@ PY
     then
       echo "ERROR: Grid DRAW did not produce a native note"; cat "$GRID_EDIT_DRAW_XML"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_DRAW_PNG"; then
+    if ! capture_ui_screenshot "$GRID_EDIT_DRAW_PNG" 10; then
       echo "ERROR: Grid DRAW screenshot capture failed"; exit 1
     fi
 
@@ -5529,7 +5570,7 @@ PY
       if ! dump_device_ui "$selected_remote" "$selected_xml"; then
         echo "ERROR: Grid $parameter_token selected-state hierarchy failed"; exit 1
       fi
-      if ! adb_bounded 10 exec-out screencap -p > "$selected_png"; then
+      if ! capture_ui_screenshot "$selected_png" 10; then
         echo "ERROR: Grid $parameter_token selected-state screenshot failed"; exit 1
       fi
       current_state="$(grid_event_read_state "$selected_xml")" || {
@@ -5590,7 +5631,7 @@ PY
       if ! dump_device_ui "$changed_remote" "$changed_xml"; then
         echo "ERROR: Grid $parameter_token changed-state hierarchy failed"; exit 1
       fi
-      if ! adb_bounded 10 exec-out screencap -p > "$changed_png"; then
+      if ! capture_ui_screenshot "$changed_png" 10; then
         echo "ERROR: Grid $parameter_token changed-state screenshot failed"; exit 1
       fi
       if ! python3 - "$selected_xml" "$changed_xml" "$grid_edit_step" "$parameter_name" "$direction" "$grid_ticks" "$parameter_minimum" "$parameter_maximum" <<'PY'
@@ -5647,7 +5688,7 @@ PY
       if ! dump_device_ui "$restored_remote" "$restored_xml"; then
         echo "ERROR: Grid $parameter_token restored-state hierarchy failed"; exit 1
       fi
-      if ! adb_bounded 10 exec-out screencap -p > "$restored_png"; then
+      if ! capture_ui_screenshot "$restored_png" 10; then
         echo "ERROR: Grid $parameter_token restored-state screenshot failed"; exit 1
       fi
       if ! python3 - "$selected_xml" "$restored_xml" "$grid_edit_step" "$parameter_name" <<'PY'
@@ -5740,7 +5781,7 @@ PY
     then
       echo "ERROR: Grid ERASE failed to restore empty native state"; cat "$GRID_EDIT_ERASE_XML"; exit 1
     fi
-    if ! adb_bounded 10 exec-out screencap -p > "$GRID_EDIT_ERASE_PNG"; then
+    if ! capture_ui_screenshot "$GRID_EDIT_ERASE_PNG" 10; then
       echo "ERROR: Grid ERASE screenshot capture failed"; exit 1
     fi
     if ! tap_visible_description_early "$GRID_EDIT_ERASE_XML" "Grid Draw tool"; then
@@ -5760,7 +5801,7 @@ PY
   if [ "$arrangement_back_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_ARRANGEMENT_BACK_CAPTURE_READY" <<<"$log_snapshot"; then
     echo "Capturing actual Arrangement after Grid BACK..."
-    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-arrange-back.png; then echo "ERROR: Arrange-after-BACK screenshot failed"; exit 1; fi
+    if ! capture_ui_screenshot /tmp/mpc-groovebox-arrange-back.png; then echo "ERROR: Arrange-after-BACK screenshot failed"; exit 1; fi 10; then
     if ! timeout --signal=TERM --kill-after=3s 30s adb shell uiautomator dump /sdcard/mpc-groovebox-arrange-back-uiautomator.xml > /tmp/mpc-groovebox-arrange-back-uiautomator.log 2>&1; then cat /tmp/mpc-groovebox-arrange-back-uiautomator.log || true; echo "ERROR: Arrange-after-BACK hierarchy dump failed"; exit 1; fi
     if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-arrange-back-uiautomator.xml > /tmp/mpc-groovebox-arrange-back-uiautomator.xml; then echo "ERROR: Arrange-after-BACK hierarchy retrieval failed"; exit 1; fi
     if ! test -s /tmp/mpc-groovebox-arrange-back.png || ! test -s /tmp/mpc-groovebox-arrange-back-uiautomator.xml; then echo "ERROR: Arrange-after-BACK evidence is empty"; exit 1; fi
@@ -5794,7 +5835,7 @@ PY
   if [ "$arrangement_grid_reentry_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_ARRANGEMENT_GRID_BACK_REENTRY_CAPTURE_READY" <<<"$log_snapshot"; then
     echo "Capturing Grid after reopening same Arrangement event..."
-    if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-arrange-grid-reentry.png; then echo "ERROR: Grid re-entry screenshot failed"; exit 1; fi
+    if ! capture_ui_screenshot /tmp/mpc-groovebox-arrange-grid-reentry.png; then echo "ERROR: Grid re-entry screenshot failed"; exit 1; fi 10; then
     if ! timeout --signal=TERM --kill-after=3s 30s adb shell uiautomator dump /sdcard/mpc-groovebox-arrange-grid-reentry-uiautomator.xml > /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.log 2>&1; then cat /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.log || true; echo "ERROR: Grid re-entry hierarchy dump failed"; exit 1; fi
     if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-arrange-grid-reentry-uiautomator.xml > /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml; then echo "ERROR: Grid re-entry hierarchy retrieval failed"; exit 1; fi
     if ! test -s /tmp/mpc-groovebox-arrange-grid-reentry.png || ! test -s /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml; then echo "ERROR: Grid re-entry evidence is empty"; exit 1; fi
@@ -5884,7 +5925,7 @@ PY
     sleep 1
     picker_screenshot_bytes=0
     for screenshot_attempt in 1 2 3 4 5; do
-      if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-storage-picker.png; then
+      if ! capture_ui_screenshot /tmp/mpc-groovebox-storage-picker.png 10; then
         echo "ERROR: Android Document Picker screenshot capture failed"
         exit 1
       fi
@@ -6461,34 +6502,25 @@ PY
 }
 
 wait_for_ui_description() {
-  local hierarchy_path="$1" remote_path="$2" expected_description="$3" max_attempts="$4"
-  local hierarchy_failures=0
-  for ((attempt=1; attempt<=max_attempts; attempt++)); do
-    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then
-      hierarchy_failures=$((hierarchy_failures + 1))
-      sleep 1
-      continue
-    fi
+  local hierarchy_path="$1" remote_path="$2" expected_description="$3"
+  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining hierarchy_failures=0
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then hierarchy_failures=$((hierarchy_failures + 1)); continue; fi
     if python3 - "$hierarchy_path" "$expected_description" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
+import sys, xml.etree.ElementTree as ET
 path, expected = sys.argv[1], sys.argv[2]
 root = ET.parse(path).getroot()
-raise SystemExit(0 if any(n.attrib.get("content-desc", "").startswith(expected)
-                          for n in root.iter("node")) else 1)
+raise SystemExit(0 if any(n.attrib.get("content-desc", "").startswith(expected) for n in root.iter("node")) else 1)
 PY
     then return 0; fi
-    sleep 1
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
-  if (( hierarchy_failures == max_attempts )); then
-    echo "ERROR: could not retrieve emulator UI hierarchy in $max_attempts bounded attempts while waiting for: $expected_description"
-  else
-    echo "ERROR: timed out waiting for UI target: $expected_description (hierarchy capture failures: $hierarchy_failures/$max_attempts)"
-  fi
+  echo "ERROR: timed out after ${timeout_seconds}s waiting for UI target: $expected_description (hierarchy failures: $hierarchy_failures)"
   cat "$hierarchy_path" || true
+  cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   return 1
 }
-
 
 # Scroll a real, currently visible editor container until a named actionable
 # accessibility target is fully present. The swipe starts on a visible static
@@ -6922,44 +6954,41 @@ PY
 }
 
 wait_for_successful_audition() {
-  local hierarchy_path="$1" remote_path="$2" expected_name="$3" max_attempts="$4"
-  for ((attempt=1; attempt<=max_attempts; attempt++)); do
-    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+  local hierarchy_path="$1" remote_path="$2" expected_name="$3"
+  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then continue; fi
     if python3 - "$hierarchy_path" "$expected_name" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
+import sys, xml.etree.ElementTree as ET
 path, expected_name = sys.argv[1], sys.argv[2]
-root = ET.parse(path).getroot()
-texts = [n.attrib.get("text", "").strip() for n in root.iter("node")]
-success = any(value == "AUDITION • " + expected_name
-              or value == "AUDITION COMPLETE • " + expected_name
-              for value in texts)
-raise SystemExit(0 if success else 1)
+texts = [n.attrib.get("text", "").strip() for n in ET.parse(path).getroot().iter("node")]
+raise SystemExit(0 if any(v == "AUDITION • " + expected_name or v == "AUDITION COMPLETE • " + expected_name for v in texts) else 1)
 PY
     then return 0; fi
-    sleep 1
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
-  echo "ERROR: selected WAV did not reach a successful audition state: $expected_name"
+  echo "ERROR: timed out after ${timeout_seconds}s waiting for WAV audition: $expected_name"
   cat "$hierarchy_path" || true
   return 1
 }
 
 wait_for_ui_text() {
-  local hierarchy_path="$1" remote_path="$2" expected_fragment="$3" max_attempts="$4"
-  for ((attempt=1; attempt<=max_attempts; attempt++)); do
-    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+  local hierarchy_path="$1" remote_path="$2" expected_fragment="$3"
+  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then continue; fi
     if python3 - "$hierarchy_path" "$expected_fragment" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
+import sys, xml.etree.ElementTree as ET
 path, expected = sys.argv[1], sys.argv[2]
-root = ET.parse(path).getroot()
-texts = [node.attrib.get("text", "") for node in root.iter("node")]
-raise SystemExit(0 if any(expected in value for value in texts) else 1)
+texts = [n.attrib.get("text", "") for n in ET.parse(path).getroot().iter("node")]
+raise SystemExit(0 if any(expected in v for v in texts) else 1)
 PY
     then return 0; fi
-    sleep 1
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
-  echo "ERROR: timed out waiting for UI text: $expected_fragment"
+  echo "ERROR: timed out after ${timeout_seconds}s waiting for UI text: $expected_fragment"
   cat "$hierarchy_path" || true
   return 1
 }
@@ -7037,35 +7066,30 @@ PY
 # screenshot, then require a third matching snapshot before using any bounds.
 capture_stable_picker_state() {
   local remote_path="$1" hierarchy_path="$2" screenshot_path="$3"
-  local max_attempts="${4:-6}"
+  local timeout_seconds="${4:-6}" deadline=$((SECONDS + ${4:-6}))
   local check_path="${hierarchy_path%.xml}-stability-check.xml"
-  local before_signature check_signature final_signature
-  local attempt
-  for ((attempt=1; attempt<=max_attempts; attempt++)); do
-    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+  local before_signature check_signature final_signature remaining attempt=0
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    attempt=$((attempt + 1))
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then break; fi
     before_signature="$(picker_hierarchy_signature "$hierarchy_path")" || return 1
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
     sleep 0.25
-    if ! dump_device_ui "$remote_path" "$check_path"; then return 1; fi
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if ! dump_device_ui "$remote_path" "$check_path" "$remaining"; then break; fi
     check_signature="$(picker_hierarchy_signature "$check_path")" || return 1
-    if [[ "$before_signature" != "$check_signature" ]]; then
-      sleep 0.25
-      continue
-    fi
-    if ! adb_bounded 10 exec-out screencap -p > "$screenshot_path"; then
-      echo "ERROR: could not capture stable DocumentsUI screenshot"
-      return 1
-    fi
-    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+    if [[ "$before_signature" != "$check_signature" ]]; then remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25; continue; fi
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if ! capture_ui_screenshot "$screenshot_path" "$remaining"; then echo "ERROR: could not capture stable DocumentsUI screenshot"; return 1; fi
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then break; fi
     final_signature="$(picker_hierarchy_signature "$hierarchy_path")" || return 1
-    if [[ "$final_signature" == "$check_signature" ]]; then
-      echo "DocumentsUI state stabilized after $attempt attempt(s): $hierarchy_path"
-      return 0
-    fi
-    sleep 0.25
+    if [[ "$final_signature" == "$check_signature" ]]; then echo "DocumentsUI state stabilized after $attempt attempt(s): $hierarchy_path"; return 0; fi
   done
-  echo "ERROR: DocumentsUI screenshot and accessibility hierarchy did not stabilize"
-  echo "Hierarchy: $hierarchy_path"
+  echo "ERROR: DocumentsUI state did not stabilize within ${timeout_seconds}s"
   cat "$hierarchy_path" || true
+  cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   return 1
 }
 
@@ -7108,43 +7132,42 @@ tap_ui_picker_folder_until_child() {
 }
 
 wait_for_ui_text_pair() {
-  local hierarchy_path="$1" remote_path="$2" first="$3" second="$4" max_attempts="$5"
-  for ((attempt=1; attempt<=max_attempts; attempt++)); do
-    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+  local hierarchy_path="$1" remote_path="$2" first="$3" second="$4"
+  local timeout_seconds="$5" deadline=$((SECONDS + $5)) remaining
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then continue; fi
     if python3 - "$hierarchy_path" "$first" "$second" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
+import sys, xml.etree.ElementTree as ET
 path, first, second = sys.argv[1], sys.argv[2], sys.argv[3]
-root = ET.parse(path).getroot()
-texts = [n.attrib.get("text", "") for n in root.iter("node")]
-raise SystemExit(0 if any(first in value and second in value for value in texts) else 1)
+texts = [n.attrib.get("text", "") for n in ET.parse(path).getroot().iter("node")]
+raise SystemExit(0 if any(first in v and second in v for v in texts) else 1)
 PY
     then return 0; fi
-    sleep 1
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
-  echo "ERROR: timed out waiting for UI text pair: $first / $second"
+  echo "ERROR: timed out after ${timeout_seconds}s waiting for UI text pair: $first / $second"
   cat "$hierarchy_path" || true
   return 1
 }
 
 wait_for_ui_node_text_desc() {
-  local hierarchy_path="$1" remote_path="$2" expected_text="$3" expected_description="$4" max_attempts="$5"
-  for ((attempt=1; attempt<=max_attempts; attempt++)); do
-    if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
+  local hierarchy_path="$1" remote_path="$2" expected_text="$3" expected_description="$4"
+  local timeout_seconds="$5" deadline=$((SECONDS + $5)) remaining
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then continue; fi
     if python3 - "$hierarchy_path" "$expected_text" "$expected_description" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
+import sys, xml.etree.ElementTree as ET
 path, expected_text, expected_desc = sys.argv[1], sys.argv[2], sys.argv[3]
-root = ET.parse(path).getroot()
-ok = any(expected_text in n.attrib.get("text", "")
-         and expected_desc in n.attrib.get("content-desc", "")
-         for n in root.iter("node"))
+ok = any(expected_text in n.attrib.get("text", "") and expected_desc in n.attrib.get("content-desc", "")
+         for n in ET.parse(path).getroot().iter("node"))
 raise SystemExit(0 if ok else 1)
 PY
     then return 0; fi
-    sleep 1
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
-  echo "ERROR: timed out waiting for node text/description: $expected_text / $expected_description"
+  echo "ERROR: timed out after ${timeout_seconds}s waiting for node text/description: $expected_text / $expected_description"
   cat "$hierarchy_path" || true
   return 1
 }
@@ -7221,20 +7244,16 @@ PY
 # foreground workspace's real BACK action if required, then preserve that exact
 # context for the Track Edit exit assertion. No coordinate guesses or state hacks.
 wait_for_track_edit_entry() {
-  local remote_path="$1" host_path="$2" attempts="$3"
-  for ((entry_attempt=1; entry_attempt<=attempts; entry_attempt++)); do
-    if ! dump_device_ui "$remote_path" "$host_path"; then return 1; fi
-    if grep -Fq -- 'content-desc="Main Track Edit"' "$host_path"; then
-      printf '%s\n' "Main Track Edit"
-      return 0
-    fi
-    if grep -Fq -- 'content-desc="MPC Menu TRACK EDIT"' "$host_path"; then
-      printf '%s\n' "MPC Menu TRACK EDIT"
-      return 0
-    fi
-    sleep 1
+  local remote_path="$1" host_path="$2" timeout_seconds="$3"
+  local deadline=$((SECONDS + $3)) remaining
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if ! dump_device_ui "$remote_path" "$host_path" "$remaining"; then continue; fi
+    if grep -Fq -- 'content-desc="Main Track Edit"' "$host_path"; then printf '%s\n' "Main Track Edit"; return 0; fi
+    if grep -Fq -- 'content-desc="MPC Menu TRACK EDIT"' "$host_path"; then printf '%s\n' "MPC Menu TRACK EDIT"; return 0; fi
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
-  echo "ERROR: neither Main Track Edit nor MPC Menu TRACK EDIT appeared"
+  echo "ERROR: neither Main Track Edit nor MPC Menu TRACK EDIT appeared within ${timeout_seconds}s"
   cat "$host_path" || true
   return 1
 }
@@ -7302,7 +7321,7 @@ fi
 track_edit_tuning_before="$(read_track_edit_tuning_value "$TRACK_EDIT_BEFORE_XML")" || {
   echo "ERROR: Track Edit initial tuning value could not be read from the visible control"; exit 1;
 }
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_BEFORE_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_BEFORE_PNG" 10; then
   echo "ERROR: Track Edit initial tuning screenshot failed"; exit 1
 fi
 if [[ "$track_edit_pad_before" != "PAD 01" || "$track_edit_layer_before" != "LAYER 1/8" ]]; then
@@ -7341,7 +7360,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_CHANGED_XML"; then
   echo "ERROR: Track Edit changed tuning hierarchy failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_CHANGED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_CHANGED_PNG" 10; then
   echo "ERROR: Track Edit changed tuning screenshot failed"; exit 1
 fi
 
@@ -7387,7 +7406,7 @@ if [[ "$track_edit_pad_reopened" != "$track_edit_pad_before" \
   echo "Before: Pad=$track_edit_pad_before Layer=$track_edit_layer_before sample=$track_edit_sample_before tuning=$track_edit_tuning_before"
   echo "Reopened: Pad=$track_edit_pad_reopened Layer=$track_edit_layer_reopened sample=$track_edit_sample_reopened tuning=$track_edit_tuning_reopened"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REOPENED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_REOPENED_PNG" 10; then
   echo "ERROR: Track Edit re-entry screenshot failed"; exit 1
 fi
 
@@ -7411,7 +7430,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_REMOTE" "$TRACK_EDIT_RESTORED_XML"; then
   echo "ERROR: Track Edit restored tuning hierarchy failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_RESTORED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_RESTORED_PNG" 10; then
   echo "ERROR: Track Edit restored tuning screenshot failed"; exit 1
 fi
 # EDIT-004: mutate only sample-layer gain through the real Track Edit touch controls,
@@ -7528,7 +7547,7 @@ if [[ "$track_edit_gain_tuning_changed" != "$track_edit_gain_tuning_before" \
   echo "Tune: $track_edit_gain_tuning_before -> $track_edit_gain_tuning_changed"
   echo "Pan: $track_edit_gain_pan_before -> $track_edit_gain_pan_changed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_GAIN_CHANGED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_GAIN_CHANGED_PNG" 10; then
   echo "ERROR: Track Edit gain changed screenshot capture failed"; exit 1
 fi
 if ! tap_ui_description "$TRACK_EDIT_GAIN_CHANGED_XML" "Track Edit layer gain $track_edit_gain_inverse_direction"; then
@@ -7551,7 +7570,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_GAIN_RESTORED_REMOTE" "$TRACK_EDIT_GAIN_RESTORED_XML"; then
   echo "ERROR: Track Edit restored gain hierarchy capture failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_GAIN_RESTORED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_GAIN_RESTORED_PNG" 10; then
   echo "ERROR: Track Edit restored gain screenshot capture failed"; exit 1
 fi
 track_edit_gain_final="$(read_track_edit_gain_value "$TRACK_EDIT_GAIN_RESTORED_XML")" || {
@@ -7626,7 +7645,7 @@ if [[ "$track_edit_pan_gain_changed" != "$track_edit_pan_gain_before" \
   echo "Gain: $track_edit_pan_gain_before -> $track_edit_pan_gain_changed"
   echo "Tune: $track_edit_pan_tuning_before -> $track_edit_pan_tuning_changed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PAN_CHANGED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_PAN_CHANGED_PNG" 10; then
   echo "ERROR: Track Edit changed PAN screenshot capture failed"; exit 1
 fi
 if ! scroll_track_edit_to_layer_pan_center "$TRACK_EDIT_PAN_CHANGED_XML" "$TRACK_EDIT_PAN_REMOTE" 4; then
@@ -7652,7 +7671,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_PAN_RESTORED_REMOTE" "$TRACK_EDIT_PAN_RESTORED_XML"; then
   echo "ERROR: Track Edit restored PAN hierarchy capture failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_PAN_RESTORED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_PAN_RESTORED_PNG" 10; then
   echo "ERROR: Track Edit restored PAN screenshot capture failed"; exit 1
 fi
 track_edit_pan_final="$(read_track_edit_pan_value "$TRACK_EDIT_PAN_RESTORED_XML")" || {
@@ -7699,7 +7718,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_REGION_BEFORE_REMOTE" "$TRACK_EDIT_REGION_BEFORE_XML"; then
   echo "ERROR: Track Edit sample-region baseline hierarchy failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_BEFORE_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_REGION_BEFORE_PNG" 10; then
   echo "ERROR: Track Edit sample-region baseline screenshot failed"; exit 1
 fi
 track_edit_region_before="$(read_track_edit_region_bounds "$TRACK_EDIT_REGION_BEFORE_XML")" || {
@@ -7752,7 +7771,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_REGION_START_CHANGED_REMOTE" "$TRACK_EDIT_REGION_START_CHANGED_XML"; then
   echo "ERROR: changed region Start hierarchy capture failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_START_CHANGED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_REGION_START_CHANGED_PNG" 10; then
   echo "ERROR: changed region Start screenshot capture failed"; exit 1
 fi
 track_edit_region_gain_changed="$(read_track_edit_gain_value "$TRACK_EDIT_REGION_START_CHANGED_XML")" || { echo "ERROR: GAIN missing after Start edit"; exit 1; }
@@ -7781,7 +7800,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_REGION_START_RESTORED_REMOTE" "$TRACK_EDIT_REGION_START_RESTORED_XML"; then
   echo "ERROR: restored region Start hierarchy capture failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_START_RESTORED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_REGION_START_RESTORED_PNG" 10; then
   echo "ERROR: restored region Start screenshot capture failed"; exit 1
 fi
 
@@ -7821,7 +7840,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_REGION_END_CHANGED_REMOTE" "$TRACK_EDIT_REGION_END_CHANGED_XML"; then
   echo "ERROR: changed region End hierarchy capture failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_END_CHANGED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_REGION_END_CHANGED_PNG" 10; then
   echo "ERROR: changed region End screenshot capture failed"; exit 1
 fi
 track_edit_region_gain_changed="$(read_track_edit_gain_value "$TRACK_EDIT_REGION_END_CHANGED_XML")" || { echo "ERROR: GAIN missing after End edit"; exit 1; }
@@ -7850,7 +7869,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_REGION_END_RESTORED_REMOTE" "$TRACK_EDIT_REGION_END_RESTORED_XML"; then
   echo "ERROR: restored region End hierarchy capture failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_REGION_END_RESTORED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_REGION_END_RESTORED_PNG" 10; then
   echo "ERROR: restored region End screenshot capture failed"; exit 1
 fi
 track_edit_region_gain_restored="$(read_track_edit_gain_value "$TRACK_EDIT_REGION_END_RESTORED_XML")" || { echo "ERROR: restored GAIN missing"; exit 1; }
@@ -7913,7 +7932,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_VELOCITY_REMOTE" "$TRACK_EDIT_VELOCITY_BASELINE_XML"; then
   echo "ERROR: Track Edit velocity-range baseline hierarchy capture failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_VELOCITY_BASELINE_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_VELOCITY_BASELINE_PNG" 10; then
   echo "ERROR: Track Edit velocity-range baseline screenshot capture failed"; exit 1
 fi
 track_edit_velocity_range_before="$(read_track_edit_velocity_range "$TRACK_EDIT_VELOCITY_BASELINE_XML")" || {
@@ -7952,7 +7971,7 @@ if [[ "$track_edit_velocity_max_changed" != "1" ]]; then
   echo "ERROR: velocity MAX touch did not change only the upper bound by one"
   echo "Before=$track_edit_velocity_range_before expected=$track_edit_velocity_min_before — $track_edit_velocity_max_expected actual=$track_edit_velocity_max_current"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_VELOCITY_MAX_CHANGED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_VELOCITY_MAX_CHANGED_PNG" 10; then
   echo "ERROR: Track Edit velocity MAX changed screenshot capture failed"; exit 1
 fi
 if ! tap_ui_text "$TRACK_EDIT_VELOCITY_MAX_CHANGED_XML" "$track_edit_velocity_max_inverse"; then
@@ -7975,7 +7994,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_VELOCITY_REMOTE" "$TRACK_EDIT_VELOCITY_MAX_RESTORED_XML"; then
   echo "ERROR: Track Edit restored velocity MAX hierarchy capture failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_VELOCITY_MAX_RESTORED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_VELOCITY_MAX_RESTORED_PNG" 10; then
   echo "ERROR: Track Edit restored velocity MAX screenshot capture failed"; exit 1
 fi
 echo "Track Edit velocity MAX changed only the upper bound and inverse-restored the exact range: $track_edit_velocity_range_before."
@@ -8019,7 +8038,7 @@ if [[ "$track_edit_velocity_min_changed" != "1" ]]; then
   echo "ERROR: velocity MIN touch did not change only the lower bound by one"
   echo "Before=$track_edit_velocity_range_before_min expected=$track_edit_velocity_min_expected — $track_edit_velocity_max_before_min actual=$track_edit_velocity_min_current"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_VELOCITY_MIN_CHANGED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_VELOCITY_MIN_CHANGED_PNG" 10; then
   echo "ERROR: Track Edit velocity MIN changed screenshot capture failed"; exit 1
 fi
 if ! tap_ui_text "$TRACK_EDIT_VELOCITY_MIN_CHANGED_XML" "$track_edit_velocity_min_inverse"; then
@@ -8042,7 +8061,7 @@ fi
 if ! dump_device_ui "$TRACK_EDIT_VELOCITY_REMOTE" "$TRACK_EDIT_VELOCITY_MIN_RESTORED_XML"; then
   echo "ERROR: Track Edit restored velocity MIN hierarchy capture failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_VELOCITY_MIN_RESTORED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_VELOCITY_MIN_RESTORED_PNG" 10; then
   echo "ERROR: Track Edit restored velocity MIN screenshot capture failed"; exit 1
 fi
 echo "Track Edit velocity MIN changed only the lower bound and inverse-restored the exact range: $track_edit_velocity_range_before_min."
@@ -8077,61 +8096,46 @@ echo "Opening Track Edit AMP ENV for envelope/filter real-touch acceptance..."
 # One capture is hard-bounded (2s cleanup + 8s dump + 5s transfer); 6 attempts
 # yield actionable failure evidence instead of silently consuming the smoke timeout.
 track_edit_dump_ui_bounded() {
-  local requested_remote_path="$1" host_path="$2"
+  local requested_remote_path="$1" host_path="$2" timeout_seconds="${3:-8}"
   local shared_remote_path="/sdcard/mpc-groovebox-current-uiautomator.xml"
   local log_path="/tmp/mpc-groovebox-track-edit-bounded-uiautomator.log"
-
-  adb_bounded 2 shell rm -f "$shared_remote_path" >/dev/null 2>&1 || true
-  if ! adb_bounded 8 shell uiautomator dump "$shared_remote_path" > "$log_path" 2>&1; then
-    echo "WARN: bounded Track Edit UI dump failed for $requested_remote_path"
-    cat "$log_path" || true
-    return 1
-  fi
-  if ! adb_bounded 5 exec-out cat "$shared_remote_path" > "$host_path"; then
-    echo "WARN: bounded Track Edit UI transfer failed for $requested_remote_path"
-    return 1
-  fi
+  local deadline=$((SECONDS + timeout_seconds)) remaining
+  rm -f "$host_path"
+  remaining=$((deadline - SECONDS)); (( remaining > 0 )) || return 1
+  adb_bounded "$remaining" shell rm -f "$shared_remote_path" >/dev/null 2>&1 || true
+  remaining=$((deadline - SECONDS))
+  if (( remaining <= 0 )); then echo "ERROR: Track Edit UI deadline expired before dump ($requested_remote_path)"; return 1; fi
+  if ! adb_bounded "$remaining" shell uiautomator dump "$shared_remote_path" > "$log_path" 2>&1; then echo "ERROR: bounded Track Edit UI dump failed for $requested_remote_path"; cat "$log_path" || true; return 1; fi
+  remaining=$((deadline - SECONDS))
+  if (( remaining <= 0 )); then echo "ERROR: Track Edit UI deadline expired before transfer ($requested_remote_path)"; return 1; fi
+  if ! adb_bounded "$remaining" exec-out cat "$shared_remote_path" > "$host_path"; then echo "ERROR: bounded Track Edit UI transfer failed for $requested_remote_path"; return 1; fi
   if ! python3 - "$host_path" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
-try:
-    root = ET.parse(sys.argv[1]).getroot()
+import sys, xml.etree.ElementTree as ET
+try: root = ET.parse(sys.argv[1]).getroot()
 except (OSError, ET.ParseError) as exc:
-    print(f"invalid Track Edit hierarchy: {exc}", file=sys.stderr)
-    raise SystemExit(1)
-if not list(root.iter("node")):
-    raise SystemExit("Track Edit hierarchy has no accessibility nodes")
+    print(f"invalid Track Edit hierarchy: {exc}", file=sys.stderr); raise SystemExit(1)
+if not list(root.iter("node")): raise SystemExit("Track Edit hierarchy has no accessibility nodes")
 PY
-  then
-    echo "WARN: bounded Track Edit UI dump produced invalid hierarchy: $host_path"
-    cat "$log_path" || true
-    return 1
-  fi
+  then echo "ERROR: bounded Track Edit UI dump produced invalid hierarchy: $host_path"; cat "$log_path" || true; return 1; fi
   return 0
 }
 
 wait_for_track_edit_description_bounded() {
-  local host_path="$1" remote_path="$2" expected_description="$3" max_attempts="$4"
-  for ((attempt=1; attempt<=max_attempts; attempt++)); do
-    if track_edit_dump_ui_bounded "$remote_path" "$host_path"; then
+  local host_path="$1" remote_path="$2" expected_description="$3"
+  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if track_edit_dump_ui_bounded "$remote_path" "$host_path" "$remaining"; then
       if python3 - "$host_path" "$expected_description" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
+import sys, xml.etree.ElementTree as ET
 path, expected = sys.argv[1], sys.argv[2]
-root = ET.parse(path).getroot()
-raise SystemExit(0 if any(
-    n.attrib.get("content-desc", "").startswith(expected)
-    for n in root.iter("node")
-) else 1)
+raise SystemExit(0 if any(n.attrib.get("content-desc", "").startswith(expected) for n in ET.parse(path).getroot().iter("node")) else 1)
 PY
-      then
-        echo "Track Edit AMP ENV target found on bounded attempt $attempt: $expected_description"
-        return 0
-      fi
+      then return 0; fi
     fi
-    sleep 1
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
-  echo "ERROR: Track Edit AMP ENV target not exposed after $max_attempts bounded captures: $expected_description"
+  echo "ERROR: Track Edit AMP ENV target not exposed within ${timeout_seconds}s: $expected_description"
   cat "$host_path" || true
   return 1
 }
@@ -8162,7 +8166,7 @@ fi
 if [[ ! -s "$TRACK_EDIT_ENV_BASELINE_XML" ]]; then
   echo "ERROR: Track Edit AMP ENV baseline hierarchy is empty after verified waits"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_ENV_BASELINE_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_ENV_BASELINE_PNG" 10; then
   echo "ERROR: Track Edit AMP ENV baseline screenshot capture failed"; exit 1
 fi
 
@@ -8263,7 +8267,7 @@ if [[ "$track_edit_env_attack_changed" != "1" ]]; then
   echo "ERROR: Attack edit changed an unexpected envelope field or did not reach its adjacent value"
   echo "Before=$track_edit_env_before expected Attack=$track_edit_env_attack_expected actual=$track_edit_env_current"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_ENV_ATTACK_CHANGED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_ENV_ATTACK_CHANGED_PNG" 10; then
   echo "ERROR: Track Edit changed Attack screenshot capture failed"; exit 1
 fi
 if ! tap_visible_description_early "$TRACK_EDIT_ENV_ATTACK_CHANGED_XML" "$track_edit_env_attack_inverse"; then
@@ -8287,7 +8291,7 @@ fi
 if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_ENV_ATTACK_RESTORED_XML"; then
   echo "ERROR: restored Attack hierarchy capture failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_ENV_ATTACK_RESTORED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_ENV_ATTACK_RESTORED_PNG" 10; then
   echo "ERROR: restored Attack screenshot capture failed"; exit 1
 fi
 echo "Track Edit AMP ENV Attack real-touch field isolation and exact restore passed: $track_edit_env_before."
@@ -8374,7 +8378,7 @@ exercise_track_edit_envelope_field() {
   if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$changed_xml"; then
     echo "ERROR: Track Edit $field changed-state evidence capture failed"; return 1
   fi
-  if ! adb_bounded 10 exec-out screencap -p > "$changed_png"; then
+  if ! capture_ui_screenshot "$changed_png" 10; then
     echo "ERROR: Track Edit $field changed-state screenshot capture failed"; return 1
   fi
 
@@ -8399,7 +8403,7 @@ exercise_track_edit_envelope_field() {
   if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$restored_xml"; then
     echo "ERROR: Track Edit $field restored-state evidence capture failed"; return 1
   fi
-  if ! adb_bounded 10 exec-out screencap -p > "$restored_png"; then
+  if ! capture_ui_screenshot "$restored_png" 10; then
     echo "ERROR: Track Edit $field restored-state screenshot capture failed"; return 1
   fi
   echo "Track Edit AMP ENV $field real-touch field isolation and exact restore passed: $before."
@@ -8530,7 +8534,7 @@ if [[ "$track_edit_filter_changed" != "1" ]]; then
   echo "ERROR: filter cutoff edit failed to reach the expected adjacent 500 Hz value"
   echo "Before=$track_edit_filter_before expected=$track_edit_filter_expected actual=$track_edit_filter_current"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_FILTER_CHANGED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_FILTER_CHANGED_PNG" 10; then
   echo "ERROR: Track Edit changed filter screenshot capture failed"; exit 1
 fi
 
@@ -8568,7 +8572,7 @@ fi
 if ! track_edit_dump_ui_bounded "$TRACK_EDIT_ENV_REMOTE" "$TRACK_EDIT_FILTER_RESTORED_XML"; then
   echo "ERROR: restored filter hierarchy capture failed"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_FILTER_RESTORED_PNG"; then
+if ! capture_ui_screenshot "$TRACK_EDIT_FILTER_RESTORED_PNG" 10; then
   echo "ERROR: restored filter screenshot capture failed"; exit 1
 fi
 
@@ -8709,7 +8713,7 @@ fi
 if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" CONTENT; then
   echo "ERROR: Browser CONTENT navigation retained stale cross-section entries"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-content-section.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-content-section.png 10; then
   echo "ERROR: could not capture Browser CONTENT section screenshot"; exit 1
 fi
 
@@ -8726,7 +8730,7 @@ fi
 if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" EXPANSIONS; then
   echo "ERROR: Browser EXPANSIONS navigation retained stale cross-section entries"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-expansions-section.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-expansions-section.png 10; then
   echo "ERROR: could not capture Browser EXPANSIONS section screenshot"; exit 1
 fi
 
@@ -8743,7 +8747,7 @@ fi
 if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" PLACES; then
   echo "ERROR: Browser PLACES navigation retained stale cross-section entries"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-places-section.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-places-section.png 10; then
   echo "ERROR: could not capture Browser PLACES section screenshot"; exit 1
 fi
 echo "BROW-001 real-touch Places → Content → Expansions → Places navigation isolation passed."
@@ -8810,7 +8814,7 @@ for category in DRUMS INSTRUMENTS DEMOS; do
   if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "UNAVAILABLE"; then
     echo "ERROR: Browser CONTENT/$category category/results contract failed"; exit 1
   fi
-  if ! adb_bounded 10 exec-out screencap -p > "/tmp/mpc-groovebox-browser-content-$category_lower.png"; then
+  if ! capture_ui_screenshot "/tmp/mpc-groovebox-browser-content-$category_lower.png" 10; then
     echo "ERROR: could not capture Browser CONTENT/$category screenshot"; exit 1
   fi
 done
@@ -8975,7 +8979,7 @@ if ! wait_for_ui_text_pair "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
   echo "ERROR: native sampler assignment did not report the correct target"
   exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-local-results.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-local-results.png 10; then
   echo "ERROR: could not capture local Browser result/assignment screenshot"
   exit 1
 fi
@@ -9119,7 +9123,7 @@ if ! grep -Fq -- "$PICKER_SAMPLE_NAME" "$PICKER_UI_XML"; then
 fi
 
 # Keep an artifact of the actual picker state with the distinct WAV visible.
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-picker-select-source.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-picker-select-source.png 10; then
   echo "ERROR: could not capture picker source selection screen"
   exit 1
 fi
@@ -9233,7 +9237,7 @@ if ! wait_for_ui_text_pair "$PICKER_RETURN_XML" "$PICKER_RETURN_REMOTE" \
   echo "ERROR: picker-return assignment status did not identify the selected WAV and preserved Pad 01 / Layer 01 target"
   exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-picker-assignment.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-picker-assignment.png 10; then
   echo "ERROR: could not capture post-picker assignment screen"
   exit 1
 fi
@@ -9278,20 +9282,19 @@ PY
 }
 
 wait_for_sample_edit_region_state() {
-  local host_path="$1" remote_path="$2" expected="$3" max_attempts="${4:-15}"
-  local current=""
-  for ((sample_crop_attempt=1; sample_crop_attempt<=max_attempts; sample_crop_attempt++)); do
-    if dump_device_ui "$remote_path" "$host_path"; then
+  local host_path="$1" remote_path="$2" expected="$3"
+  local timeout_seconds="${4:-15}" deadline=$((SECONDS + ${4:-15})) remaining current=""
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if dump_device_ui "$remote_path" "$host_path" "$remaining"; then
       current="$(read_sample_edit_region_frames "$host_path" 2>/dev/null || true)"
-      if [[ "$current" == "$expected" ]]; then
-        echo "Sample Edit native region/frame state matched after attempt $sample_crop_attempt: $current"
-        return 0
-      fi
+      if [[ "$current" == "$expected" ]]; then echo "Sample Edit native region/frame state matched: $current"; return 0; fi
     fi
-    sleep 1
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
-  echo "ERROR: Sample Edit region/frame state did not reach '$expected' (last='$current')"
+  echo "ERROR: Sample Edit region/frame state did not reach '$expected' within ${timeout_seconds}s (last='$current')"
   cat "$host_path" || true
+  cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   return 1
 }
 
@@ -9331,7 +9334,7 @@ if (( sample_crop_start_before != 0 || sample_crop_end_before != sample_crop_tot
   sample_crop_start_before=0
   sample_crop_end_before="$sample_crop_total_before"
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-sample-crop-before.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-sample-crop-before.png 10; then
   echo "ERROR: could not capture full-region Sample Edit baseline screenshot"; exit 1
 fi
 
@@ -9342,7 +9345,7 @@ if ! tap_ui_description "$SAMPLE_CROP_BASELINE_XML" "Sample Edit increase region
 fi
 if ! wait_for_sample_edit_region_state "$SAMPLE_CROP_REGION_CHANGED_XML" "$SAMPLE_CROP_REGION_CHANGED_REMOTE" \
     "1000 $sample_crop_total_before $sample_crop_total_before" 15; then exit 1; fi
-if ! adb_bounded 10 exec-out screencap -p > "$SAMPLE_CROP_REGION_CHANGED_PNG"; then
+if ! capture_ui_screenshot "$SAMPLE_CROP_REGION_CHANGED_PNG" 10; then
   echo "ERROR: could not capture selected crop-region screenshot"; exit 1
 fi
 if ! dump_device_ui "$SAMPLE_CROP_REGION_CHANGED_REMOTE" "$SAMPLE_CROP_REGION_CHANGED_XML"; then
@@ -9359,7 +9362,7 @@ if ! wait_for_sample_edit_region_state "$SAMPLE_CROP_CROPPED_XML" "$SAMPLE_CROP_
     "0 $sample_crop_expected_frames $sample_crop_expected_frames" 20; then
   echo "ERROR: CROP did not replace PCM with the selected Start/End frame range"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$SAMPLE_CROP_CROPPED_PNG"; then
+if ! capture_ui_screenshot "$SAMPLE_CROP_CROPPED_PNG" 10; then
   echo "ERROR: could not capture post-CROP screenshot"; exit 1
 fi
 if ! dump_device_ui "$SAMPLE_CROP_CROPPED_REMOTE" "$SAMPLE_CROP_CROPPED_XML"; then
@@ -9374,21 +9377,21 @@ echo "SAMP-008 real-touch CROP passed: source=$sample_crop_total_before frames, 
 # before the next chop count. Assertions consume the real getter projection
 # emitted after a successful mutation, not the button label or plan helper.
 sample_chop_marker_count() {
-  local logs
-  logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  local timeout_seconds="${1:-5}" logs
+  logs="$(adb_bounded "$timeout_seconds" shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
   grep -F -c -- "SAMPLE_CHOP_ASSIGNMENT" <<< "$logs" || true
 }
 
 wait_for_sample_chop_marker() {
-  local before="$1" max_attempts="${2:-20}" current
-  for ((sample_chop_wait_attempt=1; sample_chop_wait_attempt<=max_attempts; sample_chop_wait_attempt++)); do
-    current="$(sample_chop_marker_count)"
+  local before="$1" timeout_seconds="${2:-20}" deadline=$((SECONDS + ${2:-20})) remaining current
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    current="$(sample_chop_marker_count "$remaining")"
     if [[ "$current" =~ ^[0-9]+$ ]] && (( current > before )); then return 0; fi
-    sleep 1
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
-  echo "ERROR: native Sample Chop assignment marker did not advance from $before"
-  adb_bounded 10 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
-    | grep -F -- "SAMPLE_CHOP_ASSIGNMENT" | tail -n 10 || true
+  echo "ERROR: native Sample Chop assignment marker did not advance from $before within ${timeout_seconds}s"
+  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "SAMPLE_CHOP_ASSIGNMENT" | tail -n 10 || true
   return 1
 }
 
@@ -9465,7 +9468,7 @@ run_sample_chop_acceptance() {
       "0 $first_slice_end $source_frames" 15; then
     echo "ERROR: selected Pad 01 did not expose the first CH$chop_count slice in Sample Edit"; return 1
   fi
-  if ! adb_bounded 10 exec-out screencap -p > "$screenshot"; then
+  if ! capture_ui_screenshot "$screenshot" 10; then
     echo "ERROR: could not capture post-CH$chop_count Sample Edit screenshot"; return 1
   fi
   if ! dump_device_ui "$remote_xml" "$host_xml"; then
@@ -9620,7 +9623,7 @@ if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
 fi
 # Capture actual DocumentsUI evidence before interacting; this path is included
 # in the always-uploaded evidence package, including when the smoke test fails.
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-tree-picker.png 10; then
   echo "ERROR: could not capture initial document-tree picker screenshot"; exit 1
 fi
 # First accept the direct initial-document URI when this provider honors it.
@@ -9653,7 +9656,7 @@ if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_USE_FOLDER
     echo "ERROR: selected directory did not expose Use this folder"; exit 1
   fi
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-picker.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-tree-picker.png 10; then
   echo "ERROR: could not capture document-tree picker screenshot"; exit 1
 fi
 if ! dump_device_ui "$TREE_PICKER_REMOTE" "$TREE_PICKER_XML"; then
@@ -9760,7 +9763,7 @@ if ! wait_for_ui_node_text_desc "$TREE_RESTORED_XML" "$TREE_RESTORED_REMOTE" \
     "USER FOLDER • 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
   echo "ERROR: restored folder provider status did not match the real scan result"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-tree-restored.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-tree-restored.png 10; then
   echo "ERROR: could not capture restored document-tree Browser screenshot"; exit 1
 fi
 if ! dump_device_ui "$TREE_RESTORED_REMOTE" "$TREE_RESTORED_XML"; then
@@ -9829,7 +9832,7 @@ echo "Isolated ADB tap cleanup bounded; capturing FAVORITE 1 DocumentsUI hierarc
 if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
   echo "ERROR: could not inspect the FAVORITE 1 document-tree picker"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-favorite-tree-picker.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-picker.png 10; then
   echo "ERROR: could not capture FAVORITE 1 picker screenshot"; exit 1
 fi
 if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_SAMPLE_NAME" 4; then
@@ -9930,7 +9933,7 @@ if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE"
     echo "ERROR: FAVORITE 1 selected directory did not expose Use this folder"; exit 1
   fi
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-favorite-tree-picker.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-picker.png 10; then
   echo "ERROR: could not capture selected FAVORITE 1 folder"; exit 1
 fi
 if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
@@ -9977,7 +9980,7 @@ if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RES
     "FAVORITE 1 • 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
   echo "ERROR: FAVORITE 1 provider status did not match its real tree scan"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-favorite-tree-results.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-results.png 10; then
   echo "ERROR: could not capture FAVORITE 1 real WAV results"; exit 1
 fi
 if ! dump_device_ui "$FAVORITE_TREE_RESULTS_REMOTE" "$FAVORITE_TREE_RESULTS_XML"; then
@@ -10065,7 +10068,7 @@ if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESTORED_XML" "$FAVORITE_TREE_RE
     "FAVORITE 1 • 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
   echo "ERROR: restored FAVORITE 1 provider status did not match the real scan"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-favorite-tree-restored.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-restored.png 10; then
   echo "ERROR: could not capture restored FAVORITE 1 Browser screenshot"; exit 1
 fi
 if ! dump_device_ui "$FAVORITE_TREE_RESTORED_REMOTE" "$FAVORITE_TREE_RESTORED_XML"; then
@@ -10082,22 +10085,22 @@ echo "Running Project Save/Open acceptance with measured touches and native-stat
 PROJECT_MAIN_READY_XML="/tmp/mpc-groovebox-main-ready-uiautomator.xml"
 
 project_marker_count() {
-  local marker="$1" logs
-  logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  local marker="$1" timeout_seconds="${2:-5}" logs
+  logs="$(adb_bounded "$timeout_seconds" shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
   grep -F -c -- "$marker" <<<"$logs" || true
 }
 
 wait_for_new_project_marker() {
-  local marker="$1" before="$2" max_attempts="${3:-45}" attempt count
-  for ((attempt=1; attempt<=max_attempts; attempt++)); do
-    count="$(project_marker_count "$marker")"
+  local marker="$1" before="$2" timeout_seconds="${3:-45}"
+  local deadline=$((SECONDS + timeout_seconds)) remaining count
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    count="$(project_marker_count "$marker" "$remaining")"
     if [[ "$count" =~ ^[0-9]+$ ]] && (( count > before )); then return 0; fi
-    sleep 1
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
-  echo "ERROR: timed out waiting for new native UI marker: $marker"
-  adb_bounded 10 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
-    | grep -E 'MPC_MENU_|MPC_PROJECT_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST_)|STARTUP_COMPLETE' \
-    | tail -n 100 || true
+  echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker"
+  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST_)|STARTUP_COMPLETE' | tail -n 100 || true
   return 1
 }
 
@@ -10309,7 +10312,7 @@ fi
 sleep 1
 PROJECT_MENU_XML="/tmp/mpc-groovebox-project-menu-uiautomator.xml"
 PROJECT_MENU_PNG="/tmp/mpc-groovebox-project-menu.png"
-if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_MENU_PNG"; then
+if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
   echo "ERROR: could not capture rendered MPC Menu screenshot"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MENU_XML"; then
@@ -10322,7 +10325,7 @@ if ! tap_mpc_menu_tile 3 3; then exit 1; fi
 if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 PROJECT_ROUTE_XML="/tmp/mpc-groovebox-project-route-uiautomator.xml"
 PROJECT_ROUTE_PNG="/tmp/mpc-groovebox-project-route.png"
-if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_ROUTE_PNG"; then
+if ! capture_ui_screenshot "$PROJECT_ROUTE_PNG" 10; then
   echo "ERROR: could not capture Project route screenshot"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_ROUTE_XML"; then
@@ -10357,7 +10360,7 @@ fi
 if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_save_marker_before" 45; then
   echo "ERROR: Project Save As did not complete through the real document provider"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_SAVED_PNG"; then
+if ! capture_ui_screenshot "$PROJECT_SAVED_PNG" 10; then
   echo "ERROR: could not capture saved Project screen"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_SAVED_XML"; then
@@ -10371,7 +10374,7 @@ fi
 # earlier single-Track state rather than the currently edited model.
 if ! tap_project_toolbar_menu; then exit 1; fi
 if ! tap_mpc_menu_tile 0 0; then exit 1; fi
-if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_MUTATED_PNG"; then
+if ! capture_ui_screenshot "$PROJECT_MUTATED_PNG" 10; then
   echo "ERROR: could not capture Main before Track mutation"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MUTATED_XML"; then
@@ -10382,7 +10385,7 @@ sleep 1
 if ! tap_project_toolbar_menu; then exit 1; fi
 if ! tap_mpc_menu_tile 3 3; then exit 1; fi
 if ! assert_latest_project_summary "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
-if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_MUTATED_PNG"; then
+if ! capture_ui_screenshot "$PROJECT_MUTATED_PNG" 10; then
   echo "ERROR: could not capture mutated Project state"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MUTATED_XML"; then
@@ -10428,7 +10431,7 @@ if [[ -z "$project_open_line" ]] \
 fi
 show_project_route_extended
 if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
-if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_REOPENED_PNG"; then
+if ! capture_ui_screenshot "$PROJECT_REOPENED_PNG" 10; then
   echo "ERROR: could not capture the reopened Project screen"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_REOPENED_XML"; then
@@ -10462,23 +10465,23 @@ PROJECT_EXT_V1_PNG="/tmp/mpc-groovebox-project-legacy-v1-loaded.png"
 
 wait_for_project_picker_item() {
   local target_xml="$1" target_remote="$2" target_png="$3" item="$4"
-  local ready=0 attempt
-  for ((attempt=1; attempt<=25; attempt++)); do
-    if dump_device_ui "$target_remote" "$target_xml" \
-        && grep -Fq -- 'package="com.android.documentsui"' "$target_xml"; then
-      ready=1; break
-    fi
-    sleep 1
+  local timeout_seconds=25 deadline=$((SECONDS + 25)) remaining ready=0
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    if dump_device_ui "$target_remote" "$target_xml" "$remaining" && grep -Fq -- 'package="com.android.documentsui"' "$target_xml"; then ready=1; break; fi
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
   if [ "$ready" -ne 1 ]; then
-    echo "ERROR: Android DocumentsUI did not appear for expected item $item"; exit 1
+    echo "ERROR: Android DocumentsUI did not appear for expected item $item within ${timeout_seconds}s"
+    cat "$target_xml" || true
+    cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
+    exit 1
   fi
-  if ! capture_stable_picker_state "$target_remote" "$target_xml" "$target_png" 8; then
-    echo "ERROR: could not capture stable DocumentsUI state for $item"; exit 1
-  fi
+  if ! capture_stable_picker_state "$target_remote" "$target_xml" "$target_png" 8; then echo "ERROR: could not capture stable DocumentsUI state for $item"; exit 1; fi
   if ! wait_for_ui_text "$target_xml" "$target_remote" "$item" 30; then
-    echo "ERROR: Android document provider did not expose $item"
-    cat "$target_xml" || true; exit 1
+    echo "ERROR: Android document provider did not expose $item within 30s"
+    cat "$target_xml" || true
+    exit 1
   fi
 }
 
@@ -10523,7 +10526,7 @@ cancel_android_document_picker() {
   if [[ "$app_resumed" != "1" ]]; then
     echo "ERROR: Android DocumentsUI did not return to the app after $back_count Back action(s) while cancelling $label"
     printf '%s\\n' "$resumed_activity"
-    adb_bounded 10 exec-out screencap -p > "$screenshot_path" || true
+    capture_ui_screenshot "$screenshot_path" 10 || true
     dump_device_ui "$remote_path" "$hierarchy_path" || true
     return 1
   fi
@@ -10592,7 +10595,7 @@ done
 if [ "$restart_ready" -ne 1 ]; then
   echo "ERROR: native startup did not complete after process restart"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_EXT_RESTART_MAIN_PNG"; then
+if ! capture_ui_screenshot "$PROJECT_EXT_RESTART_MAIN_PNG" 10; then
   echo "ERROR: could not capture post-restart Main screenshot"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_RESTART_MAIN_XML"; then
@@ -10614,7 +10617,7 @@ if ! grep -Fq -- "formatVersion=2" <<<"$restart_open_line" \
   echo "$restart_open_line"; exit 1
 fi
 show_project_route_extended
-if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_EXT_RESTART_PROJECT_PNG"; then
+if ! capture_ui_screenshot "$PROJECT_EXT_RESTART_PROJECT_PNG" 10; then
   echo "ERROR: could not capture reopened Project after process restart"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_RESTART_PROJECT_XML"; then
@@ -10634,7 +10637,7 @@ save_cancel_sha_ext="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$save
 if [[ "$save_cancel_sha_ext" != "$project_saved_sha_ext" ]]; then
   echo "ERROR: canceled Save As changed the native Project state"; echo "$save_cancel_line_ext"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-project-save-cancelled.png; then
+if ! capture_ui_screenshot /tmp/mpc-groovebox-project-save-cancelled.png 10; then
   echo "ERROR: could not capture Save As cancel path"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" /tmp/mpc-groovebox-project-save-cancelled-uiautomator.xml; then
@@ -10653,7 +10656,7 @@ open_cancel_sha_ext="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$open
 if [[ "$open_cancel_sha_ext" != "$project_saved_sha_ext" ]]; then
   echo "ERROR: canceled Open changed the authoritative Project state"; echo "$open_cancel_line_ext"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_EXT_CANCEL_PNG"; then
+if ! capture_ui_screenshot "$PROJECT_EXT_CANCEL_PNG" 10; then
   echo "ERROR: could not capture Open cancellation state"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_CANCEL_XML"; then
@@ -10735,7 +10738,7 @@ if [[ "$rejected_sha_ext" != "$project_saved_sha_ext" ]] || ! grep -Fq -- "PROJE
   echo "ERROR: rejected Project changed the active native state or omitted truthful error"
   echo "$rejected_line_ext"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_EXT_REJECT_PNG"; then
+if ! capture_ui_screenshot "$PROJECT_EXT_REJECT_PNG" 10; then
   echo "ERROR: could not capture malformed load error"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_REJECT_XML"; then
@@ -10761,7 +10764,7 @@ if ! grep -Fq -- "formatVersion=1" <<<"$legacy_line_ext" \
   echo "ERROR: v1 Open fabricated placements or changed persisted MIDI/domain values"
   echo "Expected canonical state: $expected_v1_sha_ext"; echo "$legacy_line_ext"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$PROJECT_EXT_V1_PNG"; then
+if ! capture_ui_screenshot "$PROJECT_EXT_V1_PNG" 10; then
   echo "ERROR: could not capture v1-loaded state"; exit 1
 fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_V1_XML"; then
