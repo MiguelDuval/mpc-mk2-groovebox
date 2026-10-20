@@ -6035,122 +6035,7 @@ if ! grep -Fq -- "$LOCAL_SAMPLE_NAME" "$MEDIASTORE_FIXTURE_QUERY"; then
 fi
 echo "MediaStore fixture indexed and verified: $LOCAL_SAMPLE_NAME (ID $MEDIA_ITEM_ID)"
 
-echo "Running BROW-001 real-touch Places / Content / Expansions navigation isolation..."
-BROWSER_SECTION_XML="/tmp/mpc-groovebox-browser-section-navigation-uiautomator.xml"
-BROWSER_SECTION_REMOTE="/sdcard/mpc-groovebox-browser-section-navigation-uiautomator.xml"
 
-assert_browser_section_hierarchy() {
-  local hierarchy="$1" section="$2"
-  python3 - "$hierarchy" "$section" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
-
-path, section = sys.argv[1:3]
-root = ET.parse(path).getroot()
-descriptions = {node.attrib.get("content-desc", "")
-                for node in root.iter("node")}
-specs = {
-    "PLACES": {
-        "required": {
-            "MPC Browser current location: PLACE • INTERNAL",
-            "MPC Browser navigation PLACES INTERNAL",
-            "MPC Browser navigation PLACES USER FOLDER",
-        },
-        "forbidden": {
-            "MPC Browser navigation CONTENT SAMPLES",
-            "MPC Browser navigation EXPANSIONS EXPANSIONS",
-            "MPC Browser status LOCAL EXPANSIONS NOT INDEXED",
-        },
-    },
-    "CONTENT": {
-        "required": {
-            "MPC Browser current location: CONTENT • SAMPLES",
-            "MPC Browser navigation CONTENT SAMPLES",
-            "MPC Browser navigation CONTENT MY FILES",
-        },
-        "forbidden": {
-            "MPC Browser navigation PLACES INTERNAL",
-            "MPC Browser navigation EXPANSIONS EXPANSIONS",
-            "MPC Browser status LOCAL EXPANSIONS NOT INDEXED",
-        },
-    },
-    "EXPANSIONS": {
-        "required": {
-            "MPC Browser current location: EXPANSIONS • EXPANSIONS",
-            "MPC Browser navigation EXPANSIONS EXPANSIONS",
-            "MPC Browser navigation EXPANSIONS USER CONTENT",
-            "MPC Browser status LOCAL EXPANSIONS NOT INDEXED",
-        },
-        "forbidden": {
-            "MPC Browser navigation PLACES INTERNAL",
-            "MPC Browser navigation CONTENT SAMPLES",
-        },
-    },
-}
-if section not in specs:
-    raise SystemExit(f"unknown Browser section fixture: {section}")
-missing = sorted(specs[section]["required"] - descriptions)
-stale = sorted(specs[section]["forbidden"] & descriptions)
-if missing or stale:
-    raise SystemExit(
-        f"{section} navigation projection mismatch: missing={missing!r}, stale={stale!r}")
-print(f"Browser section {section}: destination, scoped navigation and provider status verified.")
-PY
-}
-
-# Use the actual section buttons, then validate the entire visible navigation
-# projection. The unavailable local Expansions provider must stay explicit.
-if ! tap_ui_description "$BROWSER_SECTION_XML" "Browser CONTENT tab"; then
-  echo "ERROR: Browser CONTENT section button was not actionable"; exit 1
-fi
-if ! wait_for_ui_description "$BROWSER_SECTION_XML" "$BROWSER_SECTION_REMOTE" \
-    "MPC Browser navigation CONTENT SAMPLES" 12; then
-  echo "ERROR: CONTENT did not expose its SAMPLES destination"; exit 1
-fi
-if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
-  echo "ERROR: could not capture Browser CONTENT hierarchy"; exit 1
-fi
-if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" CONTENT; then
-  echo "ERROR: Browser CONTENT navigation retained stale cross-section entries"; exit 1
-fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-content-section.png; then
-  echo "ERROR: could not capture Browser CONTENT section screenshot"; exit 1
-fi
-
-if ! tap_ui_description "$BROWSER_SECTION_XML" "Browser EXPANSIONS tab"; then
-  echo "ERROR: Browser EXPANSIONS section button was not actionable"; exit 1
-fi
-if ! wait_for_ui_description "$BROWSER_SECTION_XML" "$BROWSER_SECTION_REMOTE" \
-    "MPC Browser status LOCAL EXPANSIONS NOT INDEXED" 12; then
-  echo "ERROR: unavailable local Expansions provider was not reported truthfully"; exit 1
-fi
-if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
-  echo "ERROR: could not capture Browser EXPANSIONS hierarchy"; exit 1
-fi
-if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" EXPANSIONS; then
-  echo "ERROR: Browser EXPANSIONS navigation retained stale cross-section entries"; exit 1
-fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-expansions-section.png; then
-  echo "ERROR: could not capture Browser EXPANSIONS section screenshot"; exit 1
-fi
-
-if ! tap_ui_description "$BROWSER_SECTION_XML" "Browser PLACES tab"; then
-  echo "ERROR: Browser PLACES section button was not actionable"; exit 1
-fi
-if ! wait_for_ui_description "$BROWSER_SECTION_XML" "$BROWSER_SECTION_REMOTE" \
-    "MPC Browser navigation PLACES INTERNAL" 12; then
-  echo "ERROR: Browser did not restore the default PLACES/INTERNAL destination"; exit 1
-fi
-if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
-  echo "ERROR: could not capture restored Browser PLACES hierarchy"; exit 1
-fi
-if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" PLACES; then
-  echo "ERROR: Browser PLACES navigation retained stale cross-section entries"; exit 1
-fi
-if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-places-section.png; then
-  echo "ERROR: could not capture Browser PLACES section screenshot"; exit 1
-fi
-echo "BROW-001 real-touch Places → Content → Expansions → Places navigation isolation passed."
 
 
 ui_target_center() {
@@ -8510,6 +8395,124 @@ echo "Track Edit layer tuning persistence/restore plus GAIN/PAN field-isolation 
 if ! tap_ui_description "$DUMP" "MPC Project Browser"; then exit 1; fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
     "MPC Browser scan local audio files" 20; then exit 1; fi
+
+echo "Running BROW-001 real-touch Places / Content / Expansions navigation isolation..."
+BROWSER_SECTION_XML="/tmp/mpc-groovebox-browser-section-navigation-uiautomator.xml"
+BROWSER_SECTION_REMOTE="/sdcard/mpc-groovebox-browser-section-navigation-uiautomator.xml"
+
+assert_browser_section_hierarchy() {
+  local hierarchy="$1" section="$2"
+  python3 - "$hierarchy" "$section" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, section = sys.argv[1:3]
+root = ET.parse(path).getroot()
+descriptions = {node.attrib.get("content-desc", "")
+                for node in root.iter("node")}
+specs = {
+    "PLACES": {
+        "required": {
+            "MPC Browser current location: PLACE • INTERNAL",
+            "MPC Browser navigation PLACES INTERNAL",
+            "MPC Browser navigation PLACES USER FOLDER",
+        },
+        "forbidden": {
+            "MPC Browser navigation CONTENT SAMPLES",
+            "MPC Browser navigation EXPANSIONS EXPANSIONS",
+            "MPC Browser status LOCAL EXPANSIONS NOT INDEXED",
+        },
+    },
+    "CONTENT": {
+        "required": {
+            "MPC Browser current location: CONTENT • SAMPLES",
+            "MPC Browser navigation CONTENT SAMPLES",
+            "MPC Browser navigation CONTENT MY FILES",
+        },
+        "forbidden": {
+            "MPC Browser navigation PLACES INTERNAL",
+            "MPC Browser navigation EXPANSIONS EXPANSIONS",
+            "MPC Browser status LOCAL EXPANSIONS NOT INDEXED",
+        },
+    },
+    "EXPANSIONS": {
+        "required": {
+            "MPC Browser current location: EXPANSIONS • EXPANSIONS",
+            "MPC Browser navigation EXPANSIONS EXPANSIONS",
+            "MPC Browser navigation EXPANSIONS USER CONTENT",
+            "MPC Browser status LOCAL EXPANSIONS NOT INDEXED",
+        },
+        "forbidden": {
+            "MPC Browser navigation PLACES INTERNAL",
+            "MPC Browser navigation CONTENT SAMPLES",
+        },
+    },
+}
+if section not in specs:
+    raise SystemExit(f"unknown Browser section fixture: {section}")
+missing = sorted(specs[section]["required"] - descriptions)
+stale = sorted(specs[section]["forbidden"] & descriptions)
+if missing or stale:
+    raise SystemExit(
+        f"{section} navigation projection mismatch: missing={missing!r}, stale={stale!r}")
+print(f"Browser section {section}: destination, scoped navigation and provider status verified.")
+PY
+}
+
+# Use the actual section buttons, then validate the entire visible navigation
+# projection. The unavailable local Expansions provider must stay explicit.
+if ! tap_ui_description "$BROWSER_SECTION_XML" "Browser CONTENT tab"; then
+  echo "ERROR: Browser CONTENT section button was not actionable"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_SECTION_XML" "$BROWSER_SECTION_REMOTE" \
+    "MPC Browser navigation CONTENT SAMPLES" 12; then
+  echo "ERROR: CONTENT did not expose its SAMPLES destination"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
+  echo "ERROR: could not capture Browser CONTENT hierarchy"; exit 1
+fi
+if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" CONTENT; then
+  echo "ERROR: Browser CONTENT navigation retained stale cross-section entries"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-content-section.png; then
+  echo "ERROR: could not capture Browser CONTENT section screenshot"; exit 1
+fi
+
+if ! tap_ui_description "$BROWSER_SECTION_XML" "Browser EXPANSIONS tab"; then
+  echo "ERROR: Browser EXPANSIONS section button was not actionable"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_SECTION_XML" "$BROWSER_SECTION_REMOTE" \
+    "MPC Browser status LOCAL EXPANSIONS NOT INDEXED" 12; then
+  echo "ERROR: unavailable local Expansions provider was not reported truthfully"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
+  echo "ERROR: could not capture Browser EXPANSIONS hierarchy"; exit 1
+fi
+if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" EXPANSIONS; then
+  echo "ERROR: Browser EXPANSIONS navigation retained stale cross-section entries"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-expansions-section.png; then
+  echo "ERROR: could not capture Browser EXPANSIONS section screenshot"; exit 1
+fi
+
+if ! tap_ui_description "$BROWSER_SECTION_XML" "Browser PLACES tab"; then
+  echo "ERROR: Browser PLACES section button was not actionable"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_SECTION_XML" "$BROWSER_SECTION_REMOTE" \
+    "MPC Browser navigation PLACES INTERNAL" 12; then
+  echo "ERROR: Browser did not restore the default PLACES/INTERNAL destination"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
+  echo "ERROR: could not capture restored Browser PLACES hierarchy"; exit 1
+fi
+if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" PLACES; then
+  echo "ERROR: Browser PLACES navigation retained stale cross-section entries"; exit 1
+fi
+if ! adb_bounded 10 exec-out screencap -p > /tmp/mpc-groovebox-browser-places-section.png; then
+  echo "ERROR: could not capture Browser PLACES section screenshot"; exit 1
+fi
+echo "BROW-001 real-touch Places → Content → Expansions → Places navigation isolation passed."
+
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser scan local audio files"; then exit 1; fi
 # The prior app-side UI audit can leave Browser search/filter state behind.
 # Reset both controls explicitly so the fixture visibility check starts from a
