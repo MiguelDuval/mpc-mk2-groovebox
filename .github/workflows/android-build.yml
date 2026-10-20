@@ -535,12 +535,9 @@ jobs:
           name: mpc-ui-visual-evidence
           path: |
             /tmp/mpc-groovebox-startup.png
+            /tmp/mpc-groovebox-startup-uiautomator.xml
             /tmp/mpc-groovebox-main-ready.png
             /tmp/mpc-groovebox-main-ready-uiautomator.xml
-            /tmp/mpc-groovebox-project-menu.png
-            /tmp/mpc-groovebox-project-menu-uiautomator.xml
-            /tmp/mpc-groovebox-project-route.png
-            /tmp/mpc-groovebox-project-route-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-before.png
             /tmp/mpc-groovebox-step-touch-before-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-after-add.png
@@ -549,78 +546,16 @@ jobs:
             /tmp/mpc-groovebox-step-touch-velocity-changed-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-velocity-restored.png
             /tmp/mpc-groovebox-step-touch-velocity-restored-uiautomator.xml
-            /tmp/mpc-groovebox-step-touch-after-parameter.png
-            /tmp/mpc-groovebox-step-touch-after-parameter-uiautomator.xml
-            /tmp/mpc-groovebox-step-touch-probability-restored.png
-            /tmp/mpc-groovebox-step-touch-probability-restored-uiautomator.xml
-            /tmp/mpc-groovebox-step-touch-ratchet-focus.png
-            /tmp/mpc-groovebox-step-touch-ratchet-focus-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-ratchet-changed.png
             /tmp/mpc-groovebox-step-touch-ratchet-changed-uiautomator.xml
-            /tmp/mpc-groovebox-step-touch-ratchet-restored.png
-            /tmp/mpc-groovebox-step-touch-ratchet-restored-uiautomator.xml
-            /tmp/mpc-groovebox-step-touch-nudge-changed.png
-            /tmp/mpc-groovebox-step-touch-nudge-changed-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-duration-changed.png
             /tmp/mpc-groovebox-step-touch-duration-changed-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-after-erase.png
             /tmp/mpc-groovebox-step-touch-after-erase-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-page2.png
             /tmp/mpc-groovebox-step-touch-page2-uiautomator.xml
-            /tmp/mpc-groovebox-step-touch-page1-restored.png
-            /tmp/mpc-groovebox-step-touch-page1-restored-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-pad2.png
             /tmp/mpc-groovebox-step-touch-pad2-uiautomator.xml
-            /tmp/mpc-groovebox-step-touch-pad1-restored.png
-            /tmp/mpc-groovebox-step-touch-pad1-restored-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-tuning-before.png
-            /tmp/mpc-groovebox-track-edit-tuning-before-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-tuning-changed.png
-            /tmp/mpc-groovebox-track-edit-tuning-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-tuning-reopened.png
-            /tmp/mpc-groovebox-track-edit-tuning-reopened-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-tuning-restored.png
-            /tmp/mpc-groovebox-track-edit-tuning-restored-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-gain-changed.png
-            /tmp/mpc-groovebox-track-edit-gain-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-gain-restored.png
-            /tmp/mpc-groovebox-track-edit-gain-restored-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-pan-changed.png
-            /tmp/mpc-groovebox-track-edit-pan-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-pan-restored.png
-            /tmp/mpc-groovebox-track-edit-pan-restored-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-region-before.png
-            /tmp/mpc-groovebox-track-edit-region-before-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-region-start-changed.png
-            /tmp/mpc-groovebox-track-edit-region-start-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-region-start-restored.png
-            /tmp/mpc-groovebox-track-edit-region-start-restored-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-region-end-changed.png
-            /tmp/mpc-groovebox-track-edit-region-end-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-region-end-restored.png
-            /tmp/mpc-groovebox-track-edit-region-end-restored-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-velocity-range-before.png
-            /tmp/mpc-groovebox-track-edit-velocity-range-before-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-velocity-max-changed.png
-            /tmp/mpc-groovebox-track-edit-velocity-max-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-velocity-max-restored.png
-            /tmp/mpc-groovebox-track-edit-velocity-max-restored-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-velocity-min-changed.png
-            /tmp/mpc-groovebox-track-edit-velocity-min-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-velocity-min-restored.png
-            /tmp/mpc-groovebox-track-edit-velocity-min-restored-uiautomator.xml
-            /tmp/mpc-groovebox-sample-crop-before.png
-            /tmp/mpc-groovebox-sample-crop-baseline-uiautomator.xml
-            /tmp/mpc-groovebox-sample-crop-region-selected.png
-            /tmp/mpc-groovebox-sample-crop-region-selected-uiautomator.xml
-            /tmp/mpc-groovebox-sample-crop-cropped.png
-            /tmp/mpc-groovebox-sample-crop-cropped-uiautomator.xml
-            /tmp/mpc-groovebox-sample-chop-4-slices.png
-            /tmp/mpc-groovebox-sample-chop-4-slices-uiautomator.xml
-            /tmp/mpc-groovebox-sample-chop-8-slices.png
-            /tmp/mpc-groovebox-sample-chop-8-slices-uiautomator.xml
-            /tmp/mpc-groovebox-sample-chop-16-slices.png
-            /tmp/mpc-groovebox-sample-chop-16-slices-uiautomator.xml
             /tmp/mpc-groovebox-track-view-muted.png
             /tmp/mpc-groovebox-track-view-muted-uiautomator.xml
             /tmp/mpc-groovebox-arrange-grid-focus.png
@@ -633,189 +568,85 @@ jobs:
             /tmp/mpc-groovebox-arrange-event-restored-uiautomator.xml
             /tmp/mpc-groovebox-arrange-event-duplicated.png
             /tmp/mpc-groovebox-arrange-event-duplicated-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-duplicate-undo.png
-            /tmp/mpc-groovebox-arrange-event-duplicate-undo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-duplicate-redo.png
-            /tmp/mpc-groovebox-arrange-event-duplicate-redo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-duplicate-restored.png
-            /tmp/mpc-groovebox-arrange-event-duplicate-restored-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-copied.png
-            /tmp/mpc-groovebox-arrange-event-copied-uiautomator.xml
             /tmp/mpc-groovebox-arrange-event-pasted.png
             /tmp/mpc-groovebox-arrange-event-pasted-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-paste-undo.png
-            /tmp/mpc-groovebox-arrange-event-paste-undo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-paste-redo.png
-            /tmp/mpc-groovebox-arrange-event-paste-redo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-paste-restored.png
-            /tmp/mpc-groovebox-arrange-event-paste-restored-uiautomator.xml
             /tmp/mpc-groovebox-arrange-event-cut.png
             /tmp/mpc-groovebox-arrange-event-cut-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-cut-undo.png
-            /tmp/mpc-groovebox-arrange-event-cut-undo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-cut-redo.png
-            /tmp/mpc-groovebox-arrange-event-cut-redo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-cut-restored.png
-            /tmp/mpc-groovebox-arrange-event-cut-restored-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-cursor-cut.png
-            /tmp/mpc-groovebox-arrange-event-cursor-cut-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-paste-cursor.png
-            /tmp/mpc-groovebox-arrange-event-paste-cursor-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-cursor-pasted.png
-            /tmp/mpc-groovebox-arrange-event-cursor-pasted-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-cursor-undo.png
-            /tmp/mpc-groovebox-arrange-event-cursor-undo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-cursor-redo.png
-            /tmp/mpc-groovebox-arrange-event-cursor-redo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-cursor-restored.png
-            /tmp/mpc-groovebox-arrange-event-cursor-restored-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-event-cursor-final.png
-            /tmp/mpc-groovebox-arrange-event-cursor-final-uiautomator.xml
             /tmp/mpc-groovebox-arrange-placement-split.png
             /tmp/mpc-groovebox-arrange-placement-split-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-split-undo.png
-            /tmp/mpc-groovebox-arrange-placement-split-undo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-split-redo.png
-            /tmp/mpc-groovebox-arrange-placement-split-redo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-split-restored.png
-            /tmp/mpc-groovebox-arrange-placement-split-restored-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-flow-split.png
-            /tmp/mpc-groovebox-arrange-placement-flow-split-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-flow-delete.png
-            /tmp/mpc-groovebox-arrange-placement-flow-delete-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-flow-place.png
-            /tmp/mpc-groovebox-arrange-placement-flow-place-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-flow-move.png
-            /tmp/mpc-groovebox-arrange-placement-flow-move-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-flow-undo.png
-            /tmp/mpc-groovebox-arrange-placement-flow-undo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-flow-redo.png
-            /tmp/mpc-groovebox-arrange-placement-flow-redo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-flow-move-restored.png
-            /tmp/mpc-groovebox-arrange-placement-flow-move-restored-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-flow-place-restored.png
-            /tmp/mpc-groovebox-arrange-placement-flow-place-restored-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-flow-delete-restored.png
-            /tmp/mpc-groovebox-arrange-placement-flow-delete-restored-uiautomator.xml
             /tmp/mpc-groovebox-arrange-placement-flow-final.png
             /tmp/mpc-groovebox-arrange-placement-flow-final-uiautomator.xml
             /tmp/mpc-groovebox-arrange-placement-duplicate.png
             /tmp/mpc-groovebox-arrange-placement-duplicate-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-duplicate-undo.png
-            /tmp/mpc-groovebox-arrange-placement-duplicate-undo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-duplicate-redo.png
-            /tmp/mpc-groovebox-arrange-placement-duplicate-redo-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-placement-duplicate-restored.png
-            /tmp/mpc-groovebox-arrange-placement-duplicate-restored-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-loop-before.png
-            /tmp/mpc-groovebox-arrange-loop-before-uiautomator.xml
             /tmp/mpc-groovebox-arrange-loop-changed.png
             /tmp/mpc-groovebox-arrange-loop-changed-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-loop-restored.png
-            /tmp/mpc-groovebox-arrange-loop-restored-uiautomator.xml
             /tmp/mpc-groovebox-grid-edit-after-draw.png
             /tmp/mpc-groovebox-grid-edit-after-draw-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-velocity-selected.png
-            /tmp/mpc-groovebox-grid-event-velocity-selected-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-velocity-changed.png
-            /tmp/mpc-groovebox-grid-event-velocity-changed-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-velocity-restored.png
-            /tmp/mpc-groovebox-grid-event-velocity-restored-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-probability-selected.png
-            /tmp/mpc-groovebox-grid-event-probability-selected-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-probability-changed.png
-            /tmp/mpc-groovebox-grid-event-probability-changed-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-probability-restored.png
-            /tmp/mpc-groovebox-grid-event-probability-restored-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-ratchet-selected.png
-            /tmp/mpc-groovebox-grid-event-ratchet-selected-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-ratchet-changed.png
-            /tmp/mpc-groovebox-grid-event-ratchet-changed-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-ratchet-restored.png
-            /tmp/mpc-groovebox-grid-event-ratchet-restored-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-nudge-selected.png
-            /tmp/mpc-groovebox-grid-event-nudge-selected-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-nudge-changed.png
-            /tmp/mpc-groovebox-grid-event-nudge-changed-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-nudge-restored.png
-            /tmp/mpc-groovebox-grid-event-nudge-restored-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-duration-selected.png
-            /tmp/mpc-groovebox-grid-event-duration-selected-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-duration-changed.png
-            /tmp/mpc-groovebox-grid-event-duration-changed-uiautomator.xml
-            /tmp/mpc-groovebox-grid-event-duration-restored.png
-            /tmp/mpc-groovebox-grid-event-duration-restored-uiautomator.xml
-            /tmp/mpc-groovebox-grid-edit-after-erase.png
-            /tmp/mpc-groovebox-grid-edit-after-erase-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-back.png
-            /tmp/mpc-groovebox-arrange-back-uiautomator.xml
-            /tmp/mpc-groovebox-arrange-grid-reentry.png
-            /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml
-            /tmp/mpc-groovebox-ui.xml
             /tmp/mpc-groovebox-browser.png
-            /tmp/mpc-groovebox-browser-hierarchy.txt
             /tmp/mpc-groovebox-browser-uiautomator.xml
-            /tmp/mpc-groovebox-storage-picker.png
-            /tmp/mpc-groovebox-storage-picker-uiautomator.xml
-            /tmp/mpc-groovebox-storage-picker-activity.txt
             /tmp/mpc-groovebox-browser-local-results.png
             /tmp/mpc-groovebox-browser-local-results-uiautomator.xml
             /tmp/mpc-groovebox-picker-select-source.png
             /tmp/mpc-groovebox-picker-select-source-uiautomator.xml
-            /tmp/mpc-groovebox-picker-select-source-activity.txt
             /tmp/mpc-groovebox-browser-picker-assignment.png
             /tmp/mpc-groovebox-browser-picker-assignment-uiautomator.xml
             /tmp/mpc-groovebox-browser-tree-picker.png
+            /tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml
             /tmp/mpc-groovebox-browser-tree-root.png
             /tmp/mpc-groovebox-browser-tree-root-uiautomator.xml
-            /tmp/mpc-groovebox-browser-tree-root-after-activation.png
-            /tmp/mpc-groovebox-browser-tree-root-after-activation-uiautomator.xml
-            /tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml
             /tmp/mpc-groovebox-browser-tree-restored.png
             /tmp/mpc-groovebox-browser-tree-restored-uiautomator.xml
             /tmp/mpc-groovebox-browser-favorite-tree-picker.png
+            /tmp/mpc-groovebox-browser-favorite-tree-picker-uiautomator.xml
             /tmp/mpc-groovebox-browser-favorite-tree-root.png
             /tmp/mpc-groovebox-browser-favorite-tree-root-uiautomator.xml
-            /tmp/mpc-groovebox-browser-favorite-tree-root-after-activation.png
-            /tmp/mpc-groovebox-browser-favorite-tree-root-after-activation-uiautomator.xml
-            /tmp/mpc-groovebox-browser-favorite-tree-picker-uiautomator.xml
             /tmp/mpc-groovebox-browser-favorite-tree-results.png
             /tmp/mpc-groovebox-browser-favorite-tree-results-uiautomator.xml
             /tmp/mpc-groovebox-browser-favorite-tree-restored.png
             /tmp/mpc-groovebox-browser-favorite-tree-restored-uiautomator.xml
-            /tmp/mpc-browser-favorite-prefs.xml
-            /tmp/mpc-groovebox-project-save-picker.png
-            /tmp/mpc-groovebox-project-save-picker-uiautomator.xml
-            /tmp/mpc-groovebox-project-saved.png
-            /tmp/mpc-groovebox-project-saved-uiautomator.xml
-            /tmp/mpc-groovebox-project-mutated.png
-            /tmp/mpc-groovebox-project-mutated-uiautomator.xml
-            /tmp/mpc-groovebox-project-open-picker.png
-            /tmp/mpc-groovebox-project-open-cancel-picker.png
-            /tmp/mpc-groovebox-project-open-cancel-picker-uiautomator.xml
-            /tmp/mpc-groovebox-project-reopened.png
-            /tmp/mpc-groovebox-project-reopened-uiautomator.xml
+            /tmp/mpc-groovebox-storage-picker.png
+            /tmp/mpc-groovebox-storage-picker-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-tuning-before.png
+            /tmp/mpc-groovebox-track-edit-tuning-before-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-tuning-changed.png
+            /tmp/mpc-groovebox-track-edit-tuning-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-tuning-reopened.png
+            /tmp/mpc-groovebox-track-edit-tuning-reopened-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-tuning-restored.png
+            /tmp/mpc-groovebox-track-edit-tuning-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-gain-changed.png
+            /tmp/mpc-groovebox-track-edit-gain-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-pan-changed.png
+            /tmp/mpc-groovebox-track-edit-pan-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-region-start-changed.png
+            /tmp/mpc-groovebox-track-edit-region-start-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-region-end-changed.png
+            /tmp/mpc-groovebox-track-edit-region-end-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-velocity-min-changed.png
+            /tmp/mpc-groovebox-track-edit-velocity-min-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-velocity-max-changed.png
+            /tmp/mpc-groovebox-track-edit-velocity-max-changed-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-envelope-filter-before.png
             /tmp/mpc-groovebox-track-edit-envelope-filter-before-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-envelope-attack-changed.png
             /tmp/mpc-groovebox-track-edit-envelope-attack-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-envelope-attack-restored.png
-            /tmp/mpc-groovebox-track-edit-envelope-attack-restored-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-filter-cutoff-changed.png
             /tmp/mpc-groovebox-track-edit-filter-cutoff-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-filter-cutoff-restored.png
-            /tmp/mpc-groovebox-track-edit-filter-cutoff-restored-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-envelope-decay-changed.png
-            /tmp/mpc-groovebox-track-edit-envelope-decay-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-envelope-decay-restored.png
-            /tmp/mpc-groovebox-track-edit-envelope-decay-restored-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-envelope-sustain-changed.png
-            /tmp/mpc-groovebox-track-edit-envelope-sustain-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-envelope-sustain-restored.png
-            /tmp/mpc-groovebox-track-edit-envelope-sustain-restored-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-envelope-release-changed.png
-            /tmp/mpc-groovebox-track-edit-envelope-release-changed-uiautomator.xml
-            /tmp/mpc-groovebox-track-edit-envelope-release-restored.png
-            /tmp/mpc-groovebox-track-edit-envelope-release-restored-uiautomator.xml
+            /tmp/mpc-groovebox-sample-crop-*.png
+            /tmp/mpc-groovebox-sample-crop*-uiautomator.xml
+            /tmp/mpc-groovebox-sample-chop-*.png
+            /tmp/mpc-groovebox-sample-chop*-uiautomator.xml
+            /tmp/mpc-groovebox-project-*.png
+            /tmp/mpc-groovebox-project*-uiautomator.xml
+            /tmp/mpc-groovebox-*-cancel*.png
+            /tmp/mpc-groovebox-ui.xml
+            /tmp/mpc-groovebox-browser-hierarchy.txt
+            /tmp/mpc-groovebox-browser-uiautomator.xml
+            /tmp/mpc-groovebox-storage-picker-activity.txt
+            /tmp/mpc-groovebox-picker-select-source-activity.txt
+            /tmp/mpc-browser-favorite-prefs.xml
+            /tmp/mpc-browser-storage-seed.xml
+            /tmp/mpc-groovebox-uiautomator-dump.log
+            /tmp/mpc-groovebox-track-edit-bounded-uiautomator.log
           if-no-files-found: warn
           archive: true
