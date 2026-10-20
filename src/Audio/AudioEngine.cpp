@@ -1065,10 +1065,6 @@ std::string AudioEngine::chopPadSampleToPads(
         return "Chop failed: invalid source pad or layer";
     }
 
-    if (stream_ != nullptr) {
-        return "Stop audio before chopping a sample";
-    }
-
     if (!isSupportedChopCount(chopCount)) {
         return "Chop failed: supported counts are 4, 8 or 16";
     }
@@ -1113,15 +1109,6 @@ std::string AudioEngine::chopPadSampleToPads(
         return "Chop failed: source region is too short";
     }
 
-    mpc::domain::SampleId resolvedSourceSampleId = sourceSampleId;
-    if (!resolvedSourceSampleId.isAssigned()) {
-        resolvedSourceSampleId = projectState_.registerSample(
-                "Chop source sample",
-                "",
-                static_cast<double>(sourceSample->sampleRate),
-                static_cast<std::int64_t>(sourceSample->frameCount()));
-    }
-
     for (std::size_t destinationPad = 0;
             destinationPad < plan.count;
             ++destinationPad) {
@@ -1147,6 +1134,26 @@ std::string AudioEngine::chopPadSampleToPads(
         }
     }
 
+    // Validation is complete. Stop the output stream before replacing the
+    // pad sample/region grid; immutable PCM buffers may be shared, but the
+    // grid and project-domain references must not change under the callback.
+    const bool wasRunning = stream_ != nullptr;
+    if (wasRunning) {
+        const auto stopResult = stopOutputStream();
+        if (stream_ != nullptr) {
+            return "Chop failed: " + stopResult;
+        }
+    }
+
+    mpc::domain::SampleId resolvedSourceSampleId = sourceSampleId;
+    if (!resolvedSourceSampleId.isAssigned()) {
+        resolvedSourceSampleId = projectState_.registerSample(
+                "Chop source sample",
+                "",
+                static_cast<double>(sourceSample->sampleRate),
+                static_cast<std::int64_t>(sourceSample->frameCount()));
+    }
+
     for (std::size_t destinationPad = 0;
             destinationPad < plan.count;
             ++destinationPad) {
@@ -1161,13 +1168,24 @@ std::string AudioEngine::chopPadSampleToPads(
         padSampleDescriptions_[destinationPad][0] = sourceDescription;
     }
 
-    return "Chop complete: Pad "
+    const std::string message =
+            "Chop complete: Pad "
             + std::to_string(static_cast<unsigned>(sourcePadIndex + 1))
             + " layer "
             + std::to_string(static_cast<unsigned>(sourceLayerIndex + 1))
             + " -> pads 1-"
             + std::to_string(plan.count)
             + " (" + std::to_string(plan.count) + " slices)";
+
+    if (!wasRunning) {
+        return message;
+    }
+
+    const auto startResult = start();
+    if (stream_ == nullptr) {
+        return message + " | restart failed | " + startResult;
+    }
+    return message + " | " + startResult;
 }
 
 std::string AudioEngine::cropPadSampleRegion(
