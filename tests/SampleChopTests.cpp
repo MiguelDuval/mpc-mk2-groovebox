@@ -47,6 +47,29 @@ void testRejectUnsupportedOrTooShortPlans() {
     assert(!mpc::audio::makeEvenChopPlan(3, 4).isValid());
 }
 
+void testEverySupportedCountCoversUnevenRegionContiguously() {
+    constexpr std::size_t sourceFrames = 1027;
+    constexpr std::size_t counts[] = {4, 8, 16};
+
+    for (const std::size_t count : counts) {
+        const auto plan = mpc::audio::makeEvenChopPlan(sourceFrames, count);
+        assert(plan.isValid());
+        assert(plan.count == count);
+
+        std::size_t nextStart = 0;
+        for (std::size_t index = 0; index < count; ++index) {
+            const auto& region = plan.regions[index];
+            const std::size_t expectedEnd =
+                    (sourceFrames * (index + 1)) / count;
+            assert(region.startFrame == nextStart);
+            assert(region.endFrame == expectedEnd);
+            assert(region.endFrame > region.startFrame);
+            nextStart = region.endFrame;
+        }
+        assert(nextStart == sourceFrames);
+    }
+}
+
 } // namespace
 
 int main() {
@@ -54,5 +77,6 @@ int main() {
     testUnevenDistributionRemainsContiguous();
     testEightAndSixteenSlices();
     testRejectUnsupportedOrTooShortPlans();
+    testEverySupportedCountCoversUnevenRegionContiguously();
     return 0;
 }
