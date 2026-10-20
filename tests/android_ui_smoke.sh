@@ -1955,11 +1955,17 @@ TREE_PREFS_HOST="/tmp/mpc-browser-storage-seed.xml"
 # through the remote shell; the MediaStore exclusion query after WAV creation
 # remains the authoritative check when this platform denies it.
 try_create_browser_nomedia_marker() {
-  local directory="$1" marker="$directory/.nomedia"
-  if adb_bounded 10 shell touch "$marker" && adb_bounded 5 shell test -f "$marker"; then
-    echo "Created Browser fixture .nomedia marker: $marker"
+  local directory="$1"
+  local marker="$directory/.nomedia"
+
+  # Android 11+ FUSE validates .nomedia contents: it must contain the path
+  # of the directory it protects. An empty marker or touch(1) can be rejected
+  # with EPERM, so create the path-scoped marker in one remote-shell write.
+  if adb_bounded 10 shell "printf '%s' '$directory' > '$marker'" \
+      && adb_bounded 5 shell test -f "$marker"; then
+    echo "Created path-scoped Browser fixture .nomedia marker: $marker"
   else
-    echo "WARN: shared-storage FUSE rejected $marker; strict MediaStore exclusion assertions will prove whether the WAV fixtures stayed out of the local catalog."
+    echo "WARN: shared-storage FUSE rejected path-scoped marker $marker; strict MediaStore exclusion assertions will prove whether the WAV fixtures stayed out of the local catalog."
   fi
   return 0
 }
