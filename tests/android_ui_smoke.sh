@@ -6506,18 +6506,18 @@ PY
       return 0
     fi
 
-    if ! coordinates="$(python3 - "$hierarchy_path" <<'PY'
+    if ! coordinates="$(python3 - "$hierarchy_path" "$expected_description" <<'PY'
 import re
 import sys
 import xml.etree.ElementTree as ET
 
-path = sys.argv[1]
+path, expected = sys.argv[1], sys.argv[2]
 root = ET.parse(path).getroot()
 nodes = list(root.iter("node"))
 parents = {child: parent for parent in nodes for child in list(parent)}
 
 def rect(node):
-    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+    match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
                          node.attrib.get("bounds", ""))
     return tuple(map(int, match.groups())) if match else None
 
@@ -6539,9 +6539,6 @@ if waveform is not None:
         scroll = parents.get(scroll)
 
 if scroll is None:
-    # UiAutomator can omit the waveform after the Track Edit ScrollView has
-    # already been scrolled below it. In that state, resolve the same editor
-    # viewport from stable semantic children rather than failing or guessing.
     semantic_markers = {
         "Track Edit layer gain value",
         "Track Edit layer tuning value",
@@ -6563,18 +6560,17 @@ if scroll is None:
         candidate_bounds = rect(candidate)
         if candidate_bounds is None:
             continue
-        descriptions = [n.attrib.get("content-desc", "")
-                        for n in candidate.iter("node")]
+        descriptions = {n.attrib.get("content-desc", "")
+                        for n in candidate.iter("node")}
         marker_count = sum(1 for marker in semantic_markers
                            if marker in descriptions)
         if marker_count:
-            width = candidate_bounds[2] - candidate_bounds[0]
-            height = candidate_bounds[3] - candidate_bounds[1]
-            scroll_candidates.append((marker_count, width * height, candidate))
+            bounds = candidate_bounds
+            scroll_candidates.append((marker_count,
+                                      (bounds[2]-bounds[0])*(bounds[3]-bounds[1]),
+                                      candidate))
     if not scroll_candidates:
-        raise SystemExit(
-            "Track Edit ScrollView is unavailable and no visible scrollable "
-            "container exposes the current layer parameters")
+        raise SystemExit("Track Edit ScrollView is unavailable and no visible scrollable container exposes current parameters")
     scroll = max(scroll_candidates, key=lambda entry: (entry[0], entry[1]))[2]
 
 viewport = rect(scroll)
@@ -6582,15 +6578,43 @@ if viewport is None:
     raise SystemExit("Track Edit ScrollView has no valid bounds")
 left, top, right, bottom = viewport
 height = bottom - top
-destination_y = top + max(40, min(100, height // 6))
+margin = max(40, min(100, height // 6))
+descriptions = {n.attrib.get("content-desc", "") for n in scroll.iter("node")}
 
-# Choose a visible, non-clickable TextView in this ScrollView whose center is
-# far enough below the destination to produce a meaningful upward drag.
+def visible_description(prefix):
+    for node in scroll.iter("node"):
+        desc = node.attrib.get("content-desc", "")
+        if not desc.startswith(prefix) or node.attrib.get("visible-to-user") == "false":
+            continue
+        if intersection(rect(node), viewport) is not None:
+            return True
+    return False
+
+at_top = visible_description("Track Edit Samples waveform")
+at_bottom = (visible_description("Track Edit velocity")
+             or visible_description("Track Edit layer velocity "))
+# TUNE/GAIN/PAN/REGION are above velocity rows. On re-entry Android may
+# preserve the old lower ScrollView offset; continuing to swipe upward then
+# reaches the end and leaves no safe gesture origin. Reverse direction only
+# for an upper-layer target when the velocity region is actually visible and
+# the waveform is not.
+upper_target = expected.startswith((
+    "Track Edit layer gain ",
+    "Track Edit layer tuning ",
+    "Track Edit layer pan ",
+    "Track Edit region ",
+))
+toward_upper = upper_target and at_bottom and not at_top
+if toward_upper:
+    destination_y = bottom - margin
+else:
+    destination_y = top + margin
+
 candidates = []
 for node in scroll.iter("node"):
     if node.attrib.get("class") != "android.widget.TextView":
         continue
-    if node.attrib.get("clickable") == "true":
+    if node.attrib.get("clickable") == "true" or node.attrib.get("visible-to-user") == "false":
         continue
     if not node.attrib.get("text", "").strip():
         continue
@@ -6598,19 +6622,25 @@ for node in scroll.iter("node"):
     if visible is None:
         continue
     x1, y1, x2, y2 = visible
-    cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-    if cx <= left or cx >= right or cy < destination_y + 85 or cy >= bottom - 35:
+    cx, cy = (x1+x2)//2, (y1+y2)//2
+    if cx <= left or cx >= right:
         continue
+    if toward_upper:
+        if cy < top + 30 or cy > destination_y - 85:
+            continue
+    else:
+        if cy < destination_y + 85 or cy >= bottom - 30:
+            continue
     candidates.append((cy, cx))
 
 if not candidates:
-    raise SystemExit("No safe visible static TextView is available as a scroll gesture origin")
-start_y, swipe_x = max(candidates)
-if start_y - destination_y < 85:
-    raise SystemExit("Available scroll gesture is too short to move the Track Edit content")
+    direction = "toward upper layer controls" if toward_upper else "toward lower controls"
+    raise SystemExit(f"No safe visible static TextView is available for a meaningful swipe {direction}")
+start_y, swipe_x = max(candidates) if not toward_upper else min(candidates)
+if abs(start_y - destination_y) < 85:
+    raise SystemExit("Available Track Edit scroll gesture is too short")
 print(swipe_x, start_y, destination_y)
-PY
-)"; then
+PY)"; then
       echo "ERROR: could not derive a safe Track Edit scroll gesture from live UI bounds"
       return 1
     fi
