@@ -9,7 +9,7 @@ Read this queue first. Older dated entries below are historical snapshots, not c
 - The complete lifecycle has historical exact-SHA successes, including Build #2900 / run 39236521987. Those runs establish prior behavior, not the current HEAD.
 - The current full emulator smoke must still prove real SAF save, mutate, open, exact canonical state equality including MIDI events and Pattern placement ID/parameters, force-stop/relaunch/open, cancelled SAVE AS and OPEN without state mutation, malformed-file rejection without current-project damage, and supported placement-free v1 compatibility.
 - Active Android Build #2972 / run 39495867515 is on older SHA `be2f9e2b1e00fe4795afd37780383bb261cbc678`; 54 pre-smoke workflow checks passed and its emulator smoke is still in progress, with no conclusion. It predates the current Sample Edit crop/chop acceptance and must not be used to verify those changes.
-- Current checkpoint HEAD before this roadmap edit is `6d0ccae59c6cd5b3304e246e3572e20d7a8960c1`. Run #2990 / 39499184619 is pending on that exact SHA. Re-fetch Actions after this documentation commit because the feature HEAD will advance again.
+- Source implementation SHA before the latest checkpoint-document commits is `e64caae301edc9b978d9c13423eff99da8110c83` (Crop and Chop stream-stop error guards included). Android Build #2992 / run 39499332491 was pending on that exact source SHA; later checkpoint/document commits advance the branch without changing runtime code. Re-fetch live branch HEAD and Actions after this update, and count only a full run whose SHA matches the resulting HEAD.
 
 ### 2. SAMP-008 Sample Edit CROP — IMPLEMENTED; EXACT-SHA ACCEPTANCE PENDING
 
