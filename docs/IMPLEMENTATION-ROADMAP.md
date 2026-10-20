@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-19 (live branch + exact-SHA CI govern)
+## CURRENT EXECUTION QUEUE — 2026-10-20 (live branch + exact-SHA CI govern)
 
 Older queue entries below are historical snapshots. Read the status here first, then inspect live GitHub before starting work.
 
@@ -39,11 +39,16 @@ Older queue entries below are historical snapshots. Read the status here first, 
 - EDIT-008 verified real Start/End control changes independently, preserved the opposite boundary and unrelated GAIN/TUNE/PAN values, and restored the exact region. The smoke log confirms `Track Edit sample region Start/End real-touch isolation and exact restoration passed`; screenshot/hierarchy evidence is included in the same artifact.
 - Build #2909 / run 39287062251 was cancelled during an early native test on the same SHA, before Android UI smoke. It is not counted as a pass or a product failure; #2907 is the complete authoritative run.
 
-### 6. NEXT PRODUCT SLICE — EDIT-009 AMP ENV / FILTER CUTOFF — IMPLEMENTED; EXACT-SHA CI PENDING
+### 6. EDIT-009 AMP ENV / FILTER CUTOFF — IMPLEMENTED; EXACT-SHA ACCEPTANCE PENDING
 
-- The existing Track Edit AMP ENV tab already dispatches Attack/Decay/Sustain/Release and filter cutoff edits into native-backed pad state. This slice adds accessible semantic IDs for filter controls and real-emulator acceptance: change Attack by one 100 ms step while preserving the other envelope fields, inverse-restore the exact envelope, change filter cutoff by 500 Hz while preserving envelope state, then inverse-restore the exact cutoff.
-- The smoke requires changed/restored screenshots and accessibility hierarchies in the UI artifact. Do not mark EDIT-009 verified until Android Build completes successfully on the resulting PR HEAD and the requested evidence files are present.
-- No audio callback, sampler engine, MIDI transport or realtime path is changed.
+- The controls dispatch Attack/Decay/Sustain/Release and filter-cutoff edits to native-backed pad state. Real-emulator acceptance must change each envelope value by one bounded step, verify unrelated fields unchanged, inverse-restore exact state, edit cutoff by 500 Hz, restore it, and retain changed/restored screenshots and accessibility XML.
+- Build #2959 / run 39390346904 exposed a test-selector mismatch: the sustain button's actual accessible ID includes `envelope`. The selector was corrected. Do not mark EDIT-009 VERIFIED until a complete exact-SHA run passes all four envelope cases and cutoff isolation/restoration.
+
+### 7. Browser provider boundaries and file-size Options — CODE/TEST CANDIDATE; EXACT-SHA CI PENDING
+
+- The live smoke has real-touch CONTENT-category assertions and select/audition-vs-assignment checks. Build #2963 logs show these assertions completed before the full run timed out, but that failed run is only partial evidence. Build #2964 is validating the enlarged timeout against live SHA `4ef2992332cee03981cc63f0e4c77ef9eecc1e71`.
+- Detached candidate `8cdcbd5a79ad91a97af46b0e8d03fb130b153ddd` adds a locally persisted Show file size option. Real-touch acceptance toggles it off, checks metadata disappears, reopens Options to verify persistence, toggles it back on and checks restoration. Unsupported Browser options remain disabled.
+- The candidate archives CONTENT/DRUMS, INSTRUMENTS, DEMOS, SAMPLES, MY FILES, selected WAV and auditioned WAV screenshots/accessibility hierarchies. Integrate after reconciling #2964 and require its own full Actions pass and evidence review before marking BROW-003/007/008/012/013 VERIFIED.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
 
