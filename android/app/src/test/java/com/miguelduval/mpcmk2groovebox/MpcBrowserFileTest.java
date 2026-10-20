@@ -45,6 +45,7 @@ public final class MpcBrowserFileTest {
         assertFalse(kick.matchesBrowserQuery("PLACES", "FAVORITE 6", "ALL", ""));
         assertFalse(kick.matchesBrowserQuery("CONTENT", "DRUMS", "ALL", ""));
         assertFalse(kick.matchesBrowserQuery("CONTENT", "INSTRUMENTS", "SAMPLES", ""));
+        assertFalse(kick.matchesBrowserQuery("CONTENT", "DEMOS", "ALL", ""));
         assertFalse(kick.matchesBrowserQuery("EXPANSIONS", "USER CONTENT", "ALL", ""));
     }
 }

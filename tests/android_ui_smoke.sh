@@ -8616,6 +8616,78 @@ if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
   exit 1
 fi
 
+echo "Running BROW-003 real local Content category provider boundaries..."
+assert_browser_content_category() {
+  local hierarchy="$1" category="$2" expected="$3"
+  python3 - "$hierarchy" "$category" "$expected" "$LOCAL_SAMPLE_NAME" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, category, expected, sample_name = sys.argv[1:]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+descriptions = {node.attrib.get("content-desc", "") for node in nodes}
+texts = [node.attrib.get("text", "") for node in nodes]
+if f"MPC Browser current location: CONTENT • {category}" not in descriptions:
+    raise SystemExit(f"Content location did not resolve to {category}")
+file_rows = [d for d in descriptions if d == f"MPC Browser file {sample_name}"
+             or d.startswith(f"MPC Browser file {sample_name} ")]
+if expected == "AVAILABLE":
+    if not file_rows:
+        raise SystemExit(f"real local WAV missing from supported CONTENT/{category}")
+    if "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" in descriptions:
+        raise SystemExit(f"supported CONTENT/{category} reported unavailable")
+else:
+    if file_rows:
+        raise SystemExit(f"unsupported CONTENT/{category} fabricated a WAV row")
+    if "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" not in descriptions:
+        raise SystemExit(f"unsupported CONTENT/{category} didn't report provider limitation")
+    if not any("No real local provider is available" in text for text in texts):
+        raise SystemExit(f"unsupported CONTENT/{category} has no actionable limitation detail")
+print(f"Browser CONTENT/{category}: {expected.lower()} provider behavior verified.")
+PY
+}
+
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "Browser CONTENT tab"; then
+  echo "ERROR: Browser CONTENT section was not actionable for category acceptance"; exit 1
+fi
+for category in DRUMS INSTRUMENTS DEMOS; do
+  category_lower="$(printf '%s' "$category" | tr '[:upper:]' '[:lower:]')"
+  if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser navigation CONTENT $category"; then
+    echo "ERROR: Browser CONTENT/$category navigation row was not actionable"; exit 1
+  fi
+  if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+      "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" 10; then
+    echo "ERROR: Browser CONTENT/$category must explicitly report its unavailable local provider"; exit 1
+  fi
+  if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+    echo "ERROR: could not capture Browser CONTENT/$category hierarchy"; exit 1
+  fi
+  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "UNAVAILABLE"; then
+    echo "ERROR: Browser CONTENT/$category category/results contract failed"; exit 1
+  fi
+  if ! adb_bounded 10 exec-out screencap -p > "/tmp/mpc-groovebox-browser-content-$category_lower.png"; then
+    echo "ERROR: could not capture Browser CONTENT/$category screenshot"; exit 1
+  fi
+done
+
+for category in SAMPLES "MY FILES"; do
+  if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser navigation CONTENT $category"; then
+    echo "ERROR: supported Browser CONTENT/$category navigation row was not actionable"; exit 1
+  fi
+  if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+      "MPC Browser file $LOCAL_SAMPLE_NAME" 12; then
+    echo "ERROR: real WAV fixture did not appear in supported CONTENT/$category"; exit 1
+  fi
+  if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+    echo "ERROR: could not capture Browser CONTENT/$category hierarchy"; exit 1
+  fi
+  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "AVAILABLE"; then
+    echo "ERROR: Browser CONTENT/$category provider/results contract failed"; exit 1
+  fi
+done
+echo "BROW-003 local Content categories show real WAVs only in supported providers."
+
 # Exercise the real on-screen Search field against the indexed MediaStore rows.
 # Positive and negative queries must change the visible result set, not only the
 # query label or accessibility description.
@@ -8686,14 +8758,67 @@ if ! adb_bounded 10 shell input swipe 1400 930 1400 760 300; then
 fi
 sleep 1
 if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then exit 1; fi
+read_browser_current_sample() {
+  python3 - "$1" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+found = [node for node in root.iter("node")
+         if node.attrib.get("content-desc") == "MPC Browser current sample"]
+if len(found) != 1:
+    raise SystemExit(f"expected one Browser current-sample field, found {len(found)}")
+print(found[0].attrib.get("text", ""))
+PY
+}
+
+assert_browser_selection_did_not_assign() {
+  python3 - "$1" "$2" "$3" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, sample_name, baseline = sys.argv[1:]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+rows = [node for node in nodes
+        if node.attrib.get("content-desc") == f"MPC Browser file {sample_name} selected"]
+if len(rows) != 1:
+    raise SystemExit(
+        f"expected one visibly selected Browser row for {sample_name}, found {len(rows)}")
+fields = [node for node in nodes
+          if node.attrib.get("content-desc") == "MPC Browser current sample"]
+if len(fields) != 1:
+    raise SystemExit(f"expected one Browser current-sample field, found {len(fields)}")
+actual = fields[0].attrib.get("text", "")
+if actual != baseline:
+    raise SystemExit(
+        f"select/audition changed sampler assignment: baseline={baseline!r}, actual={actual!r}")
+print(f"Browser selection preserved current Pad/Layer sample: {actual}")
+PY
+}
+
+browser_sample_before_selection="$(read_browser_current_sample "$BROWSER_LOCAL_XML")" || {
+  echo "ERROR: could not read Pad/Layer sample before Browser selection"; exit 1;
+}
+
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser file $LOCAL_SAMPLE_NAME"; then exit 1; fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
     "MPC Browser audition selected local WAV file" 10; then exit 1; fi
+
+if ! assert_browser_selection_did_not_assign "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" "$browser_sample_before_selection"; then
+  echo "ERROR: BROW-007 selection must not imply sample assignment"; exit 1
+fi
+echo "BROW-007 real-touch select changed selection state without changing sampler assignment."
+
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser audition selected local WAV file"; then exit 1; fi
 if ! wait_for_successful_audition "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
     "$LOCAL_SAMPLE_NAME" 8; then
   exit 1
 fi
+
+if ! assert_browser_selection_did_not_assign "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" "$browser_sample_before_selection"; then
+  echo "ERROR: BROW-008 audition must not change the Pad/Layer sample assignment"; exit 1
+fi
+echo "BROW-008 real WAV audition preserved the existing Pad/Layer assignment."
+
 if ! tap_ui_description "$BROWSER_LOCAL_XML" \
     "MPC Browser assign selected local WAV to target Pad/Layer"; then exit 1; fi
 if ! wait_for_ui_node_text_desc "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
