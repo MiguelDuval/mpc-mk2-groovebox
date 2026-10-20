@@ -6711,9 +6711,13 @@ PY
 # upper sample-layer GAIN row is actually present before post-velocity checks.
 # scroll_ui_until_description() deliberately advances toward lower controls;
 # it cannot reveal a row that has been scrolled above the viewport.
+# Re-enter the sample-layer controls from any position within the current
+# Track Edit Samples ScrollView. UiAutomator reports only visible descendants,
+# so the scroll gesture must be derived from the ScrollView itself, not from an
+# off-screen TUNE row.
 scroll_track_edit_to_layer_gain() {
   local hierarchy_path="$1" remote_path="$2" max_swipes="${3:-8}"
-  local coordinates swipe_x swipe_from swipe_to
+  local coordinates swipe_x swipe_from swipe_to gesture_direction
   for ((attempt=1; attempt<=max_swipes; attempt++)); do
     if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
     if python3 - "$hierarchy_path" <<'PY'
@@ -6730,7 +6734,7 @@ raise SystemExit(0 if {
 }.issubset(descriptions) else 1)
 PY
     then
-      echo "Track Edit REGION/GAIN/TUNE/PAN fields are visible after $((attempt - 1)) reverse scroll gesture(s)."
+      echo "Track Edit REGION/GAIN/TUNE/PAN fields are visible after $((attempt - 1)) bounded scroll gesture(s)."
       return 0
     fi
 
@@ -6740,51 +6744,58 @@ import sys
 import xml.etree.ElementTree as ET
 
 nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
-parents = {child: parent for parent in nodes for child in list(parent)}
-target = next((n for n in nodes
-               if n.attrib.get("content-desc", "") == "Track Edit layer tuning value"), None)
-if target is None:
-    raise SystemExit("no visible semantic layer parameter is available to locate the Track Edit ScrollView")
-
-scroll = parents.get(target)
-while scroll is not None and not (
-        scroll.attrib.get("class") == "android.widget.ScrollView"
-        and scroll.attrib.get("scrollable") == "true"):
-    scroll = parents.get(scroll)
-if scroll is None:
-    raise SystemExit("visible layer parameter has no scrollable Track Edit ancestor")
-
-match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
-                     scroll.attrib.get("bounds", ""))
-if match is None:
-    raise SystemExit("Track Edit ScrollView has no valid bounds")
-left, top, right, bottom = map(int, match.groups())
+descriptions = {node.attrib.get("content-desc", "") for node in nodes}
+scroll_views = []
+for node in nodes:
+    if node.attrib.get("class") != "android.widget.ScrollView" \
+            or node.attrib.get("scrollable") != "true":
+        continue
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    if match is None:
+        continue
+    left, top, right, bottom = map(int, match.groups())
+    if right - left < 100 or bottom - top < 220:
+        continue
+    scroll_views.append(((right-left)*(bottom-top), left, top, right, bottom))
+if not scroll_views:
+    raise SystemExit("No visible scrollable Track Edit viewport found")
+_, left, top, right, bottom = max(scroll_views)
 height = bottom - top
-if right - left < 100 or height < 220:
-    raise SystemExit(f"Track Edit ScrollView viewport is too small for a safe reverse scroll: {(left, top, right, bottom)!r}")
 margin = max(45, min(90, height // 5))
-start_y = top + margin
-end_y = bottom - margin
-if end_y - start_y < 100:
-    raise SystemExit("Track Edit reverse-scroll gesture is too short")
-print((left + right) // 2, start_y, end_y)
+# A visible waveform identifies the upper end of Samples content; a visible
+# velocity row identifies its lower end. Swipe up to reveal lower fields from
+# the top, or swipe down to return toward GAIN/TUNE/PAN from the lower end.
+at_top = "Track Edit Samples waveform" in descriptions
+at_bottom = ("Track Edit velocity" in descriptions
+             or any(value.startswith("Track Edit layer velocity ")
+                    for value in descriptions))
+if at_bottom and not at_top:
+    start_y, end_y = top + margin, bottom - margin
+    direction = "toward the upper layer controls"
+else:
+    start_y, end_y = bottom - margin, top + margin
+    direction = "toward REGION/GAIN/TUNE/PAN"
+if abs(start_y - end_y) < 100:
+    raise SystemExit("Track Edit scroll gesture is too short")
+print((left+right)//2, start_y, end_y, direction)
 PY
 )"; then
-      echo "ERROR: could not derive a safe reverse-scroll gesture from the live Track Edit hierarchy"
+      echo "ERROR: could not derive a safe gesture from the live Track Edit ScrollView"
       cat "$hierarchy_path" || true
       return 1
     fi
-    read -r swipe_x swipe_from swipe_to <<< "$coordinates"
-    echo "Restoring upper Track Edit layer viewport using live bounds: x=$swipe_x y=$swipe_from->$swipe_to"
+    read -r swipe_x swipe_from swipe_to gesture_direction <<< "$coordinates"
+    echo "Scrolling Track Edit $gesture_direction: x=$swipe_x y=$swipe_from->$swipe_to"
     if ! adb_bounded 10 shell input swipe "$swipe_x" "$swipe_from" "$swipe_x" "$swipe_to" 350; then
-      echo "ERROR: Track Edit reverse-scroll gesture failed"
+      echo "ERROR: Track Edit layer viewport scroll gesture failed"
       return 1
     fi
     sleep 0.35
   done
 
   if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
-  echo "ERROR: Track Edit GAIN/TUNE/PAN fields did not return to the hierarchy after $max_swipes reverse scroll gesture(s)"
+  echo "ERROR: Track Edit REGION/GAIN/TUNE/PAN fields did not become visible after $max_swipes bounded scroll gestures"
   cat "$hierarchy_path" || true
   return 1
 }
