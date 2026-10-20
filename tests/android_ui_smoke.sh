@@ -1841,6 +1841,46 @@ PY
 }
 
 
+# Dispatch only an accessibility-verified tap. Launching Android DocumentsUI
+# can leave the synchronous "adb shell input tap" client hung during emulator
+# Activity handoff; detach the device-side input command and verify the intended
+# foreground Activity separately at the call site.
+tap_visible_description_detached() {
+  local hierarchy_path="$1"
+  local expected_description="$2"
+  local coordinates tap_x tap_y
+  if ! coordinates="$(python3 - "$hierarchy_path" "$expected_description" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1], sys.argv[2]
+nodes = list(ET.parse(path).getroot().iter("node"))
+found = [n for n in nodes if n.attrib.get("content-desc", "") == expected]
+if len(found) != 1:
+    raise SystemExit(f"expected exactly one accessibility target {expected!r}, got {len(found)}")
+node = found[0]
+if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
+    raise SystemExit(f"accessibility target is not enabled/clickable: {node.attrib}")
+parts = node.attrib.get("bounds", "").replace("][", ",").strip("[]").split(",")
+if len(parts) != 4 or not all(p.isdigit() for p in parts):
+    raise SystemExit(f"invalid accessibility target bounds: {node.attrib}")
+left, top, right, bottom = map(int, parts)
+if right <= left or bottom <= top:
+    raise SystemExit(f"non-positive accessibility target bounds: {node.attrib}")
+print((left + right) // 2, (top + bottom) // 2)
+PY
+)"; then
+    echo "ERROR: could not derive an enabled accessibility target: $expected_description"
+    return 1
+  fi
+  read -r tap_x tap_y <<< "$coordinates"
+  if ! adb_bounded 10 shell "nohup input tap $tap_x $tap_y </dev/null >/dev/null 2>&1 &"; then
+    echo "ERROR: could not dispatch detached input tap for $expected_description"
+    return 1
+  fi
+  echo "Dispatched detached verified tap for $expected_description at $tap_x,$tap_y"
+}
+
 tap_visible_text_early() {
   local hierarchy_path="$1"
   local expected_text="$2"
@@ -9394,18 +9434,18 @@ if ! wait_for_ui_description "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULT
   echo "ERROR: unconfigured FAVORITE 1 did not expose its Choose Folder action"; exit 1
 fi
 echo "FAVORITE 1 Choose Folder is exposed in the current hierarchy; tapping that verified target..."
-if ! tap_visible_description_early "$FAVORITE_TREE_RESULTS_XML" "MPC Browser choose a local folder for FAVORITE 1"; then
+if ! tap_visible_description_detached "$FAVORITE_TREE_RESULTS_XML" "MPC Browser choose a local folder for FAVORITE 1"; then
   echo "ERROR: FAVORITE 1 Choose Folder did not launch Android DocumentsUI"; exit 1
 fi
 
 favorite_picker_activity=""
-for favorite_picker_attempt in {1..15}; do
+for favorite_picker_attempt in {1..20}; do
   favorite_picker_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
     | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
-  if [[ -n "$favorite_picker_activity" ]] && ! grep -Fq -- "$PACKAGE" <<<"$favorite_picker_activity"; then break; fi
+  if grep -Fq -- "com.android.documentsui" <<<"$favorite_picker_activity"; then break; fi
   sleep 1
 done
-if [[ -z "$favorite_picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$favorite_picker_activity"; then
+if ! grep -Fq -- "com.android.documentsui" <<<"$favorite_picker_activity"; then
   echo "ERROR: FAVORITE 1 did not launch an external document-tree picker"
   printf '%s\n' "$favorite_picker_activity"
   exit 1
