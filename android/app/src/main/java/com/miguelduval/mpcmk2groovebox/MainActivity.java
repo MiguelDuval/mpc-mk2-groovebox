@@ -11246,6 +11246,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setBottomStatus(nativeAudioSetPadSampleRegion(
                 selectedPad, selectedLayer, next, end));
         refreshRegionInfo();
+        refreshSampleWaveform();
     }
 
     private void nudgeRegionEnd(long delta) {
@@ -11260,6 +11261,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setBottomStatus(nativeAudioSetPadSampleRegion(
                 selectedPad, selectedLayer, start, next));
         refreshRegionInfo();
+        refreshSampleWaveform();
     }
 
     private void resetRegion() {
@@ -11271,6 +11273,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setBottomStatus(nativeAudioSetPadSampleRegion(
                 selectedPad, selectedLayer, 0, total));
         refreshRegionInfo();
+        refreshSampleWaveform();
     }
 
     private void cropRegion() {
