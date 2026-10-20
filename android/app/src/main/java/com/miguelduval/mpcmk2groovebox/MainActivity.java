@@ -11294,7 +11294,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // Android acceptance. These getters are the same authoritative
         // state consumed by the inspector; the marker is emitted only when
         // the native operation reports success.
-        if (result != null && result.startsWith("Chop complete:")) {
+        if (result != null && result.startsWith("Chop complete:")
+                && !result.contains("restart failed")) {
             final StringBuilder destinations = new StringBuilder();
             for (int pad = 0; pad < count; pad++) {
                 if (pad > 0) destinations.append(',');
