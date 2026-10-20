@@ -9344,10 +9344,10 @@ import sys
 
 line, expected_source_frames_text = sys.argv[1], sys.argv[2]
 expected_source_frames = int(expected_source_frames_text)
-match = re.search(r"SAMPLE_CHOP_ASSIGNMENT\\s+(.+)$", line)
+match = re.search(r"SAMPLE_CHOP_ASSIGNMENT\s+(.+)$", line)
 if not match:
     raise SystemExit(f"missing native chop assignment payload: {line!r}")
-fields = dict(re.findall(r"([A-Za-z][A-Za-z0-9]*)=([^\\s]+)", match.group(1)))
+fields = dict(re.findall(r"([A-Za-z][A-Za-z0-9]*)=([^\s]+)", match.group(1)))
 required = {
     "sourcePad": "1",
     "sourceLayer": "1",
@@ -9367,7 +9367,7 @@ entries = encoded.split(",")
 if len(entries) != 4:
     raise SystemExit(f"expected four native destination pads, got {entries!r}")
 for index, entry in enumerate(entries):
-    parsed = re.fullmatch(r"(\\d+):(\\d+)-(\\d+)/(\\d+)", entry)
+    parsed = re.fullmatch(r"(\d+):(\d+)-(\d+)/(\d+)", entry)
     if not parsed:
         raise SystemExit(f"invalid native pad-region evidence: {entry!r}")
     pad, start, end, total = map(int, parsed.groups())
