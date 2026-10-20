@@ -6396,7 +6396,7 @@ scroll_ui_until_description() {
   local hierarchy_path="$1" remote_path="$2" expected_description="$3" max_swipes="${4:-8}"
   local coordinates swipe_x swipe_from swipe_to
   for ((attempt=1; attempt<=max_swipes; attempt++)); do
-    if [[ "$expected_description" =~ ^Track\ Edit\ (attack|decay|sustain|release|filter\ cutoff)\ (increase|decrease)$ ]]; then
+    if [[ "$expected_description" =~ ^Track\ Edit\ (envelope\ )?(attack|decay|sustain|release|filter\ cutoff)\ (increase|decrease)$ ]]; then
       if ! track_edit_dump_ui_bounded "$remote_path" "$hierarchy_path"; then return 1; fi
     else
       if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
@@ -8188,8 +8188,8 @@ exercise_track_edit_envelope_field() {
     inverse="Track Edit envelope $field decrease"
     expected=$((before_value + step))
   elif (( before_value >= step )); then
-    action="Track Edit $field decrease"
-    inverse="Track Edit $field increase"
+    action="Track Edit envelope $field decrease"
+    inverse="Track Edit envelope $field increase"
     expected=$((before_value - step))
   else
     echo "ERROR: $field has no safe adjacent value for the acceptance step $step"; return 1
