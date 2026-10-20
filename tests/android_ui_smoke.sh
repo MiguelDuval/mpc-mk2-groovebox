@@ -8271,6 +8271,82 @@ if ! exercise_track_edit_envelope_field "release" 100 "$TRACK_EDIT_ENV_SUSTAIN_R
     "$TRACK_EDIT_ENV_RELEASE_CHANGED_PNG" "$TRACK_EDIT_ENV_RELEASE_CHANGED_XML" \
     "$TRACK_EDIT_ENV_RELEASE_RESTORED_PNG" "$TRACK_EDIT_ENV_RELEASE_RESTORED_XML"; then exit 1; fi
 
+# Return the Track Edit ScrollView to its top without using the down-content-only
+# gesture helper. UIAutomator exposes only visible descendants of a ScrollView,
+# so ADSR isolation must be sampled from a fresh top-viewport hierarchy.
+scroll_track_edit_to_top() {
+  local hierarchy_path="$1" remote_path="$2" coordinates swipe_x swipe_from swipe_to
+  for ((attempt=1; attempt<=8; attempt++)); do
+    if ! track_edit_dump_ui_bounded "$remote_path" "$hierarchy_path"; then
+      echo "ERROR: could not capture Track Edit hierarchy while returning to top"
+      return 1
+    fi
+    if python3 - "$hierarchy_path" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+required = {
+    "Track Edit envelope attack value",
+    "Track Edit envelope decay value",
+    "Track Edit envelope sustain value",
+    "Track Edit envelope release value",
+}
+visible = {node.attrib.get("content-desc", "") for node in root.iter("node")}
+raise SystemExit(0 if required.issubset(visible) else 1)
+PY
+    then
+      echo "Track Edit ADSR viewport restored to top after $((attempt - 1)) downward swipe(s)."
+      return 0
+    fi
+
+    if ! coordinates="$(python3 - "$hierarchy_path" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+def rect(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+scrolls = []
+for node in root.iter("node"):
+    if node.attrib.get("class") != "android.widget.ScrollView" \
+            or node.attrib.get("scrollable") != "true":
+        continue
+    bounds = rect(node)
+    if bounds is None:
+        continue
+    desc = {child.attrib.get("content-desc", "") for child in node.iter("node")}
+    markers = sum(1 for name in desc if name.startswith("Track Edit envelope ")
+                  or name == "Track Edit cutoff")
+    if markers:
+        scrolls.append((markers, (bounds[2]-bounds[0])*(bounds[3]-bounds[1]), bounds))
+if not scrolls:
+    raise SystemExit("No visible Track Edit ScrollView with semantic field markers")
+_, _, (left, top, right, bottom) = max(scrolls)
+height = bottom - top
+start = top + max(60, min(110, height // 5))
+end = bottom - max(45, min(85, height // 8))
+if end - start < 100:
+    raise SystemExit("Track Edit ScrollView is too small for a safe top-return gesture")
+print((left + right) // 2, start, end)
+PY
+)"; then
+      echo "ERROR: could not derive a safe downward gesture to restore the Track Edit top viewport"
+      return 1
+    fi
+    read -r swipe_x swipe_from swipe_to <<< "$coordinates"
+    if ! adb_bounded 10 shell input swipe "$swipe_x" "$swipe_from" "$swipe_x" "$swipe_to" 350; then
+      echo "ERROR: Track Edit top-return gesture failed"
+      return 1
+    fi
+    sleep 0.35
+  done
+  echo "ERROR: Track Edit ADSR rows were not restored to the visible top viewport after eight attempts"
+  cat "$hierarchy_path" || true
+  return 1
+}
+
 # The filter controls live below the visible ADSR rows. Capture its own baseline
 # after scrolling to the real control; do not expect an off-screen node in the
 # top-of-scroll hierarchy.
@@ -8316,7 +8392,7 @@ fi
 
 # Prove ADSR stayed unchanged from its own visible viewport. Then return to the
 # lower filter controls using a fresh hierarchy before activating the inverse.
-if ! scroll_ui_until_description "$TRACK_EDIT_ENV_CHECK_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit envelope attack decrease" 8; then
+if ! scroll_track_edit_to_top "$TRACK_EDIT_ENV_CHECK_XML" "$TRACK_EDIT_ENV_REMOTE"; then
   echo "ERROR: Track Edit ADSR values could not be brought back into view after the filter edit"; exit 1
 fi
 track_edit_filter_envelope_current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_CHECK_XML" 2>/dev/null || true)"
@@ -8352,7 +8428,7 @@ if ! adb_bounded 10 exec-out screencap -p > "$TRACK_EDIT_FILTER_RESTORED_PNG"; t
   echo "ERROR: restored filter screenshot capture failed"; exit 1
 fi
 
-if ! scroll_ui_until_description "$TRACK_EDIT_ENV_CHECK_XML" "$TRACK_EDIT_ENV_REMOTE" "Track Edit envelope attack decrease" 8; then
+if ! scroll_track_edit_to_top "$TRACK_EDIT_ENV_CHECK_XML" "$TRACK_EDIT_ENV_REMOTE"; then
   echo "ERROR: Track Edit ADSR values could not be brought back into view after filter restoration"; exit 1
 fi
 track_edit_filter_envelope_current="$(read_track_edit_envelope_state "$TRACK_EDIT_ENV_CHECK_XML" 2>/dev/null || true)"
