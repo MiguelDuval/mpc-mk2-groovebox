@@ -5042,6 +5042,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         regionInfo = label("", 12, MUTED);
+        regionInfo.setContentDescription("Sample Edit region and frame count");
         regionInfo.setPadding(dp(10), 0, dp(10), 0);
         page.addView(regionInfo, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
@@ -5090,15 +5091,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout row1 = row();
         row1.addView(actionButton("S −1K", v -> nudgeRegionStart(-1000)), weight());
-        row1.addView(actionButton("S +1K", v -> nudgeRegionStart(1000)), weight());
+        Button sampleEditStartIncrease = actionButton(
+                "S +1K", v -> nudgeRegionStart(1000));
+        sampleEditStartIncrease.setContentDescription(
+                "Sample Edit increase region start by 1000 frames");
+        row1.addView(sampleEditStartIncrease, weight());
         row1.addView(actionButton("E −1K", v -> nudgeRegionEnd(-1000)), weight());
         row1.addView(actionButton("E +1K", v -> nudgeRegionEnd(1000)), weight());
         page.addView(row1, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
         LinearLayout row2 = row();
-        row2.addView(actionButton("FULL", v -> resetRegion()), weight());
-        row2.addView(actionButton("CROP", v -> cropRegion()), weight());
+        Button sampleEditFullRegion = actionButton("FULL", v -> resetRegion());
+        sampleEditFullRegion.setContentDescription("Sample Edit restore full sample region");
+        row2.addView(sampleEditFullRegion, weight());
+        Button sampleEditCrop = actionButton("CROP", v -> cropRegion());
+        sampleEditCrop.setContentDescription("Sample Edit crop selected sample region");
+        row2.addView(sampleEditCrop, weight());
         row2.addView(actionButton("CH4", v -> chop(4)), weight());
         row2.addView(actionButton("CH8", v -> chop(8)), weight());
         row2.addView(actionButton("CH16", v -> chop(16)), weight());
