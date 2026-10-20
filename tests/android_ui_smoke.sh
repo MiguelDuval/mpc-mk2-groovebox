@@ -9322,28 +9322,39 @@ if ! dump_device_ui "$SAMPLE_CROP_CROPPED_REMOTE" "$SAMPLE_CROP_CROPPED_XML"; th
 fi
 echo "SAMP-008 real-touch CROP passed: source=$sample_crop_total_before frames, selected start=1000, cropped PCM=$sample_crop_expected_frames frames; native region reset to 0..$sample_crop_expected_frames."
 
-# SAMP-009: run real CH4 from the cropped source and verify every destination
-# from post-mutation native getters. The engine emits one bounded diagnostic
-# record only after native chop returns success; no expected values are inferred
-# from the button label or the sample-plan helper alone.
-SAMPLE_CHOPPED_PNG="/tmp/mpc-groovebox-sample-chop-4-slices.png"
-SAMPLE_CHOPPED_XML="/tmp/mpc-groovebox-sample-chop-4-slices-uiautomator.xml"
-SAMPLE_CHOPPED_REMOTE="/sdcard/mpc-groovebox-sample-chop-4-slices-uiautomator.xml"
-sample_chop_marker_before="$(project_marker_count "SAMPLE_CHOP_ASSIGNMENT")"
-echo "Running SAMP-009 real-touch CH4 assignment and per-pad native region verification..."
-if ! tap_ui_description "$SAMPLE_CROP_CROPPED_XML" "Sample Edit chop into 4 slices"; then
-  echo "ERROR: Sample Edit CH4 control was not accessible/actionable"; exit 1
-fi
-if ! wait_for_new_project_marker "SAMPLE_CHOP_ASSIGNMENT" "$sample_chop_marker_before" 20; then
-  echo "ERROR: CH4 did not emit its native post-mutation assignment evidence"; exit 1
-fi
-sample_chop_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "SAMPLE_CHOP_ASSIGNMENT" | tail -n 1 || true)"
-if ! python3 - "$sample_chop_line" "$sample_crop_expected_frames" <<'PY'
+
+# SAMP-009: exercise each real CH4/CH8/CH16 control against native pad state.
+# Each operation starts from Pad 01's full region; destinations may share the
+# same immutable PCM buffer, so a FULL touch restores only the source region
+# before the next chop count. Assertions consume the real getter projection
+# emitted after a successful mutation, not the button label or plan helper.
+sample_chop_marker_count() {
+  local logs
+  logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  grep -F -c -- "SAMPLE_CHOP_ASSIGNMENT" <<< "$logs" || true
+}
+
+wait_for_sample_chop_marker() {
+  local before="$1" max_attempts="${2:-20}" current
+  for ((sample_chop_wait_attempt=1; sample_chop_wait_attempt<=max_attempts; sample_chop_wait_attempt++)); do
+    current="$(sample_chop_marker_count)"
+    if [[ "$current" =~ ^[0-9]+$ ]] && (( current > before )); then return 0; fi
+    sleep 1
+  done
+  echo "ERROR: native Sample Chop assignment marker did not advance from $before"
+  adb_bounded 10 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+    | grep -F -- "SAMPLE_CHOP_ASSIGNMENT" | tail -n 10 || true
+  return 1
+}
+
+assert_sample_chop_assignment() {
+  python3 - "$1" "$2" "$3" <<'PY'
 import re
 import sys
 
-line, expected_source_frames_text = sys.argv[1], sys.argv[2]
-expected_source_frames = int(expected_source_frames_text)
+line, expected_count_text, expected_frames_text = sys.argv[1:]
+expected_count = int(expected_count_text)
+expected_frames = int(expected_frames_text)
 match = re.search(r"SAMPLE_CHOP_ASSIGNMENT\s+(.+)$", line)
 if not match:
     raise SystemExit(f"missing native chop assignment payload: {line!r}")
@@ -9352,9 +9363,9 @@ required = {
     "sourcePad": "1",
     "sourceLayer": "1",
     "sourceStart": "0",
-    "sourceEnd": str(expected_source_frames),
-    "sourceFrames": str(expected_source_frames),
-    "chopCount": "4",
+    "sourceEnd": str(expected_frames),
+    "sourceFrames": str(expected_frames),
+    "chopCount": str(expected_count),
 }
 for name, expected in required.items():
     if fields.get(name) != expected:
@@ -9362,43 +9373,100 @@ for name, expected in required.items():
             f"native chop {name} mismatch: expected {expected!r}, "
             f"got {fields.get(name)!r}; line={line!r}")
 
-encoded = fields.get("destinations", "")
-entries = encoded.split(",")
-if len(entries) != 4:
-    raise SystemExit(f"expected four native destination pads, got {entries!r}")
+entries = fields.get("destinations", "").split(",")
+if len(entries) != expected_count:
+    raise SystemExit(
+        f"expected {expected_count} native destination pads, got {entries!r}")
 for index, entry in enumerate(entries):
     parsed = re.fullmatch(r"(\d+):(\d+)-(\d+)/(\d+)", entry)
     if not parsed:
         raise SystemExit(f"invalid native pad-region evidence: {entry!r}")
     pad, start, end, total = map(int, parsed.groups())
-    expected_start = (expected_source_frames * index) // 4
-    expected_end = (expected_source_frames * (index + 1)) // 4
+    expected_start = (expected_frames * index) // expected_count
+    expected_end = (expected_frames * (index + 1)) // expected_count
     if (pad, start, end, total) != (
-            index + 1, expected_start, expected_end, expected_source_frames):
+            index + 1, expected_start, expected_end, expected_frames):
         raise SystemExit(
             f"Pad {index + 1} native slice mismatch: "
             f"got {(pad, start, end, total)}, expected "
-            f"{(index + 1, expected_start, expected_end, expected_source_frames)}")
-print("Native CH4 slice assignment verified:")
+            f"{(index + 1, expected_start, expected_end, expected_frames)}")
+print(f"Native CH{expected_count} slice assignment verified:")
 for entry in entries:
     print("  " + entry)
 PY
-then
-  echo "ERROR: SAMP-009 CH4 destination ranges failed exact native-state assertions"
-  echo "$sample_chop_line"
-  exit 1
-fi
-if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_REMOTE" \
-    "0 $((sample_crop_expected_frames / 4)) $sample_crop_expected_frames" 15; then
-  echo "ERROR: selected Pad 01 did not expose the first native CH4 slice in Sample Edit"; exit 1
-fi
-if ! adb_bounded 10 exec-out screencap -p > "$SAMPLE_CHOPPED_PNG"; then
-  echo "ERROR: could not capture post-CH4 Sample Edit screenshot"; exit 1
-fi
-if ! dump_device_ui "$SAMPLE_CHOPPED_REMOTE" "$SAMPLE_CHOPPED_XML"; then
-  echo "ERROR: could not capture post-CH4 Sample Edit hierarchy"; exit 1
-fi
-echo "SAMP-009 real-touch CH4 passed: four contiguous, non-overlapping, exact native slice ranges cover all $sample_crop_expected_frames PCM frames."
+}
+
+run_sample_chop_acceptance() {
+  local chop_count="$1" source_frames="$2" input_xml="$3"
+  local screenshot="$4" host_xml="$5" remote_xml="$6"
+  local marker_before marker_line first_slice_end
+  marker_before="$(sample_chop_marker_count)"
+  echo "Running SAMP-009 real-touch CH$chop_count assignment and exact per-pad native region verification..."
+  if ! tap_ui_description "$input_xml" "Sample Edit chop into $chop_count slices"; then
+    echo "ERROR: Sample Edit CH$chop_count control was not accessible/actionable"; return 1
+  fi
+  if ! wait_for_sample_chop_marker "$marker_before" 20; then
+    echo "ERROR: CH$chop_count did not emit its native post-mutation assignment evidence"; return 1
+  fi
+  marker_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+    | grep -F -- "SAMPLE_CHOP_ASSIGNMENT" | tail -n 1 || true)"
+  if ! assert_sample_chop_assignment "$marker_line" "$chop_count" "$source_frames"; then
+    echo "ERROR: SAMP-009 CH$chop_count destination ranges failed exact native-state assertions"
+    echo "$marker_line"
+    return 1
+  fi
+  first_slice_end=$((source_frames / chop_count))
+  if ! wait_for_sample_edit_region_state "$host_xml" "$remote_xml" \
+      "0 $first_slice_end $source_frames" 15; then
+    echo "ERROR: selected Pad 01 did not expose the first CH$chop_count slice in Sample Edit"; return 1
+  fi
+  if ! adb_bounded 10 exec-out screencap -p > "$screenshot"; then
+    echo "ERROR: could not capture post-CH$chop_count Sample Edit screenshot"; return 1
+  fi
+  if ! dump_device_ui "$remote_xml" "$host_xml"; then
+    echo "ERROR: could not capture post-CH$chop_count Sample Edit hierarchy"; return 1
+  fi
+  echo "SAMP-009 real-touch CH$chop_count passed: $chop_count contiguous, non-overlapping native slices cover all $source_frames PCM frames."
+}
+
+SAMPLE_CHOPPED_PNG="/tmp/mpc-groovebox-sample-chop-4-slices.png"
+SAMPLE_CHOPPED_XML="/tmp/mpc-groovebox-sample-chop-4-slices-uiautomator.xml"
+SAMPLE_CHOPPED_REMOTE="/sdcard/mpc-groovebox-sample-chop-4-slices-uiautomator.xml"
+SAMPLE_CHOPPED_8_PNG="/tmp/mpc-groovebox-sample-chop-8-slices.png"
+SAMPLE_CHOPPED_8_XML="/tmp/mpc-groovebox-sample-chop-8-slices-uiautomator.xml"
+SAMPLE_CHOPPED_8_REMOTE="/sdcard/mpc-groovebox-sample-chop-8-slices-uiautomator.xml"
+SAMPLE_CHOPPED_16_PNG="/tmp/mpc-groovebox-sample-chop-16-slices.png"
+SAMPLE_CHOPPED_16_XML="/tmp/mpc-groovebox-sample-chop-16-slices-uiautomator.xml"
+SAMPLE_CHOPPED_16_REMOTE="/sdcard/mpc-groovebox-sample-chop-16-slices-uiautomator.xml"
+
+if ! run_sample_chop_acceptance 4 "$sample_crop_expected_frames" \
+    "$SAMPLE_CROP_CROPPED_XML" "$SAMPLE_CHOPPED_PNG" \
+    "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_REMOTE"; then exit 1; fi
+
+# CH8 and CH16 target the same first 1..N pads; reset only Pad 01's region to
+# the full shared PCM buffer before each action so the plan is independent and
+# destination-assignment collision validation remains meaningful.
+for next_chop_count in 8 16; do
+  if ! tap_ui_description "$SAMPLE_CHOPPED_XML" "Sample Edit restore full sample region"; then
+    echo "ERROR: Sample Edit FULL action was not actionable before CH$next_chop_count"; exit 1
+  fi
+  if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_REMOTE" \
+      "0 $sample_crop_expected_frames $sample_crop_expected_frames" 15; then exit 1; fi
+  if (( next_chop_count == 8 )); then
+    if ! run_sample_chop_acceptance 8 "$sample_crop_expected_frames" \
+        "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_8_PNG" \
+        "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE"; then exit 1; fi
+  else
+    if ! tap_ui_description "$SAMPLE_CHOPPED_8_XML" "Sample Edit restore full sample region"; then
+      echo "ERROR: Sample Edit FULL action was not actionable before CH16"; exit 1
+    fi
+    if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE" \
+        "0 $sample_crop_expected_frames $sample_crop_expected_frames" 15; then exit 1; fi
+    if ! run_sample_chop_acceptance 16 "$sample_crop_expected_frames" \
+        "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_16_PNG" \
+        "$SAMPLE_CHOPPED_16_XML" "$SAMPLE_CHOPPED_16_REMOTE"; then exit 1; fi
+  fi
+done
 
 echo "Running Android user document-tree → Browser results → persisted grant restoration..."
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
