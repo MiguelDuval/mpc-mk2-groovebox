@@ -1140,7 +1140,9 @@ std::string AudioEngine::chopPadSampleToPads(
     const bool wasRunning = stream_ != nullptr;
     if (wasRunning) {
         const auto stopResult = stopOutputStream();
-        if (stream_ != nullptr) {
+        if (stream_ != nullptr
+                || stopResult.rfind("Audio stop failed:", 0) == 0
+                || stopResult.rfind("Audio close failed:", 0) == 0) {
             return "Chop failed: " + stopResult;
         }
     }
