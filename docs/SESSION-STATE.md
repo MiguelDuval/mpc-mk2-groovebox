@@ -1,9 +1,19 @@
 # Session State — MPC MkII Groovebox
 
-**Checkpoint date:** 2026-10-19  
+**Checkpoint date:** 2026-10-20  
 **Purpose:** operational handoff. Verify mutable status against live GitHub before implementation.
 
 ## Latest source and verification state
+
+### Live checkpoint — 2026-10-20
+
+- Source commit at checkpoint entry: `c7565f34b9f11efe43c900bf68add911ec959e57` on `feature/mpc-one-ui-fidelity`. PR #23 remains open against `fix/ui-shell-format-width-startup`; `main` remains untouched at `9243f999b2438984131747327a352e54ff947d37`. The checkpoint-document commit itself will advance the feature HEAD; always refresh the live HEAD/Actions before relying on this SHA.
+- Active Android Build #2972 / run `39495867515` is still in the emulator smoke step on older SHA `be2f9e2b1e00fe4795afd37780383bb261cbc678`. The 54 preceding workflow checks, including native tests, APK assembly/upload and `bash -n tests/android_ui_smoke.sh`, passed; APK artifact `12298925525` exists (9,956,909 bytes). The smoke step has no conclusion yet. It predates the new Sample Edit crop/chop acceptance and the final Chop stream-stop error guard; it cannot verify those changes.
+- Run #2989 / `39498901267` was queued on source SHA `c7565f34b9f11efe43c900bf68add911ec959e57`. That source adds real-touch SAMP-008 CROP acceptance (Start +1000, native PCM frame count reduced by exactly 1000, region reset), a control-thread-safe audio-stream stop/mutate/restart for Chop, and real-touch SAMP-009 CH4/CH8/CH16 acceptance with post-mutation native getter evidence for all destination regions. Native chop-plan tests now verify exact contiguous uneven-frame partitions for all three supported counts. All of these remain **IMPLEMENTED / EXACT-SHA CI PENDING**, not verified.
+- Previous Android Build #2970 / run `39468622843` failed because its 42-minute smoke timed out after opening DocumentsUI for FAVORITE 1; USER FOLDER restoration passed, but Favorite assignment and Project persistence acceptance were not reached. This is a smoke-harness stall, not proof of a Project lifecycle defect. The new tap cleanup runs the ADB client in an isolated host process group, confirms DocumentsUI foreground, then performs bounded process cleanup. Its full latest-SHA result is still pending.
+- The next acceptance priority remains the complete current-HEAD Project SAVE / SAVE AS / OPEN lifecycle: real SAF provider; full canonical state including MIDI events and Pattern placement identity/parameters; force-stop/relaunch; both cancellations; malformed-input preservation; and placement-free v1 compatibility. Do not label this latest source verified until one run for the resulting exact HEAD succeeds.
+- Physical MPC Studio MkII tests remain **PENDING**; emulator evidence is not physical-device evidence.
+
 
 - Repository: `MiguelDuval/mpc-mk2-groovebox`; working branch: `feature/mpc-one-ui-fidelity`.
 - PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains **OPEN**, base `fix/ui-shell-format-width-startup`; not merged or retargeted.
