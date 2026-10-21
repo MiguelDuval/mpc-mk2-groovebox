@@ -9308,10 +9308,10 @@ fi
 if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then
   echo "ERROR: could not open MPC Menu for Sample Edit crop acceptance"; exit 1
 fi
-if ! wait_for_ui_description "$SAMPLE_CROP_MENU_XML" "$SAMPLE_CROP_MENU_REMOTE" "SAMPLE mode" 45; then
+if ! wait_for_ui_description "$SAMPLE_CROP_MENU_XML" "$SAMPLE_CROP_MENU_REMOTE" "MPC Menu SAMPLE EDIT" 45; then
   echo "ERROR: MPC Menu did not expose the semantic SAMPLE EDIT route"; exit 1
 fi
-if ! tap_ui_description "$SAMPLE_CROP_MENU_XML" "SAMPLE mode"; then
+if ! tap_ui_description "$SAMPLE_CROP_MENU_XML" "MPC Menu SAMPLE EDIT"; then
   echo "ERROR: SAMPLE EDIT Menu route was not actionable"; exit 1
 fi
 if ! wait_for_ui_description "$SAMPLE_CROP_BASELINE_XML" "$SAMPLE_CROP_BASELINE_REMOTE" \
