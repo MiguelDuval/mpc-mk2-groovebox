@@ -507,8 +507,56 @@ jobs:
           archive: false
           if-no-files-found: error
 
-      - name: Validate Android UI smoke shell syntax
-        run: bash -n tests/android_ui_smoke.sh
+      - name: Validate Android UI smoke syntax and evidence contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n tests/android_ui_smoke.sh
+          python3 - <<'PY'
+          import fnmatch
+          import re
+          from pathlib import Path
+
+          smoke = Path("tests/android_ui_smoke.sh").read_text(encoding="utf-8")
+          workflow = Path(".github/workflows/android-build.yml").read_text(encoding="utf-8")
+          start = smoke.index('capture_ui_screenshot() {')
+          end = smoke.index("\\n}", start) + 2
+          helper = smoke[start:end]
+          case_start = helper.index('case "$filename" in')
+          case_end = helper.index(')\\n      adb_bounded', case_start)
+          case_lines = helper[case_start:case_end].splitlines()[1:]
+          patterns = []
+          for line in case_lines:
+              item = line.strip().rstrip("\\\\").strip()
+              item = item.removesuffix("|").removesuffix(")").strip()
+              if re.fullmatch(r"mpc-groovebox-[A-Za-z0-9.*_-]+\\.png", item):
+                  patterns.append(item)
+
+          required = sorted(set(re.findall(
+              r"\\btest -s (/tmp/[A-Za-z0-9_.-]+\\.png)\\b", smoke
+          )))
+          missing_capture = [
+              path for path in required
+              if not any(fnmatch.fnmatchcase(Path(path).name, p) for p in patterns)
+          ]
+          upload_marker = "- name: Upload MPC UI visual evidence"
+          upload = workflow.split(upload_marker, 1)[1]
+          upload_patterns = re.findall(r"^\\s+(/tmp/[^\\s]+)\\s*$", upload, re.M)
+          missing_upload = [
+              path for path in required
+              if not any(fnmatch.fnmatchcase(path, p) for p in upload_patterns)
+          ]
+          if missing_capture or missing_upload:
+              if missing_capture:
+                  print("Required smoke screenshots are not captured: " + ", ".join(missing_capture))
+              if missing_upload:
+                  print("Required smoke screenshots are not uploaded: " + ", ".join(missing_upload))
+              raise SystemExit(1)
+          print(
+              f"Shell syntax OK; {len(required)} mandatory screenshot paths are "
+              f"captured and uploaded. {len(patterns)} screenshot allowlist patterns."
+          )
+          PY
 
       - name: Run Android emulator smoke test
         timeout-minutes: 35
