@@ -543,7 +543,7 @@ jobs:
               for line in smoke.splitlines()
               if (match := re.search(r"test -s (/tmp/[A-Za-z0-9_.-]+[.]png)", line))
           })
-          upload_marker = "- name: Upload MPC UI visual evidence"
+          upload_marker = " " * 6 + "- name: Upload MPC UI visual evidence"
           upload = workflow.split(upload_marker, 1)[1]
           upload_patterns = [
               line.strip() for line in upload.splitlines()
