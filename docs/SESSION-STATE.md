@@ -1,25 +1,24 @@
 # Session State — MPC MkII Groovebox
 
 **Checkpoint date:** 2026-10-21  
-**Purpose:** handoff checkpoint; mutable status is reconciled against live GitHub before each change.
+**Purpose:** current handoff checkpoint; reconcile status against exact-SHA GitHub evidence before each change.
 
 ## Latest source and verification state
 
-### Live checkpoint — Browser/Sample Edit acceptance advances; Project UI hierarchy blocks full smoke
+### Live checkpoint — Build #3051
 
-- PR #23 remains **OPEN** on `feature/mpc-one-ui-fidelity`. HEAD `c721e93fde80e9bb0e45b94ce375ec17e20b2692` was tested by Build #3048 / run `39671703344`; the workflow failed at Android emulator smoke step 52. APK artifact `12379408203` (9,957,677 bytes; SHA-256 `a9f9fce7a4267b9e1f1457cc3be5df0c8fe8012f98c3a939df8392112b184caa`) and visual evidence ZIP `12380913218` (10,076,003 bytes; SHA-256 `50d8a83b6e0171d60cb199b00d5c4021088ab6ef361b089c9d6bd59beb7403cf`) were uploaded. `main` remains unchanged and `cancel-in-progress: false` is preserved.
-- **FAVORITE 1 real acceptance passed inside #3048 on that exact SHA:** the fresh root PNG/XML pair shows `Files on Android SDK built for x86_64` and visible `BBB-MPC-Browser-Favorite`; the log confirms the real row tap, isolated USER FOLDER/FAVORITE 1 SAF preferences, Browser WAV result, and force-stop/relaunch restoration. The complete workflow is nevertheless red due to the later Project startup/menu stage; do not label the entire CI or Project lifecycle green.
-- #3048 failure: after force-stopping/relaunching the app into `project-persistence`, native startup and `MPC_MENU_RENDER_COMPLETE` completed; a rendered Menu screenshot was captured. The immediately following standard `uiautomator dump` timed out after 8 seconds and no fresh Menu XML was produced. The prior tree XML remains from the earlier Main shell and cannot be relabelled as Menu evidence. The menu screen itself is visible in the screenshot, and subsequent actual tile tap plus native Project summary are the next acceptance steps. The current isolated change uses a bounded **compressed** hierarchy dump for this Project Menu checkpoint only, retaining mandatory fresh parseable XML rather than treating its absence as success.
-- SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 passed in #3048, with real touches and authoritative native getters: 3840→2840 PCM frames, and contiguous/non-overlapping CH4/CH8/CH16 destination ranges. USER FOLDER and FAVORITE 1 source/filter/preference/restart checks passed.
-- PR #29 current head `816e11a70a1368d63d0137c72aa4154774c5de7b`, Build #3049 / run `39672208687`, also failed later at the same Project Menu hierarchy dump. Importantly, the log shows **SAMP-010 itself passed** on that SHA: zoom-in 10–90%, zoom-out and RESET 0–100%, unchanged sample region/frame data, plus a real native Pad audition trigger. The whole PR remains draft/not integrated because exact-SHA full smoke still fails later.
-- PR #28 current head `d0eef888e33ef98d5a64ce05a2409672f6b6e763`, Build #3050 / run `39672408316`, failed at the same shared Project Menu hierarchy stage after Favorite 1 assignment/restoration; its native Project state/persistence tests passed in the workflow. That does not prove Android SAVE/SAVE AS/OPEN acceptance.
-- Full Project SAVE / SAVE AS / OPEN remains **PENDING**. After the Menu hierarchy is recoverable, the existing flow must complete actual SAF Save As → mutate → Open, exact canonical state including MIDI and Arrangement placement IDs/parameters, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-load atomicity and placement-free v1 compatibility. Physical MPC Studio MkII validation remains **PENDING**.
+- PR #23 HEAD `a593becb5f0259275b5b20b157edae3815f2729b`; Android Build #3051 / run `39677805700` failed at emulator smoke step 52. Builds #3046–#3051 failed at the same later Project Menu dump stage. PR remains open; `main` remains unchanged; the workflow preserves `cancel-in-progress: false`.
+- **Browser/FAVORITE 1 component acceptance is confirmed on exact SHA `c721e93fde80e9bb0e45b94ce375ec17e20b2692` in Build #3048:** matched provider-root PNG/XML, real breadcrumb/folder touches, separate saved URI preference keys, Browser WAV result and force-stop/relaunch restoration. SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 also passed with native getters on #3046–#3048.
+- Current blocker: in project-persistence mode the real MPC Menu renders and its screenshot is captured, but the compressed UiAutomator dump times out after 8 seconds. Missing/stale XML was not accepted. The logs show a completed Menu transition, but current process diagnostics do not prove the exact underlying Android framework cause.
+- Current implementation captures the **actual Android View tree**, on pre-draw in debug-only project-persistence mode, as explicitly provenance-labelled XML (`source=android-view-tree`, `page=MENU`) containing real bounds, text, content descriptions, visibility and clickability. Smoke validates ten visible enabled menu tiles, then touches the real `MPC Menu PROJECT` target by captured bounds and validates authoritative native Project summary. Missing/malformed XML still fails; the XML is not mislabelled as UiAutomator output.
+- PR #29 latest head `a7f59db3a582d01a67e70d2299232eb25e35dc05`; Build #3049 / run `39672208687` on earlier SHA `816e11a70a1368d63d0137c72aa4154774c5de7b` passed SAMP-010 zoom-in/out/reset and native Pad audition, then failed at the shared Project Menu dump. Latest head still needs exact-SHA verification against a compatible base; do not integrate it yet.
+- PR #28 latest head `d0eef888e33ef98d5a64ce05a2409672f6b6e763`; Build #3050 / run `39672408316` passed native Project persistence tests and Favorite assignment/restoration, then failed at the Menu dump. Full Android Project SAVE/SAVE AS/OPEN remains **PENDING**.
+- Physical MPC Studio MkII validation remains **PENDING** and is not implied by emulator results.
 
 ## Current execution queue — 2026-10-21
 
-1. Use one bounded compressed UiAutomator dump at the actual Project Menu checkpoint; require valid nonempty XML as before. Inspect the resulting exact-SHA run and continue the existing Project lifecycle until it either passes or exposes the next concrete failure.
-2. Keep PR #29 isolated until primary full smoke is green. Its zoom/audition subacceptance is now confirmed on run #3049, but do not integrate a branch that still fails the later shared smoke.
-3. Keep PR #28 isolated; native tests pass but end-to-end SAF acceptance remains pending.
+1. Verify the debug-only real View-tree XML and measured PROJECT tile tap on the new exact-SHA Android build. Continue real SAF Project lifecycle if it passes, preserving canonical state, overwrite, restart/Open, cancellation, malformed-load and v1 checks.
+2. While primary CI executes, keep PR #29 and PR #28 isolated; neither is integrated until primary Browser/Project acceptance is green.
 
 ## Completed in this session
 

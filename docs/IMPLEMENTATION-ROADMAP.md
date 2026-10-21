@@ -1,24 +1,22 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-21 (live PR and exact-SHA Actions govern)
+## CURRENT EXECUTION QUEUE — 2026-10-21
 
-### 1. Primary PR #23 — Project Menu accessibility dump is the next blocker
+### 1. Primary PR #23 — Project Menu hierarchy
 
-- Build #3048 / run `39671703344` on HEAD `c721e93fde80e9bb0e45b94ce375ec17e20b2692` failed at emulator smoke step 52. APK `12379408203` SHA-256 `a9f9fce7a4267b9e1f1457cc3be5df0c8fe8012f98c3a939df8392112b184caa`; visual evidence `12380913218` SHA-256 `50d8a83b6e0171d60cb199b00d5c4021088ab6ef361b089c9d6bd59beb7403cf`.
-- FAVORITE 1 passed inside #3048: root PNG/XML matched and showed the real provider header/folder row; the run verified actual Favorite selection, independent SAF preference keys, Browser WAV, and force-stop/relaunch restoration. SAMP-008 and CH4/CH8/CH16 passed with native PCM/range checks.
-- Failure is later: project-persistence startup emits `STARTUP_COMPLETE`, `PROJECT_TEST_FIXTURE_READY` and `MPC_MENU_RENDER_COMPLETE`; Menu screenshot is captured but the next standard UiAutomator dump times out after 8 seconds. The prior tree XML is stale Main evidence, not accepted Menu evidence. Try `uiautomator dump --compressed` for this checkpoint only; still require a fresh parseable XML and never treat missing XML as success.
-- After this, continue the existing real Project Save As → mutate → Open lifecycle, overwrite, restart/Open, cancellation invariance, malformed load atomicity and placement-free v1 compatibility. No acceptance assertion is removed.
-- Workflow setting `cancel-in-progress: false` stays unchanged.
+- Build #3051 / run `39677805700` on `a593becb5f0259275b5b20b157edae3815f2729b` failed at emulator smoke step 52. Builds #3046–#3051 stop at the Project Menu UiAutomator dump after its screenshot succeeds.
+- Browser/FAVORITE 1 passed as a component on exact SHA `c721e93fde80e9bb0e45b94ce375ec17e20b2692` / Build #3048, with matched root PNG/XML, real folder touch, saved URI and preferences, Browser WAV and force-stop/relaunch restoration. SAMP-008/009 passed via native getters.
+- Narrow fix: capture the real Android View tree at the Menu pre-draw in debug-only project-persistence mode, serialize it to explicitly provenance-labelled XML, validate ten visible enabled tile descriptions, capture the Menu PNG, then real-touch the `MPC Menu PROJECT` node with measured bounds from the current XML. Other screen-state dumps keep the UiAutomator path; absent/invalid XML is not accepted.
+- After this gate, finish real Project Save As → mutate → Open, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-file preservation and placement-free v1 canonical-state equality.
 
-### 2. Isolated PR #29 / #28
+### 2. Isolated PRs #29 / #28
 
-- PR #29 head `816e11a70a1368d63d0137c72aa4154774c5de7b`, Build #3049 / run `39672208687`, passed SAMP-010's measured zoom-in/out/RESET and real native audition checks; later it failed at the same shared Project Menu hierarchy dump. Keep it isolated until the entire primary smoke passes.
-- PR #28 head `d0eef888e33ef98d5a64ce05a2409672f6b6e763`, Build #3050 / run `39672408316`, passed native Project-state/persistence tests and Favorite assignment/restart checks, then hit the same Menu XML timeout. That does not equal a passing SAF Project lifecycle.
+- PR #29 latest head `a7f59db3a582d01a67e70d2299232eb25e35dc05`; SAMP-010 passed on earlier SHA `816e11a70a1368d63d0137c72aa4154774c5de7b`, but its full smoke failed at the shared Project Menu gate. Do not integrate before exact-SHA verification and green primary gates.
+- PR #28 latest head `d0eef888e33ef98d5a64ce05a2409672f6b6e763`; native persistence tests and Favorite checks passed, then its overall run failed at the same Menu dump.
 
-### 3. Gates that remain
+### 3. Non-negotiables
 
-- The browser/favorite portion is now demonstrated on exact-SHA #3048, but overall CI remains red and Project UI lifecycle is pending.
-- Physical MPC Studio MkII validation remains separate from emulator testing.
+- Preserve `cancel-in-progress: false`; do not modify `main`, rewrite history, weaken acceptance assertions, or imply physical MPC Studio MkII testing from emulator runs.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 
