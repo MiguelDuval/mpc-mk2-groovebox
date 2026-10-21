@@ -7387,20 +7387,49 @@ capture_stable_picker_state() {
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
   local evidence_prefix="${5:-document-tree}" root_stability_timeout="${6:-6}"
-  local dump_mode="${7:-standard}"
+  local dump_mode="${7:-standard}" root_pair_mode="${8:-stabilize}"
   local root_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root.png"
   local root_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-uiautomator.xml"
   local after_activation_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-activation.png"
   local after_activation_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-activation-uiautomator.xml"
   local after_activation_remote="${remote_path%.xml}-after-activation.xml"
 
-  # Builds #2723–#2726 produced incompatible viewport positions between a
-  # screenshot and the next UI dump. Do not guess another tap or keyboard path:
-  # first prove the hierarchy remains unchanged around a fresh screenshot.
-  if ! capture_stable_picker_state "$remote_path" "$root_xml" "$root_png" "$root_stability_timeout" "$folder_label" "$dump_mode"; then
-    echo "ERROR: could not establish a stable DocumentsUI provider-root state"
-    return 1
-  fi
+  # Default to the strict three-dump stable-capture protocol. The Favorite root
+  # path may reuse a paired snapshot only after the caller has captured a fresh
+  # hierarchy following a real breadcrumb tap, verified the provider-root title
+  # and visible target, then captured the screenshot with no intervening action.
+  # Repeated UiAutomator calls at this Android DocumentsUI root have stalled.
+  case "$root_pair_mode" in
+    stabilize)
+      if ! capture_stable_picker_state "$remote_path" "$root_xml" "$root_png" "$root_stability_timeout" "$folder_label" "$dump_mode"; then
+        echo "ERROR: could not establish a stable DocumentsUI provider-root state"
+        return 1
+      fi
+      ;;
+    reuse-fresh-pair)
+      if ! test -s "$root_xml" || ! test -s "$root_png"; then
+        echo "ERROR: prevalidated DocumentsUI root PNG/XML pair is missing"
+        return 1
+      fi
+      if ! python3 - "$root_xml" <<'PY_ROOT_PAIR'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+titles = [n.attrib.get("text", "").strip() for n in root.iter("node")
+          if n.attrib.get("resource-id") == "com.android.documentsui:id/header_title"]
+if len(titles) != 1 or not titles[0].startswith("Files on "):
+    raise SystemExit(f"root pair lacks a unique provider-root header: {titles!r}")
+PY_ROOT_PAIR
+      then
+        echo "ERROR: prevalidated DocumentsUI root hierarchy is not at provider root"
+        return 1
+      fi
+      ;;
+    *)
+      echo "ERROR: unsupported DocumentsUI root-pair mode: $root_pair_mode"
+      return 2
+      ;;
+  esac
   if ! picker_folder_row_fully_visible "$root_xml" "$folder_label"; then
     echo "ERROR: target SAF folder is not fully visible above the picker footer: $folder_label"
     return 1
@@ -10263,7 +10292,32 @@ PY_ROOT_HEADER
     cat "$FAVORITE_TREE_PICKER_XML"
     exit 1
   fi
-  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME" "favorite-tree" 30 compressed; then
+  # The hierarchy is fresh from the post-breadcrumb DocumentsUI state. Validate
+  # the exact root header and Favorite row again, capture the screenshot now, and
+  # preserve the current XML as its evidence mate before any further touch.
+  # Do not issue three more accessibility dumps at this known-failing root.
+  if ! python3 - "$FAVORITE_TREE_PICKER_XML" "$favorite_root_label" "$FAVORITE_FOLDER_NAME" <<'PY_VALIDATE_VISIBLE_ROOT'
+import sys
+import xml.etree.ElementTree as ET
+path, provider_label, folder_label = sys.argv[1:]
+root = ET.parse(path).getroot()
+titles = [n.attrib.get("text", "").strip() for n in root.iter("node")
+          if n.attrib.get("resource-id") == "com.android.documentsui:id/header_title"]
+if titles != ["Files on " + provider_label]:
+    raise SystemExit(f"provider-root header mismatch: expected {provider_label!r}, got {titles!r}")
+if not any(n.attrib.get("text", "").strip() == folder_label for n in root.iter("node")):
+    raise SystemExit(f"Favorite folder is missing from fresh root hierarchy: {folder_label!r}")
+PY_VALIDATE_VISIBLE_ROOT
+  then
+    echo "ERROR: fresh DocumentsUI state lost provider root or Favorite folder before evidence capture"; exit 1
+  fi
+  if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-root.png 10; then
+    echo "ERROR: could not capture screenshot after fresh Favorite provider-root hierarchy"; exit 1
+  fi
+  if ! cp -- "$FAVORITE_TREE_PICKER_XML" /tmp/mpc-groovebox-browser-favorite-tree-root-uiautomator.xml; then
+    echo "ERROR: could not preserve the fresh Favorite provider-root hierarchy"; exit 1
+  fi
+  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME" "favorite-tree" 30 compressed reuse-fresh-pair; then
     echo "ERROR: FAVORITE 1 picker did not navigate into the actual Favorite-only WAV folder"; exit 1
   fi
 fi

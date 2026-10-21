@@ -2,23 +2,23 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-21 (live PR head and exact-SHA Actions govern)
 
-### 1. Primary PR #23 — FAVORITE 1 DocumentsUI recovery (current red gate)
+### 1. Primary PR #23 — FAVORITE 1 DocumentsUI
 
-- Candidate PR #23 HEAD a2705476d68793a99bb799515ab16ccacc2ed928; Android Build #3046 / run 39664592692 is still in emulator step 52. APK artifact 12377642433 is uploaded (9,957,677 bytes; SHA-256 272e9348ccd5e4d5a78ba08927e9c6f0719ec2f16467a8b86693cb80a0906b4e); step 51 syntax/evidence preflight passed. Previous Build #3045 / run 39658221374 failed at step 52 on dabf66bc78c4312a033d72202d74d9ccf19d2fa0.
-- The #3045 paired milestone files disagree: the PNG shows AAA-MPC-Browser-Tree and Browser-Tree-Only.wav, while the XML with the same name contains provider-root content with BBB-MPC-Browser-Favorite. The real breadcrumb tap occurred at 19:23:35Z; bounded dumps failed afterwards, so no matching stable root screenshot/XML was produced. The process-list output filtered ordinary rows and proves no particular failure mode.
-- Build #3042 / run 39654368042 also reached the actual breadcrumb tap, then failed to obtain a usable root hierarchy. The recovery uses compressed bounded dumps for Favorite 1 root/child navigation and representative raw process rows. The root marker uses the observed DocumentsUI header title “Files on <provider-root label>”; at provider root, horizontal_breadcrumb is absent. Require a fresh matching PNG/XML, Favorite-only WAV, persistable URI grant, Browser result and force-stop/relaunch restoration. No timeout inflation or cached hierarchy is accepted.
-- SAMP-008 CROP, SAMP-009 CH4/CH8/CH16, Sample Edit→Browser and USER FOLDER filter/restore checks remain accepted only from their prior exact-SHA evidence; do not rewrite without a demonstrated regression.
+- Build #3046 / run `39664592692` on SHA `a2705476d68793a99bb799515ab16ccacc2ed928` and Build #3047 / run `39666355459` on SHA `dcbb5810200a34e4143d37edb49e73e12b69c36f` both failed at Android emulator smoke step 52.
+- Both runs did get a fresh DocumentsUI root hierarchy: it contained the root header, visible `BBB-MPC-Browser-Favorite` and `USE THIS FOLDER`. The failing stage was the subsequent `capture_stable_picker_state()` call inside `tap_ui_picker_folder_until_child()`, which attempted repeated dumps and timed out before producing the dedicated root PNG/XML. The picker-named PNG still depicts AAA and is not accepted root evidence.
+- Narrow recovery: leave the strict three-dump protocol as the default for all other callers. After the real breadcrumb tap and successful fresh root dump, revalidate the actual root header plus visible Favorite folder, capture a screenshot immediately, save the same current XML to the dedicated root evidence path, and let the existing helper use that explicitly prevalidated pair rather than repeating three more root dumps. Do not inflate timeouts. Continue to require real folder activation, child WAV, persistable URI grant, Browser indexing, separate favorite preference, and process-death restoration.
+- SAMP-008 CROP, SAMP-009 CH4/CH8/CH16, and USER FOLDER restoration/filter checks passed on the recent runs. FAVORITE 1 remains UNVERIFIED.
 
-### 2. Isolated PRs #29 / #28 — diagnose without integrating
+### 2. Isolated PRs #29 / #28
 
-- Draft PR #29 SAMP-010 current head 62f12da6516cb125f9905dab21d1a32b578882f5 has an isolated code fix. The prior SHA c5d1bdac79147a6628b9116b56aa21abd0b11c2a failed Build #3043 / 39656991761 because the viewport readout shifted the tab row from child index 3 to 4, while the panel helpers still truncated at index 4. The new fixed-child count preserves the tabs. No exact-SHA workflow exists for the new commit; PR #29 remains draft and mergeable=false against its stale base, so it is not accepted or integrated.
-- Draft PR #28 malformed-load atomicity exact SHA `d66d817af19764491c3bf3c3718f3952eba6b818`, Build #3044 / run `39657357881`, completed **FAILURE** at shared smoke step 52 later in FAVORITE 1. The native Project Persistence test step passed; overall smoke failure does not by itself invalidate that unit result or satisfy the end-to-end Project SAF lifecycle.
+- PR #29 current fix SHA `62f12da6516cb125f9905dab21d1a32b578882f5` preserves Sample Edit ENV/FILTER/LAYER tabs after adding viewport info. There is no workflow run for that exact SHA; PR remains draft and unmergeable against stale base. Do not integrate it yet.
+- PR #28 Build #3044 / run `39657357881` failed at the shared Favorite 1 stage. Native Project state/persistence tests steps 38/39 passed; this does not verify Android SAF lifecycle.
 
-### 3. Remaining primary gates
+### 3. Remaining gates
 
-- Keep `.github/workflows/android-build.yml` at `cancel-in-progress: false`; never cancel a useful run to accelerate the queue.
-- When Favorite 1 passes, accept real Project Save As → mutate → Open with exact canonical MIDI/Pattern-placement state, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-file rejection preserving active state, and placement-free v1 compatibility.
-- Do not integrate SAMP-010 until its own exact-SHA acceptance and primary Browser/Project gates are green. Physical MPC Studio MkII validation remains pending.
+- Keep `.github/workflows/android-build.yml` at `cancel-in-progress: false`.
+- After Favorite 1 passes, finish the existing real Project Save As → mutate → Open, overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-load preservation, and placement-free v1 checks.
+- Physical MPC Studio MkII testing remains separate from emulator acceptance.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 
