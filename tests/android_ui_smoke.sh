@@ -1077,6 +1077,14 @@ for required in 'PAN %+.2f' 'TUNE %+.1f'; do
   fi
 done
 
+if grep -Fq -- 'removeBelow(page, 4);' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Sample Edit panel rebuild would remove the permanent tab row after adding viewport status"
+  exit 1
+fi
+if [[ "$(grep -Fc -- 'removeBelow(page, 5);' "$MAIN_ACTIVITY_SOURCE")" -ne 4 ]]; then
+  echo "ERROR: all four Sample Edit editor panels must preserve header, waveform, region, viewport and tabs"
+  exit 1
+fi
 for required in \
   'Sample Edit waveform viewport' \
   'Sample Edit zoom waveform in' \

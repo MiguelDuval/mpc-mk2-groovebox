@@ -5098,7 +5098,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleEditPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, 5);
         if (sampleWaveform != null) {
             sampleWaveform.setEditable(true);
             sampleWaveform.setRecording(false);
@@ -5156,7 +5156,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleEnvelopePanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, 5);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         envelopeInfo = label("", 12, TEXT);
@@ -5184,7 +5184,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleFilterPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, 5);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         filterInfo = label("", 13, TEXT);
@@ -5231,7 +5231,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleLayerPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, 5);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         TextView layerInfo = label("", 12, TEXT);
