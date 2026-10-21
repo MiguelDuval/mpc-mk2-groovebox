@@ -229,6 +229,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView selectedPadInfo;
     private TextView sampleInfo;
     private TextView regionInfo;
+    private TextView sampleWaveformViewportInfo;
     private TextView envelopeInfo;
     private TextView filterInfo;
     private TextView recordingInfo;
@@ -5049,6 +5050,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(regionInfo, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
+        sampleWaveformViewportInfo = label("VIEW 0–100%", 10, MUTED);
+        sampleWaveformViewportInfo.setContentDescription(
+                "Sample Edit waveform viewport");
+        sampleWaveformViewportInfo.setPadding(dp(10), 0, dp(10), 0);
+        page.addView(sampleWaveformViewportInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
+        sampleWaveform.setOnViewportChangedListener(
+                this::refreshSampleWaveformViewportInfo);
+        refreshSampleWaveformViewportInfo(
+                sampleWaveform.viewportStartNormalized(),
+                sampleWaveform.viewportEndNormalized());
+
         LinearLayout tabs = row();
         tabs.addView(actionButton("EDIT", v -> showSampleEditPanel(page)), weight());
         tabs.addView(actionButton("ENV", v -> showSampleEnvelopePanel(page)), weight());
@@ -5085,7 +5098,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleEditPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, 5);
         if (sampleWaveform != null) {
             sampleWaveform.setEditable(true);
             sampleWaveform.setRecording(false);
@@ -5119,22 +5132,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Button chop16 = actionButton("CH16", v -> chop(16));
         chop16.setContentDescription("Sample Edit chop into 16 slices");
         row2.addView(chop16, weight());
-        row2.addView(actionButton("PLAY", v -> selectAndTriggerPad(selectedPad, 112)), weight());
-        row2.addView(actionButton("ZOOM+", v -> {
+        Button sampleEditPlay = actionButton("PLAY", v -> {
+            selectAndTriggerPad(selectedPad, 112);
+            if (sampleWaveform != null) {
+                refreshSampleWaveformViewportInfo(
+                        sampleWaveform.viewportStartNormalized(),
+                        sampleWaveform.viewportEndNormalized());
+            }
+        });
+        sampleEditPlay.setContentDescription("Sample Edit audition selected Pad");
+        row2.addView(sampleEditPlay, weight());
+        Button sampleZoomIn = actionButton("ZOOM+", v -> {
             if (sampleWaveform != null) sampleWaveform.zoomIn();
-        }), weight());
-        row2.addView(actionButton("ZOOM−", v -> {
+        });
+        sampleZoomIn.setContentDescription("Sample Edit zoom waveform in");
+        row2.addView(sampleZoomIn, weight());
+        Button sampleZoomOut = actionButton("ZOOM−", v -> {
             if (sampleWaveform != null) sampleWaveform.zoomOut();
-        }), weight());
-        row2.addView(actionButton("RESET", v -> {
+        });
+        sampleZoomOut.setContentDescription("Sample Edit zoom waveform out");
+        row2.addView(sampleZoomOut, weight());
+        Button sampleZoomReset = actionButton("RESET", v -> {
             if (sampleWaveform != null) sampleWaveform.resetZoom();
-        }), weight());
+        });
+        sampleZoomReset.setContentDescription("Sample Edit reset waveform zoom");
+        row2.addView(sampleZoomReset, weight());
         page.addView(row2, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
     }
 
     private void showSampleEnvelopePanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, 5);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         envelopeInfo = label("", 12, TEXT);
@@ -5162,7 +5190,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleFilterPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, 5);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         filterInfo = label("", 13, TEXT);
@@ -5209,7 +5237,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleLayerPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, 5);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         TextView layerInfo = label("", 12, TEXT);
@@ -11109,6 +11137,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
         long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
         regionInfo.setText("Region " + start + " → " + end + "  /  " + total + " frames");
+    }
+
+    private void refreshSampleWaveformViewportInfo(
+            float startNormalized, float endNormalized) {
+        if (sampleWaveformViewportInfo == null) return;
+        int startPercent = Math.round(startNormalized * 100f);
+        int endPercent = Math.round(endNormalized * 100f);
+        final long totalFrames = nativeAudioGetPadSampleFrameCount(
+                selectedPad, selectedLayer);
+        final long regionStart = totalFrames > 0
+                ? nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer) : 0L;
+        final long regionEnd = totalFrames > 0
+                ? nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer) : 0L;
+        sampleWaveformViewportInfo.setText(String.format(
+                Locale.ROOT, "VIEW %d–%d%%", startPercent, endPercent));
+        // This accessibility projection reads live native sampler state whenever
+        // the visual viewport changes, so acceptance can prove zoom is non-destructive.
+        sampleWaveformViewportInfo.setContentDescription(String.format(
+                Locale.ROOT,
+                "Sample Edit waveform viewport %d to %d percent; sample region %d to %d of %d frames",
+                startPercent, endPercent, regionStart, regionEnd, totalFrames));
     }
 
     private void refreshEnvelopeInfo() {

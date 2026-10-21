@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -36,6 +37,14 @@ const mpc::domain::PatternPlacement* findPlacement(
         if (placement.id == id) return &placement;
     }
     return nullptr;
+}
+
+std::string readFileBytes(const std::string& path) {
+    std::ifstream input(path, std::ios::binary);
+    assert(input.good());
+    return std::string(
+            std::istreambuf_iterator<char>(input),
+            std::istreambuf_iterator<char>());
 }
 
 mpc::domain::Project makeProject() {
@@ -148,6 +157,77 @@ int main() {
     assert(serialized.find("PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120")
             != std::string::npos);
 
+    // Nested intervals are overlaps even when their IDs and Pattern references
+    // are otherwise valid; validation must reject them regardless of vector order.
+    auto overlappingProject = source;
+    auto& overlappingPlacements =
+            overlappingProject.sequences[0].tracks[0].placements;
+    overlappingPlacements[0].lengthTicks = 960;
+    overlappingPlacements[1].startTick = 240;
+    overlappingPlacements[1].lengthTicks = 480;
+    overlappingPlacements[1].sourceOffsetTicks = 120;
+    std::string placementError;
+    assert(persistence::serializeProject(overlappingProject, &placementError).empty());
+    assert(placementError.find("overlap") != std::string::npos);
+
+    // The loader caps placements at 65,536 per Track. The writer must reject
+    // the same oversized collection before attempting quadratic validation.
+    auto oversizedProject = source;
+    const std::size_t oversizedCount = 65'537;
+    auto& oversizedSequence = oversizedProject.sequences[0];
+    oversizedSequence.lengthTicks = static_cast<decltype(oversizedSequence.lengthTicks)>(
+            oversizedCount * 2);
+    auto& oversizedTrack = oversizedSequence.tracks[0];
+    oversizedTrack.patterns[0].lengthTicks =
+            static_cast<decltype(oversizedTrack.patterns[0].lengthTicks)>(oversizedCount * 2);
+    oversizedTrack.placements.clear();
+    oversizedTrack.placements.reserve(oversizedCount);
+    for (std::size_t i = 0; i < oversizedCount; ++i) {
+        domain::PatternPlacement placement;
+        placement.id = "bulk-clip-" + std::to_string(i);
+        placement.patternId = oversizedTrack.patterns[0].id;
+        placement.startTick = static_cast<decltype(placement.startTick)>(i * 2);
+        placement.lengthTicks = 1;
+        placement.sourceOffsetTicks = 0;
+        oversizedTrack.placements.push_back(placement);
+    }
+    placementError.clear();
+    assert(persistence::serializeProject(oversizedProject, &placementError).empty());
+    assert(placementError.find("limit") != std::string::npos);
+
+    // The exact supported limit remains valid. This exercises the sorted
+    // O(n log n) overlap check on a large, non-overlapping Arrangement and
+    // confirms deterministic v2 round-trip serialization at the boundary.
+    auto maximumProject = source;
+    constexpr std::size_t maximumCount = 65'536;
+    auto& maximumSequence = maximumProject.sequences[0];
+    maximumSequence.lengthTicks = static_cast<decltype(maximumSequence.lengthTicks)>(
+            maximumCount * 2);
+    auto& maximumTrack = maximumSequence.tracks[0];
+    maximumTrack.patterns[0].lengthTicks =
+            static_cast<decltype(maximumTrack.patterns[0].lengthTicks)>(maximumCount * 2);
+    maximumTrack.placements.clear();
+    maximumTrack.placements.reserve(maximumCount);
+    for (std::size_t i = 0; i < maximumCount; ++i) {
+        domain::PatternPlacement placement;
+        placement.id = "max-clip-" + std::to_string(i);
+        placement.patternId = maximumTrack.patterns[0].id;
+        placement.startTick = static_cast<decltype(placement.startTick)>(i * 2);
+        placement.lengthTicks = 1;
+        placement.sourceOffsetTicks = 0;
+        maximumTrack.placements.push_back(placement);
+    }
+    placementError.clear();
+    const auto maximumBytes = persistence::serializeProject(maximumProject, &placementError);
+    assert(!maximumBytes.empty());
+    assert(placementError.empty());
+    assert(maximumBytes.find("PLACEMENT \"max-clip-65535\"") != std::string::npos);
+    domain::Project maximumLoaded;
+    assert(persistence::deserializeProject(maximumBytes, maximumLoaded, &placementError));
+    assert(placementError.empty());
+    assert(maximumLoaded.sequences[0].tracks[0].placements.size() == maximumCount);
+    assert(persistence::serializeProject(maximumLoaded, &placementError) == maximumBytes);
+
     const auto filePath = (std::filesystem::temp_directory_path()
             / "mpc-project-persistence-test.mpcproj").string();
     std::remove(filePath.c_str());
@@ -156,6 +236,17 @@ int main() {
     std::string error;
     assert(persistence::saveProjectFile(source, filePath, &error));
     assert(error.empty());
+
+    // A rejected save must not truncate or replace the last valid Project.
+    const auto savedFileBeforeInvalidSave = readFileBytes(filePath);
+    assert(!savedFileBeforeInvalidSave.empty());
+    auto invalidSaveProject = source;
+    invalidSaveProject.sequences[0].tracks[0].placements[2].id = "clip-b";
+    assert(!persistence::saveProjectFile(
+            invalidSaveProject, filePath, &error));
+    assert(!error.empty());
+    assert(readFileBytes(filePath) == savedFileBeforeInvalidSave);
+    assert(!std::filesystem::exists(filePath + ".tmp"));
 
     // Load from disk into a distinct project instance. This is a real file
     // round trip, not a re-render of the original in-memory model.
@@ -285,10 +376,64 @@ int main() {
     assert(legacyNote.ratchet == 2);
     assert(legacyNote.nudgeTicks == -3);
 
-    const auto loadedIdBeforeFailure = loaded.id;
+    // Any rejected load must preserve the whole active project, not just
+    // its user-visible name/ID. Exercise failures before parsing, mid-record,
+    // and after a fully parsed but invalid Pattern-placement graph.
+    const auto loadedBytesBeforeFailure = persistence::serializeProject(loaded, &error);
+    assert(!loadedBytesBeforeFailure.empty());
+
     assert(!persistence::deserializeProject(
             "MPCMK2_PROJECT 99\n", loaded, &error));
-    assert(loaded.id == loadedIdBeforeFailure);
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded, &error) == loadedBytesBeforeFailure);
+
+    const std::string truncatedAfterCandidateCreation =
+            "MPCMK2_PROJECT 2\n"
+            "PROJECT \"partial-project\" \"Partial Project\"\n"
+            "SAMPLES 1\n"
+            "SAMPLE \"partial-sample\"";
+    assert(!persistence::deserializeProject(
+            truncatedAfterCandidateCreation, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded, &error) == loadedBytesBeforeFailure);
+
+    std::string duplicatePlacementId = serialized;
+    const std::string originalClipC =
+            "PLACEMENT \"clip-c\" \"pattern-shared-01\" 1920 960 360";
+    const std::string duplicateClipB =
+            "PLACEMENT \"clip-b\" \"pattern-shared-01\" 1920 960 360";
+    const auto clipCPosition = duplicatePlacementId.find(originalClipC);
+    assert(clipCPosition != std::string::npos);
+    duplicatePlacementId.replace(
+            clipCPosition, originalClipC.size(), duplicateClipB);
+    assert(!persistence::deserializeProject(duplicatePlacementId, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded, &error) == loadedBytesBeforeFailure);
+
+    // A structurally valid document with overlapping timeline intervals fails
+    // only after the candidate has been fully decoded. The active Project must
+    // remain byte-for-byte unchanged when final graph validation rejects it.
+    std::string overlappingPlacementDocument = serialized;
+    const std::string originalClipA =
+            "PLACEMENT \"clip-a\" \"pattern-shared-01\" 0 480 0";
+    const std::string overlappingClipA =
+            "PLACEMENT \"clip-a\" \"pattern-shared-01\" 0 960 0";
+    const std::string originalClipB =
+            "PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120";
+    const std::string overlappingClipB =
+            "PLACEMENT \"clip-b\" \"pattern-shared-01\" 240 480 120";
+    auto clipAPosition = overlappingPlacementDocument.find(originalClipA);
+    auto clipBPosition = overlappingPlacementDocument.find(originalClipB);
+    assert(clipAPosition != std::string::npos);
+    assert(clipBPosition != std::string::npos);
+    overlappingPlacementDocument.replace(
+            clipAPosition, originalClipA.size(), overlappingClipA);
+    overlappingPlacementDocument.replace(
+            clipBPosition, originalClipB.size(), overlappingClipB);
+    assert(!persistence::deserializeProject(
+            overlappingPlacementDocument, loaded, &error));
+    assert(error.find("overlap") != std::string::npos);
+    assert(persistence::serializeProject(loaded, &error) == loadedBytesBeforeFailure);
 
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());

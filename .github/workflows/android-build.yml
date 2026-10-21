@@ -155,6 +155,7 @@ jobs:
           gradle --no-daemon :app:testDebugUnitTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcStudioMk2LcdRendererTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcWaveformZoomPolicyTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcSequenceStepPagePolicyTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcModeRegistryTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest
@@ -550,6 +551,32 @@ jobs:
               if line.strip().startswith("/tmp/")
           ]
 
+          # These screenshots are declared via shell variables and then checked
+          # in an evidence loop, so regex-scanning literal "test -s /tmp/..." lines
+          # alone would silently omit them from this preflight contract.
+          samp010_pngs = [
+              "/tmp/mpc-groovebox-sample-zoom-before.png",
+              "/tmp/mpc-groovebox-sample-zoom-in.png",
+              "/tmp/mpc-groovebox-sample-zoom-out.png",
+              "/tmp/mpc-groovebox-sample-zoom-reset.png",
+              "/tmp/mpc-groovebox-sample-zoom-audition.png",
+          ]
+          samp010_xmls = [
+              "/tmp/mpc-groovebox-sample-zoom-before-uiautomator.xml",
+              "/tmp/mpc-groovebox-sample-zoom-in-uiautomator.xml",
+              "/tmp/mpc-groovebox-sample-zoom-out-uiautomator.xml",
+              "/tmp/mpc-groovebox-sample-zoom-reset-uiautomator.xml",
+              "/tmp/mpc-groovebox-sample-zoom-audition-uiautomator.xml",
+          ]
+          missing_samp010_declarations = [
+              path for path in samp010_pngs + samp010_xmls if path not in smoke
+          ]
+          missing_samp010_xml_upload = [
+              path for path in samp010_xmls
+              if not any(fnmatch.fnmatchcase(path, pattern) for pattern in upload_patterns)
+          ]
+          required = sorted(set(required) | set(samp010_pngs))
+
           missing_capture = [
               path for path in required
               if not any(fnmatch.fnmatchcase(Path(path).name, pattern) for pattern in patterns)
@@ -558,11 +585,15 @@ jobs:
               path for path in required
               if not any(fnmatch.fnmatchcase(path, pattern) for pattern in upload_patterns)
           ]
-          if missing_capture or missing_upload:
+          if missing_capture or missing_upload or missing_samp010_declarations or missing_samp010_xml_upload:
               if missing_capture:
                   print("Required smoke screenshots are not captured: " + ", ".join(missing_capture))
               if missing_upload:
                   print("Required smoke screenshots are not uploaded: " + ", ".join(missing_upload))
+              if missing_samp010_declarations:
+                  print("SAMP-010 evidence declaration is missing: " + ", ".join(missing_samp010_declarations))
+              if missing_samp010_xml_upload:
+                  print("SAMP-010 accessibility evidence is not uploaded: " + ", ".join(missing_samp010_xml_upload))
               raise SystemExit(1)
           print(
               f"Shell syntax OK; {len(required)} mandatory screenshot paths are "
@@ -695,6 +726,8 @@ jobs:
             /tmp/mpc-groovebox-track-edit-filter-cutoff-changed-uiautomator.xml
             /tmp/mpc-groovebox-sample-browser-return.png
             /tmp/mpc-groovebox-sample-browser-return-uiautomator.xml
+            /tmp/mpc-groovebox-sample-zoom-*.png
+            /tmp/mpc-groovebox-sample-zoom*-uiautomator.xml
             /tmp/mpc-groovebox-sample-crop-*.png
             /tmp/mpc-groovebox-sample-crop*-uiautomator.xml
             /tmp/mpc-groovebox-sample-chop-*.png
