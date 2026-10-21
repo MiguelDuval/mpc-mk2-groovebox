@@ -155,6 +155,7 @@ jobs:
           gradle --no-daemon :app:testDebugUnitTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcStudioMk2LcdRendererTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcWaveformZoomPolicyTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcSequenceStepPagePolicyTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcModeRegistryTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest

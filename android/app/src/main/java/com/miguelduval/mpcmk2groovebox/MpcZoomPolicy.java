@@ -17,6 +17,24 @@ final class MpcZoomPolicy {
         return clamp(span * STEP_FACTOR, MIN_HORIZONTAL_SPAN, MAX_HORIZONTAL_SPAN);
     }
 
+    /**
+     * Keeps the viewport width independent from the sample's editable Start/End
+     * region. The same bounds are shared by button zoom and pinch zoom.
+     */
+    static float clampHorizontalSpan(float span) {
+        return clamp(span, MIN_HORIZONTAL_SPAN, MAX_HORIZONTAL_SPAN);
+    }
+
+    /**
+     * Computes a normalized viewport start around a focus point without allowing
+     * the visible range to cross the full-sample boundaries.
+     */
+    static float viewportStartForCenter(float center, float span) {
+        final float boundedSpan = clampHorizontalSpan(span);
+        final float boundedCenter = clamp(center, 0.0f, 1.0f);
+        return clamp(boundedCenter - boundedSpan * 0.5f, 0.0f, 1.0f - boundedSpan);
+    }
+
     static float zoomVerticalIn(float value) {
         return clamp(value * STEP_FACTOR, MIN_VERTICAL_ZOOM, MAX_VERTICAL_ZOOM);
     }
@@ -26,6 +44,8 @@ final class MpcZoomPolicy {
     }
 
     private static float clamp(float value, float min, float max) {
+        if (Float.isNaN(value) || value == Float.NEGATIVE_INFINITY) return min;
+        if (value == Float.POSITIVE_INFINITY) return max;
         return Math.max(min, Math.min(max, value));
     }
 }

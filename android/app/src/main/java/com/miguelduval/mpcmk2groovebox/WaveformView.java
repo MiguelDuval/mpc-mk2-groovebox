@@ -258,12 +258,9 @@ public final class WaveformView extends View {
     }
 
     private void zoomAround(float center, float factor) {
-        final float span = clamp(
-                (viewportEnd - viewportStart) * factor,
-                MpcZoomPolicy.MIN_HORIZONTAL_SPAN,
-                MpcZoomPolicy.MAX_HORIZONTAL_SPAN);
-        final float start = clamp(
-                center - span * 0.5f, 0f, 1f - span);
+        final float span = MpcZoomPolicy.clampHorizontalSpan(
+                (viewportEnd - viewportStart) * factor);
+        final float start = MpcZoomPolicy.viewportStartForCenter(center, span);
         setViewport(start, start + span);
     }
 
