@@ -238,6 +238,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final Handler waveformUiHandler = new Handler(Looper.getMainLooper());
     private Runnable recordingWaveformUpdater;
     private WaveformView sampleWaveform;
+    private TextView sampleAuditionStatus;
+    private String sampleAuditionStatusText = "READY";
     private WaveformView mainTrackWaveform;
     private Button mainTrackSamplePrimaryButton;
     private Button mainTrackSampleActionButton;
@@ -5037,11 +5039,33 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(dp(82), dp(34)));
         page.addView(header);
 
+        FrameLayout waveformContainer = new FrameLayout(this);
         sampleWaveform = new WaveformView(this);
         sampleWaveform.setContentDescription("Sample waveform editor");
         sampleWaveform.setEditable(true);
         sampleWaveform.setMinimumHeight(dp(144));
-        page.addView(sampleWaveform, new LinearLayout.LayoutParams(
+        waveformContainer.addView(sampleWaveform, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // Keep Pad audition feedback visible inside Sample Edit without making
+        // the hidden global status bar reappear over the canonical Main shell.
+        sampleAuditionStatus = label(sampleAuditionStatusText, 10, TEXT);
+        sampleAuditionStatus.setContentDescription("Sample Edit audition status");
+        sampleAuditionStatus.setBackground(strokeBackground(SURFACE_2, LINE, 4));
+        sampleAuditionStatus.setPadding(dp(8), 0, dp(8), 0);
+        sampleAuditionStatus.setGravity(Gravity.CENTER_VERTICAL);
+        sampleAuditionStatus.setClickable(false);
+        sampleAuditionStatus.setFocusable(false);
+        sampleAuditionStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        sampleAuditionStatus.setVisibility(
+                "READY".equals(sampleAuditionStatusText) ? View.GONE : View.VISIBLE);
+        FrameLayout.LayoutParams auditionStatusLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(22),
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        auditionStatusLp.topMargin = dp(6);
+        waveformContainer.addView(sampleAuditionStatus, auditionStatusLp);
+        page.addView(waveformContainer, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         regionInfo = label("", 12, MUTED);
@@ -11065,6 +11089,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return row;
     }
 
+    private void updateSampleAuditionStatus(String text) {
+        if (!"SAMPLE".equals(currentPage)) return;
+        sampleAuditionStatusText = text == null ? "" : text;
+        if (sampleAuditionStatus != null) {
+            sampleAuditionStatus.setText(sampleAuditionStatusText);
+            sampleAuditionStatus.setVisibility(
+                    sampleAuditionStatusText.isEmpty()
+                            || "READY".equals(sampleAuditionStatusText)
+                            ? View.GONE : View.VISIBLE);
+        }
+    }
+
     private void selectAndTriggerPad(int pad, int velocity) {
         selectedPad = pad;
         if (navigationController != null) {
@@ -11075,17 +11111,53 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final String startResult = nativeAudioStart();
             if (startResult == null
                     || startResult.toLowerCase(Locale.ROOT).contains("failed")) {
-                setBottomStatus(startResult == null
-                        ? "Audio output unavailable"
-                        : startResult);
+                final String failure = startResult == null
+                        ? "Audio output unavailable" : startResult;
+                setBottomStatus(failure);
+                updateSampleAuditionStatus("AUDITION FAILED • Pad " + (pad + 1));
+                Log.i(TAG, "SAMPLE_AUDITION_FAILED pad=" + (pad + 1)
+                        + " velocity=" + velocity + " reason=" + failure
+                        + " statusVisible=" + (sampleAuditionStatus != null
+                        && sampleAuditionStatus.getVisibility() == View.VISIBLE)
+                        + " statusText=" + sampleAuditionStatusText);
                 return;
             }
             nativeAudioTriggerPad(pad, velocity);
-            setBottomStatus("AUDITION • Pad " + (pad + 1)
-                    + " • velocity " + velocity
-                    + " | " + nativeAudioStatus());
+            final String auditionStatus = "AUDITION • Pad " + (pad + 1)
+                    + " • velocity " + velocity;
+            updateSampleAuditionStatus(auditionStatus);
+            final String audioStatus = nativeAudioStatus();
+            setBottomStatus(auditionStatus + " | " + audioStatus);
+
+            // This marker is emitted only after the native trigger call and the
+            // authoritative sample/region getters. It lets the smoke prove the
+            // action even when Android 16 temporarily stalls UIAutomator dumps.
+            final long regionStart = nativeAudioGetPadSampleRegionStart(pad, selectedLayer);
+            final long regionEnd = nativeAudioGetPadSampleRegionEnd(pad, selectedLayer);
+            final long frameCount = nativeAudioGetPadSampleFrameCount(pad, selectedLayer);
+            final float viewportStart = sampleWaveform == null
+                    ? -1.0f : sampleWaveform.viewportStartNormalized();
+            final float viewportEnd = sampleWaveform == null
+                    ? -1.0f : sampleWaveform.viewportEndNormalized();
+            final boolean statusVisible = "SAMPLE".equals(currentPage)
+                    && sampleAuditionStatus != null
+                    && sampleAuditionStatus.getVisibility() == View.VISIBLE;
+            Log.i(TAG, "SAMPLE_AUDITION_TRIGGER pad=" + (pad + 1)
+                    + " velocity=" + velocity
+                    + " layer=" + (selectedLayer + 1)
+                    + " regionStart=" + regionStart
+                    + " regionEnd=" + regionEnd
+                    + " frameCount=" + frameCount
+                    + " viewportStart=" + viewportStart
+                    + " viewportEnd=" + viewportEnd
+                    + " statusVisible=" + statusVisible
+                    + " statusText=" + sampleAuditionStatusText
+                    + " audioStatus=" + audioStatus);
         } else {
             setBottomStatus("Audio engine still starting");
+            updateSampleAuditionStatus("AUDITION WAIT • Pad " + (pad + 1));
+            Log.i(TAG, "SAMPLE_AUDITION_FAILED pad=" + (pad + 1)
+                    + " velocity=" + velocity + " reason=Audio engine still starting");
         }
     }
 
