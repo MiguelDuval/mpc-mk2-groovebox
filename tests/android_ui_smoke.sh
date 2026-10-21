@@ -10714,7 +10714,7 @@ PROJECT_MENU_PNG="/tmp/mpc-groovebox-project-menu.png"
 if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
   echo "ERROR: could not capture rendered MPC Menu screenshot"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MENU_XML"; then
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MENU_XML" 8 compressed; then
   echo "ERROR: could not capture rendered MPC Menu hierarchy"; exit 1
 fi
 # The captured screenshot proves Menu is visible. The UIAutomator snapshot can

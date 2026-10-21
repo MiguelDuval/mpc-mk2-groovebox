@@ -1,24 +1,24 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-21 (live PR head and exact-SHA Actions govern)
+## CURRENT EXECUTION QUEUE — 2026-10-21 (live PR and exact-SHA Actions govern)
 
-### 1. Primary PR #23 — FAVORITE 1 DocumentsUI
+### 1. Primary PR #23 — Project Menu accessibility dump is the next blocker
 
-- Build #3046 / run `39664592692` on SHA `a2705476d68793a99bb799515ab16ccacc2ed928` and Build #3047 / run `39666355459` on SHA `dcbb5810200a34e4143d37edb49e73e12b69c36f` both failed at Android emulator smoke step 52.
-- Both runs did get a fresh DocumentsUI root hierarchy: it contained the root header, visible `BBB-MPC-Browser-Favorite` and `USE THIS FOLDER`. The failing stage was the subsequent `capture_stable_picker_state()` call inside `tap_ui_picker_folder_until_child()`, which attempted repeated dumps and timed out before producing the dedicated root PNG/XML. The picker-named PNG still depicts AAA and is not accepted root evidence.
-- Narrow recovery: leave the strict three-dump protocol as the default for all other callers. After the real breadcrumb tap and successful fresh root dump, revalidate the actual root header plus visible Favorite folder, capture a screenshot immediately, save the same current XML to the dedicated root evidence path, and let the existing helper use that explicitly prevalidated pair rather than repeating three more root dumps. Do not inflate timeouts. Continue to require real folder activation, child WAV, persistable URI grant, Browser indexing, separate favorite preference, and process-death restoration.
-- SAMP-008 CROP, SAMP-009 CH4/CH8/CH16, and USER FOLDER restoration/filter checks passed on the recent runs. FAVORITE 1 remains UNVERIFIED.
+- Build #3048 / run `39671703344` on HEAD `c721e93fde80e9bb0e45b94ce375ec17e20b2692` failed at emulator smoke step 52. APK `12379408203` SHA-256 `a9f9fce7a4267b9e1f1457cc3be5df0c8fe8012f98c3a939df8392112b184caa`; visual evidence `12380913218` SHA-256 `50d8a83b6e0171d60cb199b00d5c4021088ab6ef361b089c9d6bd59beb7403cf`.
+- FAVORITE 1 passed inside #3048: root PNG/XML matched and showed the real provider header/folder row; the run verified actual Favorite selection, independent SAF preference keys, Browser WAV, and force-stop/relaunch restoration. SAMP-008 and CH4/CH8/CH16 passed with native PCM/range checks.
+- Failure is later: project-persistence startup emits `STARTUP_COMPLETE`, `PROJECT_TEST_FIXTURE_READY` and `MPC_MENU_RENDER_COMPLETE`; Menu screenshot is captured but the next standard UiAutomator dump times out after 8 seconds. The prior tree XML is stale Main evidence, not accepted Menu evidence. Try `uiautomator dump --compressed` for this checkpoint only; still require a fresh parseable XML and never treat missing XML as success.
+- After this, continue the existing real Project Save As → mutate → Open lifecycle, overwrite, restart/Open, cancellation invariance, malformed load atomicity and placement-free v1 compatibility. No acceptance assertion is removed.
+- Workflow setting `cancel-in-progress: false` stays unchanged.
 
-### 2. Isolated PRs #29 / #28
+### 2. Isolated PR #29 / #28
 
-- PR #29 current fix SHA `62f12da6516cb125f9905dab21d1a32b578882f5` preserves Sample Edit ENV/FILTER/LAYER tabs after adding viewport info. There is no workflow run for that exact SHA; PR remains draft and unmergeable against stale base. Do not integrate it yet.
-- PR #28 Build #3044 / run `39657357881` failed at the shared Favorite 1 stage. Native Project state/persistence tests steps 38/39 passed; this does not verify Android SAF lifecycle.
+- PR #29 head `816e11a70a1368d63d0137c72aa4154774c5de7b`, Build #3049 / run `39672208687`, passed SAMP-010's measured zoom-in/out/RESET and real native audition checks; later it failed at the same shared Project Menu hierarchy dump. Keep it isolated until the entire primary smoke passes.
+- PR #28 head `d0eef888e33ef98d5a64ce05a2409672f6b6e763`, Build #3050 / run `39672408316`, passed native Project-state/persistence tests and Favorite assignment/restart checks, then hit the same Menu XML timeout. That does not equal a passing SAF Project lifecycle.
 
-### 3. Remaining gates
+### 3. Gates that remain
 
-- Keep `.github/workflows/android-build.yml` at `cancel-in-progress: false`.
-- After Favorite 1 passes, finish the existing real Project Save As → mutate → Open, overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-load preservation, and placement-free v1 checks.
-- Physical MPC Studio MkII testing remains separate from emulator acceptance.
+- The browser/favorite portion is now demonstrated on exact-SHA #3048, but overall CI remains red and Project UI lifecycle is pending.
+- Physical MPC Studio MkII validation remains separate from emulator testing.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 
