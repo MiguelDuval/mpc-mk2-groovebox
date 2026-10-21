@@ -1791,7 +1791,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -2022,34 +2022,63 @@ PY
 
 cleanup_stale_device_uiautomator() {
   # adb_bounded kills the host adb process group, not necessarily the remote
-  # com.android.commands.uiautomator.Launcher that adb shell started. Android
-  # exposes the runner inconsistently across ps implementations (NAME vs ARGS),
-  # so match both columns and never kill DocumentsUI or unrelated app processes.
-  local ps_output pid
-  ps_output="$(adb_bounded 3 shell 'ps -A -o PID,NAME,ARGS 2>/dev/null' 2>/dev/null || true)"
+  # com.android.commands.uiautomator.Launcher that adb shell started. Some Android
+  # images reject the -o PID,NAME,ARGS format; query both supported process views.
+  # Match only the UiAutomator runner, never DocumentsUI or unrelated processes.
+  local ps_output pid matched_pids
+  ps_output="$(adb_bounded 3 shell 'ps -A -o PID,NAME,ARGS 2>/dev/null; ps -A 2>/dev/null' 2>/dev/null || true)"
+  matched_pids="$(printf '%s\n' "$ps_output" | awk '
+    $1 == "PID" || $1 == "USER" || $1 == "UID" {
+      pid_column = 0
+      for (column = 1; column <= NF; column++) {
+        if ($column == "PID") { pid_column = column; break }
+      }
+      next
+    }
+    /uiautomator/ || /com\.android\.commands\.uiautomator\.Launcher/ {
+      pid = ""
+      if (pid_column > 0 && $(pid_column) ~ /^[0-9]+$/) pid = $(pid_column)
+      else if ($1 ~ /^[0-9]+$/) pid = $1
+      else if ($2 ~ /^[0-9]+$/) pid = $2
+      if (pid ~ /^[0-9]+$/) print pid
+    }' | sort -u)"
+  if [[ -z "$matched_pids" ]]; then
+    echo "WARN: no stale UiAutomator PID matched; process-list capability diagnostics:"
+    # Keep representative raw rows; filtering only for a runner can make a
+    # non-empty process list look like a header-only result.
+    printf '%s\n' "$ps_output" | sed -n '1,8p' || true
+    return 0
+  fi
   while IFS= read -r pid; do
     [[ "$pid" =~ ^[0-9]+$ ]] || continue
     echo "Requesting termination of stale remote UIAutomator runner pid=$pid"
     adb_bounded 3 shell kill -TERM "$pid" >/dev/null 2>&1 || true
-  done < <(
-    printf '%s\n' "$ps_output" |
-      awk 'NR > 1 && $1 ~ /^[0-9]+$/ && ($2 ~ /uiautomator/ || $0 ~ /com\.android\.commands\.uiautomator\.Launcher/) { print $1 }' |
-      sort -u
-  )
+  done <<< "$matched_pids"
 }
 
 dump_device_ui() {
   # Total wall-clock budget for cleanup + UIAutomator + transfer, not nested retry budgets.
   local requested_remote_path="$1" host_path="$2"
   local timeout_seconds="${3:-8}" deadline=$((SECONDS + ${3:-8})) remaining
+  local dump_mode="${4:-standard}"
   local log_path="/tmp/mpc-groovebox-uiautomator-dump.log"
   local shared_remote_path="/sdcard/mpc-groovebox-current-uiautomator.xml"
+  local -a dump_args=(shell uiautomator dump)
+  # Android's `uiautomator dump --compressed` omits unneeded layout nodes and is
+  # reserved for DocumentsUI's large storage-root hierarchy. Standard snapshots
+  # retain the full tree because unrelated selectors rely on surrounding nodes.
+  case "$dump_mode" in
+    standard) ;;
+    compressed) dump_args+=(--compressed) ;;
+    *) echo "ERROR: unsupported UI hierarchy dump mode: $dump_mode"; return 2 ;;
+  esac
+  dump_args+=("$shared_remote_path")
   rm -f "$host_path"
   remaining=$((deadline - SECONDS)); (( remaining > 0 )) || return 1
   adb_bounded "$remaining" shell rm -f "$shared_remote_path" >/dev/null 2>&1 || true
   remaining=$((deadline - SECONDS))
   if (( remaining <= 0 )); then echo "ERROR: UI hierarchy deadline expired before dump ($requested_remote_path)"; return 1; fi
-  if ! adb_bounded "$remaining" shell uiautomator dump "$shared_remote_path" > "$log_path" 2>&1; then
+  if ! adb_bounded "$remaining" "${dump_args[@]}" > "$log_path" 2>&1; then
     echo "ERROR: bounded UI hierarchy dump failed ($requested_remote_path; budget ${timeout_seconds}s)"
     cat "$log_path" || true
     cleanup_stale_device_uiautomator
@@ -2088,13 +2117,14 @@ PY
 dump_device_ui_retry() {
   local requested_remote_path="$1" host_path="$2"
   local attempt_timeout="${3:-8}" max_attempts="${4:-4}" attempt
+  local dump_mode="${5:-standard}"
   local scratch_path="${host_path%.xml}-retry-current.xml"
   for ((attempt=1; attempt<=max_attempts; attempt++)); do
     rm -f "$scratch_path"
     # dump_device_ui removes its output before each attempt. Write to a scratch
     # path so a timeout cannot erase the last validated host hierarchy needed
     # for diagnosis. Publish only a complete, parseable new snapshot.
-    if dump_device_ui "$requested_remote_path" "$scratch_path" "$attempt_timeout"; then
+    if dump_device_ui "$requested_remote_path" "$scratch_path" "$attempt_timeout" "$dump_mode"; then
       if ! mv -f -- "$scratch_path" "$host_path"; then
         echo "ERROR: could not publish fresh UI hierarchy: $host_path"
         return 1
@@ -7070,6 +7100,7 @@ PY
 wait_for_ui_text() {
   local hierarchy_path="$1" remote_path="$2" expected_fragment="$3"
   local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining dump_budget
+  local dump_mode="${5:-standard}"
   local scratch_path="${hierarchy_path%.xml}-wait-current.xml"
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
@@ -7078,7 +7109,7 @@ wait_for_ui_text() {
     dump_budget="$remaining"
     (( dump_budget > 6 )) && dump_budget=6
     # Do not erase the last valid hierarchy when a later dump times out.
-    if ! dump_device_ui "$remote_path" "$scratch_path" "$dump_budget"; then
+    if ! dump_device_ui "$remote_path" "$scratch_path" "$dump_budget" "$dump_mode"; then
       remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
       continue
     fi
@@ -7254,6 +7285,7 @@ PY
 capture_stable_picker_state() {
   local remote_path="$1" hierarchy_path="$2" screenshot_path="$3"
   local timeout_seconds="${4:-6}" stable_folder_label="${5:-}" deadline=$((SECONDS + ${4:-6}))
+  local dump_mode="${6:-standard}"
   local check_path="${hierarchy_path%.xml}-stability-check.xml"
   local candidate_path="${hierarchy_path%.xml}-stability-candidate.xml"
   local screenshot_candidate_path="${screenshot_path%.png}-stability-candidate.png"
@@ -7270,7 +7302,7 @@ capture_stable_picker_state() {
     dump_timeout="$remaining"
     (( dump_timeout > 8 )) && dump_timeout=8
     rm -f "$candidate_path"
-    if ! dump_device_ui "$remote_path" "$candidate_path" "$dump_timeout"; then
+    if ! dump_device_ui "$remote_path" "$candidate_path" "$dump_timeout" "$dump_mode"; then
       rm -f "$candidate_path"
       remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
       continue
@@ -7291,7 +7323,7 @@ capture_stable_picker_state() {
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
     dump_timeout="$remaining"
     (( dump_timeout > 8 )) && dump_timeout=8
-    if ! dump_device_ui "$remote_path" "$check_path" "$dump_timeout"; then
+    if ! dump_device_ui "$remote_path" "$check_path" "$dump_timeout" "$dump_mode"; then
       rm -f "$check_path"
       remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
       continue
@@ -7318,7 +7350,7 @@ capture_stable_picker_state() {
     dump_timeout="$remaining"
     (( dump_timeout > 8 )) && dump_timeout=8
     rm -f "$candidate_path"
-    if ! dump_device_ui "$remote_path" "$candidate_path" "$dump_timeout"; then
+    if ! dump_device_ui "$remote_path" "$candidate_path" "$dump_timeout" "$dump_mode"; then
       rm -f "$candidate_path" "$screenshot_candidate_path"
       remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
       continue
@@ -7356,19 +7388,49 @@ capture_stable_picker_state() {
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
   local evidence_prefix="${5:-document-tree}" root_stability_timeout="${6:-6}"
+  local dump_mode="${7:-standard}" root_pair_mode="${8:-stabilize}"
   local root_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root.png"
   local root_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-uiautomator.xml"
   local after_activation_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-activation.png"
   local after_activation_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-activation-uiautomator.xml"
   local after_activation_remote="${remote_path%.xml}-after-activation.xml"
 
-  # Builds #2723–#2726 produced incompatible viewport positions between a
-  # screenshot and the next UI dump. Do not guess another tap or keyboard path:
-  # first prove the hierarchy remains unchanged around a fresh screenshot.
-  if ! capture_stable_picker_state "$remote_path" "$root_xml" "$root_png" "$root_stability_timeout" "$folder_label"; then
-    echo "ERROR: could not establish a stable DocumentsUI provider-root state"
-    return 1
-  fi
+  # Default to the strict three-dump stable-capture protocol. The Favorite root
+  # path may reuse a paired snapshot only after the caller has captured a fresh
+  # hierarchy following a real breadcrumb tap, verified the provider-root title
+  # and visible target, then captured the screenshot with no intervening action.
+  # Repeated UiAutomator calls at this Android DocumentsUI root have stalled.
+  case "$root_pair_mode" in
+    stabilize)
+      if ! capture_stable_picker_state "$remote_path" "$root_xml" "$root_png" "$root_stability_timeout" "$folder_label" "$dump_mode"; then
+        echo "ERROR: could not establish a stable DocumentsUI provider-root state"
+        return 1
+      fi
+      ;;
+    reuse-fresh-pair)
+      if ! test -s "$root_xml" || ! test -s "$root_png"; then
+        echo "ERROR: prevalidated DocumentsUI root PNG/XML pair is missing"
+        return 1
+      fi
+      if ! python3 - "$root_xml" <<'PY_ROOT_PAIR'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+titles = [n.attrib.get("text", "").strip() for n in root.iter("node")
+          if n.attrib.get("resource-id") == "com.android.documentsui:id/header_title"]
+if len(titles) != 1 or not titles[0].startswith("Files on "):
+    raise SystemExit(f"root pair lacks a unique provider-root header: {titles!r}")
+PY_ROOT_PAIR
+      then
+        echo "ERROR: prevalidated DocumentsUI root hierarchy is not at provider root"
+        return 1
+      fi
+      ;;
+    *)
+      echo "ERROR: unsupported DocumentsUI root-pair mode: $root_pair_mode"
+      return 2
+      ;;
+  esac
   if ! picker_folder_row_fully_visible "$root_xml" "$folder_label"; then
     echo "ERROR: target SAF folder is not fully visible above the picker footer: $folder_label"
     return 1
@@ -7378,13 +7440,13 @@ tap_ui_picker_folder_until_child() {
     echo "ERROR: DocumentsUI folder title is not actionable: $folder_label"
     return 1
   fi
-  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12; then
+  if wait_for_ui_text "$hierarchy_path" "$remote_path" "$child_label" 12 "$dump_mode"; then
     return 0
   fi
 
   # Preserve a stable post-action screenshot/XML pair. If navigation fails,
   # diagnose from matched evidence instead of layering on speculative gestures.
-  if ! capture_stable_picker_state "$after_activation_remote" "$after_activation_xml" "$after_activation_png" 6; then
+  if ! capture_stable_picker_state "$after_activation_remote" "$after_activation_xml" "$after_activation_png" 6 "" "$dump_mode"; then
     echo "ERROR: could not capture stable DocumentsUI state after folder activation"
   fi
   echo "ERROR: single folder-title tap did not expose $child_label"
@@ -10356,12 +10418,8 @@ if ! grep -Fq -- "$FAVORITE_SAMPLE_NAME" "$FAVORITE_TREE_PICKER_XML"; then
   if ! documents_ui_is_foreground; then
     echo "ERROR: DocumentsUI is not foreground after waiting for the FAVORITE 1 child"; exit 1
   fi
-  if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4; then
-    echo "ERROR: DocumentsUI remains foreground but no fresh hierarchy is available for the FAVORITE 1 child"
-    adb_bounded 10 shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | tail -n 3 || true
-    exit 1
-  fi
-
+  # Reuse the just-captured hierarchy: another remote dump of this unchanged
+  # prior directory previously stalled UiAutomation before root navigation.
   # DocumentsUI can restore the previous directory in grid mode. The provider
   # root contains many system entries, and dumping that full grid hierarchy can
   # stall UIAutomator. Switch to list mode while the current folder is still
@@ -10417,14 +10475,36 @@ PY
     # Allow the provider transition to settle before asking UiAutomation for a
     # fresh root hierarchy. No cached hierarchy may be used for the next touch.
     sleep 1
-    if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4; then
-      echo "ERROR: could not inspect DocumentsUI at the FAVORITE 1 provider root after retries"; exit 1
+    if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4 compressed; then
+      echo "ERROR: could not inspect DocumentsUI at the FAVORITE 1 provider root after compressed retries"; exit 1
+    fi
+    # Prove the new hierarchy reflects provider root rather than a successful
+    # dump of the previous AAA directory.
+    if ! python3 - "$FAVORITE_TREE_PICKER_XML" "$favorite_root_label" <<'PY_ROOT_HEADER'
+import sys
+import xml.etree.ElementTree as ET
+root_path, provider_label = sys.argv[1], sys.argv[2]
+root = ET.parse(root_path).getroot()
+expected_title = "Files on " + provider_label
+titles = [
+    node.attrib.get("text", "").strip()
+    for node in root.iter("node")
+    if node.attrib.get("resource-id") == "com.android.documentsui:id/header_title"
+]
+if titles.count(expected_title) != 1:
+    raise SystemExit(
+        "fresh DocumentsUI hierarchy does not confirm provider root: "
+        f"expected header {expected_title!r}, observed {titles!r}"
+    )
+PY_ROOT_HEADER
+    then
+      echo "ERROR: fresh DocumentsUI hierarchy did not confirm provider-root navigation"; exit 1
     fi
   fi
 
   # This must be the folder-grant picker, not the direct WAV-open picker.
-  if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "USE THIS FOLDER" 12; then
-    if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "Use this folder" 6; then
+  if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "USE THIS FOLDER" 12 compressed; then
+    if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "Use this folder" 6 compressed; then
       echo "ERROR: FAVORITE 1 picker never exposed the Android Use This Folder tree-grant action"; exit 1
     fi
   fi
@@ -10441,8 +10521,8 @@ PY
       echo "ERROR: could not scroll DocumentsUI to the FAVORITE 1 folder fixture"; exit 1
     fi
     sleep 1
-    if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4; then
-      echo "ERROR: could not inspect DocumentsUI while locating FAVORITE 1 folder after retries"; exit 1
+    if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4 compressed; then
+      echo "ERROR: could not inspect DocumentsUI while locating FAVORITE 1 folder after compressed retries"; exit 1
     fi
   done
   if [[ "$favorite_folder_visible" != "1" ]]; then
@@ -10450,23 +10530,48 @@ PY
     cat "$FAVORITE_TREE_PICKER_XML"
     exit 1
   fi
-  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME" "favorite-tree" 30; then
+  # The hierarchy is fresh from the post-breadcrumb DocumentsUI state. Validate
+  # the exact root header and Favorite row again, capture the screenshot now, and
+  # preserve the current XML as its evidence mate before any further touch.
+  # Do not issue three more accessibility dumps at this known-failing root.
+  if ! python3 - "$FAVORITE_TREE_PICKER_XML" "$favorite_root_label" "$FAVORITE_FOLDER_NAME" <<'PY_VALIDATE_VISIBLE_ROOT'
+import sys
+import xml.etree.ElementTree as ET
+path, provider_label, folder_label = sys.argv[1:]
+root = ET.parse(path).getroot()
+titles = [n.attrib.get("text", "").strip() for n in root.iter("node")
+          if n.attrib.get("resource-id") == "com.android.documentsui:id/header_title"]
+if titles != ["Files on " + provider_label]:
+    raise SystemExit(f"provider-root header mismatch: expected {provider_label!r}, got {titles!r}")
+if not any(n.attrib.get("text", "").strip() == folder_label for n in root.iter("node")):
+    raise SystemExit(f"Favorite folder is missing from fresh root hierarchy: {folder_label!r}")
+PY_VALIDATE_VISIBLE_ROOT
+  then
+    echo "ERROR: fresh DocumentsUI state lost provider root or Favorite folder before evidence capture"; exit 1
+  fi
+  if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-root.png 10; then
+    echo "ERROR: could not capture screenshot after fresh Favorite provider-root hierarchy"; exit 1
+  fi
+  if ! cp -- "$FAVORITE_TREE_PICKER_XML" /tmp/mpc-groovebox-browser-favorite-tree-root-uiautomator.xml; then
+    echo "ERROR: could not preserve the fresh Favorite provider-root hierarchy"; exit 1
+  fi
+  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME" "favorite-tree" 30 compressed reuse-fresh-pair; then
     echo "ERROR: FAVORITE 1 picker did not navigate into the actual Favorite-only WAV folder"; exit 1
   fi
 fi
 
 FAVORITE_USE_FOLDER_LABEL="USE THIS FOLDER"
-if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_USE_FOLDER_LABEL" 12; then
+if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_USE_FOLDER_LABEL" 12 compressed; then
   FAVORITE_USE_FOLDER_LABEL="Use this folder"
-  if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_USE_FOLDER_LABEL" 3; then
+  if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_USE_FOLDER_LABEL" 3 compressed; then
     echo "ERROR: FAVORITE 1 selected directory did not expose Use this folder"; exit 1
   fi
 fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-picker.png 10; then
   echo "ERROR: could not capture selected FAVORITE 1 folder"; exit 1
 fi
-if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4; then
-  echo "ERROR: could not capture selected FAVORITE 1 folder hierarchy after retries"
+if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4 compressed; then
+  echo "ERROR: could not capture selected FAVORITE 1 folder hierarchy after compressed retries"
   capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-picker.png 10 || true
   exit 1
 fi

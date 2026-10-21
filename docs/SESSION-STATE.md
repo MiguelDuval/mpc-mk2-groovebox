@@ -1,25 +1,24 @@
 # Session State — MPC MkII Groovebox
 
 **Checkpoint date:** 2026-10-21  
-**Purpose:** handoff checkpoint; live PRs, exact-SHA workflow runs and artifacts supersede historical notes below.
+**Purpose:** handoff checkpoint; mutable status is reconciled against live GitHub before each change.
 
 ## Latest source and verification state
 
-### Live checkpoint — 2026-10-21
+### Live checkpoint — Android Build #3047 and follow-up diagnosis
 
-- Primary PR #23 is **OPEN** on `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`; current HEAD `b28b8723f31082982762e849026bddb6bb469dcf`. `main` is untouched. Workflow concurrency is `cancel-in-progress: false`.
-- Android Build #3042 / run `39654368042` tests exact SHA `b28b8723f31082982762e849026bddb6bb469dcf`: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39654368042. On the latest live poll, APK artifact `12372125372` (9,957,677 bytes, SHA-256 `c6b84f731dad3f76d4607bf9452cd4fd29a9cc18fcd6bd716216ae874a740675`) and evidence-contract preflight passed; emulator smoke step 52 remained **IN PROGRESS**, and the evidence ZIP had not yet been published. No final run conclusion is claimed.
-- Prior exact-HEAD Build #3041 / run `39648841982` on SHA `085b84877074b74d51ee73b8547947b409500025` failed later in FAVORITE 1 DocumentsUI selection. SAMP-008 CROP passed (3,840→2,840 frames, native region 0..2,840), SAMP-009 CH4/CH8/CH16 passed exact contiguous source-frame coverage, Sample Edit→Browser passed, and USER FOLDER filtering + process-death restoration passed.
-- Build #3041 failure evidence showed the FAVORITE 1 picker initially in `AAA-MPC-Browser-Tree` with `Browser-Tree-Only.wav`, while the target fixture `Browser-Favorite-Only.wav` lives in a different folder. The smoke repeatedly queried that absent child via new UIAutomator dumps; later root-transition dumps timed out. The current primary smoke fix checks the first fresh hierarchy locally, navigates to the provider root and captures a new hierarchy before any root/folder tap; it also cleans up only stale UiAutomator runners and keeps `cancel-in-progress:false`. Build #3042 is the exact-SHA test of that correction; FAVORITE is not yet accepted.
-- Project SAVE / SAVE AS / OPEN acceptance remains **PENDING**: real SAF save/open, canonical state round-trip including MIDI notes and Pattern placement IDs/parameters, overwrite SAVE, process restart + OPEN, cancellation invariance, malformed-file rejection preserving active state, and placement-free v1 compatibility still need a green current-HEAD emulator run.
-- Draft PR #29 SAMP-010 is **OPEN** on `feature/samp010-zoom-audition-acceptance`, head `417e3fbbbd279184ad74734bbb9c38bfad8cd6d7`, based on old primary SHA `09cbc15c702c2d1b1989da7d453e50820c71c993`; GitHub reports it non-mergeable/dirty after PR #23 advanced. Its first run #3040 / `39648068024` failed before the external smoke at `UI_INTERACTION_FAILED: sample waveform editor`, because the app-side UI audit looked up the waveform immediately after navigation. The branch now has a bounded re-resolving view lookup and diagnostics; the SAMP-010 acceptance path is being synchronized to current primary HEAD with a history-preserving merge, and the exact merged-head workflow has not yet been observed.
-- Keep SAMP-010 isolated from primary PR #23 until it passes viewport-only zoom in/out/reset, unchanged native frame/region/PCM state, actual native Pad 01 velocity 112 audition, and the full Browser + Project lifecycle gates. Physical MPC Studio MkII verification remains **PENDING**.
+- PR #23 is **OPEN** on `feature/mpc-one-ui-fidelity`. HEAD `dcbb5810200a34e4143d37edb49e73e12b69c36f` was tested by Build #3047 / run `39666355459`, which failed at Android emulator smoke step 52. Build #3046 / `39664592692` also failed at step 52 on `a2705476d68793a99bb799515ab16ccacc2ed928`. Neither run completed FAVORITE 1. `main` remains unchanged, and `cancel-in-progress: false` is preserved.
+- The latest artifacts show a real root XML containing `Files on Android SDK built for x86_64`, `BBB-MPC-Browser-Favorite`, and the `USE THIS FOLDER` action. The problem is after that successful fresh root capture: `tap_ui_picker_folder_until_child()` attempts a separate three-dump stable capture and fails before publishing `mpc-groovebox-browser-favorite-tree-root-uiautomator.xml`. The saved PNG with the picker name still shows the previous AAA folder; that is not root evidence.
+- Build #3047's final timeout had a 1-second budget after a 30-second stabilization deadline. The raw `ps` output now contains ordinary Android processes in its first rows, but no matched UiAutomator runner there. This still does not establish the precise reason repeated accessibility calls stall; the actionable failure is the unnecessary triple-dump stage after a fresh root hierarchy was already captured.
+- Current fix scope: keep the shared three-dump stable-capture helper as the default for all other picker flows. For FAVORITE 1 only, use the just-captured fresh hierarchy after the real breadcrumb tap, recheck exact provider-root title and the visible Favorite folder, capture a screenshot immediately, copy the same current XML into the dedicated root evidence path, and then tap the folder using that verified hierarchy. This is an evidence-driven, root-specific fallback—not cached UI, not a mocked state, and not a timeout increase. The real child file, persistable URI grant, Browser result, independent favorite preference, and force-stop/relaunch checks stay mandatory.
+- SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 passed on #3046/#3047: real touches and native PCM/destination getters verified 3840→2840 PCM and contiguous non-overlapping 4/8/16 ranges. USER FOLDER filter plus process-death restoration passed in the same runs. FAVORITE 1 remains unverified.
+- PR #29 SAMP-010 fix commit `62f12da6516cb125f9905dab21d1a32b578882f5` fixes the tab-row removal bug: adding the viewport readout moved the Sample Edit tabs to child index 4, while four panel helpers continued removing from index 4. The new fixed-child count preserves ENV/FILTER/LAYER without disabling audit. This SHA has no exact-SHA workflow result; PR #29 is still draft and mergeable=false against its older base.
+- PR #28 Build #3044 / run `39657357881` failed later in the shared Favorite 1 path, while its native Project state/persistence steps 38/39 passed. Full Project SAVE/SAVE AS/OPEN UI lifecycle remains **PENDING** because the primary acceptance doesn't get past FAVORITE 1. Physical MPC Studio MkII validation remains **PENDING** and is not implied by emulator tests.
 
 ## Current execution queue — 2026-10-21
 
-1. Wait for primary exact-HEAD Build #3042 to finish; inspect its terminal failure or successful result plus actual visual-evidence artifact before any further primary-branch edit.
-2. Independently resolve PR #29 dirty base by a two-parent merge with current PR #23 HEAD `b28b8723f31082982762e849026bddb6bb469dcf`, preserving history and keeping the primary branch untouched. Carry forward the SAMP-010 code, test and four unique evidence checkpoints while retaining the latest primary Browser FAVORITE fixes and concurrency setting.
-3. Inspect the exact merged-head CI; fix only the next evidenced failure. Once Browser FAVORITE 1 passes, complete Project SAVE / SAVE AS / OPEN acceptance. Only integrate SAMP-010 into PR #23 after these gates are green.
+1. Verify the new Favorite-root paired-evidence path on its exact-SHA Android Build. Require provider-root header, folder visibility, actual row tap, actual Favorite-only WAV, Android persisted grant, Browser indexing and force-stop/relaunch restoration.
+2. Keep PR #29 isolated until the primary Browser gate passes; then reconcile its stale base using history-preserving changes and run its exact SHA. Continue the existing Project SAVE/SAVE AS/OPEN UI scenario only after FAVORITE 1 succeeds.
 
 ## Completed in this session
 
@@ -71,10 +70,10 @@ The official playlists could not be fully transcript-audited through the availab
 
 ## Current execution order — 2026-10-21
 
-1. Inspect primary Build #3042 exact-SHA evidence; its outcome supersedes this checkpoint when known.
-2. Maintain isolated, history-preserving PR #29 sync with primary HEAD b28; prove viewport-only SAMP-010 and native Pad audition on the merged exact HEAD.
-3. After Browser FAVORITE 1 passes, verify real Project SAVE / SAVE AS / OPEN lifecycle and failure-safety; only then consider integrating SAMP-010.
-4. Physical MPC Studio MkII tests remain a separate pending acceptance gate.
+1. Re-run primary FAVORITE 1 with dual-format `ps` fallback and explicit runner PID diagnostics; inspect real picker root screenshot/XML and keep grant/restore assertions strict.
+2. Check isolated exact-SHA Builds #3043 (SAMP-010) and #3044 (Project malformed-load unit regression) before moving either branch again.
+3. After Favorite 1 passes, validate full Project SAVE/SAVE AS/OPEN lifecycle; integrate SAMP-010 only once its own acceptance and primary gates are green.
+4. Physical MPC Studio MkII testing remains a separate pending gate.
 
 ## Mandatory operating rules
 
