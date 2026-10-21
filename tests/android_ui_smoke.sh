@@ -9864,8 +9864,16 @@ if kill -0 "$ASYNC_UI_TAP_PID" >/dev/null 2>&1; then
   fi
 fi
 echo "Isolated ADB tap cleanup bounded; capturing FAVORITE 1 DocumentsUI hierarchy..."
-if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
-  echo "ERROR: could not inspect the FAVORITE 1 document-tree picker"; exit 1
+# The picker can become foreground before Android publishes a fresh hierarchy.
+# Retry fresh bounded dumps here as well as after breadcrumb navigation; do not
+# mistake a missing XML transfer for proof that DocumentsUI has closed.
+if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4; then
+  echo "ERROR: could not inspect the FAVORITE 1 document-tree picker after retries"
+  capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-picker.png 10 || true
+  echo "FAVORITE 1 current foreground activity after hierarchy failure:"
+  adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+      | grep -E 'mResumedActivity|topResumedActivity' | tail -n 2 || true
+  exit 1
 fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-picker.png 10; then
   echo "ERROR: could not capture FAVORITE 1 picker screenshot"; exit 1
@@ -9971,8 +9979,10 @@ fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-picker.png 10; then
   echo "ERROR: could not capture selected FAVORITE 1 folder"; exit 1
 fi
-if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
-  echo "ERROR: could not capture selected FAVORITE 1 folder hierarchy"; exit 1
+if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4; then
+  echo "ERROR: could not capture selected FAVORITE 1 folder hierarchy after retries"
+  capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-picker.png 10 || true
+  exit 1
 fi
 if ! tap_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_USE_FOLDER_LABEL"; then
   echo "ERROR: could not confirm the FAVORITE 1 folder selection"; exit 1
