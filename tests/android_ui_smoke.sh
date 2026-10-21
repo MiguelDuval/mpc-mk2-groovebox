@@ -6983,10 +6983,20 @@ PY
 
 wait_for_successful_audition() {
   local hierarchy_path="$1" remote_path="$2" expected_name="$3"
-  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining
+  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining dump_budget
+  local scratch_path="${hierarchy_path%.xml}-wait-current.xml"
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then continue; fi
+    dump_budget="$remaining"
+    (( dump_budget > 6 )) && dump_budget=6
+    # Keep the last valid hierarchy when a new Android UIAutomator dump times out.
+    if ! dump_device_ui "$remote_path" "$scratch_path" "$dump_budget"; then
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
+      continue
+    fi
+    if ! mv -f -- "$scratch_path" "$hierarchy_path"; then
+      echo "ERROR: could not publish fresh WAV-audition hierarchy"; return 1
+    fi
     if python3 - "$hierarchy_path" "$expected_name" <<'PY'
 import sys, xml.etree.ElementTree as ET
 path, expected_name = sys.argv[1], sys.argv[2]
@@ -7004,15 +7014,20 @@ PY
 wait_for_ui_text() {
   local hierarchy_path="$1" remote_path="$2" expected_fragment="$3"
   local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining dump_budget
+  local scratch_path="${hierarchy_path%.xml}-wait-current.xml"
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
     # A slow Android 16 DocumentsUI dump must not consume the whole wait budget
     # in one attempt. Cap each hierarchy attempt so transient stalls can retry.
     dump_budget="$remaining"
     (( dump_budget > 6 )) && dump_budget=6
-    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$dump_budget"; then
+    # A transient hierarchy timeout must not delete the preceding good XML.
+    if ! dump_device_ui "$remote_path" "$scratch_path" "$dump_budget"; then
       remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
       continue
+    fi
+    if ! mv -f -- "$scratch_path" "$hierarchy_path"; then
+      echo "ERROR: could not publish fresh UI hierarchy for text wait"; return 1
     fi
     if python3 - "$hierarchy_path" "$expected_fragment" <<'PY'
 import sys, xml.etree.ElementTree as ET
