@@ -519,32 +519,44 @@ jobs:
 
           smoke = Path("tests/android_ui_smoke.sh").read_text(encoding="utf-8")
           workflow = Path(".github/workflows/android-build.yml").read_text(encoding="utf-8")
-          start = smoke.index('capture_ui_screenshot() {')
-          end = smoke.index("\\n}", start) + 2
-          helper = smoke[start:end]
-          case_start = helper.index('case "$filename" in')
-          case_end = helper.index(')\\n      adb_bounded', case_start)
-          case_lines = helper[case_start:case_end].splitlines()[1:]
+          helper_start = smoke.index('capture_ui_screenshot() {')
+          helper_end = smoke.index("esac", helper_start) + len("esac")
+          helper = smoke[helper_start:helper_end]
+
           patterns = []
-          for line in case_lines:
-              item = line.strip().rstrip("\\\\").strip()
+          in_case = False
+          for line in helper.splitlines():
+              if 'case "$filename" in' in line:
+                  in_case = True
+                  continue
+              if in_case and line.strip() == "*)":
+                  break
+              if not in_case:
+                  continue
+              item = line.strip().rstrip(chr(92)).strip()
               item = item.removesuffix("|").removesuffix(")").strip()
-              if re.fullmatch(r"mpc-groovebox-[A-Za-z0-9.*_-]+\\.png", item):
+              if re.fullmatch(r"mpc-groovebox-[A-Za-z0-9.*_-]+[.]png", item):
                   patterns.append(item)
 
-          required = sorted(set(re.findall(
-              r"\\btest -s (/tmp/[A-Za-z0-9_.-]+\\.png)\\b", smoke
-          )))
-          missing_capture = [
-              path for path in required
-              if not any(fnmatch.fnmatchcase(Path(path).name, p) for p in patterns)
-          ]
+          required = sorted({
+              match.group(1)
+              for line in smoke.splitlines()
+              if (match := re.search(r"test -s (/tmp/[A-Za-z0-9_.-]+[.]png)", line))
+          })
           upload_marker = "- name: Upload MPC UI visual evidence"
           upload = workflow.split(upload_marker, 1)[1]
-          upload_patterns = re.findall(r"^\\s+(/tmp/[^\\s]+)\\s*$", upload, re.M)
+          upload_patterns = [
+              line.strip() for line in upload.splitlines()
+              if line.strip().startswith("/tmp/")
+          ]
+
+          missing_capture = [
+              path for path in required
+              if not any(fnmatch.fnmatchcase(Path(path).name, pattern) for pattern in patterns)
+          ]
           missing_upload = [
               path for path in required
-              if not any(fnmatch.fnmatchcase(path, p) for p in upload_patterns)
+              if not any(fnmatch.fnmatchcase(path, pattern) for pattern in upload_patterns)
           ]
           if missing_capture or missing_upload:
               if missing_capture:
