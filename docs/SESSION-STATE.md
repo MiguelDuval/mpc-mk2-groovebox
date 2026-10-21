@@ -1,25 +1,26 @@
 # Session State — MPC MkII Groovebox
 
 **Checkpoint date:** 2026-10-21  
-**Purpose:** operational handoff. Verify mutable status against live GitHub before implementation.
+**Purpose:** operational handoff; verify mutable claims against live GitHub.
 
 ## Latest source and verification state
 
-### Live checkpoint — 2026-10-21, after Build #3017
+### Live checkpoint — after Android Build #3018
 
-- PR #23 is **OPEN** on `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`; `main` remains untouched. HEAD at this checkpoint: `37d9e647571ada9b4a3950c63fc8d655fce2232f`.
-- Android Build #3017 / run `39600929198` failed in the FAVORITE 1 Android DocumentsUI child-file wait: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39600929198. Unit/native tests, APK build and evidence preflight passed; SAMP-008/009 and Browser USER FOLDER restoration were successful before this.
-- In the failure, DocumentsUI had appeared, but a later UIAutomator refresh timed out and `dump_device_ui` removed the last good host XML before the caller checked whether the picker was still open. That loss caused a false “DocumentsUI closed” diagnosis. Fix: polling now dumps to a scratch XML and replaces the last valid snapshot only after fresh capture passes; the picker fallback queries the live resumed Activity and requires a successful fresh capture before inspecting breadcrumbs/tapping.
-- The same scratch-then-publish rule is applied to WAV audition text polling so one failed UIAutomator refresh no longer destroys the last valid diagnostic hierarchy. No actual UI interaction, sample-frame assertion, folder/grant condition or persistence assertion is weakened.
-- Exact-SHA targeted results from #3017: SAMP-008 CROP was 3,840→2,840 frames with region reset to `0..2,840`; SAMP-009 CH4/CH8/CH16 produced contiguous coverage without gaps/overlaps; Sample Edit→Browser and Browser Search reset passed. The remaining obstacle was downstream FAVORITE 1 picker hierarchy timing.
-- Project SAVE / SAVE AS / OPEN acceptance remains pending. Required: real SAF workflow, canonical state equality including MIDI and Pattern placement IDs/parameters, force-stop/relaunch/open, cancellation invariance, malformed-load preservation, placement-free v1 compatibility.
-- Workflow concurrency remains `cancel-in-progress: false`. Physical MPC Studio MkII verification remains **PENDING**.
+- PR #23 is OPEN on `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`. `main` remains untouched. Tested HEAD: `3b134cd75a64de2c152f7926f5481644f5639044`.
+- Android Build #3018 / run `39607542492` failed at step 52 (Android emulator smoke) on that SHA. Native/unit checks, APK assembly, evidence preflight, Browser local WAV/audition and USER FOLDER grant/restore passed before the later FAVORITE 1 picker failure.
+- SAMP-008 real-touch CROP passed: 3,840 source frames, Start=1,000, resulting PCM=2,840, native range reset to `0..2,840`. SAMP-009 CH4/CH8/CH16 passed exact native per-pad ranges and contiguous full-frame coverage. Sample Edit → Browser return and Browser Search reset passed. These targeted checks do not make the full workflow green.
+- Failure: FAVORITE 1 reopened DocumentsUI in `AAA-MPC-Browser-Tree`. DocumentsUI remained foreground, but after tapping the provider-root breadcrumb, four bounded UIAutomator hierarchy attempts failed. The available screenshot shows the prior folder in grid mode; the last XML from the earlier wait was stale and is not proof of root state.
+- Current fix: switch to list mode inside the small prior folder, verify the toggle changes to `Grid view`, then navigate to provider root and require a fresh hierarchy. Do not relax folder-row, child WAV, `USE THIS FOLDER`, SAF grant, provider-count or cold-restart checks.
+- Run #3018 artifacts: APK `12348842430` (9,957,677 bytes); UI evidence `12349198728` (9,415,925 bytes), inspected; evidence ZIP SHA-256 `ceefff3f2dd76c891432aa5355dbb5ca3444b3ab36e1b95aec61c06d2d10a25d`.
+- Project SAVE / SAVE AS / OPEN has not yet completed. Still required: real SAF save/open, canonical state equality including MIDI and Pattern placements, restart/open, cancellation invariance, malformed-load preservation and placement-free v1 compatibility.
+- Workflow concurrency is already `cancel-in-progress: false`; preserve it. Physical MPC Studio MkII verification remains PENDING.
 
 ## Current execution queue — 2026-10-21
 
-1. Verify scratch-preserving polling and the live DocumentsUI foreground gate on the next full exact-SHA workflow. If the picker is actually open, require a fresh hierarchy before folder selection; do not infer success from stale XML.
-2. While PR #23 runs, continue SAMP-010 in the isolated draft stack (#25/#26), where zoom in/out/reset already passed native-region invariance but Pad audition still needs trustworthy current-SHA acceptance.
-3. After Browser USER FOLDER/FAVORITE persistence passes, complete Project SAVE / SAVE AS / OPEN acceptance. Physical controller remains a separate track.
+1. Run the pre-root DocumentsUI list-mode fix through the full exact-HEAD Android workflow. Use fresh logs and screenshot/XML if it fails; never treat stale XML as current state.
+2. After USER FOLDER/FAVORITE grant, child-file, provider-count and persisted restoration pass, complete Project SAVE / SAVE AS / OPEN on the same green full smoke.
+3. Then resume the highest-priority roadmap gap. Keep SAMP-010 isolated and physical-controller checks separate.
 
 ## Completed in this session
 

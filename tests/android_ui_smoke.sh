@@ -9915,6 +9915,24 @@ if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE"
     exit 1
   fi
 
+  # DocumentsUI can restore the previous directory in grid mode. The provider
+  # root contains many system entries, and dumping that full grid hierarchy can
+  # stall UIAutomator. Switch to list mode while the current folder is still
+  # small, and verify the real toggle state before navigating to the root.
+  if grep -Fq -- 'content-desc="List view"' "$FAVORITE_TREE_PICKER_XML"; then
+    if ! tap_ui_description "$FAVORITE_TREE_PICKER_XML" "List view"; then
+      echo "ERROR: could not switch FAVORITE 1 DocumentsUI to list mode before root navigation"; exit 1
+    fi
+    if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4; then
+      echo "ERROR: could not inspect FAVORITE 1 DocumentsUI after pre-root list-mode switch"; exit 1
+    fi
+    if ! grep -Fq -- 'content-desc="Grid view"' "$FAVORITE_TREE_PICKER_XML"; then
+      echo "ERROR: FAVORITE 1 DocumentsUI did not confirm list mode before root navigation"; exit 1
+    fi
+  elif ! grep -Fq -- 'content-desc="Grid view"' "$FAVORITE_TREE_PICKER_XML"; then
+    echo "ERROR: FAVORITE 1 DocumentsUI exposes neither List view nor Grid view before root navigation"; exit 1
+  fi
+
   # DocumentsUI remembers the last browsed directory across picker launches.
   # In this flow that is USER FOLDER (AAA...), so explicitly navigate to the
   # storage-provider root before looking for the distinct FAVORITE folder.
@@ -9959,20 +9977,6 @@ PY
     if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "Use this folder" 6; then
       echo "ERROR: FAVORITE 1 picker never exposed the Android Use This Folder tree-grant action"; exit 1
     fi
-  fi
-
-  # Prefer list mode when DocumentsUI offers it; allow the view transition to settle.
-  if grep -Fq -- 'content-desc="List view"' "$FAVORITE_TREE_PICKER_XML"; then
-    if ! tap_ui_description "$FAVORITE_TREE_PICKER_XML" "List view"; then
-      echo "ERROR: could not switch FAVORITE 1 DocumentsUI to list mode"; exit 1
-    fi
-    for favorite_view_attempt in {1..5}; do
-      if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
-        echo "ERROR: could not inspect FAVORITE 1 DocumentsUI after view switch"; exit 1
-      fi
-      if grep -Fq -- 'content-desc="Grid view"' "$FAVORITE_TREE_PICKER_XML"; then break; fi
-      sleep 1
-    done
   fi
 
   # The fixture may not be in the initial viewport; use bounded real swipes.
