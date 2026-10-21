@@ -10,7 +10,8 @@ on:
 
 concurrency:
   group: android-build-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: false
+  # Newer commits supersede stale runs on this same PR branch.
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -18,7 +19,7 @@ permissions:
 jobs:
   android-debug:
     runs-on: ubuntu-22.04
-    timeout-minutes: 50
+    timeout-minutes: 45
     steps:
       - name: Enable KVM group permissions
         shell: bash
@@ -148,20 +149,15 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcLocatePolicyTests.cpp             -o build/native-tests/mpc_locate_policy_tests
           build/native-tests/mpc_locate_policy_tests
 
-      - name: Test Android LCD renderer signature
-        timeout-minutes: 12
-        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcStudioMk2LcdRendererTest
-      - name: Test Android sequence zoom and Step page focus policies
-        timeout-minutes: 12
-        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest --tests com.miguelduval.mpcmk2groovebox.MpcSequenceStepPagePolicyTest
-
-      - name: Test MPC Menu Project route catalog
-        timeout-minutes: 12
-        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcModeRegistryTest
-
-      - name: Test local Browser WAV filtering policy
-        timeout-minutes: 12
-        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest
+      - name: Run focused Android unit policy tests
+        timeout-minutes: 20
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcStudioMk2LcdRendererTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcSequenceStepPagePolicyTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcModeRegistryTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest
 
       - name: Test MPC Studio MkII semantic routing
         shell: bash
@@ -515,7 +511,7 @@ jobs:
         run: bash -n tests/android_ui_smoke.sh
 
       - name: Run Android emulator smoke test
-        timeout-minutes: 45
+        timeout-minutes: 35
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 31
@@ -526,7 +522,7 @@ jobs:
           emulator-boot-timeout: 600
           disable-linux-hw-accel: false
           disable-animations: true
-          script: timeout --signal=TERM --kill-after=10s 42m bash tests/android_ui_smoke.sh
+          script: timeout --signal=TERM --kill-after=10s 32m bash tests/android_ui_smoke.sh
 
       - name: Upload MPC UI visual evidence
         if: always()
@@ -538,6 +534,8 @@ jobs:
             /tmp/mpc-groovebox-startup-uiautomator.xml
             /tmp/mpc-groovebox-main-ready.png
             /tmp/mpc-groovebox-main-ready-uiautomator.xml
+            /tmp/mpc-groovebox-browser-device.png
+            /tmp/mpc-groovebox-browser-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-before.png
             /tmp/mpc-groovebox-step-touch-before-uiautomator.xml
             /tmp/mpc-groovebox-step-touch-after-add.png
@@ -560,6 +558,10 @@ jobs:
             /tmp/mpc-groovebox-track-view-muted-uiautomator.xml
             /tmp/mpc-groovebox-arrange-grid-focus.png
             /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-back.png
+            /tmp/mpc-groovebox-arrange-back-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-grid-reentry.png
+            /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml
             /tmp/mpc-groovebox-arrange-event-selected.png
             /tmp/mpc-groovebox-arrange-event-selected-uiautomator.xml
             /tmp/mpc-groovebox-arrange-event-moved.png
@@ -583,7 +585,6 @@ jobs:
             /tmp/mpc-groovebox-grid-edit-after-draw.png
             /tmp/mpc-groovebox-grid-edit-after-draw-uiautomator.xml
             /tmp/mpc-groovebox-browser.png
-            /tmp/mpc-groovebox-browser-uiautomator.xml
             /tmp/mpc-groovebox-browser-local-results.png
             /tmp/mpc-groovebox-browser-local-results-uiautomator.xml
             /tmp/mpc-groovebox-picker-select-source.png
@@ -641,7 +642,6 @@ jobs:
             /tmp/mpc-groovebox-*-cancel*.png
             /tmp/mpc-groovebox-ui.xml
             /tmp/mpc-groovebox-browser-hierarchy.txt
-            /tmp/mpc-groovebox-browser-uiautomator.xml
             /tmp/mpc-groovebox-storage-picker-activity.txt
             /tmp/mpc-groovebox-picker-select-source-activity.txt
             /tmp/mpc-browser-favorite-prefs.xml
