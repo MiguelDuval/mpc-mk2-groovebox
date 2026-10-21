@@ -10,8 +10,8 @@ on:
 
 concurrency:
   group: android-build-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  # Newer commits supersede stale runs on this same PR branch.
-  cancel-in-progress: true
+  # Let critical acceptance checks finish; newer commits wait in the same group.
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -693,6 +693,8 @@ jobs:
             /tmp/mpc-groovebox-track-edit-envelope-attack-changed-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-filter-cutoff-changed.png
             /tmp/mpc-groovebox-track-edit-filter-cutoff-changed-uiautomator.xml
+            /tmp/mpc-groovebox-sample-browser-return.png
+            /tmp/mpc-groovebox-sample-browser-return-uiautomator.xml
             /tmp/mpc-groovebox-sample-crop-*.png
             /tmp/mpc-groovebox-sample-crop*-uiautomator.xml
             /tmp/mpc-groovebox-sample-chop-*.png

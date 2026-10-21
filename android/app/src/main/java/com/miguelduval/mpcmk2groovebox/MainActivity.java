@@ -5030,7 +5030,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             navigationController.navigate(MpcUiState.Mode.SAMPLER);
             showRecordPage();
         }), new LinearLayout.LayoutParams(dp(82), dp(34)));
-        header.addView(actionButton("BROWSER", v -> showBrowserPage()),
+        Button sampleEditBrowser = actionButton("BROWSER", v -> showBrowserPage());
+        sampleEditBrowser.setContentDescription("Sample Edit open Browser");
+        header.addView(sampleEditBrowser,
                 new LinearLayout.LayoutParams(dp(82), dp(34)));
         page.addView(header);
 

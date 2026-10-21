@@ -1,33 +1,27 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-20 (live branch and exact-SHA Actions govern)
+## CURRENT EXECUTION QUEUE — 2026-10-21 (live branch and exact-SHA Actions govern)
 
-Read this queue first. Older dated entries below are historical snapshots, not claims about the current branch.
+### 1. SAMP-008/009 plus Browser storage continuation — TARGETED CHECKS PASSED; FULL-SMOKE ACCEPTANCE PENDING
 
-### 1. Project SAVE / SAVE AS / OPEN — HISTORICALLY VERIFIED; CURRENT-HEAD RECHECK PENDING
+- PR #23 is open on `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`; the live implementation HEAD at the failed run was `b75f53a70148f8866b63ac9961dff17b5a7eb028`.
+- Android Build #3008 / run `39566070833` failed after the SAMP acceptance, at the following Browser storage sequence. Native/unit checks, APK assembly/upload, and the screenshot-contract preflight had passed. The overall build remains RED until the transition and the full smoke pass on a new exact HEAD.
+- SAMP-008 real-touch crop assertions passed: source=3,840 frames, Start=1,000, CROP output=2,840 frames, region reset to `0..2,840`.
+- SAMP-009 real-touch CH4/CH8/CH16 assertions passed: all destination ranges were checked from post-mutation native state and formed exact contiguous coverage of the 2,840-frame source with no overlap or gaps. These targeted outcomes are recorded, but do not mark the slices fully VERIFIED until the complete current-HEAD workflow and downstream acceptance pass.
+- Failure classification: UI smoke navigation/harness defect. SAMP-009 leaves Sample Edit foregrounded; subsequent code tried to tap the Browser clear-search target without first leaving Sample Edit. The uploaded `mpc-groovebox-browser-picker-assignment-uiautomator.xml` confirms Sample Edit was still visible. The fix adds a stable accessible name to the existing real BROWSER control and explicitly returns to Browser before resetting Search and opening USER FOLDER.
 
-- The complete lifecycle has historical exact-SHA successes, including Build #2900 / run 39236521987. Those runs establish prior behavior, not the current HEAD.
-- The current full emulator smoke must still prove real SAF save, mutate, open, exact canonical state equality including MIDI events and Pattern placement ID/parameters, force-stop/relaunch/open, cancelled SAVE AS and OPEN without state mutation, malformed-file rejection without current-project damage, and supported placement-free v1 compatibility.
-- Active Android Build #2972 / run 39495867515 is on older SHA `be2f9e2b1e00fe4795afd37780383bb261cbc678`; 54 pre-smoke workflow checks passed and its emulator smoke is still in progress, with no conclusion. It predates the current Sample Edit crop/chop acceptance and must not be used to verify those changes.
-- Source implementation SHA before the latest checkpoint-document commits is `e64caae301edc9b978d9c13423eff99da8110c83` (Crop and Chop stream-stop error guards included). Android Build #2992 / run 39499332491 was pending on that exact source SHA; later checkpoint/document commits advance the branch without changing runtime code. Re-fetch live branch HEAD and Actions after this update, and count only a full run whose SHA matches the resulting HEAD.
+### 2. CI safety and required evidence
 
-### 2. SAMP-008 Sample Edit CROP — IMPLEMENTED; EXACT-SHA ACCEPTANCE PENDING
+- Restore `cancel-in-progress: false` in `.github/workflows/android-build.yml`, so a newer commit cannot cancel the long-running acceptance run. Do not commit while a relevant full workflow is active.
+- Require the Sample Edit → Browser return screenshot and accessibility hierarchy to exist and be uploaded. Existing Crop/Chop frame and destination assertions must not be weakened.
 
-- The real Android picker-return WAV is the disposable fixture. The smoke touches Start +1000, touches CROP, verifies the native PCM frame count decreases by exactly 1000 and the active region resets to `0..newTotal`, and captures before/selected/cropped screenshots plus accessibility hierarchies.
-- This acceptance is placed before the following USER FOLDER process restart so its destructive sample mutation cannot contaminate the later Browser persistence checks. Sample Edit has no separate crop-undo path established here; the test relies on an isolated disposable sample and subsequent process restart, not a claim that Undo is supported.
+### 3. NEXT ACTION
 
-### 3. SAMP-009 Sample Edit CHOP — IMPLEMENTED; EXACT-SHA ACCEPTANCE PENDING
+- Push the coherent fix and documentation checkpoint to the existing PR branch; verify the ref advanced from the expected prior HEAD. Then inspect the new exact-HEAD Android Build until its result is known and inspect the resulting evidence archive.
+- After SAMP and Browser USER FOLDER/FAVORITE restoration complete, evaluate the full Project SAVE / SAVE AS / OPEN flow: real SAF provider, canonical state equality including MIDI events and Pattern placement identity/parameters, force-stop/relaunch/open, cancellation without state mutation, malformed input rejection preserving the active project, and placement-free v1 compatibility.
+- Move to SAMP-010 waveform zoom/audition only after a green exact-HEAD full workflow; physical MPC Studio MkII verification remains a separate pending task.
 
-- Chop now validates source/destinations before mutation, stops the output stream around the control-thread pad/region-grid update, restarts it afterward, and aborts without mutating when stopping/closing the stream reports an error. It does not change the realtime callback.
-- The emulator smoke performs real CH4, CH8 and CH16 touches from a full source region. Each operation is preceded by FULL to restore Pad 01's region, and post-mutation native getters must prove every destination pad's exact start/end/frame count with no gaps/overlaps and complete source coverage. Post-operation screenshots/XML are archived.
-- Native plan tests additionally assert exact contiguous, positive slices for uneven 1,027-frame input at all supported counts. Do not mark SAMP-009 verified until current exact-SHA CI finishes successfully.
-
-### 4. NEXT ACTION
-
-- First inspect the earliest real failure or the complete exact-HEAD run. Fix the root cause without weakening assertions. A successful current-SHA full smoke must finish Project lifecycle acceptance before moving to SAMP-010 waveform zoom/audition.
-- Physical MPC Studio MkII verification remains a separate pending acceptance step; emulator results do not count as device tests.
-
-## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the 2026-10-18 status above)
+## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 
 Older dated “next task” sections below retain history only. Start each slice from live HEAD, current source and real test gaps.
 

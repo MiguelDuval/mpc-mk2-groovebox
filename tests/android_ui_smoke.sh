@@ -1077,6 +1077,10 @@ for required in 'PAN %+.2f' 'TUNE %+.1f'; do
   fi
 done
 
+if ! grep -Fq -- 'sampleEditBrowser.setContentDescription("Sample Edit open Browser")' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Sample Edit exit route lacks a stable accessible Browser action"
+  exit 1
+fi
 echo "Running MPC Browser flat-chrome preflight..."
 echo "Running MPC Browser information-architecture preflight..."
 if grep -Fq -- 'PROVIDER • ANDROID DOCUMENTS • OPEN PICKER BELOW' "$BROWSER_SOURCE" \
@@ -1878,6 +1882,7 @@ capture_ui_screenshot() {
     mpc-groovebox-track-edit-envelope-filter-before.png|\
     mpc-groovebox-track-edit-envelope-attack-changed.png|\
     mpc-groovebox-track-edit-filter-cutoff-changed.png|\
+    mpc-groovebox-sample-browser-return.png|\
     mpc-groovebox-sample-crop-*.png|\
     mpc-groovebox-sample-chop-*.png|\
     mpc-groovebox-project-*.png|\
@@ -9264,6 +9269,9 @@ SAMPLE_CROP_REGION_CHANGED_REMOTE="/sdcard/mpc-groovebox-sample-crop-region-sele
 SAMPLE_CROP_CROPPED_PNG="/tmp/mpc-groovebox-sample-crop-cropped.png"
 SAMPLE_CROP_CROPPED_XML="/tmp/mpc-groovebox-sample-crop-cropped-uiautomator.xml"
 SAMPLE_CROP_CROPPED_REMOTE="/sdcard/mpc-groovebox-sample-crop-cropped-uiautomator.xml"
+SAMPLE_BROWSER_RETURN_PNG="/tmp/mpc-groovebox-sample-browser-return.png"
+SAMPLE_BROWSER_RETURN_XML="/tmp/mpc-groovebox-sample-browser-return-uiautomator.xml"
+SAMPLE_BROWSER_RETURN_REMOTE="/sdcard/mpc-groovebox-sample-browser-return-uiautomator.xml"
 
 read_sample_edit_region_frames() {
   python3 - "$1" <<'PY'
@@ -9544,18 +9552,26 @@ if grep -Fq -- "$FAVORITE_SAMPLE_NAME" "$FAVORITE_MEDIA_QUERY"; then
   exit 1
 fi
 
-# The earlier UI audit deliberately exercised a non-matching Search query. Clear it
-# again after returning from the real Android file picker, then inspect the actual
-# EditText state before navigating to USER FOLDER. Picker return can recreate the
-# Activity and restore an older navigation snapshot, so the earlier Browser reset
-# is not sufficient proof that this later folder scan starts unfiltered.
-if ! tap_ui_description "$PICKER_RETURN_XML" "MPC Browser clear search"; then
-  echo "ERROR: could not clear Browser Search after Android Document Picker return"; exit 1
+# SAMP-008/009 leave the app in Sample Edit. Return through its actual BROWSER
+# control before continuing Browser storage/permission acceptance; do not reuse
+# the earlier picker-return hierarchy, which correctly captured Sample Edit.
+if ! tap_ui_description "$SAMPLE_BROWSER_RETURN_XML" "Sample Edit open Browser"; then
+  echo "ERROR: Sample Edit BROWSER route was not actionable after CH16"; exit 1
 fi
-if ! dump_device_ui "$PICKER_RETURN_REMOTE" "$PICKER_RETURN_XML"; then
-  echo "ERROR: could not inspect Browser Search after picker return"; exit 1
+if ! wait_for_ui_description "$SAMPLE_BROWSER_RETURN_XML" "$SAMPLE_BROWSER_RETURN_REMOTE" \
+    "MPC Browser search files" 15; then
+  echo "ERROR: Sample Edit BROWSER route did not return to Browser"; exit 1
 fi
-if ! python3 - "$PICKER_RETURN_XML" <<'PY'
+if ! tap_ui_description "$SAMPLE_BROWSER_RETURN_XML" "MPC Browser clear search"; then
+  echo "ERROR: could not clear Browser Search after Sample Edit acceptance"; exit 1
+fi
+if ! dump_device_ui "$SAMPLE_BROWSER_RETURN_REMOTE" "$SAMPLE_BROWSER_RETURN_XML"; then
+  echo "ERROR: could not inspect Browser Search after Sample Edit return"; exit 1
+fi
+if ! capture_ui_screenshot "$SAMPLE_BROWSER_RETURN_PNG" 10; then
+  echo "ERROR: could not capture Sample Edit → Browser return screenshot"; exit 1
+fi
+if ! python3 - "$SAMPLE_BROWSER_RETURN_XML" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 
@@ -9567,19 +9583,21 @@ fields = [
 if len(fields) != 1:
     raise SystemExit(f"expected one Browser Search EditText, found {len(fields)}")
 query = fields[0].attrib.get("text", "").strip()
-# Android UIAutomator reports EditText's hint as its "text" attribute when
-# the actual text is empty. MpcBrowserView explicitly uses "Search files" as
-# that hint; accept it, but reject any other non-empty query.
+# UIAutomator exposes this EditText hint as text when the current query is empty.
 if query not in ("", "Search files"):
     raise SystemExit(f"Browser Search retained stale query after CLEAR: {query!r}")
-print("Browser Search reset verified after Android Document Picker return.")
+print("Browser Search reset verified after Sample Edit → Browser return.")
 PY
 then
-  echo "ERROR: Browser Search was not empty before USER FOLDER scan"; exit 1
+  echo "ERROR: Browser Search was not empty after Sample Edit return"; exit 1
+fi
+if ! test -s /tmp/mpc-groovebox-sample-browser-return.png \
+    || ! test -s /tmp/mpc-groovebox-sample-browser-return-uiautomator.xml; then
+  echo "ERROR: Sample Edit → Browser transition lacks screenshot/UI hierarchy evidence"; exit 1
 fi
 
 # Enter Places > User Folder. The folder action should only appear in this location.
-if ! tap_ui_description "$PICKER_RETURN_XML" "Browser PLACES tab"; then
+if ! tap_ui_description "$SAMPLE_BROWSER_RETURN_XML" "Browser PLACES tab"; then
   echo "ERROR: Browser Places tab is not actionable"; exit 1
 fi
 if ! wait_for_ui_description "$TREE_BROWSER_XML" "$TREE_BROWSER_REMOTE" \
