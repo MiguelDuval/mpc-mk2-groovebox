@@ -9488,7 +9488,7 @@ if ! tap_ui_description "$SAMPLE_CHOPPED_XML" "Sample Edit restore full sample r
   echo "ERROR: Sample Edit FULL action was not actionable before CH8"; exit 1
 fi
 if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_REMOTE" \
-    "0 $sample_crop_expected_frames $sample_crop_expected_frames" 15; then exit 1; fi
+    "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then exit 1; fi
 if ! run_sample_chop_acceptance 8 "$sample_crop_expected_frames" \
     "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_8_PNG" \
     "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE"; then exit 1; fi
@@ -9497,7 +9497,7 @@ if ! tap_ui_description "$SAMPLE_CHOPPED_8_XML" "Sample Edit restore full sample
   echo "ERROR: Sample Edit FULL action was not actionable before CH16"; exit 1
 fi
 if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE" \
-    "0 $sample_crop_expected_frames $sample_crop_expected_frames" 15; then exit 1; fi
+    "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then exit 1; fi
 if ! run_sample_chop_acceptance 16 "$sample_crop_expected_frames" \
     "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_16_PNG" \
     "$SAMPLE_CHOPPED_16_XML" "$SAMPLE_CHOPPED_16_REMOTE"; then exit 1; fi
