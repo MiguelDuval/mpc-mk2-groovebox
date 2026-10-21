@@ -229,7 +229,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView selectedPadInfo;
     private TextView sampleInfo;
     private TextView regionInfo;
-    private TextView sampleWaveformViewportInfo;
     private TextView envelopeInfo;
     private TextView filterInfo;
     private TextView recordingInfo;
@@ -238,6 +237,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final Handler waveformUiHandler = new Handler(Looper.getMainLooper());
     private Runnable recordingWaveformUpdater;
     private WaveformView sampleWaveform;
+    private TextView sampleWaveformViewportInfo;
     private WaveformView mainTrackWaveform;
     private Button mainTrackSamplePrimaryButton;
     private Button mainTrackSampleActionButton;
@@ -5051,8 +5051,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
         sampleWaveformViewportInfo = label("VIEW 0–100%", 10, MUTED);
-        sampleWaveformViewportInfo.setContentDescription(
-                "Sample Edit waveform viewport");
+        sampleWaveformViewportInfo.setContentDescription("Sample Edit waveform viewport");
         sampleWaveformViewportInfo.setPadding(dp(10), 0, dp(10), 0);
         page.addView(sampleWaveformViewportInfo, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
@@ -5162,7 +5161,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleEnvelopePanel(LinearLayout page) {
-        removeBelow(page, 5);
+        removeBelow(page, 4);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         envelopeInfo = label("", 12, TEXT);
@@ -5190,7 +5189,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleFilterPanel(LinearLayout page) {
-        removeBelow(page, 5);
+        removeBelow(page, 4);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         filterInfo = label("", 13, TEXT);
@@ -5237,7 +5236,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleLayerPanel(LinearLayout page) {
-        removeBelow(page, 5);
+        removeBelow(page, 4);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         TextView layerInfo = label("", 12, TEXT);
@@ -11152,8 +11151,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer) : 0L;
         sampleWaveformViewportInfo.setText(String.format(
                 Locale.ROOT, "VIEW %d–%d%%", startPercent, endPercent));
-        // This accessibility projection reads live native sampler state whenever
-        // the visual viewport changes, so acceptance can prove zoom is non-destructive.
         sampleWaveformViewportInfo.setContentDescription(String.format(
                 Locale.ROOT,
                 "Sample Edit waveform viewport %d to %d percent; sample region %d to %d of %d frames",

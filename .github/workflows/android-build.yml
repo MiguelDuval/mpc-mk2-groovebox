@@ -551,9 +551,6 @@ jobs:
               if line.strip().startswith("/tmp/")
           ]
 
-          # These screenshots are declared via shell variables and then checked
-          # in an evidence loop, so regex-scanning literal "test -s /tmp/..." lines
-          # alone would silently omit them from this preflight contract.
           samp010_pngs = [
               "/tmp/mpc-groovebox-sample-zoom-before.png",
               "/tmp/mpc-groovebox-sample-zoom-in.png",
