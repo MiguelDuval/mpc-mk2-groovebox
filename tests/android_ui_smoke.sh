@@ -6321,9 +6321,10 @@ for node in nodes:
     row_bounds = None
     icon_bounds = None
     row_node = None
-    # Validate a folder label's own item_root before climbing to a clickable
-    # ancestor. Otherwise a recycled duplicate can be tapped before a later
-    # bounds guard gets a chance to reject its stale row.
+    # Folder activation must use the measured trailing gutter, not the row
+    # centre: the centre can land inside the title TextView and select rather
+    # than open the folder. Validate the title against its own non-recycled row
+    # and emit the gutter touch before generic clickable-ancestor handling.
     if tap_kind == "row":
         row_probe = node
         probe_row = None
@@ -6332,19 +6333,27 @@ for node in nodes:
                 probe_row = row_probe
                 break
             row_probe = parents.get(row_probe)
-        if probe_row is not None:
-            try:
-                row_first, row_second = probe_row.attrib.get("bounds", "")[1:-1].split("][")
-                label_first, label_second = node.attrib.get("bounds", "")[1:-1].split("][")
-                row_left, row_top = map(int, row_first.split(","))
-                row_right, row_bottom = map(int, row_second.split(","))
-                label_left, label_top = map(int, label_first.split(","))
-                label_right, label_bottom = map(int, label_second.split(","))
-            except ValueError:
-                continue
-            if not (row_left <= label_left < label_right <= row_right
-                    and row_top <= label_top < label_bottom <= row_bottom):
-                continue
+        if probe_row is None:
+            continue
+        try:
+            row_first, row_second = probe_row.attrib.get("bounds", "")[1:-1].split("][")
+            label_first, label_second = node.attrib.get("bounds", "")[1:-1].split("][")
+            row_left, row_top = map(int, row_first.split(","))
+            row_right, row_bottom = map(int, row_second.split(","))
+            label_left, label_top = map(int, label_first.split(","))
+            label_right, label_bottom = map(int, label_second.split(","))
+        except ValueError:
+            continue
+        if not (row_left <= label_left < label_right <= row_right
+                and row_top <= label_top < label_bottom <= row_bottom):
+            continue
+        target_x = row_left + ((row_right - row_left) * 7 // 8)
+        if target_x <= label_right:
+            target_x = row_right - max(8, (row_right - row_left) // 32)
+        if row_right > row_left and row_bottom > row_top and label_right < target_x < row_right:
+            print(target_x, (row_top + row_bottom) // 2)
+            raise SystemExit(0)
+        continue
     while candidate is not None:
         bounds = candidate.attrib.get("bounds", "")
         cls_candidate = candidate.attrib.get("class", "").lower()
@@ -6368,27 +6377,8 @@ for node in nodes:
                 print((left + right) // 2, (top + bottom) // 2)
                 raise SystemExit(0)
         candidate = parents.get(candidate)
-    # A row-centre tap is not independent of the title hit area on this
-    # DocumentsUI layout: Build #2728's row centre (540,527) still landed
-    # inside the title bounds [189,499][697,556]. Choose the measured trailing
-    # gutter of item_root instead, outside the title TextView, and fail closed
-    # if this row has no such target rather than silently reusing label bounds.
-    if tap_kind == "row" and row_bounds:
-        try:
-            first, second = row_bounds[1:-1].split("][")
-            left, top = map(int, first.split(","))
-            right, bottom = map(int, second.split(","))
-            label_first, label_second = node.attrib.get("bounds", "")[1:-1].split("][")
-            label_right = int(label_second.split(",")[0])
-            target_x = left + ((right - left) * 7 // 8)
-            if target_x <= label_right:
-                target_x = right - max(8, (right - left) // 32)
-            if right > left and bottom > top and target_x > label_right and target_x < right:
-                print(target_x, (top + bottom) // 2)
-                raise SystemExit(0)
-        except ValueError:
-            pass
-        print("ERROR: no trailing item_root hit area exists outside the folder title", file=sys.stderr)
+    if tap_kind == "row":
+        print("ERROR: no self-consistent visible item_root trailing-gutter target exists", file=sys.stderr)
         raise SystemExit(3)
     # Folder activation and file selection use different hit targets on some
     # DocumentsUI grids. Keep each target explicit rather than guessing.
