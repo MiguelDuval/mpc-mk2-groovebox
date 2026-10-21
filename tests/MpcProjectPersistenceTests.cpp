@@ -377,6 +377,31 @@ int main() {
     assert(!error.empty());
     assert(persistence::serializeProject(loaded, &error) == loadedBytesBeforeFailure);
 
+    // A structurally valid document with overlapping timeline intervals fails
+    // only after the candidate has been fully decoded. The active Project must
+    // remain byte-for-byte unchanged when final graph validation rejects it.
+    std::string overlappingPlacementDocument = serialized;
+    const std::string originalClipA =
+            "PLACEMENT \"clip-a\" \"pattern-shared-01\" 0 480 0";
+    const std::string overlappingClipA =
+            "PLACEMENT \"clip-a\" \"pattern-shared-01\" 0 960 0";
+    const std::string originalClipB =
+            "PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120";
+    const std::string overlappingClipB =
+            "PLACEMENT \"clip-b\" \"pattern-shared-01\" 240 480 120";
+    auto clipAPosition = overlappingPlacementDocument.find(originalClipA);
+    auto clipBPosition = overlappingPlacementDocument.find(originalClipB);
+    assert(clipAPosition != std::string::npos);
+    assert(clipBPosition != std::string::npos);
+    overlappingPlacementDocument.replace(
+            clipAPosition, originalClipA.size(), overlappingClipA);
+    overlappingPlacementDocument.replace(
+            clipBPosition, originalClipB.size(), overlappingClipB);
+    assert(!persistence::deserializeProject(
+            overlappingPlacementDocument, loaded, &error));
+    assert(error.find("overlap") != std::string::npos);
+    assert(persistence::serializeProject(loaded, &error) == loadedBytesBeforeFailure);
+
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
     return 0;
