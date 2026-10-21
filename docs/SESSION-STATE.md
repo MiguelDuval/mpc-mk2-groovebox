@@ -5,24 +5,22 @@
 
 ## Latest source and verification state
 
-### Live checkpoint — 2026-10-21
+### Live checkpoint — 2026-10-21, update after Build #3009
 
-- Repository: `MiguelDuval/mpc-mk2-groovebox`; active branch `feature/mpc-one-ui-fidelity`; PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains **OPEN**, base `fix/ui-shell-format-width-startup`. `main` remains untouched. Live HEAD at investigation start: `b75f53a70148f8866b63ac9961dff17b5a7eb028`.
-- Latest exact-HEAD Android Build #3008 / run `39566070833` failed at the final Browser/SAF stage: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39566070833. All preceding native/unit-test steps, APK assembly/upload and evidence-contract preflight passed; emulator smoke reached SAMP-008/009.
-- **SAMP-008 runtime assertions passed inside run #3008:** real-touch CROP reduced the disposable sample from 3,840 to 2,840 PCM frames after Start +1,000 and reset the active region to `0..2,840`.
-- **SAMP-009 runtime assertions passed inside run #3008:** real-touch CH4, CH8 and CH16 each produced exact, contiguous native destination regions covering all 2,840 frames without overlap or gaps. These targeted checks succeeded, but the overall smoke failed afterward, so neither slice is marked fully VERIFIED at the acceptance boundary.
-- Root cause of the later failure is evidence-based: after SAMP-009 the foreground page remains Sample Edit, while the smoke incorrectly tries to tap `MPC Browser clear search` using a prior picker-return variable. The uploaded hierarchy `mpc-groovebox-browser-picker-assignment-uiautomator.xml` shows Sample Edit controls and its BROWSER button, not Browser Search. The script needs an explicit real Sample Edit → Browser touch, followed by fresh Browser hierarchy, search reset and retained screenshot/XML evidence. This is a harness/navigation issue, not a crop/chop assertion failure.
-- Run #3008 artifacts: APK `12330162314` (9,957,677 bytes); visual evidence `12330951452` (9,022,418 bytes). The archive was downloaded and inspected around the failing transition.
-- Project SAVE / SAVE AS / OPEN acceptance was not reached in run #3008, so current-HEAD acceptance remains pending. The required route must prove real SAF save/open, canonical state equality including MIDI events and Pattern placement identity/parameters, force-stop/relaunch/open, cancellation without state mutation, malformed-load preservation and placement-free v1 compatibility.
-- The workflow previously had `cancel-in-progress: true`, which could cancel important acceptance runs. Restore `false` in this coherent fix so newer commits wait rather than interrupt the current check. Do not push additional commits while the new exact-SHA full build is active.
-- Physical MPC Studio MkII verification remains **PENDING**; emulator success never substitutes for physical-device acceptance.
+- PR #23 remains **OPEN** on `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`; `main` remains untouched. HEAD at this checkpoint: `73571a9c733fc21e2d01cd0cc288c7ca26218ba3`.
+- Android Build #3009 / run `39585551501` failed on this exact HEAD: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39585551501. Source/unit checks, APK assembly, evidence preflight and SAMP-008/009 all progressed to the Browser/SAF acceptance.
+- The explicit Sample Edit → Browser handoff added in `73571a9` passed: the log confirms Browser Search was reset after returning from Sample Edit. SAMP-008 CROP changed 3,840→2,840 frames and reset the range to `0..2,840`; SAMP-009 CH4/CH8/CH16 produced exact contiguous slices across all 2,840 frames.
+- Current failure is later in real FAVORITE 1 Android DocumentsUI selection. The initial `wait_for_ui_text` had only a 4-second total budget; slow UIAutomator hierarchy transfer exhausted the window, leaving no usable XML, and the smoke reported that DocumentsUI had closed before the folder child was available. Do not loosen folder/permission checks. The fix caps each hierarchy dump attempt at 6 seconds, retries within an overall window, extends the initial tree-child waits to 15 seconds, and extends the exact “Use this folder” action budget.
+- Run #3009 artifacts: APK `12339469482` (9,957,677 bytes); evidence `12340582239` (9,442,912 bytes, SHA-256 digest `146bfa9c62f81aea1dbf0ec17dc2a45631ffd4ee1b1e5f092053dc1bced5e2cb`).
+- Project SAVE / SAVE AS / OPEN acceptance was not reached. It remains required on a green exact-HEAD smoke, including canonical state equality for MIDI events and Pattern placements, force-stop/relaunch/open, cancellation state invariance, malformed-input preservation, and placement-free v1 compatibility.
+- `.github/workflows/android-build.yml` now uses `cancel-in-progress: false`; preserve this so new pushes cannot cancel the active critical run. Physical MPC Studio MkII verification remains **PENDING**.
 
 ## Current execution queue — 2026-10-21
 
-1. Fix the Sample Edit → Browser transition in the smoke using the existing real BROWSER route, a stable accessible content description and a required screenshot/XML milestone. Preserve all SAMP and Browser/SAF assertions.
-2. In the same coherent commit set `cancel-in-progress: false`, update current status docs and push atomically to the existing PR branch. Require the new exact-HEAD full Android run and inspect its artifact.
-3. Only after Browser/SAF flows complete, evaluate Project SAVE / SAVE AS / OPEN lifecycle assertions on the new HEAD. Do not jump to SAMP-010 until the full smoke and the current Project lifecycle criteria pass.
-4. Physical MPC Studio MkII tests remain a separate pending acceptance step.
+1. Run the bounded DocumentsUI hierarchy retry fix through the complete exact-HEAD Android workflow. Keep all real picker, child-file, folder grant and persistence assertions strict.
+2. While the full workflow runs, work on the separate SAMP-010 waveform zoom/audition slice on an isolated branch only. Do not merge it into PR #23 until the current acceptance run has a conclusion and its result is handled.
+3. On a green exact-HEAD workflow, record Project SAVE / SAVE AS / OPEN acceptance from the same run. If any later assertion fails, diagnose that exact failure and repeat the smallest root-cause fix.
+4. Physical MPC Studio MkII tests stay separate from emulator evidence.
 
 ## Completed in this session
 

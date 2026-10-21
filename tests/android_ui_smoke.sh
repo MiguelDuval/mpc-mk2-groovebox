@@ -6983,10 +6983,17 @@ PY
 
 wait_for_ui_text() {
   local hierarchy_path="$1" remote_path="$2" expected_fragment="$3"
-  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining
+  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining dump_budget
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then continue; fi
+    # A slow Android 16 DocumentsUI dump must not consume the whole wait budget
+    # in one attempt. Cap each hierarchy attempt so transient stalls can retry.
+    dump_budget="$remaining"
+    (( dump_budget > 6 )) && dump_budget=6
+    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$dump_budget"; then
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
+      continue
+    fi
     if python3 - "$hierarchy_path" "$expected_fragment" <<'PY'
 import sys, xml.etree.ElementTree as ET
 path, expected = sys.argv[1], sys.argv[2]
@@ -9637,7 +9644,7 @@ if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-tree-picker.png 10; then
 fi
 # First accept the direct initial-document URI when this provider honors it.
 # If DocumentsUI falls back to device root, navigate the real visible folder row.
-if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 4; then
+if ! wait_for_ui_text "$TREE_PICKER_XML" "$TREE_PICKER_REMOTE" "$TREE_SAMPLE_NAME" 15; then
   if ! grep -Fq -- 'package="com.android.documentsui"' "$TREE_PICKER_XML"; then
     echo "ERROR: DocumentsUI closed before exposing the selected-folder child"; exit 1
   fi
@@ -9844,7 +9851,7 @@ fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-picker.png 10; then
   echo "ERROR: could not capture FAVORITE 1 picker screenshot"; exit 1
 fi
-if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_SAMPLE_NAME" 4; then
+if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_SAMPLE_NAME" 15; then
   if ! grep -Fq -- 'package="com.android.documentsui"' "$FAVORITE_TREE_PICKER_XML"; then
     echo "ERROR: DocumentsUI closed before FAVORITE 1 could select a folder"; exit 1
   fi
@@ -9889,8 +9896,8 @@ PY
   fi
 
   # This must be the folder-grant picker, not the direct WAV-open picker.
-  if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "USE THIS FOLDER" 6; then
-    if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "Use this folder" 3; then
+  if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "USE THIS FOLDER" 12; then
+    if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "Use this folder" 6; then
       echo "ERROR: FAVORITE 1 picker never exposed the Android Use This Folder tree-grant action"; exit 1
     fi
   fi
