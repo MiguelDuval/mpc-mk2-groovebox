@@ -285,10 +285,27 @@ int main() {
     assert(legacyNote.ratchet == 2);
     assert(legacyNote.nudgeTicks == -3);
 
+    // A failed decode must preserve the entire active model, not only its ID.
+    const auto serializedBeforeFailure = persistence::serializeProject(loaded);
     const auto loadedIdBeforeFailure = loaded.id;
+    error.clear();
     assert(!persistence::deserializeProject(
             "MPCMK2_PROJECT 99\n", loaded, &error));
+    assert(!error.empty());
     assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
+
+    // Use a valid v2 header and Project record so failure occurs after the parser
+    // has consumed some input. This catches partial mutation on a truncated file.
+    error.clear();
+    const std::string truncatedV2 =
+            "MPCMK2_PROJECT 2\n"
+            "PROJECT \"partial-project\" \"Partial Project\"\n"
+            "SAMPLES 1\n";
+    assert(!persistence::deserializeProject(truncatedV2, loaded, &error));
+    assert(!error.empty());
+    assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
 
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
