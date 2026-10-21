@@ -285,10 +285,39 @@ int main() {
     assert(legacyNote.ratchet == 2);
     assert(legacyNote.nudgeTicks == -3);
 
-    const auto loadedIdBeforeFailure = loaded.id;
+    // Any rejected load must preserve the whole active project, not just
+    // its user-visible name/ID. Exercise failures before parsing, mid-record,
+    // and after a fully parsed but invalid Pattern-placement graph.
+    const auto loadedBytesBeforeFailure = persistence::serializeProject(loaded, &error);
+    assert(!loadedBytesBeforeFailure.empty());
+
     assert(!persistence::deserializeProject(
             "MPCMK2_PROJECT 99\n", loaded, &error));
-    assert(loaded.id == loadedIdBeforeFailure);
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded, &error) == loadedBytesBeforeFailure);
+
+    const std::string truncatedAfterCandidateCreation =
+            "MPCMK2_PROJECT 2\n"
+            "PROJECT \"partial-project\" \"Partial Project\"\n"
+            "SAMPLES 1\n"
+            "SAMPLE \"partial-sample\"";
+    assert(!persistence::deserializeProject(
+            truncatedAfterCandidateCreation, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded, &error) == loadedBytesBeforeFailure);
+
+    std::string duplicatePlacementId = serialized;
+    const std::string originalClipC =
+            "PLACEMENT \"clip-c\" \"pattern-shared-01\" 1920 960 360";
+    const std::string duplicateClipB =
+            "PLACEMENT \"clip-b\" \"pattern-shared-01\" 1920 960 360";
+    const auto clipCPosition = duplicatePlacementId.find(originalClipC);
+    assert(clipCPosition != std::string::npos);
+    duplicatePlacementId.replace(
+            clipCPosition, originalClipC.size(), duplicateClipB);
+    assert(!persistence::deserializeProject(duplicatePlacementId, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded, &error) == loadedBytesBeforeFailure);
 
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
