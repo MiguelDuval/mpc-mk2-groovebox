@@ -157,6 +157,38 @@ int main() {
     assert(persistence::saveProjectFile(source, filePath, &error));
     assert(error.empty());
 
+    // A rejected save must not replace an already-valid file on disk.
+    domain::Project invalidForSave = source;
+    bool invalidatedPlacement = false;
+    for (auto& placement : invalidForSave.sequences[0].tracks[0].placements) {
+        if (placement.id == "clip-b") {
+            placement.patternId = "pattern-missing-01";
+            invalidatedPlacement = true;
+            break;
+        }
+    }
+    assert(invalidatedPlacement);
+    error.clear();
+    assert(!persistence::saveProjectFile(invalidForSave, filePath, &error));
+    assert(!error.empty());
+    {
+        std::ifstream savedFile(filePath, std::ios::binary);
+        assert(savedFile.good());
+        savedFile.seekg(0, std::ios::end);
+        const auto fileSize = savedFile.tellg();
+        assert(fileSize >= 0);
+        savedFile.seekg(0, std::ios::beg);
+        std::string preservedBytes(
+                static_cast<std::size_t>(fileSize), '\\0');
+        if (!preservedBytes.empty()) {
+            savedFile.read(
+                    preservedBytes.data(),
+                    static_cast<std::streamsize>(preservedBytes.size()));
+            assert(savedFile.good());
+        }
+        assert(preservedBytes == serialized);
+    }
+
     // Load from disk into a distinct project instance. This is a real file
     // round trip, not a re-render of the original in-memory model.
     domain::Project loaded;
