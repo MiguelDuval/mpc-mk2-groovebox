@@ -13508,6 +13508,46 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     }
 
+    private void waitForAuditViewWithContentDescription(
+            String expectedDescription,
+            String label,
+            int minimumHeight,
+            Runnable continuation) {
+        final Handler handler = new Handler(Looper.getMainLooper());
+        final int[] attempts = {0};
+        final Runnable[] wait = new Runnable[1];
+        wait[0] = () -> {
+            if (destroyed) return;
+            final View decor = getWindow() == null
+                    ? null : getWindow().getDecorView();
+            final View view = findViewWithContentDescription(
+                    decor, expectedDescription);
+            if (view != null) {
+                waitForMeasuredAuditView(view, minimumHeight, label, continuation);
+                return;
+            }
+            if (++attempts[0] >= 60) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: " + label
+                        + " lookup timeout"
+                        + " | expected=" + expectedDescription
+                        + " | currentPage=" + currentPage
+                        + " | currentTitle=" + (pageTitle == null
+                                ? "<null>" : pageTitle.getText())
+                        + " | sampleWaveform=" + describeAuditView(sampleWaveform)
+                        + " | sampleWaveformParent=" + (sampleWaveform == null
+                                ? "<null>" : String.valueOf(sampleWaveform.getParent()))
+                        + " | content=" + describeAuditView(content));
+                return;
+            }
+            if (decor != null) {
+                decor.postOnAnimation(() -> handler.postDelayed(wait[0], 16L));
+            } else {
+                handler.postDelayed(wait[0], 16L);
+            }
+        };
+        wait[0].run();
+    }
+
     private void waitForMeasuredAuditView(
             View view,
             int minimumHeight,
@@ -15051,16 +15091,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        final View waveform = findViewWithContentDescription(
-                getWindow().getDecorView(), "Sample waveform editor");
-        if (waveform == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: sample waveform editor");
-            return;
-        }
-        waitForMeasuredAuditView(
-                waveform,
-                0,
+        // Mode navigation updates the shell synchronously, but view attachment to
+        // the decor can trail the click callback by a frame. Resolve the live view
+        // from the current decor for a bounded window rather than converting that
+        // transition race into an immediate UI audit failure.
+        waitForAuditViewWithContentDescription(
+                "Sample waveform editor",
                 "sample waveform editor",
+                0,
                 this::runUiAuditAfterSampleEdit);
     }
 
