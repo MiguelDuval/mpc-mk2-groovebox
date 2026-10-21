@@ -1791,7 +1791,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -2021,20 +2021,36 @@ PY
 
 cleanup_stale_device_uiautomator() {
   # adb_bounded kills the host adb process group, not necessarily the remote
-  # com.android.commands.uiautomator.Launcher that adb shell started. Android
-  # exposes the runner inconsistently across ps implementations (NAME vs ARGS),
-  # so match both columns and never kill DocumentsUI or unrelated app processes.
-  local ps_output pid
-  ps_output="$(adb_bounded 3 shell 'ps -A -o PID,NAME,ARGS 2>/dev/null' 2>/dev/null || true)"
+  # com.android.commands.uiautomator.Launcher that adb shell started. Some Android
+  # images reject the -o PID,NAME,ARGS format; query both supported process views.
+  # Match only the UiAutomator runner, never DocumentsUI or unrelated processes.
+  local ps_output pid matched_pids
+  ps_output="$(adb_bounded 3 shell 'ps -A -o PID,NAME,ARGS 2>/dev/null; ps -A 2>/dev/null' 2>/dev/null || true)"
+  matched_pids="$(printf '%s\n' "$ps_output" | awk '
+    $1 == "PID" || $1 == "USER" || $1 == "UID" {
+      pid_column = 0
+      for (column = 1; column <= NF; column++) {
+        if ($column == "PID") { pid_column = column; break }
+      }
+      next
+    }
+    /uiautomator/ || /com\.android\.commands\.uiautomator\.Launcher/ {
+      pid = ""
+      if (pid_column > 0 && $(pid_column) ~ /^[0-9]+$/) pid = $(pid_column)
+      else if ($1 ~ /^[0-9]+$/) pid = $1
+      else if ($2 ~ /^[0-9]+$/) pid = $2
+      if (pid ~ /^[0-9]+$/) print pid
+    }' | sort -u)"
+  if [[ -z "$matched_pids" ]]; then
+    echo "WARN: no stale UiAutomator PID matched; process-list capability diagnostics:"
+    printf '%s\n' "$ps_output" | grep -i -E '^(PID|USER|UID)|uiautomator|app_process' | head -n 4 || true
+    return 0
+  fi
   while IFS= read -r pid; do
     [[ "$pid" =~ ^[0-9]+$ ]] || continue
     echo "Requesting termination of stale remote UIAutomator runner pid=$pid"
     adb_bounded 3 shell kill -TERM "$pid" >/dev/null 2>&1 || true
-  done < <(
-    printf '%s\n' "$ps_output" |
-      awk 'NR > 1 && $1 ~ /^[0-9]+$/ && ($2 ~ /uiautomator/ || $0 ~ /com\.android\.commands\.uiautomator\.Launcher/) { print $1 }' |
-      sort -u
-  )
+  done <<< "$matched_pids"
 }
 
 dump_device_ui() {
