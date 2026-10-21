@@ -10,7 +10,9 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace mpc::persistence {
 namespace {
@@ -245,38 +247,64 @@ bool readPattern(Decoder& in, domain::Pattern& pattern) {
 bool validatePlacements(const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
         for (const auto& track : sequence.tracks) {
+            const auto& placements = track.placements;
+            if (placements.size() > kMaxPlacementsPerTrack) {
+                return setError(error, "Pattern placement count exceeds the supported limit");
+            }
+
+            // Resolve Pattern references once rather than scanning the Pattern
+            // vector for every placement in a large Arrangement.
+            std::unordered_map<std::string, const domain::Pattern*> patternsById;
+            patternsById.reserve(track.patterns.size());
+            for (const auto& pattern : track.patterns) {
+                // emplace preserves find_if's first-match behavior for legacy
+                // projects containing duplicate Pattern IDs.
+                patternsById.emplace(pattern.id, &pattern);
+            }
+
             std::set<std::string> ids;
-            for (std::size_t i = 0; i < track.placements.size(); ++i) {
-                const auto& placement = track.placements[i];
-                const auto pattern = std::find_if(
-                        track.patterns.begin(), track.patterns.end(),
-                        [&placement](const domain::Pattern& value) {
-                            return value.id == placement.patternId;
-                        });
+            std::vector<std::pair<std::int64_t, std::int64_t>> timelineRanges;
+            timelineRanges.reserve(placements.size());
+            for (const auto& placement : placements) {
+                const auto pattern = patternsById.find(placement.patternId);
                 if (placement.id.empty() || !ids.insert(placement.id).second) {
                     return setError(error, "Pattern placement id is empty or duplicated");
                 }
-                if (pattern == track.patterns.end()) {
+                if (pattern == patternsById.end()) {
                     return setError(error, "Pattern placement references a missing Pattern");
                 }
-                const auto timelineEnd = static_cast<std::int64_t>(placement.startTick)
+
+                const auto timelineStart = static_cast<std::int64_t>(placement.startTick);
+                const auto timelineEnd = timelineStart
                         + static_cast<std::int64_t>(placement.lengthTicks);
                 const auto sourceEnd = static_cast<std::int64_t>(placement.sourceOffsetTicks)
                         + static_cast<std::int64_t>(placement.lengthTicks);
                 if (placement.startTick < 0 || placement.lengthTicks <= 0
                         || placement.sourceOffsetTicks < 0
                         || timelineEnd > sequence.lengthTicks
-                        || sourceEnd > pattern->lengthTicks) {
+                        || sourceEnd > pattern->second->lengthTicks) {
                     return setError(error, "Pattern placement range is invalid");
                 }
-                for (std::size_t j = 0; j < i; ++j) {
-                    const auto& other = track.placements[j];
-                    const auto otherEnd = static_cast<std::int64_t>(other.startTick)
-                            + static_cast<std::int64_t>(other.lengthTicks);
-                    if (static_cast<std::int64_t>(placement.startTick) < otherEnd
-                            && static_cast<std::int64_t>(other.startTick) < timelineEnd) {
+                timelineRanges.emplace_back(timelineStart, timelineEnd);
+            }
+
+            // Sorting changes the overlap check from O(n²) pairwise comparison
+            // to O(n log n), while keeping the validation independent of the
+            // order in which a project happens to serialize placements.
+            std::sort(
+                    timelineRanges.begin(), timelineRanges.end(),
+                    [](const auto& lhs, const auto& rhs) {
+                        if (lhs.first != rhs.first) return lhs.first < rhs.first;
+                        return lhs.second < rhs.second;
+                    });
+            if (!timelineRanges.empty()) {
+                auto maximumPreviousEnd = timelineRanges.front().second;
+                for (std::size_t i = 1; i < timelineRanges.size(); ++i) {
+                    const auto& range = timelineRanges[i];
+                    if (range.first < maximumPreviousEnd) {
                         return setError(error, "Pattern placements overlap on one Track");
                     }
+                    maximumPreviousEnd = std::max(maximumPreviousEnd, range.second);
                 }
             }
         }

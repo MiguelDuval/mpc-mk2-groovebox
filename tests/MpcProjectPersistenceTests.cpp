@@ -157,6 +157,44 @@ int main() {
     assert(serialized.find("PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120")
             != std::string::npos);
 
+    // Nested intervals are overlaps even when their IDs and Pattern references
+    // are otherwise valid; validation must reject them regardless of vector order.
+    auto overlappingProject = source;
+    auto& overlappingPlacements =
+            overlappingProject.sequences[0].tracks[0].placements;
+    overlappingPlacements[0].lengthTicks = 960;
+    overlappingPlacements[1].startTick = 240;
+    overlappingPlacements[1].lengthTicks = 480;
+    overlappingPlacements[1].sourceOffsetTicks = 120;
+    std::string placementError;
+    assert(persistence::serializeProject(overlappingProject, &placementError).empty());
+    assert(placementError.find("overlap") != std::string::npos);
+
+    // The loader caps placements at 65,536 per Track. The writer must reject
+    // the same oversized collection before attempting quadratic validation.
+    auto oversizedProject = source;
+    const std::size_t oversizedCount = 65'537;
+    auto& oversizedSequence = oversizedProject.sequences[0];
+    oversizedSequence.lengthTicks = static_cast<decltype(oversizedSequence.lengthTicks)>(
+            oversizedCount * 2);
+    auto& oversizedTrack = oversizedSequence.tracks[0];
+    oversizedTrack.patterns[0].lengthTicks =
+            static_cast<decltype(oversizedTrack.patterns[0].lengthTicks)>(oversizedCount * 2);
+    oversizedTrack.placements.clear();
+    oversizedTrack.placements.reserve(oversizedCount);
+    for (std::size_t i = 0; i < oversizedCount; ++i) {
+        domain::PatternPlacement placement;
+        placement.id = "bulk-clip-" + std::to_string(i);
+        placement.patternId = oversizedTrack.patterns[0].id;
+        placement.startTick = static_cast<decltype(placement.startTick)>(i * 2);
+        placement.lengthTicks = 1;
+        placement.sourceOffsetTicks = 0;
+        oversizedTrack.placements.push_back(placement);
+    }
+    placementError.clear();
+    assert(persistence::serializeProject(oversizedProject, &placementError).empty());
+    assert(placementError.find("limit") != std::string::npos);
+
     const auto filePath = (std::filesystem::temp_directory_path()
             / "mpc-project-persistence-test.mpcproj").string();
     std::remove(filePath.c_str());
