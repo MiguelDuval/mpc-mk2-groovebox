@@ -1791,7 +1791,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -2021,16 +2021,20 @@ PY
 
 cleanup_stale_device_uiautomator() {
   # adb_bounded kills the host adb process group, not necessarily the remote
-  # com.android.commands.uiautomator.Launcher that adb shell started. A hung
-  # remote UiAutomation instance can monopolize the service and make subsequent
-  # dumps fail. Terminate only that test runner before attempting another dump.
+  # com.android.commands.uiautomator.Launcher that adb shell started. Android
+  # exposes the runner inconsistently across ps implementations (NAME vs ARGS),
+  # so match both columns and never kill DocumentsUI or unrelated app processes.
   local ps_output pid
-  ps_output="$(adb_bounded 2 shell "ps -A -o PID,ARGS 2>/dev/null | grep '[c]om.android.commands.uiautomator' | sed -n 's/^ *\\([0-9][0-9]*\\).*/\\1/p'" 2>/dev/null || true)"
+  ps_output="$(adb_bounded 3 shell 'ps -A -o PID,NAME,ARGS 2>/dev/null' 2>/dev/null || true)"
   while IFS= read -r pid; do
     [[ "$pid" =~ ^[0-9]+$ ]] || continue
     echo "Requesting termination of stale remote UIAutomator runner pid=$pid"
-    adb_bounded 2 shell kill -TERM "$pid" >/dev/null 2>&1 || true
-  done <<< "$ps_output"
+    adb_bounded 3 shell kill -TERM "$pid" >/dev/null 2>&1 || true
+  done < <(
+    printf '%s\n' "$ps_output" |
+      awk 'NR > 1 && $1 ~ /^[0-9]+$/ && ($2 ~ /uiautomator/ || $0 ~ /com\.android\.commands\.uiautomator\.Launcher/) { print $1 }' |
+      sort -u
+  )
 }
 
 dump_device_ui() {
@@ -2051,7 +2055,11 @@ dump_device_ui() {
     return 1
   fi
   remaining=$((deadline - SECONDS))
-  if (( remaining <= 0 )); then echo "ERROR: UI hierarchy deadline expired before transfer ($requested_remote_path)"; return 1; fi
+  if (( remaining <= 0 )); then
+    echo "ERROR: UI hierarchy deadline expired before transfer ($requested_remote_path)"
+    cleanup_stale_device_uiautomator
+    return 1
+  fi
   if ! adb_bounded "$remaining" exec-out cat "$shared_remote_path" > "$host_path"; then
     echo "ERROR: bounded UI hierarchy transfer failed ($requested_remote_path)"
     cleanup_stale_device_uiautomator
@@ -10100,7 +10108,13 @@ fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-picker.png 10; then
   echo "ERROR: could not capture FAVORITE 1 picker screenshot"; exit 1
 fi
-if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_SAMPLE_NAME" 15; then
+# The first fresh DocumentsUI hierarchy was captured immediately after the picker
+# became foreground. FAVORITE 1's fixture is deliberately isolated from the prior
+# USER FOLDER, so check that current snapshot locally before starting another series
+# of remote UIAutomator invocations. Repeated dumps while still in AAA-MPC-Browser-Tree
+# previously monopolized UiAutomation before the root transition could be captured.
+if ! grep -Fq -- "$FAVORITE_SAMPLE_NAME" "$FAVORITE_TREE_PICKER_XML"; then
+  echo "FAVORITE 1 child is absent from the freshly captured picker directory; inspect that snapshot and navigate to the provider root."
   if ! documents_ui_is_foreground; then
     echo "ERROR: DocumentsUI is not foreground after waiting for the FAVORITE 1 child"; exit 1
   fi
@@ -10162,6 +10176,9 @@ PY
     if ! tap_ui_text "$FAVORITE_TREE_PICKER_XML" "$favorite_root_label"; then
       echo "ERROR: could not navigate DocumentsUI from USER FOLDER back to its provider root"; exit 1
     fi
+    # Allow the provider transition to settle before asking UiAutomation for a
+    # fresh root hierarchy. No cached hierarchy may be used for the next touch.
+    sleep 1
     if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4; then
       echo "ERROR: could not inspect DocumentsUI at the FAVORITE 1 provider root after retries"; exit 1
     fi
