@@ -73,6 +73,39 @@ public final class MpcWaveformZoomPolicyTest {
     }
 
     @Test
+    public void viewportFocusGridAlwaysRemainsInsideNormalizedSampleBounds() {
+        float[] centers = new float[] {
+                0.0f, 0.001f, 0.05f, 0.125f, 0.25f, 0.5f,
+                0.75f, 0.875f, 0.95f, 0.999f, 1.0f
+        };
+        float[] spans = new float[] {
+                MpcZoomPolicy.MIN_HORIZONTAL_SPAN,
+                0.125f, 0.25f, 0.5f, 0.8f,
+                MpcZoomPolicy.MAX_HORIZONTAL_SPAN
+        };
+
+        for (float center : centers) {
+            for (float span : spans) {
+                float boundedSpan = MpcZoomPolicy.clampHorizontalSpan(span);
+                float start = MpcZoomPolicy.viewportStartForCenter(center, span);
+                float end = start + boundedSpan;
+
+                assertTrue("start must be normalized: " + start,
+                        start >= 0.0f && start <= 1.0f);
+                assertTrue("end must be normalized: " + end,
+                        end >= 0.0f && end <= 1.0f);
+                assertEquals("span must be preserved", boundedSpan, end - start, EPSILON);
+
+                if (center >= boundedSpan * 0.5f
+                        && center <= 1.0f - boundedSpan * 0.5f) {
+                    assertEquals("interior focus must remain centered",
+                            center - boundedSpan * 0.5f, start, EPSILON);
+                }
+            }
+        }
+    }
+
+    @Test
     public void malformedZoomValuesFailSafelyInsideNormalizedBounds() {
         assertEquals(
                 MpcZoomPolicy.MIN_HORIZONTAL_SPAN,
