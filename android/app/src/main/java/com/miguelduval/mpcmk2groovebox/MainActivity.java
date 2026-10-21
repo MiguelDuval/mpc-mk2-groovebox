@@ -10354,8 +10354,122 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page);
         updateModeRailSelection();
         notifyMpcWorkspaceAccessibilityChanged();
+        if (projectPersistenceSmokeMode) {
+            // UiAutomator dump times out on the rendered Menu in the Android emulator
+            // after Browser's process-restart phase. Capture the real View tree on
+            // the next pre-draw, after bounds/layout are final. This is debug-smoke
+            // evidence only; production navigation and state are unchanged.
+            final ViewTreeObserver menuObserver = content.getViewTreeObserver();
+            if (menuObserver.isAlive()) {
+                menuObserver.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        final ViewTreeObserver observer = content.getViewTreeObserver();
+                        if (observer.isAlive()) observer.removeOnPreDrawListener(this);
+                        captureProjectMenuViewHierarchyForSmoke();
+                        return true;
+                    }
+                });
+            } else {
+                Log.e(TAG, "MPC_MENU_VIEW_HIERARCHY_FAILED: ViewTreeObserver unavailable");
+            }
+        }
         Log.i(TAG, "MPC_MENU_RENDER_COMPLETE");
     }
+    private void captureProjectMenuViewHierarchyForSmoke() {
+        if (!projectPersistenceSmokeMode || destroyed || !"MENU".equals(currentPage)) return;
+        final Window window = getWindow();
+        final View decor = window == null ? null : window.getDecorView();
+        if (decor == null || decor.getWidth() <= 0 || decor.getHeight() <= 0 || !decor.isShown()) {
+            Log.e(TAG, "MPC_MENU_VIEW_HIERARCHY_FAILED: rendered Menu root has no visible bounds");
+            return;
+        }
+
+        final StringBuilder xml = new StringBuilder(32768);
+        final int[] nodeCount = new int[] {0};
+        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+                .append("<hierarchy source=\"android-view-tree\" page=\"MENU\"")
+                .append(" generated-at-uptime-ms=\"").append(SystemClock.uptimeMillis()).append("\">");
+        appendProjectMenuViewNode(decor, xml, 0, nodeCount);
+        xml.append("</hierarchy>");
+
+        final java.io.File hierarchyFile = new java.io.File(
+                getCacheDir(), "mpc-project-menu-view-hierarchy.xml");
+        try (java.io.FileOutputStream output = new java.io.FileOutputStream(hierarchyFile, false)) {
+            output.write(xml.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (IOException | RuntimeException error) {
+            Log.e(TAG, "MPC_MENU_VIEW_HIERARCHY_FAILED: could not persist rendered Menu View tree", error);
+            return;
+        }
+        Log.i(TAG, "MPC_MENU_VIEW_HIERARCHY_READY page=MENU nodes=" + nodeCount[0]
+                + " source=android-view-tree path=cache/mpc-project-menu-view-hierarchy.xml");
+    }
+
+    private void appendProjectMenuViewNode(View view, StringBuilder xml, int index, int[] nodeCount) {
+        if (view == null) return;
+        nodeCount[0]++;
+
+        final int[] position = new int[2];
+        view.getLocationOnScreen(position);
+        final int left = position[0];
+        final int top = position[1];
+        final int right = left + Math.max(0, view.getWidth());
+        final int bottom = top + Math.max(0, view.getHeight());
+        final CharSequence rawText = view instanceof TextView ? ((TextView) view).getText() : null;
+        final CharSequence rawDescription = view.getContentDescription();
+        String resourceId = "";
+        if (view.getId() != View.NO_ID) {
+            try {
+                resourceId = getResources().getResourceName(view.getId());
+            } catch (RuntimeException ignored) {
+                resourceId = Integer.toString(view.getId());
+            }
+        }
+        final boolean checkable = view instanceof android.widget.Checkable;
+        final boolean checked = checkable && ((android.widget.Checkable) view).isChecked();
+        final boolean scrollable = view.canScrollVertically(-1) || view.canScrollVertically(1)
+                || view.canScrollHorizontally(-1) || view.canScrollHorizontally(1);
+        final boolean visible = view.isShown() && view.getAlpha() > 0.0f && right > left && bottom > top;
+
+        xml.append("<node index=\"").append(index)
+                .append("\" text=\"").append(escapeProjectMenuXml(rawText == null ? "" : rawText.toString()))
+                .append("\" resource-id=\"").append(escapeProjectMenuXml(resourceId))
+                .append("\" class=\"").append(escapeProjectMenuXml(view.getClass().getName()))
+                .append("\" package=\"").append(escapeProjectMenuXml(getPackageName()))
+                .append("\" content-desc=\"").append(escapeProjectMenuXml(
+                        rawDescription == null ? "" : rawDescription.toString()))
+                .append("\" checkable=\"").append(checkable)
+                .append("\" checked=\"").append(checked)
+                .append("\" clickable=\"").append(view.isClickable())
+                .append("\" enabled=\"").append(view.isEnabled())
+                .append("\" focusable=\"").append(view.isFocusable())
+                .append("\" focused=\"").append(view.isFocused())
+                .append("\" scrollable=\"").append(scrollable)
+                .append("\" long-clickable=\"").append(view.isLongClickable())
+                .append("\" password=\"false")
+                .append("\" selected=\"").append(view.isSelected())
+                .append("\" visible-to-user=\"").append(visible)
+                .append("\" bounds=\"[").append(left).append(',').append(top)
+                .append("][").append(right).append(',').append(bottom).append("]\">");
+
+        if (view instanceof ViewGroup) {
+            final ViewGroup group = (ViewGroup) view;
+            for (int child = 0; child < group.getChildCount(); child++) {
+                appendProjectMenuViewNode(group.getChildAt(child), xml, child, nodeCount);
+            }
+        }
+        xml.append("</node>");
+    }
+
+    private String escapeProjectMenuXml(String value) {
+        if (value == null || value.isEmpty()) return "";
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
+    }
+
     private void showProjectPage() {
         Log.i(TAG, "MPC_PROJECT_RENDER_BEGIN");
         clearStepEditPadLeds();

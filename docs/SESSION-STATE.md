@@ -1,24 +1,24 @@
 # Session State — MPC MkII Groovebox
 
 **Checkpoint date:** 2026-10-21  
-**Purpose:** handoff checkpoint; mutable status is reconciled against live GitHub before each change.
+**Purpose:** current handoff checkpoint; reconcile status against exact-SHA GitHub evidence before each change.
 
 ## Latest source and verification state
 
-### Live checkpoint — Android Build #3047 and follow-up diagnosis
+### Live checkpoint — Build #3051
 
-- PR #23 is **OPEN** on `feature/mpc-one-ui-fidelity`. HEAD `dcbb5810200a34e4143d37edb49e73e12b69c36f` was tested by Build #3047 / run `39666355459`, which failed at Android emulator smoke step 52. Build #3046 / `39664592692` also failed at step 52 on `a2705476d68793a99bb799515ab16ccacc2ed928`. Neither run completed FAVORITE 1. `main` remains unchanged, and `cancel-in-progress: false` is preserved.
-- The latest artifacts show a real root XML containing `Files on Android SDK built for x86_64`, `BBB-MPC-Browser-Favorite`, and the `USE THIS FOLDER` action. The problem is after that successful fresh root capture: `tap_ui_picker_folder_until_child()` attempts a separate three-dump stable capture and fails before publishing `mpc-groovebox-browser-favorite-tree-root-uiautomator.xml`. The saved PNG with the picker name still shows the previous AAA folder; that is not root evidence.
-- Build #3047's final timeout had a 1-second budget after a 30-second stabilization deadline. The raw `ps` output now contains ordinary Android processes in its first rows, but no matched UiAutomator runner there. This still does not establish the precise reason repeated accessibility calls stall; the actionable failure is the unnecessary triple-dump stage after a fresh root hierarchy was already captured.
-- Current fix scope: keep the shared three-dump stable-capture helper as the default for all other picker flows. For FAVORITE 1 only, use the just-captured fresh hierarchy after the real breadcrumb tap, recheck exact provider-root title and the visible Favorite folder, capture a screenshot immediately, copy the same current XML into the dedicated root evidence path, and then tap the folder using that verified hierarchy. This is an evidence-driven, root-specific fallback—not cached UI, not a mocked state, and not a timeout increase. The real child file, persistable URI grant, Browser result, independent favorite preference, and force-stop/relaunch checks stay mandatory.
-- SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 passed on #3046/#3047: real touches and native PCM/destination getters verified 3840→2840 PCM and contiguous non-overlapping 4/8/16 ranges. USER FOLDER filter plus process-death restoration passed in the same runs. FAVORITE 1 remains unverified.
-- PR #29 SAMP-010 fix commit `62f12da6516cb125f9905dab21d1a32b578882f5` fixes the tab-row removal bug: adding the viewport readout moved the Sample Edit tabs to child index 4, while four panel helpers continued removing from index 4. The new fixed-child count preserves ENV/FILTER/LAYER without disabling audit. This SHA has no exact-SHA workflow result; PR #29 is still draft and mergeable=false against its older base.
-- PR #28 Build #3044 / run `39657357881` failed later in the shared Favorite 1 path, while its native Project state/persistence steps 38/39 passed. Full Project SAVE/SAVE AS/OPEN UI lifecycle remains **PENDING** because the primary acceptance doesn't get past FAVORITE 1. Physical MPC Studio MkII validation remains **PENDING** and is not implied by emulator tests.
+- PR #23 HEAD `a593becb5f0259275b5b20b157edae3815f2729b`; Android Build #3051 / run `39677805700` failed at emulator smoke step 52. Builds #3046–#3051 failed at the same later Project Menu dump stage. PR remains open; `main` remains unchanged; the workflow preserves `cancel-in-progress: false`.
+- **Browser/FAVORITE 1 component acceptance is confirmed on exact SHA `c721e93fde80e9bb0e45b94ce375ec17e20b2692` in Build #3048:** matched provider-root PNG/XML, real breadcrumb/folder touches, separate saved URI preference keys, Browser WAV result and force-stop/relaunch restoration. SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 also passed with native getters on #3046–#3048.
+- Current blocker: in project-persistence mode the real MPC Menu renders and its screenshot is captured, but the compressed UiAutomator dump times out after 8 seconds. Missing/stale XML was not accepted. The logs show a completed Menu transition, but current process diagnostics do not prove the exact underlying Android framework cause.
+- Current implementation captures the **actual Android View tree**, on pre-draw in debug-only project-persistence mode, as explicitly provenance-labelled XML (`source=android-view-tree`, `page=MENU`) containing real bounds, text, content descriptions, visibility and clickability. Smoke validates ten visible enabled menu tiles, then touches the real `MPC Menu PROJECT` target by captured bounds and validates authoritative native Project summary. Missing/malformed XML still fails; the XML is not mislabelled as UiAutomator output.
+- PR #29 latest head `a7f59db3a582d01a67e70d2299232eb25e35dc05`; Build #3049 / run `39672208687` on earlier SHA `816e11a70a1368d63d0137c72aa4154774c5de7b` passed SAMP-010 zoom-in/out/reset and native Pad audition, then failed at the shared Project Menu dump. Latest head still needs exact-SHA verification against a compatible base; do not integrate it yet.
+- PR #28 latest head `d0eef888e33ef98d5a64ce05a2409672f6b6e763`; Build #3050 / run `39672408316` passed native Project persistence tests and Favorite assignment/restoration, then failed at the Menu dump. Full Android Project SAVE/SAVE AS/OPEN remains **PENDING**.
+- Physical MPC Studio MkII validation remains **PENDING** and is not implied by emulator results.
 
 ## Current execution queue — 2026-10-21
 
-1. Verify the new Favorite-root paired-evidence path on its exact-SHA Android Build. Require provider-root header, folder visibility, actual row tap, actual Favorite-only WAV, Android persisted grant, Browser indexing and force-stop/relaunch restoration.
-2. Keep PR #29 isolated until the primary Browser gate passes; then reconcile its stale base using history-preserving changes and run its exact SHA. Continue the existing Project SAVE/SAVE AS/OPEN UI scenario only after FAVORITE 1 succeeds.
+1. Verify the debug-only real View-tree XML and measured PROJECT tile tap on the new exact-SHA Android build. Continue real SAF Project lifecycle if it passes, preserving canonical state, overwrite, restart/Open, cancellation, malformed-load and v1 checks.
+2. While primary CI executes, keep PR #29 and PR #28 isolated; neither is integrated until primary Browser/Project acceptance is green.
 
 ## Completed in this session
 
