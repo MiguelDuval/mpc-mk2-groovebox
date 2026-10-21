@@ -179,7 +179,7 @@ int main() {
         assert(fileSize >= 0);
         savedFile.seekg(0, std::ios::beg);
         std::string preservedBytes(
-                static_cast<std::size_t>(fileSize), '\\0');
+                static_cast<std::size_t>(fileSize), '\0');
         if (!preservedBytes.empty()) {
             savedFile.read(
                     preservedBytes.data(),
