@@ -5,22 +5,22 @@
 
 ## Latest source and verification state
 
-### Live checkpoint — 2026-10-21, update after Build #3009
+### Live checkpoint — 2026-10-21, after Build #3010
 
-- PR #23 remains **OPEN** on `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`; `main` remains untouched. HEAD at this checkpoint: `73571a9c733fc21e2d01cd0cc288c7ca26218ba3`.
-- Android Build #3009 / run `39585551501` failed on this exact HEAD: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39585551501. Source/unit checks, APK assembly, evidence preflight and SAMP-008/009 all progressed to the Browser/SAF acceptance.
-- The explicit Sample Edit → Browser handoff added in `73571a9` passed: the log confirms Browser Search was reset after returning from Sample Edit. SAMP-008 CROP changed 3,840→2,840 frames and reset the range to `0..2,840`; SAMP-009 CH4/CH8/CH16 produced exact contiguous slices across all 2,840 frames.
-- Current failure is later in real FAVORITE 1 Android DocumentsUI selection. The initial `wait_for_ui_text` had only a 4-second total budget; slow UIAutomator hierarchy transfer exhausted the window, leaving no usable XML, and the smoke reported that DocumentsUI had closed before the folder child was available. Do not loosen folder/permission checks. The fix caps each hierarchy dump attempt at 6 seconds, retries within an overall window, extends the initial tree-child waits to 15 seconds, and extends the exact “Use this folder” action budget.
-- Run #3009 artifacts: APK `12339469482` (9,957,677 bytes); evidence `12340582239` (9,442,912 bytes, SHA-256 digest `146bfa9c62f81aea1dbf0ec17dc2a45631ffd4ee1b1e5f092053dc1bced5e2cb`).
-- Project SAVE / SAVE AS / OPEN acceptance was not reached. It remains required on a green exact-HEAD smoke, including canonical state equality for MIDI events and Pattern placements, force-stop/relaunch/open, cancellation state invariance, malformed-input preservation, and placement-free v1 compatibility.
-- `.github/workflows/android-build.yml` now uses `cancel-in-progress: false`; preserve this so new pushes cannot cancel the active critical run. Physical MPC Studio MkII verification remains **PENDING**.
+- Repository `MiguelDuval/mpc-mk2-groovebox`; PR #23 remains **OPEN**, branch `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`. `main` remains untouched. HEAD under test: `41ffeca769bf73ff302c67990bf3531bf1508943`.
+- Android Build #3010 / run `39591041539` failed after native/unit tests, APK assembly, UI-smoke preflight, Sample Edit→Browser return, SAMP-008 and SAMP-009 all succeeded. Run: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39591041539
+- SAMP-008 native assertions: 3,840-frame source, selected Start=1,000, CROP result=2,840 frames, and region reset to `0..2,840`. SAMP-009 CH4/CH8/CH16 verified exact contiguous native frame coverage with no gaps or overlaps. The Sample Edit→Browser handoff and Search-clear proof also passed on run #3010.
+- The later failure is a transient Android DocumentsUI hierarchy capture immediately after returning from USER FOLDER to the storage-provider root for FAVORITE 1. Run log: the picker was foreground, the folder child was absent in the remembered directory, breadcrumb navigation was used, then a single 8-second hierarchy dump failed. This is the next harness recovery point; keep the real child file, path-isolation, folder grant and persistence assertions unchanged.
+- The new fix introduces `dump_device_ui_retry`, which performs up to four independently bounded fresh dumps after the root navigation, without reusing stale XML. Current SAMP-010 remains isolated in `feature/sample-waveform-zoom-audition`; it is not part of PR #23 current build.
+- Project SAVE / SAVE AS / OPEN end-to-end acceptance was not reached. Keep its criteria mandatory: real SAF provider, canonical-state equivalence including MIDI events and placement IDs/parameters, force-stop/relaunch/open, cancellation preserving active state, malformed-load preservation, and placement-free v1 compatibility.
+- Workflow concurrency must remain `cancel-in-progress: false`. Physical MPC Studio MkII validation remains **PENDING**.
 
 ## Current execution queue — 2026-10-21
 
-1. Run the bounded DocumentsUI hierarchy retry fix through the complete exact-HEAD Android workflow. Keep all real picker, child-file, folder grant and persistence assertions strict.
-2. While the full workflow runs, work on the separate SAMP-010 waveform zoom/audition slice on an isolated branch only. Do not merge it into PR #23 until the current acceptance run has a conclusion and its result is handled.
-3. On a green exact-HEAD workflow, record Project SAVE / SAVE AS / OPEN acceptance from the same run. If any later assertion fails, diagnose that exact failure and repeat the smallest root-cause fix.
-4. Physical MPC Studio MkII tests stay separate from emulator evidence.
+1. Run the provider-root fresh-hierarchy retry through full Android Build #3011 and inspect exact-SHA logs/evidence.
+2. While that full workflow runs, continue SAMP-010 waveform zoom/audition and tests on its isolated branch; do not merge until PR #23 acceptance reaches a known conclusion.
+3. After Browser USER FOLDER/FAVORITE persistence passes, continue with the full Project SAVE / SAVE AS / OPEN acceptance. Move feature work into PR #23 only after the critical acceptance run concludes.
+4. Keep physical controller verification separate from emulator proof.
 
 ## Completed in this session
 

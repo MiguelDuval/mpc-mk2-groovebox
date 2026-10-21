@@ -2,20 +2,20 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-21 (live branch and exact-SHA Actions govern)
 
-### 1. Complete SAMP-008/009 + Browser SAF acceptance — TARGETED ASSERTIONS PASS; FULL SMOKE PENDING
+### 1. Browser SAF FAVORITE 1 persisted-folder acceptance — NEXT RETRY FIX PREPARED
 
-- Build #3009 / run `39585551501` failed on HEAD `73571a9c733fc21e2d01cd0cc288c7ca26218ba3` during FAVORITE 1 DocumentsUI selection. See https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39585551501. The Browser-return fix and required screenshot/XML passed preflight; SAMP-008 and all CH4/CH8/CH16 native frame coverage assertions passed before the later picker failure.
-- The latest failure evidence shows a timing weakness in the smoke harness, not proof of a product folder/grant defect: a 4-second total wait let one or more bounded UIAutomator dumps exhaust the window before the selected child file could be found. The fix bounds each dump attempt to 6 seconds and permits retries for 15 seconds on the two initial tree-picker child checks; the Android “Use this folder” acceptance gets a larger wait too. Assertions remain unchanged.
+- Build #3010 / run `39591041539` failed on `41ffeca769bf73ff302c67990bf3531bf1508943` at the FAVORITE 1 DocumentsUI provider-root hierarchy capture. All unit/native steps, APK build, smoke-contract preflight, Browser handoff and SAMP-008/009 checks passed before this point. Do not misreport the overall build green.
+- Cause: a single bounded UIAutomator dump failed after tapping the actual DocumentsUI breadcrumb. The picker remained foreground, but the test stopped instead of retrying the fresh hierarchy. `dump_device_ui_retry` now allows up to four separate 8-second capture attempts specifically after this root transition. No UI/state assertion was removed or weakened.
 
-### 2. Next feature being prepared independently — SAMP-010 waveform zoom/audition
+### 2. Parallel feature slice — SAMP-010 waveform zoom/audition
 
-- Existing UI exposes ZOOM+, ZOOM−, RESET and PLAY; inspect `WaveformView` state and the real sample trigger path before changing anything. The feature branch must remain isolated until current PR #23 acceptance finishes.
+- Continue independently on `feature/sample-waveform-zoom-audition`. Validate ZOOM+, ZOOM−, RESET against the visible viewport state while comparing native sample region/frame state before and after; confirm PLAY targets the selected Pad. Keep the experimental branch isolated while PR #23’s critical workflow runs.
 
-### 3. Acceptance order
+### 3. Remaining acceptance order
 
-- First resolve the current exact-HEAD DocumentsUI smoke failure. Then complete Browser USER FOLDER/FAVORITE persistence and the full Project SAVE / SAVE AS / OPEN acceptance: real SAF, canonical domain equality including MIDI events and placement IDs/parameters, force-stop/relaunch/open, cancellations preserving state, malformed-load preservation, placement-free v1 compatibility.
-- Only after the full exact-HEAD run passes should SAMP-010 be integrated. Physical MPC Studio MkII validation remains independently pending.
-- Keep `.github/workflows/android-build.yml` set to `cancel-in-progress: false`; do not introduce another writer or modify the currently tested branch while its run is active.
+- Pass USER FOLDER and FAVORITE folder grant/result restoration, then prove Project SAVE / SAVE AS / OPEN across a real SAF provider. Compare canonical Project state including MIDI events and Pattern placement identity/timing/source offsets/parameters; exercise force-stop/relaunch/open, cancellations and malformed-load preservation, and the placement-free v1 path.
+- Do not integrate SAMP-010 until the full exact-HEAD workflow passes. Physical MPC Studio MkII verification remains independently pending.
+- Preserve `cancel-in-progress: false` in the workflow and never commit on the currently tested branch while a relevant full run is active.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 

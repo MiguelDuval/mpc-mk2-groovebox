@@ -2056,6 +2056,25 @@ PY
   return 0
 }
 
+# DocumentsUI sometimes accepts a real folder tap but takes longer than one
+# UIAutomator dump to publish a stable hierarchy. Retry the same fresh capture
+# with per-attempt bounds; never reuse stale picker XML as proof of current UI.
+dump_device_ui_retry() {
+  local requested_remote_path="$1" host_path="$2"
+  local attempt_timeout="${3:-8}" max_attempts="${4:-4}" attempt
+  for ((attempt=1; attempt<=max_attempts; attempt++)); do
+    if dump_device_ui "$requested_remote_path" "$host_path" "$attempt_timeout"; then
+      return 0
+    fi
+    if (( attempt < max_attempts )); then
+      echo "Retrying fresh UI hierarchy capture ($((attempt + 1))/$max_attempts): $requested_remote_path"
+      sleep 1
+    fi
+  done
+  echo "ERROR: fresh UI hierarchy did not stabilize after $max_attempts bounded attempts: $requested_remote_path"
+  return 1
+}
+
 echo "Installing debug APK (hard limit 120s)..."
 if ! adb_bounded 120 install -r "$APK"; then
   echo "ERROR: adb install failed or timed out after 120s"
@@ -9890,8 +9909,8 @@ PY
     if ! tap_ui_text "$FAVORITE_TREE_PICKER_XML" "$favorite_root_label"; then
       echo "ERROR: could not navigate DocumentsUI from USER FOLDER back to its provider root"; exit 1
     fi
-    if ! dump_device_ui "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML"; then
-      echo "ERROR: could not inspect DocumentsUI at the FAVORITE 1 provider root"; exit 1
+    if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4; then
+      echo "ERROR: could not inspect DocumentsUI at the FAVORITE 1 provider root after retries"; exit 1
     fi
   fi
 
