@@ -2,13 +2,13 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-21 (live branch and exact-SHA Actions govern)
 
-### 1. FAVORITE 1 DocumentsUI root — TARGET-AWARE STABILITY FIX PREPARED; FULL-SMOKE ACCEPTANCE PENDING
+### 1. FAVORITE 1 DocumentsUI root — CRITICAL LABEL-FORWARDING FOLLOW-UP
 
-- Android Build #3031 / run `39618045814` failed at step 52 on exact HEAD `cdbf0bcfcf0eeb9369f351bb889c88770e68d7d2`. Source/unit checks, APK assembly, and evidence preflight passed.
-- SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 passed on this exact SHA/run. The failure is later in FAVORITE 1's root-state capture: evidence XML shows the target folder row is visible, but DocumentsUI emits recycled duplicate nodes whose child title bounds and one `item_root` ancestor disagree. The previous signature compared every hierarchy node and could not stabilize within 30 seconds.
-- The bounded fix uses target-row-aware stabilization only for folder-root capture, checks title/row bound consistency, preserves the full measured-visibility and real-touch assertions. No folder/grant/persistence assertion is loosened.
-- Run #3031 artifacts: APK `12353167922`; evidence `12354283054` (9,476,640 bytes, SHA-256 `eb6ba7c2a1e4e04e60d268282989b32a882362c9060bba4dbb8e639913deaba3`). The archive's picker XML was inspected; no root screenshot exists because the capture failed before screenshot.
-- `.github/workflows/android-build.yml` currently has `cancel-in-progress: false`; leave it unchanged.
+- Android Build #3031 / run `39618045814` failed on SHA `cdbf0bcfcf0eeb9369f351bb889c88770e68d7d2` after SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 passed.
+- Artifact XML confirms the target Favorite folder row at `[0,434][1080,626]`, but a duplicate recycled node pairs the same label bounds with an off-screen `item_root` bound `[0,1394][1080,1586]`. The previous full-hierarchy signature could not stabilize within 30 seconds.
+- Commit `3f29eb14d205f76c97dc33eac274b164cd9fb45f` introduced target-aware signature code but omitted forwarding the folder label from `capture_stable_picker_state`; the intended filtered signature was therefore not used. Run #3033 / `39622390002` is active on that prior SHA and is not evidence for the follow-up.
+- The current follow-up passes the label into the before/check/final signature snapshots and validates the label's bounds against its own `item_root` before tapping. The existing full-visibility, real touch, child WAV, permission and persistence checks remain unchanged. `cancel-in-progress: false` remains correct.
+- Run #3031 artifacts: APK `12353167922`; UI evidence `12354283054` (9,476,640 bytes; SHA-256 `eb6ba7c2a1e4e04e60d268282989b32a882362c9060bba4dbb8e639913deaba3`). The evidence archive has the picker XML but no root screenshot because capture failed before screenshot.
 
 ### 2. Browser + project persistence — REQUIRED NEXT ACCEPTANCE
 

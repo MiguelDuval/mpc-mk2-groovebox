@@ -5,23 +5,23 @@
 
 ## Latest source and verification state
 
-### Live checkpoint — Android Build #3031 failure, 2026-10-21
+### Live checkpoint — Android Build #3033 active; critical test-harness follow-up, 2026-10-21
 
-- PR #23 remains **OPEN** on `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`; `main` remains untouched. Tested HEAD: `cdbf0bcfcf0eeb9369f351bb889c88770e68d7d2`.
-- Android Build #3031 / run `39618045814` failed at step 52 (Android emulator smoke). Run: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39618045814. Native/unit checks, APK assembly and evidence preflight passed; the failure occurred in FAVORITE 1's DocumentsUI provider-root stabilization.
-- **SAMP-008 passed on this exact SHA/run:** real-touch CROP changed the 3,840-frame fixture to 2,840 frames after Start=1,000 and reset the native region to `0..2,840`. **SAMP-009 passed on the same exact SHA/run:** real-touch CH4/CH8/CH16 each asserted exact native per-pad ranges with contiguous, non-overlapping coverage of all 2,840 frames.
-- The Browser/SAF failure is a test-harness defect, not evidence that the Favorite folder or grant is missing. The evidence archive's `mpc-groovebox-browser-favorite-tree-picker-uiautomator.xml` shows `BBB-MPC-Browser-Favorite` at row bounds `[0,434][1080,626]`; however, Android DocumentsUI emitted duplicate RecyclerView children where the same title bounds were paired with an off-screen `item_root` bound `[0,1394][1080,1586]`. The old whole-hierarchy signature never stabilized within 30 seconds. Do not relax real folder, child WAV, grant, or persisted-restoration assertions.
-- The next coherent fix narrows only root stabilization to the actual target row, root header, directory and footer geometry; it rejects recycled title/row pairs whose bounds are inconsistent. The final target row must still be fully visible and is still tapped using measured bounds.
-- Run #3031 artifacts: APK `12353167922` (9,957,677 bytes; SHA-256 `96a82e00ef1b998d3ecebc8ed0f3fbda06ae0f46eab4a331dbc0b8bca9c7456b`); UI evidence `12354283054` (9,476,640 bytes; SHA-256 `eb6ba7c2a1e4e04e60d268282989b32a882362c9060bba4dbb8e639913deaba3`). The evidence archive has no root screenshot because stability failed before capture; the picker XML is present and was inspected.
-- Browser USER FOLDER selection and its persisted restore passed before the Favorite root attempt. Project SAVE / SAVE AS / OPEN lifecycle was **not reached** in #3031 and remains unaccepted. The script contains direct SAVE-overwrite, force-stop/relaunch/Open, cancellation, malformed-load, and placement-free v1 assertions, but they still require one green exact-HEAD run.
-- Live `.github/workflows/android-build.yml` uses `cancel-in-progress: false`; preserve it. Physical MPC Studio MkII verification remains **PENDING**. SAMP-010 remains isolated on its own feature branch; do not mix it into PR #23.
+- PR #23 remains **OPEN** on `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`; `main` remains untouched.
+- Last completed full run: Android Build #3031 / run `39618045814` failed at step 52 on SHA `cdbf0bcfcf0eeb9369f351bb889c88770e68d7d2`. Native/unit checks, APK assembly and evidence preflight passed; failure was FAVORITE 1's DocumentsUI provider-root stabilization.
+- **SAMP-008 passed on exact SHA/run #3031:** real-touch CROP changed 3,840 frames to 2,840 after Start=1,000 and reset the native region to `0..2,840`. **SAMP-009 passed on the same SHA/run:** real-touch CH4/CH8/CH16 asserted exact native per-pad ranges with contiguous, non-overlapping coverage of all 2,840 frames.
+- Run #3031 UI evidence artifact `12354283054` (9,476,640 bytes; SHA-256 `eb6ba7c2a1e4e04e60d268282989b32a882362c9060bba4dbb8e639913deaba3`) and APK artifact `12353167922` (9,957,677 bytes; SHA-256 `96a82e00ef1b998d3ecebc8ed0f3fbda06ae0f46eab4a331dbc0b8bca9c7456b`) were inspected. The picker XML shows a visible Favorite folder row plus a duplicate recycled node with stale `item_root` bounds; no root screenshot exists because stabilization failed before screenshot.
+- Commit `3f29eb14d205f76c97dc33eac274b164cd9fb45f` added a target-aware signature, but review caught a critical plumbing omission: `capture_stable_picker_state` did not forward its optional folder label to the three `picker_hierarchy_signature` calls. Therefore the target-aware branch was not actually used by that commit. Android Build #3033 / run `39622390002` is active on that exact SHA and cannot validate the follow-up below.
+- This follow-up forwards the target label through all three signature snapshots and rejects a stale title/row pair **before** selecting a clickable ancestor. The independent full-visibility check, real measured row touch, exact child-WAV check, grant and persisted-restoration assertions remain strict. Do not interpret the older run as testing this follow-up.
+- Project SAVE / SAVE AS / OPEN lifecycle was not reached in #3031 and remains unaccepted. The smoke contains direct SAVE-overwrite, force-stop/relaunch/Open, cancellation, malformed-load and placement-free v1 assertions; all still need one green exact-HEAD run.
+- Live `.github/workflows/android-build.yml` uses `cancel-in-progress: false`; preserve it. Physical MPC Studio MkII verification remains **PENDING**. SAMP-010 remains isolated on its own branch.
 
 ## Current execution queue — 2026-10-21
 
-1. Verify the target-aware DocumentsUI stabilization fix on its exact-HEAD Android run. Inspect any failure logs/artifacts before the next commit.
-2. On a green full run, record FAVORITE 1 folder selection, real child WAV, folder grant, Browser result and persisted restoration.
-3. On that same green full run, verify Project Save As → mutate → Open; direct SAVE overwrite changes the saved domain SHA; force-stop/relaunch/Open restores exact MIDI-event and Pattern-placement state; Save As/Open cancellations preserve state; malformed input preserves the loaded project; placement-free v1 loads with two tracks and zero placements.
-4. Only after those acceptance gates pass, resume the highest-priority roadmap gap. Keep SAMP-010 isolated until PR #23's Browser/project acceptance is green. Hardware tests remain separate from emulator evidence.
+1. Verify this critical target-label forwarding/touch-target fix on the exact resulting HEAD. Run #3033 remains a separate run on the prior SHA; inspect its conclusion, then verify the new SHA's own Android workflow.
+2. Pass FAVORITE 1 folder selection, real child WAV, folder grant, Browser results and persisted restoration.
+3. On the same green exact-HEAD run, pass Project Save As → mutate → Open; direct SAVE overwrite changes the saved domain SHA; force-stop/relaunch/Open restores exact MIDI-event and Pattern-placement state; cancellations preserve state; malformed input preserves the loaded project; placement-free v1 loads with two tracks and zero placements.
+4. Only after those acceptance gates pass, resume the highest-priority roadmap gap. Keep SAMP-010 isolated until PR #23 Browser/project acceptance is green. Hardware tests remain separate from emulator evidence.
 
 ## Completed in this session
 
