@@ -1,29 +1,24 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-21
+## CURRENT EXECUTION QUEUE — 2026-10-21 (live branch and exact-SHA Actions govern)
 
-### 1. FAVORITE 1 DocumentsUI root navigation — FIX PREPARED; FULL-SMOKE ACCEPTANCE PENDING
+### 1. FAVORITE 1 root capture — FIX IDENTIFIED; FULL-SMOKE ACCEPTANCE PENDING
 
-- Android Build #3018 / run `39607542492` failed on PR #23 HEAD `3b134cd75a64de2c152f7926f5481644f5639044` at step 52, after targeted sample actions and USER FOLDER restore passed.
-- Failure follows the FAVORITE 1 tree-picker root breadcrumb tap. DocumentsUI remains foreground, but four bounded full-hierarchy dumps fail. The captured screenshot shows the previous USER FOLDER in grid mode; XML printed by the earlier wait is stale and cannot prove the root state.
-- Fix: switch to list mode while still in the previous folder, verify the toggle changes from `List view` to `Grid view`, then navigate to provider root and require a fresh hierarchy. Keep exact child WAV, visible folder row, `USE THIS FOLDER`, persisted grant and cold-restart checks strict.
-- Artifacts: APK `12348842430`; UI evidence `12349198728` (9,415,925 bytes; SHA-256 `ceefff3f2dd76c891432aa5355dbb5ca3444b3ab36e1b95aec61c06d2d10a25d`).
+- Android Build #3022 / run `39614141625` failed at step 52 on HEAD `74e68f5beb02c2691233de89d1ab391ec54386a1`. Source/unit checks, APK assembly and evidence preflight passed; the full emulator smoke did not.
+- The post-failure evidence XML shows DocumentsUI at `Files on Android SDK built for x86_64`, in list mode, with `BBB-MPC-Browser-Favorite` fully visible. The root navigation succeeded; `tap_ui_picker_folder_until_child` then failed because `capture_stable_picker_state` was constrained to 6 seconds for three fresh hierarchy snapshots plus screenshot. Parameterize that timeout and allow 30 seconds only for the FAVORITE root capture. Do not relax any folder/child/grant assertion.
+- Artifacts: APK `12351848398`; UI evidence `12352324076` (9,441,650 bytes; SHA-256 `627f02e77258dfa7d0a1766f9cae69a9e15398ed2ec921feb9bcfa254f7a6de9`). SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 passed on this SHA before the Browser failure.
 
-### 2. Sample actions — TARGETED ASSERTIONS PASS; FULL WORKFLOW NOT GREEN
+### 2. Project persistence — EXTENDED COVERAGE GAP IDENTIFIED
 
-- On that same SHA/run, SAMP-008 cropped 3,840 frames to 2,840 after Start=1,000 and reset native range to `0..2,840`. SAMP-009 CH4/CH8/CH16 verified exact native per-pad ranges and contiguous, non-overlapping coverage of all 2,840 frames. Sample Edit → Browser return and Browser Search reset passed.
-- Project SAVE / SAVE AS / OPEN has not completed on a green full smoke. Required: real SAF save/open, canonical state equality including MIDI and Pattern placements, restart/open, cancellation invariance, malformed-load preservation and placement-free v1 compatibility.
+- The existing smoke exercises real SAF Save As → mutate → Open, exact v2 serialized-domain SHA equality, process restart/Open, Save As/Open cancellation invariance, malformed-load preservation and placement-free v1 compatibility. The distinct SAVE-overwrite button path is not currently exercised.
+- Add a real SAVE touch after adding a Track to the reopened Project; require a new v2 domain SHA different from the original Save As file, then force-stop/relaunch/Open and require exact file/domain SHA equality plus TRACKS=2 / PLACEMENTS=2. The v1 fixture derived from that saved document must load with TRACKS=2 / PLACEMENTS=0.
 
-### 3. Parallel work and discipline
+### 3. Acceptance order
 
-- SAMP-010 remains isolated in draft PRs #25/#26. Android Build #3019 / run `39607733038` failed on `f3c5e80a3c3f770770839519b02f7fd44f1b0e99` while waiting for Pad audition status after zoom/reset native-region invariance passed. Do not merge it into PR #23.
-- Live workflow concurrency is `cancel-in-progress: false`; preserve it. `main` remains untouched. Physical MPC Studio MkII verification remains pending.
-
-### 4. Acceptance order
-
-1. Pass FAVORITE 1 folder grant, exact child-file visibility, Browser status and cold-restart persistence on a green full exact-HEAD run.
-2. Pass Project SAVE / SAVE AS / OPEN, including canonical MIDI/Pattern-placement equality, cancellation invariance, malformed-load preservation and placement-free v1 compatibility.
-3. Only then resume the highest-priority remaining roadmap gap; keep emulator and physical-controller evidence separate.
+1. Pass FAVORITE 1 root capture, folder selection, real child WAV, folder grant, Browser result and persisted restore on a green full exact-HEAD run.
+2. Pass Project Save As, Open, direct SAVE overwrite, restart/Open, cancellation invariance, malformed-load preservation and placement-free v1 canonical-state equality on that same green workflow.
+3. Only then resume the highest-priority roadmap gap. Keep SAMP-010 isolated and physical MPC Studio MkII evidence separate.
+4. Preserve `.github/workflows/android-build.yml` `cancel-in-progress: false`; `main` remains untouched.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 

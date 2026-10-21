@@ -5,22 +5,22 @@
 
 ## Latest source and verification state
 
-### Live checkpoint — after Android Build #3018
+### Live checkpoint — Android Build #3022 failure, 2026-10-21
 
-- PR #23 is OPEN on `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`. `main` remains untouched. Tested HEAD: `3b134cd75a64de2c152f7926f5481644f5639044`.
-- Android Build #3018 / run `39607542492` failed at step 52 (Android emulator smoke) on that SHA. Native/unit checks, APK assembly, evidence preflight, Browser local WAV/audition and USER FOLDER grant/restore passed before the later FAVORITE 1 picker failure.
-- SAMP-008 real-touch CROP passed: 3,840 source frames, Start=1,000, resulting PCM=2,840, native range reset to `0..2,840`. SAMP-009 CH4/CH8/CH16 passed exact native per-pad ranges and contiguous full-frame coverage. Sample Edit → Browser return and Browser Search reset passed. These targeted checks do not make the full workflow green.
-- Failure: FAVORITE 1 reopened DocumentsUI in `AAA-MPC-Browser-Tree`. DocumentsUI remained foreground, but after tapping the provider-root breadcrumb, four bounded UIAutomator hierarchy attempts failed. The available screenshot shows the prior folder in grid mode; the last XML from the earlier wait was stale and is not proof of root state.
-- Current fix: switch to list mode inside the small prior folder, verify the toggle changes to `Grid view`, then navigate to provider root and require a fresh hierarchy. Do not relax folder-row, child WAV, `USE THIS FOLDER`, SAF grant, provider-count or cold-restart checks.
-- Run #3018 artifacts: APK `12348842430` (9,957,677 bytes); UI evidence `12349198728` (9,415,925 bytes), inspected; evidence ZIP SHA-256 `ceefff3f2dd76c891432aa5355dbb5ca3444b3ab36e1b95aec61c06d2d10a25d`.
-- Project SAVE / SAVE AS / OPEN has not yet completed. Still required: real SAF save/open, canonical state equality including MIDI and Pattern placements, restart/open, cancellation invariance, malformed-load preservation and placement-free v1 compatibility.
-- Workflow concurrency is already `cancel-in-progress: false`; preserve it. Physical MPC Studio MkII verification remains PENDING.
+- PR #23 remains **OPEN** on `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`; `main` remains untouched. Last tested HEAD: `74e68f5beb02c2691233de89d1ab391ec54386a1`.
+- Android Build #3022 / run `39614141625` completed **FAILURE** on that exact SHA at step 52, Android emulator smoke. Run: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39614141625. Native/unit checks, APK assembly, and evidence preflight passed; only the emulator acceptance step failed.
+- SAMP-008 CROP passed on this SHA: fixture 3,840 PCM frames; selected Start=1,000; crop produced 2,840 frames and reset native region to `0..2,840`. SAMP-009 CH4/CH8/CH16 passed exact native per-pad ranges and contiguous, gap-free, non-overlapping coverage of all 2,840 frames. Browser Search reset after Sample Edit → Browser also passed.
+- USER FOLDER selection, real WAV visibility and persisted restore passed. FAVORITE 1 failed later while navigating from the remembered USER FOLDER back to the provider root. The artifact XML captured after failure shows the provider-root list view and the fully visible `BBB-MPC-Browser-Favorite` row; the app did navigate. The failing `capture_stable_picker_state(..., 6)` budget is too short for three fresh hierarchy snapshots plus a screenshot after this root transition. This is a test-harness timing defect, not evidence of a missing folder/grant. The fix makes the root stability timeout configurable and uses 30 seconds only for this FAVORITE root; folder, child WAV, Use This Folder and grant assertions remain strict.
+- Artifacts for #3022: APK `12351848398` (9,957,677 bytes); UI evidence `12352324076` (9,441,650 bytes), SHA-256 `627f02e77258dfa7d0a1766f9cae69a9e15398ed2ec921feb9bcfa254f7a6de9`. The evidence archive was inspected; its latest root hierarchy confirms the Favorite folder is present and visible in list mode.
+- Project persistence UI was **not reached** in #3022. Source/smoke review found that Save As → mutate → Open and restart/Open are exercised, but the distinct SAVE overwrite action is not. The next acceptance batch adds a real SAVE touch after changing the loaded model, requires a new serialized-domain SHA, then requires force-stop/relaunch/Open to restore that updated SHA and the two-track/two-placement model. The placement-free v1 fixture must then retain two tracks while keeping zero placements.
+- `cancel-in-progress: false` remains in `.github/workflows/android-build.yml`; preserve it. Physical MPC Studio MkII verification remains **PENDING**.
 
 ## Current execution queue — 2026-10-21
 
-1. Run the pre-root DocumentsUI list-mode fix through the full exact-HEAD Android workflow. Use fresh logs and screenshot/XML if it fails; never treat stale XML as current state.
-2. After USER FOLDER/FAVORITE grant, child-file, provider-count and persisted restoration pass, complete Project SAVE / SAVE AS / OPEN on the same green full smoke.
-3. Then resume the highest-priority roadmap gap. Keep SAMP-010 isolated and physical-controller checks separate.
+1. Run the FAVORITE root stability-window fix through the complete exact-HEAD workflow. Keep the real provider-root, fully visible folder row, exact child WAV, Use This Folder, permission grant and persisted restoration checks unchanged.
+2. In the same acceptance batch, test the distinct SAVE overwrite action after mutating the reopened Project. Require the updated hash to differ from the original Save As hash and to match the file/domain hashes after process restart and Open; adjust v1 expectations to two tracks and zero placements.
+3. On a green full workflow, record the real SAF Project Save As → Open, SAVE overwrite → force-stop/relaunch/Open, cancellation invariance, malformed-load preservation and placement-free v1 acceptance. If a later assertion fails, diagnose that exact step and make the smallest evidence-based fix.
+4. Keep SAMP-010 isolated in its draft branch/PR stack; do not merge it into PR #23 until Browser/Project acceptance is green. Physical hardware tests remain separate.
 
 ## Completed in this session
 

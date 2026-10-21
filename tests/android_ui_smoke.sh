@@ -7151,7 +7151,7 @@ capture_stable_picker_state() {
 
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
-  local evidence_prefix="${5:-document-tree}"
+  local evidence_prefix="${5:-document-tree}" root_stability_timeout="${6:-6}"
   local root_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root.png"
   local root_xml="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-uiautomator.xml"
   local after_activation_png="/tmp/mpc-groovebox-browser-${evidence_prefix}-root-after-activation.png"
@@ -7161,7 +7161,7 @@ tap_ui_picker_folder_until_child() {
   # Builds #2723–#2726 produced incompatible viewport positions between a
   # screenshot and the next UI dump. Do not guess another tap or keyboard path:
   # first prove the hierarchy remains unchanged around a fresh screenshot.
-  if ! capture_stable_picker_state "$remote_path" "$root_xml" "$root_png" 6; then
+  if ! capture_stable_picker_state "$remote_path" "$root_xml" "$root_png" "$root_stability_timeout"; then
     echo "ERROR: could not establish a stable DocumentsUI provider-root state"
     return 1
   fi
@@ -10000,7 +10000,7 @@ PY
     cat "$FAVORITE_TREE_PICKER_XML"
     exit 1
   fi
-  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME" "favorite-tree"; then
+  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME" "favorite-tree" 30; then
     echo "ERROR: FAVORITE 1 picker did not navigate into the actual Favorite-only WAV folder"; exit 1
   fi
 fi
@@ -10298,9 +10298,10 @@ assert_latest_project_summary() {
 }
 
 show_project_route_extended() {
+  local expected_tracks="${1:-TRACKS=1}" expected_placements="${2:-PLACEMENTS=1}"
   if ! tap_project_toolbar_menu; then exit 1; fi
   if ! tap_mpc_menu_tile 3 3; then exit 1; fi
-  if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
+  if ! assert_latest_project_summary "$expected_tracks" "$expected_placements"; then exit 1; fi
 }
 
 
@@ -10519,7 +10520,7 @@ if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_REOPENED_XML"; then
   echo "ERROR: could not capture reopened Project hierarchy"; exit 1
 fi
 echo "Real Project Save As → add Track in memory → Open saved file restored exact persisted Track/Pattern-placement model."
-echo "Android runtime startup, local Browser, and Project persistence smoke passed."
+echo "Initial Project Save As → mutate → Open path passed; continuing with direct SAVE overwrite and extended persistence acceptance."
 
 
 echo "Running extended Project persistence acceptance: full state digest, restart, legacy v1, cancel and malformed input..."
@@ -10656,6 +10657,39 @@ if [[ ! "$project_saved_sha_ext" =~ ^[0-9a-f]{64}$ ]] \
 fi
 echo "Project v2 Save/Open exact domain SHA passed: $project_saved_sha_ext"
 
+# The first Save As/Open round-trip above proves file creation and loading.
+# Now mutate the loaded native model and exercise the distinct SAVE action,
+# which must overwrite the already-linked SAF document without reopening a picker.
+if ! tap_project_toolbar_menu; then exit 1; fi
+if ! tap_mpc_menu_tile 0 0; then exit 1; fi
+if ! tap_main_new_track; then exit 1; fi
+sleep 1
+if ! tap_project_toolbar_menu; then exit 1; fi
+if ! tap_mpc_menu_tile 3 3; then exit 1; fi
+if ! assert_latest_project_summary "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
+
+project_save_update_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+if ! tap_project_function_bar 2; then exit 1; fi
+if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_save_update_marker_before" 45; then
+  echo "ERROR: SAVE did not overwrite the already-linked Project document"; exit 1
+fi
+project_save_update_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
+project_save_update_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_save_update_line")"
+if [[ ! "$project_save_update_sha" =~ ^[0-9a-f]{64}$ ]] \
+    || [[ "$project_save_update_sha" == "$project_saved_sha_ext" ]] \
+    || ! grep -Fq -- "formatVersion=2" <<<"$project_save_update_line"; then
+  echo "ERROR: SAVE did not serialize the mutated Project to a new v2 domain digest"
+  echo "$project_save_update_line"; exit 1
+fi
+project_saved_sha_ext="$project_save_update_sha"
+if ! capture_ui_screenshot /tmp/mpc-groovebox-project-save-updated.png 10; then
+  echo "ERROR: could not capture direct SAVE overwrite milestone"; exit 1
+fi
+if ! dump_device_ui "$DEVICE_DUMP" /tmp/mpc-groovebox-project-save-updated-uiautomator.xml; then
+  echo "ERROR: could not capture direct SAVE overwrite hierarchy"; exit 1
+fi
+echo "Project SAVE overwrite passed: linked SAF file now represents TRACKS=2 / PLACEMENTS=2; updated domain SHA=$project_saved_sha_ext"
+
 # A genuine force-stop kills the old application process and native model.
 # Launch without the fixture intent, then Open again through Android DocumentsUI.
 if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
@@ -10691,13 +10725,13 @@ restart_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>
 restart_open_sha="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$restart_open_line")"
 if ! grep -Fq -- "formatVersion=2" <<<"$restart_open_line" \
     || ! grep -Fq -- "persistedDomainExact=true" <<<"$restart_open_line" \
-    || ! grep -Fq -- "TRACKS=1" <<<"$restart_open_line" \
-    || ! grep -Fq -- "PLACEMENTS=1" <<<"$restart_open_line" \
+    || ! grep -Fq -- "TRACKS=2" <<<"$restart_open_line" \
+    || ! grep -Fq -- "PLACEMENTS=2" <<<"$restart_open_line" \
     || [[ "$restart_open_sha" != "$project_saved_sha_ext" ]]; then
   echo "ERROR: force-stop/relaunch → Open did not restore exact saved native state"
   echo "$restart_open_line"; exit 1
 fi
-show_project_route_extended
+show_project_route_extended "TRACKS=2" "PLACEMENTS=2"
 if ! capture_ui_screenshot "$PROJECT_EXT_RESTART_PROJECT_PNG" 10; then
   echo "ERROR: could not capture reopened Project after process restart"; exit 1
 fi
@@ -10839,7 +10873,7 @@ legacy_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/d
 legacy_sha_ext="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$legacy_line_ext")"
 if ! grep -Fq -- "formatVersion=1" <<<"$legacy_line_ext" \
     || ! grep -Fq -- "persistedDomainExact=not-applicable" <<<"$legacy_line_ext" \
-    || ! grep -Fq -- "TRACKS=1" <<<"$legacy_line_ext" \
+    || ! grep -Fq -- "TRACKS=2" <<<"$legacy_line_ext" \
     || ! grep -Fq -- "PLACEMENTS=0" <<<"$legacy_line_ext" \
     || [[ "$legacy_sha_ext" != "$expected_v1_sha_ext" ]]; then
   echo "ERROR: v1 Open fabricated placements or changed persisted MIDI/domain values"
@@ -10851,4 +10885,4 @@ fi
 if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_V1_XML"; then
   echo "ERROR: could not capture v1-loaded accessibility hierarchy"; exit 1
 fi
-echo "Extended Project UI acceptance passed: exact v2 state, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."
+echo "Extended Project UI acceptance passed: exact v2 state, direct SAVE overwrite, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."
