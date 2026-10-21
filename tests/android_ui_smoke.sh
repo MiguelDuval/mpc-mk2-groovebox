@@ -1077,6 +1077,17 @@ for required in 'PAN %+.2f' 'TUNE %+.1f'; do
   fi
 done
 
+for required in \
+  'Sample Edit waveform viewport' \
+  'Sample Edit zoom waveform in' \
+  'Sample Edit zoom waveform out' \
+  'Sample Edit reset waveform zoom' \
+  'Sample Edit audition selected Pad'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Sample Edit zoom/audition acceptance contract is missing: $required"
+    exit 1
+  fi
+done
 if ! grep -Fq -- 'sampleEditBrowser.setContentDescription("Sample Edit open Browser")' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Sample Edit exit route lacks a stable accessible Browser action"
   exit 1
@@ -1883,6 +1894,7 @@ capture_ui_screenshot() {
     mpc-groovebox-track-edit-envelope-attack-changed.png|\
     mpc-groovebox-track-edit-filter-cutoff-changed.png|\
     mpc-groovebox-sample-browser-return.png|\
+    mpc-groovebox-sample-zoom-*.png|\
     mpc-groovebox-sample-crop-*.png|\
     mpc-groovebox-sample-chop-*.png|\
     mpc-groovebox-project-*.png|\
@@ -9276,6 +9288,21 @@ SAMPLE_CROP_REGION_CHANGED_REMOTE="/sdcard/mpc-groovebox-sample-crop-region-sele
 SAMPLE_CROP_CROPPED_PNG="/tmp/mpc-groovebox-sample-crop-cropped.png"
 SAMPLE_CROP_CROPPED_XML="/tmp/mpc-groovebox-sample-crop-cropped-uiautomator.xml"
 SAMPLE_CROP_CROPPED_REMOTE="/sdcard/mpc-groovebox-sample-crop-cropped-uiautomator.xml"
+SAMPLE_ZOOM_BEFORE_PNG="/tmp/mpc-groovebox-sample-zoom-before.png"
+SAMPLE_ZOOM_BEFORE_XML="/tmp/mpc-groovebox-sample-zoom-before-uiautomator.xml"
+SAMPLE_ZOOM_BEFORE_REMOTE="/sdcard/mpc-groovebox-sample-zoom-before-uiautomator.xml"
+SAMPLE_ZOOM_IN_PNG="/tmp/mpc-groovebox-sample-zoom-in.png"
+SAMPLE_ZOOM_IN_XML="/tmp/mpc-groovebox-sample-zoom-in-uiautomator.xml"
+SAMPLE_ZOOM_IN_REMOTE="/sdcard/mpc-groovebox-sample-zoom-in-uiautomator.xml"
+SAMPLE_ZOOM_OUT_PNG="/tmp/mpc-groovebox-sample-zoom-out.png"
+SAMPLE_ZOOM_OUT_XML="/tmp/mpc-groovebox-sample-zoom-out-uiautomator.xml"
+SAMPLE_ZOOM_OUT_REMOTE="/sdcard/mpc-groovebox-sample-zoom-out-uiautomator.xml"
+SAMPLE_ZOOM_RESET_PNG="/tmp/mpc-groovebox-sample-zoom-reset.png"
+SAMPLE_ZOOM_RESET_XML="/tmp/mpc-groovebox-sample-zoom-reset-uiautomator.xml"
+SAMPLE_ZOOM_RESET_REMOTE="/sdcard/mpc-groovebox-sample-zoom-reset-uiautomator.xml"
+SAMPLE_ZOOM_AUDITION_PNG="/tmp/mpc-groovebox-sample-zoom-audition.png"
+SAMPLE_ZOOM_AUDITION_XML="/tmp/mpc-groovebox-sample-zoom-audition-uiautomator.xml"
+SAMPLE_ZOOM_AUDITION_REMOTE="/sdcard/mpc-groovebox-sample-zoom-audition-uiautomator.xml"
 SAMPLE_BROWSER_RETURN_PNG="/tmp/mpc-groovebox-sample-browser-return.png"
 SAMPLE_BROWSER_RETURN_XML="/tmp/mpc-groovebox-sample-browser-return-uiautomator.xml"
 SAMPLE_BROWSER_RETURN_REMOTE="/sdcard/mpc-groovebox-sample-browser-return-uiautomator.xml"
@@ -9349,6 +9376,108 @@ if (( sample_crop_start_before != 0 || sample_crop_end_before != sample_crop_tot
   sample_crop_start_before=0
   sample_crop_end_before="$sample_crop_total_before"
 fi
+# SAMP-010: verify real-touch waveform viewport zoom/reset and pad audition are
+# observably functional while the authoritative sample region/frame count stays
+# unchanged. The viewport is a visual range, not a destructive sample-region edit.
+echo "Running SAMP-010 real-touch waveform zoom in/out/reset and Pad audition..."
+sample_zoom_before_state="$(read_sample_edit_region_frames "$SAMPLE_CROP_BASELINE_XML")" || {
+  echo "ERROR: SAMP-010 could not capture its initial native sample-region state"; exit 1;
+}
+if ! dump_device_ui "$SAMPLE_ZOOM_BEFORE_REMOTE" "$SAMPLE_ZOOM_BEFORE_XML"; then
+  echo "ERROR: SAMP-010 could not capture its baseline accessibility hierarchy"; exit 1
+fi
+if ! capture_ui_screenshot "$SAMPLE_ZOOM_BEFORE_PNG" 10; then
+  echo "ERROR: SAMP-010 could not capture its baseline waveform screenshot"; exit 1
+fi
+assert_sample_zoom_viewport() {
+  local hierarchy="$1" expected_view="$2" phase="$3" actual_sample_state
+  if ! python3 - "$hierarchy" "$expected_view" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, expected = sys.argv[1:]
+nodes = [n for n in ET.parse(path).getroot().iter("node")
+         if n.attrib.get("content-desc", "").startswith("Sample Edit waveform viewport")]
+if len(nodes) != 1:
+    raise SystemExit(f"expected one accessible waveform viewport status, found {len(nodes)}")
+actual = nodes[0].attrib.get("text", "")
+if actual != expected:
+    raise SystemExit(f"waveform viewport mismatch: expected {expected!r}, got {actual!r}")
+print(f"Accessible waveform viewport verified: {actual}")
+PY
+  then
+    echo "ERROR: SAMP-010 $phase viewport state is incorrect"; return 1
+  fi
+  actual_sample_state="$(read_sample_edit_region_frames "$hierarchy")" || {
+    echo "ERROR: SAMP-010 $phase native sample-region state is unavailable"; return 1;
+  }
+  if [[ "$actual_sample_state" != "$sample_zoom_before_state" ]]; then
+    echo "ERROR: SAMP-010 $phase mutated the native sample region/PCM frame count"
+    echo "before=$sample_zoom_before_state after=$actual_sample_state"
+    return 1
+  fi
+  echo "SAMP-010 $phase preserved native sample state: $actual_sample_state"
+}
+if ! tap_ui_description "$SAMPLE_ZOOM_BEFORE_XML" "Sample Edit zoom waveform in"; then
+  echo "ERROR: SAMP-010 ZOOM+ was not a real actionable UI target"; exit 1
+fi
+if ! wait_for_ui_text "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" "VIEW 10–90%" 12; then
+  echo "ERROR: SAMP-010 ZOOM+ did not change the visible viewport to 10–90%"; exit 1
+fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_IN_XML" "VIEW 10–90%" "zoom-in"; then exit 1; fi
+if ! capture_ui_screenshot "$SAMPLE_ZOOM_IN_PNG" 10; then
+  echo "ERROR: SAMP-010 could not capture zoomed waveform screenshot"; exit 1
+fi
+if ! tap_ui_description "$SAMPLE_ZOOM_IN_XML" "Sample Edit zoom waveform out"; then
+  echo "ERROR: SAMP-010 ZOOM− was not a real actionable UI target"; exit 1
+fi
+if ! wait_for_ui_text "$SAMPLE_ZOOM_OUT_XML" "$SAMPLE_ZOOM_OUT_REMOTE" "VIEW 0–100%" 12; then
+  echo "ERROR: SAMP-010 ZOOM− did not restore the full waveform viewport"; exit 1
+fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_OUT_XML" "VIEW 0–100%" "zoom-out"; then exit 1; fi
+if ! capture_ui_screenshot "$SAMPLE_ZOOM_OUT_PNG" 10; then
+  echo "ERROR: SAMP-010 could not capture zoom-out waveform screenshot"; exit 1
+fi
+# Test RESET as its own command, not as a synonym for zoom-out.
+if ! tap_ui_description "$SAMPLE_ZOOM_OUT_XML" "Sample Edit zoom waveform in"; then
+  echo "ERROR: SAMP-010 could not re-enter the zoomed viewport before RESET"; exit 1
+fi
+if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_XML" "$SAMPLE_ZOOM_RESET_REMOTE" "VIEW 10–90%" 12; then
+  echo "ERROR: SAMP-010 pre-RESET zoom did not expose the expected viewport"; exit 1
+fi
+if ! tap_ui_description "$SAMPLE_ZOOM_RESET_XML" "Sample Edit reset waveform zoom"; then
+  echo "ERROR: SAMP-010 RESET was not a real actionable UI target"; exit 1
+fi
+if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_XML" "$SAMPLE_ZOOM_RESET_REMOTE" "VIEW 0–100%" 12; then
+  echo "ERROR: SAMP-010 RESET did not restore the full waveform viewport"; exit 1
+fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_XML" "VIEW 0–100%" "reset"; then exit 1; fi
+if ! capture_ui_screenshot "$SAMPLE_ZOOM_RESET_PNG" 10; then
+  echo "ERROR: SAMP-010 could not capture reset waveform screenshot"; exit 1
+fi
+# PLAY routes to the native selected Pad trigger. Require its visible runtime
+# status and prove the current sample region/PCM frame count remained unchanged.
+if ! tap_ui_description "$SAMPLE_ZOOM_RESET_XML" "Sample Edit audition selected Pad"; then
+  echo "ERROR: SAMP-010 PLAY did not expose its semantic Pad-audition action"; exit 1
+fi
+if ! wait_for_ui_text "$SAMPLE_ZOOM_AUDITION_XML" "$SAMPLE_ZOOM_AUDITION_REMOTE" "AUDITION • Pad 1" 12; then
+  echo "ERROR: SAMP-010 PLAY did not produce the native Pad audition status"; exit 1
+fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_AUDITION_XML" "VIEW 0–100%" "audition"; then exit 1; fi
+if ! capture_ui_screenshot "$SAMPLE_ZOOM_AUDITION_PNG" 10; then
+  echo "ERROR: SAMP-010 could not capture Pad-audition waveform screenshot"; exit 1
+fi
+for evidence in \
+  "$SAMPLE_ZOOM_BEFORE_PNG" "$SAMPLE_ZOOM_BEFORE_XML" \
+  "$SAMPLE_ZOOM_IN_PNG" "$SAMPLE_ZOOM_IN_XML" \
+  "$SAMPLE_ZOOM_OUT_PNG" "$SAMPLE_ZOOM_OUT_XML" \
+  "$SAMPLE_ZOOM_RESET_PNG" "$SAMPLE_ZOOM_RESET_XML" \
+  "$SAMPLE_ZOOM_AUDITION_PNG" "$SAMPLE_ZOOM_AUDITION_XML"; do
+  if ! test -s "$evidence"; then
+    echo "ERROR: SAMP-010 required screenshot/UI hierarchy is empty: $evidence"; exit 1
+  fi
+done
+echo "SAMP-010 real-touch zoom-in/out/reset and Pad audition passed without native sample-region mutation."
+
 if ! capture_ui_screenshot /tmp/mpc-groovebox-sample-crop-before.png 10; then
   echo "ERROR: could not capture full-region Sample Edit baseline screenshot"; exit 1
 fi
