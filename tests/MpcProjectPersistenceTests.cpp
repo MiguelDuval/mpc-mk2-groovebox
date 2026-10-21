@@ -195,6 +195,39 @@ int main() {
     assert(persistence::serializeProject(oversizedProject, &placementError).empty());
     assert(placementError.find("limit") != std::string::npos);
 
+    // The exact supported limit remains valid. This exercises the sorted
+    // O(n log n) overlap check on a large, non-overlapping Arrangement and
+    // confirms deterministic v2 round-trip serialization at the boundary.
+    auto maximumProject = source;
+    constexpr std::size_t maximumCount = 65'536;
+    auto& maximumSequence = maximumProject.sequences[0];
+    maximumSequence.lengthTicks = static_cast<decltype(maximumSequence.lengthTicks)>(
+            maximumCount * 2);
+    auto& maximumTrack = maximumSequence.tracks[0];
+    maximumTrack.patterns[0].lengthTicks =
+            static_cast<decltype(maximumTrack.patterns[0].lengthTicks)>(maximumCount * 2);
+    maximumTrack.placements.clear();
+    maximumTrack.placements.reserve(maximumCount);
+    for (std::size_t i = 0; i < maximumCount; ++i) {
+        domain::PatternPlacement placement;
+        placement.id = "max-clip-" + std::to_string(i);
+        placement.patternId = maximumTrack.patterns[0].id;
+        placement.startTick = static_cast<decltype(placement.startTick)>(i * 2);
+        placement.lengthTicks = 1;
+        placement.sourceOffsetTicks = 0;
+        maximumTrack.placements.push_back(placement);
+    }
+    placementError.clear();
+    const auto maximumBytes = persistence::serializeProject(maximumProject, &placementError);
+    assert(!maximumBytes.empty());
+    assert(placementError.empty());
+    assert(maximumBytes.find("PLACEMENT \"max-clip-65535\"") != std::string::npos);
+    domain::Project maximumLoaded;
+    assert(persistence::deserializeProject(maximumBytes, maximumLoaded, &placementError));
+    assert(placementError.empty());
+    assert(maximumLoaded.sequences[0].tracks[0].placements.size() == maximumCount);
+    assert(persistence::serializeProject(maximumLoaded, &placementError) == maximumBytes);
+
     const auto filePath = (std::filesystem::temp_directory_path()
             / "mpc-project-persistence-test.mpcproj").string();
     std::remove(filePath.c_str());
