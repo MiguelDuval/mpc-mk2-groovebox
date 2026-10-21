@@ -1090,7 +1090,14 @@ for required in \
   'Sample Edit zoom waveform in' \
   'Sample Edit zoom waveform out' \
   'Sample Edit reset waveform zoom' \
-  'Sample Edit audition selected Pad'; do
+  'Sample Edit audition selected Pad' \
+  'Sample Edit audition status' \
+  'SAMPLE_AUDITION_TRIGGER pad=' \
+  'regionStart=' \
+  'regionEnd=' \
+  'frameCount=' \
+  'viewportStart=' \
+  'viewportEnd='; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Sample Edit zoom/audition acceptance contract is missing: $required"
     exit 1
@@ -9477,34 +9484,86 @@ if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_XML" "VIEW 0–100%" "reset
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_RESET_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture reset waveform screenshot"; exit 1
 fi
-# PLAY routes to the native selected Pad trigger. Require its visible runtime
-# status and prove the current sample region/PCM frame count remained unchanged.
+# PLAY must reach the native Pad trigger, expose the Sample Edit status overlay,
+# and preserve the authoritative region/frame/viewport state. Do not make success
+# depend on a post-click UIAutomator dump: Android 16 can stall that service even
+# while the app remains rendered and its native state getters are responsive.
 if ! tap_ui_description "$SAMPLE_ZOOM_RESET_XML" "Sample Edit audition selected Pad"; then
   echo "ERROR: SAMP-010 PLAY did not expose its semantic Pad-audition action"; exit 1
 fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_AUDITION_XML" "$SAMPLE_ZOOM_AUDITION_REMOTE" "AUDITION • Pad 1 • velocity 112" 30; then
-  echo "ERROR: SAMP-010 PLAY did not report the selected Pad 1 trigger at velocity 112"
-  # Preserve post-PLAY state even when a slow Android 16 UIAutomator dump
-  # consumes its bounded attempt. A missing status must remain a real failure.
-  capture_ui_screenshot "$SAMPLE_ZOOM_AUDITION_PNG" 10 || true
-  if ! dump_device_ui "$SAMPLE_ZOOM_AUDITION_REMOTE" "$SAMPLE_ZOOM_AUDITION_XML" 8; then
-    echo "ERROR: could not capture fresh SAMP-010 audition hierarchy for diagnosis"
+sample_audition_marker=""
+sample_audition_log=""
+for audition_attempt in {1..10}; do
+  sample_audition_log="$(adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  sample_audition_marker="$(grep -F -- 'SAMPLE_AUDITION_TRIGGER pad=1 velocity=112' <<< "$sample_audition_log" | tail -n 1 || true)"
+  if [[ -n "$sample_audition_marker" ]]; then break; fi
+  audition_failure_marker="$(grep -F -- 'SAMPLE_AUDITION_FAILED pad=1 velocity=112' <<< "$sample_audition_log" | tail -n 1 || true)"
+  if [[ -n "$audition_failure_marker" ]]; then
+    echo "ERROR: SAMP-010 native Pad audition failed to start"
+    echo "$audition_failure_marker"
+    exit 1
   fi
+  sleep 1
+done
+if [[ -z "$sample_audition_marker" ]]; then
+  echo "ERROR: SAMP-010 PLAY did not emit a native trigger/getter marker for Pad 1 at velocity 112"
+  capture_ui_screenshot "$SAMPLE_ZOOM_AUDITION_PNG" 10 || true
   adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
-      | grep -E 'AUDITION|Audio output unavailable|Audio engine still starting|SAMP-010' \
+      | grep -E 'SAMPLE_AUDITION|Audio output unavailable|Audio engine still starting' \
       | tail -n 25 || true
   exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_AUDITION_XML" "VIEW 0–100%" "audition"; then exit 1; fi
+if ! python3 - "$sample_audition_marker" "$sample_zoom_before_state" <<'PY'
+import re
+import sys
+
+line, expected_state = sys.argv[1:]
+match = re.search(r"regionStart=(\d+) regionEnd=(\d+) frameCount=(\d+)", line)
+if match is None:
+    raise SystemExit("native audition marker lacks sample-region getters")
+actual_state = " ".join(match.groups())
+if actual_state != expected_state:
+    raise SystemExit(f"PLAY changed native sample state: before={expected_state} after={actual_state}")
+viewport = re.search(r"viewportStart=([0-9.]+) viewportEnd=([0-9.]+)", line)
+if viewport is None or abs(float(viewport.group(1))) > 1e-6 or abs(float(viewport.group(2)) - 1.0) > 1e-6:
+    raise SystemExit(f"PLAY changed the reset waveform viewport: {viewport.groups() if viewport else 'missing'}")
+if "statusVisible=true" not in line:
+    raise SystemExit("Sample Edit audition status overlay was not visible after PLAY")
+if "statusText=AUDITION • Pad 1 • velocity 112" not in line:
+    raise SystemExit("Sample Edit audition status text did not match the native trigger")
+print(f"SAMP-010 native trigger, getters and visible status verified: {line}")
+PY
+then
+  capture_ui_screenshot "$SAMPLE_ZOOM_AUDITION_PNG" 10 || true
+  echo "$sample_audition_marker"
+  exit 1
+fi
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_AUDITION_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture Pad-audition waveform screenshot"; exit 1
+fi
+# A fresh hierarchy is extra evidence when available, not the only proof of the
+# trigger. Preserve the native marker + rendered screenshot if UIAutomator stalls.
+if dump_device_ui "$SAMPLE_ZOOM_AUDITION_REMOTE" "$SAMPLE_ZOOM_AUDITION_XML" 4; then
+  if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_AUDITION_XML" "VIEW 0–100%" "audition"; then exit 1; fi
+  if ! python3 - "$SAMPLE_ZOOM_AUDITION_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+nodes = [n for n in ET.parse(sys.argv[1]).getroot().iter("node")
+         if n.attrib.get("content-desc") == "Sample Edit audition status"]
+if len(nodes) != 1 or nodes[0].attrib.get("text") != "AUDITION • Pad 1 • velocity 112":
+    raise SystemExit("fresh hierarchy does not expose the Sample Edit audition status")
+print("Fresh UI hierarchy confirms the visible Sample Edit audition status.")
+PY
+  then exit 1; fi
+else
+  echo "WARN: post-PLAY UIAutomator hierarchy timed out; native trigger/getters and the rendered status screenshot remain available."
 fi
 for evidence in \
   "$SAMPLE_ZOOM_BEFORE_PNG" "$SAMPLE_ZOOM_BEFORE_XML" \
   "$SAMPLE_ZOOM_IN_PNG" "$SAMPLE_ZOOM_IN_XML" \
   "$SAMPLE_ZOOM_OUT_PNG" "$SAMPLE_ZOOM_OUT_XML" \
   "$SAMPLE_ZOOM_RESET_PNG" "$SAMPLE_ZOOM_RESET_XML" \
-  "$SAMPLE_ZOOM_AUDITION_PNG" "$SAMPLE_ZOOM_AUDITION_XML"; do
+  "$SAMPLE_ZOOM_AUDITION_PNG"; do
   if ! test -s "$evidence"; then
     echo "ERROR: SAMP-010 required screenshot/UI hierarchy is empty: $evidence"; exit 1
   fi
