@@ -2,23 +2,21 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-21 (live branch and exact-SHA Actions govern)
 
-### 1. FAVORITE 1 root capture — FIX IDENTIFIED; FULL-SMOKE ACCEPTANCE PENDING
+### 1. FAVORITE 1 DocumentsUI root — TARGET-AWARE STABILITY FIX PREPARED; FULL-SMOKE ACCEPTANCE PENDING
 
-- Android Build #3022 / run `39614141625` failed at step 52 on HEAD `74e68f5beb02c2691233de89d1ab391ec54386a1`. Source/unit checks, APK assembly and evidence preflight passed; the full emulator smoke did not.
-- The post-failure evidence XML shows DocumentsUI at `Files on Android SDK built for x86_64`, in list mode, with `BBB-MPC-Browser-Favorite` fully visible. The root navigation succeeded; `tap_ui_picker_folder_until_child` then failed because `capture_stable_picker_state` was constrained to 6 seconds for three fresh hierarchy snapshots plus screenshot. Parameterize that timeout and allow 30 seconds only for the FAVORITE root capture. Do not relax any folder/child/grant assertion.
-- Artifacts: APK `12351848398`; UI evidence `12352324076` (9,441,650 bytes; SHA-256 `627f02e77258dfa7d0a1766f9cae69a9e15398ed2ec921feb9bcfa254f7a6de9`). SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 passed on this SHA before the Browser failure.
+- Android Build #3031 / run `39618045814` failed at step 52 on exact HEAD `cdbf0bcfcf0eeb9369f351bb889c88770e68d7d2`. Source/unit checks, APK assembly, and evidence preflight passed.
+- SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 passed on this exact SHA/run. The failure is later in FAVORITE 1's root-state capture: evidence XML shows the target folder row is visible, but DocumentsUI emits recycled duplicate nodes whose child title bounds and one `item_root` ancestor disagree. The previous signature compared every hierarchy node and could not stabilize within 30 seconds.
+- The bounded fix uses target-row-aware stabilization only for folder-root capture, checks title/row bound consistency, preserves the full measured-visibility and real-touch assertions. No folder/grant/persistence assertion is loosened.
+- Run #3031 artifacts: APK `12353167922`; evidence `12354283054` (9,476,640 bytes, SHA-256 `eb6ba7c2a1e4e04e60d268282989b32a882362c9060bba4dbb8e639913deaba3`). The archive's picker XML was inspected; no root screenshot exists because the capture failed before screenshot.
+- `.github/workflows/android-build.yml` currently has `cancel-in-progress: false`; leave it unchanged.
 
-### 2. Project persistence — EXTENDED COVERAGE GAP IDENTIFIED
+### 2. Browser + project persistence — REQUIRED NEXT ACCEPTANCE
 
-- The existing smoke exercises real SAF Save As → mutate → Open, exact v2 serialized-domain SHA equality, process restart/Open, Save As/Open cancellation invariance, malformed-load preservation and placement-free v1 compatibility. The distinct SAVE-overwrite button path is not currently exercised.
-- Add a real SAVE touch after adding a Track to the reopened Project; require a new v2 domain SHA different from the original Save As file, then force-stop/relaunch/Open and require exact file/domain SHA equality plus TRACKS=2 / PLACEMENTS=2. The v1 fixture derived from that saved document must load with TRACKS=2 / PLACEMENTS=0.
-
-### 3. Acceptance order
-
-1. Pass FAVORITE 1 root capture, folder selection, real child WAV, folder grant, Browser result and persisted restore on a green full exact-HEAD run.
-2. Pass Project Save As, Open, direct SAVE overwrite, restart/Open, cancellation invariance, malformed-load preservation and placement-free v1 canonical-state equality on that same green workflow.
-3. Only then resume the highest-priority roadmap gap. Keep SAMP-010 isolated and physical MPC Studio MkII evidence separate.
-4. Preserve `.github/workflows/android-build.yml` `cancel-in-progress: false`; `main` remains untouched.
+1. Pass FAVORITE 1 root capture, real folder-row tap, exact child WAV, folder grant, Browser results and persisted restore.
+2. Pass real Project Save As → mutate → Open with canonical domain equality, including MIDI events and Pattern placements.
+3. Pass distinct direct SAVE overwrite: serialized-domain SHA changes from the initial Save As, then matches after force-stop/relaunch/Open.
+4. Verify Save As/Open cancellation state invariance, malformed-load preservation, and placement-free v1 compatibility (two tracks, zero placements).
+5. Keep SAMP-010 waveform zoom/audition isolated until this complete acceptance is green. Physical MPC Studio MkII validation remains separate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 

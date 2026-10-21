@@ -6344,6 +6344,20 @@ for node in nodes:
                 print((left + right) // 2, (top + bottom) // 2)
                 raise SystemExit(0)
         candidate = parents.get(candidate)
+    # Skip stale recycled nodes whose label is not inside the associated row.
+    if tap_kind == "row" and row_bounds:
+        try:
+            row_first, row_second = row_bounds[1:-1].split("][")
+            label_first, label_second = node.attrib.get("bounds", "")[1:-1].split("][")
+            row_left, row_top = map(int, row_first.split(","))
+            row_right, row_bottom = map(int, row_second.split(","))
+            label_left, label_top = map(int, label_first.split(","))
+            label_right, label_bottom = map(int, label_second.split(","))
+        except ValueError:
+            continue
+        if not (row_left <= label_left < label_right <= row_right
+                and row_top <= label_top < label_bottom <= row_bottom):
+            continue
     # A row-centre tap is not independent of the title hit area on this
     # DocumentsUI layout: Build #2728's row centre (540,527) still landed
     # inside the title bounds [189,499][697,556]. Choose the measured trailing
@@ -7090,7 +7104,16 @@ for n in nodes:
         current = parents.get(current)
     if not row:
         continue
+    label_rect = rect(n.attrib.get("bounds", ""))
+    if not label_rect:
+        continue
     left, top, right, bottom = row
+    label_left, label_top, label_right, label_bottom = label_rect
+    # RecyclerView may pair a stale recycled item_root bound with a child
+    # title from another row. Reject any label that is outside its own row.
+    if not (left <= label_left < label_right <= right
+            and top <= label_top < label_bottom <= bottom):
+        continue
     if left >= 0 and right <= directory[2] and top >= directory[1] and bottom <= min(directory[3], footer[1] - 8):
         raise SystemExit(0)
 raise SystemExit(1)
@@ -7098,21 +7121,93 @@ PY
 }
 
 picker_hierarchy_signature() {
-  local hierarchy_path="$1"
-  python3 - "$hierarchy_path" <<'PY'
+  local hierarchy_path="$1" stable_folder_label="${2:-}"
+  python3 - "$hierarchy_path" "$stable_folder_label" <<'PY'
 import json
 import sys
 import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
+stable_folder_label = sys.argv[2]
+nodes = list(root.iter("node"))
 fields = (
     "text", "content-desc", "resource-id", "class", "bounds",
     "clickable", "enabled", "focused", "focusable", "scrollable", "selected"
 )
-signature = [
-    [node.attrib.get(field, "") for field in fields]
-    for node in root.iter("node")
-]
+
+if not stable_folder_label:
+    signature = [
+        [node.attrib.get(field, "") for field in fields]
+        for node in nodes
+    ]
+else:
+    # DocumentsUI RecyclerView can expose duplicate recycled children whose
+    # title bounds describe the visible row while a duplicate item_root has
+    # stale off-screen bounds. For folder-root stabilization, compare only the
+    # root header, list/footer geometry, and self-consistent visible target.
+    def rect(raw):
+        try:
+            first, second = raw[1:-1].split("][")
+            return tuple(map(int, first.split(",") + second.split(",")))
+        except (ValueError, IndexError):
+            return None
+
+    def attr(node, key):
+        return node.attrib.get(key, "") if node is not None else ""
+
+    parents = {child: parent for parent in nodes for child in list(parent)}
+    header = next((n for n in nodes
+                   if n.attrib.get("resource-id") == "com.android.documentsui:id/header_title"), None)
+    directory = next((n for n in nodes
+                      if n.attrib.get("resource-id") == "com.android.documentsui:id/dir_list"), None)
+    footer = next((n for n in nodes
+                   if n.attrib.get("resource-id") == "com.android.documentsui:id/container_save"), None)
+    button = next((n for n in nodes
+                   if n.attrib.get("resource-id") == "android:id/button1"), None)
+    directory_rect = rect(attr(directory, "bounds"))
+    footer_rect = rect(attr(footer, "bounds"))
+    targets = []
+    if directory_rect and footer_rect:
+        for label in nodes:
+            if label.attrib.get("text", "").strip() != stable_folder_label:
+                continue
+            label_rect = rect(label.attrib.get("bounds", ""))
+            current, row = label, None
+            while current is not None:
+                if current.attrib.get("resource-id") == "com.android.documentsui:id/item_root":
+                    row = current
+                    break
+                current = parents.get(current)
+            row_rect = rect(attr(row, "bounds"))
+            if not label_rect or not row_rect:
+                continue
+            left, top, right, bottom = row_rect
+            label_left, label_top, label_right, label_bottom = label_rect
+            dl, dt, dr, db = directory_rect
+            _, footer_top, _, _ = footer_rect
+            if not (left <= label_left < label_right <= right
+                    and top <= label_top < label_bottom <= bottom):
+                continue
+            if not (left >= dl and right <= dr and top >= dt
+                    and bottom <= min(db, footer_top - 8)):
+                continue
+            targets.append({
+                "label": stable_folder_label,
+                "labelBounds": label_rect,
+                "rowBounds": row_rect,
+                "clickable": attr(row, "clickable"),
+                "enabled": attr(row, "enabled"),
+            })
+    if not header or not directory or not footer or not button or not targets:
+        raise SystemExit(1)
+    signature = {
+        "header": [attr(header, "text"), attr(header, "bounds")],
+        "directory": directory_rect,
+        "footer": footer_rect,
+        "button": [attr(button, "text"), attr(button, "enabled"), attr(button, "bounds")],
+        "targets": sorted({json.dumps(target, sort_keys=True) for target in targets}),
+    }
+
 print(json.dumps(signature, ensure_ascii=False, separators=(",", ":")))
 PY
 }
@@ -7161,7 +7256,7 @@ tap_ui_picker_folder_until_child() {
   # Builds #2723–#2726 produced incompatible viewport positions between a
   # screenshot and the next UI dump. Do not guess another tap or keyboard path:
   # first prove the hierarchy remains unchanged around a fresh screenshot.
-  if ! capture_stable_picker_state "$remote_path" "$root_xml" "$root_png" "$root_stability_timeout"; then
+  if ! capture_stable_picker_state "$remote_path" "$root_xml" "$root_png" "$root_stability_timeout" "$folder_label"; then
     echo "ERROR: could not establish a stable DocumentsUI provider-root state"
     return 1
   fi
