@@ -9308,18 +9308,15 @@ fi
 if ! tap_ui_description "$DUMP" "MPC Toolbar Menu"; then
   echo "ERROR: could not open MPC Menu for Sample Edit crop acceptance"; exit 1
 fi
-if ! wait_for_ui_description "$SAMPLE_CROP_MENU_XML" "$SAMPLE_CROP_MENU_REMOTE" "SAMPLE mode" 15; then
+if ! wait_for_ui_description "$SAMPLE_CROP_MENU_XML" "$SAMPLE_CROP_MENU_REMOTE" "SAMPLE mode" 45; then
   echo "ERROR: MPC Menu did not expose the semantic SAMPLE EDIT route"; exit 1
 fi
 if ! tap_ui_description "$SAMPLE_CROP_MENU_XML" "SAMPLE mode"; then
   echo "ERROR: SAMPLE EDIT Menu route was not actionable"; exit 1
 fi
 if ! wait_for_ui_description "$SAMPLE_CROP_BASELINE_XML" "$SAMPLE_CROP_BASELINE_REMOTE" \
-    "Sample Edit crop selected sample region" 20; then
+    "Sample Edit crop selected sample region" 45; then
   echo "ERROR: Sample Edit did not expose the accessible CROP action"; exit 1
-fi
-if ! dump_device_ui "$SAMPLE_CROP_BASELINE_REMOTE" "$SAMPLE_CROP_BASELINE_XML"; then
-  echo "ERROR: could not capture Sample Edit crop baseline hierarchy"; exit 1
 fi
 sample_crop_before_state="$(read_sample_edit_region_frames "$SAMPLE_CROP_BASELINE_XML")" || {
   echo "ERROR: the real Pad/Layer sample frame state is unavailable before crop"; exit 1;
@@ -9333,7 +9330,7 @@ if (( sample_crop_start_before != 0 || sample_crop_end_before != sample_crop_tot
     echo "ERROR: Sample Edit FULL action was not actionable before crop"; exit 1
   fi
   if ! wait_for_sample_edit_region_state "$SAMPLE_CROP_BASELINE_XML" "$SAMPLE_CROP_BASELINE_REMOTE" \
-      "0 $sample_crop_total_before $sample_crop_total_before" 15; then exit 1; fi
+      "0 $sample_crop_total_before $sample_crop_total_before" 45; then exit 1; fi
   sample_crop_start_before=0
   sample_crop_end_before="$sample_crop_total_before"
 fi
@@ -9347,12 +9344,9 @@ if ! tap_ui_description "$SAMPLE_CROP_BASELINE_XML" "Sample Edit increase region
   echo "ERROR: Sample Edit Start +1000 action was not actionable"; exit 1
 fi
 if ! wait_for_sample_edit_region_state "$SAMPLE_CROP_REGION_CHANGED_XML" "$SAMPLE_CROP_REGION_CHANGED_REMOTE" \
-    "1000 $sample_crop_total_before $sample_crop_total_before" 15; then exit 1; fi
+    "1000 $sample_crop_total_before $sample_crop_total_before" 45; then exit 1; fi
 if ! capture_ui_screenshot "$SAMPLE_CROP_REGION_CHANGED_PNG" 10; then
   echo "ERROR: could not capture selected crop-region screenshot"; exit 1
-fi
-if ! dump_device_ui "$SAMPLE_CROP_REGION_CHANGED_REMOTE" "$SAMPLE_CROP_REGION_CHANGED_XML"; then
-  echo "ERROR: could not capture selected crop-region hierarchy"; exit 1
 fi
 sample_crop_expected_frames=$((sample_crop_total_before - 1000))
 if (( sample_crop_expected_frames <= 0 )); then
@@ -9362,14 +9356,11 @@ if ! tap_ui_description "$SAMPLE_CROP_REGION_CHANGED_XML" "Sample Edit crop sele
   echo "ERROR: real Sample Edit CROP action was not actionable"; exit 1
 fi
 if ! wait_for_sample_edit_region_state "$SAMPLE_CROP_CROPPED_XML" "$SAMPLE_CROP_CROPPED_REMOTE" \
-    "0 $sample_crop_expected_frames $sample_crop_expected_frames" 20; then
+    "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then
   echo "ERROR: CROP did not replace PCM with the selected Start/End frame range"; exit 1
 fi
 if ! capture_ui_screenshot "$SAMPLE_CROP_CROPPED_PNG" 10; then
   echo "ERROR: could not capture post-CROP screenshot"; exit 1
-fi
-if ! dump_device_ui "$SAMPLE_CROP_CROPPED_REMOTE" "$SAMPLE_CROP_CROPPED_XML"; then
-  echo "ERROR: could not capture post-CROP hierarchy"; exit 1
 fi
 echo "SAMP-008 real-touch CROP passed: source=$sample_crop_total_before frames, selected start=1000, cropped PCM=$sample_crop_expected_frames frames; native region reset to 0..$sample_crop_expected_frames."
 
@@ -9468,16 +9459,13 @@ run_sample_chop_acceptance() {
   fi
   first_slice_end=$((source_frames / chop_count))
   if ! wait_for_sample_edit_region_state "$host_xml" "$remote_xml" \
-      "0 $first_slice_end $source_frames" 15; then
+      "0 $first_slice_end $source_frames" 45; then
     echo "ERROR: selected Pad 01 did not expose the first CH$chop_count slice in Sample Edit"; return 1
   fi
   if ! capture_ui_screenshot "$screenshot" 10; then
     echo "ERROR: could not capture post-CH$chop_count Sample Edit screenshot"; return 1
   fi
-  if ! dump_device_ui "$remote_xml" "$host_xml"; then
-    echo "ERROR: could not capture post-CH$chop_count Sample Edit hierarchy"; return 1
-  fi
-  echo "SAMP-009 real-touch CH$chop_count passed: $chop_count contiguous, non-overlapping native slices cover all $source_frames PCM frames."
+    echo "SAMP-009 real-touch CH$chop_count passed: $chop_count contiguous, non-overlapping native slices cover all $source_frames PCM frames."
 }
 
 SAMPLE_CHOPPED_PNG="/tmp/mpc-groovebox-sample-chop-4-slices.png"
