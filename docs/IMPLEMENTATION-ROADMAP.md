@@ -1,18 +1,24 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-21 (live branch and exact-SHA Actions govern)
+## CURRENT EXECUTION QUEUE — 2026-10-21 (live PR head and exact-SHA Actions govern)
 
-### 1. Corrective recovery + FAVORITE 1 picker retry — FULL ACCEPTANCE PENDING
+### 1. Browser SAF FAVORITE 1 — UIAUTOMATOR ROOT CAPTURE STILL RED
 
-- Build #3035 / run `39623619559` failed at smoke step 52 on SHA `fe0742cc2ceaf21b6b5589c1a07553839f7431f2`. SAMP-008 and SAMP-009 native assertions passed first; USER FOLDER persistence also passed. The later FAVORITE 1 DocumentsUI folder-scrolling loop aborted after a single timed-out hierarchy dump. Evidence artifact `12357687535` was downloaded and the picker screenshot inspected.
-- Build #3036 / run `39635700353` is active on SHA `04378e76ebe3c485f69b77b526a5dccec85f50b8`, which unintentionally contains a helper fragment in place of the full smoke script and a shortened roadmap. It is not integration evidence. This corrective commit restores the complete source/history and applies the intended fix as a new forward commit; no branch reset or history rewrite is used.
-- `dump_device_ui_retry` now captures each attempt to a scratch file and atomically publishes only a valid current hierarchy. The FAVORITE 1 scroll loop uses the retry helper after swipes. All actual folder bounds, child-WAV, touch, permission and persisted-restoration checks remain unchanged.
+- PR #23 head at the latest completed run was `085b84877074b74d51ee73b8547947b409500025`; Android Build #3041 / `39648841982` failed at emulator smoke step 52: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39648841982.
+- SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 all passed their exact native assertions. Browser return, local WAV audition/assignment, USER FOLDER filters and process-death restoration passed.
+- FAVORITE 1 picker opens, but it initially restores `AAA-MPC-Browser-Tree`. Its current fresh UI hierarchy contained `Browser-Tree-Only.wav`, not the separate `Browser-Favorite-Only.wav`. A 15-second text polling loop repeatedly invoked UIAutomator dumps looking for an impossible child before moving to the provider root; once root navigation began, dumps timed out and no fresh root PNG/XML was accepted. The evidence archive `12369491694` shows the initial picker at AAA, so it must not be mistaken for a root snapshot.
+- Coherent fix: read the known-fresh initial hierarchy once to decide whether the Favorite child is already visible, skip repeated remote dumps while it is absent from a different folder, then navigate to provider root, wait for the transition and obtain a new accessibility hierarchy before any target tap. Improve stale runner matching by checking Android `NAME` and `ARGS` and clean up the late-return path. Keep the real folder selection, visible-bounds, child-WAV, grant, indexing and force-stop/relaunch assertions strict.
 
-### 2. Full acceptance — REQUIRED, STILL RED
+### 2. Parallel isolated SAMP-010 — DRAFT PR #29, RESULT RED
 
-- Pass FAVORITE 1 selection/grant/browser indexing and process-death restoration on one green exact-SHA full run.
-- Then pass Project Save As → mutate → Open with exact canonical domain equality for MIDI events and Pattern placement IDs/parameters; direct SAVE overwrite; force-stop/relaunch/Open; Save As/Open cancellation invariance; malformed-load preservation; and placement-free v1 compatibility.
-- Do not integrate SAMP-010 until the Browser and Project persistence gates are green. Physical MPC Studio MkII validation remains separate and pending.
+- Draft PR #29 `feature/samp010-zoom-audition-acceptance`, head `47a35aba42a245afb80e70dcefb1c6f5bedadd15`, run #3040 / `39648068024` completed **FAILURE** at smoke step 52; APK `12367973475`, visual evidence `12368976515`. Inspect the exact terminal failure before making the next isolated change; do not mark SAMP-010 verified.
+- Keep it isolated while primary PR #23 is actively verifying the Browser root-transition fix.
+
+### 3. Remaining primary gates
+
+- One green exact-HEAD run must include FAVORITE 1 separate URI, child WAV selection, actual `USE THIS FOLDER` grant, Browser indexing and process-death restoration.
+- Then complete Project Save As → mutate → Open exact canonical state, direct SAVE overwrite, process restart/Open, Save As/Open cancellation invariance, malformed load preserving active model, and placement-free v1 state equality.
+- SAMP-010 may be integrated only after those gates pass. Physical MPC Studio MkII remains a separate pending hardware check.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 
