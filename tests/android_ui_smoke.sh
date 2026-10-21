@@ -1785,13 +1785,13 @@ for forbidden in   'shortcut.setContentDescription("MPC shortcut " + mode.label(
     exit 1
   fi
 done
-for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC Main XL Mixer Strips'   'Main Track visual hierarchy • Track / Program / workspace section'   'clickMpcToolbarMenuForAudit()'; do
+for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC Main XL Mixer Strips'   'Main Track visual hierarchy • Track / Program / workspace section'   'clickMpcToolbarMenuForAudit()'   'captureProjectMenuViewHierarchyForSmoke()'   'MPC_MENU_VIEW_HIERARCHY_READY'   'mpc-project-menu-view-hierarchy.xml'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: current MPC Main UI audit contract missing: $required"
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -1882,8 +1882,12 @@ capture_ui_screenshot() {
     mpc-groovebox-track-edit-envelope-filter-before.png|\
     mpc-groovebox-track-edit-envelope-attack-changed.png|\
     mpc-groovebox-track-edit-filter-cutoff-changed.png|\
+    mpc-groovebox-sample-zoom-before.png|\
+    mpc-groovebox-sample-zoom-in.png|\
+    mpc-groovebox-sample-zoom-out.png|\
+    mpc-groovebox-sample-zoom-reset.png|\
+    mpc-groovebox-sample-zoom-audition.png|\
     mpc-groovebox-sample-browser-return.png|\
-    mpc-groovebox-sample-zoom-*.png|\
     mpc-groovebox-sample-crop-*.png|\
     mpc-groovebox-sample-chop-*.png|\
     mpc-groovebox-project-*.png|\
@@ -10073,7 +10077,6 @@ if ! test -s /tmp/mpc-groovebox-sample-zoom-before.png \
 fi
 echo "SAMP-010 real-touch zoom-in/out/reset and native Pad audition passed without mutating sample data."
 
-
 echo "Running Android user document-tree → Browser results → persisted grant restoration..."
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
   echo "ERROR: could not create user-folder test fixture"; exit 1
@@ -10960,18 +10963,60 @@ if [ "$project_menu_rendered" -ne 1 ]; then
   exit 1
 fi
 sleep 1
-PROJECT_MENU_XML="/tmp/mpc-groovebox-project-menu-uiautomator.xml"
+PROJECT_MENU_XML="/tmp/mpc-groovebox-project-menu-view-hierarchy.xml"
 PROJECT_MENU_PNG="/tmp/mpc-groovebox-project-menu.png"
+project_menu_hierarchy_marker_before="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
 if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
   echo "ERROR: could not capture rendered MPC Menu screenshot"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MENU_XML" 8 compressed; then
-  echo "ERROR: could not capture rendered MPC Menu hierarchy"; exit 1
+if ! wait_for_new_project_marker "MPC_MENU_VIEW_HIERARCHY_READY" "$project_menu_hierarchy_marker_before" 10; then
+  echo "ERROR: rendered MPC Menu did not publish its fresh in-app View hierarchy"; exit 1
 fi
-# The captured screenshot proves Menu is visible. The UIAutomator snapshot can
-# still expose the previous Main subtree, so use the real 4×4 Menu tile geometry
-# and then require a fresh Project render containing the authoritative domain summary.
-if ! tap_mpc_menu_tile 3 3; then exit 1; fi
+# UiAutomator's accessibility service timed out repeatedly at this exact
+# checkpoint (steps 52 on Builds #3048–#3051), even though Menu had rendered.
+# Pull the real Android View-tree XML produced on pre-draw. It is explicitly
+# provenance-labelled; actual touches and native Project state remain separate
+# acceptance gates, and missing/invalid XML still fails the smoke.
+if ! adb_bounded 5 shell run-as "$PACKAGE" cat cache/mpc-project-menu-view-hierarchy.xml > "$PROJECT_MENU_XML"; then
+  echo "ERROR: could not pull the fresh rendered MPC Menu View hierarchy"; exit 1
+fi
+if ! test -s "$PROJECT_MENU_XML" || ! python3 - "$PROJECT_MENU_XML" <<'PY_PROJECT_MENU_VIEW_TREE'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != "MENU":
+    raise SystemExit(f"Menu XML provenance/page mismatch: {root.tag!r} {root.attrib!r}")
+nodes = list(root.iter("node"))
+required = (
+    "MPC Menu MAIN", "MPC Menu TRACK VIEW", "MPC Menu BROWSER", "MPC Menu GRID",
+    "MPC Menu STEP", "MPC Menu TRACK EDIT", "MPC Menu SAMPLE EDIT", "MPC Menu SAMPLER",
+    "MPC Menu PAD MIXER", "MPC Menu PROJECT",
+)
+for description in required:
+    visible = [n for n in nodes if n.attrib.get("content-desc") == description
+               and n.attrib.get("visible-to-user") == "true"
+               and n.attrib.get("clickable") == "true" and n.attrib.get("enabled") == "true"]
+    if len(visible) != 1:
+        raise SystemExit(f"expected one visible enabled real Menu tile {description!r}, got {len(visible)}")
+    raw = visible[0].attrib.get("bounds", "")
+    try:
+        left_top, right_bottom = raw[1:-1].split("][")
+        left, top = map(int, left_top.split(","))
+        right, bottom = map(int, right_bottom.split(","))
+    except (ValueError, IndexError):
+        raise SystemExit(f"invalid Menu tile bounds for {description!r}: {raw!r}")
+    if right <= left or bottom <= top:
+        raise SystemExit(f"non-positive Menu tile bounds for {description!r}: {raw!r}")
+print(f"Verified fresh rendered Menu View tree: {len(nodes)} Android views; 10 actionable menu tiles.")
+PY_PROJECT_MENU_VIEW_TREE
+then
+  echo "ERROR: rendered MPC Menu View hierarchy is empty, malformed or missing expected visible tiles"; exit 1
+fi
+# Tap the real enabled PROJECT tile using bounds from the fresh current Menu tree,
+# then require the native Project summary. This avoids stale Main-shell bounds.
+if ! tap_visible_description_early "$PROJECT_MENU_XML" "MPC Menu PROJECT"; then
+  echo "ERROR: could not perform a real measured touch on the rendered PROJECT tile"; exit 1
+fi
 if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 PROJECT_ROUTE_XML="/tmp/mpc-groovebox-project-route-uiautomator.xml"
 PROJECT_ROUTE_PNG="/tmp/mpc-groovebox-project-route.png"

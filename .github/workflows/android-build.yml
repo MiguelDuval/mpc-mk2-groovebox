@@ -704,6 +704,7 @@ jobs:
             /tmp/mpc-groovebox-sample-chop*-uiautomator.xml
             /tmp/mpc-groovebox-project-*.png
             /tmp/mpc-groovebox-project*-uiautomator.xml
+            /tmp/mpc-groovebox-project*-view-hierarchy.xml
             /tmp/mpc-groovebox-*-cancel*.png
             /tmp/mpc-groovebox-ui.xml
             /tmp/mpc-groovebox-browser-hierarchy.txt

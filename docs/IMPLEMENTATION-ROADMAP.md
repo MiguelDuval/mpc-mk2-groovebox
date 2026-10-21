@@ -2,17 +2,21 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-21
 
-### 1. PR #29 — SAMP-010 evidence must be immutable per interaction
+### 1. Primary PR #23 — Project Menu hierarchy
 
-- Previous SHA `816e11a70a1368d63d0137c72aa4154774c5de7b`, Build #3049 / run `39672208687`: log assertions verified live zoom-in, zoom-out, RESET and native audition, but artifact audit found the XML named zoom-in had been overwritten by ZOOM−; its screenshot showed 10–90% while XML stated 0–100%. No zoom-out screenshot was captured. This is a concrete evidence gap even though the functional interaction assertions passed.
-- Fix on this isolated branch adds dedicated zoom-out screenshot/XML, separates the zoom-in snapshot from the following zoom-out and RESET preparation state, and keeps the real state/PCM invariants. Also switches the subsequent Project Menu dump to bounded compressed output while still requiring parseable XML.
-- Verify exact-SHA build before treating SAMP-010 as complete. Do not integrate while primary PR #23 full smoke remains red.
+- Build #3051 / run `39677805700` on `a593becb5f0259275b5b20b157edae3815f2729b` failed at emulator smoke step 52. Builds #3046–#3051 stop at the Project Menu UiAutomator dump after its screenshot succeeds.
+- Browser/FAVORITE 1 passed as a component on exact SHA `c721e93fde80e9bb0e45b94ce375ec17e20b2692` / Build #3048, with matched root PNG/XML, real folder touch, saved URI and preferences, Browser WAV and force-stop/relaunch restoration. SAMP-008/009 passed via native getters.
+- Narrow fix: capture the real Android View tree at the Menu pre-draw in debug-only project-persistence mode, serialize it to explicitly provenance-labelled XML, validate ten visible enabled tile descriptions, capture the Menu PNG, then real-touch the `MPC Menu PROJECT` node with measured bounds from the current XML. Other screen-state dumps keep the UiAutomator path; absent/invalid XML is not accepted.
+- After this gate, finish real Project Save As → mutate → Open, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-file preservation and placement-free v1 canonical-state equality.
 
-### 2. Primary PR #23 / PR #28 — Project Menu and lifecycle
+### 2. Isolated PRs #29 / #28
 
-- Primary SHA `a593becb5f0259275b5b20b157edae3815f2729b`, Build #3051 / `39677805700`, is testing compressed hierarchy capture at the Project Menu. Earlier builds got a correct rendered Menu screenshot but timed out on standard `uiautomator dump`.
-- PR #28 latest SHA `d0eef888e33ef98d5a64ce05a2409672f6b6e763`, Build #3050 / `39672408316`, failed at the same UI hierarchy stage although its native Project tests and Browser Favorite assignment/restoration passed.
-- Full UI SAF Project Save As/Open, overwrite, process restart, cancellation, malformed-load atomicity and v1 compatibility remain pending.
+- PR #29 latest head `a7f59db3a582d01a67e70d2299232eb25e35dc05`; SAMP-010 passed on earlier SHA `816e11a70a1368d63d0137c72aa4154774c5de7b`, but its full smoke failed at the shared Project Menu gate. Do not integrate before exact-SHA verification and green primary gates.
+- PR #28 latest head `d0eef888e33ef98d5a64ce05a2409672f6b6e763`; native persistence tests and Favorite checks passed, then its overall run failed at the same Menu dump.
+
+### 3. Non-negotiables
+
+- Preserve `cancel-in-progress: false`; do not modify `main`, rewrite history, weaken acceptance assertions, or imply physical MPC Studio MkII testing from emulator runs.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 
