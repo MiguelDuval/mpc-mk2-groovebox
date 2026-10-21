@@ -74,6 +74,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         String commit(String value);
     }
 
+    // Fixed Sample Edit children: header, waveform, region info, viewport info, tab row.
+    // Panel switches must retain the ENV/FILTER/LAYER tabs after the viewport label was added.
+    private static final int SAMPLE_PAGE_FIXED_CHILD_COUNT = 5;
     private static final String TAG = "MpcGroovebox";
     private static final int REQUEST_OPEN_WAV = 1001;
     private static final int REQUEST_RECORD_AUDIO = 1002;
@@ -5097,7 +5100,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleEditPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, SAMPLE_PAGE_FIXED_CHILD_COUNT);
         if (sampleWaveform != null) {
             sampleWaveform.setEditable(true);
             sampleWaveform.setRecording(false);
@@ -5161,7 +5164,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleEnvelopePanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, SAMPLE_PAGE_FIXED_CHILD_COUNT);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         envelopeInfo = label("", 12, TEXT);
@@ -5189,7 +5192,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleFilterPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, SAMPLE_PAGE_FIXED_CHILD_COUNT);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         filterInfo = label("", 13, TEXT);
@@ -5236,7 +5239,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleLayerPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, SAMPLE_PAGE_FIXED_CHILD_COUNT);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         TextView layerInfo = label("", 12, TEXT);
