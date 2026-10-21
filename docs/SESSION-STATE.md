@@ -1,24 +1,21 @@
 # Session State — MPC MkII Groovebox
 
 **Checkpoint date:** 2026-10-21  
-**Purpose:** handoff checkpoint; mutable status is reconciled against live GitHub before each change.
+**Purpose:** handoff checkpoint; reconcile mutable status to exact-SHA evidence.
 
-## Latest source and verification state
+## Latest verification state — isolated SAMP-010 evidence fix
 
-### Live checkpoint — Android Build #3047 and follow-up diagnosis
+- PR #29 is draft on `feature/samp010-zoom-audition-acceptance`. Build #3049 / run `39672208687` at SHA `816e11a70a1368d63d0137c72aa4154774c5de7b` recorded successful SAMP-010 zoom-in 10–90%, zoom-out/RESET 0–100%, unchanged native sample region/frame getters, and the Pad-01 native audition marker. The overall workflow then failed in the shared Project Menu UI hierarchy dump.
+- Post-run artifact inspection found an **evidence-pairing defect**: `sample-zoom-in.png` visibly showed VIEW 10–90%, but its same-named XML had subsequently been overwritten by the later ZOOM− operation and described VIEW 0–100%. There was no dedicated zoom-out screenshot. Runtime actions did occur; the saved milestone evidence was not complete/matched, so SAMP-010 evidence is not yet accepted.
+- Isolated fix: use separate zoom-out XML/PNG paths and a separate pre-RESET zoomed XML; never overwrite the first zoom-in snapshot. The test now keeps exact viewport assertions per immutable state and adds zoom-out PNG to mandatory evidence checks. The Project Menu capture also uses bounded compressed XML but still fails on missing/malformed XML rather than silently accepting it.
+- Primary PR #23 is independently testing the same Project Menu compressed-dump experiment on SHA `a593becb5f0259275b5b20b157edae3815f2729b`, Build #3051 / run `39677805700`. Do not integrate this draft PR into primary while its whole workflow is red.
+- PR #28 current SHA `d0eef888e33ef98d5a64ce05a2409672f6b6e763`, Build #3050 / run `39672408316`, failed at the shared Project Menu hierarchy stage after Favorite assignment/restoration; native Project state/persistence tests passed. Project SAF lifecycle remains pending.
 
-- PR #23 is **OPEN** on `feature/mpc-one-ui-fidelity`. HEAD `dcbb5810200a34e4143d37edb49e73e12b69c36f` was tested by Build #3047 / run `39666355459`, which failed at Android emulator smoke step 52. Build #3046 / `39664592692` also failed at step 52 on `a2705476d68793a99bb799515ab16ccacc2ed928`. Neither run completed FAVORITE 1. `main` remains unchanged, and `cancel-in-progress: false` is preserved.
-- The latest artifacts show a real root XML containing `Files on Android SDK built for x86_64`, `BBB-MPC-Browser-Favorite`, and the `USE THIS FOLDER` action. The problem is after that successful fresh root capture: `tap_ui_picker_folder_until_child()` attempts a separate three-dump stable capture and fails before publishing `mpc-groovebox-browser-favorite-tree-root-uiautomator.xml`. The saved PNG with the picker name still shows the previous AAA folder; that is not root evidence.
-- Build #3047's final timeout had a 1-second budget after a 30-second stabilization deadline. The raw `ps` output now contains ordinary Android processes in its first rows, but no matched UiAutomator runner there. This still does not establish the precise reason repeated accessibility calls stall; the actionable failure is the unnecessary triple-dump stage after a fresh root hierarchy was already captured.
-- Current fix scope: keep the shared three-dump stable-capture helper as the default for all other picker flows. For FAVORITE 1 only, use the just-captured fresh hierarchy after the real breadcrumb tap, recheck exact provider-root title and the visible Favorite folder, capture a screenshot immediately, copy the same current XML into the dedicated root evidence path, and then tap the folder using that verified hierarchy. This is an evidence-driven, root-specific fallback—not cached UI, not a mocked state, and not a timeout increase. The real child file, persistable URI grant, Browser result, independent favorite preference, and force-stop/relaunch checks stay mandatory.
-- SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 passed on #3046/#3047: real touches and native PCM/destination getters verified 3840→2840 PCM and contiguous non-overlapping 4/8/16 ranges. USER FOLDER filter plus process-death restoration passed in the same runs. FAVORITE 1 remains unverified.
-- PR #29 SAMP-010 fix commit `62f12da6516cb125f9905dab21d1a32b578882f5` fixes the tab-row removal bug: adding the viewport readout moved the Sample Edit tabs to child index 4, while four panel helpers continued removing from index 4. The new fixed-child count preserves ENV/FILTER/LAYER without disabling audit. This SHA has no exact-SHA workflow result; PR #29 is still draft and mergeable=false against its older base.
-- PR #28 Build #3044 / run `39657357881` failed later in the shared Favorite 1 path, while its native Project state/persistence steps 38/39 passed. Full Project SAVE/SAVE AS/OPEN UI lifecycle remains **PENDING** because the primary acceptance doesn't get past FAVORITE 1. Physical MPC Studio MkII validation remains **PENDING** and is not implied by emulator tests.
+## Current queue — 2026-10-21
 
-## Current execution queue — 2026-10-21
-
-1. Verify the new Favorite-root paired-evidence path on its exact-SHA Android Build. Require provider-root header, folder visibility, actual row tap, actual Favorite-only WAV, Android persisted grant, Browser indexing and force-stop/relaunch restoration.
-2. Keep PR #29 isolated until the primary Browser gate passes; then reconcile its stale base using history-preserving changes and run its exact SHA. Continue the existing Project SAVE/SAVE AS/OPEN UI scenario only after FAVORITE 1 succeeds.
+1. Run the isolated SAMP-010 evidence-preservation fix on a new exact SHA. Inspect every zoom-in/zoom-out/reset/audition PNG and XML pair after the full run.
+2. Verify the compressed Project Menu XML capture on the primary PR #23 SHA and sync the common fix only after its result.
+3. After the primary Project Menu checkpoint succeeds, continue the existing real Project SAVE/SAVE AS/OPEN acceptance; don't confuse native unit-test pass with full SAF lifecycle acceptance.
 
 ## Completed in this session
 

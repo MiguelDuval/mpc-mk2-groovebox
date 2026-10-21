@@ -9892,6 +9892,11 @@ SAMPLE_ZOOM_BEFORE_REMOTE="/sdcard/mpc-groovebox-sample-zoom-before-uiautomator.
 SAMPLE_ZOOM_IN_PNG="/tmp/mpc-groovebox-sample-zoom-in.png"
 SAMPLE_ZOOM_IN_XML="/tmp/mpc-groovebox-sample-zoom-in-uiautomator.xml"
 SAMPLE_ZOOM_IN_REMOTE="/sdcard/mpc-groovebox-sample-zoom-in-uiautomator.xml"
+SAMPLE_ZOOM_OUT_PNG="/tmp/mpc-groovebox-sample-zoom-out.png"
+SAMPLE_ZOOM_OUT_XML="/tmp/mpc-groovebox-sample-zoom-out-uiautomator.xml"
+SAMPLE_ZOOM_OUT_REMOTE="/sdcard/mpc-groovebox-sample-zoom-out-uiautomator.xml"
+SAMPLE_ZOOM_RESET_PREP_XML="/tmp/mpc-groovebox-sample-zoom-reset-prep-uiautomator.xml"
+SAMPLE_ZOOM_RESET_PREP_REMOTE="/sdcard/mpc-groovebox-sample-zoom-reset-prep-uiautomator.xml"
 SAMPLE_ZOOM_RESET_PNG="/tmp/mpc-groovebox-sample-zoom-reset.png"
 SAMPLE_ZOOM_RESET_XML="/tmp/mpc-groovebox-sample-zoom-reset-uiautomator.xml"
 SAMPLE_ZOOM_RESET_REMOTE="/sdcard/mpc-groovebox-sample-zoom-reset-uiautomator.xml"
@@ -10005,19 +10010,25 @@ if ! capture_ui_screenshot "$SAMPLE_ZOOM_IN_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture zoom-in viewport"; exit 1
 fi
 
+# Preserve the zoom-in XML before performing ZOOM−; each acceptance state
+# gets its own hierarchy/screenshot pair instead of overwriting a prior milestone.
 if ! tap_sample_edit_control "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" \
     "Sample Edit zoom waveform out"; then exit 1; fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" "VIEW 0–100%" 12; then
+if ! wait_for_ui_text "$SAMPLE_ZOOM_OUT_XML" "$SAMPLE_ZOOM_OUT_REMOTE" "VIEW 0–100%" 12; then
   echo "ERROR: SAMP-010 ZOOM− did not restore the full viewport"; exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_IN_XML" "VIEW 0–100%" 0 100 "zoom-out"; then exit 1; fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_OUT_XML" "VIEW 0–100%" 0 100 "zoom-out"; then exit 1; fi
+if ! capture_ui_screenshot "$SAMPLE_ZOOM_OUT_PNG" 10; then
+  echo "ERROR: SAMP-010 could not capture zoom-out viewport"; exit 1
+fi
 
-if ! tap_sample_edit_control "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" \
+if ! tap_sample_edit_control "$SAMPLE_ZOOM_OUT_XML" "$SAMPLE_ZOOM_OUT_REMOTE" \
     "Sample Edit zoom waveform in"; then exit 1; fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_XML" "$SAMPLE_ZOOM_RESET_REMOTE" "VIEW 10–90%" 12; then
+if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PREP_REMOTE" "VIEW 10–90%" 12; then
   echo "ERROR: SAMP-010 could not establish zoomed viewport before RESET"; exit 1
 fi
-if ! tap_sample_edit_control "$SAMPLE_ZOOM_RESET_XML" "$SAMPLE_ZOOM_RESET_REMOTE" \
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_PREP_XML" "VIEW 10–90%" 10 90 "reset-preparation"; then exit 1; fi
+if ! tap_sample_edit_control "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PREP_REMOTE" \
     "Sample Edit reset waveform zoom"; then exit 1; fi
 if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_XML" "$SAMPLE_ZOOM_RESET_REMOTE" "VIEW 0–100%" 12; then
   echo "ERROR: SAMP-010 RESET did not restore full viewport"; exit 1
@@ -10045,7 +10056,8 @@ fi
 for evidence in \
   "$SAMPLE_ZOOM_BEFORE_PNG" "$SAMPLE_ZOOM_BEFORE_XML" \
   "$SAMPLE_ZOOM_IN_PNG" "$SAMPLE_ZOOM_IN_XML" \
-  "$SAMPLE_ZOOM_RESET_PNG" "$SAMPLE_ZOOM_RESET_XML" \
+  "$SAMPLE_ZOOM_OUT_PNG" "$SAMPLE_ZOOM_OUT_XML" \
+  "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PNG" "$SAMPLE_ZOOM_RESET_XML" \
   "$SAMPLE_ZOOM_AUDITION_PNG" "$SAMPLE_ZOOM_AUDITION_XML"; do
   if ! test -s "$evidence"; then
     echo "ERROR: SAMP-010 required screenshot/UI hierarchy is empty: $evidence"; exit 1
@@ -10054,6 +10066,7 @@ done
 # Literal mandatory paths feed Android UI smoke evidence preflight.
 if ! test -s /tmp/mpc-groovebox-sample-zoom-before.png \
     || ! test -s /tmp/mpc-groovebox-sample-zoom-in.png \
+    || ! test -s /tmp/mpc-groovebox-sample-zoom-out.png \
     || ! test -s /tmp/mpc-groovebox-sample-zoom-reset.png \
     || ! test -s /tmp/mpc-groovebox-sample-zoom-audition.png; then
   echo "ERROR: SAMP-010 mandatory visual milestone screenshots are missing"; exit 1
@@ -10952,7 +10965,7 @@ PROJECT_MENU_PNG="/tmp/mpc-groovebox-project-menu.png"
 if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
   echo "ERROR: could not capture rendered MPC Menu screenshot"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MENU_XML"; then
+if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MENU_XML" 8 compressed; then
   echo "ERROR: could not capture rendered MPC Menu hierarchy"; exit 1
 fi
 # The captured screenshot proves Menu is visible. The UIAutomator snapshot can

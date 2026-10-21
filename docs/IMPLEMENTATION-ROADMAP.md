@@ -1,24 +1,18 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-21 (live PR head and exact-SHA Actions govern)
+## CURRENT EXECUTION QUEUE — 2026-10-21
 
-### 1. Primary PR #23 — FAVORITE 1 DocumentsUI
+### 1. PR #29 — SAMP-010 evidence must be immutable per interaction
 
-- Build #3046 / run `39664592692` on SHA `a2705476d68793a99bb799515ab16ccacc2ed928` and Build #3047 / run `39666355459` on SHA `dcbb5810200a34e4143d37edb49e73e12b69c36f` both failed at Android emulator smoke step 52.
-- Both runs did get a fresh DocumentsUI root hierarchy: it contained the root header, visible `BBB-MPC-Browser-Favorite` and `USE THIS FOLDER`. The failing stage was the subsequent `capture_stable_picker_state()` call inside `tap_ui_picker_folder_until_child()`, which attempted repeated dumps and timed out before producing the dedicated root PNG/XML. The picker-named PNG still depicts AAA and is not accepted root evidence.
-- Narrow recovery: leave the strict three-dump protocol as the default for all other callers. After the real breadcrumb tap and successful fresh root dump, revalidate the actual root header plus visible Favorite folder, capture a screenshot immediately, save the same current XML to the dedicated root evidence path, and let the existing helper use that explicitly prevalidated pair rather than repeating three more root dumps. Do not inflate timeouts. Continue to require real folder activation, child WAV, persistable URI grant, Browser indexing, separate favorite preference, and process-death restoration.
-- SAMP-008 CROP, SAMP-009 CH4/CH8/CH16, and USER FOLDER restoration/filter checks passed on the recent runs. FAVORITE 1 remains UNVERIFIED.
+- Previous SHA `816e11a70a1368d63d0137c72aa4154774c5de7b`, Build #3049 / run `39672208687`: log assertions verified live zoom-in, zoom-out, RESET and native audition, but artifact audit found the XML named zoom-in had been overwritten by ZOOM−; its screenshot showed 10–90% while XML stated 0–100%. No zoom-out screenshot was captured. This is a concrete evidence gap even though the functional interaction assertions passed.
+- Fix on this isolated branch adds dedicated zoom-out screenshot/XML, separates the zoom-in snapshot from the following zoom-out and RESET preparation state, and keeps the real state/PCM invariants. Also switches the subsequent Project Menu dump to bounded compressed output while still requiring parseable XML.
+- Verify exact-SHA build before treating SAMP-010 as complete. Do not integrate while primary PR #23 full smoke remains red.
 
-### 2. Isolated PRs #29 / #28
+### 2. Primary PR #23 / PR #28 — Project Menu and lifecycle
 
-- PR #29 current fix SHA `62f12da6516cb125f9905dab21d1a32b578882f5` preserves Sample Edit ENV/FILTER/LAYER tabs after adding viewport info. There is no workflow run for that exact SHA; PR remains draft and unmergeable against stale base. Do not integrate it yet.
-- PR #28 Build #3044 / run `39657357881` failed at the shared Favorite 1 stage. Native Project state/persistence tests steps 38/39 passed; this does not verify Android SAF lifecycle.
-
-### 3. Remaining gates
-
-- Keep `.github/workflows/android-build.yml` at `cancel-in-progress: false`.
-- After Favorite 1 passes, finish the existing real Project Save As → mutate → Open, overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-load preservation, and placement-free v1 checks.
-- Physical MPC Studio MkII testing remains separate from emulator acceptance.
+- Primary SHA `a593becb5f0259275b5b20b157edae3815f2729b`, Build #3051 / `39677805700`, is testing compressed hierarchy capture at the Project Menu. Earlier builds got a correct rendered Menu screenshot but timed out on standard `uiautomator dump`.
+- PR #28 latest SHA `d0eef888e33ef98d5a64ce05a2409672f6b6e763`, Build #3050 / `39672408316`, failed at the same UI hierarchy stage although its native Project tests and Browser Favorite assignment/restoration passed.
+- Full UI SAF Project Save As/Open, overwrite, process restart, cancellation, malformed-load atomicity and v1 compatibility remain pending.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 
