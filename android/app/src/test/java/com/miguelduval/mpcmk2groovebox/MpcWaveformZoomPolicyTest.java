@@ -57,6 +57,22 @@ public final class MpcWaveformZoomPolicyTest {
     }
 
     @Test
+    public void verticalZoomRemainsBoundedAtBothExtremes() {
+        float zoom = MpcZoomPolicy.MIN_VERTICAL_ZOOM;
+        assertEquals(1.25f, MpcZoomPolicy.zoomVerticalIn(zoom), EPSILON);
+
+        for (int i = 0; i < 40; i++) {
+            zoom = MpcZoomPolicy.zoomVerticalIn(zoom);
+        }
+        assertEquals(MpcZoomPolicy.MAX_VERTICAL_ZOOM, zoom, EPSILON);
+
+        for (int i = 0; i < 40; i++) {
+            zoom = MpcZoomPolicy.zoomVerticalOut(zoom);
+        }
+        assertEquals(MpcZoomPolicy.MIN_VERTICAL_ZOOM, zoom, EPSILON);
+    }
+
+    @Test
     public void malformedZoomValuesFailSafelyInsideNormalizedBounds() {
         assertEquals(
                 MpcZoomPolicy.MIN_HORIZONTAL_SPAN,
@@ -73,5 +89,22 @@ public final class MpcWaveformZoomPolicyTest {
         assertEquals(0.0f,
                 MpcZoomPolicy.viewportStartForCenter(Float.NaN, 0.25f),
                 EPSILON);
+        assertEquals(
+                MpcZoomPolicy.MIN_HORIZONTAL_SPAN,
+                MpcZoomPolicy.clampHorizontalSpan(-2.0f),
+                EPSILON);
+        assertEquals(
+                MpcZoomPolicy.MAX_HORIZONTAL_SPAN,
+                MpcZoomPolicy.clampHorizontalSpan(2.0f),
+                EPSILON);
+        assertEquals(
+                MpcZoomPolicy.MIN_HORIZONTAL_SPAN,
+                MpcZoomPolicy.zoomHorizontalIn(Float.NaN),
+                EPSILON);
+        assertEquals(
+                MpcZoomPolicy.MAX_HORIZONTAL_SPAN,
+                MpcZoomPolicy.zoomHorizontalOut(Float.POSITIVE_INFINITY),
+                EPSILON);
+
     }
 }
