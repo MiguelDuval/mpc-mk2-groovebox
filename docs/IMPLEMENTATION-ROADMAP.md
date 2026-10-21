@@ -1,19 +1,25 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-21 (live branch and exact-SHA Actions govern)
+## CURRENT EXECUTION QUEUE — 2026-10-21 (live PR head and exact-SHA Actions govern)
 
-### 1. Finish Browser SAF FAVORITE 1 acceptance — ROOT CAUSE IDENTIFIED; FULL SMOKE STILL RED
+### 1. Browser SAF FAVORITE 1 — PICKER OPENS; REPEATED UIAUTOMATOR CAPTURE TIMEOUTS BLOCK ACCEPTANCE
 
-- PR #23 exact HEAD `e2a3b5da9722130885fb5ffdfff0c088922d7260`; latest relevant run #3037 / `39636137531` failed at smoke step 52. Native checks, APK build and evidence upload passed. See https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39636137531.
-- SAMP-008 and SAMP-009 targeted native acceptance passed on this run: CROP 3,840→2,840 frames and reset `0..2,840`; CH4/CH8/CH16 produced exact contiguous destination ranges. These are not yet a fully green feature slice until the remaining Browser and Project lifecycle smoke completes.
-- USER FOLDER tree persistence also passed. FAVORITE 1 opens Android DocumentsUI at the last-used USER FOLDER; the smoke must navigate back to the provider root, verify the actual Favorite-only folder row, tap it, grant access and prove process-death restoration.
-- Root-cause fix: `capture_stable_picker_state` previously stopped at the first failed hierarchy dump or transient signature parse even with a 30-second overall budget. It now caps each dump attempt at 8 seconds, retries inside the existing deadline, preserves the previous valid XML and publishes a screenshot only after the final hierarchy matches it. Do not remove target row visibility or any SAF/grant/restart assertions.
+- Latest primary HEAD `09cbc15c702c2d1b1989da7d453e50820c71c993`; Android Build #3039 / `39643908281` failed at emulator smoke step 52. See https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39643908281.
+- SAMP-008 real-touch CROP (3,840→2,840 frames, region reset to `0..2,840`) and SAMP-009 CH4/CH8/CH16 native contiguous ranges passed on #3039. Browser return, USER FOLDER data/query and process-death restoration passed.
+- FAVORITE 1 Choose Folder was tapped and DocumentsUI became foreground. Subsequent hierarchy dumps timed out 14 times; the screenshot/XML archive reflects the prior `AAA-MPC-Browser-Tree` rather than one stable post-root image. The root hierarchy had the Favorite-only folder row but there was no accepted fresh root snapshot.
+- Root-cause fix in this batch: on failed UIAutomator dump or remote hierarchy transfer, search the device process list for only the stale `com.android.commands.uiautomator.Launcher` and request TERM before retrying. This addresses the mismatch between killing the host adb client and a possibly surviving remote runner; exact-SHA verification remains mandatory. Do not kill DocumentsUI and do not remove current target geometry, real folder touch, child WAV, `USE THIS FOLDER`, grant or restart checks.
 
-### 2. Remaining required acceptance
+### 2. Parallel SAMP-010 — ISOLATED IN DRAFT PR #29
 
-- Complete FAVORITE 1 child WAV + `USE THIS FOLDER` + Browser indexing + persisted URI/grant restoration on one green exact-SHA run.
-- Complete Project Save As → mutate → Open with exact canonical equality for MIDI events and Pattern placement ID/parameters; direct SAVE overwrite, force-stop/relaunch/Open, Save As/Open cancel invariance, malformed-load preservation, and placement-free v1 compatibility.
-- Do not integrate SAMP-010 until the full Browser and Project persistence gates pass. Physical MPC Studio MkII validation remains independently pending.
+- Draft PR #29, branch `feature/samp010-zoom-audition-acceptance`, base exact primary SHA `09cbc15c702c2d1b1989da7d453e50820c71c993`. First full run #3040 / `39648068024` is active on SHA `47a35aba42a245afb80e70dcefb1c6f5bedadd15`.
+- It adds shared viewport-bound policy, an accessible viewport state row, actual zoom/reset and native PLAY marker, unit coverage, and real-touch assertions to the existing smoke. Full result and evidence are not yet known.
+- Do not integrate SAMP-010 into PR #23 before Browser FAVORITE 1 and Project lifecycle acceptance both pass.
+
+### 3. Remaining primary gates
+
+- FAVORITE 1 child WAV, actual tree grant, Browser indexing, and process-death permission/favorite restoration.
+- Project Save As → mutate → Open must restore canonical MIDI-event values and Pattern placement identity/parameters. Also verify normal SAVE overwrite, force-stop/relaunch/open, cancellation invariance, malformed-input preservation, and placement-free v1 compatibility.
+- Physical MPC Studio MkII remains a separate pending hardware acceptance gate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 

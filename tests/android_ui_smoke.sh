@@ -1791,7 +1791,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -2019,6 +2019,20 @@ PY
   fi
 }
 
+cleanup_stale_device_uiautomator() {
+  # adb_bounded kills the host adb process group, not necessarily the remote
+  # com.android.commands.uiautomator.Launcher that adb shell started. A hung
+  # remote UiAutomation instance can monopolize the service and make subsequent
+  # dumps fail. Terminate only that test runner before attempting another dump.
+  local ps_output pid
+  ps_output="$(adb_bounded 2 shell "ps -A -o PID,ARGS 2>/dev/null | grep '[c]om.android.commands.uiautomator' | sed -n 's/^ *\\([0-9][0-9]*\\).*/\\1/p'" 2>/dev/null || true)"
+  while IFS= read -r pid; do
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    echo "Requesting termination of stale remote UIAutomator runner pid=$pid"
+    adb_bounded 2 shell kill -TERM "$pid" >/dev/null 2>&1 || true
+  done <<< "$ps_output"
+}
+
 dump_device_ui() {
   # Total wall-clock budget for cleanup + UIAutomator + transfer, not nested retry budgets.
   local requested_remote_path="$1" host_path="$2"
@@ -2033,12 +2047,15 @@ dump_device_ui() {
   if ! adb_bounded "$remaining" shell uiautomator dump "$shared_remote_path" > "$log_path" 2>&1; then
     echo "ERROR: bounded UI hierarchy dump failed ($requested_remote_path; budget ${timeout_seconds}s)"
     cat "$log_path" || true
+    cleanup_stale_device_uiautomator
     return 1
   fi
   remaining=$((deadline - SECONDS))
   if (( remaining <= 0 )); then echo "ERROR: UI hierarchy deadline expired before transfer ($requested_remote_path)"; return 1; fi
   if ! adb_bounded "$remaining" exec-out cat "$shared_remote_path" > "$host_path"; then
-    echo "ERROR: bounded UI hierarchy transfer failed ($requested_remote_path)"; return 1
+    echo "ERROR: bounded UI hierarchy transfer failed ($requested_remote_path)"
+    cleanup_stale_device_uiautomator
+    return 1
   fi
   if ! test -s "$host_path" || ! python3 - "$host_path" <<'PY'
 import sys, xml.etree.ElementTree as ET
