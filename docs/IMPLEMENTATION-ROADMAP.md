@@ -2,23 +2,23 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-21 (live PR head and exact-SHA Actions govern)
 
-### 1. Primary Browser SAF FAVORITE 1 — FAILED AFTER ACTUAL PICKER OPEN; HIERARCHY CAPTURE STILL BLOCKING
+### 1. Primary PR #23 — Browser FAVORITE 1 (CURRENT EXACT-SHA SMOKE IN PROGRESS)
 
-- PR #23 exact HEAD `09cbc15c702c2d1b1989da7d453e50820c71c993`, Android Build #3039 / run `39643908281`: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39643908281. Run completed failure at emulator smoke step 52; APK/evidence upload succeeded.
-- SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 exact native range assertions passed on #3039. Sample Edit→Browser and search reset passed, as did USER FOLDER persistence. These don't count as full-slice acceptance until the downstream Browser and Project lifecycle smoke becomes green.
-- FAVORITE 1 Choose Folder was touched; Android DocumentsUI became foreground. The script then timed out collecting fresh hierarchy. The final attempted capture loop reported 14 bounded snapshots and `UI hierarchy deadline expired before transfer`. The saved tree-root hierarchy contains the Favorite-only folder row, but no stable fresh post-transition hierarchy was published.
-- Next primary fix: establish a reliable fresh DocumentsUI hierarchy after this picker transition; continue to require real target-row geometry/touch, Favorite-only child WAV, `USE THIS FOLDER` permission, Browser result, and force-stop/relaunch restoration. Do not reinterpret hierarchy timeouts as permission denial or weaken those assertions.
+- Primary head `b28b8723f31082982762e849026bddb6bb469dcf`; Android Build #3042 / run `39654368042`: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39654368042. APK artifact `12372125372` is uploaded; step 51 evidence preflight passed, emulator smoke step 52 was still active on the latest poll. Final verdict/evidence ZIP pending.
+- Previous exact-SHA Build #3041 / run `39648841982` passed SAMP-008 CROP, SAMP-009 CH4/CH8/CH16, Sample Edit→Browser, USER FOLDER scanning/filtering and process-death restoration, but failed during FAVORITE 1 DocumentsUI selection. The picker reopened at the prior `AAA-MPC-Browser-Tree`; repeated remote hierarchy polling exhausted UiAutomator before a fresh provider-root snapshot was captured.
+- The current smoke’s root-selection fix operates on a known-fresh hierarchy, stops redundant polling while looking in the wrong folder, enters the real provider root, waits for transition and requires a fresh hierarchy. Actual visible row bounds/touches, child WAV existence, `USE THIS FOLDER` grant, indexing and process-death persistence remain mandatory. No success is claimed until #3042 or a later exact-head full workflow passes.
 
-### 2. Parallel feature — SAMP-010 waveform zoom/audition (ISOLATED; EXACT-SHA ACCEPTANCE PENDING)
+### 2. SAMP-010 — isolated Draft PR #29, synchronizing with primary HEAD
 
-- Isolated branch: `feature/samp010-zoom-audition-acceptance`, based on primary SHA `09cbc15c702c2d1b1989da7d453e50820c71c993`.
-- Work adds a semantic viewport projection/listener, shared finite zoom bounds/focus policy, accessible ZOOM+/ZOOM−/RESET/PLAY actions, a smoke-only native Pad trigger marker, targeted unit tests, and SAMP-010 in the existing emulator smoke harness. It captures only four distinct visual milestones: baseline, zoom-in, reset, audition.
-- Acceptance must verify real touches, `VIEW 10–90%` then `VIEW 0–100%`, exact unchanged native region/frame getters through each viewport operation, and a marker showing Pad 01/velocity 112 actually reached `nativeAudioTriggerPad` while still in Sample Edit. The exact-SHA workflow and artifact inspection remain mandatory. Do not merge this feature into PR #23 until the primary Browser and Project acceptance gates pass.
+- Draft PR #29 head `417e3fbbbd279184ad74734bbb9c38bfad8cd6d7`, base currently old SHA `09cbc15c702c2d1b1989da7d453e50820c71c993`; the PR is dirty/non-mergeable because primary has advanced. The first run #3040 / `39648068024` failed before the external smoke at app-side `UI_INTERACTION_FAILED: sample waveform editor` immediately after navigation. A bounded re-resolving lookup now waits for attachment and reports diagnostics rather than failing on the first frame.
+- Sync SAMP-010 onto primary SHA `b28b8723f31082982762e849026bddb6bb469dcf` using a history-preserving two-parent merge on the isolated branch. Do not transplant the old-base smoke/docs wholesale: preserve the primary FAVORITE/UiAutomator fixes, `cancel-in-progress:false`, project lifecycle acceptance and all other assertions.
+- Required SAMP-010 acceptance: real touches yield `VIEW 10–90%` on zoom-in and `VIEW 0–100%` after zoom-out/reset; native sample PCM/frame count and Start/End getters are identical before/after each viewport-only operation; PLAY emits the actual Pad 01 / velocity 112 native trigger marker while Sample Edit remains visible. Preserve only baseline/zoom-in/reset/audition screenshot/XML pairs. Exact merged-head CI result is pending.
 
-### 3. Project lifecycle acceptance — NOT REACHED ON CURRENT PRIMARY HEAD
+### 3. Remaining primary gates and order
 
-- Continue after FAVORITE 1 passes: real SAF SAVE AS → deliberate state mutation → OPEN with exact canonical equivalence for MIDI events and Pattern placement identity/parameters; normal SAVE overwrite without opening a picker; force-stop/relaunch/open; Save As/Open cancel preserving state; malformed-load rejection preserving active state; placement-free v1 compatibility.
-- Physical MPC Studio MkII validation remains a separate pending acceptance gate.
+- Keep `.github/workflows/android-build.yml` at `cancel-in-progress:false`; never interrupt a current full acceptance workflow for queue speed.
+- After Browser FAVORITE 1 passes, exercise real Project SAVE / SAVE AS / OPEN via SAF: canonical model round-trip including MIDI events and Pattern placement IDs/parameters, direct SAVE overwrite, force-stop/relaunch/open, cancellation without mutation, malformed-load preservation, and placement-free v1 compatibility.
+- Do not integrate SAMP-010 into primary until the full Browser and Project acceptance gates are green on exact HEAD. Physical MPC Studio MkII validation remains separate and pending.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 

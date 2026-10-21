@@ -1791,7 +1791,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -2020,6 +2020,24 @@ PY
   fi
 }
 
+cleanup_stale_device_uiautomator() {
+  # adb_bounded kills the host adb process group, not necessarily the remote
+  # com.android.commands.uiautomator.Launcher that adb shell started. Android
+  # exposes the runner inconsistently across ps implementations (NAME vs ARGS),
+  # so match both columns and never kill DocumentsUI or unrelated app processes.
+  local ps_output pid
+  ps_output="$(adb_bounded 3 shell 'ps -A -o PID,NAME,ARGS 2>/dev/null' 2>/dev/null || true)"
+  while IFS= read -r pid; do
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    echo "Requesting termination of stale remote UIAutomator runner pid=$pid"
+    adb_bounded 3 shell kill -TERM "$pid" >/dev/null 2>&1 || true
+  done < <(
+    printf '%s\n' "$ps_output" |
+      awk 'NR > 1 && $1 ~ /^[0-9]+$/ && ($2 ~ /uiautomator/ || $0 ~ /com\.android\.commands\.uiautomator\.Launcher/) { print $1 }' |
+      sort -u
+  )
+}
+
 dump_device_ui() {
   # Total wall-clock budget for cleanup + UIAutomator + transfer, not nested retry budgets.
   local requested_remote_path="$1" host_path="$2"
@@ -2034,12 +2052,19 @@ dump_device_ui() {
   if ! adb_bounded "$remaining" shell uiautomator dump "$shared_remote_path" > "$log_path" 2>&1; then
     echo "ERROR: bounded UI hierarchy dump failed ($requested_remote_path; budget ${timeout_seconds}s)"
     cat "$log_path" || true
+    cleanup_stale_device_uiautomator
     return 1
   fi
   remaining=$((deadline - SECONDS))
-  if (( remaining <= 0 )); then echo "ERROR: UI hierarchy deadline expired before transfer ($requested_remote_path)"; return 1; fi
+  if (( remaining <= 0 )); then
+    echo "ERROR: UI hierarchy deadline expired before transfer ($requested_remote_path)"
+    cleanup_stale_device_uiautomator
+    return 1
+  fi
   if ! adb_bounded "$remaining" exec-out cat "$shared_remote_path" > "$host_path"; then
-    echo "ERROR: bounded UI hierarchy transfer failed ($requested_remote_path)"; return 1
+    echo "ERROR: bounded UI hierarchy transfer failed ($requested_remote_path)"
+    cleanup_stale_device_uiautomator
+    return 1
   fi
   if ! test -s "$host_path" || ! python3 - "$host_path" <<'PY'
 import sys, xml.etree.ElementTree as ET
@@ -6280,59 +6305,6 @@ if not visit(root, []):
 PY
 }
 
-tap_sample_edit_control() {
-  local hierarchy_path="$1" remote_path="$2" expected_description="$3"
-  local coordinates tap_x tap_y
-  # Resolve the actual touch from a fresh hierarchy. Reject stale prior-page
-  # snapshots before calculating coordinates or issuing any device input.
-  if ! dump_device_ui_retry "$remote_path" "$hierarchy_path" 8 4; then
-    echo "ERROR: could not refresh Sample Edit hierarchy before $expected_description"
-    return 1
-  fi
-  if ! coordinates="$(python3 - "$hierarchy_path" "$expected_description" <<'PY'
-import re
-import sys
-import xml.etree.ElementTree as ET
-
-path, expected = sys.argv[1:3]
-nodes = list(ET.parse(path).getroot().iter("node"))
-descriptions = {node.attrib.get("content-desc", "") for node in nodes}
-if "Sample waveform editor" not in descriptions:
-    raise SystemExit("Sample Edit waveform editor is absent from the fresh hierarchy")
-if "Sample Edit region and frame count" not in descriptions:
-    raise SystemExit("Sample Edit native region state is absent from the fresh hierarchy")
-if not any(value.startswith("Sample Edit waveform viewport ")
-           for value in descriptions):
-    raise SystemExit("Sample Edit viewport state is absent from the fresh hierarchy")
-matches = [node for node in nodes
-           if node.attrib.get("content-desc", "") == expected]
-if len(matches) != 1:
-    raise SystemExit(
-        f"expected exactly one Sample Edit target {expected!r}, found {len(matches)}")
-node = matches[0]
-if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
-    raise SystemExit(f"Sample Edit target is not enabled/clickable: {node.attrib}")
-match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
-                     node.attrib.get("bounds", ""))
-if match is None:
-    raise SystemExit(f"invalid Sample Edit target bounds: {node.attrib}")
-left, top, right, bottom = map(int, match.groups())
-if right <= left or bottom <= top:
-    raise SystemExit(f"non-positive Sample Edit target bounds: {node.attrib}")
-print((left + right) // 2, (top + bottom) // 2)
-PY
-)"; then
-    echo "ERROR: fresh Sample Edit hierarchy lacks actionable target: $expected_description"
-    cat "$hierarchy_path" || true
-    return 1
-  fi
-  read -r tap_x tap_y <<< "$coordinates"
-  if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
-    echo "ERROR: could not tap Sample Edit target $expected_description at $tap_x,$tap_y"
-    return 1
-  fi
-}
-
 tap_ui_description() {
   local hierarchy_path="$1"
   local expected_description="$2"
@@ -9677,6 +9649,59 @@ wait_for_sample_chop_marker() {
   return 1
 }
 
+tap_sample_edit_control() {
+  local hierarchy_path="$1" remote_path="$2" expected_description="$3"
+  local coordinates tap_x tap_y
+  # Resolve the actual touch from a fresh hierarchy. Reject stale prior-page
+  # snapshots before calculating coordinates or issuing any device input.
+  if ! dump_device_ui_retry "$remote_path" "$hierarchy_path" 8 4; then
+    echo "ERROR: could not refresh Sample Edit hierarchy before $expected_description"
+    return 1
+  fi
+  if ! coordinates="$(python3 - "$hierarchy_path" "$expected_description" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1:3]
+nodes = list(ET.parse(path).getroot().iter("node"))
+descriptions = {node.attrib.get("content-desc", "") for node in nodes}
+if "Sample waveform editor" not in descriptions:
+    raise SystemExit("Sample Edit waveform editor is absent from the fresh hierarchy")
+if "Sample Edit region and frame count" not in descriptions:
+    raise SystemExit("Sample Edit native region state is absent from the fresh hierarchy")
+if not any(value.startswith("Sample Edit waveform viewport ")
+           for value in descriptions):
+    raise SystemExit("Sample Edit viewport state is absent from the fresh hierarchy")
+matches = [node for node in nodes
+           if node.attrib.get("content-desc", "") == expected]
+if len(matches) != 1:
+    raise SystemExit(
+        f"expected exactly one Sample Edit target {expected!r}, found {len(matches)}")
+node = matches[0]
+if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
+    raise SystemExit(f"Sample Edit target is not enabled/clickable: {node.attrib}")
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     node.attrib.get("bounds", ""))
+if match is None:
+    raise SystemExit(f"invalid Sample Edit target bounds: {node.attrib}")
+left, top, right, bottom = map(int, match.groups())
+if right <= left or bottom <= top:
+    raise SystemExit(f"non-positive Sample Edit target bounds: {node.attrib}")
+print((left + right) // 2, (top + bottom) // 2)
+PY
+)"; then
+    echo "ERROR: fresh Sample Edit hierarchy lacks actionable target: $expected_description"
+    cat "$hierarchy_path" || true
+    return 1
+  fi
+  read -r tap_x tap_y <<< "$coordinates"
+  if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+    echo "ERROR: could not tap Sample Edit target $expected_description at $tap_x,$tap_y"
+    return 1
+  fi
+}
+
 assert_sample_chop_assignment() {
   python3 - "$1" "$2" "$3" <<'PY'
 import re
@@ -9972,6 +9997,7 @@ if ! test -s /tmp/mpc-groovebox-sample-zoom-before.png \
   echo "ERROR: SAMP-010 mandatory visual milestone screenshots are missing"; exit 1
 fi
 echo "SAMP-010 real-touch zoom-in/out/reset and native Pad audition passed without mutating sample data."
+
 
 echo "Running Android user document-tree → Browser results → persisted grant restoration..."
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
@@ -10320,7 +10346,13 @@ fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-picker.png 10; then
   echo "ERROR: could not capture FAVORITE 1 picker screenshot"; exit 1
 fi
-if ! wait_for_ui_text "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_SAMPLE_NAME" 15; then
+# The first fresh DocumentsUI hierarchy was captured immediately after the picker
+# became foreground. FAVORITE 1's fixture is deliberately isolated from the prior
+# USER FOLDER, so check that current snapshot locally before starting another series
+# of remote UIAutomator invocations. Repeated dumps while still in AAA-MPC-Browser-Tree
+# previously monopolized UiAutomation before the root transition could be captured.
+if ! grep -Fq -- "$FAVORITE_SAMPLE_NAME" "$FAVORITE_TREE_PICKER_XML"; then
+  echo "FAVORITE 1 child is absent from the freshly captured picker directory; inspect that snapshot and navigate to the provider root."
   if ! documents_ui_is_foreground; then
     echo "ERROR: DocumentsUI is not foreground after waiting for the FAVORITE 1 child"; exit 1
   fi
@@ -10382,6 +10414,9 @@ PY
     if ! tap_ui_text "$FAVORITE_TREE_PICKER_XML" "$favorite_root_label"; then
       echo "ERROR: could not navigate DocumentsUI from USER FOLDER back to its provider root"; exit 1
     fi
+    # Allow the provider transition to settle before asking UiAutomation for a
+    # fresh root hierarchy. No cached hierarchy may be used for the next touch.
+    sleep 1
     if ! dump_device_ui_retry "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_TREE_PICKER_XML" 8 4; then
       echo "ERROR: could not inspect DocumentsUI at the FAVORITE 1 provider root after retries"; exit 1
     fi
