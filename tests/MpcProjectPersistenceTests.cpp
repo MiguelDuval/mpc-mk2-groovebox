@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -36,6 +37,14 @@ const mpc::domain::PatternPlacement* findPlacement(
         if (placement.id == id) return &placement;
     }
     return nullptr;
+}
+
+std::string readFileBytes(const std::string& path) {
+    std::ifstream input(path, std::ios::binary);
+    assert(input.good());
+    return std::string(
+            std::istreambuf_iterator<char>(input),
+            std::istreambuf_iterator<char>());
 }
 
 mpc::domain::Project makeProject() {
@@ -156,6 +165,17 @@ int main() {
     std::string error;
     assert(persistence::saveProjectFile(source, filePath, &error));
     assert(error.empty());
+
+    // A rejected save must not truncate or replace the last valid Project.
+    const auto savedFileBeforeInvalidSave = readFileBytes(filePath);
+    assert(!savedFileBeforeInvalidSave.empty());
+    auto invalidSaveProject = source;
+    invalidSaveProject.sequences[0].tracks[0].placements[2].id = "clip-b";
+    assert(!persistence::saveProjectFile(
+            invalidSaveProject, filePath, &error));
+    assert(!error.empty());
+    assert(readFileBytes(filePath) == savedFileBeforeInvalidSave);
+    assert(!std::filesystem::exists(filePath + ".tmp"));
 
     // Load from disk into a distinct project instance. This is a real file
     // round trip, not a re-render of the original in-memory model.
