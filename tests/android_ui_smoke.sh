@@ -10213,25 +10213,23 @@ PY
     fi
     # Prove the new hierarchy reflects provider root rather than a successful
     # dump of the previous AAA directory.
-    if ! python3 - "$FAVORITE_TREE_PICKER_XML" <<'PY_ROOT_BREADCRUMB'
+    if ! python3 - "$FAVORITE_TREE_PICKER_XML" "$favorite_root_label" <<'PY_ROOT_HEADER'
 import sys
 import xml.etree.ElementTree as ET
-root = ET.parse(sys.argv[1]).getroot()
-breadcrumb = next((n for n in root.iter("node")
-                   if n.attrib.get("resource-id") == "com.android.documentsui:id/horizontal_breadcrumb"), None)
-if breadcrumb is None:
-    raise SystemExit("DocumentsUI breadcrumb missing from fresh root hierarchy")
-labels = []
-for item in list(breadcrumb):
-    for node in item.iter("node"):
-        if node.attrib.get("resource-id") == "com.android.documentsui:id/breadcrumb_text":
-            label = node.attrib.get("text", "").strip()
-            if label:
-                labels.append(label)
-                break
-if len(labels) != 1:
-    raise SystemExit(f"expected exactly one provider-root breadcrumb label, got {labels!r}")
-PY_ROOT_BREADCRUMB
+root_path, provider_label = sys.argv[1], sys.argv[2]
+root = ET.parse(root_path).getroot()
+expected_title = "Files on " + provider_label
+titles = [
+    node.attrib.get("text", "").strip()
+    for node in root.iter("node")
+    if node.attrib.get("resource-id") == "com.android.documentsui:id/header_title"
+]
+if titles.count(expected_title) != 1:
+    raise SystemExit(
+        "fresh DocumentsUI hierarchy does not confirm provider root: "
+        f"expected header {expected_title!r}, observed {titles!r}"
+    )
+PY_ROOT_HEADER
     then
       echo "ERROR: fresh DocumentsUI hierarchy did not confirm provider-root navigation"; exit 1
     fi
