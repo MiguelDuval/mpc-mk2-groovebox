@@ -9467,8 +9467,18 @@ fi
 if ! tap_ui_description "$SAMPLE_ZOOM_RESET_XML" "Sample Edit audition selected Pad"; then
   echo "ERROR: SAMP-010 PLAY did not expose its semantic Pad-audition action"; exit 1
 fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_AUDITION_XML" "$SAMPLE_ZOOM_AUDITION_REMOTE" "AUDITION • Pad 1" 12; then
-  echo "ERROR: SAMP-010 PLAY did not produce the native Pad audition status"; exit 1
+if ! wait_for_ui_text "$SAMPLE_ZOOM_AUDITION_XML" "$SAMPLE_ZOOM_AUDITION_REMOTE" "AUDITION • Pad 1 • velocity 112" 30; then
+  echo "ERROR: SAMP-010 PLAY did not report the selected Pad 1 trigger at velocity 112"
+  # Preserve post-PLAY state even when a slow Android 16 UIAutomator dump
+  # consumes its bounded attempt. A missing status must remain a real failure.
+  capture_ui_screenshot "$SAMPLE_ZOOM_AUDITION_PNG" 10 || true
+  if ! dump_device_ui "$SAMPLE_ZOOM_AUDITION_REMOTE" "$SAMPLE_ZOOM_AUDITION_XML" 8; then
+    echo "ERROR: could not capture fresh SAMP-010 audition hierarchy for diagnosis"
+  fi
+  adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+      | grep -E 'AUDITION|Audio output unavailable|Audio engine still starting|SAMP-010' \
+      | tail -n 25 || true
+  exit 1
 fi
 if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_AUDITION_XML" "VIEW 0–100%" "audition"; then exit 1; fi
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_AUDITION_PNG" 10; then
