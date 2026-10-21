@@ -371,6 +371,15 @@ int main() {
     assert(loaded.id == loadedIdBeforeFailure);
     assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
 
+    // A real read/open failure must also leave the active in-memory Project intact.
+    const std::string missingFilePath = filePath + ".does-not-exist";
+    std::remove(missingFilePath.c_str());
+    error.clear();
+    assert(!persistence::loadProjectFile(missingFilePath, loaded, &error));
+    assert(!error.empty());
+    assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
+
     std::remove(malformedFilePath.c_str());
     std::remove((malformedFilePath + ".tmp").c_str());
     std::remove(filePath.c_str());
