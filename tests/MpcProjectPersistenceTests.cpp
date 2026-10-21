@@ -316,6 +316,11 @@ int main() {
     assert(legacyNote.probability == 99);
     assert(legacyNote.ratchet == 2);
     assert(legacyNote.nudgeTicks == -3);
+    const auto legacyCanonical = persistence::serializeProject(legacy);
+    assert(legacyCanonical.find("MPCMK2_PROJECT 2\\n") == 0);
+    assert(legacyCanonical.find("PLACEMENT \\"") == std::string::npos);
+    assert(legacyCanonical.find("NOTE 120 240 36 101 99 2 -3\\n")
+            != std::string::npos);
 
     // A failed decode must preserve the entire active model, not only its ID.
     const auto serializedBeforeFailure = persistence::serializeProject(loaded);
