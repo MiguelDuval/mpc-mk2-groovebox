@@ -1839,6 +1839,8 @@ capture_ui_screenshot() {
     mpc-groovebox-step-touch-pad2.png|\
     mpc-groovebox-track-view-muted.png|\
     mpc-groovebox-arrange-grid-focus.png|\
+    mpc-groovebox-arrange-back.png|\
+    mpc-groovebox-arrange-grid-reentry.png|\
     mpc-groovebox-arrange-event-selected.png|\
     mpc-groovebox-arrange-event-moved.png|\
     mpc-groovebox-arrange-event-restored.png|\
@@ -1851,6 +1853,7 @@ capture_ui_screenshot() {
     mpc-groovebox-arrange-loop-changed.png|\
     mpc-groovebox-grid-edit-after-draw.png|\
     mpc-groovebox-browser.png|\
+    mpc-groovebox-browser-device.png|\
     mpc-groovebox-browser-local-results.png|\
     mpc-groovebox-picker-select-source.png|\
     mpc-groovebox-browser-picker-assignment.png|\
