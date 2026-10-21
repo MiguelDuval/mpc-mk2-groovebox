@@ -307,6 +307,24 @@ int main() {
     assert(loaded.id == loadedIdBeforeFailure);
     assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
 
+    // Exercise the real file reader too; a truncated disk document must not
+    // replace any persisted field in the destination model.
+    const std::string malformedFilePath = filePath + ".malformed";
+    {
+        std::ofstream malformedFile(
+                malformedFilePath, std::ios::binary | std::ios::trunc);
+        assert(malformedFile.good());
+        malformedFile << truncatedV2;
+        assert(malformedFile.good());
+    }
+    error.clear();
+    assert(!persistence::loadProjectFile(malformedFilePath, loaded, &error));
+    assert(!error.empty());
+    assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
+
+    std::remove(malformedFilePath.c_str());
+    std::remove((malformedFilePath + ".tmp").c_str());
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
     return 0;
