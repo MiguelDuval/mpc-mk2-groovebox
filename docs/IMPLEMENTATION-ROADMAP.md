@@ -2,17 +2,18 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-21 (live branch and exact-SHA Actions govern)
 
-### 1. Corrective recovery + FAVORITE 1 picker retry — FULL ACCEPTANCE PENDING
+### 1. Finish Browser SAF FAVORITE 1 acceptance — ROOT CAUSE IDENTIFIED; FULL SMOKE STILL RED
 
-- Build #3035 / run `39623619559` failed at smoke step 52 on SHA `fe0742cc2ceaf21b6b5589c1a07553839f7431f2`. SAMP-008 and SAMP-009 native assertions passed first; USER FOLDER persistence also passed. The later FAVORITE 1 DocumentsUI folder-scrolling loop aborted after a single timed-out hierarchy dump. Evidence artifact `12357687535` was downloaded and the picker screenshot inspected.
-- Build #3036 / run `39635700353` is active on SHA `04378e76ebe3c485f69b77b526a5dccec85f50b8`, which unintentionally contains a helper fragment in place of the full smoke script and a shortened roadmap. It is not integration evidence. This corrective commit restores the complete source/history and applies the intended fix as a new forward commit; no branch reset or history rewrite is used.
-- `dump_device_ui_retry` now captures each attempt to a scratch file and atomically publishes only a valid current hierarchy. The FAVORITE 1 scroll loop uses the retry helper after swipes. All actual folder bounds, child-WAV, touch, permission and persisted-restoration checks remain unchanged.
+- PR #23 exact HEAD `e2a3b5da9722130885fb5ffdfff0c088922d7260`; latest relevant run #3037 / `39636137531` failed at smoke step 52. Native checks, APK build and evidence upload passed. See https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39636137531.
+- SAMP-008 and SAMP-009 targeted native acceptance passed on this run: CROP 3,840→2,840 frames and reset `0..2,840`; CH4/CH8/CH16 produced exact contiguous destination ranges. These are not yet a fully green feature slice until the remaining Browser and Project lifecycle smoke completes.
+- USER FOLDER tree persistence also passed. FAVORITE 1 opens Android DocumentsUI at the last-used USER FOLDER; the smoke must navigate back to the provider root, verify the actual Favorite-only folder row, tap it, grant access and prove process-death restoration.
+- Root-cause fix: `capture_stable_picker_state` previously stopped at the first failed hierarchy dump or transient signature parse even with a 30-second overall budget. It now caps each dump attempt at 8 seconds, retries inside the existing deadline, preserves the previous valid XML and publishes a screenshot only after the final hierarchy matches it. Do not remove target row visibility or any SAF/grant/restart assertions.
 
-### 2. Full acceptance — REQUIRED, STILL RED
+### 2. Remaining required acceptance
 
-- Pass FAVORITE 1 selection/grant/browser indexing and process-death restoration on one green exact-SHA full run.
-- Then pass Project Save As → mutate → Open with exact canonical domain equality for MIDI events and Pattern placement IDs/parameters; direct SAVE overwrite; force-stop/relaunch/Open; Save As/Open cancellation invariance; malformed-load preservation; and placement-free v1 compatibility.
-- Do not integrate SAMP-010 until the Browser and Project persistence gates are green. Physical MPC Studio MkII validation remains separate and pending.
+- Complete FAVORITE 1 child WAV + `USE THIS FOLDER` + Browser indexing + persisted URI/grant restoration on one green exact-SHA run.
+- Complete Project Save As → mutate → Open with exact canonical equality for MIDI events and Pattern placement ID/parameters; direct SAVE overwrite, force-stop/relaunch/Open, Save As/Open cancel invariance, malformed-load preservation, and placement-free v1 compatibility.
+- Do not integrate SAMP-010 until the full Browser and Project persistence gates pass. Physical MPC Studio MkII validation remains independently pending.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 

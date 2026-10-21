@@ -7229,31 +7229,104 @@ capture_stable_picker_state() {
   local remote_path="$1" hierarchy_path="$2" screenshot_path="$3"
   local timeout_seconds="${4:-6}" stable_folder_label="${5:-}" deadline=$((SECONDS + ${4:-6}))
   local check_path="${hierarchy_path%.xml}-stability-check.xml"
-  local before_signature check_signature final_signature remaining attempt=0
+  local candidate_path="${hierarchy_path%.xml}-stability-candidate.xml"
+  local screenshot_candidate_path="${screenshot_path%.png}-stability-candidate.png"
+  local before_signature check_signature final_signature remaining attempt=0 dump_timeout
+
+  # A valid DocumentsUI transition does not guarantee the next UIAutomator dump
+  # will finish: SAF can remain foreground while its hierarchy service stalls.
+  # Keep each dump shorter than the overall deadline and retry transient failures.
+  # Capture to scratch paths so a timeout cannot erase the last valid snapshot or
+  # leave a screenshot that does not match the accepted hierarchy.
   while [ "$SECONDS" -lt "$deadline" ]; do
     attempt=$((attempt + 1))
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then break; fi
-    before_signature="$(picker_hierarchy_signature "$hierarchy_path" "$stable_folder_label")" || return 1
+    dump_timeout="$remaining"
+    (( dump_timeout > 8 )) && dump_timeout=8
+    rm -f "$candidate_path"
+    if ! dump_device_ui "$remote_path" "$candidate_path" "$dump_timeout"; then
+      rm -f "$candidate_path"
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
+      continue
+    fi
+    if ! before_signature="$(picker_hierarchy_signature "$candidate_path" "$stable_folder_label")"; then
+      rm -f "$candidate_path"
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
+      continue
+    fi
+    if ! mv -f -- "$candidate_path" "$hierarchy_path"; then
+      echo "ERROR: could not publish valid DocumentsUI hierarchy: $hierarchy_path"
+      rm -f "$candidate_path" "$screenshot_candidate_path"
+      return 1
+    fi
+
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
     sleep 0.25
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    if ! dump_device_ui "$remote_path" "$check_path" "$remaining"; then break; fi
-    check_signature="$(picker_hierarchy_signature "$check_path" "$stable_folder_label")" || return 1
-    if [[ "$before_signature" != "$check_signature" ]]; then remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25; continue; fi
+    dump_timeout="$remaining"
+    (( dump_timeout > 8 )) && dump_timeout=8
+    if ! dump_device_ui "$remote_path" "$check_path" "$dump_timeout"; then
+      rm -f "$check_path"
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
+      continue
+    fi
+    if ! check_signature="$(picker_hierarchy_signature "$check_path" "$stable_folder_label")"; then
+      rm -f "$check_path"
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
+      continue
+    fi
+    if [[ "$before_signature" != "$check_signature" ]]; then
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
+      continue
+    fi
+
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    if ! capture_ui_screenshot "$screenshot_path" "$remaining"; then echo "ERROR: could not capture stable DocumentsUI screenshot"; return 1; fi
+    rm -f "$screenshot_candidate_path"
+    if ! capture_ui_screenshot "$screenshot_candidate_path" "$remaining"; then
+      rm -f "$screenshot_candidate_path"
+      echo "WARN: retrying stable DocumentsUI screenshot capture after a transient failure"
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
+      continue
+    fi
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then break; fi
-    final_signature="$(picker_hierarchy_signature "$hierarchy_path" "$stable_folder_label")" || return 1
-    if [[ "$final_signature" == "$check_signature" ]]; then echo "DocumentsUI state stabilized after $attempt attempt(s): $hierarchy_path"; return 0; fi
+    dump_timeout="$remaining"
+    (( dump_timeout > 8 )) && dump_timeout=8
+    rm -f "$candidate_path"
+    if ! dump_device_ui "$remote_path" "$candidate_path" "$dump_timeout"; then
+      rm -f "$candidate_path" "$screenshot_candidate_path"
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
+      continue
+    fi
+    if ! final_signature="$(picker_hierarchy_signature "$candidate_path" "$stable_folder_label")"; then
+      rm -f "$candidate_path" "$screenshot_candidate_path"
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
+      continue
+    fi
+    if [[ "$final_signature" == "$check_signature" ]]; then
+      if ! mv -f -- "$candidate_path" "$hierarchy_path"; then
+        echo "ERROR: could not publish final stable DocumentsUI hierarchy: $hierarchy_path"
+        rm -f "$candidate_path" "$screenshot_candidate_path"
+        return 1
+      fi
+      if ! mv -f -- "$screenshot_candidate_path" "$screenshot_path"; then
+        echo "ERROR: could not publish screenshot matching stable DocumentsUI hierarchy: $screenshot_path"
+        rm -f "$screenshot_candidate_path"
+        return 1
+      fi
+      rm -f "$check_path" "$candidate_path" "$screenshot_candidate_path"
+      echo "DocumentsUI state stabilized after $attempt attempt(s): $hierarchy_path"
+      return 0
+    fi
+    rm -f "$candidate_path" "$screenshot_candidate_path"
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
   done
-  echo "ERROR: DocumentsUI state did not stabilize within ${timeout_seconds}s"
+
+  rm -f "$check_path" "$candidate_path" "$screenshot_candidate_path"
+  echo "ERROR: DocumentsUI state did not stabilize within ${timeout_seconds}s (attempted ${attempt} bounded snapshots)"
   cat "$hierarchy_path" || true
   cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   return 1
 }
-
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
   local evidence_prefix="${5:-document-tree}" root_stability_timeout="${6:-6}"
