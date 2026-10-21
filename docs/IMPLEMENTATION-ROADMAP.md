@@ -2,22 +2,23 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-21 (live PR head and exact-SHA Actions govern)
 
-### 1. Browser SAF FAVORITE 1 — REMOTE UIAUTOMATOR RUNNER RECOVERY RED
+### 1. Primary PR #23 — FAVORITE 1 DocumentsUI recovery (current red gate)
 
-- Primary tested head `b28b8723f31082982762e849026bddb6bb469dcf`; Build #3042 / run `39654368042` failed at emulator smoke step 52: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39654368042. APK artifact `12372125372`; evidence ZIP `12371044140` (9,437,444 bytes, SHA-256 `356829ea83795e4d464ab7eb67cf1d34236b8d08a9b3fef9b0902fd69b487582`).
-- SAMP-008 CROP, SAMP-009 CH4/CH8/CH16, Sample Edit→Browser, USER FOLDER filtering and process-death restoration all passed. FAVORITE 1 opened the prior AAA folder, a real breadcrumb-root touch was made, then 16 fresh UiAutomator dumps failed without producing a root XML. Cleanup ran but `ps` parsing found no process ID.
-- Bounded fix: query both PID/NAME/ARGS format and ordinary `ps -A`; derive PID location from `PID` header rather than assuming PID is first; emit a compact process-list diagnostic when no runner match exists. Keep real root touch, fresh hierarchy/screenshot, Favorite-only child WAV, folder grant, Browser count and process-death restoration acceptance intact.
+- Live PR #23 head `dabf66bc78c4312a033d72202d74d9ccf19d2fa0`; Android Build #3045 / run `39658221374` failed at emulator smoke step 52: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39658221374. APK `12372468977` (9,957,677 bytes; SHA-256 `797902f0614272c7196b8af0bf7316cb9f9c0d5ebc9db2ae7167d4f6fb2501a0`); evidence ZIP `12373218933` (9,452,124 bytes; SHA-256 `96367c91dd825c535804c1b4b259633b74c264169056cf940da761f543e36cfa`).
+- The #3045 screenshot/XML show the *previous* `AAA-MPC-Browser-Tree` folder and `Browser-Tree-Only.wav`. After one fresh snapshot established that the separate Favorite-only WAV was absent there, a redundant second capture of the unchanged directory timed out before breadcrumb navigation. The filtered process-list diagnostic displayed only header/matching lines; it filtered away ordinary process rows, so no cause can be inferred from that output alone.
+- Older Build #3042 / run `39654368042` made a real breadcrumb-root touch but failed to obtain a fresh root hierarchy afterward. Fix the redundant pre-root dump, enable `uiautomator dump --compressed` through existing bounded UI capture helpers only for FAVORITE 1 root/child navigation, and print a small sample of raw process-list rows on recovery failure. Do not accept cached XML or a screenshot alone: require fresh parseable XML, screenshot matching stable state, real Favorite-only folder/file selection, persistable URI grant, Browser indexing and force-stop/relaunch restoration. Do not increase timeouts as a substitute for this diagnosis.
+- SAMP-008 CROP, SAMP-009 CH4/CH8/CH16, Sample Edit→Browser and USER FOLDER filter/restore checks remain accepted only from their prior exact-SHA evidence; do not rewrite without a demonstrated regression.
 
-### 2. Parallel isolated verification
+### 2. Isolated PRs #29 / #28 — diagnose without integrating
 
-- Draft PR #29 SAMP-010 Build #3043 / `39656991761`, merge SHA `c5d1bdac79147a6628b9116b56aa21abd0b11c2a`, is active; its strict zoom-in/zoom-out/reset/native-audition milestones remain unverified until its exact run and evidence archive are inspected.
-- Draft PR #28 Project malformed-load atomicity Build #3044 / `39657357881`, merge SHA `d66d817af19764491c3bf3c3718f3952eba6b818`, is active; it adds native whole-state preservation checks after truncated v2 decode and unsupported version rejection. This supplements, but does not replace, SAF UI lifecycle acceptance.
+- Draft PR #29 SAMP-010 exact SHA `c5d1bdac79147a6628b9116b56aa21abd0b11c2a`, Build #3043 / run `39656991761`, completed **FAILURE** at smoke step 52: `UI_INTERACTION_FAILED: sample waveform editor`. Zoom-in/out/reset and native audition are not accepted until the application-side audit failure is fixed and its exact-SHA screenshots/hierarchies are inspected.
+- Draft PR #28 malformed-load atomicity exact SHA `d66d817af19764491c3bf3c3718f3952eba6b818`, Build #3044 / run `39657357881`, completed **FAILURE** at shared smoke step 52 later in FAVORITE 1. The native Project Persistence test step passed; overall smoke failure does not by itself invalidate that unit result or satisfy the end-to-end Project SAF lifecycle.
 
 ### 3. Remaining primary gates
 
-- Keep `.github/workflows/android-build.yml` set to `cancel-in-progress:false`; no run is cancelled to speed the queue.
-- When Favorite 1 passes, accept real Project Save As → mutate → Open with exact canonical MIDI/Pattern-placement state, direct SAVE overwrite, force-stop/relaunch/Open, cancellations leaving state unchanged, malformed-load preservation and placement-free v1 compatibility.
-- Do not integrate SAMP-010 until its own exact-SHA acceptance and full primary Browser/Project gates are green. Physical MPC Studio MkII validation remains pending.
+- Keep `.github/workflows/android-build.yml` at `cancel-in-progress: false`; never cancel a useful run to accelerate the queue.
+- When Favorite 1 passes, accept real Project Save As → mutate → Open with exact canonical MIDI/Pattern-placement state, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-file rejection preserving active state, and placement-free v1 compatibility.
+- Do not integrate SAMP-010 until its own exact-SHA acceptance and primary Browser/Project gates are green. Physical MPC Studio MkII validation remains pending.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 
