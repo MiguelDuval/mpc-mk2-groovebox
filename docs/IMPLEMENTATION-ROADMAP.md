@@ -2,21 +2,20 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-21 (live branch and exact-SHA Actions govern)
 
-### 1. FAVORITE 1 Android DocumentsUI selection — FIRST-CAPTURE RETRY ADDED; FULL-SMOKE ACCEPTANCE PENDING
+### 1. FAVORITE 1 DocumentsUI and Browser SAF restoration — ROOT-CAUSE FIX PREPARED; FULL-SMOKE ACCEPTANCE PENDING
 
-- Build #3013 / run `39597577142` failed on HEAD `d87b0e70ea9a924b26a7e45527737918411fe485` after SAMP-008, SAMP-009 and USER FOLDER restoration had passed. See https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39597577142. No Project persistence acceptance was reached.
-- Root cause from the exact-SHA log: DocumentsUI was foreground after the real FAVORITE 1 Choose Folder tap, but the first hierarchy dump timed out before transfer. The smoke then misclassified the missing XML as a closed picker. A retry existed only after breadcrumb navigation, not at the first picker capture.
-- The new harness calls `dump_device_ui_retry` immediately after picker foreground and after the selected-folder state; if a retry still fails, it captures a fresh screenshot and reports foreground-Activity evidence. No functional assertion was removed, skipped or loosened.
+- Build #3017 / run `39600929198` failed on HEAD `37d9e647571ada9b4a3950c63fc8d655fce2232f` after Browser USER FOLDER restoration and SAMP-008/009 succeeded.
+- Failure evidence: a hierarchy-refresh timeout deleted the most recent valid host XML; later caller logic could no longer distinguish a still-foreground DocumentsUI picker from a closed one. The new code preserves good XML until a fresh dump succeeds, queries the live foreground Activity after timeout, and obtains a new hierarchy before any breadcrumb-based touch. Native sample, folder-grant, child-file and persistence assertions remain intact.
 
-### 2. Required downstream acceptance
+### 2. Parallel SAMP-010 work
 
-- Complete FAVORITE 1 folder grant, exact child WAV visibility, returned Browser status and persisted restoration after process death.
-- Then complete the real SAF Project SAVE / SAVE AS / OPEN lifecycle, including exact native domain digest, Pattern placement identity/source offsets/parameters, MIDI events, force-stop/relaunch, cancellation state invariance, malformed-load preservation and placement-free v1 canonical-state equality.
-- Keep `cancel-in-progress: false`; do not touch `main` or alter PR #23 while a relevant full run is active.
+- Draft PR #25 (`eaac470ef9624b7e6b466c827c2c9127db01ba4a`) proved real-touch ZOOM+, ZOOM− and RESET preserved the native sample region/frame count, then failed waiting for PLAY status while the final UI hierarchy dump timed out.
+- Draft PR #26 (`51819055effa4fa3c715bc89cf2fb8f862f1678b`) expanded the PLAY status wait to 30 seconds but experienced the same last-XML-dump timeout. Apply the scratch-preserving wait fix to that isolated stack; do not merge either draft into PR #23.
 
-### 3. Parallel feature slice — SAMP-010 waveform zoom/audition
+### 3. Remaining acceptance order
 
-- Draft PR #25 adds accessible viewport state, real touch ZOOM+/ZOOM−/RESET/PLAY and native-region invariance checks. Build #3012 confirmed zoom in/out/reset passed but its 12-second PLAY wait failed during a slow UIAutomator dump; draft PR #26 raises the PLAY wait, requires velocity 112 and preserves diagnostic evidence on failure. Both remain draft/unverified pending exact-SHA build results.
+- Pass FAVORITE 1 folder grant, exact child WAV visibility, Browser status and persisted restoration. Then complete Project SAVE / SAVE AS / OPEN against the same green exact HEAD: real SAF, canonical state with MIDI and Pattern placements, force-stop/relaunch/open, cancellation invariance, malformed-load preservation and placement-free v1 canonical equality.
+- Preserve `.github/workflows/android-build.yml` `cancel-in-progress: false`; keep `main` untouched. Physical MPC Studio MkII test remains pending.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 
