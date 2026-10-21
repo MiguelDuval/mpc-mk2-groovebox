@@ -376,6 +376,24 @@ int main() {
     assert(loaded.id == loadedIdBeforeFailure);
     assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
 
+    // Exercise the file reader after a complete parse that fails semantic
+    // placement validation, not only after an early truncated-input failure.
+    const std::string invalidPlacementFilePath =
+            filePath + ".invalid-placement";
+    {
+        std::ofstream invalidFile(
+                invalidPlacementFilePath, std::ios::binary | std::ios::trunc);
+        assert(invalidFile.good());
+        invalidFile << invalidPlacement;
+        assert(invalidFile.good());
+    }
+    error.clear();
+    assert(!persistence::loadProjectFile(
+            invalidPlacementFilePath, loaded, &error));
+    assert(!error.empty());
+    assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
+
     // A real read/open failure must also leave the active in-memory Project intact.
     const std::string missingFilePath = filePath + ".does-not-exist";
     std::remove(missingFilePath.c_str());
@@ -387,6 +405,8 @@ int main() {
 
     std::remove(malformedFilePath.c_str());
     std::remove((malformedFilePath + ".tmp").c_str());
+    std::remove(invalidPlacementFilePath.c_str());
+    std::remove((invalidPlacementFilePath + ".tmp").c_str());
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
     return 0;
