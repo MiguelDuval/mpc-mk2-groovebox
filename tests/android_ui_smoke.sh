@@ -9397,6 +9397,34 @@ fi
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_BEFORE_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture its baseline waveform screenshot"; exit 1
 fi
+read_sample_edit_accessible_native_state() {
+  python3 - "$1" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+nodes = [n for n in ET.parse(sys.argv[1]).getroot().iter("node")
+         if n.attrib.get("content-desc", "").startswith("Sample Edit waveform viewport")]
+if len(nodes) != 1:
+    raise SystemExit(f"expected one accessible waveform viewport status, found {len(nodes)}")
+description = nodes[0].attrib.get("content-desc", "")
+match = re.fullmatch(
+    r"Sample Edit waveform viewport (\d+) to (\d+) percent; sample region (\d+) to (\d+) of (\d+) frames",
+    description)
+if match is None:
+    raise SystemExit(f"viewport description lacks live native sample state: {description!r}")
+view_start, view_end, start_frame, end_frame, total_frames = map(int, match.groups())
+if not (0 <= view_start < view_end <= 100):
+    raise SystemExit(f"viewport percentages out of range: {(view_start, view_end)}")
+if total_frames == 0:
+    if start_frame != 0 or end_frame != 0:
+        raise SystemExit(f"empty sample has non-empty range: {(start_frame, end_frame, total_frames)}")
+elif not (0 <= start_frame < end_frame <= total_frames):
+    raise SystemExit(f"native sample region out of range: {(start_frame, end_frame, total_frames)}")
+print(f"{start_frame} {end_frame} {total_frames}")
+PY
+}
+
 assert_sample_zoom_viewport() {
   local hierarchy="$1" expected_view="$2" phase="$3" actual_sample_state
   if ! python3 - "$hierarchy" "$expected_view" <<'PY'
@@ -9415,7 +9443,7 @@ PY
   then
     echo "ERROR: SAMP-010 $phase viewport state is incorrect"; return 1
   fi
-  actual_sample_state="$(read_sample_edit_region_frames "$hierarchy")" || {
+  actual_sample_state="$(read_sample_edit_accessible_native_state "$hierarchy")" || {
     echo "ERROR: SAMP-010 $phase native sample-region state is unavailable"; return 1;
   }
   if [[ "$actual_sample_state" != "$sample_zoom_before_state" ]]; then

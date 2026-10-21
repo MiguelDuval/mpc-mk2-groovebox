@@ -5132,8 +5132,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Button chop16 = actionButton("CH16", v -> chop(16));
         chop16.setContentDescription("Sample Edit chop into 16 slices");
         row2.addView(chop16, weight());
-        Button sampleEditPlay = actionButton(
-                "PLAY", v -> selectAndTriggerPad(selectedPad, 112));
+        Button sampleEditPlay = actionButton("PLAY", v -> {
+            selectAndTriggerPad(selectedPad, 112);
+            if (sampleWaveform != null) {
+                refreshSampleWaveformViewportInfo(
+                        sampleWaveform.viewportStartNormalized(),
+                        sampleWaveform.viewportEndNormalized());
+            }
+        });
         sampleEditPlay.setContentDescription("Sample Edit audition selected Pad");
         row2.addView(sampleEditPlay, weight());
         Button sampleZoomIn = actionButton("ZOOM+", v -> {
@@ -11138,11 +11144,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (sampleWaveformViewportInfo == null) return;
         int startPercent = Math.round(startNormalized * 100f);
         int endPercent = Math.round(endNormalized * 100f);
+        final long totalFrames = nativeAudioGetPadSampleFrameCount(
+                selectedPad, selectedLayer);
+        final long regionStart = totalFrames > 0
+                ? nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer) : 0L;
+        final long regionEnd = totalFrames > 0
+                ? nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer) : 0L;
         sampleWaveformViewportInfo.setText(String.format(
                 Locale.ROOT, "VIEW %d–%d%%", startPercent, endPercent));
+        // This accessibility projection reads live native sampler state whenever
+        // the visual viewport changes, so acceptance can prove zoom is non-destructive.
         sampleWaveformViewportInfo.setContentDescription(String.format(
-                Locale.ROOT, "Sample Edit waveform viewport %d to %d percent",
-                startPercent, endPercent));
+                Locale.ROOT,
+                "Sample Edit waveform viewport %d to %d percent; sample region %d to %d of %d frames",
+                startPercent, endPercent, regionStart, regionEnd, totalFrames));
     }
 
     private void refreshEnvelopeInfo() {
