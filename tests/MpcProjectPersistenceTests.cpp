@@ -307,6 +307,22 @@ int main() {
     assert(loaded.id == loadedIdBeforeFailure);
     assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
 
+    // Force the decoder through the entire valid file, then fail semantic
+    // validation at a Pattern placement. The active model must still be atomic.
+    std::string invalidPlacement = serializedBeforeFailure;
+    const std::string validPlacement =
+            "PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120";
+    const auto placementPosition = invalidPlacement.find(validPlacement);
+    assert(placementPosition != std::string::npos);
+    invalidPlacement.replace(
+            placementPosition, validPlacement.size(),
+            "PLACEMENT \"clip-b\" \"pattern-missing-01\" 1200 720 120");
+    error.clear();
+    assert(!persistence::deserializeProject(invalidPlacement, loaded, &error));
+    assert(!error.empty());
+    assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
+
     // Exercise the real file reader too; a truncated disk document must not
     // replace any persisted field in the destination model.
     const std::string malformedFilePath = filePath + ".malformed";
