@@ -6,7 +6,7 @@
 ## Last fully green baseline
 
 - Branch: `feature/mpc-one-ui-fidelity`; PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23), base `fix/ui-shell-format-width-startup`.
-- Last full green workflow remains [Build #3073 / run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`.
+- **Latest full green workflow: [Build #3077 / run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408), exact SHA `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`.** It passed all 57 workflow steps, including complete emulator smoke and visual evidence upload. The prior fully green persistence baseline is Build #3073 / run 39823061552 at `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`.
 - Build #3073 passed the complete Android workflow, including debug APK, emulator smoke and visual evidence. Project persistence accepted exact v2 state, direct SAVE overwrite, process restart/reopen, Save As/Open cancellation invariance, malformed-load preservation and compatible placement-free v1 state. Main/Menu/Project/SEQ hierarchy checks also passed.
 - Main fixes verified at that SHA: Program Select is disabled/truthfully captioned for unsupported Track Types; Main and Sequence Select display the selected Sequence's actual stored name, with stable ID only as empty-name fallback.
 - Build #3074 / run [39829301517](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39829301517) failed on `dc4ab44dce08d0e1caf056f7a7f829a72f46cda5` because the shortcut-mode validator checked the 4×4 Menu tile catalog and rejected factory-promoted SOUNDS/XY shortcuts. The fix uses `MpcModeRegistry.shortcutEntries()`; subsequent focused JVM tests passed.
@@ -23,9 +23,9 @@
 
 ## Next actions
 
-1. Check the workflow after the UiAutomator reduction. Require focused JVM/native checks, APK assembly, smoke syntax, Cancel SHA invariance, DISCARD & NEW reset, unlinked-document assertions and evidence upload to pass on that exact SHA.
-2. If UiAutomator remains flaky with retry limited to the native dialog, diagnose the emulator/tooling failure separately; do not report it as a product pass or weaken Project state invariants.
-3. Once the current slice is green, add a real user-touch → force-stop → relaunch Shortcut Rail preference acceptance. Then take the next catalogued functional gap, **PROJ-002/003 provider write-failure + two-document isolation**, only after reviewing current code/evidence.
+1. Build #3077 / run 39846737408 passed the full workflow on `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`, including the New Project Cancel/reset/unlinked-document checks and evidence upload.
+2. Next implementation slice: add real UI-level Shortcut Rail customization → force-stop → relaunch acceptance (assignment/order persistence, five visible destinations, factory reset). Existing JVM preference round-trip tests alone do not prove the Activity wiring.
+3. After Shortcut Rail restart acceptance, implement and test **PROJ-002/003 provider write-failure recovery and two-document isolation**, keeping the already-green canonical persistence invariants.
 4. PRs #28 and #29 remain isolated. Physical Akai MPC Studio MkII acceptance is still pending; emulator results do not prove hardware input behavior.
 
 ## Completed in this session
