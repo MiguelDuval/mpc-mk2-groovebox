@@ -3215,7 +3215,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     final int selectedTrack = Math.max(
                             0, nativeSequenceGetSelectedTrack());
                     final String trackType = nativeSequenceGetTrackType(selectedTrack);
-                    if ("DRUM".equalsIgnoreCase(trackType)) {
+                    if (MpcTrackProgramPolicy.supportsProgramSelect(trackType)) {
                         showProgramSelectPage();
                     } else {
                         setBottomStatus(
@@ -4796,7 +4796,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String backendType = startupComplete
                 ? nativeSequenceGetTrackType(trackIndex)
                 : "DRUM";
-        final boolean drumTrack = "DRUM".equalsIgnoreCase(backendType);
+        final boolean drumTrack =
+                MpcTrackProgramPolicy.supportsProgramSelect(backendType);
         /*
          * MPC Main Track identity is intentionally compact: track number +
          * user-facing name. Native trackStatus also carries event/arm
@@ -4821,15 +4822,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final TextView programCaption = findTextByContentDescription(
                 root, "Main Program context type label");
         if (programCaption != null) {
-            programCaption.setText(drumTrack ? "DRUM PROGRAM" : "PROGRAM");
+            programCaption.setText(MpcTrackProgramPolicy.caption(backendType));
         }
         final TextView centralProgram = findTextByContentDescription(
                 root, "Main Mode selected program");
         if (centralProgram != null) {
             centralProgram.setText(normalizedProgram);
-            final boolean programSelectorAvailable = startupComplete && drumTrack;
+            final boolean programSelectorAvailable =
+                    MpcTrackProgramPolicy.selectorEnabled(startupComplete, backendType);
             centralProgram.setEnabled(programSelectorAvailable);
-            centralProgram.setAlpha(programSelectorAvailable ? 1.0f : 0.45f);
+            centralProgram.setAlpha(
+                    MpcTrackProgramPolicy.selectorAlpha(startupComplete, backendType));
         }
 
         final TextView programOwnership = findTextByContentDescription(
@@ -5637,7 +5640,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 0, nativeSequenceGetSelectedTrack());
         final String selectedTrackType = nativeSequenceGetTrackType(selectedTrack);
         final boolean drumTrack =
-                "DRUM".equalsIgnoreCase(selectedTrackType);
+                MpcTrackProgramPolicy.supportsProgramSelect(selectedTrackType);
         navigationController.setActionAvailable(drumTrack);
 
         final int programCount = drumTrack

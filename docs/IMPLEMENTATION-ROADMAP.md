@@ -6,7 +6,7 @@
 
 - Build #3068 / run `39813701284` failed at runtime-smoke preflight due to a local view-reference variable sharing the forbidden legacy field identifier. Commit `2d99280` renames the local variable to `mainProgramContextView`; the runtime Program equality assertion and the stricter absence check remain intact.
 - While Build #3069 / run `39819814302` tests that exact SHA, source review found a separate stated contract in the Main blueprint: Program Select is enabled only for a Drum Track. The existing Main row labelled `DRUM PROGRAM` remained enabled on unsupported Track Types even though its ownership status said `UNAVAILABLE`. The new change dims/disables the actual selector until startup confirms Drum ownership and changes the caption to a generic `PROGRAM` on non-Drum Tracks; it leaves native project/program state untouched.
-- The smoke source-contract preflight now checks this enabled/caption policy, and the Main runtime audit insists that the supported initial Drum Track selector is enabled and its displayed Program equals native state. The newest code still needs exact-SHA compilation and emulator verification.
+- The smoke source-contract preflight checks the policy consumers. `MpcTrackProgramPolicy` centralizes Drum-only availability, caption and alpha for Main field refresh, button routing and Program Select page entry. Four JVM policy tests cover unsupported Track Types, startup gating, truthful captions and selector emphasis; the focused Gradle step includes them. The Main runtime audit still insists that the supported initial Drum Track selector is enabled and its displayed Program equals native state. The complete slice needs exact-SHA build and emulator verification.
 
 ### 2. Regression continuation
 

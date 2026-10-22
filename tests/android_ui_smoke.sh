@@ -946,7 +946,7 @@ if ! grep -Fq -- 'nativeSequenceSetTrackProgram(' "$MAIN_ACTIVITY_SOURCE" ||    
   echo "ERROR: Program semantics must remain available without a duplicate Main Program field"
   exit 1
 fi
-for required in   'centralProgram.setEnabled(programSelectorAvailable);'   'centralProgram.setAlpha(programSelectorAvailable ? 1.0f : 0.45f);'   'programCaption.setText(drumTrack ? "DRUM PROGRAM" : "PROGRAM");'   '!mainProgramContextView.isEnabled()'; do
+for required in   'MpcTrackProgramPolicy.supportsProgramSelect(trackType)'   'MpcTrackProgramPolicy.supportsProgramSelect(backendType)'   'MpcTrackProgramPolicy.selectorEnabled(startupComplete, backendType)'   'MpcTrackProgramPolicy.selectorAlpha(startupComplete, backendType)'   'MpcTrackProgramPolicy.caption(backendType)'   'centralProgram.setEnabled(programSelectorAvailable);'   '!mainProgramContextView.isEnabled()'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Track-owned Program availability contract missing: $required"
     exit 1
