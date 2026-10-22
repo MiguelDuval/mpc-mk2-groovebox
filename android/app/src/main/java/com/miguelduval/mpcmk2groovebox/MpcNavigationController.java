@@ -262,7 +262,9 @@ final class MpcNavigationController {
     }
 
     private static boolean isShortcutMode(MpcUiState.Mode mode) {
-        for (MpcModeRegistry.Entry entry : MpcModeRegistry.menuEntries()) {
+        // Shortcut catalog deliberately promotes SOUNDS and XY ahead of Menu-only
+        // entries; these factory destinations are valid even though not 4x4 tiles.
+        for (MpcModeRegistry.Entry entry : MpcModeRegistry.shortcutEntries()) {
             if (entry.mode == mode) {
                 return true;
             }

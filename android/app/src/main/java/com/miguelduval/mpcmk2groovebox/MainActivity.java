@@ -10657,20 +10657,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         .getString(PREF_SHORTCUT_MODES, null));
     }
 
-    private void persistShortcutConfiguration() {
+    private boolean persistShortcutConfiguration() {
         final String encoded = MpcNavigationController.encodeShortcuts(
                 navigationController.shortcuts());
-        final boolean saved = getSharedPreferences(MPC_UI_PREFERENCES, MODE_PRIVATE)
+        return getSharedPreferences(MPC_UI_PREFERENCES, MODE_PRIVATE)
                 .edit()
                 .putString(PREF_SHORTCUT_MODES, encoded)
                 // Five enum names are a tiny preference value; complete the
                 // write before returning so an immediate process restart is safe.
                 .commit();
-        if (!saved) {
-            setBottomStatus("SHORTCUTS • SAVE FAILED • changes may not survive restart");
-        } else {
-            setBottomStatus("SHORTCUTS • SAVED");
-        }
+    }
+
+    private void showShortcutPersistenceResult(boolean saved, String successMessage) {
+        setBottomStatus(saved
+                ? successMessage
+                : "SHORTCUTS • SAVE FAILED • changes may not survive restart");
     }
 
     private void showShortcutConfigPage() {
@@ -10754,12 +10755,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 navigationController.setShortcut(
                                         slot,
                                         entry.mode);
-                                persistShortcutConfiguration();
-                                setBottomStatus(String.format(
-                                        Locale.ROOT,
-                                        "SHORTCUT %d • %s",
-                                        slot + 1,
-                                        entry.label));
+                                final boolean saved = persistShortcutConfiguration();
+                                showShortcutPersistenceResult(
+                                        saved,
+                                        String.format(
+                                                Locale.ROOT,
+                                                "SHORTCUT %d • %s • SAVED",
+                                                slot + 1,
+                                                entry.label));
                             }
                         }
 
@@ -10774,8 +10777,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Button up = actionButton("▲", v -> {
                 if (slot > 0) {
                     navigationController.moveShortcut(slot, slot - 1);
-                    persistShortcutConfiguration();
+                    final boolean saved = persistShortcutConfiguration();
                     showShortcutConfigPage();
+                    showShortcutPersistenceResult(saved, "SHORTCUTS • ORDER SAVED");
                 }
             });
             up.setEnabled(i > 0);
@@ -10785,8 +10789,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Button down = actionButton("▼", v -> {
                 if (slot < MpcNavigationController.SHORTCUT_COUNT - 1) {
                     navigationController.moveShortcut(slot, slot + 1);
-                    persistShortcutConfiguration();
+                    final boolean saved = persistShortcutConfiguration();
                     showShortcutConfigPage();
+                    showShortcutPersistenceResult(saved, "SHORTCUTS • ORDER SAVED");
                 }
             });
             down.setEnabled(i < MpcNavigationController.SHORTCUT_COUNT - 1);
@@ -10805,8 +10810,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout footer = row();
         footer.addView(actionButton("RESET DEFAULTS", v -> {
             navigationController.resetDefaultShortcuts();
-            persistShortcutConfiguration();
+            final boolean saved = persistShortcutConfiguration();
             showShortcutConfigPage();
+            showShortcutPersistenceResult(saved, "SHORTCUTS • FACTORY ORDER SAVED");
         }), weight());
         footer.addView(actionButton("BACK TO MENU", v -> showMenuPage()), weight());
         page.addView(footer, new LinearLayout.LayoutParams(

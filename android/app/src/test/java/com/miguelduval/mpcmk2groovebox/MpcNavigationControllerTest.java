@@ -105,6 +105,22 @@ public class MpcNavigationControllerTest {
     }
 
     @Test
+    public void controllerConstructorRestoresCustomSlotOrderBeforeShellBuild() {
+        MpcUiState.Mode[] customized = {
+                MpcUiState.Mode.GRID,
+                MpcUiState.Mode.BROWSER,
+                MpcUiState.Mode.NEXT_SEQUENCE,
+                MpcUiState.Mode.CHANNEL_MIXER,
+                MpcUiState.Mode.SAMPLE_EDIT
+        };
+
+        MpcNavigationController navigation =
+                new MpcNavigationController(null, customized);
+
+        assertArrayEquals(customized, navigation.shortcuts());
+    }
+
+    @Test
     public void missingOrCorruptShortcutPreferenceFallsBackToFactoryOrder() {
         MpcUiState.Mode[] defaults = MpcModeRegistry.defaultShortcuts();
         assertArrayEquals(defaults, MpcNavigationController.decodeShortcuts(null));
