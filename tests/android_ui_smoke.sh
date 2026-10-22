@@ -1912,7 +1912,9 @@ import xml.etree.ElementTree as ET
 
 path, expected = sys.argv[1], sys.argv[2]
 nodes = list(ET.parse(path).getroot().iter("node"))
-found = [n for n in nodes if n.attrib.get("content-desc", "") == expected]
+found = [n for n in nodes
+         if n.attrib.get("content-desc", "") == expected
+         or n.attrib.get("text", "").strip() == expected]
 if len(found) != 1:
     raise SystemExit(f"expected exactly one accessibility target {expected!r}, got {len(found)}")
 node = found[0]
@@ -10480,12 +10482,110 @@ echo "Running Project Save/Open acceptance with measured touches and native-stat
 # previous-workspace tree after the persistent MPC shell swaps children. Keep the
 # screenshots/hierarchies as evidence, use measured shell bounds for real taps,
 # and assert the newly rendered page with Activity/domain logs.
-PROJECT_MAIN_READY_XML="/tmp/mpc-groovebox-main-ready-uiautomator.xml"
+PROJECT_MAIN_READY_XML="/tmp/mpc-groovebox-project-main-ready-view-hierarchy.xml"
+PROJECT_CURRENT_APP_XML="$PROJECT_MAIN_READY_XML"
+PROJECT_MENU_XML="/tmp/mpc-groovebox-project-menu-view-hierarchy.xml"
+PROJECT_MENU_PNG="/tmp/mpc-groovebox-project-menu.png"
+PROJECT_ROUTE_XML="/tmp/mpc-groovebox-project-route-view-hierarchy.xml"
+PROJECT_ROUTE_PNG="/tmp/mpc-groovebox-project-route.png"
+PROJECT_SAVE_XML="/tmp/mpc-groovebox-project-save-picker-uiautomator.xml"
+PROJECT_SAVE_REMOTE="/sdcard/mpc-groovebox-project-save-picker-uiautomator.xml"
+PROJECT_SAVE_PNG="/tmp/mpc-groovebox-project-save-picker.png"
+PROJECT_SAVED_XML="/tmp/mpc-groovebox-project-saved-view-hierarchy.xml"
+PROJECT_SAVED_PNG="/tmp/mpc-groovebox-project-saved.png"
+PROJECT_MUTATED_XML="/tmp/mpc-groovebox-project-mutated-view-hierarchy.xml"
+PROJECT_MUTATED_PNG="/tmp/mpc-groovebox-project-mutated.png"
+PROJECT_OPEN_XML="/tmp/mpc-groovebox-project-open-picker-uiautomator.xml"
+PROJECT_OPEN_REMOTE="/sdcard/mpc-groovebox-project-open-picker-uiautomator.xml"
+PROJECT_OPEN_PNG="/tmp/mpc-groovebox-project-open-picker.png"
+PROJECT_REOPENED_XML="/tmp/mpc-groovebox-project-reopened-view-hierarchy.xml"
+PROJECT_REOPENED_PNG="/tmp/mpc-groovebox-project-reopened.png"
+PROJECT_MENU_TREE_MARKER_BEFORE=0 PROJECT_MAIN_TREE_MARKER_BEFORE=0 PROJECT_PROJECT_TREE_MARKER_BEFORE=0
+PROJECT_SEQUENCE_TREE_MARKER_BEFORE=0 PROJECT_MENU_RENDER_MARKER_BEFORE=0 PROJECT_MENU_CLICK_MARKER_BEFORE=0
+PROJECT_PROJECT_RENDER_MARKER_BEFORE=0 PROJECT_MAIN_SHELL_MARKER_BEFORE=0
 
 project_marker_count() {
   local marker="$1" timeout_seconds="${2:-5}" logs
   logs="$(adb_bounded "$timeout_seconds" shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
   grep -F -c -- "$marker" <<<"$logs" || true
+}
+
+snapshot_project_view_tree_marker_baselines() {
+  PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
+  PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
+  PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
+  PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQUENCE")"
+  PROJECT_MENU_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_MENU_RENDER_COMPLETE")"
+  PROJECT_MENU_CLICK_MARKER_BEFORE="$(project_marker_count "MPC_MENU_CLICK_END currentPage=MENU")"
+  PROJECT_PROJECT_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_PROJECT_RENDER_COMPLETE summary=")"
+  PROJECT_MAIN_SHELL_MARKER_BEFORE="$(project_marker_count "MPC_SHELL_STATE_END mode=MAIN")"
+}
+
+capture_project_persistence_view_tree() {
+  local page="$1" target_xml="$2" marker before remote
+  case "$page" in
+    MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
+    MAIN) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"; before="$PROJECT_MAIN_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    PROJECT) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT"; before="$PROJECT_PROJECT_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    SEQUENCE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQUENCE"; before="$PROJECT_SEQUENCE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    *) echo "ERROR: unsupported app View-tree page for Project acceptance: $page"; return 2 ;;
+  esac
+  if ! wait_for_new_project_marker "$marker" "$before" 10; then
+    echo "ERROR: no fresh Android View-tree snapshot for app page $page"; return 1
+  fi
+  if ! adb_bounded 5 shell run-as "$PACKAGE" cat "$remote" > "$target_xml"; then
+    echo "ERROR: could not pull current Android View tree for $page"; return 1
+  fi
+  if ! test -s "$target_xml" || ! python3 - "$target_xml" "$page" <<'PY_PROJECT_APP_VIEW_TREE'
+import sys
+import xml.etree.ElementTree as ET
+path, page = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != page:
+    raise SystemExit(f"View-tree provenance/page mismatch: {root.tag!r} {root.attrib!r}")
+try:
+    generated = int(root.attrib.get("generated-at-uptime-ms", ""))
+except (TypeError, ValueError):
+    raise SystemExit("View tree has no valid generated-at-uptime-ms timestamp")
+if generated <= 0:
+    raise SystemExit(f"View-tree timestamp is not positive: {generated}")
+nodes = list(root.iter("node"))
+if not nodes:
+    raise SystemExit("Android View tree is empty")
+def require_target(description):
+    matches = [node for node in nodes
+        if node.attrib.get("content-desc") == description
+        and node.attrib.get("visible-to-user") == "true"
+        and node.attrib.get("clickable") == "true"
+        and node.attrib.get("enabled") == "true"]
+    if len(matches) != 1:
+        raise SystemExit(f"expected one visible enabled Android View {description!r}, found {len(matches)}")
+    raw = matches[0].attrib.get("bounds", "")
+    try:
+        left_top, right_bottom = raw[1:-1].split("][")
+        left, top = map(int, left_top.split(","))
+        right, bottom = map(int, right_bottom.split(","))
+    except (ValueError, IndexError):
+        raise SystemExit(f"invalid measured bounds for {description!r}: {raw!r}")
+    if right <= left or bottom <= top:
+        raise SystemExit(f"non-positive measured bounds for {description!r}: {raw!r}")
+if page == "MENU":
+    for description in ("MPC Menu MAIN", "MPC Menu TRACK VIEW", "MPC Menu BROWSER", "MPC Menu GRID",
+        "MPC Menu STEP", "MPC Menu TRACK EDIT", "MPC Menu SAMPLE EDIT", "MPC Menu SAMPLER",
+        "MPC Menu PAD MIXER", "MPC Menu PROJECT"):
+        require_target(description)
+elif page == "PROJECT":
+    for description in ("MPC Project Open", "MPC Project Save As", "MPC Project Save"):
+        require_target(description)
+elif page == "MAIN":
+    require_target("MPC Toolbar Menu")
+print(f"Verified fresh page={page} Android View tree: {len(nodes)} views.")
+PY_PROJECT_APP_VIEW_TREE
+  then
+    echo "ERROR: app View tree for $page is malformed, stale or lacks required enabled controls"; return 1
+  fi
+  PROJECT_CURRENT_APP_XML="$target_xml"
+  return 0
 }
 
 wait_for_new_project_marker() {
@@ -10498,7 +10598,7 @@ wait_for_new_project_marker() {
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
   echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker"
-  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST_)|STARTUP_COMPLETE' | tail -n 100 || true
+  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST_)|STARTUP_COMPLETE' | tail -n 100 || true
   return 1
 }
 
@@ -10549,58 +10649,55 @@ PY
 }
 
 tap_mpc_menu_tile() {
-  local row="$1" col="$2" root_right root_bottom workspace_left workspace_top workspace_right workspace_bottom
-  local grid_left grid_right grid_top grid_bottom tap_x tap_y before_project before_main
-  read -r root_right root_bottom workspace_left workspace_top workspace_right workspace_bottom <<< "$(project_shell_geometry)"
-  grid_left=$((workspace_left + 22))
-  grid_right=$((workspace_right - 22))
-  grid_top=$((workspace_top + 80))
-  grid_bottom=$((workspace_bottom - 10))
-  tap_x=$((grid_left + (2 * col + 1) * (grid_right - grid_left) / 8))
-  tap_y=$((grid_top + (2 * row + 1) * (grid_bottom - grid_top) / 8))
-  if (( row == 3 && col == 3 )); then
-    before_project="$(project_marker_count "MPC_PROJECT_RENDER_COMPLETE")"
-  elif (( row == 0 && col == 0 )); then
-    before_main="$(project_marker_count "MPC_SHELL_STATE_END mode=MAIN")"
+  local row="$1" col="$2" description page render_before shell_before
+  case "$row:$col" in
+    3:3) description="MPC Menu PROJECT"; page="PROJECT" ;;
+    0:0) description="MPC Menu MAIN"; page="MAIN" ;;
+    *) echo "ERROR: unsupported Menu target row=$row col=$col"; return 2 ;;
+  esac
+  snapshot_project_view_tree_marker_baselines
+  render_before="$PROJECT_PROJECT_RENDER_MARKER_BEFORE"
+  shell_before="$PROJECT_MAIN_SHELL_MARKER_BEFORE"
+  echo "Real measured Menu tile tap target=$description"
+  if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "$description"; then return 1; fi
+  if [[ "$page" == "PROJECT" ]]; then
+    if ! wait_for_new_project_marker "MPC_PROJECT_RENDER_COMPLETE summary=" "$render_before" 45; then return 1; fi
   else
-    echo "ERROR: unsupported target in Project acceptance Menu helper"; return 1
+    if ! wait_for_new_project_marker "MPC_SHELL_STATE_END mode=MAIN" "$shell_before" 45; then return 1; fi
   fi
-  echo "Real Menu tile tap row=$row col=$col at $tap_x,$tap_y"
-  if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then return 1; fi
-  if (( row == 3 && col == 3 )); then
-    wait_for_new_project_marker "MPC_PROJECT_RENDER_COMPLETE" "$before_project" 45
-  else
-    wait_for_new_project_marker "MPC_SHELL_STATE_END mode=MAIN" "$before_main" 45
-  fi
+  capture_project_persistence_view_tree "$page" "/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
 }
 
 tap_project_toolbar_menu() {
-  local before
-  before="$(project_marker_count "MPC_MENU_RENDER_COMPLETE")"
-  if ! tap_visible_description_early "$PROJECT_MAIN_READY_XML" "MPC Toolbar Menu"; then
-    echo "ERROR: could not tap the visible MPC Toolbar Menu"; return 1
+  snapshot_project_view_tree_marker_baselines
+  local before_render="$PROJECT_MENU_RENDER_MARKER_BEFORE"
+  local before_click="$PROJECT_MENU_CLICK_MARKER_BEFORE"
+  if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Toolbar Menu"; then
+    echo "ERROR: could not tap Toolbar Menu from current in-app View tree"; return 1
   fi
-  wait_for_new_project_marker "MPC_MENU_RENDER_COMPLETE" "$before" 45
+  if ! wait_for_new_project_marker "MPC_MENU_RENDER_COMPLETE" "$before_render" 45; then return 1; fi
+  if ! wait_for_new_project_marker "MPC_MENU_CLICK_END currentPage=MENU" "$before_click" 45; then return 1; fi
+  capture_project_persistence_view_tree "MENU" "/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
 }
 
 tap_project_function_bar() {
-  local index="$1" root_right root_bottom workspace_left workspace_top workspace_right workspace_bottom left tap_x tap_y
-  read -r root_right root_bottom workspace_left workspace_top workspace_right workspace_bottom <<< "$(project_shell_geometry)"
-  left=$((workspace_left - 13))
-  tap_x=$((left + (2 * index + 1) * (root_right - left) / 8))
-  tap_y=$((root_bottom - 45))
-  echo "Real Project Function Bar tap index=$index at $tap_x,$tap_y"
-  adb_bounded 10 shell input tap "$tap_x" "$tap_y"
+  local index="$1" description
+  snapshot_project_view_tree_marker_baselines
+  case "$index" in
+    0) description="MPC Project Open" ;;
+    1) description="MPC Project Save As" ;;
+    2) description="MPC Project Save" ;;
+    *) echo "ERROR: unsupported Project Function Bar index $index"; return 2 ;;
+  esac
+  echo "Real measured Project Function Bar tap target=$description"
+  tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "$description"
 }
 
 tap_main_new_track() {
-  local root_right root_bottom workspace_left workspace_top workspace_right workspace_bottom left tap_x tap_y
-  read -r root_right root_bottom workspace_left workspace_top workspace_right workspace_bottom <<< "$(project_shell_geometry)"
-  left=$((workspace_left - 13))
-  tap_x=$((left + (root_right - left) / 12))
-  tap_y=$((root_bottom - 45))
-  echo "Real Main NEW TRACK Function Bar tap at $tap_x,$tap_y"
-  adb_bounded 10 shell input tap "$tap_x" "$tap_y"
+  snapshot_project_view_tree_marker_baselines
+  echo "Real measured Main Function Bar tap target=+ NEW TRACK"
+  if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "+ NEW TRACK"; then return 1; fi
+  capture_project_persistence_view_tree "SEQUENCE" "/tmp/mpc-groovebox-project-sequence-after-track-add-view-hierarchy.xml"
 }
 
 assert_latest_project_summary() {
@@ -10625,14 +10722,14 @@ show_project_route_extended() {
 PROJECT_SAVE_XML="/tmp/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_REMOTE="/sdcard/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_PNG="/tmp/mpc-groovebox-project-save-picker.png"
-PROJECT_SAVED_XML="/tmp/mpc-groovebox-project-saved-uiautomator.xml"
+PROJECT_SAVED_XML="/tmp/mpc-groovebox-project-saved-view-hierarchy.xml"
 PROJECT_SAVED_PNG="/tmp/mpc-groovebox-project-saved.png"
-PROJECT_MUTATED_XML="/tmp/mpc-groovebox-project-mutated-uiautomator.xml"
+PROJECT_MUTATED_XML="/tmp/mpc-groovebox-project-mutated-view-hierarchy.xml"
 PROJECT_MUTATED_PNG="/tmp/mpc-groovebox-project-mutated.png"
 PROJECT_OPEN_XML="/tmp/mpc-groovebox-project-open-picker-uiautomator.xml"
 PROJECT_OPEN_REMOTE="/sdcard/mpc-groovebox-project-open-picker-uiautomator.xml"
 PROJECT_OPEN_PNG="/tmp/mpc-groovebox-project-open-picker.png"
-PROJECT_REOPENED_XML="/tmp/mpc-groovebox-project-reopened-uiautomator.xml"
+PROJECT_REOPENED_XML="/tmp/mpc-groovebox-project-reopened-view-hierarchy.xml"
 PROJECT_REOPENED_PNG="/tmp/mpc-groovebox-project-reopened.png"
 
 # Previous Browser tests deliberately use ui-only startup for permission
@@ -10643,6 +10740,7 @@ fi
 if ! adb_bounded 10 shell logcat -c; then
   echo "ERROR: could not clear logcat before Project persistence test"; exit 1
 fi
+snapshot_project_view_tree_marker_baselines
 if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
     --es "$SMOKE_MODE_EXTRA" "project-persistence"; then
   echo "ERROR: could not launch native Project persistence acceptance session"; exit 1
@@ -10682,126 +10780,37 @@ for expected_fixture_field in \
   fi
 done
 echo "$project_fixture_line"
+echo "$project_fixture_line"
 echo "PROJECT_NATIVE_STARTUP_READY • awaiting actual Main shell interaction"
 
-# Take one consistent marker baseline BEFORE the real UI action. The pre-draw
-# listener may publish the hierarchy immediately after showMenuPage(); sampling
-# READY after the tap (or after a delay) can mistake that fresh event for baseline
-# and then incorrectly wait for a second View-tree capture.
-PROJECT_MENU_XML="/tmp/mpc-groovebox-project-menu-view-hierarchy.xml"
-PROJECT_MENU_PNG="/tmp/mpc-groovebox-project-menu.png"
-project_menu_logs_before="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
-project_menu_render_marker_before="$(grep -F -c -- "MPC_MENU_RENDER_COMPLETE" <<<"$project_menu_logs_before" || true)"
-project_menu_click_marker_before="$(grep -F -c -- "MPC_MENU_CLICK_END currentPage=MENU" <<<"$project_menu_logs_before" || true)"
-project_menu_hierarchy_marker_before="$(grep -F -c -- "MPC_MENU_VIEW_HIERARCHY_READY" <<<"$project_menu_logs_before" || true)"
-for marker_count in \
-    "$project_menu_render_marker_before" \
-    "$project_menu_click_marker_before" \
-    "$project_menu_hierarchy_marker_before"; do
-  if ! [[ "$marker_count" =~ ^[0-9]+$ ]]; then
-    echo "ERROR: could not establish numeric pre-touch Project Menu marker baseline"; exit 1
-  fi
-done
-
-# The earlier Main hierarchy is from this same emulator run and uses the same
-# canonical persistent Toolbar geometry. Re-use that captured enabled target
-# instead of starting another hierarchy dump while cold native startup settles.
-if ! tap_visible_description_early \
-    "/tmp/mpc-groovebox-main-ready-uiautomator.xml" "MPC Toolbar Menu"; then
-  echo "ERROR: could not activate the real MPC Toolbar Menu from captured Main evidence"; exit 1
+if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MAIN_READY_XML"; then
+  echo "ERROR: native Main shell did not publish fresh Android View-tree evidence"; exit 1
 fi
-project_menu_rendered=0
-for ((attempt=1; attempt<=60; attempt++)); do
-  project_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
-  project_menu_render_count="$(grep -F -c -- "MPC_MENU_RENDER_COMPLETE" <<<"$project_logs" || true)"
-  project_menu_click_count="$(grep -F -c -- "MPC_MENU_CLICK_END currentPage=MENU" <<<"$project_logs" || true)"
-  if [[ "$project_menu_render_count" =~ ^[0-9]+$ ]] \
-      && [[ "$project_menu_click_count" =~ ^[0-9]+$ ]] \
-      && (( project_menu_render_count > project_menu_render_marker_before )) \
-      && (( project_menu_click_count > project_menu_click_marker_before )); then
-    project_menu_rendered=1
-    break
-  fi
-  sleep 1
-done
-if [ "$project_menu_rendered" -ne 1 ]; then
-  echo "ERROR: real Toolbar Menu tap did not publish fresh render and click-end markers"
-  adb_bounded 10 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
-    | grep -E 'MPC_MENU_|MPC_SHELL_STATE_|STARTUP_COMPLETE|AUDIO_START_RESULT=' \
-    | tail -n 100 || true
-  exit 1
+snapshot_project_view_tree_marker_baselines
+if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Toolbar Menu"; then
+  echo "ERROR: real Toolbar Menu touch failed using current Main bounds"; exit 1
 fi
-
-# READY is tied to the same pre-touch baseline. If pre-draw already ran while
-# the render gate was polling, wait_for_new_project_marker accepts that fresh
-# event immediately; it never requires a redundant second capture.
-if ! wait_for_new_project_marker "MPC_MENU_VIEW_HIERARCHY_READY" "$project_menu_hierarchy_marker_before" 10; then
-  echo "ERROR: rendered MPC Menu did not publish its fresh in-app View hierarchy"; exit 1
+if ! wait_for_new_project_marker "MPC_MENU_RENDER_COMPLETE" "$PROJECT_MENU_RENDER_MARKER_BEFORE" 45; then
+  echo "ERROR: Toolbar Menu render did not complete"; exit 1
+fi
+if ! wait_for_new_project_marker "MPC_MENU_CLICK_END currentPage=MENU" "$PROJECT_MENU_CLICK_MARKER_BEFORE" 45; then
+  echo "ERROR: Toolbar Menu click-end marker missing"; exit 1
+fi
+if ! capture_project_persistence_view_tree "MENU" "$PROJECT_MENU_XML"; then
+  echo "ERROR: rendered Menu did not publish fresh, valid Android View-tree XML"; exit 1
 fi
 if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
   echo "ERROR: could not capture rendered MPC Menu screenshot"; exit 1
 fi
-# UiAutomator's accessibility service timed out repeatedly at this exact
-# checkpoint on Builds #3048–#3054, even though Menu had rendered.
-# Pull the real Android View-tree XML produced on pre-draw. It is explicitly
-# provenance-labelled; actual touches and native Project state remain separate
-# acceptance gates, and missing/invalid XML still fails the smoke.
-if ! adb_bounded 5 shell run-as "$PACKAGE" cat cache/mpc-project-menu-view-hierarchy.xml > "$PROJECT_MENU_XML"; then
-  echo "ERROR: could not pull the fresh rendered MPC Menu View hierarchy"; exit 1
-fi
-if ! test -s "$PROJECT_MENU_XML" || ! python3 - "$PROJECT_MENU_XML" <<'PY_PROJECT_MENU_VIEW_TREE'
-import sys
-import xml.etree.ElementTree as ET
-root = ET.parse(sys.argv[1]).getroot()
-if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != "MENU":
-    raise SystemExit(f"Menu XML provenance/page mismatch: {root.tag!r} {root.attrib!r}")
-try:
-    generated_at_uptime_ms = int(root.attrib.get("generated-at-uptime-ms", ""))
-except (TypeError, ValueError):
-    raise SystemExit("Menu View tree has no valid generated-at-uptime-ms timestamp")
-if generated_at_uptime_ms <= 0:
-    raise SystemExit(f"Menu View tree timestamp is not positive: {generated_at_uptime_ms}")
-nodes = list(root.iter("node"))
-required = (
-    "MPC Menu MAIN", "MPC Menu TRACK VIEW", "MPC Menu BROWSER", "MPC Menu GRID",
-    "MPC Menu STEP", "MPC Menu TRACK EDIT", "MPC Menu SAMPLE EDIT", "MPC Menu SAMPLER",
-    "MPC Menu PAD MIXER", "MPC Menu PROJECT",
-)
-for description in required:
-    visible = [n for n in nodes if n.attrib.get("content-desc") == description
-               and n.attrib.get("visible-to-user") == "true"
-               and n.attrib.get("clickable") == "true" and n.attrib.get("enabled") == "true"]
-    if len(visible) != 1:
-        raise SystemExit(f"expected one visible enabled real Menu tile {description!r}, got {len(visible)}")
-    raw = visible[0].attrib.get("bounds", "")
-    try:
-        left_top, right_bottom = raw[1:-1].split("][")
-        left, top = map(int, left_top.split(","))
-        right, bottom = map(int, right_bottom.split(","))
-    except (ValueError, IndexError):
-        raise SystemExit(f"invalid Menu tile bounds for {description!r}: {raw!r}")
-    if right <= left or bottom <= top:
-        raise SystemExit(f"non-positive Menu tile bounds for {description!r}: {raw!r}")
-print(f"Verified fresh rendered Menu View tree: {len(nodes)} Android views; 10 actionable menu tiles.")
-PY_PROJECT_MENU_VIEW_TREE
-then
-  echo "ERROR: rendered MPC Menu View hierarchy is empty, malformed or missing expected visible tiles"; exit 1
-fi
-# Tap the real enabled PROJECT tile using bounds from the fresh current Menu tree,
-# then require the native Project summary. This avoids stale Main-shell bounds.
-if ! tap_visible_description_early "$PROJECT_MENU_XML" "MPC Menu PROJECT"; then
-  echo "ERROR: could not perform a real measured touch on the rendered PROJECT tile"; exit 1
-fi
+if ! tap_mpc_menu_tile 3 3; then echo "ERROR: measured Menu PROJECT touch failed"; exit 1; fi
 if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
-PROJECT_ROUTE_XML="/tmp/mpc-groovebox-project-route-uiautomator.xml"
-PROJECT_ROUTE_PNG="/tmp/mpc-groovebox-project-route.png"
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: Project route did not publish fresh Android View-tree XML"; exit 1
+fi
 if ! capture_ui_screenshot "$PROJECT_ROUTE_PNG" 10; then
   echo "ERROR: could not capture Project route screenshot"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_ROUTE_XML"; then
-  echo "ERROR: could not capture Project route hierarchy"; exit 1
-fi
-echo "Real Main → Menu → Project touch path and native summary verified; screenshots/hierarchies captured."
+echo "Real Main → Menu → Project touch path and native summary verified; fresh Android View-tree evidence captured."
 
 # Save the real native Project model through ACTION_CREATE_DOCUMENT.
 project_save_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
@@ -10833,9 +10842,7 @@ fi
 if ! capture_ui_screenshot "$PROJECT_SAVED_PNG" 10; then
   echo "ERROR: could not capture saved Project screen"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_SAVED_XML"; then
-  echo "ERROR: could not capture saved Project hierarchy"; exit 1
-fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_SAVED_XML"; then echo "ERROR: saved Project View tree missing"; exit 1; fi
 if ! grep -Fq -- "PROJECT_SAVE_COMPLETE" <<<"$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"; then
   echo "ERROR: Project Save As screen has no native-snapshot completion log"; exit 1
 fi
@@ -10847,9 +10854,7 @@ if ! tap_mpc_menu_tile 0 0; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_MUTATED_PNG" 10; then
   echo "ERROR: could not capture Main before Track mutation"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MUTATED_XML"; then
-  echo "ERROR: could not capture Main hierarchy before Track mutation"; exit 1
-fi
+if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MUTATED_XML"; then echo "ERROR: Main View tree before mutation missing"; exit 1; fi
 if ! tap_main_new_track; then exit 1; fi
 sleep 1
 if ! tap_project_toolbar_menu; then exit 1; fi
@@ -10858,9 +10863,7 @@ if ! assert_latest_project_summary "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_MUTATED_PNG" 10; then
   echo "ERROR: could not capture mutated Project state"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MUTATED_XML"; then
-  echo "ERROR: could not capture mutated Project hierarchy"; exit 1
-fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_MUTATED_XML"; then echo "ERROR: mutated Project View tree missing"; exit 1; fi
 
 # Open the saved file through ACTION_OPEN_DOCUMENT. This parses the file into
 # a new domain Project and replaces the already-mutated in-memory model.
@@ -10899,14 +10902,15 @@ if [[ -z "$project_open_line" ]] \
   echo "$project_open_line"
   exit 1
 fi
+if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MAIN_READY_XML"; then
+  echo "ERROR: successful Open did not publish a fresh Main View tree"; exit 1
+fi
 show_project_route_extended
 if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_REOPENED_PNG" 10; then
   echo "ERROR: could not capture the reopened Project screen"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_REOPENED_XML"; then
-  echo "ERROR: could not capture reopened Project hierarchy"; exit 1
-fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_REOPENED_XML"; then echo "ERROR: reopened Project View tree missing"; exit 1; fi
 echo "Real Project Save As → add Track in memory → Open saved file restored exact persisted Track/Pattern-placement model."
 echo "Initial Project Save As → mutate → Open path passed; continuing with direct SAVE overwrite and extended persistence acceptance."
 
@@ -10919,18 +10923,18 @@ PROJECT_MALFORMED_HOST="/tmp/mpc-groovebox-project-malformed.mpcproj"
 PROJECT_EXT_OPEN_XML="/tmp/mpc-groovebox-project-extended-open-uiautomator.xml"
 PROJECT_EXT_OPEN_REMOTE="/sdcard/mpc-groovebox-project-extended-open-uiautomator.xml"
 PROJECT_EXT_OPEN_PNG="/tmp/mpc-groovebox-project-extended-open.png"
-PROJECT_EXT_RESTART_MAIN_XML="/tmp/mpc-groovebox-project-restart-main-uiautomator.xml"
+PROJECT_EXT_RESTART_MAIN_XML="/tmp/mpc-groovebox-project-restart-main-view-hierarchy.xml"
 PROJECT_EXT_RESTART_MAIN_PNG="/tmp/mpc-groovebox-project-restart-main.png"
-PROJECT_EXT_RESTART_PROJECT_XML="/tmp/mpc-groovebox-project-restart-loaded-uiautomator.xml"
+PROJECT_EXT_RESTART_PROJECT_XML="/tmp/mpc-groovebox-project-restart-loaded-view-hierarchy.xml"
 PROJECT_EXT_RESTART_PROJECT_PNG="/tmp/mpc-groovebox-project-restart-loaded.png"
-PROJECT_EXT_CANCEL_XML="/tmp/mpc-groovebox-project-open-cancelled-uiautomator.xml"
+PROJECT_EXT_CANCEL_XML="/tmp/mpc-groovebox-project-open-cancelled-view-hierarchy.xml"
 PROJECT_EXT_CANCEL_PNG="/tmp/mpc-groovebox-project-open-cancelled.png"
 PROJECT_EXT_OPEN_CANCEL_PICKER_XML="/tmp/mpc-groovebox-project-open-cancel-picker-uiautomator.xml"
 PROJECT_EXT_OPEN_CANCEL_PICKER_REMOTE="/sdcard/mpc-groovebox-project-open-cancel-picker-uiautomator.xml"
 PROJECT_EXT_OPEN_CANCEL_PICKER_PNG="/tmp/mpc-groovebox-project-open-cancel-picker.png"
-PROJECT_EXT_REJECT_XML="/tmp/mpc-groovebox-project-malformed-rejected-uiautomator.xml"
+PROJECT_EXT_REJECT_XML="/tmp/mpc-groovebox-project-malformed-rejected-view-hierarchy.xml"
 PROJECT_EXT_REJECT_PNG="/tmp/mpc-groovebox-project-malformed-rejected.png"
-PROJECT_EXT_V1_XML="/tmp/mpc-groovebox-project-legacy-v1-loaded-uiautomator.xml"
+PROJECT_EXT_V1_XML="/tmp/mpc-groovebox-project-legacy-v1-loaded-view-hierarchy.xml"
 PROJECT_EXT_V1_PNG="/tmp/mpc-groovebox-project-legacy-v1-loaded.png"
 
 wait_for_project_picker_item() {
@@ -11013,6 +11017,12 @@ open_project_document() {
   if ! tap_ui_picker_result_row "$PROJECT_EXT_OPEN_XML" "$item" auto label; then
     echo "ERROR: could not select $item from the actual Android document picker"; exit 1
   fi
+  if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE_BEFORE" 45; then
+    echo "ERROR: Project Open completion marker missing for $item"; exit 1
+  fi
+  if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MAIN_READY_XML"; then
+    echo "ERROR: successful Open did not publish a fresh Main View tree for $item"; exit 1
+  fi
 }
 
 # Verify the dedicated debug-only native fixture populated actual non-default
@@ -11073,9 +11083,7 @@ project_saved_sha_ext="$project_save_update_sha"
 if ! capture_ui_screenshot /tmp/mpc-groovebox-project-save-updated.png 10; then
   echo "ERROR: could not capture direct SAVE overwrite milestone"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" /tmp/mpc-groovebox-project-save-updated-uiautomator.xml; then
-  echo "ERROR: could not capture direct SAVE overwrite hierarchy"; exit 1
-fi
+if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-save-updated-view-hierarchy.xml; then echo "ERROR: direct SAVE View tree missing"; exit 1; fi
 echo "Project SAVE overwrite passed: linked SAF file now represents TRACKS=2 / PLACEMENTS=2; updated domain SHA=$project_saved_sha_ext"
 
 # A genuine force-stop kills the old application process and native model.
@@ -11086,6 +11094,7 @@ fi
 if ! adb_bounded 10 shell logcat -c; then
   echo "ERROR: could not clear logs before process-restart acceptance"; exit 1
 fi
+snapshot_project_view_tree_marker_baselines
 if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY"; then
   echo "ERROR: could not relaunch app after process death"; exit 1
 fi
@@ -11098,12 +11107,13 @@ done
 if [ "$restart_ready" -ne 1 ]; then
   echo "ERROR: native startup did not complete after process restart"; exit 1
 fi
+if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_RESTART_MAIN_XML"; then
+  echo "ERROR: process restart did not publish a fresh Main View tree"; exit 1
+fi
 if ! capture_ui_screenshot "$PROJECT_EXT_RESTART_MAIN_PNG" 10; then
   echo "ERROR: could not capture post-restart Main screenshot"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_RESTART_MAIN_XML"; then
-  echo "ERROR: could not capture post-restart Main hierarchy"; exit 1
-fi
+if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_RESTART_MAIN_XML"; then echo "ERROR: restart Main View tree missing"; exit 1; fi
 show_project_route_extended
 open_project_document "Untitled.mpcproj"
 if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE_BEFORE" 45; then
@@ -11123,9 +11133,7 @@ show_project_route_extended "TRACKS=2" "PLACEMENTS=2"
 if ! capture_ui_screenshot "$PROJECT_EXT_RESTART_PROJECT_PNG" 10; then
   echo "ERROR: could not capture reopened Project after process restart"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_RESTART_PROJECT_XML"; then
-  echo "ERROR: could not capture reopened Project hierarchy after restart"; exit 1
-fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_EXT_RESTART_PROJECT_XML"; then echo "ERROR: restart Project View tree missing"; exit 1; fi
 
 # Cancel Save As, then Open, and ensure the same real Project remains in memory.
 save_cancel_marker_before="$(project_marker_count "PROJECT_SAVE_AS_CANCELLED")"
@@ -11162,9 +11170,7 @@ fi
 if ! capture_ui_screenshot "$PROJECT_EXT_CANCEL_PNG" 10; then
   echo "ERROR: could not capture Open cancellation state"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_CANCEL_XML"; then
-  echo "ERROR: could not capture Open cancellation hierarchy"; exit 1
-fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_EXT_CANCEL_XML"; then echo "ERROR: Open cancellation View tree missing"; exit 1; fi
 
 # Build a valid v1 fixture from the actual saved file, not the older native
 # codec-only fixture whose PROGRAMS section intentionally violates runtime rules.
@@ -11244,9 +11250,7 @@ fi
 if ! capture_ui_screenshot "$PROJECT_EXT_REJECT_PNG" 10; then
   echo "ERROR: could not capture malformed load error"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_REJECT_XML"; then
-  echo "ERROR: could not capture malformed load hierarchy"; exit 1
-fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_EXT_REJECT_XML"; then echo "ERROR: malformed-load rejection View tree missing"; exit 1; fi
 if ! grep -Fq -- "currentPage=PROJECT" <<<"$rejected_line_ext"; then
   echo "ERROR: malformed-file rejection lost the Project context"; echo "$rejected_line_ext"; exit 1
 fi
@@ -11270,7 +11274,5 @@ fi
 if ! capture_ui_screenshot "$PROJECT_EXT_V1_PNG" 10; then
   echo "ERROR: could not capture v1-loaded state"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_EXT_V1_XML"; then
-  echo "ERROR: could not capture v1-loaded accessibility hierarchy"; exit 1
-fi
+if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_V1_XML"; then echo "ERROR: v1-loaded Main View tree missing"; exit 1; fi
 echo "Extended Project UI acceptance passed: exact v2 state, direct SAVE overwrite, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."

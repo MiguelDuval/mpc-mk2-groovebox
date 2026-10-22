@@ -5,19 +5,18 @@
 
 ## Latest source and verification state
 
-### Live checkpoint — Project Menu View-tree freshness synchronization
+### Live checkpoint — app-owned Project route hierarchy
 
-- PR #23 is open on `feature/mpc-one-ui-fidelity`; reviewed pre-fix HEAD `cb7edd5763b9bf97960d4b9e4c5ba4c1b98bfc7b`. Android Build #3052 / run `39681503924` failed at step 52, “Run Android emulator smoke test”. The debug APK and visual evidence artifacts were uploaded as IDs `12385195107` and `12385202751`, tied to that exact SHA.
-- Builds #3053 / run `39682859251` on PR #29 head `240cf5bf91a5a66b59c4577003c8b2d785641fbf` and #3054 / run `39683044677` on PR #28 head `85026b48eb70587d3d097762e5bb4b5ece590bc1` also failed at shared Android smoke step 52. The dedicated SAMP-010 zoom/audition component passed in #3053; native Project state and versioned persistence/Arrangement Pattern placement steps 38–39 passed in #3054. Neither result proves a green full workflow.
-- **Confirmed synchronization defect in the pre-fix smoke:** `project_menu_hierarchy_marker_before` was sampled only after the actual Menu tap, after the render/click gate, and after `sleep 1`. The registered Android `OnPreDrawListener` can publish `MPC_MENU_VIEW_HIERARCHY_READY` during that interval. The following wait then incorrectly required the count to exceed a baseline that already included the fresh event. Build #3052’s failure message and its immediately following diagnostic logcat are consistent with this exact missed-event ordering: the timeout is printed, then the diagnostic output contains the READY marker.
-- This checkpoint’s code change takes a single logcat baseline for render-complete, click-end and View-tree READY **before** the real Toolbar Menu touch. It requires render-complete and click-end counts to increase from that baseline, then waits for READY against the original pre-touch count. Screenshot capture follows successful READY. XML provenance/page and the positive generated-at-uptime timestamp are validated along with all ten visible, enabled, clickable tile targets, measured bounds and the real PROJECT tap. Native Project-state verification remains a separate required gate. No UI assertion or timeout was weakened or extended.
-- Browser USER FOLDER / FAVORITE 1 restore and SAMP-008/009 remain confirmed component results on their previously stated exact SHAs; do not revisit them without fresh evidence of regression. PR #29 and #28 remain isolated drafts.
-- Full Android Project SAVE / SAVE AS / OPEN remains **PENDING**. The existing workflow must still prove real SAF Save As, post-save musical mutation, Open restoration against canonical MIDI + Arrangement placements, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-load atomicity and placement-free v1 compatibility. Physical MPC Studio MkII validation remains **PENDING**.
+- Primary PR #23 HEAD `d9ec35a73a692e6ea45623424451227f92093e71` was tested by Build #3055 / run `39771750338`. The Menu pre-draw freshness fix worked: real Android View-tree evidence had 194 Views and ten actionable tile targets, the measured `MPC Menu PROJECT` touch succeeded and native summary `TRACKS=1 PLACEMENTS=1 MIDI_NOTES=2` was verified.
+- Build #3055 still failed at step 52, but Menu is no longer the failing gate. The following UiAutomator dump of the app-owned Project route timed out after 8 seconds. APK `12422334378` and visual-evidence ZIP `12423023444` are tied to exact SHA `d9ec35a73a692e6ea45623424451227f92093e71`.
+- This follow-up reuses the actual Android View-tree serializer for app-owned Project-persistence screens (MAIN, MENU, PROJECT and temporary SEQUENCE). XML explicitly records `source=android-view-tree`, the exact page, generated-at-uptime timestamp, and real view bounds/visibility/clickability. App-owned controls are touched using bounds from a fresh page-matched hierarchy; Android DocumentsUI remains tested through real UiAutomator snapshots and provider operations.
+- Fresh page-scoped markers and pre-action baselines, parseable XML, ten visible enabled Menu tiles and enabled Project OPEN/SAVE AS/SAVE controls remain mandatory. No native canonical-state or Project lifecycle assertions were removed.
+- Full Project SAVE / SAVE AS / OPEN remains **PENDING** until real SAF Save As, mutation/Open equality for MIDI and Arrangement placements, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-load atomicity and placement-free v1 compatibility pass on green exact-SHA CI. PRs #28/#29 remain isolated; physical MPC Studio MkII validation remains **PENDING**.
 
 ## Current execution queue — 2026-10-22
 
-1. Verify that the synchronization fix is on the live PR #23 HEAD and inspect the newly triggered Actions run on that exact SHA. Confirm the Menu READY wait, valid View-tree XML, ten target assertions, real measured PROJECT touch and authoritative native Project summary.
-2. If the full smoke proceeds beyond Menu, continue the existing Project lifecycle on that same run. Diagnose any later failure from its exact step/log/evidence; do not reopen completed Browser or Sample Edit slices without proof of regression.
+1. Validate the app-owned View-tree extension on the exact current PR #23 HEAD and require Menu → Project to reach the real Android DocumentsUI Save As picker.
+2. Diagnose the next exact failing step/evidence; don't revisit the repaired Menu synchronization or previous Browser/Sample Edit components without regression evidence.
 
 ## Completed in this session
 

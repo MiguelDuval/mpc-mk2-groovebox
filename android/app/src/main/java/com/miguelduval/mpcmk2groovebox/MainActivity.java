@@ -3583,6 +3583,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMainTrackQuickSample();
         refreshMainDataDialFocusVisuals();
         updateModeRailSelection();
+        scheduleProjectPersistenceViewHierarchyCapture("MAIN");
     }
 
 
@@ -9881,6 +9882,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceStop();
         setBottomStatus(nativeSequenceAddTrack(kind));
         showSequencePage();
+        scheduleProjectPersistenceViewHierarchyCapture("SEQUENCE");
     }
 
     private void changeSequenceTempo(double delta) {
@@ -10354,55 +10356,81 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page);
         updateModeRailSelection();
         notifyMpcWorkspaceAccessibilityChanged();
-        if (projectPersistenceSmokeMode) {
-            // UiAutomator dump times out on the rendered Menu in the Android emulator
-            // after Browser's process-restart phase. Capture the real View tree on
-            // the next pre-draw, after bounds/layout are final. This is debug-smoke
-            // evidence only; production navigation and state are unchanged.
-            final ViewTreeObserver menuObserver = content.getViewTreeObserver();
-            if (menuObserver.isAlive()) {
-                menuObserver.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
-                    @Override
-                    public boolean onPreDraw() {
-                        final ViewTreeObserver observer = content.getViewTreeObserver();
-                        if (observer.isAlive()) observer.removeOnPreDrawListener(this);
-                        captureProjectMenuViewHierarchyForSmoke();
-                        return true;
-                    }
-                });
-            } else {
-                Log.e(TAG, "MPC_MENU_VIEW_HIERARCHY_FAILED: ViewTreeObserver unavailable");
-            }
-        }
+        scheduleProjectPersistenceViewHierarchyCapture("MENU");
         Log.i(TAG, "MPC_MENU_RENDER_COMPLETE");
     }
     private void captureProjectMenuViewHierarchyForSmoke() {
-        if (!projectPersistenceSmokeMode || destroyed || !"MENU".equals(currentPage)) return;
+        captureProjectPersistenceViewHierarchyForSmoke("MENU");
+    }
+
+    private void scheduleProjectPersistenceViewHierarchyCapture(String expectedPage) {
+        if (!projectPersistenceSmokeMode || destroyed || content == null
+                || expectedPage == null || !expectedPage.equals(currentPage)) return;
+        final ViewTreeObserver observer = content.getViewTreeObserver();
+        if (!observer.isAlive()) {
+            Log.e(TAG, "PROJECT_SMOKE_VIEW_HIERARCHY_FAILED page=" + expectedPage
+                    + " reason=ViewTreeObserver-unavailable");
+            return;
+        }
+        observer.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                final ViewTreeObserver currentObserver = content.getViewTreeObserver();
+                if (currentObserver.isAlive()) currentObserver.removeOnPreDrawListener(this);
+                captureProjectPersistenceViewHierarchyForSmoke(expectedPage);
+                return true;
+            }
+        });
+    }
+
+    private void captureProjectPersistenceViewHierarchyForSmoke(String expectedPage) {
+        if (!projectPersistenceSmokeMode || destroyed || expectedPage == null
+                || !expectedPage.equals(currentPage)) return;
         final Window window = getWindow();
         final View decor = window == null ? null : window.getDecorView();
         if (decor == null || decor.getWidth() <= 0 || decor.getHeight() <= 0 || !decor.isShown()) {
-            Log.e(TAG, "MPC_MENU_VIEW_HIERARCHY_FAILED: rendered Menu root has no visible bounds");
+            Log.e(TAG, "PROJECT_SMOKE_VIEW_HIERARCHY_FAILED page=" + expectedPage
+                    + " reason=rendered-root-has-no-visible-bounds");
+            if ("MENU".equals(expectedPage)) {
+                Log.e(TAG, "MPC_MENU_VIEW_HIERARCHY_FAILED: rendered Menu root has no visible bounds");
+            }
             return;
         }
 
         final StringBuilder xml = new StringBuilder(32768);
         final int[] nodeCount = new int[] {0};
-        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
-                .append("<hierarchy source=\"android-view-tree\" page=\"MENU\"")
-                .append(" generated-at-uptime-ms=\"").append(SystemClock.uptimeMillis()).append("\">");
+        xml.append("<?xml version=").append((char) 34).append("1.0").append((char) 34)
+                .append(" encoding=").append((char) 34).append("UTF-8").append((char) 34).append("?>")
+                .append("<hierarchy source=").append((char) 34).append("android-view-tree").append((char) 34)
+                .append(" page=").append((char) 34).append(escapeProjectMenuXml(expectedPage)).append((char) 34)
+                .append(" generated-at-uptime-ms=").append((char) 34).append(SystemClock.uptimeMillis()).append((char) 34)
+                .append(">");
         appendProjectMenuViewNode(decor, xml, 0, nodeCount);
         xml.append("</hierarchy>");
 
-        final java.io.File hierarchyFile = new java.io.File(
-                getCacheDir(), "mpc-project-menu-view-hierarchy.xml");
+        final String fileName = "MENU".equals(expectedPage)
+                ? "mpc-project-menu-view-hierarchy.xml"
+                : "mpc-project-persistence-view-hierarchy.xml";
+        final java.io.File hierarchyFile = new java.io.File(getCacheDir(), fileName);
         try (java.io.FileOutputStream output = new java.io.FileOutputStream(hierarchyFile, false)) {
             output.write(xml.toString().getBytes(StandardCharsets.UTF_8));
         } catch (IOException | RuntimeException error) {
-            Log.e(TAG, "MPC_MENU_VIEW_HIERARCHY_FAILED: could not persist rendered Menu View tree", error);
+            Log.e(TAG, "PROJECT_SMOKE_VIEW_HIERARCHY_FAILED page=" + expectedPage
+                    + " reason=cache-write-failed", error);
+            if ("MENU".equals(expectedPage)) {
+                Log.e(TAG, "MPC_MENU_VIEW_HIERARCHY_FAILED: could not persist rendered Menu View tree", error);
+            }
             return;
         }
-        Log.i(TAG, "MPC_MENU_VIEW_HIERARCHY_READY page=MENU nodes=" + nodeCount[0]
-                + " source=android-view-tree path=cache/mpc-project-menu-view-hierarchy.xml");
+
+        if ("MENU".equals(expectedPage)) {
+            Log.i(TAG, "MPC_MENU_VIEW_HIERARCHY_READY page=MENU nodes=" + nodeCount[0]
+                    + " source=android-view-tree path=cache/" + fileName);
+        } else {
+            Log.i(TAG, "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=" + expectedPage
+                    + " nodes=" + nodeCount[0]
+                    + " source=android-view-tree path=cache/" + fileName);
+        }
     }
 
     private void appendProjectMenuViewNode(View view, StringBuilder xml, int index, int[] nodeCount) {
@@ -10516,6 +10544,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.addView(page);
         updateModeRailSelection();
         notifyMpcWorkspaceAccessibilityChanged();
+        scheduleProjectPersistenceViewHierarchyCapture("PROJECT");
         Log.i(TAG, "MPC_PROJECT_RENDER_COMPLETE summary=" + summary.getText().toString());
     }
 
@@ -11689,6 +11718,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 runOnUiThread(() -> {
                     if (!destroyed) {
                         setBottomStatus("PROJECT OPEN FAILED • " + failure);
+                        scheduleProjectPersistenceViewHierarchyCapture(currentPage);
                         Log.i(TAG, "PROJECT_OPEN_FAILED stateSha256=" + currentProjectStateSha256()
                                 + " fileSha256=unavailable error=" + failure);
                     }
@@ -11701,6 +11731,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 if (loaded == null || !loaded.startsWith("PROJECT_LOADED")) {
                     setBottomStatus(loaded == null
                             ? "PROJECT OPEN FAILED • native loader unavailable" : loaded);
+                    scheduleProjectPersistenceViewHierarchyCapture(currentPage);
                     Log.i(TAG, "PROJECT_OPEN_REJECTED stateSha256=" + currentProjectStateSha256()
                             + " fileSha256=" + projectBytesSha256(bytes)
                             + " currentPage=" + currentPage + " result=" + loaded);
@@ -11784,6 +11815,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final String stateSha = currentProjectStateSha256();
                 if (resultCode == RESULT_CANCELED) {
                     setBottomStatus("PROJECT OPEN CANCELLED • current Project unchanged");
+                    scheduleProjectPersistenceViewHierarchyCapture(currentPage);
                     Log.i(TAG, "PROJECT_OPEN_CANCELLED stateSha256=" + stateSha);
                 } else {
                     setBottomStatus("PROJECT OPEN FAILED • picker returned no document");
@@ -11805,6 +11837,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final String stateSha = currentProjectStateSha256();
                 if (resultCode == RESULT_CANCELED) {
                     setBottomStatus("PROJECT SAVE AS CANCELLED • current Project unchanged");
+                    scheduleProjectPersistenceViewHierarchyCapture(currentPage);
                     Log.i(TAG, "PROJECT_SAVE_AS_CANCELLED stateSha256=" + stateSha);
                 } else {
                     setBottomStatus("PROJECT SAVE AS FAILED • picker returned no destination");
