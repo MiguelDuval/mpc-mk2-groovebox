@@ -5,25 +5,20 @@
 
 ## Latest source and verification state
 
-### Live checkpoint — Project persistence process-restart capture
+### Live checkpoint — Project persistence: malformed-file outcome routing
 
-- Primary PR #23 HEAD before this correction was `e9298e8d802d6d0e949415f52581855df9a92854`; Android Build #3057 / run `39781211397` completed **FAILURE** at the force-stop/relaunch section. Build URL: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39781211397.
-- Build #3057 passed all preceding native/unit policy tests, APK assembly, upload, UI-smoke syntax/evidence preflight, and reached the real Project lifecycle. The Menu Android View tree contained 194 views and ten visible actionable tiles; Project captured 178 views; the post-Track-add SEQ page captured 250 views.
-- Real DocumentsUI Save As → add Track in memory → Open saved file restored the original exact native Project digest `4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9`. Direct SAVE then overwrote the linked document with TRACKS=2 / PLACEMENTS=2 and new digest `0c774ef1fa5e1566fe67f45bba58502dba3e1472a71555a6b10d1696b8185c89`.
-- The remaining failure was harness wiring, not an observed native save/load mismatch: the cold relaunch omitted the smoke-mode extra, so the fresh process correctly reached `STARTUP_COMPLETE` but did not activate the opt-in Android View-tree capture marker. Commit `82a6ea1` adds a distinct `project-persistence-view-tree` instrumentation mode that enables real tree capture without re-seeding/resetting the native persistence fixture, and passes that mode on the cold relaunch.
-- The follow-up smoke hardening checks that the restarted process emits no `PROJECT_TEST_FIXTURE_READY` marker before the actual saved file is opened. This guards against a future mode change silently turning the cold-restart test back into a seeded-fixture test.
-- A final source review found that the initial Main pre-draw can occur before asynchronous native startup has finished. The View-tree serializer now refuses pre-startup snapshots, then schedules one fresh capture immediately after `STARTUP_COMPLETE`; the persisted XML that acceptance pulls therefore represents the ready-state page, not merely an early placeholder tree.
-- Build #3058 / run `39790435311` on exact SHA `82a6ea1cf038a77cc1a45db9890fb6e8fe10416c` reached the DocumentsUI selection-return-target test after BROW-008 passed, but the smoke log recorded a failure before Project acceptance: the 8-second wait for the root drawer allowed only a 6-second and a 1-second UiAutomator dump, both timing out; the last successful XML still showed Recent, so it was not valid evidence about the post-tap drawer. The latest API snapshot still showed the job in progress during runner cleanup. This run therefore does **not** verify Project process-restart behavior.
-- Commit `c56c16b` adds a ready-state gate for View-tree snapshots and schedules a fresh hierarchy after `STARTUP_COMPLETE`. Build #3060 / run `39792199195` for that exact SHA was queued at the last check. The DocumentsUI fix gives the root drawer a 25-second total window and up to 9 seconds per fresh UiAutomator dump (the failed attempt was killed at 6 seconds); it preserves a real post-tap screenshot if Downloads still does not appear. The assertion remains that a newly captured hierarchy actually contains Downloads.
-- Build #3056 / run `39780738111` on the earlier SHA failed at the old `SEQUENCE` page marker; commit `e9298e8` corrected it to the Activity's actual `SEQ` page ID and routed Save As cancellation evidence through the app-owned View-tree serializer.
-- All capture evidence remains real Android Views with source/page/timestamp/bounds; actual Android DocumentsUI continues to be inspected via UiAutomator. No test assertion is being removed or weakened.
-- Full Project SAVE / SAVE AS / OPEN remains **PENDING** until a green exact-HEAD run completes cold process restart/Open canonical equality, cancellation invariance, malformed-load atomicity and placement-free v1 compatibility. PRs #28/#29 remain isolated; physical MPC Studio MkII validation remains **PENDING**.
+- Primary PR #23 before this correction was `0d200c6e21e314ecdca810d727f2048d9eaef48b`. Android Build #3062 / run `39793668041` reached the extended real Project lifecycle after earlier Browser/Track Edit/Arrangement/Sample checks passed.
+- The cold force-stop/relaunch itself passed: the new process emitted ready-state Main hierarchy evidence without reseeding the fixture. Reopening the directly overwritten SAF document restored `TRACKS=2`, `PLACEMENTS=2`, and exact v2 file/domain digest `0c774ef1fa5e1566fe67f45bba58502dba3e1472a71555a6b10d1696b8185c89`. Save As cancellation and Open cancellation preserved that digest.
+- Build #3062 then failed at the malformed-document leg due to a **test-helper outcome mismatch**. `open_project_document` unconditionally waited for `PROJECT_OPEN_COMPLETE`, but the deliberate malformed file correctly emits `PROJECT_OPEN_REJECTED` and must remain on `currentPage=PROJECT`. Runtime logs confirm `PROJECT_LOAD_FAILED • Invalid project header` and unchanged state SHA, but the wrong wait marker prevented the following atomicity assertion from running.
+- The current correction makes the helper accept an explicit expected outcome marker. Normal opens require `PROJECT_OPEN_COMPLETE` and capture the fresh Main tree; the malformed-file call requires `PROJECT_OPEN_REJECTED` and leaves Project-route verification to the existing caller. No native behavior is changed and no acceptance assertion is weakened.
+- Build #3060 / run `39792199195` on `c56c16be9deb0f6d87664bd6c560237a7cfa6bee` failed earlier while trying to capture a stable DocumentsUI state; Build #3061 was cancelled after the branch advanced. The per-dump timeout change in `0d200c6` was included in Build #3062, which passed the force-stop/relaunch and canonical reopen portion before the malformed-file assertion routing defect.
+- Full Project acceptance remains **PENDING** until a green exact-HEAD run completes malformed-load state preservation and placement-free v1 compatibility on top of the already-observed Save/Save As/Open/cancellation/restart behavior. PRs #28/#29 remain isolated; physical MPC Studio MkII validation remains **PENDING**.
 
 ## Current execution queue — 2026-10-22
 
-1. Validate the non-fixture View-tree mode at the force-stop/relaunch stage on the next exact-SHA Android run.
-2. Continue the same full run through cancellation invariance, malformed-load preservation, and placement-free v1 compatibility; inspect artifact evidence and record only exact-SHA results.
-3. Keep PRs #28/#29 isolated until the primary full emulator smoke passes; physical controller acceptance stays a separate gate.
+1. Run the explicit `PROJECT_OPEN_REJECTED` helper path on the new exact HEAD.
+2. Verify malformed-load atomicity, then validate the runtime-valid placement-free v1 file against its canonical v2 state digest.
+3. Keep PRs #28/#29 isolated until the entire primary smoke is green; emulator acceptance is not physical controller acceptance.
 
 ## Completed in this session
 

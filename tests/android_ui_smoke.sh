@@ -11021,19 +11021,38 @@ cancel_android_document_picker() {
   return 0
 }
 open_project_document() {
-  local item="$1"
+  local item="$1" expected_marker="${2:-PROJECT_OPEN_COMPLETE}"
+  local expected_before expected_page
   OPEN_PROJECT_COMPLETE_BEFORE="$(project_marker_count "PROJECT_OPEN_COMPLETE")"
   OPEN_PROJECT_REJECTED_BEFORE="$(project_marker_count "PROJECT_OPEN_REJECTED")"
+  case "$expected_marker" in
+    PROJECT_OPEN_COMPLETE)
+      expected_before="$OPEN_PROJECT_COMPLETE_BEFORE"
+      expected_page="MAIN"
+      ;;
+    PROJECT_OPEN_REJECTED)
+      expected_before="$OPEN_PROJECT_REJECTED_BEFORE"
+      expected_page="PROJECT"
+      ;;
+    *)
+      echo "ERROR: unsupported Project Open outcome marker: $expected_marker"; exit 1
+      ;;
+  esac
   if ! tap_project_function_bar 0; then exit 1; fi
   wait_for_project_picker_item "$PROJECT_EXT_OPEN_XML" "$PROJECT_EXT_OPEN_REMOTE" "$PROJECT_EXT_OPEN_PNG" "$item"
   if ! tap_ui_picker_result_row "$PROJECT_EXT_OPEN_XML" "$item" auto label; then
     echo "ERROR: could not select $item from the actual Android document picker"; exit 1
   fi
-  if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE_BEFORE" 45; then
-    echo "ERROR: Project Open completion marker missing for $item"; exit 1
+  if ! wait_for_new_project_marker "$expected_marker" "$expected_before" 45; then
+    echo "ERROR: expected Project Open outcome $expected_marker was not reported for $item"; exit 1
   fi
-  if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MAIN_READY_XML"; then
-    echo "ERROR: successful Open did not publish a fresh Main View tree for $item"; exit 1
+  # Successful load navigates back to Main. A rejected document must leave the
+  # actual Project route and model intact; its caller captures/asserts that page
+  # after checking the canonical state hash below.
+  if [[ "$expected_page" == "MAIN" ]]; then
+    if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MAIN_READY_XML"; then
+      echo "ERROR: successful Open did not publish a fresh Main View tree for $item"; exit 1
+    fi
   fi
 }
 
@@ -11254,7 +11273,7 @@ fi
 
 # The app is still in Project context after cancel; malformed input must reject
 # without replacing the saved model and the Project route must remain usable.
-open_project_document "Malformed-project.mpcproj"
+open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"
 if ! wait_for_new_project_marker "PROJECT_OPEN_REJECTED" "$OPEN_PROJECT_REJECTED_BEFORE" 45; then
   echo "ERROR: malformed Project did not report a native format rejection"; exit 1
 fi

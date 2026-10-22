@@ -2,17 +2,14 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-22 (live exact-SHA evidence governs)
 
-### 1. Primary PR #23 — Project persistence lifecycle and cold restart
+### 1. Primary PR #23 — Project persistence: explicit expected outcome
 
-- Build #3057 / run `39781211397` on exact SHA `e9298e8d802d6d0e949415f52581855df9a92854` passed native/unit policy tests, APK assembly and UI-smoke syntax/evidence preflight, then reached the real Project persistence sequence.
-- Fresh View-tree evidence passed for Menu (194 views, ten actionable controls), Project (178 views), and SEQ after Track add (250 views). Real DocumentsUI Save As → in-memory Track mutation → Open restored the original canonical native digest exactly; direct SAVE overwrote the linked file with TRACKS=2 / PLACEMENTS=2 and a changed domain SHA.
-- The run failed after force-stop because the relaunch omitted the opt-in smoke-mode extra. The app reached `STARTUP_COMPLETE`, but no app-owned View-tree capture was requested. This is a harness instrumentation omission, not evidence of a save/load state mismatch.
-- Commit `82a6ea1` adds `project-persistence-view-tree`: capture is enabled for the fresh process without running the native acceptance-fixture initializer. The restart harness passes this mode, preserving the test's cold-start semantics while requiring a fresh real Main View tree.
-- The follow-up harness requires no `PROJECT_TEST_FIXTURE_READY` line on the cold-restarted process before opening the saved document; otherwise the check exits rather than allowing test-fixture initialization to masquerade as a cold restart.
-- The View-tree hook now declines pre-startup draws and schedules a replacement on `STARTUP_COMPLETE`. This closes an evidence race where the first Main tree could have been fresh in wall-clock terms but captured before native initialization finished.
-- Build #3058 / run `39790435311` on `82a6ea1cf038a77cc1a45db9890fb6e8fe10416c` reached the Android DocumentsUI picker after BROW-008, then failed before Project acceptance in the 8-second wait for the root drawer: a 6-second and a 1-second UiAutomator dump both timed out, leaving only the old Recent XML. The API still reported the runner in progress during cleanup; this is not Project lifecycle evidence.
-- Commit `d9d07de` gives DocumentsUI root navigation a 25-second bounded fresh-hierarchy wait and uploads a post-tap screenshot on failure. Each attempt now permits up to 9 seconds per dump, because the observed 6-second dump was terminated before a new tree could be parsed. Passing still requires Downloads in a fresh tree; this does not bypass provider-root navigation.
-- Continue the exact same run through saved-file reopen after process death, cancellation invariance, malformed-load atomicity and placement-free v1 canonical-state equality. Do not relax acceptance assertions or substitute UiAutomator dumps for app-owned Activity trees; real DocumentsUI remains tested with UiAutomator.
+- Build #3062 / run `39793668041` on `0d200c6e21e314ecdca810d727f2048d9eaef48b` passed the cold restart evidence gate and exact v2 reopen of the linked SAF file after direct SAVE: `TRACKS=2`, `PLACEMENTS=2`, and file/domain SHA `0c774ef1fa5e1566fe67f45bba58502dba3e1472a71555a6b10d1696b8185c89`. Save As and Open cancellation each retained this state hash.
+- It failed at the malformed-file leg because the shared `open_project_document` helper waited only for `PROJECT_OPEN_COMPLETE`. The actual malformed-load behavior was correct: the native loader emitted `PROJECT_OPEN_REJECTED` with `Invalid project header` and the active native state SHA unchanged. The helper waited for the wrong success marker and exited before the caller's rejection/atomicity assertions.
+- The current fix adds an explicit expected outcome parameter. Valid project documents wait for `PROJECT_OPEN_COMPLETE` and capture Main; malformed input waits for `PROJECT_OPEN_REJECTED` while leaving Project-route checks and unchanged-state verification to the existing caller. This fixes harness control flow without changing or weakening assertions.
+- Build #3060 / run `39792199195` failed earlier in DocumentsUI stable-state capture. Build #3061 was cancelled after new commits queued; Build #3062 is the relevant evidence for the Project flow and does not constitute a green acceptance run.
+- Next exact-SHA run must verify the complete malformed-load atomicity block and the valid placement-free v1 Open/canonical digest before this phase is accepted.
+
 
 ### 2. Earlier hierarchy failures now addressed
 
