@@ -11109,6 +11109,9 @@ done
 if [ "$restart_ready" -ne 1 ]; then
   echo "ERROR: native startup did not complete after process restart"; exit 1
 fi
+if grep -Fq -- "PROJECT_TEST_FIXTURE_READY" <<<"$restart_logs"; then
+  echo "ERROR: cold process restart unexpectedly re-initialized the Project acceptance fixture"; exit 1
+fi
 if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_RESTART_MAIN_XML"; then
   echo "ERROR: process restart did not publish a fresh Main View tree"; exit 1
 fi
