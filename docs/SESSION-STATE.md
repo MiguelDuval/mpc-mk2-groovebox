@@ -5,21 +5,24 @@
 
 ## Latest source and verification state
 
-### Live checkpoint — Project persistence: malformed-file outcome routing
+### Live checkpoint — Project persistence E2E green; hardening picker evidence flake
 
 - Primary PR #23 before this correction was `0d200c6e21e314ecdca810d727f2048d9eaef48b`. Android Build #3062 / run `39793668041` reached the extended real Project lifecycle after earlier Browser/Track Edit/Arrangement/Sample checks passed.
 - The cold force-stop/relaunch itself passed: the new process emitted ready-state Main hierarchy evidence without reseeding the fixture. Reopening the directly overwritten SAF document restored `TRACKS=2`, `PLACEMENTS=2`, and exact v2 file/domain digest `0c774ef1fa5e1566fe67f45bba58502dba3e1472a71555a6b10d1696b8185c89`. Save As cancellation and Open cancellation preserved that digest.
 - Build #3062 then failed at the malformed-document leg due to a **test-helper outcome mismatch**. `open_project_document` unconditionally waited for `PROJECT_OPEN_COMPLETE`, but the deliberate malformed file correctly emits `PROJECT_OPEN_REJECTED` and must remain on `currentPage=PROJECT`. Runtime logs confirm `PROJECT_LOAD_FAILED • Invalid project header` and unchanged state SHA, but the wrong wait marker prevented the following atomicity assertion from running.
 - The current correction makes the helper accept an explicit expected outcome marker. Normal opens require `PROJECT_OPEN_COMPLETE` and capture the fresh Main tree; the malformed-file call requires `PROJECT_OPEN_REJECTED` and leaves Project-route verification to the existing caller. No native behavior is changed and no acceptance assertion is weakened.
 - The smoke-script preflight now checks for that explicit malformed-file marker route as well, so a future helper regression fails the inexpensive syntax/evidence-contract step before starting the emulator.
+- Build #3063 / run `39801798022` passed all 52 workflow steps on exact SHA `bc61127f0e13eff18ee8460d3da95180878a07e5`. Its final runtime marker confirms: exact v2 state, direct SAVE overwrite, process restart, Save As/Open cancellation invariance, malformed-load preservation and placement-free v1 canonical-state equality all passed in that run.
+- Build #3064 / run `39802124327` on descendant SHA `6adb04f28e62e23d6d8c27da66cc187e1c905997` failed before it could re-run the Project acceptance sequence: `wait_for_project_picker_item` called `capture_stable_picker_state(..., 8)`, whose protocol requires three matching fresh trees and a paired screenshot. The log shows only one attempt; a bounded dump completed too late to transfer within the remaining 2-second deadline. This is a flaky evidence-capture budget, not evidence of Project-state corruption.
+- This change raises only the bounded stability window for Project picker captures from 8 to 30 seconds. Every accepted tree must still be fresh and the three signatures must still match; the assertion and real DocumentsUI path are unchanged. Re-run the full workflow on the resulting exact HEAD before treating that HEAD as green.
 - Build #3060 / run `39792199195` on `c56c16be9deb0f6d87664bd6c560237a7cfa6bee` failed earlier while trying to capture a stable DocumentsUI state; Build #3061 was cancelled after the branch advanced. The per-dump timeout change in `0d200c6` was included in Build #3062, which passed the force-stop/relaunch and canonical reopen portion before the malformed-file assertion routing defect.
-- Full Project acceptance remains **PENDING** until a green exact-HEAD run completes malformed-load state preservation and placement-free v1 compatibility on top of the already-observed Save/Save As/Open/cancellation/restart behavior. PRs #28/#29 remain isolated; physical MPC Studio MkII validation remains **PENDING**.
+- Full Project SAVE / SAVE AS / OPEN acceptance is **VERIFIED on exact SHA `bc61127f0e13eff18ee8460d3da95180878a07e5` (Build #3063)**, including malformed-load atomicity and placement-free v1 compatibility. The current descendant HEAD still needs a complete green rerun because Build #3064 hit the picker-evidence timeout described above. PRs #28/#29 remain isolated until the current primary HEAD passes; physical MPC Studio MkII validation remains **PENDING**.
 
 ## Current execution queue — 2026-10-22
 
-1. Run the explicit `PROJECT_OPEN_REJECTED` helper path on the new exact HEAD.
-2. Verify malformed-load atomicity, then validate the runtime-valid placement-free v1 file against its canonical v2 state digest.
-3. Keep PRs #28/#29 isolated until the entire primary smoke is green; emulator acceptance is not physical controller acceptance.
+1. Re-run the full smoke with the 30-second bounded Project picker stability capture and verify the exact current HEAD.
+2. If green, preserve Build #3063 as the full Project lifecycle milestone, then continue the next high-value MPC One UI-fidelity slice without reopening completed checks absent regression evidence.
+3. Keep PRs #28/#29 isolated until the current primary HEAD passes; emulator acceptance is not physical controller acceptance.
 
 ## Completed in this session
 

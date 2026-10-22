@@ -10966,7 +10966,12 @@ wait_for_project_picker_item() {
     cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
     exit 1
   fi
-  if ! capture_stable_picker_state "$target_remote" "$target_xml" "$target_png" 8; then echo "ERROR: could not capture stable DocumentsUI state for $item"; exit 1; fi
+  # Require three matching, fresh UiAutomator trees plus a paired screenshot.
+  # An 8s total deadline often expires during the first tree transfer on Android 16,
+  # so allow a separate bounded window for the stability protocol.
+  if ! capture_stable_picker_state "$target_remote" "$target_xml" "$target_png" 30; then
+    echo "ERROR: could not capture stable DocumentsUI state for $item"; exit 1
+  fi
   if ! wait_for_ui_text "$target_xml" "$target_remote" "$item" 30; then
     echo "ERROR: Android document provider did not expose $item within 30s"
     cat "$target_xml" || true

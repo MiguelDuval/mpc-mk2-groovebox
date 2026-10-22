@@ -2,14 +2,16 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-22 (live exact-SHA evidence governs)
 
-### 1. Primary PR #23 — Project persistence: explicit expected outcome
+### 1. Primary PR #23 — Project persistence E2E and stable picker evidence
 
 - Build #3062 / run `39793668041` on `0d200c6e21e314ecdca810d727f2048d9eaef48b` passed the cold restart evidence gate and exact v2 reopen of the linked SAF file after direct SAVE: `TRACKS=2`, `PLACEMENTS=2`, and file/domain SHA `0c774ef1fa5e1566fe67f45bba58502dba3e1472a71555a6b10d1696b8185c89`. Save As and Open cancellation each retained this state hash.
 - It failed at the malformed-file leg because the shared `open_project_document` helper waited only for `PROJECT_OPEN_COMPLETE`. The actual malformed-load behavior was correct: the native loader emitted `PROJECT_OPEN_REJECTED` with `Invalid project header` and the active native state SHA unchanged. The helper waited for the wrong success marker and exited before the caller's rejection/atomicity assertions.
 - The current fix adds an explicit expected outcome parameter. Valid project documents wait for `PROJECT_OPEN_COMPLETE` and capture Main; malformed input waits for `PROJECT_OPEN_REJECTED` while leaving Project-route checks and unchanged-state verification to the existing caller. This fixes harness control flow without changing or weakening assertions.
 - The script preflight explicitly guards the malformed-file outcome marker, so a future regression is caught before emulator startup.
+- Build #3063 / run `39801798022` passed all 52 workflow steps on exact SHA `bc61127f0e13eff18ee8460d3da95180878a07e5`; the final smoke output explicitly reports exact v2 state, direct SAVE overwrite, process restart, Save As/Open cancellation, malformed-load preservation and placement-free v1 canonical-state equality passed.
+- Build #3064 / run `39802124327` on descendant SHA `6adb04f28e62e23d6d8c27da66cc187e1c905997` failed before Project acceptance during DocumentsUI picker evidence capture. The 8-second stable-state window allowed only one dump attempt; transfer exceeded the remaining 2 seconds. The new source change allocates 30 seconds to this three-matching-tree + screenshot protocol without changing any expected result or accepting stale data.
 - Build #3060 / run `39792199195` failed earlier in DocumentsUI stable-state capture. Build #3061 was cancelled after new commits queued; Build #3062 is the relevant evidence for the Project flow and does not constitute a green acceptance run.
-- Next exact-SHA run must verify the complete malformed-load atomicity block and the valid placement-free v1 Open/canonical digest before this phase is accepted.
+- The Project lifecycle passed in Build #3063 on exact SHA `bc61127f0e13eff18ee8460d3da95180878a07e5`. Do not repeat its whole diagnosis; validate the new timeout-only source change with a full current-head run before proceeding.
 
 
 ### 2. Earlier hierarchy failures now addressed
