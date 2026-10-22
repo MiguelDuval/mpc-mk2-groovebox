@@ -1,24 +1,23 @@
 # Session State — MPC MkII Groovebox
 
-**Checkpoint date:** 2026-10-21  
+**Checkpoint date:** 2026-10-22  
 **Purpose:** current handoff checkpoint; reconcile status against exact-SHA GitHub evidence before each change.
 
 ## Latest source and verification state
 
-### Live checkpoint — Build #3051
+### Live checkpoint — Project Menu View-tree freshness synchronization
 
-- PR #23 HEAD `a593becb5f0259275b5b20b157edae3815f2729b`; Android Build #3051 / run `39677805700` failed at emulator smoke step 52. Builds #3046–#3051 failed at the same later Project Menu dump stage. PR remains open; `main` remains unchanged; the workflow preserves `cancel-in-progress: false`.
-- **Browser/FAVORITE 1 component acceptance is confirmed on exact SHA `c721e93fde80e9bb0e45b94ce375ec17e20b2692` in Build #3048:** matched provider-root PNG/XML, real breadcrumb/folder touches, separate saved URI preference keys, Browser WAV result and force-stop/relaunch restoration. SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 also passed with native getters on #3046–#3048.
-- Current blocker: in project-persistence mode the real MPC Menu renders and its screenshot is captured, but the compressed UiAutomator dump times out after 8 seconds. Missing/stale XML was not accepted. The logs show a completed Menu transition, but current process diagnostics do not prove the exact underlying Android framework cause.
-- Current implementation captures the **actual Android View tree**, on pre-draw in debug-only project-persistence mode, as explicitly provenance-labelled XML (`source=android-view-tree`, `page=MENU`) containing real bounds, text, content descriptions, visibility and clickability. Smoke validates ten visible enabled menu tiles, then touches the real `MPC Menu PROJECT` target by captured bounds and validates authoritative native Project summary. Missing/malformed XML still fails; the XML is not mislabelled as UiAutomator output.
-- PR #29 latest head `a7f59db3a582d01a67e70d2299232eb25e35dc05`; Build #3049 / run `39672208687` on earlier SHA `816e11a70a1368d63d0137c72aa4154774c5de7b` passed SAMP-010 zoom-in/out/reset and native Pad audition, then failed at the shared Project Menu dump. Latest head still needs exact-SHA verification against a compatible base; do not integrate it yet.
-- PR #28 latest head `d0eef888e33ef98d5a64ce05a2409672f6b6e763`; Build #3050 / run `39672408316` passed native Project persistence tests and Favorite assignment/restoration, then failed at the Menu dump. Full Android Project SAVE/SAVE AS/OPEN remains **PENDING**.
-- Physical MPC Studio MkII validation remains **PENDING** and is not implied by emulator results.
+- PR #23 is open on `feature/mpc-one-ui-fidelity`; reviewed pre-fix HEAD `cb7edd5763b9bf97960d4b9e4c5ba4c1b98bfc7b`. Android Build #3052 / run `39681503924` failed at step 52, “Run Android emulator smoke test”. The debug APK and visual evidence artifacts were uploaded as IDs `12385195107` and `12385202751`, tied to that exact SHA.
+- Builds #3053 / run `39682859251` on PR #29 head `240cf5bf91a5a66b59c4577003c8b2d785641fbf` and #3054 / run `39683044677` on PR #28 head `85026b48eb70587d3d097762e5bb4b5ece590bc1` also failed at shared Android smoke step 52. The dedicated SAMP-010 zoom/audition component passed in #3053; native Project state and versioned persistence/Arrangement Pattern placement steps 38–39 passed in #3054. Neither result proves a green full workflow.
+- **Confirmed synchronization defect in the pre-fix smoke:** `project_menu_hierarchy_marker_before` was sampled only after the actual Menu tap, after the render/click gate, and after `sleep 1`. The registered Android `OnPreDrawListener` can publish `MPC_MENU_VIEW_HIERARCHY_READY` during that interval. The following wait then incorrectly required the count to exceed a baseline that already included the fresh event. Build #3052’s failure message and its immediately following diagnostic logcat are consistent with this exact missed-event ordering: the timeout is printed, then the diagnostic output contains the READY marker.
+- This checkpoint’s code change takes a single logcat baseline for render-complete, click-end and View-tree READY **before** the real Toolbar Menu touch. It requires render-complete and click-end counts to increase from that baseline, then waits for READY against the original pre-touch count. Screenshot capture follows successful READY. XML provenance/page and the positive generated-at-uptime timestamp are validated along with all ten visible, enabled, clickable tile targets, measured bounds and the real PROJECT tap. Native Project-state verification remains a separate required gate. No UI assertion or timeout was weakened or extended.
+- Browser USER FOLDER / FAVORITE 1 restore and SAMP-008/009 remain confirmed component results on their previously stated exact SHAs; do not revisit them without fresh evidence of regression. PR #29 and #28 remain isolated drafts.
+- Full Android Project SAVE / SAVE AS / OPEN remains **PENDING**. The existing workflow must still prove real SAF Save As, post-save musical mutation, Open restoration against canonical MIDI + Arrangement placements, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-load atomicity and placement-free v1 compatibility. Physical MPC Studio MkII validation remains **PENDING**.
 
-## Current execution queue — 2026-10-21
+## Current execution queue — 2026-10-22
 
-1. Verify the debug-only real View-tree XML and measured PROJECT tile tap on the new exact-SHA Android build. Continue real SAF Project lifecycle if it passes, preserving canonical state, overwrite, restart/Open, cancellation, malformed-load and v1 checks.
-2. While primary CI executes, keep PR #29 and PR #28 isolated; neither is integrated until primary Browser/Project acceptance is green.
+1. Verify that the synchronization fix is on the live PR #23 HEAD and inspect the newly triggered Actions run on that exact SHA. Confirm the Menu READY wait, valid View-tree XML, ten target assertions, real measured PROJECT touch and authoritative native Project summary.
+2. If the full smoke proceeds beyond Menu, continue the existing Project lifecycle on that same run. Diagnose any later failure from its exact step/log/evidence; do not reopen completed Browser or Sample Edit slices without proof of regression.
 
 ## Completed in this session
 

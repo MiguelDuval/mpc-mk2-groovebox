@@ -1,22 +1,24 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-21
+## CURRENT EXECUTION QUEUE — 2026-10-22 (live GitHub state takes precedence)
 
-### 1. Primary PR #23 — Project Menu hierarchy
+### 1. Primary PR #23 — Project Menu View-tree freshness
 
-- Build #3051 / run `39677805700` on `a593becb5f0259275b5b20b157edae3815f2729b` failed at emulator smoke step 52. Builds #3046–#3051 stop at the Project Menu UiAutomator dump after its screenshot succeeds.
-- Browser/FAVORITE 1 passed as a component on exact SHA `c721e93fde80e9bb0e45b94ce375ec17e20b2692` / Build #3048, with matched root PNG/XML, real folder touch, saved URI and preferences, Browser WAV and force-stop/relaunch restoration. SAMP-008/009 passed via native getters.
-- Narrow fix: capture the real Android View tree at the Menu pre-draw in debug-only project-persistence mode, serialize it to explicitly provenance-labelled XML, validate ten visible enabled tile descriptions, capture the Menu PNG, then real-touch the `MPC Menu PROJECT` node with measured bounds from the current XML. Other screen-state dumps keep the UiAutomator path; absent/invalid XML is not accepted.
-- After this gate, finish real Project Save As → mutate → Open, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-file preservation and placement-free v1 canonical-state equality.
+- Reviewed pre-fix HEAD `cb7edd5763b9bf97960d4b9e4c5ba4c1b98bfc7b`; Build #3052 / run `39681503924` failed at Android emulator smoke step 52. The step logs show `MPC_MENU_VIEW_HIERARCHY_READY` in diagnostic output immediately after the wait reports a timeout.
+- Source review localized a baseline race: the old script recorded the hierarchy READY count after the actual Toolbar Menu touch and after a one-second delay. The pre-draw callback could publish the new tree before the count was captured, causing the wait to demand a second READY event instead of accepting the already-published current tree.
+- The fix takes a consistent pre-touch baseline of render-complete, click-end and hierarchy READY; it requires render/click events newer than that baseline and waits on the same pre-touch READY count before capturing the Menu screenshot. XML remains actual `android-view-tree`, `page=MENU`, with a positive generated-at-uptime timestamp and ten unique visible/enabled/clickable tile targets. The measured real touch on `MPC Menu PROJECT` and native Project summary remain mandatory.
+- Verify the Actions result on the exact current PR #23 HEAD before treating the menu gate as passed. Debug APK and evidence for failed Build #3052 exist as artifacts `12385195107` and `12385202751`, associated with the pre-fix SHA.
 
 ### 2. Isolated PRs #29 / #28
 
-- PR #29 latest head `a7f59db3a582d01a67e70d2299232eb25e35dc05`; SAMP-010 passed on earlier SHA `816e11a70a1368d63d0137c72aa4154774c5de7b`, but its full smoke failed at the shared Project Menu gate. Do not integrate before exact-SHA verification and green primary gates.
-- PR #28 latest head `d0eef888e33ef98d5a64ce05a2409672f6b6e763`; native persistence tests and Favorite checks passed, then its overall run failed at the same Menu dump.
+- PR #29 exact head `240cf5bf91a5a66b59c4577003c8b2d785641fbf`, Build #3053 / run `39682859251`: SAMP-010 zoom-in/out/RESET and native audition component checks passed, but full emulator smoke failed at the shared Project Menu gate. Keep isolated.
+- PR #28 exact head `85026b48eb70587d3d097762e5bb4b5ece590bc1`, Build #3054 / run `39683044677`: native Project-state and versioned save/load + Arrangement Pattern placement tests (steps 38–39) passed, but full emulator smoke failed at the shared Menu gate. Keep isolated.
+- Do not start another Project UI scenario until the current Menu gate actually leads to the Project screen. Then finish real Save As, mutation/Open, direct SAVE overwrite, process restart/Open, cancellation invariance, malformed-file preservation and placement-free v1 canonical-state equality.
 
 ### 3. Non-negotiables
 
-- Preserve `cancel-in-progress: false`; do not modify `main`, rewrite history, weaken acceptance assertions, or imply physical MPC Studio MkII testing from emulator runs.
+- Keep `cancel-in-progress: false`; do not touch `main`, rewrite history, weaken assertions, or treat emulator output as physical MPC Studio MkII verification.
+- Browser/FAVORITE 1, SAMP-008/009 and SAMP-010 remain confirmed component results only on their exact recorded SHAs. Require exact-SHA full smoke before marking the whole gate green.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 

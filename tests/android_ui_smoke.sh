@@ -10684,6 +10684,25 @@ done
 echo "$project_fixture_line"
 echo "PROJECT_NATIVE_STARTUP_READY • awaiting actual Main shell interaction"
 
+# Take one consistent marker baseline BEFORE the real UI action. The pre-draw
+# listener may publish the hierarchy immediately after showMenuPage(); sampling
+# READY after the tap (or after a delay) can mistake that fresh event for baseline
+# and then incorrectly wait for a second View-tree capture.
+PROJECT_MENU_XML="/tmp/mpc-groovebox-project-menu-view-hierarchy.xml"
+PROJECT_MENU_PNG="/tmp/mpc-groovebox-project-menu.png"
+project_menu_logs_before="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+project_menu_render_marker_before="$(grep -F -c -- "MPC_MENU_RENDER_COMPLETE" <<<"$project_menu_logs_before" || true)"
+project_menu_click_marker_before="$(grep -F -c -- "MPC_MENU_CLICK_END currentPage=MENU" <<<"$project_menu_logs_before" || true)"
+project_menu_hierarchy_marker_before="$(grep -F -c -- "MPC_MENU_VIEW_HIERARCHY_READY" <<<"$project_menu_logs_before" || true)"
+for marker_count in \
+    "$project_menu_render_marker_before" \
+    "$project_menu_click_marker_before" \
+    "$project_menu_hierarchy_marker_before"; do
+  if ! [[ "$marker_count" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: could not establish numeric pre-touch Project Menu marker baseline"; exit 1
+  fi
+done
+
 # The earlier Main hierarchy is from this same emulator run and uses the same
 # canonical persistent Toolbar geometry. Re-use that captured enabled target
 # instead of starting another hierarchy dump while cold native startup settles.
@@ -10694,32 +10713,36 @@ fi
 project_menu_rendered=0
 for ((attempt=1; attempt<=60; attempt++)); do
   project_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
-  if grep -Fq -- "MPC_MENU_RENDER_COMPLETE" <<<"$project_logs" \
-      && grep -Fq -- "MPC_MENU_CLICK_END currentPage=MENU" <<<"$project_logs"; then
+  project_menu_render_count="$(grep -F -c -- "MPC_MENU_RENDER_COMPLETE" <<<"$project_logs" || true)"
+  project_menu_click_count="$(grep -F -c -- "MPC_MENU_CLICK_END currentPage=MENU" <<<"$project_logs" || true)"
+  if [[ "$project_menu_render_count" =~ ^[0-9]+$ ]] \
+      && [[ "$project_menu_click_count" =~ ^[0-9]+$ ]] \
+      && (( project_menu_render_count > project_menu_render_marker_before )) \
+      && (( project_menu_click_count > project_menu_click_marker_before )); then
     project_menu_rendered=1
     break
   fi
   sleep 1
 done
 if [ "$project_menu_rendered" -ne 1 ]; then
-  echo "ERROR: real Toolbar Menu tap did not complete its Activity render"
+  echo "ERROR: real Toolbar Menu tap did not publish fresh render and click-end markers"
   adb_bounded 10 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
     | grep -E 'MPC_MENU_|MPC_SHELL_STATE_|STARTUP_COMPLETE|AUDIO_START_RESULT=' \
     | tail -n 100 || true
   exit 1
 fi
-sleep 1
-PROJECT_MENU_XML="/tmp/mpc-groovebox-project-menu-view-hierarchy.xml"
-PROJECT_MENU_PNG="/tmp/mpc-groovebox-project-menu.png"
-project_menu_hierarchy_marker_before="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
-if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
-  echo "ERROR: could not capture rendered MPC Menu screenshot"; exit 1
-fi
+
+# READY is tied to the same pre-touch baseline. If pre-draw already ran while
+# the render gate was polling, wait_for_new_project_marker accepts that fresh
+# event immediately; it never requires a redundant second capture.
 if ! wait_for_new_project_marker "MPC_MENU_VIEW_HIERARCHY_READY" "$project_menu_hierarchy_marker_before" 10; then
   echo "ERROR: rendered MPC Menu did not publish its fresh in-app View hierarchy"; exit 1
 fi
+if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
+  echo "ERROR: could not capture rendered MPC Menu screenshot"; exit 1
+fi
 # UiAutomator's accessibility service timed out repeatedly at this exact
-# checkpoint (steps 52 on Builds #3048–#3051), even though Menu had rendered.
+# checkpoint on Builds #3048–#3054, even though Menu had rendered.
 # Pull the real Android View-tree XML produced on pre-draw. It is explicitly
 # provenance-labelled; actual touches and native Project state remain separate
 # acceptance gates, and missing/invalid XML still fails the smoke.
@@ -10732,6 +10755,12 @@ import xml.etree.ElementTree as ET
 root = ET.parse(sys.argv[1]).getroot()
 if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != "MENU":
     raise SystemExit(f"Menu XML provenance/page mismatch: {root.tag!r} {root.attrib!r}")
+try:
+    generated_at_uptime_ms = int(root.attrib.get("generated-at-uptime-ms", ""))
+except (TypeError, ValueError):
+    raise SystemExit("Menu View tree has no valid generated-at-uptime-ms timestamp")
+if generated_at_uptime_ms <= 0:
+    raise SystemExit(f"Menu View tree timestamp is not positive: {generated_at_uptime_ms}")
 nodes = list(root.iter("node"))
 required = (
     "MPC Menu MAIN", "MPC Menu TRACK VIEW", "MPC Menu BROWSER", "MPC Menu GRID",
