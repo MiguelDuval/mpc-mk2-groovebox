@@ -7102,14 +7102,18 @@ PY
 wait_for_ui_text() {
   local hierarchy_path="$1" remote_path="$2" expected_fragment="$3"
   local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining dump_budget
-  local dump_mode="${5:-standard}"
+  local dump_mode="${5:-standard}" dump_timeout_cap="${6:-6}"
+  if [[ ! "$dump_timeout_cap" =~ ^[1-9][0-9]*$ ]] || (( dump_timeout_cap > 20 )); then
+    echo "ERROR: invalid per-dump timeout cap for UI text wait: $dump_timeout_cap"
+    return 2
+  fi
   local scratch_path="${hierarchy_path%.xml}-wait-current.xml"
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
     # A slow Android 16 DocumentsUI dump must not consume the whole wait budget
     # in one attempt. Cap each hierarchy attempt so transient stalls can retry.
     dump_budget="$remaining"
-    (( dump_budget > 6 )) && dump_budget=6
+    (( dump_budget > dump_timeout_cap )) && dump_budget="$dump_timeout_cap"
     # Do not erase the last valid hierarchy when a later dump times out.
     if ! dump_device_ui "$remote_path" "$scratch_path" "$dump_budget" "$dump_mode"; then
       remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
@@ -9403,7 +9407,7 @@ if ! tap_ui_description "$PICKER_UI_XML" "Show roots"; then
     exit 1
   fi
 fi
-if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "Downloads" 25; then
+if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "Downloads" 25 standard 9; then
   # Preserve the actual post-tap screen. The last valid XML can still be the
   # pre-tap Recent view when UiAutomator stalls; keep that hierarchy for context,
   # but do not mistake it for fresh evidence about whether the drawer opened.
