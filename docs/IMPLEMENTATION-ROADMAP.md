@@ -12,7 +12,8 @@
 - Build #3079 / [run 39861808911](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39861808911), SHA `8edcb9dd87d7d5505a34daf941057b6e0a2bf30e`: attempt 1 failed because Android SDKManager received an NDK archive that was not a ZIP, before compilation/smoke. Attempt 2 was in progress at Assemble debug APK (48 successful steps, no reported step failure at the last poll). Its Shortcut UI acceptance must not be counted as passed.
 - The Shortcut Rail test changes drive actual Spinner assignment, order-button interaction, process death/relaunch, measured Main View order/bounds/enabled/clickable assertions, factory reset and second restart.
 - Source analysis found a Save As callback race where a late asynchronous completion from Project A could link its URI to Project B after New/Open. The follow-up uses a Project-session generation guard and compares captured serialized SHA with the current SHA to report newer edits truthfully. A pure-Java policy test is included in the focused Android unit gate.
-- The commit containing these changes and its own full exact-SHA workflow are still pending; the older #3079 attempt does not prove them.
+- Source review found and corrected a test-timing race: the first GRID-selection flow recorded the SHORTCUTS-tree baseline after waiting for the preference-write marker, but the callback schedules its app View-tree pre-draw capture before that log-poll completes. The marker is now captured after the real GRID popup is visible and before tapping GRID. The prior Build #3079 continues against its old SHA/script; it cannot validate this correction.
+- Corrected Shortcut timing and async Save-session guarding await a full exact-SHA workflow on the latest commit.
 
 ### Next queue
 1. Follow the current commit's full Android run through JVM/native checks, APK, smoke preflight, complete emulator acceptance and visual-evidence upload.

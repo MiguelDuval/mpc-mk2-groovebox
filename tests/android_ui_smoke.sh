@@ -11602,13 +11602,16 @@ fi
 if ! wait_for_ui_text "$PROJECT_SHORTCUTS_SPINNER_XML" "$DEVICE_DUMP" "GRID" 25; then
   echo "ERROR: Shortcut slot-1 selector did not expose the GRID option"; exit 1
 fi
+# Snapshot after the real popup is visible but before selection: selecting GRID
+# schedules the app-owned View-tree capture immediately, so waiting for the
+# preference-write marker before recording this baseline would miss that tree.
+PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
 if ! tap_ui_text "$PROJECT_SHORTCUTS_SPINNER_XML" "GRID"; then
   echo "ERROR: could not select GRID from the real Shortcut slot-1 popup"; exit 1
 fi
 if ! wait_for_new_project_marker "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=GRID,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" "$shortcut_grid_write_before" 20; then
   echo "ERROR: choosing GRID did not synchronously persist the exact five-slot mode order"; exit 1
 fi
-PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
 if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
   echo "ERROR: slot-1 selection did not publish updated live editor state"; exit 1
 fi
