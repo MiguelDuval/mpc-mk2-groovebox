@@ -736,6 +736,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 refreshSequenceControls();
                                 refreshMainTrackQuickSample();
                             }
+                            if ("MAIN".equals(currentPage)) {
+                                // Main was built while native state was still loading.
+                                // Re-hydrate Track/Program/Sequence fields from the live domain
+                                // before publishing the ready-state Main hierarchy.
+                                refreshMainModeFields();
+                            }
                             updateMpcShellState();
                             Log.i(TAG, "STARTUP_COMPLETE");
                             // The initial Main pre-draw can happen while native startup is
@@ -12665,6 +12671,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Program composition");
             return;
         }
+        final View mainProgramField = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode selected program");
+        final String nativeProgramStatus = nativeSequenceGetTrackProgram(
+                Math.max(0, nativeSequenceGetSelectedTrack()));
+        final String expectedMainProgram = normalizeProgramLabel(nativeProgramStatus);
+        final String actualMainProgram = mainProgramField instanceof TextView
+                && ((TextView) mainProgramField).getText() != null
+                ? ((TextView) mainProgramField).getText().toString().trim() : "";
+        if (!startupComplete || !(mainProgramField instanceof TextView)
+                || !mainProgramField.isShown()
+                || expectedMainProgram == null
+                || !expectedMainProgram.equals(actualMainProgram)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Program field differs from selected native Track Program"
+                    + " | expected=" + expectedMainProgram
+                    + " | actual=" + actualMainProgram
+                    + " | nativeStatus=" + nativeProgramStatus
+                    + " | field=" + describeAuditView(mainProgramField));
+            return;
+        }
+        Log.i(TAG, "MAIN_PROGRAM_CONTEXT_VERIFIED selectedTrack="
+                + Math.max(0, nativeSequenceGetSelectedTrack())
+                + " program=" + actualMainProgram);
 
         View xlMixerStrip = findViewWithContentDescription(
                 getWindow().getDecorView(),
