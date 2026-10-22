@@ -12695,23 +12695,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Log.i(TAG, "MAIN_TRACK_CONTEXT_VERIFIED selectedTrack="
                 + nativeMainTrackIndex + " track=" + actualMainTrack);
 
-        final View mainProgramField = findViewWithContentDescription(
+        // Local audit lookup for the visible Track-owned Program context row;
+        // this is not a stored field pointer or a duplicate Track identity field.
+        final View mainProgramContextView = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Mode selected program");
         final String nativeProgramStatus = nativeSequenceGetTrackProgram(
                 Math.max(0, nativeSequenceGetSelectedTrack()));
         final String expectedMainProgram = normalizeProgramLabel(nativeProgramStatus);
-        final String actualMainProgram = mainProgramField instanceof TextView
-                && ((TextView) mainProgramField).getText() != null
-                ? ((TextView) mainProgramField).getText().toString().trim() : "";
-        if (!startupComplete || !(mainProgramField instanceof TextView)
-                || !mainProgramField.isShown()
+        final String actualMainProgram = mainProgramContextView instanceof TextView
+                && ((TextView) mainProgramContextView).getText() != null
+                ? ((TextView) mainProgramContextView).getText().toString().trim() : "";
+        if (!startupComplete || !(mainProgramContextView instanceof TextView)
+                || !mainProgramContextView.isShown()
                 || expectedMainProgram == null
                 || !expectedMainProgram.equals(actualMainProgram)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Program field differs from selected native Track Program"
                     + " | expected=" + expectedMainProgram
                     + " | actual=" + actualMainProgram
                     + " | nativeStatus=" + nativeProgramStatus
-                    + " | field=" + describeAuditView(mainProgramField));
+                    + " | field=" + describeAuditView(mainProgramContextView));
             return;
         }
         Log.i(TAG, "MAIN_PROGRAM_CONTEXT_VERIFIED selectedTrack="

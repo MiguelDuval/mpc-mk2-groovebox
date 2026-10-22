@@ -2,36 +2,20 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-22 (live exact-SHA evidence governs)
 
-### 1. Primary PR #23 — Project persistence E2E and stable picker evidence
+### 1. Primary PR #23 — Main context audit preflight and Project regression gate
 
-- Build #3062 / run `39793668041` on `0d200c6e21e314ecdca810d727f2048d9eaef48b` passed the cold restart evidence gate and exact v2 reopen of the linked SAF file after direct SAVE: `TRACKS=2`, `PLACEMENTS=2`, and file/domain SHA `0c774ef1fa5e1566fe67f45bba58502dba3e1472a71555a6b10d1696b8185c89`. Save As and Open cancellation each retained this state hash.
-- It failed at the malformed-file leg because the shared `open_project_document` helper waited only for `PROJECT_OPEN_COMPLETE`. The actual malformed-load behavior was correct: the native loader emitted `PROJECT_OPEN_REJECTED` with `Invalid project header` and the active native state SHA unchanged. The helper waited for the wrong success marker and exited before the caller's rejection/atomicity assertions.
-- The current fix adds an explicit expected outcome parameter. Valid project documents wait for `PROJECT_OPEN_COMPLETE` and capture Main; malformed input waits for `PROJECT_OPEN_REJECTED` while leaving Project-route checks and unchanged-state verification to the existing caller. This fixes harness control flow without changing or weakening assertions.
-- The script preflight explicitly guards the malformed-file outcome marker, so a future regression is caught before emulator startup.
-- Build #3063 / run `39801798022` passed all 52 workflow steps on exact SHA `bc61127f0e13eff18ee8460d3da95180878a07e5`; the final smoke output explicitly reports exact v2 state, direct SAVE overwrite, process restart, Save As/Open cancellation, malformed-load preservation and placement-free v1 canonical-state equality passed.
-- Build #3064 / run `39802124327` on descendant SHA `6adb04f28e62e23d6d8c27da66cc187e1c905997` failed before Project acceptance during DocumentsUI picker evidence capture. The 8-second stable-state window allowed only one dump attempt; transfer exceeded the remaining 2 seconds. The new source change allocates 30 seconds to this three-matching-tree + screenshot protocol without changing any expected result or accepting stale data.
-- The Build #3063 visual evidence exposed two stale Main identity fields after native startup: central Track remained `Track 01` while the XL strip identified `DRUMS`, and central Program remained `NONE` while the XL strip showed `Drum Program 1`. Startup finalization now calls `refreshMainModeFields()` on Main; UI audit assertions independently require central Track identity to match `nativeSequenceTrackStatus(selectedTrack)` and central Program to match `nativeSequenceGetTrackProgram(selectedTrack)`. Verification is pending on the exact current HEAD.
-- The inexpensive smoke preflight now checks that both `MAIN_TRACK_CONTEXT_VERIFIED` and `MAIN_PROGRAM_CONTEXT_VERIFIED` are still present in source, guarding the runtime assertions against accidental deletion. This contract check will be exercised by the next exact-SHA run.
-- Build #3060 / run `39792199195` failed earlier in DocumentsUI stable-state capture. Build #3061 was cancelled after new commits queued; Build #3062 is the relevant evidence for the Project flow and does not constitute a green acceptance run.
-- The Project lifecycle passed in Build #3063 on exact SHA `bc61127f0e13eff18ee8460d3da95180878a07e5`. Do not repeat its whole diagnosis; validate the new timeout-only source change with a full current-head run before proceeding.
+- Build #3068 / run `39813701284` failed at runtime-smoke preflight before emulator acceptance. It reported `obsolete Main Program field presentation pointer remains`.
+- Root cause is a false positive in a textual source contract: `mainProgramField` was a local temporary reference in the runtime audit to the valid Track-owned Program context row below Main's Track identity band, not a stored presentation pointer. The source fix renames only this local reference to `mainProgramContextView`; the native equality assertion stays enabled, and the preflight's no-stored-`mainProgramField` guard remains unchanged.
+- Verify Main's central Track label against `nativeSequenceTrackStatus(selectedTrack)` and its Track-owned Program row against `nativeSequenceGetTrackProgram(selectedTrack)` on the current exact SHA. Both assertions were added because Build #3063's visual evidence showed pre-startup placeholders; they are not to be weakened or removed.
+- Full Project SAVE / SAVE AS / OPEN acceptance passed on exact SHA `bc61127f0e13eff18ee8460d3da95180878a07e5` (Build #3063), including direct SAVE overwrite, cold restart/Open exact state, cancellation invariance, malformed-load atomicity and placement-free v1 compatibility. This is an established milestone for that SHA, not an automatic green claim for the current descendant.
+- Build #3065 was green on `073afb4d52e699b5b36abeadfb1130bdd4dd396a`; the current descendant with extra Main UI audit assertions still requires full exact-HEAD acceptance.
 
+### 2. Regression continuation
 
-### 2. Earlier hierarchy failures now addressed
+1. Confirm the source-contract preflight passes after the local-variable rename with no assertion removed.
+2. Complete the full emulator workflow and inspect exact-SHA logs/evidence for Main Track/Program identity and Project lifecycle.
+3. Keep PRs #28/#29 isolated until primary full exact-SHA acceptance is green; physical MPC Studio MkII validation remains separate and pending.
 
-- Build #3055 exposed the Menu pre-draw freshness race and an app-owned Project-route UiAutomator timeout; the code now baselines before the actual Toolbar Menu touch and serializes app-owned View trees directly.
-- Build #3056 on `0bf0a3489cbc023419fc3410e1bb60f4e9ef8651` exposed the mismatch between actual `currentPage=SEQ` and the smoke script's former `SEQUENCE` marker. Commit `e9298e8` aligned the marker and moved Save As cancellation capture to the app-owned hierarchy path.
-- All previous sample, Arrangement, Browser component results remain tied to their recorded exact SHAs; none substitutes for the full current-head acceptance.
-
-### 3. Isolated PRs #29 / #28
-
-- PR #29 exact head `240cf5bf91a5a66b59c4577003c8b2d785641fbf`, Build #3053 / run `39682859251`: SAMP-010 component checks passed, but full smoke failed at the prior Menu gate.
-- PR #28 exact head `85026b48eb70587d3d097762e5bb4b5ece590bc1`, Build #3054 / run `39683044677`: native Project state and versioned persistence/Arrangement placement tests passed, but full smoke failed at the prior Menu gate.
-- Keep both draft PRs isolated until primary full exact-SHA Android acceptance is green.
-
-### 4. Non-negotiables
-
-- Preserve `cancel-in-progress: false`; do not touch `main`, rewrite history or weaken assertions. Emulator runs are not physical MPC Studio MkII validation.
-- Browser/FAVORITE 1 and SAMP-008/009/010 remain component results on their exact recorded SHAs only.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 
