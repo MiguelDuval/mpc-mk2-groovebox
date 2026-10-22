@@ -10,7 +10,8 @@
 - Build #3073 passed the complete Android workflow, including debug APK, emulator smoke and visual evidence. Project persistence accepted exact v2 state, direct SAVE overwrite, process restart/reopen, Save As/Open cancellation invariance, malformed-load preservation and compatible placement-free v1 state. Main/Menu/Project/SEQ hierarchy checks also passed.
 - Main fixes verified at that SHA: Program Select is disabled/truthfully captioned for unsupported Track Types; Main and Sequence Select display the selected Sequence's actual stored name, with stable ID only as empty-name fallback.
 - Build #3074 / run [39829301517](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39829301517) failed on `dc4ab44dce08d0e1caf056f7a7f829a72f46cda5` because the shortcut-mode validator checked the 4×4 Menu tile catalog and rejected factory-promoted SOUNDS/XY shortcuts. The fix uses `MpcModeRegistry.shortcutEntries()`; subsequent focused JVM tests passed.
-- Build #3075 / run [39830122978](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39830122978) failed on exact SHA `e7ab67ded8926113ebc62d0d4aba0030b4b3560e` at the first Android smoke source preflight. The implementation uses a line-wrapped `MpcNavigationController.encodeShortcuts(` call, while the preflight incorrectly expected the whole invocation on one line. The next change splits that source matcher into stable fragments. Focused JVM/native tests and APK assembly passed in #3075, but the full runtime emulator acceptance did **not** run to completion; Build #3075 is not green.
+- Build #3075 / run [39830122978](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39830122978) failed on exact SHA `e7ab67ded8926113ebc62d0d4aba0030b4b3560e` at the first Android smoke source preflight because the shortcut encoder call is line-wrapped; the checker was corrected in the next slice.
+- Build #3076 / run [39832727885](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39832727885) failed on exact SHA `a5b81320fa5cb43fb0d667a7811a2b80fc635ae1` late in Android smoke. Focused JVM/native checks, APK assembly/upload and smoke syntax/evidence-contract validation passed, but the emulator stopped when a one-shot UiAutomator dump timed out while opening Menu for the new acceptance block (bounded `adb shell uiautomator dump`). This occurred before New Project's Cancel/reset/unlinked assertions; it did not establish a product defect. The follow-up uses already-captured measured Android View bounds for in-app taps and reserves retried UiAutomator dumps for the native AlertDialog.
 
 ## Current engineering slice — persistent Shortcut Rail + PROJ-001 New Project
 
@@ -22,8 +23,8 @@
 
 ## Next actions
 
-1. Read the live PR HEAD and its own Android workflow. Require focused JVM/native tests, APK assembly, smoke syntax/evidence contract, full emulator runtime through the new Cancel/reset/unlinked-document assertions, and visual evidence upload to all succeed on that exact SHA.
-2. Fix any new exact-SHA failure at its actual root cause. Do not weaken the Project invariants or substitute static source matching for UI acceptance.
+1. Check the workflow after the UiAutomator reduction. Require focused JVM/native checks, APK assembly, smoke syntax, Cancel SHA invariance, DISCARD & NEW reset, unlinked-document assertions and evidence upload to pass on that exact SHA.
+2. If UiAutomator remains flaky with retry limited to the native dialog, diagnose the emulator/tooling failure separately; do not report it as a product pass or weaken Project state invariants.
 3. Once the current slice is green, add a real user-touch → force-stop → relaunch Shortcut Rail preference acceptance. Then take the next catalogued functional gap, **PROJ-002/003 provider write-failure + two-document isolation**, only after reviewing current code/evidence.
 4. PRs #28 and #29 remain isolated. Physical Akai MPC Studio MkII acceptance is still pending; emulator results do not prove hardware input behavior.
 

@@ -11381,9 +11381,10 @@ fi
 if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_V1_XML"; then echo "ERROR: v1-loaded Main View tree missing"; exit 1; fi
 echo "Extended Project UI acceptance passed: exact v2 state, direct SAVE overwrite, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."
 
-# New Project is a destructive model replacement and must stay disabled until
-# this real UI path proves cancellation invariance, native reset, and URI unlink.
-PROJECT_NEW_MENU_XML="/tmp/mpc-groovebox-project-new-menu-uiautomator.xml"
+# The app-view tree supplies measured bounds for in-app controls; reserve
+# Android UiAutomator for the native AlertDialog itself. This avoids redundant
+# global hierarchy dumps after the long Project persistence smoke has run.
+PROJECT_NEW_MENU_APP_XML="/tmp/mpc-groovebox-project-new-menu-app-view-hierarchy.xml"
 PROJECT_NEW_DIALOG_XML="/tmp/mpc-groovebox-project-new-dialog-uiautomator.xml"
 PROJECT_NEW_MAIN_XML="/tmp/mpc-groovebox-project-new-main-view-hierarchy.xml"
 PROJECT_NEW_MAIN_PNG="/tmp/mpc-groovebox-project-new-ready.png"
@@ -11391,17 +11392,18 @@ PROJECT_NEW_PROJECT_XML="/tmp/mpc-groovebox-project-new-project-view-hierarchy.x
 PROJECT_NEW_PROJECT_PNG="/tmp/mpc-groovebox-project-new-unlinked.png"
 
 new_cancel_before="$(project_marker_count "PROJECT_NEW_CANCELLED" 5)"
-if ! tap_ui_description "$PROJECT_EXT_V1_XML" "MPC Toolbar Menu"; then
-  echo "ERROR: could not open Menu for New Project cancellation acceptance"; exit 1
+PROJECT_CURRENT_APP_XML="$PROJECT_EXT_V1_XML"
+if ! tap_project_toolbar_menu; then
+  echo "ERROR: could not open Menu from the measured v1-loaded Android View tree"; exit 1
 fi
-if ! wait_for_ui_description "$PROJECT_NEW_MENU_XML" "$DEVICE_DUMP" "MPC Menu New Project" 15; then
-  echo "ERROR: real New Project Function Bar control is missing or disabled"; exit 1
+if ! capture_project_persistence_view_tree "MENU" "$PROJECT_NEW_MENU_APP_XML"; then
+  echo "ERROR: real Menu View tree unavailable for New Project acceptance"; exit 1
 fi
-if ! tap_ui_description "$PROJECT_NEW_MENU_XML" "MPC Menu New Project"; then
-  echo "ERROR: could not open New Project confirmation"; exit 1
+if ! tap_visible_description_early "$PROJECT_NEW_MENU_APP_XML" "MPC Menu New Project"; then
+  echo "ERROR: real New Project Function Bar target is missing, disabled, or has invalid bounds"; exit 1
 fi
-if ! wait_for_ui_text "$PROJECT_NEW_DIALOG_XML" "$DEVICE_DUMP" "CANCEL" 10; then
-  echo "ERROR: New Project confirmation does not expose Cancel"; exit 1
+if ! wait_for_ui_text "$PROJECT_NEW_DIALOG_XML" "$DEVICE_DUMP" "CANCEL" 30; then
+  echo "ERROR: New Project confirmation does not expose Cancel after retried UiAutomator dumps"; exit 1
 fi
 if ! tap_ui_text "$PROJECT_NEW_DIALOG_XML" "CANCEL"; then
   echo "ERROR: could not cancel New Project confirmation"; exit 1
@@ -11418,10 +11420,10 @@ if [[ "$new_cancel_sha" != "$legacy_sha_ext" ]] \
 fi
 
 new_complete_before="$(project_marker_count "PROJECT_NEW_COMPLETE" 5)"
-if ! tap_ui_description "$PROJECT_NEW_MENU_XML" "MPC Menu New Project"; then
-  echo "ERROR: could not reopen New Project after cancellation"; exit 1
+if ! tap_visible_description_early "$PROJECT_NEW_MENU_APP_XML" "MPC Menu New Project"; then
+  echo "ERROR: could not reopen New Project from the measured Menu View tree"; exit 1
 fi
-if ! wait_for_ui_text "$PROJECT_NEW_DIALOG_XML" "$DEVICE_DUMP" "DISCARD & NEW" 10; then
+if ! wait_for_ui_text "$PROJECT_NEW_DIALOG_XML" "$DEVICE_DUMP" "DISCARD & NEW" 30; then
   echo "ERROR: New Project confirmation lost the destructive action"; exit 1
 fi
 PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN" 5)"
@@ -11452,19 +11454,19 @@ fi
 
 # Check the new native Project is unlinked, so pressing SAVE cannot silently
 # overwrite the prior document. Use fresh rendered View bounds/accessibility.
-if ! tap_ui_description "$PROJECT_NEW_MAIN_XML" "MPC Toolbar Menu"; then
-  echo "ERROR: could not open Menu after New Project"; exit 1
+PROJECT_CURRENT_APP_XML="$PROJECT_NEW_MAIN_XML"
+if ! tap_project_toolbar_menu; then
+  echo "ERROR: could not open Menu from the measured post-reset Main View tree"; exit 1
 fi
-if ! wait_for_ui_description "$PROJECT_NEW_MENU_XML" "$DEVICE_DUMP" "MPC Menu PROJECT" 12; then
-  echo "ERROR: Project tile unavailable after New Project"; exit 1
-fi
+PROJECT_CURRENT_APP_XML="/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
 PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT" 5)"
-if ! tap_ui_description "$PROJECT_NEW_MENU_XML" "MPC Menu PROJECT"; then
+if ! tap_mpc_menu_tile 3 3; then
   echo "ERROR: could not inspect new Project's unlinked status"; exit 1
 fi
 if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_NEW_PROJECT_XML"; then
   echo "ERROR: new Project View tree unavailable"; exit 1
 fi
+PROJECT_CURRENT_APP_XML="$PROJECT_NEW_PROJECT_XML"
 if ! grep -Fq -- "MPC Project current name Untitled" "$PROJECT_NEW_PROJECT_XML" \
     || ! grep -Fq -- "SEQUENCES=1 TRACKS=1 PATTERNS=1 PLACEMENTS=1 MIDI_NOTES=0" "$PROJECT_NEW_PROJECT_XML" \
     || ! grep -Fq -- "NO FILE LINKED" "$PROJECT_NEW_PROJECT_XML"; then

@@ -7,7 +7,8 @@
 - PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) is open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
 - Full green Build #3073 / run [39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552) passed on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`. It includes Project persistence exact-state/overwrite/restart/cancel/malformed-load/v1 acceptance and MAIN/MENU/PROJECT/SEQ hierarchy checks.
 - Build #3074 / run [39829301517](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39829301517) failed in focused Shortcut JVM tests because `isShortcutMode` consulted `menuEntries()`, which excludes the factory-promoted SOUNDS and XY rail destinations. The fix moved validation to canonical `shortcutEntries()`; focused tests passed in the next run.
-- Build #3075 / run [39830122978](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39830122978) passed focused JVM/native checks and assembled/uploaded the debug APK but failed the Android smoke's first source preflight. The matcher incorrectly expected the complete Shortcut Rail encoder invocation on one line even though the valid Java call was line-wrapped. The current slice fixes this matcher and adds a real Project-New vertical implementation. #3075 is **failed**, not a green emulator acceptance.
+- Build #3075 / run [39830122978](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39830122978) passed focused JVM/native checks and assembled/uploaded the debug APK but failed the Android smoke's first source preflight because the checker incorrectly expected a line-wrapped Shortcut Rail encoder call on one line.
+- Build #3076 / run [39832727885](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39832727885) corrected that matcher and passed focused JVM/native checks, APK assembly/upload, and smoke syntax/evidence validation, but failed late in emulator smoke: a one-shot UiAutomator dump timed out before tapping Menu for the added New Project acceptance block, so its Cancel/reset/unlinked assertions were not reached. The follow-up removes unnecessary global UI dumps for in-app taps and uses a retrying hierarchy wait for the native AlertDialog. Neither #3075 nor #3076 is a green full workflow.
 
 ### Current slice — Shortcut Rail persistence correction + PROJ-001 New Project
 
@@ -19,8 +20,8 @@
 
 ### Next queue
 
-1. Run/check the exact-SHA Android workflow for the current commit. Do not mark it green before final emulator smoke and visual-evidence upload complete successfully.
-2. Fix new failures from their root causes; never weaken exact-state SHA, native reset topology, cancellation invariance or enabled-state/accessibility assertions.
+1. Verify the next exact-SHA workflow after reducing UiAutomator usage. Require full emulator smoke to execute both New Project dialog paths, compare exact canonical SHA on Cancel, verify the default model and unlinked document, then upload evidence.
+2. Fix observed failures at root cause; do not weaken state-SHA equality, native topology, or real bounds/enabled/clickable checks.
 3. After this slice is green, add real Shortcuts UI customize → force-stop → relaunch coverage, then address independent Save As provider errors and two-document isolation.
 4. Keep PR #28 and PR #29 isolated, preserving their bases. Physical MPC Studio MkII remains a separate pending hardware gate.
 
