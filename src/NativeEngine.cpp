@@ -1189,6 +1189,20 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetIndex(
             mpc::MpcCore::instance().projectState().activeSequenceIndex());
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetName(
+        JNIEnv* env, jobject /* thiz */, jint sequenceIndex)
+{
+    const auto& sequences =
+            mpc::MpcCore::instance().projectState().project().sequences;
+    if (sequenceIndex < 0
+            || static_cast<std::size_t>(sequenceIndex) >= sequences.size()) {
+        return toJString(env, "");
+    }
+    const auto& sequence = sequences[static_cast<std::size_t>(sequenceIndex)];
+    return toJString(env, sequence.name.empty() ? sequence.id : sequence.name);
+}
+
 extern "C" JNIEXPORT jint JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetCount(
         JNIEnv* /* env */, jobject /* thiz */)

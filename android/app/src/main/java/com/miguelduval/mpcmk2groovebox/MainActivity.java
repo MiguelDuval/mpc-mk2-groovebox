@@ -485,6 +485,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private static native String nativeSequenceStatus();
     private static native int nativeSequenceGetIndex();
+    private static native String nativeSequenceGetName(int sequenceIndex);
     private static native int nativeSequenceGetCount();
     private static native int nativeSequenceGetQueuedIndex();
     private static native void nativeSequenceSetLauncherContext(
@@ -4510,6 +4511,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMainDataDialFocusVisuals();
     }
 
+    private String sequenceDisplayName(int sequenceIndex) {
+        final String nativeName = startupComplete
+                ? nativeSequenceGetName(sequenceIndex) : "";
+        if (nativeName == null || nativeName.trim().isEmpty()) {
+            return String.format(Locale.ROOT, "Sequence %02d", Math.max(0, sequenceIndex) + 1);
+        }
+        return nativeName.trim();
+    }
+
     private void refreshMainModeState(
             TextView sequenceName,
             TextView sequenceType,
@@ -4529,8 +4539,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? Math.max(1, nativeSequenceGetTrackCount()) : 1;
 
         sequenceName.setText(String.format(
-                Locale.ROOT, "%d  Sequence %02d",
-                sequenceIndex + 1, sequenceIndex + 1));
+                Locale.ROOT, "%d  %s",
+                sequenceIndex + 1, sequenceDisplayName(sequenceIndex)));
         sequenceName.setBackground(strokeBackground(
                 SURFACE_2,
                 DANGER,
@@ -5428,12 +5438,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final int index = i;
                 final double tempo = nativeSequenceGetIndex() == i
                         ? nativeSequenceGetTempo() : 0.0;
+                final String sequenceName = sequenceDisplayName(i);
                 final String summary = startupComplete
                         ? String.format(
                                 Locale.ROOT,
-                                "%02d  SEQUENCE %02d  •  %d BAR%s  •  %s",
+                                "%02d  %s  •  %d BAR%s  •  %s",
                                 i + 1,
-                                i + 1,
+                                sequenceName,
                                 i == selected
                                         ? nativeSequenceGetBars()
                                         : 0,
@@ -5446,8 +5457,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                                 "%.1f BPM",
                                                 tempo)
                                         : "SELECT")
-                        : String.format(Locale.ROOT, "%02d  SEQUENCE %02d",
-                                i + 1, i + 1);
+                        : String.format(Locale.ROOT, "%02d  %s",
+                                i + 1, sequenceName);
                 Button button = actionButton(summary, v -> {
                     setBottomStatus(nativeSequenceSelect(index));
                     navigationController.setSelectedSequence(index);
@@ -12687,6 +12698,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Program composition");
             return;
         }
+        final int nativeMainSequenceIndex = Math.max(0, nativeSequenceGetIndex());
+        final String nativeMainSequenceName = sequenceDisplayName(nativeMainSequenceIndex);
+        final String expectedMainSequence = String.format(
+                Locale.ROOT, "%d  %s",
+                nativeMainSequenceIndex + 1, nativeMainSequenceName);
+        final View mainSequenceNameField = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode selected sequence");
+        final String actualMainSequence = mainSequenceNameField instanceof TextView
+                && ((TextView) mainSequenceNameField).getText() != null
+                ? ((TextView) mainSequenceNameField).getText().toString().trim() : "";
+        if (!startupComplete || !(mainSequenceNameField instanceof TextView)
+                || !mainSequenceNameField.isShown()
+                || !expectedMainSequence.equals(actualMainSequence)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Sequence identity differs from selected native Sequence"
+                    + " | expected=" + expectedMainSequence
+                    + " | actual=" + actualMainSequence
+                    + " | index=" + nativeMainSequenceIndex);
+            return;
+        }
+        Log.i(TAG, "MAIN_SEQUENCE_CONTEXT_VERIFIED selectedSequence="
+                + nativeMainSequenceIndex + " sequence=" + actualMainSequence);
+
         final int nativeMainTrackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
         final String nativeMainTrackStatus = nativeSequenceTrackStatus(nativeMainTrackIndex);
         final String expectedMainTrack = String.format(

@@ -11,11 +11,12 @@
 - The Main Program audit reference was renamed to `mainProgramContextView` in the previous commit, fixing Build #3068's textual preflight false positive without removing the runtime native-state equality assertion.
 - While Build #3069 / run `39819814302` compiles/tests SHA `2d992807ebc3d545598cc35c9ea15991e09738dd`, the source review identified a separate blueprint contract: Program Select is supported only for Drum Tracks. Main already showed an `UNAVAILABLE` ownership label for non-Drum Tracks, but left the Program button enabled and the caption permanently saying `DRUM PROGRAM`. This change makes the button disabled and dimmed until native startup confirms a Drum Track; the caption becomes `PROGRAM` for unsupported track types. The supported Drum path remains enabled and still routes to the native Program Select context.
 - The runtime Main audit now also requires the visible Program selector to be enabled for the initial supported Drum Track. This follow-up extracts that predicate/caption/enabled/alpha policy into `MpcTrackProgramPolicy`, shares it between button routing and UI refresh, adds focused JVM edge-case tests, and includes them in the fast Gradle policy-test step. No native Program/audio state is mutated. Full exact-SHA runtime verification remains pending.
+- A second Main identity review found that the center Sequence field and Sequence Select list fabricated `Sequence NN` from the index, hiding a project Sequence's custom name. A native read-only getter now returns each Sequence's real name (stable ID only as the empty-name fallback); Main and Sequence Select use the shared display helper, and the Main runtime audit verifies the visible field against the selected native Sequence.
 
 ## Current execution queue — 2026-10-22
 
 1. Let the already-running Build #3069 finish on its recorded SHA; it remains useful evidence for the audit-name correction but does not contain the newest Program availability change.
-2. The policy + JVM-test commit supersedes pending Build #3070; verify its focused Gradle tests and full Main/Project exact-SHA emulator acceptance.
+2. Build #3071 / run `39822035429` queued the Program-policy unit tests; this Sequence-name change supersedes it, so verify both Main identity assertions and the policy tests on the newest exact SHA.
 3. Continue full workflow through Project persistence and preserve PRs #28/#29 isolation; physical MPC Studio MkII validation stays pending.
 
 

@@ -144,7 +144,7 @@ Manual anchor: S-01 Main p.15 and Tracks p.45; S-02; S-07. Firmware clues: F-01 
 
 | ID | User action | Expected result / state contract | Current app mapping and status | Acceptance path |
 |---|---|---|---|---|
-| MAIN-001 | Select Sequence | Selected Sequence changes in the shared project model; return to Main shows the same selection. | Implemented in the documented routing matrix. | Select a second Sequence and verify display, data and return. |
+| MAIN-001 | Select Sequence | Selected Sequence changes in the shared project model; return to Main shows the same selection and the name stored on that Sequence. | Sequence index and selection are semantic; visible Main/Sequence Select labels read the active model's actual name through the native bridge, with ID fallback only for unnamed records. Runtime exact-SHA verification pending. | Select a second Sequence with a distinct name and verify Main and selector display that exact name, data and selection after return. |
 | MAIN-002 | Change BPM | Data Dial/+/- modifies the selected Sequence tempo through its semantic setter. | Implemented for the current supported field. | Change tempo, reopen context and check authoritative Sequence state. |
 | MAIN-003 | Change sequence bars/length | Update the supported Sequence length; do not confuse this with Arrangement clip length. | Implemented for the supported Sequence model. | Change length and verify all relevant displays/state. |
 | MAIN-004 | Set loop START/END | Edit loop bounds in Sequence time units. | Native sequence loop setters exist. | Change bounds, navigate away/back and check exact values. |

@@ -200,7 +200,7 @@ Touch:
 
 ### Main Sequence field hierarchy
 
-- Main keeps the MPC-style compact Sequence vocabulary visible around the selected sequence and BPM: **SEQ / BARS / START / END / TRANSPOSE**.
+- Main keeps the MPC-style compact Sequence vocabulary visible around the selected sequence and BPM: **SEQ / BARS / START / END / TRANSPOSE**. The selected name is read from the actual project Sequence; a generated index label is only a fallback for unnamed records.
 - Existing time-signature and loop state remain visible because they are backed by the current Sequence model.
 - TRANSPOSE is explicitly shown as unavailable until a real domain semantic exists.
 
