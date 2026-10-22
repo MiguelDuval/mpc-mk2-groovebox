@@ -12704,7 +12704,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Locale.ROOT, "%d  %s",
                 nativeMainSequenceIndex + 1, nativeMainSequenceName);
         final View mainSequenceNameField = findViewWithContentDescription(
-                getWindow().getDecorView(), "Main Mode selected sequence");
+                getWindow().getDecorView(),
+                "Main Mode selected sequence • MPC selected field");
         final String actualMainSequence = mainSequenceNameField instanceof TextView
                 && ((TextView) mainSequenceNameField).getText() != null
                 ? ((TextView) mainSequenceNameField).getText().toString().trim() : "";

@@ -1791,7 +1791,7 @@ for forbidden in   'shortcut.setContentDescription("MPC shortcut " + mode.label(
     exit 1
   fi
 done
-for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC Main XL Mixer Strips'   'Main Track visual hierarchy • Track / Program / workspace section'   'MAIN_SEQUENCE_CONTEXT_VERIFIED selectedSequence='   'MAIN_TRACK_CONTEXT_VERIFIED selectedTrack='   'MAIN_PROGRAM_CONTEXT_VERIFIED selectedTrack='   'clickMpcToolbarMenuForAudit()'   'captureProjectMenuViewHierarchyForSmoke()'   'MPC_MENU_VIEW_HIERARCHY_READY'   'mpc-project-menu-view-hierarchy.xml'; do
+for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC Main XL Mixer Strips'   'Main Track visual hierarchy • Track / Program / workspace section'   'Main Mode selected sequence • MPC selected field'   'MAIN_SEQUENCE_CONTEXT_VERIFIED selectedSequence='   'MAIN_TRACK_CONTEXT_VERIFIED selectedTrack='   'MAIN_PROGRAM_CONTEXT_VERIFIED selectedTrack='   'clickMpcToolbarMenuForAudit()'   'captureProjectMenuViewHierarchyForSmoke()'   'MPC_MENU_VIEW_HIERARCHY_READY'   'mpc-project-menu-view-hierarchy.xml'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: current MPC Main UI audit contract missing: $required"
     exit 1
