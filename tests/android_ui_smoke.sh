@@ -59,6 +59,39 @@ for required in \
   fi
 done
 
+echo "Running real New Project transaction preflight..."
+if ! grep -Fq -- 'bool resetToDefault();' "src/MPC/MpcProjectState.h"; then
+  echo "ERROR: New Project model reset declaration missing"; exit 1
+fi
+if ! grep -Fq -- 'bool MpcProjectState::resetToDefault()' "src/MPC/MpcProjectState.cpp"; then
+  echo "ERROR: New Project model reset implementation missing"; exit 1
+fi
+if ! grep -Fq -- 'assert(state.resetToDefault());' "tests/MpcProjectStateTests.cpp"; then
+  echo "ERROR: native Project reset test missing"; exit 1
+fi
+if ! grep -Fq -- 'Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectNew' "$NATIVE_ENGINE_SOURCE"; then
+  echo "ERROR: JNI New Project transaction missing"; exit 1
+fi
+for required in \
+  'private static native String nativeProjectNew();' \
+  'setNegativeButton("CANCEL"' \
+  'setNeutralButton("SAVE FIRST"' \
+  'setPositiveButton("DISCARD & NEW"' \
+  'MPC Menu New Project' \
+  'PROJECT_NEW_CANCELLED beforeSha256=' \
+  'PROJECT_NEW_COMPLETE beforeSha256='; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: New Project UI contract missing: $required"; exit 1
+  fi
+done
+if ! grep -Fq -- 'core.editHistory().clear()' "$NATIVE_ENGINE_SOURCE" \
+    || ! grep -Fq -- 'core.sequenceTransportClock().clearQueuedSequence()' "$NATIVE_ENGINE_SOURCE"; then
+  echo "ERROR: New Project native-state cleanup contract missing"; exit 1
+fi
+if grep -Fq -- 'addFunction("NEW PROJECT", false, null)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: New Project is still a disabled placeholder"; exit 1
+fi
+
 for required in \
   'case BROWSER: return "BROWSER";' \
   'case CHANNEL_MIXER: return "CH MIX";' \
@@ -90,7 +123,8 @@ for required in \
   'PREF_SHORTCUT_MODES = "shortcut_modes_v1"' \
   'readShortcutConfiguration()' \
   'MpcNavigationController.decodeShortcuts(' \
-  'MpcNavigationController.encodeShortcuts(navigationController.shortcuts())' \
+  'MpcNavigationController.encodeShortcuts(' \
+  'navigationController.shortcuts());' \
   'persistShortcutConfiguration();' \
   '.commit()'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
@@ -10639,7 +10673,7 @@ wait_for_new_project_marker() {
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
   echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker"
-  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST_)|STARTUP_COMPLETE' | tail -n 100 || true
+  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|STARTUP_COMPLETE' | tail -n 100 || true
   return 1
 }
 
@@ -11346,3 +11380,99 @@ if ! capture_ui_screenshot "$PROJECT_EXT_V1_PNG" 10; then
 fi
 if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_V1_XML"; then echo "ERROR: v1-loaded Main View tree missing"; exit 1; fi
 echo "Extended Project UI acceptance passed: exact v2 state, direct SAVE overwrite, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."
+
+# New Project is a destructive model replacement and must stay disabled until
+# this real UI path proves cancellation invariance, native reset, and URI unlink.
+PROJECT_NEW_MENU_XML="/tmp/mpc-groovebox-project-new-menu-uiautomator.xml"
+PROJECT_NEW_DIALOG_XML="/tmp/mpc-groovebox-project-new-dialog-uiautomator.xml"
+PROJECT_NEW_MAIN_XML="/tmp/mpc-groovebox-project-new-main-view-hierarchy.xml"
+PROJECT_NEW_MAIN_PNG="/tmp/mpc-groovebox-project-new-ready.png"
+PROJECT_NEW_PROJECT_XML="/tmp/mpc-groovebox-project-new-project-view-hierarchy.xml"
+PROJECT_NEW_PROJECT_PNG="/tmp/mpc-groovebox-project-new-unlinked.png"
+
+new_cancel_before="$(project_marker_count "PROJECT_NEW_CANCELLED" 5)"
+if ! tap_ui_description "$PROJECT_EXT_V1_XML" "MPC Toolbar Menu"; then
+  echo "ERROR: could not open Menu for New Project cancellation acceptance"; exit 1
+fi
+if ! wait_for_ui_description "$PROJECT_NEW_MENU_XML" "$DEVICE_DUMP" "MPC Menu New Project" 15; then
+  echo "ERROR: real New Project Function Bar control is missing or disabled"; exit 1
+fi
+if ! tap_ui_description "$PROJECT_NEW_MENU_XML" "MPC Menu New Project"; then
+  echo "ERROR: could not open New Project confirmation"; exit 1
+fi
+if ! wait_for_ui_text "$PROJECT_NEW_DIALOG_XML" "$DEVICE_DUMP" "CANCEL" 10; then
+  echo "ERROR: New Project confirmation does not expose Cancel"; exit 1
+fi
+if ! tap_ui_text "$PROJECT_NEW_DIALOG_XML" "CANCEL"; then
+  echo "ERROR: could not cancel New Project confirmation"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_NEW_CANCELLED" "$new_cancel_before" 15; then
+  echo "ERROR: Cancel did not emit the native-state preservation marker"; exit 1
+fi
+new_cancel_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_NEW_CANCELLED" | tail -n 1 || true)"
+new_cancel_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$new_cancel_line")"
+if [[ "$new_cancel_sha" != "$legacy_sha_ext" ]] \
+    || ! grep -Fq -- "beforeSha256=$legacy_sha_ext" <<<"$new_cancel_line"; then
+  echo "ERROR: Cancel changed authoritative Project state"
+  echo "Expected unchanged SHA: $legacy_sha_ext"; echo "$new_cancel_line"; exit 1
+fi
+
+new_complete_before="$(project_marker_count "PROJECT_NEW_COMPLETE" 5)"
+if ! tap_ui_description "$PROJECT_NEW_MENU_XML" "MPC Menu New Project"; then
+  echo "ERROR: could not reopen New Project after cancellation"; exit 1
+fi
+if ! wait_for_ui_text "$PROJECT_NEW_DIALOG_XML" "$DEVICE_DUMP" "DISCARD & NEW" 10; then
+  echo "ERROR: New Project confirmation lost the destructive action"; exit 1
+fi
+PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN" 5)"
+if ! tap_ui_text "$PROJECT_NEW_DIALOG_XML" "DISCARD & NEW"; then
+  echo "ERROR: could not confirm real New Project"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_NEW_COMPLETE" "$new_complete_before" 25; then
+  echo "ERROR: New Project did not complete native replacement"; exit 1
+fi
+new_complete_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_NEW_COMPLETE" | tail -n 1 || true)"
+new_complete_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$new_complete_line")"
+if [[ ! "$new_complete_sha" =~ ^[0-9a-f]{64}$ ]] \
+    || [[ "$new_complete_sha" == "$legacy_sha_ext" ]] \
+    || ! grep -Fq -- "currentUriCleared=true" <<<"$new_complete_line" \
+    || ! grep -Fq -- "SEQUENCES=1 TRACKS=1 PATTERNS=1 PLACEMENTS=1 MIDI_NOTES=0" <<<"$new_complete_line"; then
+  echo "ERROR: New Project did not restore canonical blank musical state"
+  echo "Old SHA: $legacy_sha_ext"; echo "$new_complete_line"; exit 1
+fi
+if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_NEW_MAIN_XML"; then
+  echo "ERROR: fresh Main View tree unavailable after New Project"; exit 1
+fi
+if ! grep -Fq -- "Sequence 01" "$PROJECT_NEW_MAIN_XML"; then
+  echo "ERROR: Main did not restore the default Sequence name after New Project"; exit 1
+fi
+if ! capture_ui_screenshot "$PROJECT_NEW_MAIN_PNG" 10; then
+  echo "ERROR: New Project ready screenshot unavailable"; exit 1
+fi
+
+# Check the new native Project is unlinked, so pressing SAVE cannot silently
+# overwrite the prior document. Use fresh rendered View bounds/accessibility.
+if ! tap_ui_description "$PROJECT_NEW_MAIN_XML" "MPC Toolbar Menu"; then
+  echo "ERROR: could not open Menu after New Project"; exit 1
+fi
+if ! wait_for_ui_description "$PROJECT_NEW_MENU_XML" "$DEVICE_DUMP" "MPC Menu PROJECT" 12; then
+  echo "ERROR: Project tile unavailable after New Project"; exit 1
+fi
+PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT" 5)"
+if ! tap_ui_description "$PROJECT_NEW_MENU_XML" "MPC Menu PROJECT"; then
+  echo "ERROR: could not inspect new Project's unlinked status"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_NEW_PROJECT_XML"; then
+  echo "ERROR: new Project View tree unavailable"; exit 1
+fi
+if ! grep -Fq -- "MPC Project current name Untitled" "$PROJECT_NEW_PROJECT_XML" \
+    || ! grep -Fq -- "SEQUENCES=1 TRACKS=1 PATTERNS=1 PLACEMENTS=1 MIDI_NOTES=0" "$PROJECT_NEW_PROJECT_XML" \
+    || ! grep -Fq -- "NO FILE LINKED" "$PROJECT_NEW_PROJECT_XML"; then
+  echo "ERROR: new Project identity, empty musical data, or unlinked-file invariant is wrong"
+  grep -E "Untitled|SEQUENCES=|NO FILE LINKED|PROJECT FILE LINKED" "$PROJECT_NEW_PROJECT_XML" || true
+  exit 1
+fi
+if ! capture_ui_screenshot "$PROJECT_NEW_PROJECT_PNG" 10; then
+  echo "ERROR: New Project unlinked-state screenshot unavailable"; exit 1
+fi
+echo "Extended New Project UI acceptance passed: Cancel preserved exact SHA, DISCARD & NEW reset native musical state, returned to Main, and unlinked SAVE from the previous document."

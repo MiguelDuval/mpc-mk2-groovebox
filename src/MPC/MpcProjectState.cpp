@@ -73,6 +73,11 @@ MpcProjectState::MpcProjectState() {
 }
 
 
+bool MpcProjectState::resetToDefault() {
+    MpcProjectState defaults;
+    return replaceProject(std::move(defaults.project_));
+}
+
 bool MpcProjectState::canReplaceProject(const domain::Project& project) noexcept {
     if (project.id.empty() || project.sequences.empty() || project.drumPrograms.empty()) {
         return false;

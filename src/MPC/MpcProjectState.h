@@ -16,6 +16,7 @@ public:
 
     static bool canReplaceProject(const domain::Project& project) noexcept;
     bool replaceProject(domain::Project project);
+    bool resetToDefault();
 
     MpcProjectState(const MpcProjectState&) = delete;
     MpcProjectState& operator=(const MpcProjectState&) = delete;

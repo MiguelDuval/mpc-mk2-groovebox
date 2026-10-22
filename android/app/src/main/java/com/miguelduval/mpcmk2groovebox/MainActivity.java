@@ -421,6 +421,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeProjectLoad(byte[] data);
     private static native String nativeProjectGetName();
     private static native String nativeProjectGetSummary();
+    private static native String nativeProjectNew();
     private static native String nativeProjectPreparePersistenceAcceptanceFixture();
     private static native String nativeAudioLoadSample(byte[] data);
     private static native String nativeAudioLoadSampleForPadLayer(byte[] data, int pad, int layer);
@@ -1923,8 +1924,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         if (mode == MpcUiState.Mode.MENU) {
-            // Keep the established six Menu commands; project lifecycle lives in Project mode.
-            addFunction("NEW PROJECT", false, null);
+            // NEW PROJECT uses an explicit discard/save-first confirmation.
+            Button newProject = addFunction(
+                    "NEW PROJECT", startupComplete, v -> requestNewProject());
+            newProject.setContentDescription("MPC Menu New Project");
             Button save = addFunction("SAVE", true, v -> saveCurrentProject());
             save.setContentDescription("MPC Menu Project Save");
             addFunction("PREFERENCES", true, v -> showAudioSettingsPage());
@@ -11662,6 +11665,105 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         saveProjectToUri(currentProjectUri, false);
+    }
+
+    private void requestNewProject() {
+        if (!startupComplete) {
+            setBottomStatus("NEW PROJECT • project engine is not ready");
+            return;
+        }
+
+        final String beforeSha256 = currentProjectStateSha256();
+        new AlertDialog.Builder(this)
+                .setTitle("NEW PROJECT")
+                .setMessage(
+                        "Create a new blank Project? Unsaved changes will be lost. "
+                        + "Any file already saved will not be deleted. "
+                        + "Choose SAVE FIRST to preserve the current Project before starting over.")
+                .setNegativeButton("CANCEL", (dialog, which) -> {
+                    final String afterSha256 = currentProjectStateSha256();
+                    setBottomStatus("NEW PROJECT CANCELLED • current Project unchanged");
+                    Log.i(TAG, "PROJECT_NEW_CANCELLED beforeSha256=" + beforeSha256
+                            + " stateSha256=" + afterSha256);
+                })
+                .setNeutralButton("SAVE FIRST", (dialog, which) -> {
+                    setBottomStatus("NEW PROJECT • save the current Project, then choose NEW PROJECT again");
+                    saveCurrentProject();
+                })
+                .setPositiveButton("DISCARD & NEW",
+                        (dialog, which) -> createNewProjectNow(beforeSha256))
+                .show();
+    }
+
+    private void createNewProjectNow(String previousStateSha256) {
+        final String result;
+        try {
+            result = nativeProjectNew();
+        } catch (RuntimeException error) {
+            final String audioResult = nativeAudioStart();
+            setAudioStateFromResult(audioResult);
+            setBottomStatus("NEW PROJECT FAILED • " + error.getClass().getSimpleName()
+                    + " • " + audioResult);
+            Log.e(TAG, "PROJECT_NEW_FAILED beforeSha256=" + previousStateSha256, error);
+            return;
+        }
+
+        if (result == null || !result.startsWith("PROJECT_CREATED")) {
+            final String audioResult = nativeAudioStart();
+            setAudioStateFromResult(audioResult);
+            final String failure = result == null
+                    ? "native Project reset unavailable" : result;
+            setBottomStatus("NEW PROJECT FAILED • " + failure + " • " + audioResult);
+            Log.i(TAG, "PROJECT_NEW_REJECTED beforeSha256=" + previousStateSha256
+                    + " stateSha256=" + currentProjectStateSha256()
+                    + " result=" + failure);
+            return;
+        }
+
+        // The old document is deliberately not deleted or overwritten. The new
+        // model starts unlinked, so the next SAVE naturally requires SAVE AS.
+        currentProjectUri = null;
+        currentProjectName = nativeProjectGetName();
+        selectedPad = 0;
+        selectedLayer = 0;
+        selectedSequenceStep = -1;
+        stepTouchAuditPad = -1;
+        stepTouchAuditGridTicks = 0;
+        stepTouchAuditStepOneSnapshot = null;
+        sequenceGridStartStep = 0;
+        sequenceGridStartPad = 0;
+        sequenceStepPage = 0;
+        hardwarePadBank = 0;
+        launcherBank = 0;
+
+        navigationController.setSelectedSequence(0);
+        navigationController.setSelectedTrack(0);
+        navigationController.setSelectedProgram(nativeSequenceGetDrumProgramName(0));
+        navigationController.setSelectedPad(0);
+        navigationController.setSelectedLayer(0);
+        navigationController.setPadBank(0);
+        navigationController.setTransportState(false, true, true, false, false);
+
+        final String audioResult = nativeAudioStart();
+        setAudioStateFromResult(audioResult);
+        refreshProjectIdentity();
+        showMainPage();
+        refreshAllInspectorState();
+        refreshSequenceControls();
+        refreshMpcCompactContext();
+        refreshMainTrackQuickSample();
+        refreshMainModeFields();
+        updateMpcShellState();
+        navigationController.clearHistory();
+        syncHardwareTransportLeds();
+
+        final String createdStateSha256 = currentProjectStateSha256();
+        setBottomStatus("NEW PROJECT READY • " + currentProjectName
+                + " • " + result + " • " + audioResult);
+        Log.i(TAG, "PROJECT_NEW_COMPLETE beforeSha256=" + previousStateSha256
+                + " stateSha256=" + createdStateSha256
+                + " currentUriCleared=true summary=" + result
+                + " audio=" + audioResult);
     }
 
     private static String projectBytesSha256(byte[] bytes) {

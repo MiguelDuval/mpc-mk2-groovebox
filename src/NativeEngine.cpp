@@ -178,6 +178,48 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectGetSummary(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectNew(
+        JNIEnv* env, jobject /* thiz */) {
+    if (env == nullptr) return nullptr;
+
+    auto& core = mpc::MpcCore::instance();
+    stopSequenceForMutation();
+
+    const auto stopped = core.audio().stop();
+    if (stopped.rfind("Audio stop failed:", 0) == 0
+            || stopped.rfind("Audio close failed:", 0) == 0
+            || stopped.rfind("Input stop failed:", 0) == 0
+            || stopped.rfind("Input close failed:", 0) == 0) {
+        return toJString(env, "PROJECT_NEW_FAILED • " + stopped);
+    }
+    if (!core.audio().clearRuntimeSamplesForProjectReplacement()) {
+        return toJString(env, "PROJECT_NEW_FAILED • audio streams did not stop");
+    }
+
+    // stopSequenceForMutation drains recorded events when a take is active.
+    // Once audio is stopped, discard any residual queued pad edges before the
+    // new model starts accepting input.
+    mpc::sequencer::SequenceRecordEvent discarded{};
+    while (core.sequenceRecordQueue().tryDequeue(discarded)) {
+    }
+
+    if (!core.projectState().resetToDefault()) {
+        return toJString(env, "PROJECT_NEW_FAILED • default Project replacement rejected");
+    }
+
+    core.audio().refreshActiveProgramRuntimeProjection();
+    core.editHistory().clear();
+    arrangementEventClipboard.reset();
+    sequencePlayback.reset();
+    core.sequenceTransportClock().clearQueuedSequence();
+    core.sequenceTransportClock().stop(
+            core.projectState().activeSequence(), 0, monotonicNanos());
+
+    return toJString(env,
+            "PROJECT_CREATED • " + projectSummary(core.projectState().project()));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenceAcceptanceFixture(
         JNIEnv* env, jobject /* thiz */) {
     // Acceptance-only entry point, invoked exclusively by the dedicated smoke intent.

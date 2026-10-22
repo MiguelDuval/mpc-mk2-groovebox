@@ -2,26 +2,27 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-22 (exact-SHA evidence governs)
 
-### Verified base checkpoint
+### Last confirmed green checkpoint
 
 - PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) is open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
-- Last fully green Android workflow before this slice: [Build #3073 / run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`.
-- That run passed the full workflow, including native/JVM gates, debug APK assembly, Android smoke and visual-evidence upload. Its Project acceptance confirmed exact v2 canonical state, direct SAVE overwrite, process restart/reopen, cancellation invariance, malformed-load preservation and placement-free v1 equality. Main identity and Program-availability checks were also green on that SHA.
-- Builds #3070–#3072 were cancelled; #3069 succeeded only on older SHA `2d992807ebc3d545598cc35c9ea15991e09738dd`, and #3068 failed its earlier smoke preflight. These are historical and do not outweigh Build #3073.
+- Full green Build #3073 / run [39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552) passed on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`. It includes Project persistence exact-state/overwrite/restart/cancel/malformed-load/v1 acceptance and MAIN/MENU/PROJECT/SEQ hierarchy checks.
+- Build #3074 / run [39829301517](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39829301517) failed in focused Shortcut JVM tests because `isShortcutMode` consulted `menuEntries()`, which excludes the factory-promoted SOUNDS and XY rail destinations. The fix moved validation to canonical `shortcutEntries()`; focused tests passed in the next run.
+- Build #3075 / run [39830122978](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39830122978) passed focused JVM/native checks and assembled/uploaded the debug APK but failed the Android smoke's first source preflight. The matcher incorrectly expected the complete Shortcut Rail encoder invocation on one line even though the valid Java call was line-wrapped. The current slice fixes this matcher and adds a real Project-New vertical implementation. #3075 is **failed**, not a green emulator acceptance.
 
-### Latest implementation slice — Shortcut Rail preferences
+### Current slice — Shortcut Rail persistence correction + PROJ-001 New Project
 
-- The Shortcut configuration page exposed assignment, reordering and reset, but the five slots lived only in `MpcNavigationController` memory and were reset to factory order on each fresh Activity/process. This violated the user's expectation for a configurable high-frequency rail.
-- The implementation now round-trips the ordered five `MpcUiState.Mode` enum names through versioned local preferences, restores before shell construction, and synchronously saves selector changes, ▲/▼ reordering, and RESET DEFAULTS. Malformed or stale payloads fall back to factory order rather than breaking startup.
-- `MpcNavigationControllerTest` covers serialization, exact order preservation, malformed/unsupported payload fallback, and atomic rejection of invalid bulk updates. The focused Gradle test list includes it, and the Android smoke source preflight checks that load/write wiring remains connected.
-- Build #3074 / run [39829301517](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39829301517) **failed on exact SHA** `dc4ab44dce08d0e1caf056f7a7f829a72f46cda5` in the focused JVM test step: nine `MpcNavigationControllerTest` cases failed because shortcut validation used `menuEntries()`, which excludes canonical factory shortcut modes SOUNDS and XY. The follow-up changes validation to the canonical `shortcutEntries()` list, adds a constructor-load test, and ensures preference-write failure status cannot be immediately overwritten. Do not count the slice as accepted until the next exact-SHA workflow is fully green.
-- A dedicated user-touch → force-stop → relaunch acceptance for custom shortcut order remains an explicit follow-up; existing Browser URI restart acceptance is unrelated.
+- Shortcut preferences use a strict versioned local payload (`shortcut_modes_v1`), restore five ordered enum destinations before shell build, and save assignment/reorder/reset edits using synchronous preference commit. Corrupt values fall back to factory defaults; the test suite covers round-trip, constructor restoration, fallback and no partial mutation.
+- UI-driven customization → force-stop → relaunch still needs explicit acceptance; do not infer it from existing Browser persistence tests.
+- PROJ-001 is implemented in this slice: native `MpcProjectState::resetToDefault()` reconstructs the canonical model; new JNI transaction stops sequence/recorder and audio before clearing sample runtime, queued recording events, edit history, arrangement clipboard, stale playback session and queued transport. The Activity offers CANCEL / SAVE FIRST / DISCARD & NEW and clears the current document URI only after successful reset.
+- Native unit assertions cover default topology and sample-ID allocation. Android smoke adds real Menu/confirmation interaction, exact-state SHA invariance on Cancel, default model summary on DISCARD & NEW, a Main hierarchy check and Project view check proving the new Project is unlinked. New screenshots match the existing `/tmp/mpc-groovebox-project-*.png` artifact allowlist.
+- This code is not yet accepted until the Android workflow completes every step on the exact commit SHA containing it. Previous runs do not validate the new behavior.
 
-### Immediate next steps
+### Next queue
 
-1. Verify the next Android Build against the latest PR head SHA; the validator correction must clear all focused unit tests, then the full workflow/emulator smoke/evidence upload must pass.
-2. Only after the shortcut slice is green, take **PROJ-001 — New Project** as the next vertical slice. The Menu's NEW PROJECT function remains disabled; implement an actual safe project replacement with explicit unsaved-work handling and authoritative reset of dependent UI/history/transport state. Do not silently discard an edited project and do not enable the control until its end-to-end state invariants have tests.
-3. Keep PRs #28 and #29 isolated from PR #23 until their own exact-SHA acceptance and a deliberate integration decision. Physical MPC Studio MkII testing remains pending.
+1. Run/check the exact-SHA Android workflow for the current commit. Do not mark it green before final emulator smoke and visual-evidence upload complete successfully.
+2. Fix new failures from their root causes; never weaken exact-state SHA, native reset topology, cancellation invariance or enabled-state/accessibility assertions.
+3. After this slice is green, add real Shortcuts UI customize → force-stop → relaunch coverage, then address independent Save As provider errors and two-document isolation.
+4. Keep PR #28 and PR #29 isolated, preserving their bases. Physical MPC Studio MkII remains a separate pending hardware gate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 

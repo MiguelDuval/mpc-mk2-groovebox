@@ -214,5 +214,33 @@ int main() {
     assert(!mpc::MpcProjectState::canReplaceProject(invalid));
     assert(!state.replaceProject(std::move(invalid)));
     assert(state.project().id == "opened-project");
+
+    // NEW PROJECT must restore the canonical model, not only clear the UI.
+    // It also resets selection and sample-ID allocation for the new domain.
+    assert(state.resetToDefault());
+    assert(state.project().id == "project-1");
+    assert(state.project().name == "Untitled");
+    assert(state.project().samples.empty());
+    assert(state.project().drumPrograms.size() == 1);
+    assert(state.activeDrumProgram().id == "drum-program-1");
+    assert(state.activeDrumProgram().pads[0].midiNote == 36);
+    assert(state.activeSequenceIndex() == 0);
+    assert(state.activeTrackIndex() == 0);
+    assert(state.activeSequence().id == "sequence-1");
+    assert(state.activeSequence().name == "Sequence 01");
+    assert(state.activeSequence().tracks.size() == 1);
+    assert(state.activeSequence().tracks[0].kind == mpc::domain::TrackKind::Drum);
+    assert(state.activeSequence().tracks[0].patterns.size() == 1);
+    assert(state.activeSequence().tracks[0].patterns[0].notes.empty());
+    assert(state.activeSequence().tracks[0].placements.size() == 1);
+    assert(state.activeSequence().tracks[0].placements[0].patternId
+            == state.activeSequence().tracks[0].patterns[0].id);
+    assert(state.activeSequence().tracks[0].placements[0].startTick == 0);
+    assert(state.activeSequence().tracks[0].placements[0].lengthTicks
+            == state.activeSequence().lengthTicks);
+    assert(state.activeProgramIndexForTrack(0) == 0);
+    const auto firstNewSample = state.registerSample(
+            "First sample in new project", "", 48000.0, 1000);
+    assert(firstNewSample.value == 1);
     return 0;
 }
