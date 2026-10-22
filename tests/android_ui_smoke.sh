@@ -123,8 +123,13 @@ for required in \
   'PREF_SHORTCUT_MODES = "shortcut_modes_v1"' \
   'readShortcutConfiguration()' \
   'MpcNavigationController.decodeShortcuts(' \
+  'MPC_SHORTCUT_PREFERENCES_RESTORED source=' \
+  'MPC_SHORTCUT_PREFERENCES_WRITE saved=' \
   'MpcNavigationController.encodeShortcuts(' \
   'navigationController.shortcuts());' \
+  'MPC Menu Edit Shortcuts' \
+  'MPC Shortcuts Reset Defaults' \
+  'scheduleProjectPersistenceViewHierarchyCapture("SHORTCUTS")' \
   'persistShortcutConfiguration();' \
   '.commit()'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
@@ -10589,6 +10594,7 @@ snapshot_project_view_tree_marker_baselines() {
   PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
   PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
   PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
+  PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")"
   PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")"
   PROJECT_MENU_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_MENU_RENDER_COMPLETE")"
   PROJECT_MENU_CLICK_MARKER_BEFORE="$(project_marker_count "MPC_MENU_CLICK_END currentPage=MENU")"
@@ -10602,6 +10608,7 @@ capture_project_persistence_view_tree() {
     MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
     MAIN) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"; before="$PROJECT_MAIN_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     PROJECT) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT"; before="$PROJECT_PROJECT_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    SHORTCUTS) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS"; before="$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     SEQ) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ"; before="$PROJECT_SEQUENCE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     *) echo "ERROR: unsupported app View-tree page for Project acceptance: $page"; return 2 ;;
   esac
@@ -10673,7 +10680,7 @@ wait_for_new_project_marker() {
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
   echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker"
-  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|STARTUP_COMPLETE' | tail -n 100 || true
+  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
   return 1
 }
 
@@ -11478,3 +11485,183 @@ if ! capture_ui_screenshot "$PROJECT_NEW_PROJECT_PNG" 10; then
   echo "ERROR: New Project unlinked-state screenshot unavailable"; exit 1
 fi
 echo "Extended New Project UI acceptance passed: Cancel preserved exact SHA, DISCARD & NEW reset native musical state, returned to Main, and unlinked SAVE from the previous document."
+
+# Configure the actual five Shortcut Rail slots through visible controls, restart
+# the Android process, and compare the ordered live View tree with the preference
+# restore marker. Then factory-reset and repeat after a second process death.
+PROJECT_SHORTCUTS_CONFIG_XML="/tmp/mpc-groovebox-project-shortcuts-config-view-hierarchy.xml"
+PROJECT_SHORTCUTS_SPINNER_XML="/tmp/mpc-groovebox-project-shortcuts-spinner-uiautomator.xml"
+PROJECT_SHORTCUTS_CUSTOM_MAIN_XML="/tmp/mpc-groovebox-project-shortcuts-custom-main-view-hierarchy.xml"
+PROJECT_SHORTCUTS_CUSTOM_PNG="/tmp/mpc-groovebox-project-shortcuts-custom-main.png"
+PROJECT_SHORTCUTS_RESET_MAIN_XML="/tmp/mpc-groovebox-project-shortcuts-reset-main-view-hierarchy.xml"
+PROJECT_SHORTCUTS_RESET_PNG="/tmp/mpc-groovebox-project-shortcuts-reset-main.png"
+
+restart_for_shortcut_acceptance() {
+  local expected_modes="$1" logs="" ready=0
+  if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
+    echo "ERROR: could not force-stop app for Shortcut Rail preference acceptance"; return 1
+  fi
+  if ! adb_bounded 10 shell logcat -c; then
+    echo "ERROR: could not clear logs before Shortcut Rail process-restart acceptance"; return 1
+  fi
+  snapshot_project_view_tree_marker_baselines
+  if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
+      --es "$SMOKE_MODE_EXTRA" "project-persistence-view-tree"; then
+    echo "ERROR: could not relaunch app for Shortcut Rail acceptance"; return 1
+  fi
+  for ((attempt=1; attempt<=90; attempt++)); do
+    logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+    if grep -Fq -- "STARTUP_COMPLETE" <<<"$logs" \
+        && grep -Fq -- "MPC_SHORTCUT_PREFERENCES_RESTORED source=preferences modes=$expected_modes" <<<"$logs"; then
+      ready=1
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$ready" != "1" ]]; then
+    echo "ERROR: fresh process did not restore the exact five Shortcut Rail preferences"
+    grep -E 'MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE|EARLY_STARTUP|FAILED' <<<"$logs" | tail -n 60 || true
+    return 1
+  fi
+  if grep -Fq -- "PROJECT_TEST_FIXTURE_READY" <<<"$logs"; then
+    echo "ERROR: Shortcut Rail restart unexpectedly reinitialized Project acceptance fixture"; return 1
+  fi
+}
+
+assert_visible_shortcut_rail_order() {
+  local hierarchy_path="$1" expected_csv="$2"
+  python3 - "$hierarchy_path" "$expected_csv" <<'PY_SHORTCUT_RAIL_ORDER'
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected_csv = sys.argv[1], sys.argv[2]
+expected = ["MPC shortcut " + label for label in expected_csv.split(",")]
+root = ET.parse(path).getroot()
+if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != "MAIN":
+    raise AssertionError(f"shortcut rail assertion requires a real MAIN Android View tree: {root.attrib!r}")
+expected_set = set(expected)
+nodes = [n for n in root.iter("node") if n.attrib.get("content-desc") in expected_set]
+actual = [n.attrib.get("content-desc", "") for n in nodes]
+if actual != expected:
+    raise AssertionError(f"visible Shortcut Rail order differs: expected={expected!r}, actual={actual!r}")
+for node in nodes:
+    if node.attrib.get("visible-to-user") != "true" or node.attrib.get("enabled") != "true" or node.attrib.get("clickable") != "true":
+        raise AssertionError(f"Shortcut Rail destination is not live and visible: {node.attrib!r}")
+    bounds = node.attrib.get("bounds", "")
+    if not bounds.startswith("[") or not bounds.endswith("]"):
+        raise AssertionError(f"Shortcut Rail destination has no bounds: {node.attrib!r}")
+    left_top, right_bottom = bounds[1:-1].split("][")
+    left, top = map(int, left_top.split(","))
+    right, bottom = map(int, right_bottom.split(","))
+    if right <= left or bottom <= top:
+        raise AssertionError(f"Shortcut Rail destination has non-positive visible bounds: {node.attrib!r}")
+print("Verified five live Shortcut Rail destinations in order: " + ", ".join(expected_csv.split(",")))
+PY_SHORTCUT_RAIL_ORDER
+}
+
+# Enter the Shortcut editor through the real Menu Function Bar.
+if ! tap_project_toolbar_menu; then
+  echo "ERROR: could not open Menu before Shortcut Rail persistence acceptance"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
+if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Menu Edit Shortcuts"; then
+  echo "ERROR: Menu does not expose the real Edit Shortcuts Function Bar action"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+  echo "ERROR: Shortcut editor did not publish a fresh real Android View tree"; exit 1
+fi
+if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
+  echo "ERROR: could not capture live Shortcut editor controls/bounds"; exit 1
+fi
+
+# Assign GRID to slot 1, then move that slot below slot 2. This verifies both
+# the spinner's actual callback and the visible order-control mutation.
+shortcut_grid_write_before="$(project_marker_count "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=GRID,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" 5)"
+if ! tap_visible_description_early "$PROJECT_SHORTCUTS_CONFIG_XML" "Shortcut 1 mode selector"; then
+  echo "ERROR: the live slot-1 mode selector is not an enabled visible target"; exit 1
+fi
+if ! wait_for_ui_text "$PROJECT_SHORTCUTS_SPINNER_XML" "$DEVICE_DUMP" "GRID" 25; then
+  echo "ERROR: Shortcut slot-1 selector did not expose the GRID option"; exit 1
+fi
+if ! tap_ui_text "$PROJECT_SHORTCUTS_SPINNER_XML" "GRID"; then
+  echo "ERROR: could not select GRID from the real Shortcut slot-1 popup"; exit 1
+fi
+if ! wait_for_new_project_marker "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=GRID,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" "$shortcut_grid_write_before" 20; then
+  echo "ERROR: choosing GRID did not synchronously persist the exact five-slot mode order"; exit 1
+fi
+PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+  echo "ERROR: slot-1 selection did not publish updated live editor state"; exit 1
+fi
+if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
+  echo "ERROR: could not capture Shortcut editor after selecting GRID"; exit 1
+fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-project-shortcuts-assigned.png" 10; then
+  echo "ERROR: could not capture real Shortcut editor after assigning GRID"; exit 1
+fi
+
+shortcut_order_write_before="$(project_marker_count "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=CHANNEL_MIXER,GRID,PAD_MIXER,SOUNDS,XYFX" 5)"
+PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+if ! tap_visible_description_early "$PROJECT_SHORTCUTS_CONFIG_XML" "MPC Shortcut 1 move down"; then
+  echo "ERROR: slot-1 move-down target is not a live enabled control"; exit 1
+fi
+if ! wait_for_new_project_marker "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=CHANNEL_MIXER,GRID,PAD_MIXER,SOUNDS,XYFX" "$shortcut_order_write_before" 20; then
+  echo "ERROR: moving slot 1 down did not persist the exact reordered Shortcut Rail"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+  echo "ERROR: reordered Shortcut editor View tree was not rendered"; exit 1
+fi
+if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
+  echo "ERROR: could not capture reordered Shortcut editor"; exit 1
+fi
+
+restart_for_shortcut_acceptance "CHANNEL_MIXER,GRID,PAD_MIXER,SOUNDS,XYFX"
+if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_SHORTCUTS_CUSTOM_MAIN_XML"; then
+  echo "ERROR: custom Shortcut Rail did not publish a fresh Main View tree after restart"; exit 1
+fi
+assert_visible_shortcut_rail_order "$PROJECT_SHORTCUTS_CUSTOM_MAIN_XML" "CHANNEL MIXER,GRID,PAD MIXER,SOUNDS,XY"
+if ! capture_ui_screenshot "$PROJECT_SHORTCUTS_CUSTOM_PNG" 10; then
+  echo "ERROR: could not capture live custom Shortcut Rail after restart"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_SHORTCUTS_CUSTOM_MAIN_XML"
+
+# Reset to the factory MPC shortcut set and repeat after a separate process death.
+if ! tap_project_toolbar_menu; then
+  echo "ERROR: could not open Menu before testing Shortcut Rail factory reset"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
+if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Menu Edit Shortcuts"; then
+  echo "ERROR: Menu does not expose Edit Shortcuts after process restart"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+  echo "ERROR: factory reset Shortcut editor did not render"; exit 1
+fi
+if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
+  echo "ERROR: could not capture Shortcut editor before factory reset"; exit 1
+fi
+shortcut_defaults_before="$(project_marker_count "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=BROWSER,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" 5)"
+PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+if ! tap_visible_description_early "$PROJECT_SHORTCUTS_CONFIG_XML" "MPC Shortcuts Reset Defaults"; then
+  echo "ERROR: Shortcut editor does not expose an enabled Reset Defaults action"; exit 1
+fi
+if ! wait_for_new_project_marker "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=BROWSER,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" "$shortcut_defaults_before" 20; then
+  echo "ERROR: Reset Defaults did not synchronously persist factory Shortcut order"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+  echo "ERROR: Reset Defaults did not rebuild the live Shortcut editor"; exit 1
+fi
+if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
+  echo "ERROR: could not capture Shortcut editor after factory reset"; exit 1
+fi
+
+restart_for_shortcut_acceptance "BROWSER,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX"
+if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_SHORTCUTS_RESET_MAIN_XML"; then
+  echo "ERROR: factory Shortcut Rail did not publish Main View tree after the second restart"; exit 1
+fi
+assert_visible_shortcut_rail_order "$PROJECT_SHORTCUTS_RESET_MAIN_XML" "BROWSER,CHANNEL MIXER,PAD MIXER,SOUNDS,XY"
+if ! capture_ui_screenshot "$PROJECT_SHORTCUTS_RESET_PNG" 10; then
+  echo "ERROR: could not capture factory Shortcut Rail after second restart"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_SHORTCUTS_RESET_MAIN_XML"
+echo "Extended Shortcut Rail UI acceptance passed: actual assignment, reorder, process restart, visible five-slot order, factory reset and second restart."
+

@@ -407,6 +407,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int[] stepTouchAuditStepOneSnapshot;
     private boolean hardwareLocateActive;
     private String currentPage = "MAIN";
+    private boolean shortcutConfigVisible;
     private volatile boolean destroyed;
     private volatile boolean startupComplete;
     private boolean uiOnlySmokeMode;
@@ -1502,6 +1503,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void navigateToMode(MpcUiState.Mode mode) {
+        shortcutConfigVisible = false;
         switch (mode) {
             case MAIN:
                 showMainPage();
@@ -1932,7 +1934,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             save.setContentDescription("MPC Menu Project Save");
             addFunction("PREFERENCES", true, v -> showAudioSettingsPage());
             addFunction("MIDI / CONTROL", true, v -> showMidiPage());
-            addFunction("EDIT SHORTCUTS", true, v -> showShortcutConfigPage());
+            Button editShortcuts = addFunction(
+                    "EDIT SHORTCUTS", true, v -> showShortcutConfigPage());
+            editShortcuts.setContentDescription("MPC Menu Edit Shortcuts");
             addFunction("BACK", true, v -> navigateBackFromShell());
             return;
         }
@@ -10357,6 +10361,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMenuPage() {
+        shortcutConfigVisible = false;
         Log.i(TAG, "MPC_MENU_RENDER_BEGIN");
         clearStepEditPadLeds();
         Log.i(TAG, "MPC_MENU_STEP_LEDS_CLEARED");
@@ -10413,8 +10418,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void scheduleProjectPersistenceViewHierarchyCapture(String expectedPage) {
+        final boolean shortcutPage = "SHORTCUTS".equals(expectedPage)
+                && shortcutConfigVisible
+                && pageTitle != null
+                && "SHORTCUTS".contentEquals(pageTitle.getText());
         if (!projectPersistenceSmokeMode || destroyed || content == null
-                || expectedPage == null || !expectedPage.equals(currentPage)) return;
+                || expectedPage == null
+                || (!expectedPage.equals(currentPage) && !shortcutPage)) return;
         final ViewTreeObserver observer = content.getViewTreeObserver();
         if (!observer.isAlive()) {
             Log.e(TAG, "PROJECT_SMOKE_VIEW_HIERARCHY_FAILED page=" + expectedPage
@@ -10433,8 +10443,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void captureProjectPersistenceViewHierarchyForSmoke(String expectedPage) {
+        final boolean shortcutPage = "SHORTCUTS".equals(expectedPage)
+                && shortcutConfigVisible
+                && pageTitle != null
+                && "SHORTCUTS".contentEquals(pageTitle.getText());
         if (!projectPersistenceSmokeMode || !startupComplete || destroyed
-                || expectedPage == null || !expectedPage.equals(currentPage)) return;
+                || expectedPage == null
+                || (!expectedPage.equals(currentPage) && !shortcutPage)) return;
         final Window window = getWindow();
         final View decor = window == null ? null : window.getDecorView();
         if (decor == null || decor.getWidth() <= 0 || decor.getHeight() <= 0 || !decor.isShown()) {
@@ -10655,20 +10670,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private MpcUiState.Mode[] readShortcutConfiguration() {
-        return MpcNavigationController.decodeShortcuts(
-                getSharedPreferences(MPC_UI_PREFERENCES, MODE_PRIVATE)
-                        .getString(PREF_SHORTCUT_MODES, null));
+        final String stored = getSharedPreferences(MPC_UI_PREFERENCES, MODE_PRIVATE)
+                .getString(PREF_SHORTCUT_MODES, null);
+        final MpcUiState.Mode[] decoded = MpcNavigationController.decodeShortcuts(stored);
+        if (projectPersistenceSmokeMode) {
+            Log.i(TAG, "MPC_SHORTCUT_PREFERENCES_RESTORED source="
+                    + (stored == null ? "factory-defaults" : "preferences")
+                    + " modes=" + MpcNavigationController.encodeShortcuts(decoded));
+        }
+        return decoded;
     }
 
     private boolean persistShortcutConfiguration() {
         final String encoded = MpcNavigationController.encodeShortcuts(
                 navigationController.shortcuts());
-        return getSharedPreferences(MPC_UI_PREFERENCES, MODE_PRIVATE)
+        final boolean saved = getSharedPreferences(MPC_UI_PREFERENCES, MODE_PRIVATE)
                 .edit()
                 .putString(PREF_SHORTCUT_MODES, encoded)
                 // Five enum names are a tiny preference value; complete the
                 // write before returning so an immediate process restart is safe.
                 .commit();
+        if (projectPersistenceSmokeMode) {
+            Log.i(TAG, "MPC_SHORTCUT_PREFERENCES_WRITE saved=" + saved + " modes=" + encoded);
+        }
+        return saved;
     }
 
     private void showShortcutPersistenceResult(boolean saved, String successMessage) {
@@ -10678,6 +10703,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showShortcutConfigPage() {
+        shortcutConfigVisible = true;
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
@@ -10759,6 +10785,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         slot,
                                         entry.mode);
                                 final boolean saved = persistShortcutConfiguration();
+                                scheduleProjectPersistenceViewHierarchyCapture("SHORTCUTS");
                                 showShortcutPersistenceResult(
                                         saved,
                                         String.format(
@@ -10785,6 +10812,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     showShortcutPersistenceResult(saved, "SHORTCUTS • ORDER SAVED");
                 }
             });
+            up.setContentDescription("MPC Shortcut " + (slot + 1) + " move up");
             up.setEnabled(i > 0);
             up.setAlpha(i > 0 ? 1.0f : 0.35f);
             row.addView(up, new LinearLayout.LayoutParams(dp(50), dp(44)));
@@ -10797,6 +10825,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     showShortcutPersistenceResult(saved, "SHORTCUTS • ORDER SAVED");
                 }
             });
+            down.setContentDescription("MPC Shortcut " + (slot + 1) + " move down");
             down.setEnabled(i < MpcNavigationController.SHORTCUT_COUNT - 1);
             down.setAlpha(
                     i < MpcNavigationController.SHORTCUT_COUNT - 1
@@ -10811,19 +10840,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
         LinearLayout footer = row();
-        footer.addView(actionButton("RESET DEFAULTS", v -> {
+        Button resetShortcuts = actionButton("RESET DEFAULTS", v -> {
             navigationController.resetDefaultShortcuts();
             final boolean saved = persistShortcutConfiguration();
             showShortcutConfigPage();
             showShortcutPersistenceResult(saved, "SHORTCUTS • FACTORY ORDER SAVED");
-        }), weight());
+        });
+        resetShortcuts.setContentDescription("MPC Shortcuts Reset Defaults");
+        footer.addView(resetShortcuts, weight());
         footer.addView(actionButton("BACK TO MENU", v -> showMenuPage()), weight());
         page.addView(footer, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
         content.addView(page);
+        if (projectPersistenceSmokeMode) {
+            Log.i(TAG, "MPC_SHORTCUT_CONFIG_RENDER_COMPLETE modes="
+                    + MpcNavigationController.encodeShortcuts(navigationController.shortcuts()));
+        }
         updateModeRailSelection();
         refreshMpcFunctionBar();
+        scheduleProjectPersistenceViewHierarchyCapture("SHORTCUTS");
     }
 
 
