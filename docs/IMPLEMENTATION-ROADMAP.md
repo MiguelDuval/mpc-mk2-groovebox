@@ -14,10 +14,10 @@
 - Injected JVM cases cover mid-write failure, silent truncation, failed preimage read, readback failure, failed rollback and exact private recovery content. Full acceptance is pending the new commit's exact-SHA workflow.
 
 ### Next queue
-1. Confirm Build #3083's final exact-SHA status for `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d` and Build #3084 for `3d6dca697c5b75ed9a2f37fc5466cbfe3bf3ebb4`.
-2. Validate the real two-document emulator path: A retains its exact two-Track digest after Save As B is mutated and overwritten to a distinct three-Track digest; both files must reopen correctly.
-3. Then implement a user-accessible export/restore path for retained app-private recovery copies and test provider permission failures where deterministic Android-level coverage exists.
-4. Keep PR #28/#29 bases unchanged. Physical MPC Studio MkII remains a separate hardware gate.
+1. Keep the active async-Open Build #3083 / [run 39872152402](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872152402) distinct from pending descendants. Build #3084 / [run 39872690209](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872690209) was cancelled while pending with zero jobs; Build #3085 / [run 39873568702](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39873568702) remained pending with zero jobs at the last live check.
+2. Fix CI test discovery before claiming the Project safety tests pass. The Gradle focused-test command previously selected only `MpcProjectSaveSessionPolicyTest`; this commit adds explicit selectors for `MpcProjectOpenSessionPolicyTest` and `MpcProjectDocumentWriteTransactionTest`, plus a source preflight guarding those selectors. Verify the next exact-SHA run truly executes them.
+3. On that same SHA, require complete real Android smoke and visual-evidence upload, including the real two-document A/B isolation scenario added in `fc4924cf237eb583476aeb5204f6ab363a6d8cee`.
+4. After Project reliability is accepted, provide an actionable user-facing export/restore path for private rollback copies; continue tests for revoked grants and provider failures. Keep PR #28/#29 bases unchanged and physical MPC Studio MkII as a separate gate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

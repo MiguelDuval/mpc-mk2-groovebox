@@ -21,16 +21,19 @@
 - Added JVM fault-injection tests for exact write/readback, partial-write exceptions, silent truncation, preimage-read failure, readback provider failure, failed rollback with byte-exact recovery retention, and over-limit snapshots. Source-contract preflight keeps critical integration and failure tests present.
 - **This transaction slice is implemented but awaits exact-SHA full Android CI.** It is best-effort rollback, not an atomic rename guarantee; arbitrary SAF providers do not promise atomic writes.
 
-### Live CI while the next independent slice proceeds
+### Live CI — exact-SHA status and test coverage gap
 
-- Async Open isolation commit `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d` is still under Android Build #3083 / [run 39872152402](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872152402) on its exact SHA. At the last live check, the focused Android unit-policy step was running; no result is claimed.
-- The write-protection patch is based on `2bd45d8` and needs its own full workflow. The workflow's `cancel-in-progress: false` remains unchanged so overlapping acceptance runs do not cancel one another.
+- Async Open-isolation SHA `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d`, Build #3083 / [run 39872152402](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872152402): last live Actions API check showed `android-debug` still at step 52, “Run Android emulator smoke test”; step 53, visual-evidence upload, was still pending. This run has not been called green.
+- SAF-write transaction SHA `3d6dca697c5b75ed9a2f37fc5466cbfe3bf3ebb4`, Build #3084 / [run 39872690209](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872690209): GitHub reports `cancelled` with zero jobs. The run was still pending when the next PR head appeared; this is consistent with GitHub replacing an older *pending* run in the concurrency group's single queue slot. The active #3083 remained in progress. The workflow's `cancel-in-progress: false` is unchanged; that setting protects the running job but does not preserve multiple pending runs in the same group.
+- Two-document smoke commit `fc4924cf237eb583476aeb5204f6ab363a6d8cee`, Build #3085 / [run 39873568702](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39873568702): last live check still showed `pending` with zero jobs. It is superseded by the current commit so that the eventual full workflow actually executes the new safety test suites, not just compiles them.
+- **Important test-discovery correction:** inspection of `.github/workflows/android-build.yml` showed the focused `testDebugUnitTest` command explicitly selected `MpcProjectSaveSessionPolicyTest`, but did not select `MpcProjectOpenSessionPolicyTest` or `MpcProjectDocumentWriteTransactionTest`. The previous statement that those new JVM suites had passed was premature: their source files and assertions existed, but that named-test command never ran them. This commit adds both `--tests` selectors and a smoke preflight preventing the workflow from silently dropping them.
+- None of the new Open/write-transaction slices is accepted until a fresh full Android run on the resulting exact SHA reaches the emulator smoke and evidence-upload steps successfully. Build #3082 remains the most recent fully accepted UI checkpoint.
 
 ## Current queue
 
-1. Validate Build #3083 on exact async-Open SHA `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d` and Build #3084 on SAF-write SHA `3d6dca697c5b75ed9a2f37fc5466cbfe3bf3ebb4`. At the last live check, #3083 was at emulator smoke and #3084 was queued; no final result is assumed.
-2. The real two-document DocumentsUI scenario is now in the smoke source: save A at two Tracks; Save As uniquely named B at the same initial digest; add a third Track and direct-SAVE B; reopen A and B and assert their exact canonical digests/counts independently. This new smoke slice is awaiting its full exact-SHA workflow.
-3. Next provide an actionable export/restore path for retained app-private rollback copies, and cover revoked provider grants/read/write failures where the real picker permits deterministic coverage.
+1. Verify the latest branch HEAD/PR after this change, then follow the newly queued Android Build to its exact-SHA conclusion. Confirm both new JVM suites appear as executed in the Gradle test output, in addition to native/source-contract checks, full real emulator smoke, and visual-evidence upload.
+2. Validate the real two-document DocumentsUI scenario: save A at two Tracks; Save As uniquely named B with the same initial digest; add a third Track and direct-SAVE B; reopen A and B and assert their independent canonical digests and Track/placement counts.
+3. Once this Project reliability slice is accepted, add an actionable export/restore path for retained app-private rollback copies and cover provider permission/read/write failures where real Android-level testing can reproduce them.
 4. Keep PR #28/#29 bases unchanged. Physical MPC Studio MkII remains a separate hardware acceptance gate.
 
 ## Completed in this session

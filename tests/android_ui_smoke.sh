@@ -117,6 +117,15 @@ for required in \
   fi
 done
 
+echo "Ensuring Project safety JVM suites are executed by Android CI..."
+for required in \
+  '--tests com.miguelduval.mpcmk2groovebox.MpcProjectOpenSessionPolicyTest' \
+  '--tests com.miguelduval.mpcmk2groovebox.MpcProjectDocumentWriteTransactionTest'; do
+  if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
+    echo "ERROR: Project safety JVM suite is present but not selected by Gradle CI: $required"; exit 1
+  fi
+done
+
 echo "Running async Project-Open request/session isolation preflight..."
 for required in \
   'private long projectOpenRequestGeneration;' \
