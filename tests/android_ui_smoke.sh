@@ -1791,7 +1791,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -1860,6 +1860,7 @@ capture_ui_screenshot() {
     mpc-groovebox-browser-device.png|\
     mpc-groovebox-browser-local-results.png|\
     mpc-groovebox-picker-select-source.png|\
+    mpc-groovebox-picker-root-drawer-missing.png|\
     mpc-groovebox-browser-picker-assignment.png|\
     mpc-groovebox-browser-tree-picker.png|\
     mpc-groovebox-browser-tree-root.png|\
@@ -9320,6 +9321,7 @@ PICKER_MEDIA_SCAN="/tmp/mpc-browser-picker-media-scan.txt"
 PICKER_MEDIA_QUERY="/tmp/mpc-browser-picker-media-query.txt"
 PICKER_UI_XML="/tmp/mpc-groovebox-picker-select-source-uiautomator.xml"
 PICKER_UI_REMOTE="/sdcard/mpc-groovebox-picker-select-source-uiautomator.xml"
+PICKER_ROOT_DRAWER_FAILURE_PNG="/tmp/mpc-groovebox-picker-root-drawer-missing.png"
 PICKER_RETURN_XML="/tmp/mpc-groovebox-browser-picker-assignment-uiautomator.xml"
 PICKER_RETURN_REMOTE="/sdcard/mpc-groovebox-browser-picker-assignment-uiautomator.xml"
 
@@ -9401,8 +9403,14 @@ if ! tap_ui_description "$PICKER_UI_XML" "Show roots"; then
     exit 1
   fi
 fi
-if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "Downloads" 8; then
-  echo "ERROR: DocumentsUI root drawer did not expose Downloads"
+if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "Downloads" 25; then
+  # Preserve the actual post-tap screen. The last valid XML can still be the
+  # pre-tap Recent view when UiAutomator stalls; keep that hierarchy for context,
+  # but do not mistake it for fresh evidence about whether the drawer opened.
+  if ! capture_ui_screenshot "$PICKER_ROOT_DRAWER_FAILURE_PNG" 10; then
+    echo "WARN: could not capture post-tap DocumentsUI root-drawer screenshot"
+  fi
+  echo "ERROR: DocumentsUI root drawer did not expose Downloads after 25s of bounded fresh-tree attempts"
   exit 1
 fi
 if ! tap_ui_text "$PICKER_UI_XML" "Downloads"; then

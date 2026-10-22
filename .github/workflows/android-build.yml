@@ -707,6 +707,7 @@ jobs:
             /tmp/mpc-groovebox-browser-hierarchy.txt
             /tmp/mpc-groovebox-storage-picker-activity.txt
             /tmp/mpc-groovebox-picker-select-source-activity.txt
+            /tmp/mpc-groovebox-picker-root-drawer-missing.png
             /tmp/mpc-browser-favorite-prefs.xml
             /tmp/mpc-browser-storage-seed.xml
             /tmp/mpc-groovebox-uiautomator-dump.log
