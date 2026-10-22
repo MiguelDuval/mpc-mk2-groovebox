@@ -85,6 +85,38 @@ if ! grep -Fq -- 'static boolean isCurrentSession(long saveGeneration, long acti
   echo "ERROR: pure Project-save callback policy missing"; exit 1
 fi
 
+echo "Running transactional SAF Project-write preflight..."
+for required in \
+  'MpcProjectDocumentWriteTransaction.write(' \
+  'previousDocumentPreserved=' \
+  'readBackVerified=true' \
+  'rollback unverified • recovery copy retained' \
+  'destination unchanged •'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: transactional Project-write integration missing: $required"; exit 1
+  fi
+done
+for required in \
+  'static Result write(' \
+  'Provider read-back did not match the saved Project snapshot' \
+  'previous document restored and verified' \
+  'rollback could not be verified'; do
+  if ! grep -Fq -- "$required" \
+      "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcProjectDocumentWriteTransaction.java"; then
+    echo "ERROR: SAF write transaction contract missing: $required"; exit 1
+  fi
+done
+for required in \
+  'partialWriteFailureRestoresAndVerifiesExactPreviousDocument' \
+  'silentTruncatedProviderWriteIsDetectedAndRolledBack' \
+  'failureToReadPreimageAbortsBeforeOpeningDestinationForWrite' \
+  'unverifiedRollbackRetainsByteExactPrivateRecoveryCopy'; do
+  if ! grep -Fq -- "$required" \
+      "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectDocumentWriteTransactionTest.java"; then
+    echo "ERROR: injected provider-failure coverage missing: $required"; exit 1
+  fi
+done
+
 echo "Running async Project-Open request/session isolation preflight..."
 for required in \
   'private long projectOpenRequestGeneration;' \

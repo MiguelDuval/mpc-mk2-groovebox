@@ -4,20 +4,20 @@
 
 ### Accepted product checkpoints
 - PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
-- Build #3078 / [run 39851914811](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39851914811), SHA `8c19821cc909ecd5e2e7b7de4a06f27d078f8185`, passed all 57 workflow steps as a docs-only descendant of green code.
-- Build #3077 / [run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408), SHA `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`, accepted the real New Project Cancel/reset/unlinked-file UI path.
-- Build #3073 / [run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`, accepted the complete core Project persistence workflow.
+- **Build #3082 / [run 39868644535](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39868644535)** passed all 57 workflow steps on exact SHA `0d953da7eb9370e5180424d9d6de1a9b87c25442`, including full emulator smoke and visual-evidence/APK artifacts.
+- The subsequent async Open-isolation commit `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d` is being validated by Build #3083 / [run 39872152402](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872152402). Its exact-SHA conclusion is still pending at the last live check; do not treat that run as green yet.
+- New Project UI acceptance remains green on Build #3077 / [run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408); core real-SAF Save/overwrite/reopen, malformed-load and v1 compatibility remain green on Build #3073 / [run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552).
 
-### Current blocker — Shortcut Rail full acceptance
-- Builds #3079 / [run 39861808911](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39861808911) and #3081 / [run 39863216717](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39863216717) both failed at the same GRID Spinner assertion. The live popup only exposed the first rows of a scrollable native ListView; the smoke had waited for GRID without scrolling.
-- #3081 did finish the New Project run-time acceptance before failing at Shortcut Rail. Intermittent UiAutomator dump timeouts also occurred, so the test helper now retries bounded dumps and scrolls the popup using measured ListView bounds rather than fixed coordinates.
-- The async Project-save session-generation guard is in source and its focused tests passed, but current full product+smoke acceptance remains pending until the full Android workflow is green.
+### Current slice — SAF write/overwrite protection
+- Source tracing found that direct `openOutputStream(uri, "wt")` writes can truncate existing provider documents before a complete snapshot is persisted.
+- The new transaction captures a bounded verified preimage in app-private storage, writes the complete snapshot, requires read-back byte-count and SHA-256 equality, and tries to restore/verify the exact prior bytes after an exception or mismatch. When rollback is unverified, it retains the preimage rather than silently deleting the only recovery copy. Project URI and native model remain unchanged on any failed save callback.
+- Injected JVM cases cover mid-write failure, silent truncation, failed preimage read, readback failure, failed rollback and exact private recovery content. Full acceptance is pending the new commit's exact-SHA workflow.
 
 ### Next queue
-1. Run/check the new exact-SHA Android workflow through the full smoke, custom Shortcut process restart, Reset Defaults, second restart and evidence upload.
-2. Fix any failure from live exact-SHA evidence without weakening model/state or visible-control assertions.
-3. After this slice passes, handle provider write-failure recovery and two-document Project isolation.
-4. Keep PR #28/#29 bases unchanged. Physical MPC Studio MkII remains a separate pending hardware gate.
+1. Confirm Build #3083's final exact-SHA status for `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d`.
+2. Require full exact-SHA green for the write-protection commit, including policy/provider JVM tests, native tests, preflight, complete real UI smoke and evidence upload.
+3. Add real two-document Save As/Open isolation and, if provider fault injection can be exposed without a fake product backend, a reproducible Android provider failure scenario. Compare active Project canonical-state SHA and exact provider bytes.
+4. Keep PR #28/#29 bases unchanged. Physical MPC Studio MkII remains a separate hardware gate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

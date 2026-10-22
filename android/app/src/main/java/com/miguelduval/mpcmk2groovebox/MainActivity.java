@@ -49,6 +49,7 @@ import android.widget.TextView;
 import android.widget.ArrayAdapter;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -11856,7 +11857,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         final byte[] bytes;
         try {
-            // Snapshot native musical state on the UI thread. Provider I/O is asynchronous.
+            // Snapshot native musical state on the UI thread; provider I/O remains asynchronous.
             bytes = nativeProjectSerialize();
         } catch (RuntimeException error) {
             setBottomStatus("PROJECT SAVE FAILED • " + error.getClass().getSimpleName());
@@ -11870,17 +11871,35 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final long saveSessionGeneration = projectSessionGeneration;
         final String snapshotProjectName = currentProjectName;
         final String snapshotStateSha256 = projectBytesSha256(bytes);
+        final File recoveryDirectory = getFilesDir();
         setBottomStatus("SAVING PROJECT • " + snapshotProjectName);
         projectIoExecutor.execute(() -> {
-            String failure = null;
-            try (OutputStream output = getContentResolver().openOutputStream(target, "wt")) {
-                if (output == null) throw new IOException("Document provider returned no output stream");
-                output.write(bytes);
-                output.flush();
-            } catch (Exception error) {
-                failure = error.getClass().getSimpleName() + ": " + error.getMessage();
-            }
-            final String saveFailure = failure;
+            final MpcProjectDocumentWriteTransaction.Result transaction =
+                    MpcProjectDocumentWriteTransaction.write(
+                            new MpcProjectDocumentWriteTransaction.DocumentAccess() {
+                                @Override
+                                public InputStream openInputStream() throws IOException {
+                                    final InputStream input = getContentResolver().openInputStream(target);
+                                    if (input == null) {
+                                        throw new IOException("Document provider returned no input stream");
+                                    }
+                                    return input;
+                                }
+
+                                @Override
+                                public OutputStream openOutputStream() throws IOException {
+                                    final OutputStream output = getContentResolver()
+                                            .openOutputStream(target, "wt");
+                                    if (output == null) {
+                                        throw new IOException("Document provider returned no output stream");
+                                    }
+                                    return output;
+                                }
+                            },
+                            recoveryDirectory,
+                            bytes,
+                            MAX_PROJECT_FILE_BYTES);
+            final String saveFailure = transaction.success ? null : transaction.failure;
             runOnUiThread(() -> {
                 if (destroyed) return;
                 final boolean sameProjectSession =
@@ -11888,23 +11907,41 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 saveSessionGeneration, projectSessionGeneration);
                 final String activeStateSha256 = currentProjectStateSha256();
                 if (saveFailure != null) {
+                    final String recoveryName = transaction.recoveryCopy == null
+                            ? "none" : transaction.recoveryCopy.getName();
                     Log.i(TAG, "PROJECT_SAVE_FAILED snapshotStateSha256=" + snapshotStateSha256
                             + " activeStateSha256=" + activeStateSha256
                             + " sessionGeneration=" + saveSessionGeneration
                             + " activeSessionGeneration=" + projectSessionGeneration
                             + " sessionStale=" + !sameProjectSession
+                            + " writeAttempted=" + transaction.writeAttempted
+                            + " previousDocumentPreserved=" + transaction.previousDocumentPreserved
+                            + " previousBytes=" + transaction.previousBytes
+                            + " verifiedBytes=" + transaction.verifiedBytes
+                            + " recoveryCopy=" + recoveryName
                             + " error=" + saveFailure);
-                    // Do not replace the new session's status with a stale provider failure.
+                    // Never let a stale write failure replace the current Project session's status.
                     if (sameProjectSession) {
-                        setBottomStatus("PROJECT SAVE FAILED • " + saveFailure);
+                        final String status;
+                        if (!transaction.writeAttempted) {
+                            status = "PROJECT SAVE FAILED • destination unchanged • "
+                                    + saveFailure;
+                        } else if (transaction.previousDocumentPreserved) {
+                            status = "PROJECT SAVE FAILED • previous document restored • "
+                                    + saveFailure;
+                        } else {
+                            status = "PROJECT SAVE FAILED • rollback unverified • recovery copy retained • "
+                                    + recoveryName + " • use SAVE AS to preserve current Project • "
+                                    + saveFailure;
+                        }
+                        setBottomStatus(status);
                     }
                     return;
                 }
 
                 if (!sameProjectSession) {
-                    // The captured bytes were written, but a different Project became
-                    // active during provider I/O. In particular, don't link Save As's URI
-                    // to the newer Project or publish the old Project's status over it.
+                    // A different Project became active while provider I/O was running.
+                    // Keep the saved snapshot's URI isolated from the newer Project.
                     Log.i(TAG, "PROJECT_SAVE_COMPLETE bytes=" + bytes.length
                             + " name=" + snapshotProjectName
                             + " formatVersion=" + projectFileFormatVersion(bytes)
@@ -11935,7 +11972,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         + " changedDuringSave=" + changedDuringSave
                         + " sessionGeneration=" + saveSessionGeneration
                         + " activeSessionGeneration=" + projectSessionGeneration
-                        + " sessionStale=false");
+                        + " previousBytes=" + transaction.previousBytes
+                        + " verifiedBytes=" + transaction.verifiedBytes
+                        + " readBackVerified=true sessionStale=false");
             });
         });
     }

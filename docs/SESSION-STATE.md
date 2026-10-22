@@ -13,19 +13,25 @@
 - [Build #3073 / run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`, accepted the real-SAF Project persistence baseline: Save As, direct SAVE overwrite, exact v2 MIDI/Pattern-placement state, force-stop/relaunch/reopen, cancellation, malformed-load preservation and v1 compatibility.
 - Physical Akai MPC Studio MkII acceptance remains a separate pending hardware gate; emulator evidence does not prove physical-controller operation.
 
-## Current Project workflow slice — async Open isolation
+## Current Project workflow slice — SAF write/overwrite protection
 
-- Source tracing found that `loadProjectFromUri()` reads the selected SAF document on the single Project I/O executor, then unconditionally passed its bytes to `nativeProjectLoad()`. If New Project completed while that read was pending—or a newer Open selection arrived first—the stale callback could replace the newer active model. A stale read error could also overwrite the newer session's status.
-- The current change adds request-generation and Project-session checks immediately before either publishing a read failure or calling the native loader. New Project and a successful Open invalidate earlier callbacks. A stale successful read is discarded before native model mutation, and stale errors do not change the status of the current Project.
-- A focused JVM policy test covers current-request success, superseded Open selection and session replacement. The smoke preflight checks that the app-level guard and tests remain present.
-- This new slice is **implemented but not yet accepted** until a full Android workflow passes on its exact new SHA. Do not claim the next Build green until the required emulator smoke and evidence-upload step finishes.
+- At the previous accepted HEAD, Project Save used `openOutputStream(uri, "wt")` and wrote the serialized Project directly. Several document providers truncate as soon as the stream opens. A mid-write or close failure could therefore damage the only saved document even though the native Project stayed in memory.
+- The current implementation adds `MpcProjectDocumentWriteTransaction`: read and SHA-256-verify a bounded private preimage before touching the provider; write the captured Project snapshot; read the provider document back and require exact byte-count/SHA-256 equality. If writing or verification fails, attempt rollback from the verified preimage and verify that restoration. If rollback cannot be verified, retain the previous document bytes in app-private recovery storage and report that condition explicitly.
+- A failed Save does not relink Save As to the active Project and does not replace the active in-memory model. Errors before the target write report `destination unchanged`; verified rollback reports `previous document restored`; uncertain rollback reports `recovery copy retained` and tells the user to use Save As.
+- Added JVM fault-injection tests for exact write/readback, partial-write exceptions, silent truncation, preimage-read failure, readback provider failure, failed rollback with byte-exact recovery retention, and over-limit snapshots. Source-contract preflight keeps critical integration and failure tests present.
+- **This transaction slice is implemented but awaits exact-SHA full Android CI.** It is best-effort rollback, not an atomic rename guarantee; arbitrary SAF providers do not promise atomic writes.
+
+### Live CI while the next independent slice proceeds
+
+- Async Open isolation commit `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d` is still under Android Build #3083 / [run 39872152402](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872152402) on its exact SHA. At the last live check, the focused Android unit-policy step was running; no result is claimed.
+- The write-protection patch is based on `2bd45d8` and needs its own full workflow. The workflow's `cancel-in-progress: false` remains unchanged so overlapping acceptance runs do not cancel one another.
 
 ## Current queue
 
-1. Check the new branch HEAD/PR and run the full Android workflow on the exact commit SHA. Require JVM policy tests, native tests, Bash/source-contract checks, complete real UI smoke and evidence upload.
-2. After that pass, address SAF write/overwrite failure safety: protect an existing document from partial writes, verify provider results, and provide truthful recovery behavior when the provider stops responding. Add fault-injected coverage rather than relying only on happy-path DocumentsUI.
-3. Exercise two-document Save As/Open isolation end to end; retain the existing canonical Project-state and failed-load invariance assertions.
-4. Keep PR #28/#29 bases unchanged. Physical controller acceptance remains separate.
+1. Follow Build #3083 to final conclusion on exact SHA `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d`; if it fails, fix only evidence-backed causes without rewriting history.
+2. Validate the SAF write transaction on the new exact SHA with JVM fault-injection tests, native tests, Bash/source-contract checks, the full real UI smoke, and evidence upload.
+3. Extend Android emulator smoke with real two-document Save As/Open isolation and a deterministic provider write-failure path where practical; verify active canonical-state SHA and file bytes after each failure.
+4. Keep PR #28/#29 bases unchanged. Physical MPC Studio MkII remains a separate hardware acceptance gate.
 
 ## Completed in this session
 
