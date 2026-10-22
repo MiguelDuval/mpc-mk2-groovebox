@@ -9,6 +9,7 @@
 - The run failed after force-stop because the relaunch omitted the opt-in smoke-mode extra. The app reached `STARTUP_COMPLETE`, but no app-owned View-tree capture was requested. This is a harness instrumentation omission, not evidence of a save/load state mismatch.
 - Commit `82a6ea1` adds `project-persistence-view-tree`: capture is enabled for the fresh process without running the native acceptance-fixture initializer. The restart harness passes this mode, preserving the test's cold-start semantics while requiring a fresh real Main View tree.
 - The follow-up harness requires no `PROJECT_TEST_FIXTURE_READY` line on the cold-restarted process before opening the saved document; otherwise the check exits rather than allowing test-fixture initialization to masquerade as a cold restart.
+- The View-tree hook now declines pre-startup draws and schedules a replacement on `STARTUP_COMPLETE`. This closes an evidence race where the first Main tree could have been fresh in wall-clock terms but captured before native initialization finished.
 - Android Build #3058 / run `39790435311` for exact SHA `82a6ea1cf038a77cc1a45db9890fb6e8fe10416c` was still in progress at the last check. The next commit must earn its own exact-SHA result.
 - Continue the exact same run through saved-file reopen after process death, cancellation invariance, malformed-load atomicity and placement-free v1 canonical-state equality. Do not relax acceptance assertions or substitute UiAutomator dumps for app-owned Activity trees; real DocumentsUI remains tested with UiAutomator.
 

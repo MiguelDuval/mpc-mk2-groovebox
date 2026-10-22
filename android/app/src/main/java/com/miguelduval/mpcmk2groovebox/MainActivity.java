@@ -738,6 +738,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             }
                             updateMpcShellState();
                             Log.i(TAG, "STARTUP_COMPLETE");
+                            // The initial Main pre-draw can happen while native startup is
+                            // still running. Publish the acceptance tree only after the
+                            // workspace is fully ready, and only for the current live page.
+                            if (projectPersistenceSmokeMode) {
+                                scheduleProjectPersistenceViewHierarchyCapture(currentPage);
+                            }
 
                             if (uiAuditSmokeMode) {
                                 scheduleUiAuditAfterFirstLayout();
@@ -10388,8 +10394,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void captureProjectPersistenceViewHierarchyForSmoke(String expectedPage) {
-        if (!projectPersistenceSmokeMode || destroyed || expectedPage == null
-                || !expectedPage.equals(currentPage)) return;
+        if (!projectPersistenceSmokeMode || !startupComplete || destroyed
+                || expectedPage == null || !expectedPage.equals(currentPage)) return;
         final Window window = getWindow();
         final View decor = window == null ? null : window.getDecorView();
         if (decor == null || decor.getWidth() <= 0 || decor.getHeight() <= 0 || !decor.isShown()) {
