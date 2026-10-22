@@ -10514,7 +10514,7 @@ snapshot_project_view_tree_marker_baselines() {
   PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
   PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
   PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
-  PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQUENCE")"
+  PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")"
   PROJECT_MENU_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_MENU_RENDER_COMPLETE")"
   PROJECT_MENU_CLICK_MARKER_BEFORE="$(project_marker_count "MPC_MENU_CLICK_END currentPage=MENU")"
   PROJECT_PROJECT_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_PROJECT_RENDER_COMPLETE summary=")"
@@ -10527,7 +10527,7 @@ capture_project_persistence_view_tree() {
     MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
     MAIN) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"; before="$PROJECT_MAIN_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     PROJECT) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT"; before="$PROJECT_PROJECT_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    SEQUENCE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQUENCE"; before="$PROJECT_SEQUENCE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    SEQ) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ"; before="$PROJECT_SEQUENCE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     *) echo "ERROR: unsupported app View-tree page for Project acceptance: $page"; return 2 ;;
   esac
   if ! wait_for_new_project_marker "$marker" "$before" 10; then
@@ -10697,7 +10697,7 @@ tap_main_new_track() {
   snapshot_project_view_tree_marker_baselines
   echo "Real measured Main Function Bar tap target=+ NEW TRACK"
   if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "+ NEW TRACK"; then return 1; fi
-  capture_project_persistence_view_tree "SEQUENCE" "/tmp/mpc-groovebox-project-sequence-after-track-add-view-hierarchy.xml"
+  capture_project_persistence_view_tree "SEQ" "/tmp/mpc-groovebox-project-sequence-after-track-add-view-hierarchy.xml"
 }
 
 assert_latest_project_summary() {
@@ -11151,8 +11151,8 @@ fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-project-save-cancelled.png 10; then
   echo "ERROR: could not capture Save As cancel path"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" /tmp/mpc-groovebox-project-save-cancelled-uiautomator.xml; then
-  echo "ERROR: could not capture Save As cancellation hierarchy"; exit 1
+if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-save-cancelled-view-hierarchy.xml; then
+  echo "ERROR: could not capture fresh Save As cancellation View tree"; exit 1
 fi
 
 open_cancel_marker_before="$(project_marker_count "PROJECT_OPEN_CANCELLED")"

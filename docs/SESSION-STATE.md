@@ -7,16 +7,16 @@
 
 ### Live checkpoint — app-owned Project route hierarchy
 
-- Primary PR #23 HEAD `d9ec35a73a692e6ea45623424451227f92093e71` was tested by Build #3055 / run `39771750338`. The Menu pre-draw freshness fix worked: real Android View-tree evidence had 194 Views and ten actionable tile targets, the measured `MPC Menu PROJECT` touch succeeded and native summary `TRACKS=1 PLACEMENTS=1 MIDI_NOTES=2` was verified.
-- Build #3055 still failed at step 52, but Menu is no longer the failing gate. The following UiAutomator dump of the app-owned Project route timed out after 8 seconds. APK `12422334378` and visual-evidence ZIP `12423023444` are tied to exact SHA `d9ec35a73a692e6ea45623424451227f92093e71`.
-- This follow-up reuses the actual Android View-tree serializer for app-owned Project-persistence screens (MAIN, MENU, PROJECT and temporary SEQUENCE). XML explicitly records `source=android-view-tree`, the exact page, generated-at-uptime timestamp, and real view bounds/visibility/clickability. App-owned controls are touched using bounds from a fresh page-matched hierarchy; Android DocumentsUI remains tested through real UiAutomator snapshots and provider operations.
-- Fresh page-scoped markers and pre-action baselines, parseable XML, ten visible enabled Menu tiles and enabled Project OPEN/SAVE AS/SAVE controls remain mandatory. No native canonical-state or Project lifecycle assertions were removed.
-- Full Project SAVE / SAVE AS / OPEN remains **PENDING** until real SAF Save As, mutation/Open equality for MIDI and Arrangement placements, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-load atomicity and placement-free v1 compatibility pass on green exact-SHA CI. PRs #28/#29 remain isolated; physical MPC Studio MkII validation remains **PENDING**.
+- Primary PR #23 HEAD `0bf0a3489cbc023419fc3410e1bb60f4e9ef8651` introduced real View-tree capture for app-owned Project acceptance pages. The preceding Build #3055 / run `39771750338` proved Menu freshness was fixed: 194 Android Views, ten actionable tiles, measured `MPC Menu PROJECT` touch and native summary `TRACKS=1 PLACEMENTS=1 MIDI_NOTES=2`.
+- Build #3055's subsequent failure was the standard UiAutomator dump of the app-owned Project route, which timed out after 8 seconds. The current code no longer depends on that dump for app-owned routes; actual DocumentsUI is still independently verified using UiAutomator and provider actions.
+- Follow-up source review caught a page-name mismatch before accepting the new run: Activity uses internal `currentPage=SEQ`, not `SEQUENCE`, after adding a Track. The smoke marker and capture request now use the exact internal ID. The Save As cancellation milestone also now captures actual Android View-tree XML rather than calling UiAutomator on our own screen.
+- All page snapshots retain `source=android-view-tree`, exact page identity, generated-at-uptime timestamp and actual bounds/visibility/clickability. Fresh page-specific markers, ten visible enabled Menu targets, enabled Project OPEN/SAVE AS/SAVE, native canonical SHA comparisons and full Project lifecycle assertions remain required.
+- Full Project SAVE / SAVE AS / OPEN remains **PENDING** until real SAF Save As, mutation/Open canonical equality for MIDI and Arrangement placements, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-load atomicity and placement-free v1 compatibility pass in green exact-SHA CI. PRs #28/#29 remain isolated; physical MPC Studio MkII validation remains **PENDING**.
 
 ## Current execution queue — 2026-10-22
 
-1. Validate the app-owned View-tree extension on the exact current PR #23 HEAD and require Menu → Project to reach the real Android DocumentsUI Save As picker.
-2. Diagnose the next exact failing step/evidence; don't revisit the repaired Menu synchronization or previous Browser/Sample Edit components without regression evidence.
+1. Inspect Build #3056 for the first runtime result of page-aware View-tree capture, then validate this exact page-ID correction on its own SHA.
+2. Continue real DocumentsUI Save As and the remaining Project lifecycle without reverting to app-owned UiAutomator dumps.
 
 ## Completed in this session
 

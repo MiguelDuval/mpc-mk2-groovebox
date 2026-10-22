@@ -9882,7 +9882,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceStop();
         setBottomStatus(nativeSequenceAddTrack(kind));
         showSequencePage();
-        scheduleProjectPersistenceViewHierarchyCapture("SEQUENCE");
+        scheduleProjectPersistenceViewHierarchyCapture("SEQ");
     }
 
     private void changeSequenceTempo(double delta) {
