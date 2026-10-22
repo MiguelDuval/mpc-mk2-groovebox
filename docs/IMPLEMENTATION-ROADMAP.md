@@ -2,20 +2,27 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-22 (live exact-SHA evidence governs)
 
-### 1. Primary PR #23 — app-owned Project acceptance hierarchy
+### 1. Primary PR #23 — Project persistence lifecycle and cold restart
 
-- Build #3055 / run `39771750338` proved the Menu pre-draw freshness race is fixed: the real Menu View tree contained 194 Views and ten enabled/clickable targets, the measured `MPC Menu PROJECT` touch succeeded and native summary `TRACKS=1 PLACEMENTS=1 MIDI_NOTES=2` was verified.
-- The next failure was the standard UiAutomator dump of the app-owned Project route, which timed out after 8 seconds. The current implementation extends actual Android View-tree evidence to app-owned pages while leaving the real Android DocumentsUI acceptance on UiAutomator.
-- Follow-up source review found that after a Track add the Activity uses `currentPage=SEQ`. The script and marker now use that exact ID rather than the descriptive word SEQUENCE. Save As cancellation also uses the app-owned View-tree evidence path.
-- Require the next exact-SHA workflow to pass syntax/evidence preflight and reach the real Save As picker. Continue through mutation/Open canonical SHA equality, direct SAVE overwrite, restart/Open, cancellation, malformed-load atomicity and placement-free v1 compatibility.
+- Build #3057 / run `39781211397` on exact SHA `e9298e8d802d6d0e949415f52581855df9a92854` passed native/unit policy tests, APK assembly and UI-smoke syntax/evidence preflight, then reached the real Project persistence sequence.
+- Fresh View-tree evidence passed for Menu (194 views, ten actionable controls), Project (178 views), and SEQ after Track add (250 views). Real DocumentsUI Save As → in-memory Track mutation → Open restored the original canonical native digest exactly; direct SAVE overwrote the linked file with TRACKS=2 / PLACEMENTS=2 and a changed domain SHA.
+- The run failed after force-stop because the relaunch omitted the opt-in smoke-mode extra. The app reached `STARTUP_COMPLETE`, but no app-owned View-tree capture was requested. This is a harness instrumentation omission, not evidence of a save/load state mismatch.
+- The next fix adds `project-persistence-view-tree`: capture is enabled for the fresh process without running the native acceptance-fixture initializer. The restart harness passes this mode, preserving the test's cold-start semantics while requiring a fresh real Main View tree.
+- Continue the exact same run through saved-file reopen after process death, cancellation invariance, malformed-load atomicity and placement-free v1 canonical-state equality. Do not relax acceptance assertions or substitute UiAutomator dumps for app-owned Activity trees; real DocumentsUI remains tested with UiAutomator.
 
-### 2. Isolated PRs #29 / #28
+### 2. Earlier hierarchy failures now addressed
+
+- Build #3055 exposed the Menu pre-draw freshness race and an app-owned Project-route UiAutomator timeout; the code now baselines before the actual Toolbar Menu touch and serializes app-owned View trees directly.
+- Build #3056 on `0bf0a3489cbc023419fc3410e1bb60f4e9ef8651` exposed the mismatch between actual `currentPage=SEQ` and the smoke script's former `SEQUENCE` marker. Commit `e9298e8` aligned the marker and moved Save As cancellation capture to the app-owned hierarchy path.
+- All previous sample, Arrangement, Browser component results remain tied to their recorded exact SHAs; none substitutes for the full current-head acceptance.
+
+### 3. Isolated PRs #29 / #28
 
 - PR #29 exact head `240cf5bf91a5a66b59c4577003c8b2d785641fbf`, Build #3053 / run `39682859251`: SAMP-010 component checks passed, but full smoke failed at the prior Menu gate.
 - PR #28 exact head `85026b48eb70587d3d097762e5bb4b5ece590bc1`, Build #3054 / run `39683044677`: native Project state and versioned persistence/Arrangement placement tests passed, but full smoke failed at the prior Menu gate.
 - Keep both draft PRs isolated until primary full exact-SHA Android acceptance is green.
 
-### 3. Non-negotiables
+### 4. Non-negotiables
 
 - Preserve `cancel-in-progress: false`; do not touch `main`, rewrite history or weaken assertions. Emulator runs are not physical MPC Studio MkII validation.
 - Browser/FAVORITE 1 and SAMP-008/009/010 remain component results on their exact recorded SHAs only.

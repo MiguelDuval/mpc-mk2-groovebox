@@ -410,6 +410,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private boolean uiOnlySmokeMode;
     private boolean uiAuditSmokeMode;
     private boolean projectPersistenceSmokeMode;
+    private boolean projectPersistenceFixtureMode;
     private boolean uiAuditAwaitingBrowserStoragePickerResult;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
@@ -605,7 +606,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         String smokeMode = getIntent().getStringExtra(SMOKE_MODE_EXTRA);
         uiOnlySmokeMode = "ui-only".equals(smokeMode);
         uiAuditSmokeMode = "ui-audit".equals(smokeMode);
-        projectPersistenceSmokeMode = "project-persistence".equals(smokeMode)
+        projectPersistenceSmokeMode = ("project-persistence".equals(smokeMode)
+                || "project-persistence-view-tree".equals(smokeMode))
+                && getPackageName().endsWith(".debug");
+        projectPersistenceFixtureMode = "project-persistence".equals(smokeMode)
                 && getPackageName().endsWith(".debug");
 
         try {
@@ -721,7 +725,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             // shell was showing honest startup placeholders.
                             // Refresh the persistent Main shell now so the XL
                             // strip, Toolbar and Function Bar expose live state.
-                            if (projectPersistenceSmokeMode) {
+                            if (projectPersistenceFixtureMode) {
                                 final String fixture = nativeProjectPreparePersistenceAcceptanceFixture();
                                 if (fixture == null || !fixture.startsWith("PROJECT_TEST_FIXTURE_READY")) {
                                     throw new IllegalStateException(

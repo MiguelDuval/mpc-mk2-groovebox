@@ -5,18 +5,21 @@
 
 ## Latest source and verification state
 
-### Live checkpoint — app-owned Project route hierarchy
+### Live checkpoint — Project persistence process-restart capture
 
-- Primary PR #23 HEAD `0bf0a3489cbc023419fc3410e1bb60f4e9ef8651` introduced real View-tree capture for app-owned Project acceptance pages. The preceding Build #3055 / run `39771750338` proved Menu freshness was fixed: 194 Android Views, ten actionable tiles, measured `MPC Menu PROJECT` touch and native summary `TRACKS=1 PLACEMENTS=1 MIDI_NOTES=2`.
-- Build #3055's subsequent failure was the standard UiAutomator dump of the app-owned Project route, which timed out after 8 seconds. The current code no longer depends on that dump for app-owned routes; actual DocumentsUI is still independently verified using UiAutomator and provider actions.
-- Follow-up source review caught a page-name mismatch before accepting the new run: Activity uses internal `currentPage=SEQ`, not `SEQUENCE`, after adding a Track. The smoke marker and capture request now use the exact internal ID. The Save As cancellation milestone also now captures actual Android View-tree XML rather than calling UiAutomator on our own screen.
-- All page snapshots retain `source=android-view-tree`, exact page identity, generated-at-uptime timestamp and actual bounds/visibility/clickability. Fresh page-specific markers, ten visible enabled Menu targets, enabled Project OPEN/SAVE AS/SAVE, native canonical SHA comparisons and full Project lifecycle assertions remain required.
-- Full Project SAVE / SAVE AS / OPEN remains **PENDING** until real SAF Save As, mutation/Open canonical equality for MIDI and Arrangement placements, direct SAVE overwrite, force-stop/relaunch/Open, cancellation invariance, malformed-load atomicity and placement-free v1 compatibility pass in green exact-SHA CI. PRs #28/#29 remain isolated; physical MPC Studio MkII validation remains **PENDING**.
+- Primary PR #23 HEAD before this correction was `e9298e8d802d6d0e949415f52581855df9a92854`; Android Build #3057 / run `39781211397` completed **FAILURE** at the force-stop/relaunch section. Build URL: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39781211397.
+- Build #3057 passed all preceding native/unit policy tests, APK assembly, upload, UI-smoke syntax/evidence preflight, and reached the real Project lifecycle. The Menu Android View tree contained 194 views and ten visible actionable tiles; Project captured 178 views; the post-Track-add SEQ page captured 250 views.
+- Real DocumentsUI Save As → add Track in memory → Open saved file restored the original exact native Project digest `4976f1c933b9cc933aa5c62d37c9cebb194970ba9451577456e44c17e539e5b9`. Direct SAVE then overwrote the linked document with TRACKS=2 / PLACEMENTS=2 and new digest `0c774ef1fa5e1566fe67f45bba58502dba3e1472a71555a6b10d1696b8185c89`.
+- The remaining failure was harness wiring, not an observed native save/load mismatch: the cold relaunch omitted the smoke-mode extra, so the fresh process correctly reached `STARTUP_COMPLETE` but did not activate the opt-in Android View-tree capture marker. The next change adds a distinct `project-persistence-view-tree` instrumentation mode that enables real tree capture without re-seeding/resetting the native persistence fixture, and passes that mode on the cold relaunch.
+- Build #3056 / run `39780738111` on the earlier SHA failed at the old `SEQUENCE` page marker; commit `e9298e8` corrected it to the Activity's actual `SEQ` page ID and routed Save As cancellation evidence through the app-owned View-tree serializer.
+- All capture evidence remains real Android Views with source/page/timestamp/bounds; actual Android DocumentsUI continues to be inspected via UiAutomator. No test assertion is being removed or weakened.
+- Full Project SAVE / SAVE AS / OPEN remains **PENDING** until a green exact-HEAD run completes cold process restart/Open canonical equality, cancellation invariance, malformed-load atomicity and placement-free v1 compatibility. PRs #28/#29 remain isolated; physical MPC Studio MkII validation remains **PENDING**.
 
 ## Current execution queue — 2026-10-22
 
-1. Inspect Build #3056 for the first runtime result of page-aware View-tree capture, then validate this exact page-ID correction on its own SHA.
-2. Continue real DocumentsUI Save As and the remaining Project lifecycle without reverting to app-owned UiAutomator dumps.
+1. Validate the non-fixture View-tree mode at the force-stop/relaunch stage on the next exact-SHA Android run.
+2. Continue the same full run through cancellation invariance, malformed-load preservation, and placement-free v1 compatibility; inspect artifact evidence and record only exact-SHA results.
+3. Keep PRs #28/#29 isolated until the primary full emulator smoke passes; physical controller acceptance stays a separate gate.
 
 ## Completed in this session
 

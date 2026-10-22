@@ -11087,7 +11087,8 @@ if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-
 echo "Project SAVE overwrite passed: linked SAF file now represents TRACKS=2 / PLACEMENTS=2; updated domain SHA=$project_saved_sha_ext"
 
 # A genuine force-stop kills the old application process and native model.
-# Launch without the fixture intent, then Open again through Android DocumentsUI.
+# Relaunch with View-tree evidence enabled, but without fixture injection, then Open
+# the saved document through the real Android DocumentsUI flow.
 if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
   echo "ERROR: could not force-stop app for Project process restart"; exit 1
 fi
@@ -11095,7 +11096,8 @@ if ! adb_bounded 10 shell logcat -c; then
   echo "ERROR: could not clear logs before process-restart acceptance"; exit 1
 fi
 snapshot_project_view_tree_marker_baselines
-if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY"; then
+if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
+    --es "$SMOKE_MODE_EXTRA" "project-persistence-view-tree"; then
   echo "ERROR: could not relaunch app after process death"; exit 1
 fi
 restart_ready=0
