@@ -28,9 +28,9 @@
 
 ## Current queue
 
-1. Follow Build #3083 to final conclusion on exact SHA `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d`; if it fails, fix only evidence-backed causes without rewriting history.
-2. Validate the SAF write transaction on the new exact SHA with JVM fault-injection tests, native tests, Bash/source-contract checks, the full real UI smoke, and evidence upload.
-3. Extend Android emulator smoke with real two-document Save As/Open isolation and a deterministic provider write-failure path where practical; verify active canonical-state SHA and file bytes after each failure.
+1. Validate Build #3083 on exact async-Open SHA `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d` and Build #3084 on SAF-write SHA `3d6dca697c5b75ed9a2f37fc5466cbfe3bf3ebb4`. At the last live check, #3083 was at emulator smoke and #3084 was queued; no final result is assumed.
+2. The real two-document DocumentsUI scenario is now in the smoke source: save A at two Tracks; Save As uniquely named B at the same initial digest; add a third Track and direct-SAVE B; reopen A and B and assert their exact canonical digests/counts independently. This new smoke slice is awaiting its full exact-SHA workflow.
+3. Next provide an actionable export/restore path for retained app-private rollback copies, and cover revoked provider grants/read/write failures where the real picker permits deterministic coverage.
 4. Keep PR #28/#29 bases unchanged. Physical MPC Studio MkII remains a separate hardware acceptance gate.
 
 ## Completed in this session

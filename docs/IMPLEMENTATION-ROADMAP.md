@@ -14,9 +14,9 @@
 - Injected JVM cases cover mid-write failure, silent truncation, failed preimage read, readback failure, failed rollback and exact private recovery content. Full acceptance is pending the new commit's exact-SHA workflow.
 
 ### Next queue
-1. Confirm Build #3083's final exact-SHA status for `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d`.
-2. Require full exact-SHA green for the write-protection commit, including policy/provider JVM tests, native tests, preflight, complete real UI smoke and evidence upload.
-3. Add real two-document Save As/Open isolation and, if provider fault injection can be exposed without a fake product backend, a reproducible Android provider failure scenario. Compare active Project canonical-state SHA and exact provider bytes.
+1. Confirm Build #3083's final exact-SHA status for `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d` and Build #3084 for `3d6dca697c5b75ed9a2f37fc5466cbfe3bf3ebb4`.
+2. Validate the real two-document emulator path: A retains its exact two-Track digest after Save As B is mutated and overwritten to a distinct three-Track digest; both files must reopen correctly.
+3. Then implement a user-accessible export/restore path for retained app-private recovery copies and test provider permission failures where deterministic Android-level coverage exists.
 4. Keep PR #28/#29 bases unchanged. Physical MPC Studio MkII remains a separate hardware gate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)

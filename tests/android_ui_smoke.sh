@@ -11214,6 +11214,51 @@ wait_for_project_picker_item() {
   fi
 }
 
+# Rename the real ACTION_CREATE_DOCUMENT filename field using live bounds.
+replace_project_save_as_filename() {
+  local hierarchy_path="$1" remote_path="$2" new_name="$3"
+  local coordinates tap_x tap_y old_length index
+  if ! coordinates="$(python3 - "$hierarchy_path" <<'PY_PROJECT_FILENAME_FIELD'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    if "edittext" not in node.attrib.get("class", "").lower():
+        continue
+    if node.attrib.get("enabled") != "true" or node.attrib.get("visible-to-user") == "false":
+        continue
+    current = node.attrib.get("text", "").strip()
+    if current != "Untitled.mpcproj":
+        continue
+    raw = node.attrib.get("bounds", "")
+    try:
+        left_top, right_bottom = raw[1:-1].split("][")
+        left, top = map(int, left_top.split(","))
+        right, bottom = map(int, right_bottom.split(","))
+    except (ValueError, IndexError):
+        continue
+    if right > left and bottom > top:
+        print((left + right) // 2, (top + bottom) // 2, len(current))
+        raise SystemExit(0)
+raise SystemExit(2)
+PY_PROJECT_FILENAME_FIELD
+)"; then
+    echo "ERROR: could not locate the live editable Project Save As filename field"; return 1
+  fi
+  read -r tap_x tap_y old_length <<< "$coordinates"
+  if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then return 1; fi
+  if ! adb_bounded 5 shell input keyevent KEYCODE_MOVE_END; then return 1; fi
+  for ((index=0; index<old_length; index++)); do
+    if ! adb_bounded 5 shell input keyevent KEYCODE_DEL; then return 1; fi
+  done
+  if ! adb_bounded 10 shell input text "$new_name"; then return 1; fi
+  if ! dump_device_ui "$remote_path" "$hierarchy_path" 15; then return 1; fi
+  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$new_name" 15; then
+    echo "ERROR: DocumentsUI did not expose the intended second-document name $new_name"; return 1
+  fi
+  echo "Verified measured Save As filename field contains $new_name"
+}
+
 # Android Back may navigate up or dismiss an input method without cancelling
 # DocumentsUI. Observe the resumed Activity after each Back and stop as soon as
 # our app resumes; never send an additional Back into the app. On failure,
@@ -11359,6 +11404,104 @@ if ! capture_ui_screenshot /tmp/mpc-groovebox-project-save-updated.png 10; then
 fi
 if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-save-updated-view-hierarchy.xml; then echo "ERROR: direct SAVE View tree missing"; exit 1; fi
 echo "Project SAVE overwrite passed: linked SAF file now represents TRACKS=2 / PLACEMENTS=2; updated domain SHA=$project_saved_sha_ext"
+
+# Prove that Save As B and direct SAVE remain isolated from existing document A.
+PROJECT_DOC_A_SHA="$project_saved_sha_ext"
+PROJECT_DOC_B_NAME="mpc-isolation-${BASHPID}.mpcproj"
+echo "Running real two-document Save As/Open isolation: A=Untitled.mpcproj, B=$PROJECT_DOC_B_NAME"
+project_save_b_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+if ! tap_project_function_bar 1; then exit 1; fi
+project_save_b_picker_ready=0
+for ((attempt=1; attempt<=25; attempt++)); do
+  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
+      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
+    project_save_b_picker_ready=1
+    break
+  fi
+  sleep 1
+done
+if [ "$project_save_b_picker_ready" -ne 1 ]; then
+  echo "ERROR: Android DocumentsUI did not appear for second-document Save As"; exit 1
+fi
+if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
+  echo "ERROR: could not capture the second-document Save As picker"; exit 1
+fi
+if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
+  echo "ERROR: second Save As did not show the current filename"; exit 1
+fi
+if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_B_NAME"; then exit 1; fi
+if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then
+  echo "ERROR: DocumentsUI Save action was not available for second-document Save As"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_save_b_marker_before" 45; then
+  echo "ERROR: second Project Save As did not complete through SAF"; exit 1
+fi
+project_doc_b_seed_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
+project_doc_b_seed_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_doc_b_seed_line")"
+if [[ ! "$project_doc_b_seed_sha" =~ ^[0-9a-f]{64}$ ]] \
+    || [[ "$project_doc_b_seed_sha" != "$PROJECT_DOC_A_SHA" ]] \
+    || ! grep -Fq -- "readBackVerified=true" <<<"$project_doc_b_seed_line"; then
+  echo "ERROR: document B was not read-back-verified from A's exact two-Track snapshot"
+  echo "$project_doc_b_seed_line"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-b-seed-view-hierarchy.xml; then
+  echo "ERROR: second-document seed Save As did not return to the Project page"; exit 1
+fi
+
+# Add a third Track, then direct-SAVE must update B, not A.
+if ! tap_project_toolbar_menu; then exit 1; fi
+if ! tap_mpc_menu_tile 0 0; then exit 1; fi
+if ! tap_main_new_track; then exit 1; fi
+sleep 1
+if ! tap_project_toolbar_menu; then exit 1; fi
+if ! tap_mpc_menu_tile 3 3; then exit 1; fi
+if ! assert_latest_project_summary "TRACKS=3" "PLACEMENTS=3"; then exit 1; fi
+project_doc_b_update_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+if ! tap_project_function_bar 2; then exit 1; fi
+if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_doc_b_update_marker_before" 45; then
+  echo "ERROR: direct SAVE did not overwrite B after its third Track mutation"; exit 1
+fi
+project_doc_b_update_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
+project_doc_b_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_doc_b_update_line")"
+if [[ ! "$project_doc_b_sha" =~ ^[0-9a-f]{64}$ ]] \
+    || [[ "$project_doc_b_sha" == "$project_doc_b_seed_sha" ]] \
+    || ! grep -Fq -- "readBackVerified=true" <<<"$project_doc_b_update_line"; then
+  echo "ERROR: B overwrite did not persist a distinct verified three-Track snapshot"
+  echo "$project_doc_b_update_line"; exit 1
+fi
+
+# Reopening A must yield its original two-Track digest despite B's newer SAVE.
+if ! open_project_document "Untitled.mpcproj"; then exit 1; fi
+project_doc_a_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
+project_doc_a_open_sha="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_doc_a_open_line")"
+if [[ "$project_doc_a_open_sha" != "$PROJECT_DOC_A_SHA" ]] \
+    || ! grep -Fq -- "TRACKS=2" <<<"$project_doc_a_open_line" \
+    || ! grep -Fq -- "PLACEMENTS=2" <<<"$project_doc_a_open_line" \
+    || ! grep -Fq -- "persistedDomainExact=true" <<<"$project_doc_a_open_line"; then
+  echo "ERROR: document A changed after Save As/overwrite targeted document B"
+  echo "$project_doc_a_open_line"; exit 1
+fi
+if ! show_project_route_extended "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
+if ! capture_ui_screenshot /tmp/mpc-groovebox-project-two-doc-a-reopened.png 10; then exit 1; fi
+if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-a-reopened-view-hierarchy.xml; then exit 1; fi
+
+# B must separately reopen as its newer three-Track snapshot. Restart acceptance
+# below deliberately reopens A and retains the A digest assertion.
+if ! open_project_document "$PROJECT_DOC_B_NAME"; then exit 1; fi
+project_doc_b_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
+project_doc_b_open_sha="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_doc_b_open_line")"
+if [[ "$project_doc_b_open_sha" != "$project_doc_b_sha" ]] \
+    || ! grep -Fq -- "TRACKS=3" <<<"$project_doc_b_open_line" \
+    || ! grep -Fq -- "PLACEMENTS=3" <<<"$project_doc_b_open_line" \
+    || ! grep -Fq -- "persistedDomainExact=true" <<<"$project_doc_b_open_line"; then
+  echo "ERROR: document B did not reopen as the independent three-Track snapshot"
+  echo "$project_doc_b_open_line"; exit 1
+fi
+if ! show_project_route_extended "TRACKS=3" "PLACEMENTS=3"; then exit 1; fi
+if ! capture_ui_screenshot /tmp/mpc-groovebox-project-two-doc-b-reopened.png 10; then exit 1; fi
+if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-b-reopened-view-hierarchy.xml; then exit 1; fi
+echo "Two-document isolation passed: A SHA=$project_doc_a_open_sha retains TRACKS=2; B SHA=$project_doc_b_open_sha retains TRACKS=3."
+
 
 # A genuine force-stop kills the old application process and native model.
 # Relaunch with View-tree evidence enabled, but without fixture injection, then Open
