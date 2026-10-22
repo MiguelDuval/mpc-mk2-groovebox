@@ -74,6 +74,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         String commit(String value);
     }
 
+    // Fixed Sample Edit children: header, waveform, region info, viewport info, tab row.
+    // Panel switches must retain the ENV/FILTER/LAYER tabs after the viewport label was added.
+    private static final int SAMPLE_PAGE_FIXED_CHILD_COUNT = 5;
     private static final String TAG = "MpcGroovebox";
     private static final int REQUEST_OPEN_WAV = 1001;
     private static final int REQUEST_RECORD_AUDIO = 1002;
@@ -237,6 +240,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final Handler waveformUiHandler = new Handler(Looper.getMainLooper());
     private Runnable recordingWaveformUpdater;
     private WaveformView sampleWaveform;
+    private TextView sampleWaveformViewportInfo;
     private WaveformView mainTrackWaveform;
     private Button mainTrackSamplePrimaryButton;
     private Button mainTrackSampleActionButton;
@@ -5054,6 +5058,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(regionInfo, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(22)));
 
+        sampleWaveformViewportInfo = label("VIEW 0–100%", 10, MUTED);
+        sampleWaveformViewportInfo.setContentDescription("Sample Edit waveform viewport");
+        sampleWaveformViewportInfo.setPadding(dp(10), 0, dp(10), 0);
+        page.addView(sampleWaveformViewportInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
+        sampleWaveform.setOnViewportChangedListener(
+                this::refreshSampleWaveformViewportInfo);
+        refreshSampleWaveformViewportInfo(
+                sampleWaveform.viewportStartNormalized(),
+                sampleWaveform.viewportEndNormalized());
+
         LinearLayout tabs = row();
         tabs.addView(actionButton("EDIT", v -> showSampleEditPanel(page)), weight());
         tabs.addView(actionButton("ENV", v -> showSampleEnvelopePanel(page)), weight());
@@ -5090,7 +5105,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleEditPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, SAMPLE_PAGE_FIXED_CHILD_COUNT);
         if (sampleWaveform != null) {
             sampleWaveform.setEditable(true);
             sampleWaveform.setRecording(false);
@@ -5124,22 +5139,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Button chop16 = actionButton("CH16", v -> chop(16));
         chop16.setContentDescription("Sample Edit chop into 16 slices");
         row2.addView(chop16, weight());
-        row2.addView(actionButton("PLAY", v -> selectAndTriggerPad(selectedPad, 112)), weight());
-        row2.addView(actionButton("ZOOM+", v -> {
+        Button sampleEditPlay = actionButton("PLAY", v -> {
+            selectAndTriggerPad(selectedPad, 112);
+            if (sampleWaveform != null) {
+                refreshSampleWaveformViewportInfo(
+                        sampleWaveform.viewportStartNormalized(),
+                        sampleWaveform.viewportEndNormalized());
+            }
+        });
+        sampleEditPlay.setContentDescription("Sample Edit audition selected Pad");
+        row2.addView(sampleEditPlay, weight());
+        Button sampleZoomIn = actionButton("ZOOM+", v -> {
             if (sampleWaveform != null) sampleWaveform.zoomIn();
-        }), weight());
-        row2.addView(actionButton("ZOOM−", v -> {
+        });
+        sampleZoomIn.setContentDescription("Sample Edit zoom waveform in");
+        row2.addView(sampleZoomIn, weight());
+        Button sampleZoomOut = actionButton("ZOOM−", v -> {
             if (sampleWaveform != null) sampleWaveform.zoomOut();
-        }), weight());
-        row2.addView(actionButton("RESET", v -> {
+        });
+        sampleZoomOut.setContentDescription("Sample Edit zoom waveform out");
+        row2.addView(sampleZoomOut, weight());
+        Button sampleZoomReset = actionButton("RESET", v -> {
             if (sampleWaveform != null) sampleWaveform.resetZoom();
-        }), weight());
+        });
+        sampleZoomReset.setContentDescription("Sample Edit reset waveform zoom");
+        row2.addView(sampleZoomReset, weight());
         page.addView(row2, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
     }
 
     private void showSampleEnvelopePanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, SAMPLE_PAGE_FIXED_CHILD_COUNT);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         envelopeInfo = label("", 12, TEXT);
@@ -5167,7 +5197,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleFilterPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, SAMPLE_PAGE_FIXED_CHILD_COUNT);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         filterInfo = label("", 13, TEXT);
@@ -5214,7 +5244,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSampleLayerPanel(LinearLayout page) {
-        removeBelow(page, 4);
+        removeBelow(page, SAMPLE_PAGE_FIXED_CHILD_COUNT);
         if (sampleWaveform != null) sampleWaveform.setEditable(false);
 
         TextView layerInfo = label("", 12, TEXT);
@@ -11209,6 +11239,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus("AUDITION • Pad " + (pad + 1)
                     + " • velocity " + velocity
                     + " | " + nativeAudioStatus());
+            if (uiAuditSmokeMode) {
+                Log.i(TAG, "UI_SAMPLE_AUDITION_TRIGGERED: pad=" + pad
+                        + " velocity=" + velocity
+                        + " page=" + currentPage
+                        + " layer=" + selectedLayer
+                        + " sampleFrames=" + nativeAudioGetPadSampleFrameCount(
+                                pad, selectedLayer)
+                        + " regionStart=" + nativeAudioGetPadSampleRegionStart(
+                                pad, selectedLayer)
+                        + " regionEnd=" + nativeAudioGetPadSampleRegionEnd(
+                                pad, selectedLayer));
+            }
         } else {
             setBottomStatus("Audio engine still starting");
         }
@@ -11256,6 +11298,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         long start = nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer);
         long end = nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer);
         regionInfo.setText("Region " + start + " → " + end + "  /  " + total + " frames");
+    }
+
+    private void refreshSampleWaveformViewportInfo(
+            float startNormalized, float endNormalized) {
+        if (sampleWaveformViewportInfo == null) return;
+        int startPercent = Math.round(startNormalized * 100f);
+        int endPercent = Math.round(endNormalized * 100f);
+        final long totalFrames = nativeAudioGetPadSampleFrameCount(
+                selectedPad, selectedLayer);
+        final long regionStart = totalFrames > 0
+                ? nativeAudioGetPadSampleRegionStart(selectedPad, selectedLayer) : 0L;
+        final long regionEnd = totalFrames > 0
+                ? nativeAudioGetPadSampleRegionEnd(selectedPad, selectedLayer) : 0L;
+        sampleWaveformViewportInfo.setText(String.format(
+                Locale.ROOT, "VIEW %d–%d%%", startPercent, endPercent));
+        sampleWaveformViewportInfo.setContentDescription(String.format(
+                Locale.ROOT,
+                "Sample Edit waveform viewport %d to %d percent; sample region %d to %d of %d frames",
+                startPercent, endPercent, regionStart, regionEnd, totalFrames));
     }
 
     private void refreshEnvelopeInfo() {
@@ -13601,6 +13662,46 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     }
 
+    private void waitForAuditViewWithContentDescription(
+            String expectedDescription,
+            String label,
+            int minimumHeight,
+            Runnable continuation) {
+        final Handler handler = new Handler(Looper.getMainLooper());
+        final int[] attempts = {0};
+        final Runnable[] wait = new Runnable[1];
+        wait[0] = () -> {
+            if (destroyed) return;
+            final View decor = getWindow() == null
+                    ? null : getWindow().getDecorView();
+            final View view = findViewWithContentDescription(
+                    decor, expectedDescription);
+            if (view != null) {
+                waitForMeasuredAuditView(view, minimumHeight, label, continuation);
+                return;
+            }
+            if (++attempts[0] >= 60) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: " + label
+                        + " lookup timeout"
+                        + " | expected=" + expectedDescription
+                        + " | currentPage=" + currentPage
+                        + " | currentTitle=" + (pageTitle == null
+                                ? "<null>" : pageTitle.getText())
+                        + " | sampleWaveform=" + describeAuditView(sampleWaveform)
+                        + " | sampleWaveformParent=" + (sampleWaveform == null
+                                ? "<null>" : String.valueOf(sampleWaveform.getParent()))
+                        + " | content=" + describeAuditView(content));
+                return;
+            }
+            if (decor != null) {
+                decor.postOnAnimation(() -> handler.postDelayed(wait[0], 16L));
+            } else {
+                handler.postDelayed(wait[0], 16L);
+            }
+        };
+        wait[0].run();
+    }
+
     private void waitForMeasuredAuditView(
             View view,
             int minimumHeight,
@@ -15144,16 +15245,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        final View waveform = findViewWithContentDescription(
-                getWindow().getDecorView(), "Sample waveform editor");
-        if (waveform == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: sample waveform editor");
-            return;
-        }
-        waitForMeasuredAuditView(
-                waveform,
-                0,
+        // Mode navigation updates the shell synchronously, but view attachment to
+        // the decor can trail the click callback by a frame. Resolve the live view
+        // from the current decor for a bounded window rather than converting that
+        // transition race into an immediate UI audit failure.
+        waitForAuditViewWithContentDescription(
+                "Sample waveform editor",
                 "sample waveform editor",
+                0,
                 this::runUiAuditAfterSampleEdit);
     }
 

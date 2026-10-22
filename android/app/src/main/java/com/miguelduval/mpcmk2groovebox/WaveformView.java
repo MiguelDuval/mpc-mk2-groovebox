@@ -21,6 +21,9 @@ public final class WaveformView extends View {
         void onDoubleTapped();
     }
 
+    public interface OnViewportChangedListener {
+        void onViewportChanged(float startNormalized, float endNormalized);
+    }
 
     private static final int BG = 0xff111518;
     private static final int GRID = 0xff344047;
@@ -63,6 +66,7 @@ public final class WaveformView extends View {
     private boolean panning;
     private OnSelectionCommitListener selectionCommitListener;
     private OnDoubleTapListener doubleTapListener;
+    private OnViewportChangedListener viewportChangedListener;
 
     public WaveformView(Context context) {
         super(context);
@@ -174,6 +178,7 @@ public final class WaveformView extends View {
             viewportStart = 0f;
             viewportEnd = 1f;
             verticalZoom = 1f;
+            notifyViewportChanged();
         }
         invalidate();
     }
@@ -199,6 +204,19 @@ public final class WaveformView extends View {
 
     public void setOnDoubleTapListener(OnDoubleTapListener listener) {
         doubleTapListener = listener;
+    }
+
+    public void setOnViewportChangedListener(OnViewportChangedListener listener) {
+        viewportChangedListener = listener;
+        notifyViewportChanged();
+    }
+
+    public float viewportStartNormalized() {
+        return viewportStart;
+    }
+
+    public float viewportEndNormalized() {
+        return viewportEnd;
     }
 
     public void resetZoom() {
@@ -240,12 +258,9 @@ public final class WaveformView extends View {
     }
 
     private void zoomAround(float center, float factor) {
-        final float span = clamp(
-                (viewportEnd - viewportStart) * factor,
-                MpcZoomPolicy.MIN_HORIZONTAL_SPAN,
-                MpcZoomPolicy.MAX_HORIZONTAL_SPAN);
-        final float start = clamp(
-                center - span * 0.5f, 0f, 1f - span);
+        final float span = MpcZoomPolicy.clampHorizontalSpan(
+                (viewportEnd - viewportStart) * factor);
+        final float start = MpcZoomPolicy.viewportStartForCenter(center, span);
         setViewport(start, start + span);
     }
 
@@ -258,6 +273,13 @@ public final class WaveformView extends View {
         viewportStart = clamp(start, 0f, 0.999f);
         viewportEnd = clamp(end, viewportStart + 0.001f, 1f);
         invalidate();
+        notifyViewportChanged();
+    }
+
+    private void notifyViewportChanged() {
+        if (viewportChangedListener != null) {
+            viewportChangedListener.onViewportChanged(viewportStart, viewportEnd);
+        }
     }
 
     @Override

@@ -157,7 +157,8 @@ jobs:
             --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcSequenceStepPagePolicyTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcModeRegistryTest \
-            --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest
+            --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcWaveformZoomPolicyTest
 
       - name: Test MPC Studio MkII semantic routing
         shell: bash
@@ -695,6 +696,8 @@ jobs:
             /tmp/mpc-groovebox-track-edit-filter-cutoff-changed-uiautomator.xml
             /tmp/mpc-groovebox-sample-browser-return.png
             /tmp/mpc-groovebox-sample-browser-return-uiautomator.xml
+            /tmp/mpc-groovebox-sample-zoom-*.png
+            /tmp/mpc-groovebox-sample-zoom-*-uiautomator.xml
             /tmp/mpc-groovebox-sample-crop-*.png
             /tmp/mpc-groovebox-sample-crop*-uiautomator.xml
             /tmp/mpc-groovebox-sample-chop-*.png

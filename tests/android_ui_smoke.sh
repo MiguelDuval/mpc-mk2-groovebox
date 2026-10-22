@@ -1791,7 +1791,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()'; do
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -1882,6 +1882,11 @@ capture_ui_screenshot() {
     mpc-groovebox-track-edit-envelope-filter-before.png|\
     mpc-groovebox-track-edit-envelope-attack-changed.png|\
     mpc-groovebox-track-edit-filter-cutoff-changed.png|\
+    mpc-groovebox-sample-zoom-before.png|\
+    mpc-groovebox-sample-zoom-in.png|\
+    mpc-groovebox-sample-zoom-out.png|\
+    mpc-groovebox-sample-zoom-reset.png|\
+    mpc-groovebox-sample-zoom-audition.png|\
     mpc-groovebox-sample-browser-return.png|\
     mpc-groovebox-sample-crop-*.png|\
     mpc-groovebox-sample-chop-*.png|\
@@ -9712,6 +9717,59 @@ wait_for_sample_chop_marker() {
   return 1
 }
 
+tap_sample_edit_control() {
+  local hierarchy_path="$1" remote_path="$2" expected_description="$3"
+  local coordinates tap_x tap_y
+  # Resolve the actual touch from a fresh hierarchy. Reject stale prior-page
+  # snapshots before calculating coordinates or issuing any device input.
+  if ! dump_device_ui_retry "$remote_path" "$hierarchy_path" 8 4; then
+    echo "ERROR: could not refresh Sample Edit hierarchy before $expected_description"
+    return 1
+  fi
+  if ! coordinates="$(python3 - "$hierarchy_path" "$expected_description" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1:3]
+nodes = list(ET.parse(path).getroot().iter("node"))
+descriptions = {node.attrib.get("content-desc", "") for node in nodes}
+if "Sample waveform editor" not in descriptions:
+    raise SystemExit("Sample Edit waveform editor is absent from the fresh hierarchy")
+if "Sample Edit region and frame count" not in descriptions:
+    raise SystemExit("Sample Edit native region state is absent from the fresh hierarchy")
+if not any(value.startswith("Sample Edit waveform viewport ")
+           for value in descriptions):
+    raise SystemExit("Sample Edit viewport state is absent from the fresh hierarchy")
+matches = [node for node in nodes
+           if node.attrib.get("content-desc", "") == expected]
+if len(matches) != 1:
+    raise SystemExit(
+        f"expected exactly one Sample Edit target {expected!r}, found {len(matches)}")
+node = matches[0]
+if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
+    raise SystemExit(f"Sample Edit target is not enabled/clickable: {node.attrib}")
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     node.attrib.get("bounds", ""))
+if match is None:
+    raise SystemExit(f"invalid Sample Edit target bounds: {node.attrib}")
+left, top, right, bottom = map(int, match.groups())
+if right <= left or bottom <= top:
+    raise SystemExit(f"non-positive Sample Edit target bounds: {node.attrib}")
+print((left + right) // 2, (top + bottom) // 2)
+PY
+)"; then
+    echo "ERROR: fresh Sample Edit hierarchy lacks actionable target: $expected_description"
+    cat "$hierarchy_path" || true
+    return 1
+  fi
+  read -r tap_x tap_y <<< "$coordinates"
+  if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
+    echo "ERROR: could not tap Sample Edit target $expected_description at $tap_x,$tap_y"
+    return 1
+  fi
+}
+
 assert_sample_chop_assignment() {
   python3 - "$1" "$2" "$3" <<'PY'
 import re
@@ -9824,6 +9882,202 @@ if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_
 if ! run_sample_chop_acceptance 16 "$sample_crop_expected_frames" \
     "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_16_PNG" \
     "$SAMPLE_CHOPPED_16_XML" "$SAMPLE_CHOPPED_16_REMOTE"; then exit 1; fi
+
+# SAMP-010: zoom must change only the WaveformView viewport; PLAY must use native Pad triggering.
+# The source PCM remains 2,840 frames after CROP. Restore the selected Pad's whole
+# region before testing so viewport focus and region invariants have a fixed baseline.
+if ! tap_ui_description "$SAMPLE_CHOPPED_16_XML" "Sample Edit restore full sample region"; then
+  echo "ERROR: SAMP-010 could not restore the Pad 01 source region after CH16"; exit 1
+fi
+if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_16_XML" "$SAMPLE_CHOPPED_16_REMOTE" \
+    "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then exit 1; fi
+
+SAMPLE_ZOOM_BEFORE_PNG="/tmp/mpc-groovebox-sample-zoom-before.png"
+SAMPLE_ZOOM_BEFORE_XML="/tmp/mpc-groovebox-sample-zoom-before-uiautomator.xml"
+SAMPLE_ZOOM_BEFORE_REMOTE="/sdcard/mpc-groovebox-sample-zoom-before-uiautomator.xml"
+SAMPLE_ZOOM_IN_PNG="/tmp/mpc-groovebox-sample-zoom-in.png"
+SAMPLE_ZOOM_IN_XML="/tmp/mpc-groovebox-sample-zoom-in-uiautomator.xml"
+SAMPLE_ZOOM_IN_REMOTE="/sdcard/mpc-groovebox-sample-zoom-in-uiautomator.xml"
+SAMPLE_ZOOM_OUT_PNG="/tmp/mpc-groovebox-sample-zoom-out.png"
+SAMPLE_ZOOM_OUT_XML="/tmp/mpc-groovebox-sample-zoom-out-uiautomator.xml"
+SAMPLE_ZOOM_OUT_REMOTE="/sdcard/mpc-groovebox-sample-zoom-out-uiautomator.xml"
+SAMPLE_ZOOM_RESET_PREP_XML="/tmp/mpc-groovebox-sample-zoom-reset-prep-uiautomator.xml"
+SAMPLE_ZOOM_RESET_PREP_REMOTE="/sdcard/mpc-groovebox-sample-zoom-reset-prep-uiautomator.xml"
+SAMPLE_ZOOM_RESET_PNG="/tmp/mpc-groovebox-sample-zoom-reset.png"
+SAMPLE_ZOOM_RESET_XML="/tmp/mpc-groovebox-sample-zoom-reset-uiautomator.xml"
+SAMPLE_ZOOM_RESET_REMOTE="/sdcard/mpc-groovebox-sample-zoom-reset-uiautomator.xml"
+SAMPLE_ZOOM_AUDITION_PNG="/tmp/mpc-groovebox-sample-zoom-audition.png"
+SAMPLE_ZOOM_AUDITION_XML="/tmp/mpc-groovebox-sample-zoom-audition-uiautomator.xml"
+SAMPLE_ZOOM_AUDITION_REMOTE="/sdcard/mpc-groovebox-sample-zoom-audition-uiautomator.xml"
+
+sample_zoom_before_state="$(read_sample_edit_region_frames "$SAMPLE_CHOPPED_16_XML")" || {
+  echo "ERROR: SAMP-010 could not read the full-region baseline"; exit 1;
+}
+if [[ "$sample_zoom_before_state" != "0 $sample_crop_expected_frames $sample_crop_expected_frames" ]]; then
+  echo "ERROR: SAMP-010 baseline was not restored to the full sample region: $sample_zoom_before_state"; exit 1
+fi
+if ! dump_device_ui_retry "$SAMPLE_ZOOM_BEFORE_REMOTE" "$SAMPLE_ZOOM_BEFORE_XML" 8 4; then
+  echo "ERROR: SAMP-010 could not capture the baseline Sample Edit hierarchy"; exit 1
+fi
+if ! capture_ui_screenshot "$SAMPLE_ZOOM_BEFORE_PNG" 10; then
+  echo "ERROR: SAMP-010 could not capture the baseline waveform screenshot"; exit 1
+fi
+
+assert_sample_zoom_viewport() {
+  local hierarchy="$1" expected_view="$2" expected_start="$3" expected_end="$4" phase="$5"
+  if ! python3 - "$hierarchy" "$expected_view" "$expected_start" "$expected_end" "$sample_zoom_before_state" "$phase" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected_view, start_text, end_text, state_text, phase = sys.argv[1:]
+expected_start, expected_end = int(start_text), int(end_text)
+expected_state = tuple(map(int, state_text.split()))
+nodes = list(ET.parse(path).getroot().iter("node"))
+views = [node for node in nodes
+         if node.attrib.get("content-desc", "").startswith("Sample Edit waveform viewport ")]
+if len(views) != 1:
+    raise SystemExit(f"{phase}: expected one semantic viewport node, found {len(views)}")
+if views[0].attrib.get("text", "") != expected_view:
+    raise SystemExit(
+        f"{phase}: expected viewport label {expected_view!r}, got {views[0].attrib.get('text', '')!r}")
+match = re.fullmatch(
+    r"Sample Edit waveform viewport (\d+) to (\d+) percent; sample region (\d+) to (\d+) of (\d+) frames",
+    views[0].attrib.get("content-desc", ""))
+if match is None:
+    raise SystemExit(f"{phase}: malformed viewport/native state: {views[0].attrib!r}")
+start_percent, end_percent, region_start, region_end, frames = map(int, match.groups())
+if (start_percent, end_percent) != (expected_start, expected_end):
+    raise SystemExit(
+        f"{phase}: viewport percentages {(start_percent, end_percent)} != {(expected_start, expected_end)}")
+actual_state = (region_start, region_end, frames)
+if actual_state != expected_state:
+    raise SystemExit(
+        f"{phase}: viewport interaction mutated sample data: {actual_state} != {expected_state}")
+print(f"SAMP-010 {phase}: viewport {start_percent}–{end_percent}% and sample state {actual_state} verified.")
+PY
+  then
+    echo "ERROR: SAMP-010 $phase viewport or native sample invariants failed"
+    cat "$hierarchy" || true
+    return 1
+  fi
+  local getter_state
+  getter_state="$(read_sample_edit_region_frames "$hierarchy" 2>/dev/null || true)"
+  if [[ "$getter_state" != "$sample_zoom_before_state" ]]; then
+    echo "ERROR: SAMP-010 $phase frame/region getter changed: $getter_state"
+    return 1
+  fi
+}
+
+sample_audition_marker_count() {
+  local logs
+  logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  grep -F -c -- "UI_SAMPLE_AUDITION_TRIGGERED:" <<< "$logs" || true
+}
+
+wait_for_sample_audition_marker() {
+  local before="$1" expected_frames="$2" timeout_seconds="$3"
+  local deadline=$((SECONDS + timeout_seconds)) remaining logs current_count marker_line
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    logs="$(adb_bounded "$remaining" shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+    current_count="$(grep -F -c -- "UI_SAMPLE_AUDITION_TRIGGERED:" <<< "$logs" || true)"
+    if [[ "$current_count" =~ ^[0-9]+$ ]] && (( current_count > before )); then
+      marker_line="$(grep -F -- "UI_SAMPLE_AUDITION_TRIGGERED:" <<< "$logs" | tail -n 1)"
+      for required in \
+          "pad=0 velocity=112 page=SAMPLE" \
+          "sampleFrames=$expected_frames" \
+          "regionStart=0" \
+          "regionEnd=$expected_frames"; do
+        if [[ "$marker_line" != *"$required"* ]]; then
+          echo "ERROR: SAMP-010 native audition marker violates Pad/page/state contract: $marker_line"
+          return 1
+        fi
+      done
+      echo "SAMP-010 native Pad trigger observed: $marker_line"
+      return 0
+    fi
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
+  done
+  echo "ERROR: SAMP-010 native Pad trigger marker did not advance from $before within $timeout_seconds seconds"
+  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+      | grep -F -- "UI_SAMPLE_AUDITION_TRIGGERED:" | tail -n 10 || true
+  return 1
+}
+
+sample_zoom_marker_before="$(sample_audition_marker_count)"
+if ! tap_sample_edit_control "$SAMPLE_ZOOM_BEFORE_XML" "$SAMPLE_ZOOM_BEFORE_REMOTE" \
+    "Sample Edit zoom waveform in"; then exit 1; fi
+if ! wait_for_ui_text "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" "VIEW 10–90%" 12; then
+  echo "ERROR: SAMP-010 ZOOM+ did not move the viewport to 10–90%"; exit 1
+fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_IN_XML" "VIEW 10–90%" 10 90 "zoom-in"; then exit 1; fi
+if ! capture_ui_screenshot "$SAMPLE_ZOOM_IN_PNG" 10; then
+  echo "ERROR: SAMP-010 could not capture zoom-in viewport"; exit 1
+fi
+
+# Preserve the zoom-in XML before performing ZOOM−; each acceptance state
+# gets its own hierarchy/screenshot pair instead of overwriting a prior milestone.
+if ! tap_sample_edit_control "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" \
+    "Sample Edit zoom waveform out"; then exit 1; fi
+if ! wait_for_ui_text "$SAMPLE_ZOOM_OUT_XML" "$SAMPLE_ZOOM_OUT_REMOTE" "VIEW 0–100%" 12; then
+  echo "ERROR: SAMP-010 ZOOM− did not restore the full viewport"; exit 1
+fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_OUT_XML" "VIEW 0–100%" 0 100 "zoom-out"; then exit 1; fi
+if ! capture_ui_screenshot "$SAMPLE_ZOOM_OUT_PNG" 10; then
+  echo "ERROR: SAMP-010 could not capture zoom-out viewport"; exit 1
+fi
+
+if ! tap_sample_edit_control "$SAMPLE_ZOOM_OUT_XML" "$SAMPLE_ZOOM_OUT_REMOTE" \
+    "Sample Edit zoom waveform in"; then exit 1; fi
+if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PREP_REMOTE" "VIEW 10–90%" 12; then
+  echo "ERROR: SAMP-010 could not establish zoomed viewport before RESET"; exit 1
+fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_PREP_XML" "VIEW 10–90%" 10 90 "reset-preparation"; then exit 1; fi
+if ! tap_sample_edit_control "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PREP_REMOTE" \
+    "Sample Edit reset waveform zoom"; then exit 1; fi
+if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_XML" "$SAMPLE_ZOOM_RESET_REMOTE" "VIEW 0–100%" 12; then
+  echo "ERROR: SAMP-010 RESET did not restore full viewport"; exit 1
+fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_XML" "VIEW 0–100%" 0 100 "reset"; then exit 1; fi
+if ! capture_ui_screenshot "$SAMPLE_ZOOM_RESET_PNG" 10; then
+  echo "ERROR: SAMP-010 could not capture reset viewport"; exit 1
+fi
+
+# Prove the actual native trigger ran for Pad 01 and the app stayed in Sample Edit.
+sample_zoom_marker_before="$(sample_audition_marker_count)"
+if ! tap_sample_edit_control "$SAMPLE_ZOOM_RESET_XML" "$SAMPLE_ZOOM_RESET_REMOTE" \
+    "Sample Edit audition selected Pad"; then exit 1; fi
+if ! wait_for_sample_audition_marker "$sample_zoom_marker_before" "$sample_crop_expected_frames" 12; then
+  echo "ERROR: SAMP-010 PLAY did not trigger the expected native Pad"; exit 1
+fi
+if ! dump_device_ui_retry "$SAMPLE_ZOOM_AUDITION_REMOTE" "$SAMPLE_ZOOM_AUDITION_XML" 8 4; then
+  echo "ERROR: SAMP-010 could not refresh Sample Edit after Pad audition"; exit 1
+fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_AUDITION_XML" "VIEW 0–100%" 0 100 "audition"; then exit 1; fi
+if ! capture_ui_screenshot "$SAMPLE_ZOOM_AUDITION_PNG" 10; then
+  echo "ERROR: SAMP-010 could not capture post-audition viewport"; exit 1
+fi
+
+for evidence in \
+  "$SAMPLE_ZOOM_BEFORE_PNG" "$SAMPLE_ZOOM_BEFORE_XML" \
+  "$SAMPLE_ZOOM_IN_PNG" "$SAMPLE_ZOOM_IN_XML" \
+  "$SAMPLE_ZOOM_OUT_PNG" "$SAMPLE_ZOOM_OUT_XML" \
+  "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PNG" "$SAMPLE_ZOOM_RESET_XML" \
+  "$SAMPLE_ZOOM_AUDITION_PNG" "$SAMPLE_ZOOM_AUDITION_XML"; do
+  if ! test -s "$evidence"; then
+    echo "ERROR: SAMP-010 required screenshot/UI hierarchy is empty: $evidence"; exit 1
+  fi
+done
+# Literal mandatory paths feed Android UI smoke evidence preflight.
+if ! test -s /tmp/mpc-groovebox-sample-zoom-before.png \
+    || ! test -s /tmp/mpc-groovebox-sample-zoom-in.png \
+    || ! test -s /tmp/mpc-groovebox-sample-zoom-out.png \
+    || ! test -s /tmp/mpc-groovebox-sample-zoom-reset.png \
+    || ! test -s /tmp/mpc-groovebox-sample-zoom-audition.png; then
+  echo "ERROR: SAMP-010 mandatory visual milestone screenshots are missing"; exit 1
+fi
+echo "SAMP-010 real-touch zoom-in/out/reset and native Pad audition passed without mutating sample data."
 
 echo "Running Android user document-tree → Browser results → persisted grant restoration..."
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
