@@ -6,19 +6,17 @@
 ## Latest source and verification state
 
 
-### Live checkpoint — Main Track/Program audit preflight false positive
+### Live checkpoint — Main Program availability truthfulness (verification pending)
 
-- Current PR #23 HEAD before this correction was `4ff04a2f4eeb7a7719254fbd73f2ac57144ae5c1`; Build #3068 / run `39813701284` failed at step 52 before the scenario reached emulator interactions. The precise error was `obsolete Main Program field presentation pointer remains`.
-- The check is valid in intent: Main's Track identity band must not gain a persistent/duplicate Program field pointer. But the runtime audit used the same identifier for a **local temporary View lookup** of the real Track-owned Program context row that sits below the identity band. The grep-based preflight therefore produced a false positive before runtime verification could start.
-- The fix renames only that local audit reference to `mainProgramContextView` and documents its role. The runtime check is retained: after startup, the visible Program context must equal the Program returned by `nativeSequenceGetTrackProgram(selectedTrack)`. No product behavior or expected value changes, and the guard against a stored `mainProgramField` pointer remains strict.
-- The two Main context assertions (selected Track label vs native Track status, and selected Program row vs native Program) were added after earlier UI evidence showed stale startup placeholders. They still require full exact-SHA emulator verification on the current branch.
-- Project persistence E2E remains demonstrated on exact SHA `bc61127f0e13eff18ee8460d3da95180878a07e5` (Build #3063), but is not re-certified for current HEAD until the latest full workflow passes. Build #3065 was green on its own older SHA `073afb4d52e699b5b36abeadfb1130bdd4dd396a`, before the Main identity audit assertions.
+- The Main Program audit reference was renamed to `mainProgramContextView` in the previous commit, fixing Build #3068's textual preflight false positive without removing the runtime native-state equality assertion.
+- While Build #3069 / run `39819814302` compiles/tests SHA `2d992807ebc3d545598cc35c9ea15991e09738dd`, the source review identified a separate blueprint contract: Program Select is supported only for Drum Tracks. Main already showed an `UNAVAILABLE` ownership label for non-Drum Tracks, but left the Program button enabled and the caption permanently saying `DRUM PROGRAM`. This change makes the button disabled and dimmed until native startup confirms a Drum Track; the caption becomes `PROGRAM` for unsupported track types. The supported Drum path remains enabled and still routes to the native Program Select context.
+- The runtime Main audit now also requires the visible Program selector to be enabled for the initial supported Drum Track, while the smoke preflight guards the availability/caption logic. No native Program or audio state is mutated. Non-Drum runtime validation and this exact-SHA Android run remain pending.
 
 ## Current execution queue — 2026-10-22
 
-1. Run the low-cost exact-SHA smoke preflight after the audit-variable rename; confirm the old forbidden identifier is absent without removing the assertion.
-2. Re-run full Actions/emulator acceptance on the new exact HEAD. Verify Main identity/Program against native state, then Project save/reload/restart, cancellation, malformed-load atomicity and placement-free v1 compatibility.
-3. Keep PRs #28/#29 isolated until current primary HEAD is green. Physical MPC Studio MkII acceptance remains a separate pending gate.
+1. Let the already-running Build #3069 finish on its recorded SHA; it remains useful evidence for the audit-name correction but does not contain the newest Program availability change.
+2. Run Build #3070 or the latest resulting exact-SHA workflow and verify Main Track/Program assertions; inspect failure logs before changing behavior.
+3. Continue full workflow through Project persistence and preserve PRs #28/#29 isolation; physical MPC Studio MkII validation stays pending.
 
 
 ## Completed in this session

@@ -3197,6 +3197,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 new LinearLayout.LayoutParams(dp(28), dp(MPC_MAIN_PROGRAM_HEIGHT_DP)));
 
         TextView programCaption = label("DRUM PROGRAM", 9, MUTED);
+        programCaption.setContentDescription("Main Program context type label");
         programCaption.setTypeface(Typeface.DEFAULT_BOLD);
         programCaption.setGravity(Gravity.CENTER_VERTICAL);
         programCaption.setPadding(dp(4), 0, dp(8), 0);
@@ -3222,6 +3223,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     }
                 });
         programField.setContentDescription("Main Mode selected program");
+        // Hold the startup placeholder disabled until the native selected Track
+        // tells us whether a real Drum Program selector is applicable.
+        programField.setEnabled(false);
+        programField.setAlpha(0.45f);
         programField.setGravity(Gravity.CENTER_VERTICAL);
         programField.setTypeface(Typeface.DEFAULT_BOLD);
         programField.setTextSize(11);
@@ -4791,6 +4796,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String backendType = startupComplete
                 ? nativeSequenceGetTrackType(trackIndex)
                 : "DRUM";
+        final boolean drumTrack = "DRUM".equalsIgnoreCase(backendType);
         /*
          * MPC Main Track identity is intentionally compact: track number +
          * user-facing name. Native trackStatus also carries event/arm
@@ -4812,16 +4818,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             program.setText(normalizedProgram);
         }
 
+        final TextView programCaption = findTextByContentDescription(
+                root, "Main Program context type label");
+        if (programCaption != null) {
+            programCaption.setText(drumTrack ? "DRUM PROGRAM" : "PROGRAM");
+        }
         final TextView centralProgram = findTextByContentDescription(
                 root, "Main Mode selected program");
         if (centralProgram != null) {
             centralProgram.setText(normalizedProgram);
+            final boolean programSelectorAvailable = startupComplete && drumTrack;
+            centralProgram.setEnabled(programSelectorAvailable);
+            centralProgram.setAlpha(programSelectorAvailable ? 1.0f : 0.45f);
         }
 
         final TextView programOwnership = findTextByContentDescription(
                 root, "Main Mode program ownership status");
         if (programOwnership != null) {
-            final boolean drumTrack = "DRUM".equalsIgnoreCase(backendType);
             programOwnership.setText(
                     drumTrack ? "TRACK-OWNED" : "UNAVAILABLE");
             programOwnership.setTextColor(
@@ -12707,6 +12720,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? ((TextView) mainProgramContextView).getText().toString().trim() : "";
         if (!startupComplete || !(mainProgramContextView instanceof TextView)
                 || !mainProgramContextView.isShown()
+                || !mainProgramContextView.isEnabled()
                 || expectedMainProgram == null
                 || !expectedMainProgram.equals(actualMainProgram)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Program field differs from selected native Track Program"

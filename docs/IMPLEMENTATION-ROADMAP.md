@@ -2,19 +2,17 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-22 (live exact-SHA evidence governs)
 
-### 1. Primary PR #23 — Main context audit preflight and Project regression gate
+### 1. Primary PR #23 — Main context audits and Program availability
 
-- Build #3068 / run `39813701284` failed at runtime-smoke preflight before emulator acceptance. It reported `obsolete Main Program field presentation pointer remains`.
-- Root cause is a false positive in a textual source contract: `mainProgramField` was a local temporary reference in the runtime audit to the valid Track-owned Program context row below Main's Track identity band, not a stored presentation pointer. The source fix renames only this local reference to `mainProgramContextView`; the native equality assertion stays enabled, and the preflight's no-stored-`mainProgramField` guard remains unchanged.
-- Verify Main's central Track label against `nativeSequenceTrackStatus(selectedTrack)` and its Track-owned Program row against `nativeSequenceGetTrackProgram(selectedTrack)` on the current exact SHA. Both assertions were added because Build #3063's visual evidence showed pre-startup placeholders; they are not to be weakened or removed.
-- Full Project SAVE / SAVE AS / OPEN acceptance passed on exact SHA `bc61127f0e13eff18ee8460d3da95180878a07e5` (Build #3063), including direct SAVE overwrite, cold restart/Open exact state, cancellation invariance, malformed-load atomicity and placement-free v1 compatibility. This is an established milestone for that SHA, not an automatic green claim for the current descendant.
-- Build #3065 was green on `073afb4d52e699b5b36abeadfb1130bdd4dd396a`; the current descendant with extra Main UI audit assertions still requires full exact-HEAD acceptance.
+- Build #3068 / run `39813701284` failed at runtime-smoke preflight due to a local view-reference variable sharing the forbidden legacy field identifier. Commit `2d99280` renames the local variable to `mainProgramContextView`; the runtime Program equality assertion and the stricter absence check remain intact.
+- While Build #3069 / run `39819814302` tests that exact SHA, source review found a separate stated contract in the Main blueprint: Program Select is enabled only for a Drum Track. The existing Main row labelled `DRUM PROGRAM` remained enabled on unsupported Track Types even though its ownership status said `UNAVAILABLE`. The new change dims/disables the actual selector until startup confirms Drum ownership and changes the caption to a generic `PROGRAM` on non-Drum Tracks; it leaves native project/program state untouched.
+- The smoke source-contract preflight now checks this enabled/caption policy, and the Main runtime audit insists that the supported initial Drum Track selector is enabled and its displayed Program equals native state. The newest code still needs exact-SHA compilation and emulator verification.
 
 ### 2. Regression continuation
 
-1. Confirm the source-contract preflight passes after the local-variable rename with no assertion removed.
-2. Complete the full emulator workflow and inspect exact-SHA logs/evidence for Main Track/Program identity and Project lifecycle.
-3. Keep PRs #28/#29 isolated until primary full exact-SHA acceptance is green; physical MPC Studio MkII validation remains separate and pending.
+1. Confirm Build #3069 completes on its immutable SHA `2d992807ebc3d545598cc35c9ea15991e09738dd`.
+2. Validate the Program availability change on the next exact HEAD, then continue full Project SAVE / SAVE AS / OPEN and artifact checks.
+3. Keep PRs #28/#29 isolated until full current-HEAD Android acceptance is green; physical MPC Studio MkII validation remains separate and pending.
 
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)

@@ -946,6 +946,12 @@ if ! grep -Fq -- 'nativeSequenceSetTrackProgram(' "$MAIN_ACTIVITY_SOURCE" ||    
   echo "ERROR: Program semantics must remain available without a duplicate Main Program field"
   exit 1
 fi
+for required in   'centralProgram.setEnabled(programSelectorAvailable);'   'centralProgram.setAlpha(programSelectorAvailable ? 1.0f : 0.45f);'   'programCaption.setText(drumTrack ? "DRUM PROGRAM" : "PROGRAM");'   '!mainProgramContextView.isEnabled()'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Track-owned Program availability contract missing: $required"
+    exit 1
+  fi
+done
 
 program_select_start=$(grep -n -m1 'private void showProgramSelectPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 program_select_end=$(grep -n -m1 'private void showBrowserPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
