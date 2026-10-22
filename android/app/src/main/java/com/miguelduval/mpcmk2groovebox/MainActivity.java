@@ -12671,6 +12671,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Track Program composition");
             return;
         }
+        final int nativeMainTrackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
+        final String nativeMainTrackStatus = nativeSequenceTrackStatus(nativeMainTrackIndex);
+        final String expectedMainTrack = String.format(
+                Locale.ROOT, "%d  %s",
+                nativeMainTrackIndex + 1,
+                cleanTrackDisplayName(nativeMainTrackStatus));
+        final View mainTrackNameField = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode selected track");
+        final String actualMainTrack = mainTrackNameField instanceof TextView
+                && ((TextView) mainTrackNameField).getText() != null
+                ? ((TextView) mainTrackNameField).getText().toString().trim() : "";
+        if (!startupComplete || !(mainTrackNameField instanceof TextView)
+                || !mainTrackNameField.isShown()
+                || !expectedMainTrack.equals(actualMainTrack)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Track identity differs from selected native Track"
+                    + " | expected=" + expectedMainTrack
+                    + " | actual=" + actualMainTrack
+                    + " | nativeStatus=" + nativeMainTrackStatus
+                    + " | field=" + describeAuditView(mainTrackNameField));
+            return;
+        }
+        Log.i(TAG, "MAIN_TRACK_CONTEXT_VERIFIED selectedTrack="
+                + nativeMainTrackIndex + " track=" + actualMainTrack);
+
         final View mainProgramField = findViewWithContentDescription(
                 getWindow().getDecorView(), "Main Mode selected program");
         final String nativeProgramStatus = nativeSequenceGetTrackProgram(
