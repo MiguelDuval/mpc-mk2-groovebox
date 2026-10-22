@@ -17,6 +17,13 @@ NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
 TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackEditView.java"
 SHELL_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"
 
+echo "Running Shortcut popup-scroll driver preflight..."
+if ! grep -Fq -- 'scroll_popup_until_ui_text()' "$0" \
+    || ! grep -Fq -- 'node.attrib.get("class") != "android.widget.ListView"' "$0"; then
+  echo "ERROR: real Spinner acceptance must scroll a measured native ListView"
+  exit 1
+fi
+
 echo "Running reserved shortcut state ownership preflight..."
 reserved_nav_start=$(grep -n -m1 'private void navigateToMode(MpcUiState.Mode mode)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
 reserved_nav_end=$(grep -n -m1 'private void updateMpcShellState()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
@@ -7186,6 +7193,96 @@ PY
   return 1
 }
 
+# Android Spinner dropdowns are independently scrollable native ListViews. A
+# lower option such as GRID is absent from the accessibility tree until the
+# popup is scrolled. Drive the popup only using its currently measured bounds;
+# retry bounded hierarchy dumps if UiAutomator is temporarily slow.
+scroll_popup_until_ui_text() {
+  local hierarchy_path="$1" remote_path="$2" expected_fragment="$3"
+  local timeout_seconds="${4:-40}" deadline=$((SECONDS + ${4:-40}))
+  local remaining dump_budget coordinates swipe_x swipe_from swipe_to
+  local dump_failures=0 scroll_count=0
+
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    dump_budget=4
+    (( remaining < dump_budget )) && dump_budget="$remaining"
+    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$dump_budget"; then
+      dump_failures=$((dump_failures + 1))
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
+      continue
+    fi
+
+    if python3 - "$hierarchy_path" "$expected_fragment" <<'PY_POPUP_TEXT'
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+for node in root.iter("node"):
+    if (expected in node.attrib.get("text", "")
+            and node.attrib.get("visible-to-user", "true") != "false"):
+        raise SystemExit(0)
+raise SystemExit(1)
+PY_POPUP_TEXT
+    then
+      echo "Native popup exposes '$expected_fragment' after $scroll_count measured scroll gesture(s); hierarchy dump failures=$dump_failures."
+      return 0
+    fi
+
+    if ! coordinates="$(python3 - "$hierarchy_path" <<'PY_POPUP_BOUNDS'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+candidates = []
+for node in root.iter("node"):
+    if (node.attrib.get("class") != "android.widget.ListView"
+            or node.attrib.get("scrollable") != "true"
+            or node.attrib.get("enabled") != "true"
+            or node.attrib.get("visible-to-user", "true") == "false"):
+        continue
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    if not match:
+        continue
+    left, top, right, bottom = map(int, match.groups())
+    if right <= left or bottom - top < 240:
+        continue
+    candidates.append(((right-left)*(bottom-top), left, top, right, bottom))
+if not candidates:
+    raise SystemExit(1)
+_, left, top, right, bottom = max(candidates)
+height = bottom - top
+margin = max(60, min(120, height // 7))
+start_y, end_y = bottom - margin, top + margin
+if start_y <= end_y:
+    raise SystemExit(1)
+print((left + right) // 2, start_y, end_y)
+PY_POPUP_BOUNDS
+)"; then
+      # The popup may still be opening. If it never exposes a measured,
+      # scrollable ListView, preserve the latest hierarchy and fail truthfully.
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
+      continue
+    fi
+
+    read -r swipe_x swipe_from swipe_to <<< "$coordinates"
+    if ! adb_bounded 5 shell input swipe "$swipe_x" "$swipe_from" "$swipe_x" "$swipe_to" 450; then
+      echo "ERROR: could not scroll native popup using measured ListView bounds [$swipe_x,$swipe_from->$swipe_to]"
+      return 1
+    fi
+    scroll_count=$((scroll_count + 1))
+    sleep 0.3
+  done
+
+  echo "ERROR: timed out after ${timeout_seconds}s finding '$expected_fragment' in the live native popup (scrolls=$scroll_count, hierarchy dump failures=$dump_failures)"
+  cat "$hierarchy_path" || true
+  cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
+  return 1
+}
+
 wait_for_ui_text() {
   local hierarchy_path="$1" remote_path="$2" expected_fragment="$3"
   local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining dump_budget
@@ -11599,8 +11696,8 @@ shortcut_grid_write_before="$(project_marker_count "MPC_SHORTCUT_PREFERENCES_WRI
 if ! tap_visible_description_early "$PROJECT_SHORTCUTS_CONFIG_XML" "Shortcut 1 mode selector"; then
   echo "ERROR: the live slot-1 mode selector is not an enabled visible target"; exit 1
 fi
-if ! wait_for_ui_text "$PROJECT_SHORTCUTS_SPINNER_XML" "$DEVICE_DUMP" "GRID" 25; then
-  echo "ERROR: Shortcut slot-1 selector did not expose the GRID option"; exit 1
+if ! scroll_popup_until_ui_text "$PROJECT_SHORTCUTS_SPINNER_XML" "$DEVICE_DUMP" "GRID" 40; then
+  echo "ERROR: Shortcut slot-1 native dropdown did not expose GRID after measured scrolling"; exit 1
 fi
 # Snapshot after the real popup is visible but before selection: selecting GRID
 # schedules the app-owned View-tree capture immediately, so waiting for the

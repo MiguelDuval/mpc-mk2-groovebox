@@ -1,25 +1,23 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-22 (live exact SHA governs)
+## CURRENT EXECUTION QUEUE — 2026-10-23 (live exact-SHA evidence governs)
 
-### Verified baseline
-- PR #23 remains open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`; last code head before the current follow-up is `8edcb9dd87d7d5505a34daf941057b6e0a2bf30e`.
-- Latest green [Build #3078 / run 39851914811](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39851914811), exact SHA `8c19821cc909ecd5e2e7b7de4a06f27d078f8185), passed all 57 workflow steps; docs-only descendant of green product code in #3077.
-- [Build #3077 / run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408), SHA `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`, accepted New Project CANCEL/discard-reset/default Sequence/unlinked file behavior with complete smoke and evidence upload.
-- [Build #3073 / run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`, accepted the complete documented Project save/load lifecycle, exact v2 MIDI/placement state, malformed-load safety and v1 compatibility.
+### Accepted product checkpoints
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
+- Build #3078 / [run 39851914811](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39851914811), SHA `8c19821cc909ecd5e2e7b7de4a06f27d078f8185`, passed all 57 workflow steps as a docs-only descendant of green code.
+- Build #3077 / [run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408), SHA `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`, accepted the real New Project Cancel/reset/unlinked-file UI path.
+- Build #3073 / [run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`, accepted the complete core Project persistence workflow.
 
-### Current follow-up — Shortcut UI acceptance + async Save callback session guard
-- Build #3079 / [run 39861808911](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39861808911), SHA `8edcb9dd87d7d5505a34daf941057b6e0a2bf30e`: attempt 1 failed because Android SDKManager received an NDK archive that was not a ZIP, before compilation/smoke. Attempt 2 was in progress at Assemble debug APK (48 successful steps, no reported step failure at the last poll). Its Shortcut UI acceptance must not be counted as passed.
-- The Shortcut Rail test changes drive actual Spinner assignment, order-button interaction, process death/relaunch, measured Main View order/bounds/enabled/clickable assertions, factory reset and second restart.
-- Source analysis found a Save As callback race where a late asynchronous completion from Project A could link its URI to Project B after New/Open. The follow-up uses a Project-session generation guard and compares captured serialized SHA with the current SHA to report newer edits truthfully. A pure-Java policy test is included in the focused Android unit gate.
-- Source review found and corrected a test-timing race: the first GRID-selection flow recorded the SHORTCUTS-tree baseline after waiting for the preference-write marker, but the callback schedules its app View-tree pre-draw capture before that log-poll completes. The marker is now captured after the real GRID popup is visible and before tapping GRID. The prior Build #3079 continues against its old SHA/script; it cannot validate this correction.
-- Corrected Shortcut timing and async Save-session guarding await a full exact-SHA workflow on the latest commit.
+### Current blocker — Shortcut Rail full acceptance
+- Builds #3079 / [run 39861808911](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39861808911) and #3081 / [run 39863216717](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39863216717) both failed at the same GRID Spinner assertion. The live popup only exposed the first rows of a scrollable native ListView; the smoke had waited for GRID without scrolling.
+- #3081 did finish the New Project run-time acceptance before failing at Shortcut Rail. Intermittent UiAutomator dump timeouts also occurred, so the test helper now retries bounded dumps and scrolls the popup using measured ListView bounds rather than fixed coordinates.
+- The async Project-save session-generation guard is in source and its focused tests passed, but current full product+smoke acceptance remains pending until the full Android workflow is green.
 
 ### Next queue
-1. Follow the current commit's full Android run through JVM/native checks, APK, smoke preflight, complete emulator acceptance and visual-evidence upload.
-2. Fix only demonstrated root causes; retain all real View-tree order and exact Project-state assertions.
-3. Next functional slice after green: **PROJ-002/003 provider write-failure recovery and two-document isolation**.
-4. Preserve PR #28/#29 bases. Hardware acceptance for physical MPC Studio MkII remains a separate pending requirement.
+1. Run/check the new exact-SHA Android workflow through the full smoke, custom Shortcut process restart, Reset Defaults, second restart and evidence upload.
+2. Fix any failure from live exact-SHA evidence without weakening model/state or visible-control assertions.
+3. After this slice passes, handle provider write-failure recovery and two-document Project isolation.
+4. Keep PR #28/#29 bases unchanged. Physical MPC Studio MkII remains a separate pending hardware gate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 
