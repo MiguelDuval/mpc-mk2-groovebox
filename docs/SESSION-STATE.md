@@ -1,25 +1,29 @@
 # Session State — MPC MkII Groovebox
 
 **Checkpoint date:** 2026-10-22  
-**Purpose:** current handoff checkpoint; reconcile status against exact-SHA GitHub evidence before each change.
+**Purpose:** live handoff, governed by the current branch HEAD and exact-SHA Actions result.
 
-## Latest source and verification state
+## Last fully verified baseline
 
+- Branch: `feature/mpc-one-ui-fidelity`; PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23), base `fix/ui-shell-format-width-startup`.
+- Baseline HEAD before the current shortcut-persistence slice: `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`.
+- Full Android Build [#3073 / run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552) completed **success** on that exact SHA. The run included every workflow job step, Android emulator smoke and visual-evidence upload.
+- Build #3073 confirms the real SAF Project flow: v2 canonical state including MIDI events and Pattern placements, direct SAVE overwrite, force-stop/relaunch/open, SAVE AS and OPEN cancellation invariance, malformed-load preservation and compatible placement-free v1 equality. Main hierarchy acceptance also passed for MAIN, MENU, PROJECT and SEQ.
+- The two latest Main fixes are verified on that baseline: Program Select is disabled/truthfully captioned for unsupported Track Types, and Main/Sequence Select use the selected Sequence's stored name with stable-ID fallback only for empty names.
+- Recent run context: #3072 (SHA `9b930da...`), #3071 (`53ef953...`) and #3070 (`d84e8fc...`) were cancelled; #3069 succeeded on older SHA `2d992807ebc3d545598cc35c9ea15991e09738dd`; #3068 failed on its earlier static preflight. None supersedes exact-SHA Build #3073 as the latest green baseline.
 
-### Live checkpoint — Main Program availability truthfulness (verification pending)
+## Current implementation slice — five-slot shortcut persistence
 
-- The Main Program audit reference was renamed to `mainProgramContextView` in the previous commit, fixing Build #3068's textual preflight false positive without removing the runtime native-state equality assertion.
-- While Build #3069 / run `39819814302` compiles/tests SHA `2d992807ebc3d545598cc35c9ea15991e09738dd`, the source review identified a separate blueprint contract: Program Select is supported only for Drum Tracks. Main already showed an `UNAVAILABLE` ownership label for non-Drum Tracks, but left the Program button enabled and the caption permanently saying `DRUM PROGRAM`. This change makes the button disabled and dimmed until native startup confirms a Drum Track; the caption becomes `PROGRAM` for unsupported track types. The supported Drum path remains enabled and still routes to the native Program Select context.
-- The runtime Main audit now also requires the visible Program selector to be enabled for the initial supported Drum Track. This follow-up extracts that predicate/caption/enabled/alpha policy into `MpcTrackProgramPolicy`, shares it between button routing and UI refresh, adds focused JVM edge-case tests, and includes them in the fast Gradle policy-test step. No native Program/audio state is mutated. Full exact-SHA runtime verification remains pending.
-- A second Main identity review found that the center Sequence field and Sequence Select list fabricated `Sequence NN` from the index, hiding a project Sequence's custom name. A native read-only getter now returns each Sequence's real name (stable ID only as the empty-name fallback); Main and Sequence Select use the shared display helper, and the Main runtime audit verifies the visible field against the selected native Sequence.
-- Source review caught one exact-selector mismatch in that new assertion before CI: the built Main Sequence field intentionally advertises `Main Mode selected sequence • MPC selected field`, but the audit lookup initially searched the shorter pre-refresh description. The lookup and cheap source preflight now use the full current description; the text-equality assertion is unchanged.
+- The five-slot Shortcut Rail already supported assignment, reordering and factory reset, but `MpcNavigationController` initialized every process with factory defaults and `MainActivity` never saved user edits. A valid customization therefore disappeared on the next process start.
+- This slice adds a strict, versioned preference payload (`shortcut_modes_v1`), saves assignment/reordering/reset through the actual Shortcut configuration UI, and restores all five modes before shell construction. Malformed/stale values safely fall back to factory order.
+- JVM coverage round-trips a custom five-slot ordering, rejects malformed/unsupported modes without partial state mutation, and verifies safe fallback. The focused Gradle unit gate and Android-smoke source-contract preflight include the new wiring.
+- **Acceptance boundary:** the baseline Build #3073 does not verify this new change. Use the live PR head SHA and the Actions run triggered by the commit containing this checkpoint. Report a green result only after the full Android emulator smoke and artifact-upload steps pass. A dedicated UI-driven customization → force-stop → relaunch assertion is still a useful additional acceptance refinement; do not confuse existing Browser URI persistence coverage with shortcut preference coverage.
 
-## Current execution queue — 2026-10-22
+## Next actions
 
-1. Let the already-running Build #3069 finish on its recorded SHA; it remains useful evidence for the audit-name correction but does not contain the newest Program availability change.
-2. Build #3071 / run `39822035429` queued the Program-policy unit tests; this Sequence-name change supersedes it, so verify both Main identity assertions and the policy tests on the newest exact SHA.
-3. Continue full workflow through Project persistence and preserve PRs #28/#29 isolation; physical MPC Studio MkII validation stays pending.
-
+1. Refresh PR #23 HEAD and its exact-SHA workflow. Confirm the current commit SHA in the run metadata before interpreting the result; do not reuse Build #3073 as evidence for this new slice.
+2. If the workflow is green, the next functional gap from the action catalog is **PROJ-001 — a real New Project workflow**. The Menu's NEW PROJECT function is currently truthfully disabled; implement safe model replacement and state/history reconciliation rather than wiring it to a decorative reset. Confirm unsaved-work handling before enabling it.
+3. Keep PRs #28 and #29 isolated; do not change their bases or merge them as part of this slice. Physical Akai MPC Studio MkII acceptance remains pending and is not proved by emulator CI.
 
 ## Completed in this session
 
@@ -69,12 +73,9 @@ Created [MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md](MPC-STUDIO-MKII-RE
 
 The official playlists could not be fully transcript-audited through the available source view, so the document labels them indexed but not fully reviewed. It does not invent video findings. Hardware doc/semantic-map status summaries were reconciled; agent instructions and the operating protocol now require traceability before controller work. No app/runtime code was changed in this documentation slice. The current exact-HEAD workflow result still requires a live check.
 
-## Current execution order — 2026-10-21
+## Superseded execution note — 2026-10-21
 
-1. Re-run primary FAVORITE 1 with dual-format `ps` fallback and explicit runner PID diagnostics; inspect real picker root screenshot/XML and keep grant/restore assertions strict.
-2. Check isolated exact-SHA Builds #3043 (SAMP-010) and #3044 (Project malformed-load unit regression) before moving either branch again.
-3. After Favorite 1 passes, validate full Project SAVE/SAVE AS/OPEN lifecycle; integrate SAMP-010 only once its own acceptance and primary gates are green.
-4. Physical MPC Studio MkII testing remains a separate pending gate.
+The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
 
 ## Mandatory operating rules
 

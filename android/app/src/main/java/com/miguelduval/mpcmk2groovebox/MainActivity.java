@@ -86,6 +86,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final String TRACK_TYPE_CHANGE_RESERVED_STATUS =
             "TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation";
     private static final String BROWSER_STORAGE_PREFERENCES = "mpc_browser_storage";
+    private static final String MPC_UI_PREFERENCES = "mpc_ui_preferences";
+    private static final String PREF_SHORTCUT_MODES = "shortcut_modes_v1";
     private static final String PREF_USER_TREE_URI = "user_tree_uri";
     private static final String PREF_USER_TREE_NAME = "user_tree_name";
     private static final String PREF_FAVORITE_TREE_URI_PREFIX = "favorite_tree_uri_";
@@ -616,7 +618,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         try {
             applyFullscreenWindowPolicy();
             navigationController = new MpcNavigationController(
-                    uiState -> runOnUiThread(this::updateMpcShellState));
+                    uiState -> runOnUiThread(this::updateMpcShellState),
+                    readShortcutConfiguration());
         } catch (Throwable error) {
             Log.e(TAG, "EARLY_STARTUP_SETUP_FAILED", error);
             showStartupFailure("Early startup setup failed", error);
@@ -10648,6 +10651,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         return button;
     }
 
+    private MpcUiState.Mode[] readShortcutConfiguration() {
+        return MpcNavigationController.decodeShortcuts(
+                getSharedPreferences(MPC_UI_PREFERENCES, MODE_PRIVATE)
+                        .getString(PREF_SHORTCUT_MODES, null));
+    }
+
+    private void persistShortcutConfiguration() {
+        final String encoded = MpcNavigationController.encodeShortcuts(
+                navigationController.shortcuts());
+        final boolean saved = getSharedPreferences(MPC_UI_PREFERENCES, MODE_PRIVATE)
+                .edit()
+                .putString(PREF_SHORTCUT_MODES, encoded)
+                // Five enum names are a tiny preference value; complete the
+                // write before returning so an immediate process restart is safe.
+                .commit();
+        if (!saved) {
+            setBottomStatus("SHORTCUTS • SAVE FAILED • changes may not survive restart");
+        } else {
+            setBottomStatus("SHORTCUTS • SAVED");
+        }
+    }
+
     private void showShortcutConfigPage() {
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
@@ -10729,6 +10754,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 navigationController.setShortcut(
                                         slot,
                                         entry.mode);
+                                persistShortcutConfiguration();
                                 setBottomStatus(String.format(
                                         Locale.ROOT,
                                         "SHORTCUT %d • %s",
@@ -10748,6 +10774,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Button up = actionButton("▲", v -> {
                 if (slot > 0) {
                     navigationController.moveShortcut(slot, slot - 1);
+                    persistShortcutConfiguration();
                     showShortcutConfigPage();
                 }
             });
@@ -10758,6 +10785,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Button down = actionButton("▼", v -> {
                 if (slot < MpcNavigationController.SHORTCUT_COUNT - 1) {
                     navigationController.moveShortcut(slot, slot + 1);
+                    persistShortcutConfiguration();
                     showShortcutConfigPage();
                 }
             });
@@ -10777,6 +10805,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout footer = row();
         footer.addView(actionButton("RESET DEFAULTS", v -> {
             navigationController.resetDefaultShortcuts();
+            persistShortcutConfiguration();
             showShortcutConfigPage();
         }), weight());
         footer.addView(actionButton("BACK TO MENU", v -> showMenuPage()), weight());

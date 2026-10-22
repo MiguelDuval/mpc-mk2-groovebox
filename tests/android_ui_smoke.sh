@@ -85,6 +85,26 @@ if grep -Fq -- 'navigationController.setShortcuts(' "$MAIN_ACTIVITY_SOURCE" &&  
   exit 1
 fi
 
+echo "Running persistent MPC shortcut configuration preflight..."
+for required in \
+  'PREF_SHORTCUT_MODES = "shortcut_modes_v1"' \
+  'readShortcutConfiguration()' \
+  'MpcNavigationController.decodeShortcuts(' \
+  'MpcNavigationController.encodeShortcuts(navigationController.shortcuts())' \
+  'persistShortcutConfiguration();' \
+  '.commit()'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: persistent five-slot Shortcut Rail contract missing: $required"
+    exit 1
+  fi
+done
+for required in 'static String encodeShortcuts(' 'static MpcUiState.Mode[] decodeShortcuts(' 'validateShortcutModes(modes);'; do
+  if ! grep -Fq -- "$required" "$NAVIGATION_SOURCE"; then
+    echo "ERROR: shortcut config codec/validation contract missing: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC Pull-Down Menu preflight..."
 for required in   "MpcPullDownPanelView"   "buildPullDownOverlay(root)"   "installPullDownGesture()"   "showPullDown()"   "hidePullDown()"   "CURRENT CONTROL"   "MPC Pull-Down Menu"   "sequenceTransportView.setContentDescription("   "swipe down for MPC Pull-Down Menu"; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPullDownPanelView.java"; then

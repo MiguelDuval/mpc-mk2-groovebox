@@ -1,21 +1,26 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-22 (live exact-SHA evidence governs)
+## CURRENT EXECUTION QUEUE — 2026-10-22 (exact-SHA evidence governs)
 
-### 1. Primary PR #23 — Main context audits and Program availability
+### Verified base checkpoint
 
-- Build #3068 / run `39813701284` failed at runtime-smoke preflight due to a local view-reference variable sharing the forbidden legacy field identifier. Commit `2d99280` renames the local variable to `mainProgramContextView`; the runtime Program equality assertion and the stricter absence check remain intact.
-- While Build #3069 / run `39819814302` tests that exact SHA, source review found a separate stated contract in the Main blueprint: Program Select is enabled only for a Drum Track. The existing Main row labelled `DRUM PROGRAM` remained enabled on unsupported Track Types even though its ownership status said `UNAVAILABLE`. The new change dims/disables the actual selector until startup confirms Drum ownership and changes the caption to a generic `PROGRAM` on non-Drum Tracks; it leaves native project/program state untouched.
-- The smoke source-contract preflight checks the policy consumers. `MpcTrackProgramPolicy` centralizes Drum-only availability, caption and alpha for Main field refresh, button routing and Program Select page entry. Four JVM policy tests cover unsupported Track Types, startup gating, truthful captions and selector emphasis; the focused Gradle step includes them. The Main runtime audit still insists that the supported initial Drum Track selector is enabled and its displayed Program equals native state. The complete slice needs exact-SHA build and emulator verification.
-- A related Main fidelity gap was found: the Main Sequence field and Sequence Select labels were synthesized from indices rather than the project model's stored names. The new read-only JNI getter and shared Java display helper render the actual Sequence name and fall back to the record ID only if its name is empty; the Main runtime audit checks the visible value against the selected native Sequence.
-- Before CI starts on the new SHA, the Main Sequence audit lookup was aligned with the field's exact accessibility description (`Main Mode selected sequence • MPC selected field`). The runtime value equality check remains strict, and the preflight now guards that exact selector contract.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) is open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
+- Last fully green Android workflow before this slice: [Build #3073 / run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`.
+- That run passed the full workflow, including native/JVM gates, debug APK assembly, Android smoke and visual-evidence upload. Its Project acceptance confirmed exact v2 canonical state, direct SAVE overwrite, process restart/reopen, cancellation invariance, malformed-load preservation and placement-free v1 equality. Main identity and Program-availability checks were also green on that SHA.
+- Builds #3070–#3072 were cancelled; #3069 succeeded only on older SHA `2d992807ebc3d545598cc35c9ea15991e09738dd`, and #3068 failed its earlier smoke preflight. These are historical and do not outweigh Build #3073.
 
-### 2. Regression continuation
+### Latest implementation slice — Shortcut Rail preferences
 
-1. Confirm Build #3069 completes on its immutable SHA `2d992807ebc3d545598cc35c9ea15991e09738dd`.
-2. Validate the Program availability change on the next exact HEAD, then continue full Project SAVE / SAVE AS / OPEN and artifact checks.
-3. Keep PRs #28/#29 isolated until full current-HEAD Android acceptance is green; physical MPC Studio MkII validation remains separate and pending.
+- The Shortcut configuration page exposed assignment, reordering and reset, but the five slots lived only in `MpcNavigationController` memory and were reset to factory order on each fresh Activity/process. This violated the user's expectation for a configurable high-frequency rail.
+- The implementation now round-trips the ordered five `MpcUiState.Mode` enum names through versioned local preferences, restores before shell construction, and synchronously saves selector changes, ▲/▼ reordering, and RESET DEFAULTS. Malformed or stale payloads fall back to factory order rather than breaking startup.
+- `MpcNavigationControllerTest` covers serialization, exact order preservation, malformed/unsupported payload fallback, and atomic rejection of invalid bulk updates. The focused Gradle test list includes it, and the Android smoke source preflight checks that load/write wiring remains connected.
+- The exact-SHA workflow on the commit containing this queue is **pending live confirmation**. Do not cite Build #3073 as acceptance of this new slice. The full smoke checks the app regression; a dedicated user-touch → force-stop → relaunch acceptance for custom shortcut order remains an explicit follow-up if not already covered elsewhere.
 
+### Immediate next steps
+
+1. Read the current PR head SHA and its associated Android Build run. Require the whole workflow, emulator smoke and evidence upload to pass before marking this slice accepted.
+2. Then take **PROJ-001 — New Project** as the next vertical slice. The Menu's NEW PROJECT function remains disabled; implement an actual safe project replacement with explicit unsaved-work handling and authoritative reset of dependent UI/history/transport state. Do not silently discard an edited project and do not enable the control until its end-to-end state invariants have tests.
+3. Keep PRs #28 and #29 isolated from PR #23 until their own exact-SHA acceptance and a deliberate integration decision. Physical MPC Studio MkII testing remains pending.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 

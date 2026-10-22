@@ -2,6 +2,7 @@ package com.miguelduval.mpcmk2groovebox;
 
 import org.junit.Test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -84,6 +85,55 @@ public class MpcNavigationControllerTest {
 
         assertEquals(MpcUiState.Mode.TRACK_VIEW, navigation.shortcut(1));
         assertEquals(MpcUiState.Mode.NEXT_SEQUENCE, navigation.shortcut(4));
+    }
+
+    @Test
+    public void persistedShortcutOrderRoundTripsExactlyFiveSlots() {
+        MpcUiState.Mode[] customized = {
+                MpcUiState.Mode.GRID,
+                MpcUiState.Mode.BROWSER,
+                MpcUiState.Mode.NEXT_SEQUENCE,
+                MpcUiState.Mode.CHANNEL_MIXER,
+                MpcUiState.Mode.SAMPLE_EDIT
+        };
+
+        String encoded = MpcNavigationController.encodeShortcuts(customized);
+        assertEquals("GRID,BROWSER,NEXT_SEQUENCE,CHANNEL_MIXER,SAMPLE_EDIT", encoded);
+        assertArrayEquals(
+                customized,
+                MpcNavigationController.decodeShortcuts(encoded));
+    }
+
+    @Test
+    public void missingOrCorruptShortcutPreferenceFallsBackToFactoryOrder() {
+        MpcUiState.Mode[] defaults = MpcModeRegistry.defaultShortcuts();
+        assertArrayEquals(defaults, MpcNavigationController.decodeShortcuts(null));
+        assertArrayEquals(defaults, MpcNavigationController.decodeShortcuts(""));
+        assertArrayEquals(defaults, MpcNavigationController.decodeShortcuts(
+                "BROWSER,GRID"));
+        assertArrayEquals(defaults, MpcNavigationController.decodeShortcuts(
+                "BROWSER,GRID,NOT_A_MODE,STEP,MAIN"));
+        assertArrayEquals(defaults, MpcNavigationController.decodeShortcuts(
+                "BROWSER,GRID,RESERVED,STEP,MAIN"));
+    }
+
+    @Test
+    public void invalidBulkShortcutUpdateDoesNotPartiallyReplaceCurrentSlots() {
+        MpcNavigationController navigation = new MpcNavigationController();
+        MpcUiState.Mode[] before = navigation.shortcuts();
+        boolean rejected = false;
+        try {
+            navigation.setShortcuts(
+                    MpcUiState.Mode.GRID,
+                    MpcUiState.Mode.BROWSER,
+                    MpcUiState.Mode.RESERVED,
+                    MpcUiState.Mode.STEP,
+                    MpcUiState.Mode.MAIN);
+        } catch (IllegalArgumentException expected) {
+            rejected = true;
+        }
+        assertTrue(rejected);
+        assertArrayEquals(before, navigation.shortcuts());
     }
 
     @Test
