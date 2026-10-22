@@ -85,6 +85,26 @@ if ! grep -Fq -- 'static boolean isCurrentSession(long saveGeneration, long acti
   echo "ERROR: pure Project-save callback policy missing"; exit 1
 fi
 
+echo "Running async Project-Open request/session isolation preflight..."
+for required in \
+  'private long projectOpenRequestGeneration;' \
+  'MpcProjectOpenSessionPolicy.canApplyOpenResult(' \
+  'PROJECT_OPEN_STALE_DISCARDED uri=' \
+  'openRequestGeneration=' \
+  'projectOpenRequestGeneration++;'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: async Project-Open isolation contract missing: $required"; exit 1
+  fi
+done
+if ! grep -Fq -- 'static boolean canApplyOpenResult(' \
+    "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcProjectOpenSessionPolicy.java" \
+    || ! grep -Fq -- 'olderOpenRequestCannotReplaceTheNewerSelection' \
+    "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectOpenSessionPolicyTest.java" \
+    || ! grep -Fq -- 'newProjectSessionInvalidatesPendingOpenResult' \
+    "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectOpenSessionPolicyTest.java"; then
+  echo "ERROR: async Project-Open policy/test contract missing"; exit 1
+fi
+
 echo "Running real New Project transaction preflight..."
 if ! grep -Fq -- 'bool resetToDefault();' "src/MPC/MpcProjectState.h"; then
   echo "ERROR: New Project model reset declaration missing"; exit 1

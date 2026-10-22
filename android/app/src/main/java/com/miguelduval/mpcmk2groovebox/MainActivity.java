@@ -188,6 +188,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     // Async provider writes must not attach a document chosen for a different
     // native Project after an Open/New Project replacement completes.
     private long projectSessionGeneration;
+    // Async Open results are valid only for the latest request and the Project session it started from.
+    private long projectOpenRequestGeneration;
     private final ExecutorService projectIoExecutor = Executors.newSingleThreadExecutor();
     private MpcNavigationController navigationController;
     private MpcShell mpcShell;
@@ -11762,6 +11764,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // The old document is deliberately not deleted or overwritten. The new
         // model starts unlinked, so the next SAVE naturally requires SAVE AS.
         projectSessionGeneration++;
+        projectOpenRequestGeneration++;
         currentProjectUri = null;
         currentProjectName = nativeProjectGetName();
         selectedPad = 0;
@@ -11961,6 +11964,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus("PROJECT OPEN • project engine is not ready");
             return;
         }
+        // The read is asynchronous. A later Open request or a successful New/Open
+        // must prevent this callback from replacing whichever Project is active then.
+        final long openRequestGeneration = ++projectOpenRequestGeneration;
+        final long openSessionGeneration = projectSessionGeneration;
         if ((resultFlags & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
             try {
                 getContentResolver().takePersistableUriPermission(
@@ -11978,17 +11985,40 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             } catch (Exception error) {
                 final String failure = error.getClass().getSimpleName() + ": " + error.getMessage();
                 runOnUiThread(() -> {
-                    if (!destroyed) {
+                    if (destroyed) return;
+                    if (MpcProjectOpenSessionPolicy.canApplyOpenResult(
+                            openRequestGeneration, projectOpenRequestGeneration,
+                            openSessionGeneration, projectSessionGeneration)) {
                         setBottomStatus("PROJECT OPEN FAILED • " + failure);
                         scheduleProjectPersistenceViewHierarchyCapture(currentPage);
                         Log.i(TAG, "PROJECT_OPEN_FAILED stateSha256=" + currentProjectStateSha256()
-                                + " fileSha256=unavailable error=" + failure);
+                                + " fileSha256=unavailable openRequestGeneration="
+                                + openRequestGeneration + " error=" + failure);
+                    } else {
+                        Log.i(TAG, "PROJECT_OPEN_STALE_DISCARDED uri=" + uri
+                                + " openRequestGeneration=" + openRequestGeneration
+                                + " activeOpenRequestGeneration=" + projectOpenRequestGeneration
+                                + " sessionGeneration=" + openSessionGeneration
+                                + " activeSessionGeneration=" + projectSessionGeneration
+                                + " reason=stale-read-failure");
                     }
                 });
                 return;
             }
             runOnUiThread(() -> {
                 if (destroyed) return;
+                if (!MpcProjectOpenSessionPolicy.canApplyOpenResult(
+                        openRequestGeneration, projectOpenRequestGeneration,
+                        openSessionGeneration, projectSessionGeneration)) {
+                    Log.i(TAG, "PROJECT_OPEN_STALE_DISCARDED uri=" + uri
+                            + " fileSha256=" + projectBytesSha256(bytes)
+                            + " openRequestGeneration=" + openRequestGeneration
+                            + " activeOpenRequestGeneration=" + projectOpenRequestGeneration
+                            + " sessionGeneration=" + openSessionGeneration
+                            + " activeSessionGeneration=" + projectSessionGeneration
+                            + " reason=stale-before-native-load");
+                    return;
+                }
                 final String loaded = nativeProjectLoad(bytes);
                 if (loaded == null || !loaded.startsWith("PROJECT_LOADED")) {
                     setBottomStatus(loaded == null
@@ -12000,6 +12030,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     return;
                 }
                 projectSessionGeneration++;
+                projectOpenRequestGeneration++;
                 currentProjectUri = uri;
                 currentProjectName = nativeProjectGetName();
                 refreshProjectIdentity();

@@ -5,25 +5,27 @@
 
 ## Last accepted full-workflow baselines
 
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on `feature/mpc-one-ui-fidelity`, target `fix/ui-shell-format-width-startup`.
-- Latest fully green workflow before the Shortcut UI acceptance follow-up: [Build #3078 / run 39851914811](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39851914811), SHA `8c19821cc909ecd5e2e7b7de4a06f27d078f8185`; docs-only descendant of product code accepted in #3077.
-- [Build #3077 / run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408), SHA `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`, passed New Project CANCEL/SHA invariance, DISCARD & NEW native reset, default `Sequence 01`, `NO FILE LINKED`, complete smoke and evidence upload.
-- [Build #3073 / run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`, remains the full real-SAF Project persistence baseline: direct SAVE overwrite, exact v2 MIDI/Pattern-placement state, force-stop/relaunch/reopen, cancellation, malformed-load safety and v1 compatibility. Main Program-availability and real Sequence-name checks passed on that SHA.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
+- **Latest full exact-HEAD acceptance:** [Android Build #3082 / run 39868644535](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39868644535), exact SHA `0d953da7eb9370e5180424d9d6de1a9b87c25442`. All 57 workflow steps passed, including the full emulator smoke and evidence upload.
+- Build #3082 produced visual evidence artifact ID `12466226732`, SHA-256 `fc6947c70610d587c874edbb648a051286778d2422d551dcf73a195ccbb9acb4`, plus APK artifact ID `12464309278`.
+- Build #3082 accepted the native Spinner popup scroll using measured live ListView bounds. The earlier GRID wait was a test-driver gap; it is closed on this exact SHA and should not be re-investigated without a fresh regression.
+- [Build #3077 / run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408), SHA `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`, accepted real New Project cancellation/reset/unlinked-file behavior.
+- [Build #3073 / run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`, accepted the real-SAF Project persistence baseline: Save As, direct SAVE overwrite, exact v2 MIDI/Pattern-placement state, force-stop/relaunch/reopen, cancellation, malformed-load preservation and v1 compatibility.
+- Physical Akai MPC Studio MkII acceptance remains a separate pending hardware gate; emulator evidence does not prove physical-controller operation.
 
-## Current Shortcut Rail acceptance blocker
+## Current Project workflow slice — async Open isolation
 
-- Branch HEAD before the next patch: `20e49d0e45a8a39287190a1fc0db129765980eca`.
-- [Build #3081 / run 39863216717](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39863216717) failed on that exact SHA, but the workflow made it through the earlier gates and the full New Project smoke. At 22:48:41Z it explicitly logged `Extended New Project UI acceptance passed`.
-- Failure then occurred in the actual Shortcut 1 Spinner test. The live UiAutomator tree showed a scrollable `android.widget.ListView` with BROWSER, CHANNEL MIXER, PAD MIXER, SOUNDS, XY, MAIN and TRACK VIEW in the visible portion; GRID is farther down. The script previously waited for GRID without scrolling this real popup, and occasional UiAutomator dump timeouts made the test slow/brittle. Build #3079 hit the same GRID wait failure.
-- This is a demonstrated smoke-driver gap, not evidence that GRID is absent from the product's canonical shortcut catalog. The next patch adds `scroll_popup_until_ui_text()`: it re-dumps under a bounded timeout, finds the currently visible native scrollable ListView, swipes using its live bounds, and only passes once GRID appears in a fresh hierarchy. No fixed UI coordinates are introduced.
-- Shortcut preference persistence, custom slot order, force-stop/relaunch, Reset Defaults and second-restart assertions still need one full green exact-SHA workflow. The asynchronous Save callback session-generation guard and focused policy tests are present, but the full slice is not accepted until emulator smoke and evidence upload succeed.
+- Source tracing found that `loadProjectFromUri()` reads the selected SAF document on the single Project I/O executor, then unconditionally passed its bytes to `nativeProjectLoad()`. If New Project completed while that read was pending—or a newer Open selection arrived first—the stale callback could replace the newer active model. A stale read error could also overwrite the newer session's status.
+- The current change adds request-generation and Project-session checks immediately before either publishing a read failure or calling the native loader. New Project and a successful Open invalidate earlier callbacks. A stale successful read is discarded before native model mutation, and stale errors do not change the status of the current Project.
+- A focused JVM policy test covers current-request success, superseded Open selection and session replacement. The smoke preflight checks that the app-level guard and tests remain present.
+- This new slice is **implemented but not yet accepted** until a full Android workflow passes on its exact new SHA. Do not claim the next Build green until the required emulator smoke and evidence-upload step finishes.
 
 ## Current queue
 
-1. Verify the next full Android workflow on the new exact commit SHA, including focused JVM/native tests, APK build, source/syntax preflight, Shortcut assignment/order/restart/reset acceptance and evidence upload.
-2. If GRID remains missing after scrolling, inspect the new hierarchy and real adapter; fix the demonstrated root cause instead of loosening the assertion.
-3. Once green, move to Project lifecycle reliability: provider write-failure recovery and real two-document isolation.
-4. PRs #28 and #29 remain isolated. Physical Akai MPC Studio MkII acceptance is separate and pending.
+1. Check the new branch HEAD/PR and run the full Android workflow on the exact commit SHA. Require JVM policy tests, native tests, Bash/source-contract checks, complete real UI smoke and evidence upload.
+2. After that pass, address SAF write/overwrite failure safety: protect an existing document from partial writes, verify provider results, and provide truthful recovery behavior when the provider stops responding. Add fault-injected coverage rather than relying only on happy-path DocumentsUI.
+3. Exercise two-document Save As/Open isolation end to end; retain the existing canonical Project-state and failed-load invariance assertions.
+4. Keep PR #28/#29 bases unchanged. Physical controller acceptance remains separate.
 
 ## Completed in this session
 

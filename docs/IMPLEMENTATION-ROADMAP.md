@@ -19,7 +19,7 @@
 3. After this slice passes, handle provider write-failure recovery and two-document Project isolation.
 4. Keep PR #28/#29 bases unchanged. Physical MPC Studio MkII remains a separate pending hardware gate.
 
-## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
+## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 
 Older dated “next task” sections below retain history only. Start each slice from live HEAD, current source and real test gaps.
 
