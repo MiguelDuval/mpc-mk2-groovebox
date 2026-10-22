@@ -1,32 +1,41 @@
 # Session State — MPC MkII Groovebox
 
 **Checkpoint date:** 2026-10-22  
-**Purpose:** live handoff, governed by current branch HEAD and exact-SHA Actions evidence.
+**Purpose:** live handoff; the live branch SHA and exact-SHA CI remain authoritative.
 
-## Last fully green baseline
+## Last verified green baseline
 
-- Branch: `feature/mpc-one-ui-fidelity`; PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23), base `fix/ui-shell-format-width-startup`.
-- Latest green Android workflow before the current Shortcut Rail UI-acceptance slice: [Build #3078 / run 39851914811](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39851914811), exact SHA `8c19821cc909ecd5e2e7b7de4a06f27d078f8185`; all 57 workflow steps passed. This is a docs-only descendant of the product code accepted by Build #3077.
-- Product-code baseline for New Project acceptance: [Build #3077 / run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408), exact SHA `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`. It passed full emulator smoke, including New Project Cancel state-SHA equality, DISCARD & NEW native reset, default Sequence identity, unlinked Project document and visual evidence upload.
-- Earlier full persistence baseline: [Build #3073 / run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`. Real SAF Save As, direct SAVE overwrite, v2 canonical state with MIDI events and Pattern placements, process restart/reopen, cancellation invariance, malformed-load preservation and compatible placement-free v1 equality all passed.
-- Main fixes verified in that product-code history: unsupported Track Types cannot use Drum Program Select; Main and Sequence Select display the actual model Sequence name, with stable ID only as empty-name fallback.
-- Build #3074 / run [39829301517](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39829301517) failed on `dc4ab44dce08d0e1caf056f7a7f829a72f46cda5` because the shortcut validator used Menu entries and rejected promoted factory SOUNDS/XY; fixed by using `shortcutEntries()`.
-- Build #3075 / run [39830122978](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39830122978) failed smoke preflight because it expected a line-wrapped encoder invocation on one line; that matcher was corrected.
-- Build #3076 / run [39832727885](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39832727885) failed before New Project acceptance due to a one-shot UiAutomator dump timeout. Build #3077 passed after in-app taps were derived from measured Android View bounds and retry was reserved for the native dialog.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23), branch `feature/mpc-one-ui-fidelity`, base `fix/ui-shell-format-width-startup`; the branch HEAD at this handoff is `8edcb9dd87d7d5505a34daf941057b6e0a2bf30e`.
+- Latest green run: [Build #3078 / 39851914811](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39851914811), exact SHA `8c19821cc909ecd5e2e7b7de4a06f27d078f8185`; all 57 steps passed. This is a docs-only descendant of the product code accepted by Build #3077.
+- [Build #3077 / 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408), SHA `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`, passed the full New Project smoke: CANCEL preserved the exact canonical Project SHA, DISCARD & NEW reset the native model, Main displayed `Sequence 01`, Project mode displayed `NO FILE LINKED`, and evidence uploaded.
+- [Build #3073 / 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`, remains the full Project-persistence baseline: real SAF Save As/direct SAVE overwrite, exact v2 MIDI/Pattern-placement state, force-stop/relaunch/reopen, cancellation invariance, malformed-load preservation and placement-free v1 compatibility.
+- Main Program selector availability and real Sequence-name display were also accepted on Build #3073's exact SHA.
 
-## Current engineering slice — real Shortcut Rail UI persistence acceptance
+## Exact-SHA workflow investigation
 
-- Shortcut assignment, reorder and RESET DEFAULTS write the versioned `shortcut_modes_v1` value synchronously and restore before shell construction. JVM tests already cover exact-order serialization, constructor restoration, malformed/stale fallback, and atomic invalid updates.
-- The current slice adds smoke-only preference read/write markers, accessibility descriptions for Edit Shortcuts, reorder controls and Reset Defaults, and a real in-app View-tree capture of the Shortcut editor.
-- The extended emulator path assigns GRID using the actual spinner, moves a slot through the real ▲/▼ button, verifies the exact persisted ordered mode list, force-stops/relaunches and verifies all five visible clickable rail roots in the real Main View tree, then resets factory order and repeats after a second process death.
-- Acceptance for this new UI path is **pending exact-SHA CI**. Do not infer it from controller JVM tests or existing Browser/Project restart tests.
+- Build #3079 / run [39861808911](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39861808911) was triggered for current SHA `8edcb9dd87d7d5505a34daf941057b6e0a2bf30e`. Attempt 1 failed during Android toolchain setup because SDK installation reported **`NDK (Side by side) 28.2.13676358: Archive is not a ZIP archive`**; APK assembly, source validation and emulator smoke were skipped. This is a toolchain-download failure, not an observed product regression.
+- Attempt 2 was requested against the same exact SHA. The last observed job state was still in progress at `Assemble debug APK`, 48 successful steps and no reported failed steps, but run metadata had not updated since 22:03 UTC. Do not claim the Shortcut UI acceptance green from this attempt until its final emulator smoke/evidence result exists.
+- A coherent follow-up commit combines the pending Shortcut UI process-restart acceptance with the independent Save callback session-isolation fix described below. Its own exact-SHA Android workflow must serve as the final acceptance if the older attempt stalls.
+
+## Current implementation slice
+
+### Shortcut Rail persistence acceptance
+- Assignment, reorder and RESET DEFAULTS persist the five ordered mode names in versioned local preferences (`shortcut_modes_v1`) and restore before shell construction. JVM tests cover round-trip, constructor restoration, malformed-value fallback and rejection without partial mutation.
+- The pending full emulator path touches the real EDIT SHORTCUTS Function Bar item, changes slot 1 to GRID using the Spinner, moves the slot using its actual ▲/▼ button, checks the committed ordered mode list, force-stops/relaunches, and verifies five enabled/clickable visible rail views in exact order from a real app-owned Main View tree. It resets factory order and verifies the default order after a second process death.
+- New smoke-only logs and accessibility descriptions provide evidence; regular non-smoke product logging remains unchanged.
+
+### Asynchronous Project-save/session isolation
+- Source review found a real race: after Save As serializes Project A and begins asynchronous provider I/O, the user can complete New Project/Open before the Save callback returns. The old callback could then bind Project A's destination URI to Project B or overwrite the new session's status.
+- The follow-up introduces a monotonically increasing Project-session generation that advances only after successful New/Open replacement. A save captures that generation, the serialized snapshot SHA and its Project name. Its completion can only change the active document URI/identity/UI if the captured generation remains current.
+- If the old snapshot writes successfully after a session replacement, the write is logged against the captured snapshot but it does not link that URI to the active Project. If the active Project itself changed during I/O, the UI reports that the captured snapshot was saved while newer edits remain unsaved. Stale failures do not overwrite the new session's status.
+- A focused pure-Java policy and tests cover generation matching and snapshot-digest comparison. The Android smoke source preflight checks the critical generation guards; real-provider write-failure and two-document isolation acceptance remain separate follow-up work.
 
 ## Next actions
 
-1. Verify the exact current PR head and its Android Build. Require focused JVM/native checks, APK assembly, smoke syntax/evidence preflight, both Shortcut Rail process-restart acceptance paths, and visual evidence upload on that same SHA.
-2. Fix any failure at its actual root cause; retain ordered live View-tree assertions and process death/relaunch. Do not substitute static-source matching for UI acceptance.
-3. Once green, take the next independent lifecycle gap: **PROJ-002/003 provider write-failure recovery and two-document isolation**, preserving all existing Project canonical-state invariants.
-4. PRs #28 and #29 remain isolated. Physical Akai MPC Studio MkII acceptance is still pending; emulator CI does not prove hardware input.
+1. Verify the latest branch HEAD and its own Build workflow. Require focused JVM/native tests, APK assembly, source/syntax preflight, full real Shortcut assignment/reorder/reset process-restart acceptance, and visual evidence upload before marking the Shortcut Rail slice accepted.
+2. Keep Build #3079's failed initial toolchain attempt distinguished from product-test failures; rerun/repair only from exact live evidence.
+3. After the current slice is green, continue **PROJ-002/003 provider write-failure recovery and two-document isolation**, retaining all exact Project canonical-state checks.
+4. PRs #28 and #29 stay isolated with their existing bases. Physical Akai MPC Studio MkII acceptance remains pending; emulator CI does not prove hardware behavior.
 
 ## Completed in this session
 

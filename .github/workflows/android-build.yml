@@ -158,6 +158,7 @@ jobs:
             --tests com.miguelduval.mpcmk2groovebox.MpcSequenceStepPagePolicyTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcModeRegistryTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcNavigationControllerTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcProjectSaveSessionPolicyTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcTrackProgramPolicyTest
 

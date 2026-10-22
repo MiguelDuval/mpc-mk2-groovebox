@@ -1,28 +1,24 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-22 (exact-SHA evidence governs)
+## CURRENT EXECUTION QUEUE — 2026-10-22 (live exact SHA governs)
 
-### Last confirmed green checkpoint
+### Verified baseline
+- PR #23 remains open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`; last code head before the current follow-up is `8edcb9dd87d7d5505a34daf941057b6e0a2bf30e`.
+- Latest green [Build #3078 / run 39851914811](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39851914811), exact SHA `8c19821cc909ecd5e2e7b7de4a06f27d078f8185), passed all 57 workflow steps; docs-only descendant of green product code in #3077.
+- [Build #3077 / run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408), SHA `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`, accepted New Project CANCEL/discard-reset/default Sequence/unlinked file behavior with complete smoke and evidence upload.
+- [Build #3073 / run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`, accepted the complete documented Project save/load lifecycle, exact v2 MIDI/placement state, malformed-load safety and v1 compatibility.
 
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) is open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
-- Latest green workflow before this Shortcut Rail acceptance slice: [Build #3078 / run 39851914811](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39851914811), exact SHA `8c19821cc909ecd5e2e7b7de4a06f27d078f8185`, all 57 steps green. It is a docs-only descendant of the accepted product code from Build #3077.
-- Product-code acceptance for PROJ-001: [Build #3077 / run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408), SHA `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`, passed Cancel canonical SHA equality, DISCARD & NEW reset, default Sequence name, unlinked Project document, emulator smoke and evidence upload.
-- Canonical persistence baseline: Build #3073 / run [39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552), SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`, passed the full SAF Project lifecycle including exact v2 MIDI/placement state, process restart/open, cancellation invariance, malformed-load preservation and placement-free v1 state.
-- Builds #3074 and #3075 exposed the Shortcut mode catalog bug and a line-wrapping-sensitive preflight matcher; both were fixed. Build #3076 failed before Project-New assertions due to a one-shot UiAutomator timeout; #3077 passed on its replacement measured-view test path.
-
-### Current implementation slice — Shortcut Rail restart acceptance
-
-- Shortcut assignment, reorder and Reset Defaults already write the five enum names into versioned local preferences and restore them before shell construction; JVM tests cover round-trip, constructor restore, malformed-state fallback and atomic rejection.
-- This slice adds smoke-only preference read/write logs, unique accessibility descriptions for EDIT SHORTCUTS/reorder/reset controls, a genuine app View-tree snapshot of the Shortcut editor, and a full interaction/restart gate.
-- Emulator acceptance selects GRID through the real Spinner, moves slot 1 down using the actual visible button, proves the exact stored order, force-stops/relaunches and verifies five visible enabled/clickable rail roots in that order, resets factory defaults, then force-stops/relaunches a second time and verifies the canonical order. The test includes screenshots covered by the existing project evidence artifact allowlist.
-- New code and smoke remain **pending exact-SHA acceptance**.
+### Current follow-up — Shortcut UI acceptance + async Save callback session guard
+- Build #3079 / [run 39861808911](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39861808911), SHA `8edcb9dd87d7d5505a34daf941057b6e0a2bf30e`: attempt 1 failed because Android SDKManager received an NDK archive that was not a ZIP, before compilation/smoke. Attempt 2 was in progress at Assemble debug APK (48 successful steps, no reported step failure at the last poll). Its Shortcut UI acceptance must not be counted as passed.
+- The Shortcut Rail test changes drive actual Spinner assignment, order-button interaction, process death/relaunch, measured Main View order/bounds/enabled/clickable assertions, factory reset and second restart.
+- Source analysis found a Save As callback race where a late asynchronous completion from Project A could link its URI to Project B after New/Open. The follow-up uses a Project-session generation guard and compares captured serialized SHA with the current SHA to report newer edits truthfully. A pure-Java policy test is included in the focused Android unit gate.
+- The commit containing these changes and its own full exact-SHA workflow are still pending; the older #3079 attempt does not prove them.
 
 ### Next queue
-
-1. Run/check the full Android Build for the current PR HEAD. Require JVM/native checks, APK assembly, source/syntax preflight, both live Shortcut Rail process-restart assertions and evidence upload to pass on that exact SHA.
-2. Fix failures at their root causes; do not soften exact ordered-five-slot, visibility, enabled/clickable, or process-death checks.
-3. Once green, implement **PROJ-002/003 provider write-failure recovery and two-document isolation** as the next lifecycle slice; preserve all current canonical state and legacy-format assertions.
-4. Keep PR #28 and PR #29 isolated, with their current bases unchanged. Physical MPC Studio MkII remains a separate pending hardware gate.
+1. Follow the current commit's full Android run through JVM/native checks, APK, smoke preflight, complete emulator acceptance and visual-evidence upload.
+2. Fix only demonstrated root causes; retain all real View-tree order and exact Project-state assertions.
+3. Next functional slice after green: **PROJ-002/003 provider write-failure recovery and two-document isolation**.
+4. Preserve PR #28/#29 bases. Hardware acceptance for physical MPC Studio MkII remains a separate pending requirement.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-21 status above)
 

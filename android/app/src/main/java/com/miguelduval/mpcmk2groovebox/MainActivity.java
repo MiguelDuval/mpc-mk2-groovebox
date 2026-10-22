@@ -185,6 +185,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private FrameLayout content;
     private Uri currentProjectUri;
     private String currentProjectName = "Untitled";
+    // Async provider writes must not attach a document chosen for a different
+    // native Project after an Open/New Project replacement completes.
+    private long projectSessionGeneration;
     private final ExecutorService projectIoExecutor = Executors.newSingleThreadExecutor();
     private MpcNavigationController navigationController;
     private MpcShell mpcShell;
@@ -11758,6 +11761,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         // The old document is deliberately not deleted or overwritten. The new
         // model starts unlinked, so the next SAVE naturally requires SAVE AS.
+        projectSessionGeneration++;
         currentProjectUri = null;
         currentProjectName = nativeProjectGetName();
         selectedPad = 0;
@@ -11860,7 +11864,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        setBottomStatus("SAVING PROJECT • " + currentProjectName);
+        final long saveSessionGeneration = projectSessionGeneration;
+        final String snapshotProjectName = currentProjectName;
+        final String snapshotStateSha256 = projectBytesSha256(bytes);
+        setBottomStatus("SAVING PROJECT • " + snapshotProjectName);
         projectIoExecutor.execute(() -> {
             String failure = null;
             try (OutputStream output = getContentResolver().openOutputStream(target, "wt")) {
@@ -11873,20 +11880,59 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final String saveFailure = failure;
             runOnUiThread(() -> {
                 if (destroyed) return;
+                final boolean sameProjectSession =
+                        MpcProjectSaveSessionPolicy.isCurrentSession(
+                                saveSessionGeneration, projectSessionGeneration);
+                final String activeStateSha256 = currentProjectStateSha256();
                 if (saveFailure != null) {
-                    setBottomStatus("PROJECT SAVE FAILED • " + saveFailure);
-                    Log.i(TAG, "PROJECT_SAVE_FAILED stateSha256=" + currentProjectStateSha256()
+                    Log.i(TAG, "PROJECT_SAVE_FAILED snapshotStateSha256=" + snapshotStateSha256
+                            + " activeStateSha256=" + activeStateSha256
+                            + " sessionGeneration=" + saveSessionGeneration
+                            + " activeSessionGeneration=" + projectSessionGeneration
+                            + " sessionStale=" + !sameProjectSession
                             + " error=" + saveFailure);
+                    // Do not replace the new session's status with a stale provider failure.
+                    if (sameProjectSession) {
+                        setBottomStatus("PROJECT SAVE FAILED • " + saveFailure);
+                    }
                     return;
                 }
+
+                if (!sameProjectSession) {
+                    // The captured bytes were written, but a different Project became
+                    // active during provider I/O. In particular, don't link Save As's URI
+                    // to the newer Project or publish the old Project's status over it.
+                    Log.i(TAG, "PROJECT_SAVE_COMPLETE bytes=" + bytes.length
+                            + " name=" + snapshotProjectName
+                            + " formatVersion=" + projectFileFormatVersion(bytes)
+                            + " snapshotStateSha256=" + snapshotStateSha256
+                            + " activeStateSha256=" + activeStateSha256
+                            + " sessionGeneration=" + saveSessionGeneration
+                            + " activeSessionGeneration=" + projectSessionGeneration
+                            + " sessionStale=true targetLinkedToActiveProject=false");
+                    return;
+                }
+
                 if (selectAsCurrentProject) currentProjectUri = target;
                 currentProjectName = nativeProjectGetName();
                 refreshProjectIdentity();
                 if ("PROJECT".equals(currentPage)) showProjectPage();
-                setBottomStatus("PROJECT SAVED • " + currentProjectName + " • placements and MIDI saved");
-                Log.i(TAG, "PROJECT_SAVE_COMPLETE bytes=" + bytes.length + " name=" + currentProjectName
+
+                final boolean changedDuringSave =
+                        !MpcProjectSaveSessionPolicy.snapshotMatchesCurrentState(
+                                snapshotStateSha256, activeStateSha256);
+                setBottomStatus(changedDuringSave
+                        ? "PROJECT SAVED • snapshot committed • newer edits remain unsaved"
+                        : "PROJECT SAVED • " + currentProjectName + " • placements and MIDI saved");
+                Log.i(TAG, "PROJECT_SAVE_COMPLETE bytes=" + bytes.length
+                        + " name=" + snapshotProjectName
                         + " formatVersion=" + projectFileFormatVersion(bytes)
-                        + " stateSha256=" + projectBytesSha256(bytes));
+                        + " stateSha256=" + snapshotStateSha256
+                        + " activeStateSha256=" + activeStateSha256
+                        + " changedDuringSave=" + changedDuringSave
+                        + " sessionGeneration=" + saveSessionGeneration
+                        + " activeSessionGeneration=" + projectSessionGeneration
+                        + " sessionStale=false");
             });
         });
     }
@@ -11953,6 +11999,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             + " currentPage=" + currentPage + " result=" + loaded);
                     return;
                 }
+                projectSessionGeneration++;
                 currentProjectUri = uri;
                 currentProjectName = nativeProjectGetName();
                 refreshProjectIdentity();

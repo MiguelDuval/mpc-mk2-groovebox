@@ -59,6 +59,25 @@ for required in \
   fi
 done
 
+echo "Running async Project-save session-isolation preflight..."
+for required in \
+  'private long projectSessionGeneration;' \
+  'projectSessionGeneration++;' \
+  'MpcProjectSaveSessionPolicy.isCurrentSession(' \
+  'snapshotStateSha256=' \
+  'sessionStale=true targetLinkedToActiveProject=false' \
+  'changedDuringSave='; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: async Project-save session-isolation contract missing: $required"; exit 1
+  fi
+done
+if ! grep -Fq -- 'static boolean isCurrentSession(long saveGeneration, long activeGeneration)' \
+    "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcProjectSaveSessionPolicy.java" \
+    || ! grep -Fq -- 'static boolean snapshotMatchesCurrentState(' \
+    "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcProjectSaveSessionPolicy.java"; then
+  echo "ERROR: pure Project-save callback policy missing"; exit 1
+fi
+
 echo "Running real New Project transaction preflight..."
 if ! grep -Fq -- 'bool resetToDefault();' "src/MPC/MpcProjectState.h"; then
   echo "ERROR: New Project model reset declaration missing"; exit 1
