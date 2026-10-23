@@ -4,20 +4,19 @@
 
 ### Latest accepted checkpoint
 - PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on feature/mpc-one-ui-fidelity, targeting fix/ui-shell-format-width-startup.
-- **Build #3086 / [run 39874222668](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39874222668) is green** on exact SHA e68bf8685c96327a08ff71f0a7a2138820f13b7b: all 57 steps, selected Project Open/write-transaction JVM suites, full emulator smoke, and visual-evidence upload. Real two-document isolation and Shortcut Rail factory-reset/restart acceptance passed.
-- Artifact references: evidence ID 12468738000 (SHA-256 21202ad64b367270fd7396c54e472c6d83091fa74a0b22cc1fbb315a550f4491); APK ID 12468351352 (SHA-256 8e26ecd655880e93efe878b68534a2fc9e504de3193832dfeb129841426d49b0).
-- Build #3083 / [run 39872152402](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872152402) failed at final Shortcut factory-reset tree capture. Its exact log points to an empty cached hierarchy (the size check failed before XML parsing), while #3086 passed the same screen workflow. This is evidence of an intermittent file-publication race rather than proof of a missing product control.
+- **Latest full exact-HEAD acceptance before this slice:** [Android Build #3096 / run 39925775167](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39925775167), exact SHA 12f988395c7d6ad50a40c84406770411fa1e72e1. Focused policy tests, full Android smoke and evidence upload all passed. Evidence artifact SHA-256 5e18f3a3baaad3290d384f0a25b4738f60571e3085809ee9b685e9df3c1d9f96; APK artifact SHA-256 34009e6cfcae137987a36187e642d2e327ed2bed1f9292c2aa17c4a123585d67.
+- Recovery export and exact-byte read-back were accepted on [Build #3088](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39878406244), SHA f39fa0a000bcca2ec635cd3a2971a9e405622469. URI persistable-mode fidelity was accepted on [Build #3089](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39885681706), SHA 8b02cd05f83b9f9874e8cf816e1809fee0912a8f. Build #3095 on parent SHA d6cded9d5ac5ff21e8a5b53c6606fa29b5b6b679 also passed the complete workflow.
 
-### Current defect fix — atomic View-tree publication
-- The app previously opened the canonical cached View-tree XML with FileOutputStream(..., false), truncating it before writing. The external smoke runner can read the path via adb run-as immediately after the READY marker, while page rebuilds can queue several pre-draw captures.
-- The new candidate writes to a sibling temporary file, syncs and closes it, atomically replaces the canonical path with android.system.Os.rename, then logs READY. The smoke preflight requires this contract. All page/source/freshness and interaction checks remain strict.
-- This candidate still requires its own full exact-SHA Android workflow before acceptance.
+### Current defect — false read-only latch on preimage-read denial
+- MpcProjectDocumentWriteTransaction explicitly returns writeAttempted=false if it cannot capture the original document before opening the target for output. The failure can still contain EACCES/SecurityException because a provider may deny reading the preimage.
+- The previous availability logic classified the exception string without checking transaction phase, then set currentProjectWritePreviouslyRejected=true. This incorrectly disabled direct SAVE after an operation that never attempted a write, despite the UI status saying the destination was unchanged.
+- The candidate routes write-denial latching through shouldLatchProviderWriteDenial(writeAttempted, failure). An access-denial string changes write availability only when a provider write attempt actually occurred. Focused JVM regressions cover preimage EACCES/SecurityException, genuine attempted-write EACCES, and generic verification timeout.
+- The UI smoke remains strict; new source-contract checks require the gated call site and regression tests. This candidate is not accepted until its own full exact-SHA workflow passes.
 
 ### Next queue
-1. Verify Build #3095 / [run 39924131537](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39924131537) on exact SHA d6cded9d5ac5ff21e8a5b53c6606fa29b5b6b679. The fixed source preflight passed; the latest live check showed emulator smoke step 52 active. Require the final smoke conclusion and evidence-upload step.
-2. The candidate in this commit moves provider write-failure recognition into the selected URI-grant policy, adds EACCES/EPERM/EROFS provider-error cases, and guards against generic timeout/read failures being treated as write-denials. Its own exact-SHA workflow must execute the selected JVM suite, native tests, full Android smoke and evidence upload.
-3. Recovery acceptance remains strict: actual cancellation → exact filename visible in live RECOVERY chooser → real DocumentsUI export and byte verification → active Project unchanged/unlinked during export → successful canonical-state reopen.
-4. After this policy change is fully accepted, exercise real provider grant revocation and read/write failures where deterministic. Keep PR #28/#29 bases and physical hardware gate unchanged.
+1. Confirm branch HEAD remains 12f988395c7d6ad50a40c84406770411fa1e72e1, safely fast-forward the single policy fix and docs, then inspect the queued exact-SHA workflow.
+2. Require the URI-grant policy JVM suite, transaction/Open/recovery suites, native checks, complete Android smoke including recovery cancellation/export/reopen, A/B document isolation, Shortcut reset/restart, and evidence upload.
+3. Then cover actual provider permission revocation/read failures with deterministic fixtures where possible. Keep PR #28/#29 bases and physical-controller gate unchanged.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

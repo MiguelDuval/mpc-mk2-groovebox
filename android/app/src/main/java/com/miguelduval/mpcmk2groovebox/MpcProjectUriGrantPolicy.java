@@ -28,6 +28,15 @@ final class MpcProjectUriGrantPolicy {
                 || normalized.contains("write permission");
     }
 
+    /**
+     * A preimage/read failure must not latch a document as read-only: until the
+     * transaction actually enters its provider write attempt, no write denial
+     * has been observed. Result.writeAttempted is the transaction's phase signal.
+     */
+    static boolean shouldLatchProviderWriteDenial(boolean writeAttempted, String failure) {
+        return writeAttempted && isProviderWriteAccessFailure(failure);
+    }
+
     static boolean directSaveActionAvailable(
             boolean hasCurrentDocument, boolean writePermissionGranted,
             boolean providerPreviouslyRejectedWrite) {

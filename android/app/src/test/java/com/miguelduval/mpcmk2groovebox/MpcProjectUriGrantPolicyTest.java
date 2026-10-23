@@ -72,4 +72,24 @@ public class MpcProjectUriGrantPolicyTest {
         assertFalse(MpcProjectUriGrantPolicy.isProviderWriteAccessFailure(null));
         assertFalse(MpcProjectUriGrantPolicy.isProviderWriteAccessFailure("  "));
     }
+
+    @Test public void preimageReadEaccesDoesNotLatchWriteDenialBeforeAnyWriteAttempt() {
+        assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                false, "Could not back up destination before writing: ErrnoException: EACCES"));
+    }
+
+    @Test public void preimageReadSecurityExceptionDoesNotLatchWriteDenialBeforeAnyWriteAttempt() {
+        assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                false, "Could not back up destination before writing: SecurityException"));
+    }
+
+    @Test public void actualWriteAttemptEaccesLatchesWriteDenial() {
+        assertTrue(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                true, "Project write failed: ErrnoException: EACCES (Permission denied)"));
+    }
+
+    @Test public void attemptedWriteWithGenericReadbackTimeoutDoesNotLatchWriteDenial() {
+        assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                true, "Project write failed: IOException: provider timed out during verification"));
+    }
 }

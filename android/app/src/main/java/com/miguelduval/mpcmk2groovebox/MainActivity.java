@@ -11927,8 +11927,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 true, liveWriteGrant, currentProjectWritePreviouslyRejected);
     }
 
-    private static boolean isProjectProviderWriteAccessFailure(String failure) {
-        return MpcProjectUriGrantPolicy.isProviderWriteAccessFailure(failure);
+    private static boolean isProjectProviderWriteAccessFailure(
+            boolean writeAttempted, String failure) {
+        return MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(writeAttempted, failure);
     }
 
     private void saveCurrentProject() {
@@ -12150,7 +12151,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             && !selectAsCurrentProject
                             && currentProjectUri != null
                             && currentProjectUri.equals(target)
-                            && isProjectProviderWriteAccessFailure(saveFailure);
+                            && isProjectProviderWriteAccessFailure(transaction.writeAttempted, saveFailure);
                     if (directSaveAccessRejected) currentProjectWritePreviouslyRejected = true;
                     Log.i(TAG, "PROJECT_SAVE_FAILED snapshotStateSha256=" + snapshotStateSha256
                             + " activeStateSha256=" + activeStateSha256
