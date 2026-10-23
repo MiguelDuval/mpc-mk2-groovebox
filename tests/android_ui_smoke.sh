@@ -144,7 +144,8 @@ for required in \
   'MPC Project Export Recovery Copy' \
   'REQUEST_EXPORT_PROJECT_RECOVERY' \
   'PROJECT_RECOVERY_EXPORT_COMPLETE' \
-  'targetLinkedToActiveProject=false readBackVerified=true'; do
+  'targetLinkedToActiveProject=false readBackVerified=true' \
+  'cancel_android_document_picker "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Project recovery export"'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: recovery-copy export integration missing: $required"; exit 1
   fi
@@ -12090,8 +12091,8 @@ done
 if [ "$project_recovery_cancel_picker_ready" -ne 1 ]; then
   echo "ERROR: DocumentsUI did not open before recovery-export cancellation"; exit 1
 fi
-if ! adb_bounded 5 shell input keyevent 4; then
-  echo "ERROR: could not cancel recovery-export destination picker"; exit 1
+if ! cancel_android_document_picker "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Project recovery export"; then
+  echo "ERROR: could not return safely from recovery-export destination picker"; exit 1
 fi
 if ! wait_for_new_project_marker "PROJECT_RECOVERY_EXPORT_CANCELLED" "$project_recovery_cancel_marker_before" 20; then
   echo "ERROR: recovery-export cancellation was not reported"; exit 1
