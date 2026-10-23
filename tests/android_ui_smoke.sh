@@ -10888,7 +10888,7 @@ snapshot_project_view_tree_marker_baselines() {
 }
 
 capture_project_persistence_view_tree() {
-  local page="$1" target_xml="$2" marker before remote
+  local page="$1" target_xml="$2" allow_save_disabled="${3:-false}" marker before remote
   case "$page" in
     MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
     MAIN) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"; before="$PROJECT_MAIN_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
@@ -10903,10 +10903,10 @@ capture_project_persistence_view_tree() {
   if ! adb_bounded 5 shell run-as "$PACKAGE" cat "$remote" > "$target_xml"; then
     echo "ERROR: could not pull current Android View tree for $page"; return 1
   fi
-  if ! test -s "$target_xml" || ! python3 - "$target_xml" "$page" <<'PY_PROJECT_APP_VIEW_TREE'
+  if ! test -s "$target_xml" || ! python3 - "$target_xml" "$page" "$allow_save_disabled" <<'PY_PROJECT_APP_VIEW_TREE'
 import sys
 import xml.etree.ElementTree as ET
-path, page = sys.argv[1], sys.argv[2]
+path, page, allow_save_disabled = sys.argv[1], sys.argv[2], sys.argv[3] == "true"
 root = ET.parse(path).getroot()
 if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != page:
     raise SystemExit(f"View-tree provenance/page mismatch: {root.tag!r} {root.attrib!r}")
@@ -10942,8 +10942,26 @@ if page == "MENU":
         "MPC Menu PAD MIXER", "MPC Menu PROJECT"):
         require_target(description)
 elif page == "PROJECT":
-    for description in ("MPC Project Open", "MPC Project Save As", "MPC Project Save"):
+    for description in ("MPC Project Open", "MPC Project Save As"):
         require_target(description)
+    if allow_save_disabled:
+        matches = [node for node in nodes
+            if node.attrib.get("content-desc", "").startswith("MPC Project Save unavailable:")
+            and node.attrib.get("visible-to-user") == "true"
+            and node.attrib.get("enabled") == "false"]
+        if len(matches) != 1:
+            raise SystemExit(f"expected one visible disabled direct-SAVE control after grant revocation, found {len(matches)}")
+        raw = matches[0].attrib.get("bounds", "")
+        try:
+            left_top, right_bottom = raw[1:-1].split("][")
+            left, top = map(int, left_top.split(","))
+            right, bottom = map(int, right_bottom.split(","))
+        except (ValueError, IndexError):
+            raise SystemExit(f"invalid measured bounds for revoked direct-SAVE control: {raw!r}")
+        if right <= left or bottom <= top:
+            raise SystemExit(f"non-positive bounds for revoked direct-SAVE control: {raw!r}")
+    else:
+        require_target("MPC Project Save")
 elif page == "MAIN":
     require_target("MPC Toolbar Menu")
 print(f"Verified fresh page={page} Android View tree: {len(nodes)} views.")
@@ -12333,7 +12351,7 @@ fi
 if [[ "$project_uri_revoke_sha" != "$project_revoke_source_sha" ]]; then
   echo "ERROR: disposable revoked-URI source SHA differed from the active canonical state"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML" true; then
   echo "ERROR: Project view tree missing after revoked-URI probe"; exit 1
 fi
 PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
