@@ -1,22 +1,26 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-23 (exact-SHA CI governs)
+## CURRENT EXECUTION QUEUE — 2026-10-23 (live exact-SHA evidence governs)
 
-### Latest accepted checkpoint
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on feature/mpc-one-ui-fidelity, targeting fix/ui-shell-format-width-startup.
-- **Latest full exact-HEAD acceptance before this slice:** [Android Build #3096 / run 39925775167](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39925775167), exact SHA 12f988395c7d6ad50a40c84406770411fa1e72e1. Focused policy tests, full Android smoke and evidence upload all passed. Evidence artifact SHA-256 5e18f3a3baaad3290d384f0a25b4738f60571e3085809ee9b685e9df3c1d9f96; APK artifact SHA-256 34009e6cfcae137987a36187e642d2e327ed2bed1f9292c2aa17c4a123585d67.
-- Recovery export and exact-byte read-back were accepted on [Build #3088](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39878406244), SHA f39fa0a000bcca2ec635cd3a2971a9e405622469. URI persistable-mode fidelity was accepted on [Build #3089](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39885681706), SHA 8b02cd05f83b9f9874e8cf816e1809fee0912a8f. Build #3095 on parent SHA d6cded9d5ac5ff21e8a5b53c6606fa29b5b6b679 also passed the complete workflow.
+### Latest accepted checkpoint — PR #23
 
-### Current defect — false read-only latch on preimage-read denial
-- MpcProjectDocumentWriteTransaction explicitly returns writeAttempted=false if it cannot capture the original document before opening the target for output. The failure can still contain EACCES/SecurityException because a provider may deny reading the preimage.
-- The previous availability logic classified the exception string without checking transaction phase, then set currentProjectWritePreviouslyRejected=true. This incorrectly disabled direct SAVE after an operation that never attempted a write, despite the UI status saying the destination was unchanged.
-- The candidate routes write-denial latching through shouldLatchProviderWriteDenial(writeAttempted, failure). An access-denial string changes write availability only when a provider write attempt actually occurred. Focused JVM regressions cover preimage EACCES/SecurityException, genuine attempted-write EACCES, and generic verification timeout.
-- The UI smoke remains strict; new source-contract checks require the gated call site and regression tests. This candidate is not accepted until its own full exact-SHA workflow passes.
+- PR #23 remains OPEN: `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`.
+- **Build #3097 / run [39931641764](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39931641764) passed on exact SHA `549c78a709097a261277b090aa27672dab590c54`.** All 57 steps passed, including APK build, full emulator smoke and evidence upload.
+- APK artifact `12492765076`, SHA-256 `5cc0a7e4b06356a6f9a03457c4937c645a57f9719cee6f642572305710b7eaa8`; evidence artifact `12492653431`, SHA-256 `7c8ea85eac7d884a252b54baf9ced830e69eaf15d46a715f24ed96764cc18a30`.
+- Full acceptance covers SAMP-008 crop (3,840 → 2,840 frames, region reset), SAMP-009 CH4/CH8/CH16 exact frame coverage, Browser USER FOLDER/FAVORITE 1 real provider selection and process-restart restoration, and Project SAVE AS/mutate/OPEN, overwrite digest change, process restart, cancellation invariance, malformed-load preservation, v1 compatibility and A/B document isolation.
+- Preserve `cancel-in-progress: false`. Physical MPC Studio MkII remains a separate pending gate.
 
-### Next queue
-1. Confirm branch HEAD remains 12f988395c7d6ad50a40c84406770411fa1e72e1, safely fast-forward the single policy fix and docs, then inspect the queued exact-SHA workflow.
-2. Require the URI-grant policy JVM suite, transaction/Open/recovery suites, native checks, complete Android smoke including recovery cancellation/export/reopen, A/B document isolation, Shortcut reset/restart, and evidence upload.
-3. Then cover actual provider permission revocation/read failures with deterministic fixtures where possible. Keep PR #28/#29 bases and physical-controller gate unchanged.
+### Current slice — SAMP-010 viewport-only waveform zoom and actual Pad audition
+
+- With the primary acceptance run green, port the isolated SAMP-010 feature into the existing workflow without creating another smoke test. Keep the viewport separate from native sample region/PCM state.
+- The candidate adds the accessible viewport readout/callback, finite normalized zoom policy + JVM boundary tests, real-touch ZOOM+/ZOOM−/RESET, native audition marker/getter checks and five unique screenshot/XML milestones.
+- The candidate's full exact-SHA Android workflow is pending; SAMP-010 is not accepted until the complete smoke and evidence upload pass.
+
+### Next acceptance order
+
+1. Verify the new exact-HEAD run for SAMP-010. On failure, inspect the exact step and artifacts and fix the root cause without relaxing assertions.
+2. After SAMP-010 is green, resume the provider read/permission-failure gap already being handled on `fix/project-provider-failure-phases`; Build #3109 / run `39965373487` was active at the last live check on SHA `cee0c8b5eef8e09c7197b22274f3c2dcd779e833`. Do not duplicate that branch's work.
+3. Keep all project persistence assertions and the physical-controller gate intact.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 
