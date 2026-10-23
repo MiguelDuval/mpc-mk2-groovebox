@@ -11928,8 +11928,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private static boolean isProjectProviderWriteAccessFailure(
-            boolean writeAttempted, String failure) {
-        return MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(writeAttempted, failure);
+            MpcProjectDocumentWriteTransaction.Result transaction) {
+        return transaction != null
+                && MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                        transaction.writeAttempted,
+                        transaction.failurePhase,
+                        transaction.failureDetail,
+                        transaction.rollbackFailurePhase,
+                        transaction.rollbackFailureDetail);
     }
 
     private void saveCurrentProject() {
@@ -12151,7 +12157,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             && !selectAsCurrentProject
                             && currentProjectUri != null
                             && currentProjectUri.equals(target)
-                            && isProjectProviderWriteAccessFailure(transaction.writeAttempted, saveFailure);
+                            && isProjectProviderWriteAccessFailure(transaction);
                     if (directSaveAccessRejected) currentProjectWritePreviouslyRejected = true;
                     Log.i(TAG, "PROJECT_SAVE_FAILED snapshotStateSha256=" + snapshotStateSha256
                             + " activeStateSha256=" + activeStateSha256
@@ -12159,6 +12165,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             + " activeSessionGeneration=" + projectSessionGeneration
                             + " sessionStale=" + !sameProjectSession
                             + " writeAttempted=" + transaction.writeAttempted
+                            + " failurePhase=" + transaction.failurePhase
+                            + " rollbackFailurePhase=" + transaction.rollbackFailurePhase
                             + " previousDocumentPreserved=" + transaction.previousDocumentPreserved
                             + " directSaveAccessRejected=" + directSaveAccessRejected
                             + " previousBytes=" + transaction.previousBytes
@@ -12174,8 +12182,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             status = "PROJECT SAVE FAILED • destination unchanged • "
                                     + saveFailure + unavailableSuffix;
                         } else if (transaction.previousDocumentPreserved) {
-                            status = "PROJECT SAVE FAILED • previous document restored • "
-                                    + saveFailure + unavailableSuffix;
+                            final boolean resultVerificationFailed =
+                                    transaction.failurePhase
+                                            == MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK
+                                    || transaction.failurePhase
+                                            == MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK_MISMATCH;
+                            status = resultVerificationFailed
+                                    ? "PROJECT SAVE FAILED • result verification failed • previous document restored • "
+                                            + saveFailure + unavailableSuffix
+                                    : "PROJECT SAVE FAILED • previous document restored • "
+                                            + saveFailure + unavailableSuffix;
                         } else {
                             status = "PROJECT SAVE FAILED • rollback unverified • recovery copy retained • "
                                     + recoveryName + " • use SAVE AS to preserve current Project • "
