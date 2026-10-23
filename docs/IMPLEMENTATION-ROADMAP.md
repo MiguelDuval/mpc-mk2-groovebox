@@ -4,20 +4,20 @@
 
 ### Latest accepted checkpoint
 - PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
-- **Latest accepted full exact-HEAD workflow:** [Android Build #3107 / run 39953245921](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39953245921), exact head SHA `b5a2dbcea720811a68fc20aa9389fdde309f49b4`. All 57 steps passed, including the real DocumentsUI URI-grant-revocation recovery flow, focused Project tests, complete Android emulator smoke, and visual-evidence upload.
-- Build #3107 artifacts: APK ID `12501536615` (10,009,613 bytes); visual evidence ID `12503280233` (14,094,368 bytes; SHA-256 `febc32f504e4fb1888e5e5e1d6273db244fb28080370638d218f0c478d522f2a`).
-- The current follow-up protects against destructive false-probe states: initial read+write modes must be both live and persisted, and provider I/O must be skipped if post-restart permission checks or persisted modes are inconsistent. The new candidate remains unaccepted until its own exact-SHA full workflow passes.
+- **Latest accepted full exact-HEAD workflow:** [Android Build #3108 / run 39960456465](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39960456465), exact head SHA `3dc0c4816ffd586fd0ef2eb91fbf849e38e6c2ac`. All 57 steps passed, including initial+persistent URI-mode assertions, the guarded real DocumentsUI revocation/recovery flow, full Android emulator smoke and evidence upload.
+- Build #3108 artifacts: APK ID `12504298578` (10,009,613 bytes); visual evidence ID `12506302998` (14,084,760 bytes; SHA-256 `8418cf25798b6298454560fb22d73272f3215347193415586d8e4686e71967b6`).
+- The exact-SHA run closes the destructive false-probe gap: no provider stream is opened when URI access has not been proven revoked.
 
-### Follow-up candidate — guard the real-provider URI-revocation probe
+### Accepted SAF validation — phase-aware failure handling and URI revocation
 - The typed transaction failure-phase correction is **accepted on Build #3100 / exact SHA `3eafdf79d38a09100e444e5afa8516a51a02f30d`**.
-- The real DocumentsUI URI-grant-revocation and SAVE AS recovery journey is **accepted on Build #3107 / exact head SHA `b5a2dbcea720811a68fc20aa9389fdde309f49b4`**. The smoke opened a real initially writable persisted Project, created a disposable Save As probe copy, saved a byte-exact private snapshot, released persisted URI modes, force-stopped/relaunched, restored the same canonical model and verified denied ContentResolver read and output opens with unchanged canonical SHA. It then verified direct SAVE disabled, SAVE AS enabled with measured live bounds, replacement read-back, direct SAVE overwrite and reopen.
-- The safety follow-up now requires both read and write access plus both persisted modes before attempting grant release. After relaunch it opens no provider stream unless both live permission checks are denied and no persisted mode remains; this matters because `openOutputStream(uri, "wt")` may truncate a document at open time, before any bytes are written.
-- This is a **new candidate** after Build #3107 and requires its own full exact-SHA run. URI revocation does not prove behavior for a provider that retains a grant but independently denies writes.
+- Real DocumentsUI URI revocation and SAVE AS recovery were **accepted on Build #3107 / exact SHA `b5a2dbcea720811a68fc20aa9389fdde309f49b4`**.
+- Probe-precondition safety guards are **accepted on Build #3108 / exact SHA `3dc0c4816ffd586fd0ef2eb91fbf849e38e6c2ac`**. The fixture requires live and persisted read/write modes before release; after restart, resolver streams are opened only when both live modes are denied and no persisted mode remains. This prevents an inconsistent false state from truncating a document when `openOutputStream(uri, "wt")` is called.
+- URI revocation does not exercise a provider that still grants access but rejects output writes. That is the next controlled-provider candidate.
 
 ### Next queue
-1. Run and inspect the exact-HEAD Android workflow for the probe safety guards: focused JVM/native tests, source-contract checks, full emulator smoke and visual-evidence upload.
-2. Keep the real DocumentsUI read/write-denial markers, canonical-state SHA equality, direct-SAVE disabled/SAVE-AS recovery assertions and post-replacement SAVE/Open lifecycle.
-3. After this guardrail slice passes, separately test provider-specific output denial, readback-only denial and rollback behavior where a controllable provider is available.
+1. Add a controllable Android document provider that permits reads but denies output stream opens with a permission error.
+2. Test the production Project SAVE transaction through that provider: check failure phase, unchanged active model, rollback/recovery and direct-SAVE availability. Keep readback-only and rollback-output-denial scenarios separate.
+3. Require a full exact-HEAD workflow and visual-evidence upload before acceptance. Do not generalize the behavior of one fixture to every provider.
 4. Keep `cancel-in-progress: false`; do not edit `main`, force-push, reset, rebase, or change PR #23/#28/#29 bases. Physical MPC Studio MkII acceptance remains a separate hardware gate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
