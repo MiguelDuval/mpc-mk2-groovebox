@@ -14,10 +14,10 @@
 - This candidate still requires its own full exact-SHA Android workflow before acceptance.
 
 ### Next queue
-1. Fix the recovery-cancel smoke's incorrect source-visibility assertion. Build #3093 failed after cancellation had returned and a fresh Project tree was captured; smoke searched for the private recovery filename on the Project workspace instead of the RECOVERY chooser.
-2. The candidate removes that search and reopens RECOVERY; exact filename visibility remains required in the actual chooser before export. Preserve strict state-SHA after cancellation and destination-byte/read-back/canonical-state Open checks.
-3. Validate on the new exact SHA: all selected Project JVM suites, native tests, full Project/Shortcut smoke, recovery cancellation/export/reopen and visual-evidence upload.
-4. Then exercise provider I/O failures and URI-grant revocation where deterministic. Keep PR #28/#29 bases and the physical-controller gate unchanged.
+1. The exact-SHA recovery-cancel smoke fix has not yet reached the real UI scenario. Build #3094 / [run 39923169212](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39923169212) failed at a strict-mode source preflight because it referenced undefined shell variable `SMOKE_SCRIPT`; native/JVM checks and APK assembly passed.
+2. Candidate fix uses `$0`, already used elsewhere in the script to refer to its own source. Keep the correction that checks the recovery filename only in the RECOVERY chooser, rather than on the Project page.
+3. The new exact-SHA run must pass the full recovery cancellation/export/reopen journey plus the complete Project/Shortcut workflow and evidence upload before acceptance.
+4. Next isolate an independent provider-error classification edge: recognize EACCES/EPERM/operation-not-permitted write failures so direct SAVE is disabled after a provider rejects writes even when Android's persisted URI permission still exists. Add JVM cases to the selected URI-grant policy suite. Keep PR #28/#29 bases and hardware gate unchanged.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

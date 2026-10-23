@@ -31,10 +31,10 @@
 
 ## Current queue
 
-1. [Build #3093 / run 39892980426](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39892980426), exact SHA `f8bbb7f6268f674a4a51d122b9d56903610df756`, failed at Android emulator smoke; visual evidence uploaded successfully. The recovery-export cancellation action itself completed and the Project page hierarchy was captured.
-2. Root cause: smoke searched for the private recovery filename on the Project workspace, where the UI intentionally shows only the number of available copies. The filename appears after opening the RECOVERY chooser. The repeated UiAutomator dumps were waiting for content that is not visible on that page.
-3. The candidate removes that false assertion. It then reopens RECOVERY and still requires the exact filename in the chooser before the successful export. State SHA after cancellation, real DocumentsUI export, destination-byte/read-back equality, active Project invariance and the canonical-state Open round trip remain strict.
-4. Require a fresh full exact-SHA workflow: selected JVM/native tests, full Project and Shortcut smoke, recovery cancel/export/reopen and visual-evidence upload. Then cover deterministic provider read/write failure and revoked-grant cases.
+1. [Build #3094 / run 39923169212](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39923169212), exact SHA `09dfe0e9bb3343585505ef6b0129c88fb1488040`, failed before any Project UI scenario: the newly added source preflight referenced unset `SMOKE_SCRIPT` under Bash `set -u`. Native/JVM tests and APK assembly passed; smoke exited at line 142 before the recovery-cancel fix was exercised.
+2. The next candidate switches that source check to the script's already-used `$0` path. The false Project-page recovery filename assertion remains removed; the exact filename check stays in the RECOVERY chooser.
+3. Require another full exact-SHA Android workflow, including the recovery cancel and export/reopen paths, all selected JVM/native checks and visual-evidence upload. Do not count #3094 as a product UI failure or as acceptance of the recovery cancellation change.
+4. Next product-safety follow-up after CI: improve the write-denial classifier to recognize common provider errno messages (EACCES/EPERM) and test it through the existing URI-grant policy suite.
 5. Keep PR #28/#29 bases unchanged; physical MPC Studio MkII acceptance remains separate.
 
 ## Completed in this session

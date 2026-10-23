@@ -139,7 +139,7 @@ for required in \
 done
 
 echo "Checking recovery filename only in the live RECOVERY chooser..."
-if ! grep -Fq -- 'wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_source_name" 15' "$SMOKE_SCRIPT"; then
+if ! grep -Fq -- 'wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_source_name" 15' "$0"; then
   echo "ERROR: recovery filename must still be checked in the actual chooser"; exit 1
 fi
 
