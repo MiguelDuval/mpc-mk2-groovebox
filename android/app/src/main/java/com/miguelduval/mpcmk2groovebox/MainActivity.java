@@ -106,6 +106,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             "mpc_project_uri_grant_revocation_smoke";
     private static final String PREF_REVOKED_PROJECT_URI = "revoked_project_uri";
     private static final String PREF_REVOKED_PROJECT_NAME = "revoked_project_name";
+    private static final String PREF_REVOKED_PROJECT_STATE_SHA = "revoked_project_state_sha";
+    private static final String REVOKED_PROJECT_SNAPSHOT_FILENAME =
+            "mpc-uri-revocation-active-state.mpcproj";
     private static final boolean NATIVE_LIBRARY_LOADED;
     private static final String NATIVE_LIBRARY_ERROR;
 
@@ -808,15 +811,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         getSharedPreferences(
                                                 PROJECT_URI_GRANT_REVOCATION_PREFERENCES,
                                                 MODE_PRIVATE);
-                                final String revokedUri =
-                                        grantSmoke.getString(PREF_REVOKED_PROJECT_URI, null);
-                                if (revokedUri != null && !revokedUri.trim().isEmpty()) {
-                                    currentProjectUri = Uri.parse(revokedUri);
-                                    currentProjectWritePreviouslyRejected = false;
-                                    currentProjectName = nativeProjectGetName();
-                                } else {
-                                    Log.e(TAG, "PROJECT_URI_REVOKED_READ_PROBE_FAILED reason=revoked-uri-fixture-missing");
-                                }
+                                restoreProjectUriRevokedProbeState();
                                 showProjectPage();
                             }
                             updateMpcShellState();
@@ -11973,6 +11968,56 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 true, liveWriteGrant, currentProjectWritePreviouslyRejected);
     }
 
+    private void restoreProjectUriRevokedProbeState() {
+        final android.content.SharedPreferences grantSmoke =
+                getSharedPreferences(PROJECT_URI_GRANT_REVOCATION_PREFERENCES, MODE_PRIVATE);
+        final String revokedUri = grantSmoke.getString(PREF_REVOKED_PROJECT_URI, null);
+        final String expectedSha = grantSmoke.getString(PREF_REVOKED_PROJECT_STATE_SHA, null);
+        if (revokedUri == null || revokedUri.trim().isEmpty()
+                || expectedSha == null || !expectedSha.matches("[0-9a-f]{64}")) {
+            throw new IllegalStateException("Revoked-URI probe fixture is missing URI or canonical-state SHA");
+        }
+
+        final File snapshotFile = new File(getFilesDir(), REVOKED_PROJECT_SNAPSHOT_FILENAME);
+        final byte[] snapshot;
+        try (InputStream input = new FileInputStream(snapshotFile);
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            final byte[] buffer = new byte[16 * 1024];
+            int total = 0;
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                total += count;
+                if (total > MAX_PROJECT_FILE_BYTES) {
+                    throw new IOException("Revoked-URI test snapshot exceeds Project size limit");
+                }
+                output.write(buffer, 0, count);
+            }
+            snapshot = output.toByteArray();
+        } catch (IOException error) {
+            throw new IllegalStateException("Could not restore pre-revocation Project snapshot", error);
+        }
+        if (!expectedSha.equals(projectBytesSha256(snapshot))) {
+            throw new IllegalStateException("Private pre-revocation Project snapshot SHA mismatch");
+        }
+
+        final String loaded = nativeProjectLoad(snapshot);
+        if (loaded == null || !loaded.startsWith("PROJECT_LOADED")) {
+            throw new IllegalStateException("Could not restore active Project for URI-revocation probe: " + loaded);
+        }
+        final String restoredSha = currentProjectStateSha256();
+        if (!expectedSha.equals(restoredSha)) {
+            throw new IllegalStateException("Restored Project canonical SHA mismatch: expected="
+                    + expectedSha + " actual=" + restoredSha);
+        }
+
+        currentProjectUri = Uri.parse(revokedUri);
+        currentProjectWritePreviouslyRejected = false;
+        currentProjectName = nativeProjectGetName();
+        Log.i(TAG, "PROJECT_URI_REVOKED_PROBE_STATE_RESTORED"
+                + " stateSha256=" + restoredSha + " snapshotBytes=" + snapshot.length
+                + " uri=" + currentProjectUri);
+    }
+
     /**
      * Debug-emulator fixture only: revoke the actual persisted SAF modes for the
      * currently opened DocumentsUI URI, then relaunch in a fresh Activity process
@@ -12011,15 +12056,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        final byte[] stateSnapshot = nativeProjectSerialize();
+        if (stateSnapshot == null || stateSnapshot.length == 0
+                || stateSnapshot.length > MAX_PROJECT_FILE_BYTES) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=active-state-snapshot-unavailable");
+            setBottomStatus("TEST REVOKE FAILED • active-state snapshot unavailable");
+            return;
+        }
+        final String stateSha = projectBytesSha256(stateSnapshot);
+        if (!stateSha.equals(currentProjectStateSha256())) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=active-state-snapshot-did-not-match"
+                    + " snapshotSha256=" + stateSha
+                    + " activeSha256=" + currentProjectStateSha256());
+            setBottomStatus("TEST REVOKE FAILED • active-state snapshot mismatch");
+            return;
+        }
+        final File snapshotFile = new File(getFilesDir(), REVOKED_PROJECT_SNAPSHOT_FILENAME);
+        try (FileOutputStream output = new FileOutputStream(snapshotFile, false)) {
+            output.write(stateSnapshot);
+            output.flush();
+            output.getFD().sync();
+        } catch (IOException error) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=could-not-preserve-active-state-snapshot", error);
+            setBottomStatus("TEST REVOKE FAILED • could not preserve active state");
+            return;
+        }
+
         final android.content.SharedPreferences grantSmoke =
                 getSharedPreferences(PROJECT_URI_GRANT_REVOCATION_PREFERENCES, MODE_PRIVATE);
         final boolean fixtureSaved = grantSmoke.edit()
                 .putString(PREF_REVOKED_PROJECT_URI, target.toString())
                 .putString(PREF_REVOKED_PROJECT_NAME, currentProjectName)
+                .putString(PREF_REVOKED_PROJECT_STATE_SHA, stateSha)
                 .commit();
         if (!fixtureSaved) {
-            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=could-not-persist-probe-uri");
-            setBottomStatus("TEST REVOKE FAILED • could not preserve test URI");
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=could-not-persist-probe-uri-or-state");
+            setBottomStatus("TEST REVOKE FAILED • could not preserve test URI/state");
             return;
         }
 
@@ -12042,7 +12114,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 break;
             }
         }
-        final String stateSha = currentProjectStateSha256();
+        final String afterReleaseStateSha = currentProjectStateSha256();
+        if (!stateSha.equals(afterReleaseStateSha)) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=active-state-changed-after-release"
+                    + " expectedSha256=" + stateSha + " actualSha256=" + afterReleaseStateSha);
+            setBottomStatus("TEST REVOKE FAILED • active Project state changed");
+            return;
+        }
         if (remainingPersisted) {
             Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=persisted-mode-remains"
                     + " releasedModes=" + persistedModes + " stateSha256=" + stateSha);
