@@ -12027,12 +12027,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         final Uri target = currentProjectUri;
+        final boolean readPermissionBefore = checkUriPermission(
+                target, android.os.Process.myPid(), android.os.Process.myUid(),
+                Intent.FLAG_GRANT_READ_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED;
         final boolean writePermissionBefore = checkUriPermission(
                 target, android.os.Process.myPid(), android.os.Process.myUid(),
                 Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED;
-        if (!writePermissionBefore || !canInvokeProjectSave()) {
-            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=linked-document-was-not-direct-save-writable");
-            setBottomStatus("TEST REVOKE FAILED • document was not writable before revocation");
+        if (!readPermissionBefore || !writePermissionBefore || !canInvokeProjectSave()) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=linked-document-was-not-direct-save-readable-and-writable"
+                    + " readPermissionBefore=" + (readPermissionBefore ? "GRANTED" : "DENIED")
+                    + " writePermissionBefore=" + (writePermissionBefore ? "GRANTED" : "DENIED"));
+            setBottomStatus("TEST REVOKE FAILED • document was not readable and writable before revocation");
             return;
         }
 
@@ -12047,9 +12052,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 persistedModes |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
             }
         }
-        if ((persistedModes & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == 0) {
-            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=no-persisted-write-grant-for-linked-uri");
-            setBottomStatus("TEST REVOKE FAILED • no persisted write grant for this URI");
+        final int requiredPersistedModes = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+        if ((persistedModes & requiredPersistedModes) != requiredPersistedModes) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=no-persisted-read-and-write-grant-for-linked-uri"
+                    + " persistedModes=" + persistedModes);
+            setBottomStatus("TEST REVOKE FAILED • no persisted read/write grant for this URI");
             return;
         }
 
@@ -12125,12 +12133,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         Log.i(TAG, "PROJECT_URI_GRANT_REVOKE_COMPLETE releasedModes=" + persistedModes
-                + " writePermissionBefore=GRANTED remainingPersisted=false"
+                + " readPermissionBefore=GRANTED writePermissionBefore=GRANTED remainingPersisted=false"
                 + " uri=" + target + " stateSha256=" + stateSha);
         setBottomStatus("TEST URI GRANT REVOKED • restart required to clear temporary access");
     }
 
-    /** Probe the real resolver only after restart has removed temporary picker grants. */
     /** Probe the real resolver only after restart has removed temporary picker grants. */
     private void probeRevokedProjectUriReadForSmoke() {
         if (!projectUriRevokedProbeMode || currentProjectUri == null) return;
@@ -12154,35 +12161,48 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int readGrantCheck = readCheck;
         final int writeGrantCheck = writeCheck;
         final boolean persistedGrantPresent = persistedGrant;
+        final boolean probeMayOpenProvider =
+                readGrantCheck != PackageManager.PERMISSION_GRANTED
+                        && writeGrantCheck != PackageManager.PERMISSION_GRANTED
+                        && !persistedGrantPresent;
         projectIoExecutor.execute(() -> {
-            String readOutcome = "UNEXPECTED_ACCESS";
+            String readOutcome = "SKIPPED_UNEXPECTED_GRANT_STATE";
             String readDetail = "";
-            try (InputStream input = getContentResolver().openInputStream(target)) {
-                if (input == null) readOutcome = "NULL_INPUT_STREAM";
-            } catch (SecurityException error) {
-                readOutcome = "SecurityException";
-                readDetail = String.valueOf(error.getMessage());
-            } catch (IOException error) {
-                readOutcome = "IOException";
-                readDetail = String.valueOf(error.getMessage());
+            if (probeMayOpenProvider) {
+                readOutcome = "UNEXPECTED_ACCESS";
+                try (InputStream input = getContentResolver().openInputStream(target)) {
+                    if (input == null) readOutcome = "NULL_INPUT_STREAM";
+                } catch (SecurityException error) {
+                    readOutcome = "SecurityException";
+                    readDetail = String.valueOf(error.getMessage());
+                } catch (IOException error) {
+                    readOutcome = "IOException";
+                    readDetail = String.valueOf(error.getMessage());
+                }
+            } else {
+                readDetail = "Precondition failed; no provider stream opened because URI access may remain";
             }
 
             // The caller supplies a disposable Save As copy in the debug smoke.
-            // Attempt opening an output stream only after both OS URI checks fail
-            // and all persisted modes are gone. No bytes are written; a successful
-            // "wt" open is still a test failure and is limited to that disposable
-            // provider document, never the original user's only project.
-            String writeOutcome = "UNEXPECTED_ACCESS";
+            // Even this disposable output probe must not run unless both OS URI
+            // checks deny access and every persisted mode is gone: openOutputStream
+            // with "wt" can truncate the target as soon as it opens.
+            String writeOutcome = "SKIPPED_UNEXPECTED_GRANT_STATE";
             String writeDetail = "";
-            try (OutputStream output =
-                         getContentResolver().openOutputStream(target, "wt")) {
-                if (output == null) writeOutcome = "NULL_OUTPUT_STREAM";
-            } catch (SecurityException error) {
-                writeOutcome = "SecurityException";
-                writeDetail = String.valueOf(error.getMessage());
-            } catch (IOException error) {
-                writeOutcome = "IOException";
-                writeDetail = String.valueOf(error.getMessage());
+            if (probeMayOpenProvider) {
+                writeOutcome = "UNEXPECTED_ACCESS";
+                try (OutputStream output =
+                             getContentResolver().openOutputStream(target, "wt")) {
+                    if (output == null) writeOutcome = "NULL_OUTPUT_STREAM";
+                } catch (SecurityException error) {
+                    writeOutcome = "SecurityException";
+                    writeDetail = String.valueOf(error.getMessage());
+                } catch (IOException error) {
+                    writeOutcome = "IOException";
+                    writeDetail = String.valueOf(error.getMessage());
+                }
+            } else {
+                writeDetail = "Precondition failed; output stream was not opened";
             }
 
             final String readResult = readOutcome;

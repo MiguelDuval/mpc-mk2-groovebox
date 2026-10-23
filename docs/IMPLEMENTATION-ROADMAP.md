@@ -4,21 +4,20 @@
 
 ### Latest accepted checkpoint
 - PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
-- **Latest accepted full exact-HEAD workflow:** [Android Build #3100 / run 39939008154](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39939008154), exact SHA `3eafdf79d38a09100e444e5afa8516a51a02f30d`. Focused Project policy/transaction tests, native/JVM checks, full Android emulator smoke and visual-evidence upload passed.
-- Build #3100 artifacts: debug APK ID `12495955478` (10,009,613 bytes); visual evidence `mpc-ui-visual-evidence` ID `12496337751` (14,075,908 bytes).
-- Build #3097 / run 39931641764, exact SHA `549c78a709097a261277b090aa27672dab590c54`, remains the accepted predecessor for the preimage-read latch fix.
+- **Latest accepted full exact-HEAD workflow:** [Android Build #3107 / run 39953245921](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39953245921), exact head SHA `b5a2dbcea720811a68fc20aa9389fdde309f49b4`. All 57 steps passed, including the real DocumentsUI URI-grant-revocation recovery flow, focused Project tests, complete Android emulator smoke, and visual-evidence upload.
+- Build #3107 artifacts: APK ID `12501536615` (10,009,613 bytes); visual evidence ID `12503280233` (14,094,368 bytes; SHA-256 `febc32f504e4fb1888e5e5e1d6273db244fb28080370638d218f0c478d522f2a`).
+- The current follow-up protects against destructive false-probe states: initial read+write modes must be both live and persisted, and provider I/O must be skipped if post-restart permission checks or persisted modes are inconsistent. The new candidate remains unaccepted until its own exact-SHA full workflow passes.
 
-### Current defect — validating revoked persisted URI grants through the real provider
-- The typed failure-phase correction is **accepted on Build #3100 / exact SHA `3eafdf79d38a09100e444e5afa8516a51a02f30d`**. Forward-output denial and rollback-output denial are distinguished from preimage read, result readback and verification failures; readback-only SecurityException no longer disables direct SAVE after verified rollback. Focused JVM cases and the full emulator workflow passed.
-- The next live-provider scenario opens an existing writable Project through real DocumentsUI, releases only the read/write modes Android reports as persisted for that content URI, force-stops the app and retries a harmless read through the real ContentResolver. The process restart prevents temporary picker grants from masking the persisted-grant revocation.
-- Before revocation, the smoke writes and SHA-verifies a byte-exact private snapshot of the live active Project. After app force-stop, the probe restores that same snapshot before attempting the revoked URI read, so the comparison is against the same canonical state rather than a newly seeded project. It asserts no persisted modes and no live read/write permission, a denied real ContentResolver read, and unchanged canonical SHA. The Project View must disable direct SAVE yet keep SAVE AS enabled/clickable with live bounds; SAVE AS must create a distinct document, pass exact read-back verification, and restore working SAVE/reopen on the replacement.
-- This is **candidate coverage** until the new full exact-SHA workflow passes. It proves a real revoked-grant access-denial path, not a provider that still grants the URI but independently refuses writes.
+### Follow-up candidate — guard the real-provider URI-revocation probe
+- The typed transaction failure-phase correction is **accepted on Build #3100 / exact SHA `3eafdf79d38a09100e444e5afa8516a51a02f30d`**.
+- The real DocumentsUI URI-grant-revocation and SAVE AS recovery journey is **accepted on Build #3107 / exact head SHA `b5a2dbcea720811a68fc20aa9389fdde309f49b4`**. The smoke opened a real initially writable persisted Project, created a disposable Save As probe copy, saved a byte-exact private snapshot, released persisted URI modes, force-stopped/relaunched, restored the same canonical model and verified denied ContentResolver read and output opens with unchanged canonical SHA. It then verified direct SAVE disabled, SAVE AS enabled with measured live bounds, replacement read-back, direct SAVE overwrite and reopen.
+- The safety follow-up now requires both read and write access plus both persisted modes before attempting grant release. After relaunch it opens no provider stream unless both live permission checks are denied and no persisted mode remains; this matters because `openOutputStream(uri, "wt")` may truncate a document at open time, before any bytes are written.
+- This is a **new candidate** after Build #3107 and requires its own full exact-SHA run. URI revocation does not prove behavior for a provider that retains a grant but independently denies writes.
 
 ### Next queue
-1. Complete the live DocumentsUI grant-revocation journey with an initially writable persisted URI grant, no read/write permission after process restart, a denied ContentResolver read and unchanged canonical state.
-2. Prove direct SAVE disabled and SAVE AS still available, create a distinct named destination, verify read-back SHA, direct-SAVE the replacement and reopen it.
-3. Require full exact-SHA Android CI: focused JVM tests, native tests, Bash syntax/source-contract checks, the complete emulator workflow and visual-evidence upload.
-4. After acceptance, pursue provider-specific output-denial/readback tests separately; do not represent URI revocation as coverage of every provider failure mode.
+1. Run and inspect the exact-HEAD Android workflow for the probe safety guards: focused JVM/native tests, source-contract checks, full emulator smoke and visual-evidence upload.
+2. Keep the real DocumentsUI read/write-denial markers, canonical-state SHA equality, direct-SAVE disabled/SAVE-AS recovery assertions and post-replacement SAVE/Open lifecycle.
+3. After this guardrail slice passes, separately test provider-specific output denial, readback-only denial and rollback behavior where a controllable provider is available.
 4. Keep `cancel-in-progress: false`; do not edit `main`, force-push, reset, rebase, or change PR #23/#28/#29 bases. Physical MPC Studio MkII acceptance remains a separate hardware gate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)

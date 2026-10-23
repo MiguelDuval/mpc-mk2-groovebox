@@ -188,6 +188,8 @@ for required in \
   'projectUriRevokedProbeMode' \
   'PREF_REVOKED_PROJECT_URI' \
   'PROJECT_URI_GRANT_REVOKE_COMPLETE' \
+  'readPermissionBefore=GRANTED writePermissionBefore=GRANTED' \
+  'final boolean probeMayOpenProvider =' \
   'PROJECT_URI_REVOKED_READ_PROBE_DENIED' \
   'PROJECT_URI_REVOKED_WRITE_PROBE_DENIED'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
@@ -12301,9 +12303,10 @@ if ! wait_for_new_project_marker "PROJECT_URI_GRANT_REVOKE_COMPLETE" 0 20; then
   echo "ERROR: Android ContentResolver did not revoke the persisted URI modes"; exit 1
 fi
 project_uri_revoke_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_URI_GRANT_REVOKE_COMPLETE" | tail -n 1 || true)"
-if ! grep -Fq -- "writePermissionBefore=GRANTED" <<<"$project_uri_revoke_line" \
+if ! grep -Fq -- "readPermissionBefore=GRANTED" <<<"$project_uri_revoke_line" \
+    || ! grep -Fq -- "writePermissionBefore=GRANTED" <<<"$project_uri_revoke_line" \
     || ! grep -Fq -- "remainingPersisted=false" <<<"$project_uri_revoke_line"; then
-  echo "ERROR: URI-revocation fixture did not prove an initially writable URI was released"
+  echo "ERROR: URI-revocation fixture did not prove an initially readable/writable URI was released"
   echo "$project_uri_revoke_line"; exit 1
 fi
 project_uri_revoke_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_uri_revoke_line")"
