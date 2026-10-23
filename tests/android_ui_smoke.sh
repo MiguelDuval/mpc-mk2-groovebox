@@ -1945,7 +1945,7 @@ if "projectProviderWriteDenialSmokeMode" in fixture_mode:
         "provider-write-denial must not redundantly run the slower native "
         "Project-persistence fixture; its own byte-exact snapshot is authoritative")
 provider_start = source.index("if (projectProviderWriteDenialSmokeMode) {", end)
-provider_end_marker = '\\n                            }\\n                            if ("MAIN".equals(currentPage))'
+provider_end_marker = '\n                            }\n                            if ("MAIN".equals(currentPage))'
 provider_end = source.find(provider_end_marker, provider_start)
 if provider_end < 0:
     raise SystemExit("provider-write-denial startup block boundary was not found")
