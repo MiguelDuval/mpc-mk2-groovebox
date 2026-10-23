@@ -182,9 +182,8 @@ for required in \
   'MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(' \
   'transaction.failurePhase' \
   'transaction.rollbackFailurePhase' \
-  'FailurePhase.PROVIDER_WRITE' \
-  'FailurePhase.PROVIDER_READBACK' \
-  'FailurePhase.ROLLBACK_WRITE'; do
+  'MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK' \
+  'MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK_MISMATCH'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: SAF permission/direct-Save availability contract missing: $required"; exit 1
   fi
