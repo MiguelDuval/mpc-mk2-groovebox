@@ -1945,8 +1945,18 @@ if "projectProviderWriteDenialSmokeMode" in fixture_mode:
         "provider-write-denial must not redundantly run the slower native "
         "Project-persistence fixture; its own byte-exact snapshot is authoritative")
 provider_start = source.index("if (projectProviderWriteDenialSmokeMode) {", end)
-if "prepareProjectProviderWriteDenialSmoke();" not in source[provider_start:provider_start + 180]:
-    raise SystemExit("provider-write-denial fixture setup was accidentally removed")
+provider_end_marker = '\\n                            }\\n                            if ("MAIN".equals(currentPage))'
+provider_end = source.find(provider_end_marker, provider_start)
+if provider_end < 0:
+    raise SystemExit("provider-write-denial startup block boundary was not found")
+provider_block = source[provider_start:provider_end]
+for required in (
+    "prepareProjectProviderWriteDenialSmoke();",
+    "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-enter",
+    "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-return",
+):
+    if required not in provider_block:
+        raise SystemExit("provider-write-denial startup contract missing: " + required)
 print("Project persistence and provider-write-denial acceptance modes are isolated.")
 PY_PROJECT_MODE_ISOLATION
 
