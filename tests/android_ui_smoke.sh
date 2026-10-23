@@ -1996,6 +1996,23 @@ for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC 
     exit 1
   fi
 done
+echo "Running real Browser Show file size implementation preflight..."
+for required in 'BROWSER_OPTIONS_PREFERENCES' 'PREF_BROWSER_SHOW_FILE_SIZE' 'BROWSER_OPTION_SHOW_FILE_SIZE_CHANGED' 'MPC Browser metadata for '; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Browser option implementation contract missing in MainActivity: $required"; exit 1
+  fi
+done
+for required in 'setShowFileSize(boolean' 'metadataLine(showFileSize)' 'MPC Browser metadata for '; do
+  if ! grep -Fq -- "$required" "$BROWSER_SOURCE"; then
+    echo "ERROR: Browser option implementation contract missing in MpcBrowserView: $required"; exit 1
+  fi
+done
+for required in 'metadataVisibilityCanHideSizeWhilePreservingDuration' 'metadataVisibilityHandlesUnknownDurationWhenSizeHidden'; do
+  if ! grep -Fq -- "$required" android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcBrowserFileTest.java; then
+    echo "ERROR: Browser metadata JVM regression contract missing: $required"; exit 1
+  fi
+done
+
 echo "Running MPC Preferences taxonomy preflight..."
 for required in   'buildPreferencesCategoryBar("AUDIO")'   'MPC Preferences AUDIO'   'MPC Preferences MIDI / SYNC'   'MPC Preferences SEQUENCER'   'showPreferencesReservedPage'   'RESERVED / UNAVAILABLE'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
@@ -2100,6 +2117,8 @@ capture_ui_screenshot() {
     mpc-groovebox-browser.png|\
     mpc-groovebox-browser-device.png|\
     mpc-groovebox-browser-local-results.png|\
+    mpc-groovebox-browser-file-size-hidden.png|\
+    mpc-groovebox-browser-file-size-restored.png|\
     mpc-groovebox-picker-select-source.png|\
     mpc-groovebox-picker-root-drawer-missing.png|\
     mpc-groovebox-browser-picker-assignment.png|\
@@ -9648,6 +9667,222 @@ if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-local-results.png 10; then
   exit 1
 fi
 echo "Browser local WAV scan, selection, audition and Pad/Layer assignment passed."
+
+echo "Running BROW-012 real-touch Show file size option and persistence acceptance..."
+BROWSER_OPTIONS_XML="/tmp/mpc-groovebox-browser-options-uiautomator.xml"
+BROWSER_OPTIONS_REMOTE="/sdcard/mpc-groovebox-browser-options-uiautomator.xml"
+BROWSER_OPTIONS_PREFS_HOST="/tmp/mpc-browser-options-prefs.xml"
+BROWSER_SIZE_HIDDEN_PNG="/tmp/mpc-groovebox-browser-file-size-hidden.png"
+BROWSER_SIZE_HIDDEN_XML="/tmp/mpc-groovebox-browser-file-size-hidden-uiautomator.xml"
+BROWSER_SIZE_RESTORED_PNG="/tmp/mpc-groovebox-browser-file-size-restored.png"
+BROWSER_SIZE_RESTORED_XML="/tmp/mpc-groovebox-browser-file-size-restored-uiautomator.xml"
+
+wait_for_browser_option_check_state() {
+  local hierarchy_path="$1" remote_path="$2" expected="$3" timeout_seconds="${4:-8}"
+  local deadline=$((SECONDS + timeout_seconds))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if dump_device_ui "$remote_path" "$hierarchy_path" 5; then
+      if python3 - "$hierarchy_path" "$expected" <<'PY_BROWSER_OPTION_STATE'
+import sys
+import xml.etree.ElementTree as ET
+path, expected = sys.argv[1], sys.argv[2]
+nodes = list(ET.parse(path).getroot().iter("node"))
+option = [n for n in nodes
+          if n.attrib.get("content-desc") == "MPC Browser Option Show file size"]
+if len(option) != 1:
+    raise SystemExit(f"expected one Show file size checkbox, found {len(option)}")
+if option[0].attrib.get("enabled") != "true":
+    raise SystemExit("Show file size checkbox must be a real enabled control")
+if option[0].attrib.get("checked") != expected:
+    raise SystemExit(f"Show file size checked={option[0].attrib.get('checked')!r}; expected {expected!r}")
+reserved = [n for n in nodes
+            if n.attrib.get("content-desc", "").startswith("MPC Browser Option ")
+            and n.attrib.get("content-desc") != "MPC Browser Option Show file size"]
+if any(n.attrib.get("enabled") != "false" for n in reserved):
+    raise SystemExit("unsupported Browser Options must remain disabled")
+PY_BROWSER_OPTION_STATE
+      then return 0; fi
+    fi
+    sleep 1
+  done
+  echo "ERROR: Browser Show file size checkbox did not reach checked=$expected"
+  cat "$hierarchy_path" || true
+  return 1
+}
+
+wait_for_browser_option_preference() {
+  local expected="$1" timeout_seconds="${2:-10}" deadline=$((SECONDS + ${2:-10}))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if adb_bounded 5 shell "run-as $PACKAGE cat shared_prefs/mpc_browser_options.xml" > "$BROWSER_OPTIONS_PREFS_HOST" 2>/dev/null; then
+      if grep -Eq "name=\"show_file_size\" value=\"$expected\"" "$BROWSER_OPTIONS_PREFS_HOST"; then
+        return 0
+      fi
+    fi
+    sleep 1
+  done
+  echo "ERROR: Show file size preference did not persist value=$expected within ${timeout_seconds}s"
+  cat "$BROWSER_OPTIONS_PREFS_HOST" || true
+  return 1
+}
+
+read_browser_file_metadata_parts() {
+  python3 - "$1" "$2" <<'PY_BROWSER_SIZE_BASELINE'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, filename = sys.argv[1:]
+nodes = list(ET.parse(path).getroot().iter("node"))
+metadata = [n.attrib.get("text", "").strip() for n in nodes
+            if n.attrib.get("content-desc") == "MPC Browser metadata for " + filename]
+if len(metadata) != 1:
+    raise SystemExit(f"expected one metadata field for {filename}, found {len(metadata)}")
+parts = metadata[0].split(" • ")
+if not parts or parts[-1] != "WAV":
+    raise SystemExit(f"WAV metadata/type missing: {metadata[0]!r}")
+if len(parts) == 3:
+    size, duration = parts[0], parts[1]
+elif len(parts) == 2:
+    size, duration = "SIZE_HIDDEN", parts[0]
+else:
+    raise SystemExit(f"unexpected metadata structure: {metadata[0]!r}")
+if duration != "DURATION UNKNOWN" and not re.fullmatch(r"\d+:\d{2}", duration):
+    raise SystemExit(f"duration metadata is malformed: {metadata[0]!r}")
+print(size)
+print(duration)
+PY_BROWSER_SIZE_BASELINE
+}
+
+assert_browser_file_size_metadata() {
+  python3 - "$1" "$2" "$3" "$4" "$5" <<'PY_BROWSER_SIZE_METADATA'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, filename, expected, expected_size, expected_duration = sys.argv[1:]
+nodes = list(ET.parse(path).getroot().iter("node"))
+metadata = [n.attrib.get("text", "").strip() for n in nodes
+            if n.attrib.get("content-desc") == "MPC Browser metadata for " + filename]
+if len(metadata) != 1:
+    raise SystemExit(f"expected one metadata field for {filename}, found {len(metadata)}")
+actual = metadata[0]
+parts = actual.split(" • ")
+if not parts or parts[-1] != "WAV":
+    raise SystemExit(f"WAV metadata/type was lost: {actual!r}")
+show = expected == "true"
+size_prefix = re.fullmatch(r"\d+(?:\.\d+)? (?:B|KB|MB)", parts[0]) is not None
+if show:
+    if len(parts) != 3 or not size_prefix:
+        raise SystemExit(f"enabled file size was not rendered: {actual!r}")
+    if parts[0] != expected_size:
+        raise SystemExit(f"file size changed: expected {expected_size!r}, got {parts[0]!r}")
+    duration = parts[1]
+else:
+    if len(parts) != 2:
+        raise SystemExit(f"disabled file size remained visible: {actual!r}")
+    duration = parts[0]
+if duration != expected_duration:
+    raise SystemExit(f"duration changed: expected {expected_duration!r}, got {duration!r}")
+if duration != "DURATION UNKNOWN" and not re.fullmatch(r"\d+:\d{2}", duration):
+    raise SystemExit(f"duration metadata is malformed: {actual!r}")
+print(f"Browser metadata visibility verified (showFileSize={show}): {actual}")
+PY_BROWSER_SIZE_METADATA
+}
+
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not capture initial Browser metadata before option toggle"; exit 1
+fi
+browser_metadata_baseline="$(read_browser_file_metadata_parts "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME")" || {
+  echo "ERROR: could not capture the initial Browser metadata values"; exit 1;
+}
+browser_file_size_before="$(sed -n '1p' <<<"$browser_metadata_baseline")"
+browser_duration_before="$(sed -n '2p' <<<"$browser_metadata_baseline")"
+if [[ -z "$browser_file_size_before" || "$browser_file_size_before" == "SIZE_HIDDEN" || -z "$browser_duration_before" ]]; then
+  echo "ERROR: initial Browser metadata baseline did not contain a real size and duration"; exit 1
+fi
+if ! assert_browser_file_size_metadata "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" true "$browser_file_size_before" "$browser_duration_before"; then
+  echo "ERROR: Show file size default did not render real MediaStore metadata"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options"; then
+  echo "ERROR: Browser Options button was unavailable for size-visibility acceptance"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_OPTIONS_XML" "$BROWSER_OPTIONS_REMOTE" \
+    "MPC Browser Option Show file size" 10; then
+  echo "ERROR: Browser Options did not expose the size visibility toggle"; exit 1
+fi
+if ! wait_for_browser_option_check_state "$BROWSER_OPTIONS_XML" "$BROWSER_OPTIONS_REMOTE" true 8; then
+  echo "ERROR: Show file size was not enabled and checked by default"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_OPTIONS_XML" "MPC Browser Option Show file size"; then
+  echo "ERROR: real-touch Show file size toggle was not actionable"; exit 1
+fi
+if ! wait_for_browser_option_check_state "$BROWSER_OPTIONS_XML" "$BROWSER_OPTIONS_REMOTE" false 8; then
+  echo "ERROR: Show file size did not toggle off"; exit 1
+fi
+if ! wait_for_browser_option_preference false 10; then
+  echo "ERROR: disabling Show file size did not persist the false preference"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_OPTIONS_XML" "MPC Browser Options close"; then
+  echo "ERROR: could not close Browser Options after disabling file size"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not inspect Browser metadata with file size disabled"; exit 1
+fi
+if ! assert_browser_file_size_metadata "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" false "$browser_file_size_before" "$browser_duration_before"; then
+  echo "ERROR: Show file size did not remove only the size field from the real result"; exit 1
+fi
+if ! capture_ui_screenshot "$BROWSER_SIZE_HIDDEN_PNG" 10; then
+  echo "ERROR: could not capture size-hidden Browser results"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not capture matching size-hidden Browser hierarchy"; exit 1
+fi
+if ! cp -- "$BROWSER_LOCAL_XML" "$BROWSER_SIZE_HIDDEN_XML"; then
+  echo "ERROR: could not preserve size-hidden Browser hierarchy"; exit 1
+fi
+if ! test -s /tmp/mpc-groovebox-browser-file-size-hidden.png; then
+  echo "ERROR: size-hidden Browser screenshot missing"; exit 1
+fi
+
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options"; then
+  echo "ERROR: could not reopen Browser Options to verify persisted size state"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_OPTIONS_XML" "$BROWSER_OPTIONS_REMOTE" \
+    "MPC Browser Option Show file size" 10; then
+  echo "ERROR: reopened Browser Options omitted Show file size"; exit 1
+fi
+if ! wait_for_browser_option_check_state "$BROWSER_OPTIONS_XML" "$BROWSER_OPTIONS_REMOTE" false 8; then
+  echo "ERROR: Show file size checkbox did not restore its persisted false state"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_OPTIONS_XML" "MPC Browser Option Show file size"; then
+  echo "ERROR: real-touch Show file size restore toggle was unavailable"; exit 1
+fi
+if ! wait_for_browser_option_check_state "$BROWSER_OPTIONS_XML" "$BROWSER_OPTIONS_REMOTE" true 8; then
+  echo "ERROR: Show file size did not restore to checked state"; exit 1
+fi
+if ! wait_for_browser_option_preference true 10; then
+  echo "ERROR: restoring Show file size did not persist the true preference"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_OPTIONS_XML" "MPC Browser Options close"; then
+  echo "ERROR: could not close Browser Options after restoring file size"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not inspect restored Browser metadata"; exit 1
+fi
+if ! assert_browser_file_size_metadata "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" true "$browser_file_size_before" "$browser_duration_before"; then
+  echo "ERROR: Show file size restore did not restore metadata presentation"; exit 1
+fi
+if ! capture_ui_screenshot "$BROWSER_SIZE_RESTORED_PNG" 10; then
+  echo "ERROR: could not capture restored Browser metadata"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not capture matching restored Browser hierarchy"; exit 1
+fi
+if ! cp -- "$BROWSER_LOCAL_XML" "$BROWSER_SIZE_RESTORED_XML"; then
+  echo "ERROR: could not preserve restored Browser hierarchy"; exit 1
+fi
+if ! test -s /tmp/mpc-groovebox-browser-file-size-restored.png; then
+  echo "ERROR: restored Browser screenshot missing"; exit 1
+fi
+echo "BROW-012 real-touch Show file size toggle changed real result metadata, preserved duration/type, persisted, and restored."
 
 # End-to-end SAF selection → Activity result → sampler assignment.
 # Use a distinct WAV in Downloads so the test proves that the picker-selected
