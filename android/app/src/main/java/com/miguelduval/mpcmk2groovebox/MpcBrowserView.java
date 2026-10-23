@@ -63,6 +63,7 @@ final class MpcBrowserView extends LinearLayout {
     private String activeLocationItem = "INTERNAL";
     private List<MpcBrowserFile> localFiles = Collections.emptyList();
     private boolean showFileSize = true;
+    private boolean showModifiedDate;
     private MpcBrowserFile selectedFile;
     private boolean localScanComplete;
     private String localScanMessage = "LOCAL AUDIO • NOT SCANNED";
@@ -247,6 +248,12 @@ final class MpcBrowserView extends LinearLayout {
     void setShowFileSize(boolean showFileSize) {
         if (this.showFileSize == showFileSize) return;
         this.showFileSize = showFileSize;
+        renderResults();
+    }
+
+    void setShowModifiedDate(boolean showModifiedDate) {
+        if (this.showModifiedDate == showModifiedDate) return;
+        this.showModifiedDate = showModifiedDate;
         renderResults();
     }
 
@@ -748,7 +755,7 @@ final class MpcBrowserView extends LinearLayout {
         main.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(main, new LayoutParams(0, dp(getContext(), 34), 1));
 
-        final TextView sub = info(getContext(), file.metadataLine(showFileSize));
+        final TextView sub = info(getContext(), file.metadataLine(showFileSize, showModifiedDate));
         sub.setContentDescription("MPC Browser metadata for " + file.displayName());
         sub.setTextSize(8);
         sub.setSingleLine(true);

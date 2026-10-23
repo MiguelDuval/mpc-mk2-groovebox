@@ -2013,6 +2013,32 @@ for required in 'metadataVisibilityCanHideSizeWhilePreservingDuration' 'metadata
   fi
 done
 
+echo "Running real Browser Show modified date implementation preflight..."
+for required in 'PREF_BROWSER_SHOW_MODIFIED_DATE' 'BROWSER_OPTION_SHOW_MODIFIED_DATE_CHANGED'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: modified-date UI contract missing: $required"; exit 1
+  fi
+done
+if ! grep -Fq -- 'MediaStore.Audio.Media.DATE_MODIFIED' android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcLocalAudioCatalog.java; then
+  echo "ERROR: local MediaStore catalog omits its real DATE_MODIFIED column"; exit 1
+fi
+if ! grep -Fq -- 'DocumentsContract.Document.COLUMN_LAST_MODIFIED' android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcDocumentTreeCatalog.java; then
+  echo "ERROR: SAF catalog omits its real COLUMN_LAST_MODIFIED column"; exit 1
+fi
+for required in 'modifiedAtMs' 'metadataLine(boolean showFileSize, boolean showModifiedDate)' 'MODIFIED UNKNOWN'; do
+  if ! grep -Fq -- "$required" android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserFile.java; then
+    echo "ERROR: modified-date model contract missing: $required"; exit 1
+  fi
+done
+if ! grep -Fq -- 'metadataLine(showFileSize, showModifiedDate)' "$BROWSER_SOURCE"; then
+  echo "ERROR: Browser results do not render the modified-date setting"; exit 1
+fi
+for required in 'modifiedDateCanBeShownWithoutFileSizeAndKeepsDuration' 'modifiedDateCanBeCombinedWithFileSize' 'modifiedDateReportsUnknownWhenProviderOmitsTimestamp'; do
+  if ! grep -Fq -- "$required" android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcBrowserFileTest.java; then
+    echo "ERROR: modified-date JVM regression contract missing: $required"; exit 1
+  fi
+done
+
 echo "Running MPC Preferences taxonomy preflight..."
 for required in   'buildPreferencesCategoryBar("AUDIO")'   'MPC Preferences AUDIO'   'MPC Preferences MIDI / SYNC'   'MPC Preferences SEQUENCER'   'showPreferencesReservedPage'   'RESERVED / UNAVAILABLE'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
@@ -2119,6 +2145,8 @@ capture_ui_screenshot() {
     mpc-groovebox-browser-local-results.png|\
     mpc-groovebox-browser-file-size-hidden.png|\
     mpc-groovebox-browser-file-size-restored.png|\
+    mpc-groovebox-browser-modified-date-visible.png|\
+    mpc-groovebox-browser-modified-date-hidden.png|\
     mpc-groovebox-picker-select-source.png|\
     mpc-groovebox-picker-root-drawer-missing.png|\
     mpc-groovebox-browser-picker-assignment.png|\
@@ -9695,9 +9723,16 @@ if option[0].attrib.get("enabled") != "true":
     raise SystemExit("Show file size checkbox must be a real enabled control")
 if option[0].attrib.get("checked") != expected:
     raise SystemExit(f"Show file size checked={option[0].attrib.get('checked')!r}; expected {expected!r}")
+modified = [n for n in nodes
+             if n.attrib.get("content-desc") == "MPC Browser Option Show modified date"]
+if len(modified) != 1 or modified[0].attrib.get("enabled") != "true":
+    raise SystemExit("Show modified date must be a real enabled control")
 reserved = [n for n in nodes
             if n.attrib.get("content-desc", "").startswith("MPC Browser Option ")
-            and n.attrib.get("content-desc") != "MPC Browser Option Show file size"]
+            and n.attrib.get("content-desc") not in {
+                "MPC Browser Option Show file size",
+                "MPC Browser Option Show modified date",
+            }]
 if any(n.attrib.get("enabled") != "false" for n in reserved):
     raise SystemExit("unsupported Browser Options must remain disabled")
 PY_BROWSER_OPTION_STATE
@@ -9721,6 +9756,60 @@ wait_for_browser_option_preference() {
     sleep 1
   done
   echo "ERROR: Show file size preference did not persist value=$expected within ${timeout_seconds}s"
+  cat "$BROWSER_OPTIONS_PREFS_HOST" || true
+  return 1
+}
+
+wait_for_browser_modified_date_check_state() {
+  local hierarchy_path="$1" remote_path="$2" expected="$3" timeout_seconds="${4:-8}"
+  local deadline=$((SECONDS + timeout_seconds))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if dump_device_ui "$remote_path" "$hierarchy_path" 5; then
+      if python3 - "$hierarchy_path" "$expected" <<'PY_BROWSER_MODIFIED_STATE'
+import sys
+import xml.etree.ElementTree as ET
+path, expected = sys.argv[1], sys.argv[2]
+nodes = list(ET.parse(path).getroot().iter("node"))
+def one(label):
+    found = [n for n in nodes if n.attrib.get("content-desc") == "MPC Browser Option " + label]
+    if len(found) != 1:
+        raise SystemExit(f"expected one {label} checkbox, got {len(found)}")
+    return found[0]
+modified = one("Show modified date")
+size = one("Show file size")
+if modified.attrib.get("enabled") != "true" or modified.attrib.get("checked") != expected:
+    raise SystemExit(f"Show modified date state mismatch: {modified.attrib}")
+if size.attrib.get("enabled") != "true" or size.attrib.get("checked") != "true":
+    raise SystemExit(f"Show file size should remain enabled: {size.attrib}")
+reserved = [n for n in nodes
+            if n.attrib.get("content-desc", "").startswith("MPC Browser Option ")
+            and n.attrib.get("content-desc") not in {
+                "MPC Browser Option Show file size",
+                "MPC Browser Option Show modified date",
+            }]
+if any(n.attrib.get("enabled") != "false" for n in reserved):
+    raise SystemExit("unsupported Browser Options must remain disabled")
+PY_BROWSER_MODIFIED_STATE
+      then return 0; fi
+    fi
+    sleep 1
+  done
+  echo "ERROR: Browser Show modified date checkbox did not reach checked=$expected"
+  cat "$hierarchy_path" || true
+  return 1
+}
+
+wait_for_browser_modified_date_preference() {
+  local expected="$1" timeout_seconds="${2:-10}" deadline=$((SECONDS + ${2:-10}))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if adb_bounded 5 shell "run-as $PACKAGE cat shared_prefs/mpc_browser_options.xml" > "$BROWSER_OPTIONS_PREFS_HOST" 2>/dev/null; then
+      if grep -Eq "name=\"show_modified_date\" value=\"$expected\"" "$BROWSER_OPTIONS_PREFS_HOST"; then
+        return 0
+      fi
+    fi
+    sleep 1
+  done
+  echo "ERROR: Show modified date preference did not persist value=$expected within ${timeout_seconds}s"
   cat "$BROWSER_OPTIONS_PREFS_HOST" || true
   return 1
 }
@@ -9883,6 +9972,123 @@ if ! test -s /tmp/mpc-groovebox-browser-file-size-restored.png; then
   echo "ERROR: restored Browser screenshot missing"; exit 1
 fi
 echo "BROW-012 real-touch Show file size toggle changed real result metadata, preserved duration/type, persisted, and restored."
+
+echo "Running BROW-013 real-touch Show modified date option and persistence acceptance..."
+BROWSER_DATE_VISIBLE_PNG="/tmp/mpc-groovebox-browser-modified-date-visible.png"
+BROWSER_DATE_VISIBLE_XML="/tmp/mpc-groovebox-browser-modified-date-visible-uiautomator.xml"
+BROWSER_DATE_HIDDEN_PNG="/tmp/mpc-groovebox-browser-modified-date-hidden.png"
+BROWSER_DATE_HIDDEN_XML="/tmp/mpc-groovebox-browser-modified-date-hidden-uiautomator.xml"
+
+assert_browser_modified_date_metadata() {
+  python3 - "$1" "$2" "$3" "$4" "$5" <<'PY_BROWSER_MODIFIED_METADATA'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, filename, expected, expected_size, expected_duration = sys.argv[1:]
+nodes = list(ET.parse(path).getroot().iter("node"))
+metadata = [n.attrib.get("text", "").strip() for n in nodes
+            if n.attrib.get("content-desc") == "MPC Browser metadata for " + filename]
+if len(metadata) != 1:
+    raise SystemExit(f"expected one metadata field for {filename}, found {len(metadata)}")
+parts = metadata[0].split(" • ")
+if not parts or parts[-1] != "WAV":
+    raise SystemExit(f"WAV metadata/type missing: {metadata[0]!r}")
+if len(parts) < 3 or parts[0] != expected_size:
+    raise SystemExit(f"file-size metadata changed or missing: {metadata[0]!r}")
+show = expected == "true"
+if show:
+    if len(parts) != 4 or not re.fullmatch(r"MODIFIED \d{4}-\d{2}-\d{2} \d{2}:\d{2}", parts[1]):
+        raise SystemExit(f"real modified date not shown: {metadata[0]!r}")
+    duration = parts[2]
+else:
+    if len(parts) != 3 or any(part.startswith("MODIFIED ") for part in parts):
+        raise SystemExit(f"modified date remained visible while disabled: {metadata[0]!r}")
+    duration = parts[1]
+if duration != expected_duration:
+    raise SystemExit(f"duration changed: expected {expected_duration!r}, got {duration!r}")
+if duration != "DURATION UNKNOWN" and not re.fullmatch(r"\d+:\d{2}", duration):
+    raise SystemExit(f"duration metadata malformed: {metadata[0]!r}")
+print(f"Browser modified-date metadata verified (showModifiedDate={show}): {metadata[0]}")
+PY_BROWSER_MODIFIED_METADATA
+}
+
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options"; then
+  echo "ERROR: Browser Options could not reopen for modified-date acceptance"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_OPTIONS_XML" "$BROWSER_OPTIONS_REMOTE" "MPC Browser Option Show modified date" 10; then
+  echo "ERROR: Show modified date option is missing"; exit 1
+fi
+if ! wait_for_browser_modified_date_check_state "$BROWSER_OPTIONS_XML" "$BROWSER_OPTIONS_REMOTE" false 8; then
+  echo "ERROR: Show modified date default state is not disabled"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_OPTIONS_XML" "MPC Browser Option Show modified date"; then
+  echo "ERROR: Show modified date checkbox was not actionable"; exit 1
+fi
+if ! wait_for_browser_modified_date_check_state "$BROWSER_OPTIONS_XML" "$BROWSER_OPTIONS_REMOTE" true 8; then
+  echo "ERROR: Show modified date did not toggle on"; exit 1
+fi
+if ! wait_for_browser_modified_date_preference true 10; then
+  echo "ERROR: Show modified date did not persist true"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_OPTIONS_XML" "MPC Browser Options close"; then
+  echo "ERROR: could not close Browser Options after enabling modified date"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not inspect result metadata with modified date visible"; exit 1
+fi
+if ! assert_browser_modified_date_metadata "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" true "$browser_file_size_before" "$browser_duration_before"; then
+  echo "ERROR: Show modified date did not render the real MediaStore timestamp"; exit 1
+fi
+if ! capture_ui_screenshot "$BROWSER_DATE_VISIBLE_PNG" 10; then
+  echo "ERROR: could not capture modified-date-visible Browser results"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not capture modified-date-visible hierarchy"; exit 1
+fi
+if ! cp -- "$BROWSER_LOCAL_XML" "$BROWSER_DATE_VISIBLE_XML"; then
+  echo "ERROR: could not preserve modified-date-visible hierarchy"; exit 1
+fi
+if ! test -s /tmp/mpc-groovebox-browser-modified-date-visible.png; then
+  echo "ERROR: modified-date-visible Browser screenshot missing"; exit 1
+fi
+
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options"; then
+  echo "ERROR: Browser Options could not reopen to verify modified-date persistence"; exit 1
+fi
+if ! wait_for_browser_modified_date_check_state "$BROWSER_OPTIONS_XML" "$BROWSER_OPTIONS_REMOTE" true 8; then
+  echo "ERROR: modified-date option did not restore persisted true state"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_OPTIONS_XML" "MPC Browser Option Show modified date"; then
+  echo "ERROR: Show modified date could not be restored off"; exit 1
+fi
+if ! wait_for_browser_modified_date_check_state "$BROWSER_OPTIONS_XML" "$BROWSER_OPTIONS_REMOTE" false 8; then
+  echo "ERROR: Show modified date did not toggle back off"; exit 1
+fi
+if ! wait_for_browser_modified_date_preference false 10; then
+  echo "ERROR: Show modified date did not persist false"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_OPTIONS_XML" "MPC Browser Options close"; then
+  echo "ERROR: could not close Browser Options after restoring modified-date state"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not inspect result metadata after modified-date restore"; exit 1
+fi
+if ! assert_browser_modified_date_metadata "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" false "$browser_file_size_before" "$browser_duration_before"; then
+  echo "ERROR: disabling modified date did not remove only the modified-date field"; exit 1
+fi
+if ! capture_ui_screenshot "$BROWSER_DATE_HIDDEN_PNG" 10; then
+  echo "ERROR: could not capture modified-date-hidden Browser results"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not capture modified-date-hidden hierarchy"; exit 1
+fi
+if ! cp -- "$BROWSER_LOCAL_XML" "$BROWSER_DATE_HIDDEN_XML"; then
+  echo "ERROR: could not preserve modified-date-hidden hierarchy"; exit 1
+fi
+if ! test -s /tmp/mpc-groovebox-browser-modified-date-hidden.png; then
+  echo "ERROR: modified-date-hidden Browser screenshot missing"; exit 1
+fi
+echo "BROW-013 real-touch Show modified date changed actual metadata, retained size/duration/type, persisted through dialog reopen, and restored."
 
 # End-to-end SAF selection → Activity result → sampler assignment.
 # Use a distinct WAV in Downloads so the test proves that the picker-selected

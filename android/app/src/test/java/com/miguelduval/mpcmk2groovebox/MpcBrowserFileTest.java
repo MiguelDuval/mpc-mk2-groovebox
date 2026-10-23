@@ -114,4 +114,33 @@ public final class MpcBrowserFileTest {
         assertEquals("DURATION UNKNOWN • WAV", kick.metadataLine(false));
     }
 
+    @Test
+    public void modifiedDateCanBeShownWithoutFileSizeAndKeepsDuration() {
+        MpcBrowserFile kick = new MpcBrowserFile(
+                "content://media/external/audio/media/10",
+                "Kick_Main.wav", "audio/wav", 48000L, 1200L, 1761234567000L);
+        String metadata = kick.metadataLine(false, true);
+        assertTrue(metadata.startsWith("MODIFIED "));
+        assertTrue(metadata.matches("MODIFIED \\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2} • 0:01 • WAV"));
+        assertFalse(metadata.contains("46.9 KB"));
+    }
+
+    @Test
+    public void modifiedDateCanBeCombinedWithFileSize() {
+        MpcBrowserFile kick = new MpcBrowserFile(
+                "content://media/external/audio/media/11",
+                "Kick_Main.wav", "audio/wav", 48000L, 1200L, 1761234567000L);
+        String metadata = kick.metadataLine(true, true);
+        assertTrue(metadata.startsWith("46.9 KB • MODIFIED "));
+        assertTrue(metadata.endsWith(" • 0:01 • WAV"));
+    }
+
+    @Test
+    public void modifiedDateReportsUnknownWhenProviderOmitsTimestamp() {
+        MpcBrowserFile kick = new MpcBrowserFile(
+                "content://documents/example/12",
+                "Kick_Main.wav", "audio/wav", 48000L, 1200L, -1L);
+        assertEquals("MODIFIED UNKNOWN • 0:01 • WAV", kick.metadataLine(false, true));
+    }
+
 }

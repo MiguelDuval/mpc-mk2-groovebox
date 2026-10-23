@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * A real local WAV item discovered through Android MediaStore.
@@ -15,14 +17,21 @@ final class MpcBrowserFile {
     private final String mimeType;
     private final long sizeBytes;
     private final long durationMs;
+    private final long modifiedAtMs;
 
     MpcBrowserFile(String uri, String displayName, String mimeType,
             long sizeBytes, long durationMs) {
+        this(uri, displayName, mimeType, sizeBytes, durationMs, -1L);
+    }
+
+    MpcBrowserFile(String uri, String displayName, String mimeType,
+            long sizeBytes, long durationMs, long modifiedAtMs) {
         this.uri = uri == null ? "" : uri;
         this.displayName = displayName == null ? "" : displayName;
         this.mimeType = mimeType == null ? "" : mimeType;
         this.sizeBytes = sizeBytes;
         this.durationMs = durationMs;
+        this.modifiedAtMs = modifiedAtMs;
     }
 
     String uri() { return uri; }
@@ -30,6 +39,7 @@ final class MpcBrowserFile {
     String mimeType() { return mimeType; }
     long sizeBytes() { return sizeBytes; }
     long durationMs() { return durationMs; }
+    long modifiedAtMs() { return modifiedAtMs; }
 
     /**
      * Returns a new list in deterministic, case-insensitive display-name order.
@@ -86,11 +96,32 @@ final class MpcBrowserFile {
     }
 
     String metadataLine(boolean showFileSize) {
-        final String duration = durationMs <= 0
-                ? "DURATION UNKNOWN" : formatDuration(durationMs);
-        if (!showFileSize) return duration + " • WAV";
-        final String size = sizeBytes < 0 ? "SIZE UNKNOWN" : formatSize(sizeBytes);
-        return size + " • " + duration + " • WAV";
+        return metadataLine(showFileSize, false);
+    }
+
+    String metadataLine(boolean showFileSize, boolean showModifiedDate) {
+        final StringBuilder line = new StringBuilder();
+        if (showFileSize) {
+            appendMetadataPart(line, sizeBytes < 0 ? "SIZE UNKNOWN" : formatSize(sizeBytes));
+        }
+        if (showModifiedDate) {
+            appendMetadataPart(line, formatModifiedDate(modifiedAtMs));
+        }
+        appendMetadataPart(line, durationMs <= 0
+                ? "DURATION UNKNOWN" : formatDuration(durationMs));
+        appendMetadataPart(line, "WAV");
+        return line.toString();
+    }
+
+    static String formatModifiedDate(long modifiedAtMs) {
+        if (modifiedAtMs <= 0) return "MODIFIED UNKNOWN";
+        return "MODIFIED " + new SimpleDateFormat(
+                "yyyy-MM-dd HH:mm", Locale.ROOT).format(new Date(modifiedAtMs));
+    }
+
+    private static void appendMetadataPart(StringBuilder line, String part) {
+        if (line.length() > 0) line.append(" • ");
+        line.append(part);
     }
 
     static String formatSize(long bytes) {
