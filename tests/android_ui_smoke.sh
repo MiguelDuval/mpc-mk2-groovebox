@@ -126,6 +126,17 @@ for required in \
   fi
 done
 
+echo "Checking atomic publication of Android View-tree evidence..."
+for required in \
+  'fileName + ".", ".tmp", getCacheDir()' \
+  'output.getFD().sync()' \
+  'Os.rename(temporaryFile.getAbsolutePath(), hierarchyFile.getAbsolutePath())' \
+  'reason=atomic-cache-publish-failed'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Android View-tree evidence is not atomically published: $required"; exit 1
+  fi
+done
+
 echo "Running async Project-Open request/session isolation preflight..."
 for required in \
   'private long projectOpenRequestGeneration;' \

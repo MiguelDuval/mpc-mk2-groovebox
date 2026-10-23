@@ -1,23 +1,22 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-23 (live exact-SHA evidence governs)
+## CURRENT EXECUTION QUEUE — 2026-10-23 (exact-SHA CI governs)
 
-### Accepted product checkpoints
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
-- **Build #3082 / [run 39868644535](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39868644535)** passed all 57 workflow steps on exact SHA `0d953da7eb9370e5180424d9d6de1a9b87c25442`, including full emulator smoke and visual-evidence/APK artifacts.
-- The subsequent async Open-isolation commit `2bd45d8ec9d4ff33e596d74a50cd9d84b630501d` is being validated by Build #3083 / [run 39872152402](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872152402). Its exact-SHA conclusion is still pending at the last live check; do not treat that run as green yet.
-- New Project UI acceptance remains green on Build #3077 / [run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408); core real-SAF Save/overwrite/reopen, malformed-load and v1 compatibility remain green on Build #3073 / [run 39823061552](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39823061552).
+### Latest accepted checkpoint
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on feature/mpc-one-ui-fidelity, targeting fix/ui-shell-format-width-startup.
+- **Build #3086 / [run 39874222668](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39874222668) is green** on exact SHA e68bf8685c96327a08ff71f0a7a2138820f13b7b: all 57 steps, selected Project Open/write-transaction JVM suites, full emulator smoke, and visual-evidence upload. Real two-document isolation and Shortcut Rail factory-reset/restart acceptance passed.
+- Artifact references: evidence ID 12468738000 (SHA-256 21202ad64b367270fd7396c54e472c6d83091fa74a0b22cc1fbb315a550f4491); APK ID 12468351352 (SHA-256 8e26ecd655880e93efe878b68534a2fc9e504de3193832dfeb129841426d49b0).
+- Build #3083 / [run 39872152402](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872152402) failed at final Shortcut factory-reset tree capture. Its exact log points to an empty cached hierarchy (the size check failed before XML parsing), while #3086 passed the same screen workflow. This is evidence of an intermittent file-publication race rather than proof of a missing product control.
 
-### Current slice — SAF write/overwrite protection
-- Source tracing found that direct `openOutputStream(uri, "wt")` writes can truncate existing provider documents before a complete snapshot is persisted.
-- The new transaction captures a bounded verified preimage in app-private storage, writes the complete snapshot, requires read-back byte-count and SHA-256 equality, and tries to restore/verify the exact prior bytes after an exception or mismatch. When rollback is unverified, it retains the preimage rather than silently deleting the only recovery copy. Project URI and native model remain unchanged on any failed save callback.
-- Injected JVM cases cover mid-write failure, silent truncation, failed preimage read, readback failure, failed rollback and exact private recovery content. Full acceptance is pending the new commit's exact-SHA workflow.
+### Current defect fix — atomic View-tree publication
+- The app previously opened the canonical cached View-tree XML with FileOutputStream(..., false), truncating it before writing. The external smoke runner can read the path via adb run-as immediately after the READY marker, while page rebuilds can queue several pre-draw captures.
+- The new candidate writes to a sibling temporary file, syncs and closes it, atomically replaces the canonical path with android.system.Os.rename, then logs READY. The smoke preflight requires this contract. All page/source/freshness and interaction checks remain strict.
+- This candidate still requires its own full exact-SHA Android workflow before acceptance.
 
 ### Next queue
-1. Keep the active async-Open Build #3083 / [run 39872152402](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872152402) distinct from pending descendants. Build #3084 / [run 39872690209](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39872690209) was cancelled while pending with zero jobs; Build #3085 / [run 39873568702](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39873568702) remained pending with zero jobs at the last live check.
-2. Fix CI test discovery before claiming the Project safety tests pass. The Gradle focused-test command previously selected only `MpcProjectSaveSessionPolicyTest`; this commit adds explicit selectors for `MpcProjectOpenSessionPolicyTest` and `MpcProjectDocumentWriteTransactionTest`, plus a source preflight guarding those selectors. Verify the next exact-SHA run truly executes them.
-3. On that same SHA, require complete real Android smoke and visual-evidence upload, including the real two-document A/B isolation scenario added in `fc4924cf237eb583476aeb5204f6ab363a6d8cee`.
-4. After Project reliability is accepted, provide an actionable user-facing export/restore path for private rollback copies; continue tests for revoked grants and provider failures. Keep PR #28/#29 bases unchanged and physical MPC Studio MkII as a separate gate.
+1. Verify full exact-SHA CI for the atomic-publication candidate, including selected Project JVM suites, native checks, real two-document A/B, complete Shortcut assignment/reorder/factory-reset/process-restart tests, and evidence upload.
+2. After that stability fix is accepted, add an accessible export/restore path for private recovery copies and deterministic provider read/write/revoked-grant tests.
+3. Keep PR #28/#29 bases unchanged; physical MPC Studio MkII remains a separate hardware acceptance gate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

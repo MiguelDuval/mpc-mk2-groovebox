@@ -21,6 +21,8 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.system.ErrnoException;
+import android.system.Os;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.provider.DocumentsContract;
@@ -10482,15 +10484,33 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? "mpc-project-menu-view-hierarchy.xml"
                 : "mpc-project-persistence-view-hierarchy.xml";
         final java.io.File hierarchyFile = new java.io.File(getCacheDir(), fileName);
-        try (java.io.FileOutputStream output = new java.io.FileOutputStream(hierarchyFile, false)) {
-            output.write(xml.toString().getBytes(StandardCharsets.UTF_8));
-        } catch (IOException | RuntimeException error) {
+        java.io.File temporaryFile = null;
+        try {
+            // CI pulls this file from another adb process immediately after the
+            // READY marker. Multiple pending pre-draw callbacks can publish the
+            // same page during rebuilds. Publish complete XML atomically: do not
+            // expose a zero-byte/truncated snapshot while a writer is in progress.
+            temporaryFile = java.io.File.createTempFile(
+                    fileName + ".", ".tmp", getCacheDir());
+            try (java.io.FileOutputStream output =
+                         new java.io.FileOutputStream(temporaryFile, false)) {
+                output.write(xml.toString().getBytes(StandardCharsets.UTF_8));
+                output.getFD().sync();
+            }
+            Os.rename(temporaryFile.getAbsolutePath(), hierarchyFile.getAbsolutePath());
+            temporaryFile = null;
+        } catch (IOException | ErrnoException | RuntimeException error) {
             Log.e(TAG, "PROJECT_SMOKE_VIEW_HIERARCHY_FAILED page=" + expectedPage
-                    + " reason=cache-write-failed", error);
+                    + " reason=atomic-cache-publish-failed", error);
             if ("MENU".equals(expectedPage)) {
-                Log.e(TAG, "MPC_MENU_VIEW_HIERARCHY_FAILED: could not persist rendered Menu View tree", error);
+                Log.e(TAG, "MPC_MENU_VIEW_HIERARCHY_FAILED: could not atomically publish rendered Menu View tree", error);
             }
             return;
+        } finally {
+            if (temporaryFile != null && temporaryFile.exists() && !temporaryFile.delete()) {
+                Log.w(TAG, "PROJECT_SMOKE_VIEW_HIERARCHY_TEMP_CLEANUP_FAILED path="
+                        + temporaryFile.getName());
+            }
         }
 
         if ("MENU".equals(expectedPage)) {
