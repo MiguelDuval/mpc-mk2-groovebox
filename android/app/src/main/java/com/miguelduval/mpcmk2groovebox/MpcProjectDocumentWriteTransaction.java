@@ -24,6 +24,23 @@ final class MpcProjectDocumentWriteTransaction {
         OutputStream openOutputStream() throws IOException;
     }
 
+    /**
+     * Failure origin matters for direct-SAVE availability. A denied readback is
+     * not evidence that the provider denied the preceding write.
+     */
+    enum FailurePhase {
+        NONE,
+        PRECONDITION,
+        PREIMAGE_CAPTURE,
+        SNAPSHOT_FINGERPRINT,
+        PROVIDER_WRITE,
+        PROVIDER_READBACK,
+        PROVIDER_READBACK_MISMATCH,
+        ROLLBACK_WRITE,
+        ROLLBACK_BACKUP_READ,
+        ROLLBACK_VERIFICATION
+    }
+
     static final class Result {
         final boolean success;
         final boolean writeAttempted;
@@ -32,6 +49,10 @@ final class MpcProjectDocumentWriteTransaction {
         final long previousBytes;
         final long verifiedBytes;
         final String failure;
+        final FailurePhase failurePhase;
+        final String failureDetail;
+        final FailurePhase rollbackFailurePhase;
+        final String rollbackFailureDetail;
 
         private Result(
                 boolean success,
@@ -40,7 +61,11 @@ final class MpcProjectDocumentWriteTransaction {
                 File recoveryCopy,
                 long previousBytes,
                 long verifiedBytes,
-                String failure) {
+                String failure,
+                FailurePhase failurePhase,
+                String failureDetail,
+                FailurePhase rollbackFailurePhase,
+                String rollbackFailureDetail) {
             this.success = success;
             this.writeAttempted = writeAttempted;
             this.previousDocumentPreserved = previousDocumentPreserved;
@@ -48,6 +73,10 @@ final class MpcProjectDocumentWriteTransaction {
             this.previousBytes = previousBytes;
             this.verifiedBytes = verifiedBytes;
             this.failure = failure;
+            this.failurePhase = failurePhase;
+            this.failureDetail = failureDetail;
+            this.rollbackFailurePhase = rollbackFailurePhase;
+            this.rollbackFailureDetail = rollbackFailureDetail;
         }
     }
 
@@ -74,10 +103,14 @@ final class MpcProjectDocumentWriteTransaction {
             int maxBytes) {
         if (document == null || recoveryDirectory == null || replacement == null || maxBytes <= 0) {
             return failed(false, true, null, 0, 0,
+                    FailurePhase.PRECONDITION, "Invalid Project document or backup configuration",
+                    FailurePhase.NONE, null,
                     "Invalid Project document or backup configuration");
         }
         if (replacement.length == 0 || replacement.length > maxBytes) {
             return failed(false, true, null, 0, 0,
+                    FailurePhase.PRECONDITION, "Project snapshot is empty or exceeds the size limit",
+                    FailurePhase.NONE, null,
                     "Project snapshot is empty or exceeds the size limit");
         }
 
@@ -104,8 +137,11 @@ final class MpcProjectDocumentWriteTransaction {
             }
         } catch (Exception error) {
             deleteQuietly(backup);
+            final String detail = describe(error);
             return failed(false, true, null, 0, 0,
-                    "Could not back up destination before writing: " + describe(error));
+                    FailurePhase.PREIMAGE_CAPTURE, detail,
+                    FailurePhase.NONE, null,
+                    "Could not back up destination before writing: " + detail);
         }
 
         final Fingerprint expected;
@@ -113,14 +149,18 @@ final class MpcProjectDocumentWriteTransaction {
             expected = fingerprintBytes(replacement);
         } catch (IOException error) {
             deleteQuietly(backup);
+            final String detail = describe(error);
             return failed(false, true, null, previous.bytes, 0,
-                    "Could not fingerprint Project snapshot: " + describe(error));
+                    FailurePhase.SNAPSHOT_FINGERPRINT, detail,
+                    FailurePhase.NONE, null,
+                    "Could not fingerprint Project snapshot: " + detail);
         }
 
-        String writeFailure;
+        // Opening "wt" may truncate a target even when it then throws. Record
+        // the attempt before calling the provider, but classify its phase below.
+        FailurePhase failurePhase = FailurePhase.NONE;
+        String failureDetail = null;
         try {
-            // Count the attempt before opening: some providers may truncate while
-            // opening "wt" and then throw before returning a usable stream.
             final OutputStream providerStream = document.openOutputStream();
             if (providerStream == null) {
                 throw new IOException("Document provider returned no output stream");
@@ -129,60 +169,117 @@ final class MpcProjectDocumentWriteTransaction {
                 output.write(replacement);
                 output.flush();
             }
-            final Fingerprint persisted = fingerprintDocument(document, maxBytes);
-            if (!expected.matches(persisted)) {
-                throw new IOException("Provider read-back did not match the saved Project snapshot");
-            }
-            deleteQuietly(backup);
-            return new Result(true, true, false, null,
-                    previous.bytes, persisted.bytes, null);
         } catch (Exception error) {
-            writeFailure = describe(error);
+            failurePhase = FailurePhase.PROVIDER_WRITE;
+            failureDetail = describe(error);
         }
 
-        String rollbackFailure = null;
-        try {
-            final Fingerprint restoredFromBackup;
-            try (InputStream input = new FileInputStream(backup);
-                    OutputStream output = document.openOutputStream()) {
-                if (output == null) {
-                    throw new IOException("Document provider returned no rollback output stream");
+        long verifiedBytes = 0;
+        if (failurePhase == FailurePhase.NONE) {
+            try {
+                final Fingerprint persisted = fingerprintDocument(document, maxBytes);
+                verifiedBytes = persisted.bytes;
+                if (!expected.matches(persisted)) {
+                    failurePhase = FailurePhase.PROVIDER_READBACK_MISMATCH;
+                    failureDetail = "Provider read-back did not match the saved Project snapshot";
+                } else {
+                    deleteQuietly(backup);
+                    return new Result(true, true, false, null,
+                            previous.bytes, persisted.bytes, null,
+                            FailurePhase.NONE, null, FailurePhase.NONE, null);
                 }
-                restoredFromBackup = copyAndFingerprint(input, output, maxBytes);
-                output.flush();
+            } catch (Exception error) {
+                failurePhase = FailurePhase.PROVIDER_READBACK;
+                failureDetail = describe(error);
             }
-            if (!previous.matches(restoredFromBackup)) {
-                rollbackFailure = "Recovery backup changed while restoring the document";
+        }
+
+        final String primaryFailure = failurePhase == FailurePhase.PROVIDER_WRITE
+                ? "Project write failed: " + failureDetail
+                : "Project result verification failed: " + failureDetail;
+
+        FailurePhase rollbackFailurePhase = FailurePhase.NONE;
+        String rollbackFailureDetail = null;
+        String rollbackFailure = null;
+        boolean rollbackProviderWriteAttempted = false;
+        try {
+            try (InputStream input = new FileInputStream(backup)) {
+                final OutputStream rollbackStream;
+                rollbackProviderWriteAttempted = true;
+                try {
+                    rollbackStream = document.openOutputStream();
+                    if (rollbackStream == null) {
+                        throw new IOException("Document provider returned no rollback output stream");
+                    }
+                } catch (Exception error) {
+                    rollbackFailurePhase = FailurePhase.ROLLBACK_WRITE;
+                    rollbackFailureDetail = describe(error);
+                    throw error;
+                }
+
+                try (OutputStream output = rollbackStream) {
+                    try {
+                        copyAndFingerprint(input, output, maxBytes);
+                        output.flush();
+                    } catch (Exception error) {
+                        rollbackFailurePhase = FailurePhase.ROLLBACK_WRITE;
+                        rollbackFailureDetail = describe(error);
+                        throw error;
+                    }
+                } catch (Exception error) {
+                    // OutputStream close can report a failed provider write too.
+                    if (rollbackFailurePhase == FailurePhase.NONE) {
+                        rollbackFailurePhase = rollbackProviderWriteAttempted
+                                ? FailurePhase.ROLLBACK_WRITE
+                                : FailurePhase.ROLLBACK_BACKUP_READ;
+                        rollbackFailureDetail = describe(error);
+                    }
+                    throw error;
+                }
             }
         } catch (Exception error) {
             rollbackFailure = describe(error);
+            if (rollbackFailurePhase == FailurePhase.NONE) {
+                rollbackFailurePhase = FailurePhase.ROLLBACK_BACKUP_READ;
+                rollbackFailureDetail = rollbackFailure;
+            }
         }
 
         boolean restored = false;
-        long verifiedBytes = 0;
         try {
             final Fingerprint afterRollback = fingerprintDocument(document, maxBytes);
             verifiedBytes = afterRollback.bytes;
             restored = previous.matches(afterRollback);
-            if (!restored && rollbackFailure == null) {
-                rollbackFailure = "Provider read-back still differs from the original document";
+            if (!restored) {
+                final String mismatch = "Provider read-back still differs from the original document";
+                rollbackFailure = append(rollbackFailure, mismatch);
+                if (rollbackFailurePhase == FailurePhase.NONE) {
+                    rollbackFailurePhase = FailurePhase.ROLLBACK_VERIFICATION;
+                    rollbackFailureDetail = mismatch;
+                }
             }
         } catch (Exception error) {
+            final String detail = describe(error);
             rollbackFailure = append(rollbackFailure,
-                    "Could not verify rollback: " + describe(error));
+                    "Could not verify rollback: " + detail);
+            if (rollbackFailurePhase == FailurePhase.NONE) {
+                rollbackFailurePhase = FailurePhase.ROLLBACK_VERIFICATION;
+                rollbackFailureDetail = detail;
+            }
         }
 
         if (restored) {
             deleteQuietly(backup);
             return failed(true, true, null, previous.bytes, verifiedBytes,
-                    "Project write failed: " + writeFailure + "; previous document restored and verified");
+                    failurePhase, failureDetail, rollbackFailurePhase, rollbackFailureDetail,
+                    primaryFailure + "; previous document restored and verified");
         }
 
         // Preserve the last verified pre-write bytes if rollback cannot be proven.
         // The active in-memory Project is not changed by this file transaction.
         return failed(true, false, backup, previous.bytes, verifiedBytes,
-                "Project write failed: " + writeFailure
-                        + "; rollback could not be verified: "
+                failurePhase, failureDetail, rollbackFailurePhase, rollbackFailureDetail,
+                primaryFailure + "; rollback could not be verified: "
                         + (rollbackFailure == null ? "unknown provider failure" : rollbackFailure));
     }
 
@@ -262,9 +359,14 @@ final class MpcProjectDocumentWriteTransaction {
             File recoveryCopy,
             long previousBytes,
             long verifiedBytes,
+            FailurePhase failurePhase,
+            String failureDetail,
+            FailurePhase rollbackFailurePhase,
+            String rollbackFailureDetail,
             String failure) {
         return new Result(false, writeAttempted, previousDocumentPreserved,
-                recoveryCopy, previousBytes, verifiedBytes, failure);
+                recoveryCopy, previousBytes, verifiedBytes, failure,
+                failurePhase, failureDetail, rollbackFailurePhase, rollbackFailureDetail);
     }
 
     private static void deleteQuietly(File file) {
