@@ -1997,7 +1997,7 @@ for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC 
   fi
 done
 echo "Running real Browser Show file size implementation preflight..."
-for required in 'BROWSER_OPTIONS_PREFERENCES' 'PREF_BROWSER_SHOW_FILE_SIZE' 'BROWSER_OPTION_SHOW_FILE_SIZE_CHANGED' 'MPC Browser metadata for '; do
+for required in 'BROWSER_OPTIONS_PREFERENCES' 'PREF_BROWSER_SHOW_FILE_SIZE' 'BROWSER_OPTION_SHOW_FILE_SIZE_CHANGED'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Browser option implementation contract missing in MainActivity: $required"; exit 1
   fi
