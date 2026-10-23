@@ -1,5 +1,8 @@
 package com.miguelduval.mpcmk2groovebox;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -27,6 +30,27 @@ final class MpcBrowserFile {
     String mimeType() { return mimeType; }
     long sizeBytes() { return sizeBytes; }
     long durationMs() { return durationMs; }
+
+    /**
+     * Returns a new list in deterministic, case-insensitive display-name order.
+     * Providers may enumerate files in different orders between scans; Browser
+     * results must not jump around simply because the provider changed its order.
+     * Exact-name and URI tie-breakers make ordering deterministic for duplicates.
+     */
+    static List<MpcBrowserFile> sortedByDisplayName(List<MpcBrowserFile> files) {
+        if (files == null || files.isEmpty()) {
+            return Collections.emptyList();
+        }
+        final List<MpcBrowserFile> sorted = new ArrayList<>(files);
+        Collections.sort(sorted, (left, right) -> {
+            final int insensitive = left.displayName.compareToIgnoreCase(right.displayName);
+            if (insensitive != 0) return insensitive;
+            final int exact = left.displayName.compareTo(right.displayName);
+            if (exact != 0) return exact;
+            return left.uri.compareTo(right.uri);
+        });
+        return sorted;
+    }
 
     static boolean isWavName(String name) {
         return name != null
