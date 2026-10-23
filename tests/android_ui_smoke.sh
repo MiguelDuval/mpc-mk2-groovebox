@@ -179,7 +179,12 @@ for required in \
   'currentProjectWritePreviouslyRejected = true;' \
   'READ-ONLY / WRITE ACCESS UNAVAILABLE' \
   'MpcProjectUriGrantPolicy.directSaveActionAvailable(' \
-  'MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(writeAttempted, failure)'; do
+  'MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(' \
+  'transaction.failurePhase' \
+  'transaction.rollbackFailurePhase' \
+  'FailurePhase.PROVIDER_WRITE' \
+  'FailurePhase.PROVIDER_READBACK' \
+  'FailurePhase.ROLLBACK_WRITE'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: SAF permission/direct-Save availability contract missing: $required"; exit 1
   fi
@@ -202,7 +207,13 @@ for required in \
   'preimageReadEaccesDoesNotLatchWriteDenialBeforeAnyWriteAttempt' \
   'preimageReadSecurityExceptionDoesNotLatchWriteDenialBeforeAnyWriteAttempt' \
   'actualWriteAttemptEaccesLatchesWriteDenial' \
-  'attemptedWriteWithGenericReadbackTimeoutDoesNotLatchWriteDenial'; do
+  'attemptedWriteWithGenericReadbackTimeoutDoesNotLatchWriteDenial' \
+  'providerReadbackSecurityExceptionDoesNotLatchWriteDenialAfterWriteAttempt' \
+  'readbackMismatchDoesNotLatchWriteDenial' \
+  'rollbackWriteEaccesLatchesWriteDenialEvenWhenPrimaryFailureWasVerification' \
+  'providerReadbackSecurityExceptionRestoresDestinationWithoutLatchingWriteDenial' \
+  'providerWriteSecurityExceptionIsClassifiedAsWriteDenial' \
+  'deniedRollbackWriteIsClassifiedEvenWhenPrimaryFailureWasReadback'; do
   if ! grep -Fq -- "$required" \
       "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectUriGrantPolicyTest.java"; then
     echo "ERROR: URI grant/direct-Save policy test missing: $required"; exit 1
