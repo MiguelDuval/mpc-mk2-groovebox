@@ -12226,8 +12226,8 @@ PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
 if ! open_project_document "Untitled.mpcproj"; then
   echo "ERROR: could not open the existing real DocumentsUI Project for grant revocation"; exit 1
 fi
-if ! show_project_route_extended; then
-  echo "ERROR: could not return to Project after opening the revocation fixture document"; exit 1
+if ! show_project_route_extended "TRACKS=2" "PLACEMENTS=2"; then
+  echo "ERROR: could not return to Project with the saved A-document canonical counts after opening the revocation fixture"; exit 1
 fi
 if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
   echo "ERROR: linked Project view missing before URI grant revocation"; exit 1
