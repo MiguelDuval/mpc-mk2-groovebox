@@ -787,7 +787,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 refreshMainTrackQuickSample();
                             }
                             if (projectProviderWriteDenialSmokeMode) {
+                                Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-enter");
                                 prepareProjectProviderWriteDenialSmoke();
+                                Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-return");
                             }
                             if ("MAIN".equals(currentPage)) {
                                 // Main was built while native state was still loading.
@@ -837,12 +839,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 scheduleUiAuditAfterFirstLayout();
                             }
                         } catch (Throwable error) {
-                            Log.e(TAG, "UI_STARTUP_FINALIZATION_FAILED", error);
+                            Log.e(TAG, "UI_STARTUP_FINALIZATION_FAILED exception=" + error, error);
                             showStartupFailure("UI startup finalization failed", error);
                         }
                     });
                 } catch (Throwable error) {
-                    Log.e(TAG, "STARTUP_NATIVE_FAILED", error);
+                    Log.e(TAG, "STARTUP_NATIVE_FAILED exception=" + error, error);
                     runOnUiThread(() -> showStartupFailure("Native startup failed", error));
                 }
             });
@@ -12089,7 +12091,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     /** Seed a debug-only provider which denies one real ContentResolver output open. */
     private void prepareProjectProviderWriteDenialSmoke() {
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE snapshot-begin");
         final byte[] snapshot = nativeProjectSerialize();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE snapshot-result"
+                + " bytes=" + (snapshot == null ? -1 : snapshot.length));
         if (snapshot == null || snapshot.length == 0 || snapshot.length > MAX_PROJECT_FILE_BYTES) {
             throw new IllegalStateException("Project snapshot unavailable for provider-write-denial fixture");
         }
@@ -12102,7 +12107,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final Bundle seedRequest = new Bundle();
         seedRequest.putByteArray("snapshot_bytes", snapshot);
         seedRequest.putInt("deny_output_attempt", 1);
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE provider-seed-call-begin");
         final Bundle seeded = getContentResolver().call(uri, "seed_document", null, seedRequest);
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE provider-seed-call-return"
+                + " resultPresent=" + (seeded != null)
+                + " providerShaMatches=" + (seeded != null && stateSha.equals(seeded.getString("sha256"))));
         if (seeded == null || !uri.toString().equals(seeded.getString("uri"))
                 || !stateSha.equals(seeded.getString("sha256"))) {
             throw new IllegalStateException("Controlled provider did not seed exact Project bytes");
@@ -12110,6 +12119,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         currentProjectUri = uri;
         currentProjectWritePreviouslyRejected = false;
         currentProjectName = nativeProjectGetName();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE grants-begin");
         grantUriPermission(getPackageName(), uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         final boolean readGranted = checkUriPermission(uri, android.os.Process.myPid(),
@@ -12118,12 +12128,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final boolean writeGranted = checkUriPermission(uri, android.os.Process.myPid(),
                 android.os.Process.myUid(), Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                 == PackageManager.PERMISSION_GRANTED;
-        if (!readGranted || !writeGranted || !canInvokeProjectSave()) {
+        final boolean directSaveAvailable = canInvokeProjectSave();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE grants-result"
+                + " read=" + readGranted + " write=" + writeGranted
+                + " directSave=" + directSaveAvailable);
+        if (!readGranted || !writeGranted || !directSaveAvailable) {
             throw new IllegalStateException("Controlled provider URI did not permit initial direct SAVE");
         }
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE project-render-begin");
         showProjectPage();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE project-render-return");
         updateMpcShellState();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE shell-state-return");
         refreshMpcFunctionBar();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE function-bar-return");
         Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_FIXTURE_READY"
                 + " stateSha256=" + stateSha
                 + " providerSha256=" + seeded.getString("sha256")

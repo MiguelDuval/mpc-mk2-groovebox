@@ -11368,7 +11368,7 @@ wait_for_new_project_marker() {
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
   echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker"
-  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
+  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE|UI_STARTUP_FINALIZATION_FAILED|STARTUP_NATIVE_FAILED|EARLY_STARTUP_SETUP_FAILED|PROJECT_PROVIDER_WRITE_DENIAL_PHASE|NATIVE_INFO_|BUNDLED_SAMPLE_|AUDIO_START_RESULT=|MIDI_BRIDGE_' | tail -n 100 || true
   return 1
 }
 
