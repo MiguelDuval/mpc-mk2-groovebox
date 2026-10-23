@@ -188,7 +188,8 @@ for required in \
   'projectUriRevokedProbeMode' \
   'PREF_REVOKED_PROJECT_URI' \
   'PROJECT_URI_GRANT_REVOKE_COMPLETE' \
-  'PROJECT_URI_REVOKED_READ_PROBE_DENIED'; do
+  'PROJECT_URI_REVOKED_READ_PROBE_DENIED' \
+  'PROJECT_URI_REVOKED_WRITE_PROBE_DENIED'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: SAF permission/direct-Save availability contract missing: $required"; exit 1
   fi
@@ -12234,6 +12235,47 @@ if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
   echo "ERROR: linked Project view missing before URI grant revocation"; exit 1
 fi
 PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
+# Preserve the original A document: perform failure probing only against a disposable
+# second document created from the same canonical musical state.
+PROJECT_DOC_REVOKED_SOURCE_NAME="mpc-revoked-access-source-$BASHPID.mpcproj"
+project_revoke_source_save_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+if ! tap_project_function_bar 1; then
+  echo "ERROR: SAVE AS unavailable before preparing disposable revoked-URI test document"; exit 1
+fi
+project_revoke_source_picker_ready=0
+for ((attempt=1; attempt<=25; attempt++)); do
+  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
+      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
+    project_revoke_source_picker_ready=1
+    break
+  fi
+  sleep 1
+done
+if [ "$project_revoke_source_picker_ready" -ne 1 ]; then
+  echo "ERROR: DocumentsUI did not open for the disposable revoked-URI test document"; exit 1
+fi
+if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
+  echo "ERROR: could not capture the disposable revoked-URI Save As picker"; exit 1
+fi
+if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_REVOKED_SOURCE_NAME"; then exit 1; fi
+if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then
+  echo "ERROR: DocumentsUI Save action unavailable for disposable revoked-URI copy"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_revoke_source_save_before" 45; then
+  echo "ERROR: could not create the disposable revoked-URI test document"; exit 1
+fi
+project_revoke_source_save_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
+project_revoke_source_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_revoke_source_save_line")"
+if [[ ! "$project_revoke_source_sha" =~ ^[0-9a-f]{64}$ ]] \
+    || ! grep -Fq -- "readBackVerified=true" <<<"$project_revoke_source_save_line"; then
+  echo "ERROR: disposable revoked-URI source was not byte-readback-verified"
+  echo "$project_revoke_source_save_line"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: Project route missing after preparing disposable revoked-URI source"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
+
 if ! tap_visible_description_early "$PROJECT_ROUTE_XML" "MPC Project test revoke persisted URI grant"; then
   echo "ERROR: debug revoke action was unavailable for the linked writable SAF document"; exit 1
 fi
@@ -12271,12 +12313,25 @@ if ! wait_for_new_project_marker "PROJECT_URI_REVOKED_READ_PROBE_DENIED" 0 20; t
 fi
 project_uri_probe_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_URI_REVOKED_READ_PROBE_DENIED" | tail -n 1 || true)"
 if ! grep -Fq -- "readPermission=DENIED" <<<"$project_uri_probe_line" \
-    || ! grep -Fq -- "writePermission=DENIED" <<<"$project_uri_probe_line" \
     || ! grep -Fq -- "persistedGrant=false" <<<"$project_uri_probe_line" \
     || ! grep -Fq -- "modelUnchanged=true" <<<"$project_uri_probe_line" \
     || ! grep -Fq -- "stateSha256=$project_uri_revoke_sha" <<<"$project_uri_probe_line"; then
-  echo "ERROR: revoked-URI probe failed permission/state preservation assertions"
+  echo "ERROR: revoked-URI read probe failed permission/state preservation assertions"
   echo "$project_uri_probe_line"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_URI_REVOKED_WRITE_PROBE_DENIED" 0 20; then
+  echo "ERROR: real ContentResolver unexpectedly opened the revoked writable Project URI for output"; exit 1
+fi
+project_uri_write_probe_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_URI_REVOKED_WRITE_PROBE_DENIED" | tail -n 1 || true)"
+if ! grep -Fq -- "writePermission=DENIED" <<<"$project_uri_write_probe_line" \
+    || ! grep -Fq -- "persistedGrant=false" <<<"$project_uri_write_probe_line" \
+    || ! grep -Fq -- "modelUnchanged=true" <<<"$project_uri_write_probe_line" \
+    || ! grep -Fq -- "stateSha256=$project_uri_revoke_sha" <<<"$project_uri_write_probe_line"; then
+  echo "ERROR: revoked-URI output probe failed permission/state preservation assertions"
+  echo "$project_uri_write_probe_line"; exit 1
+fi
+if [[ "$project_uri_revoke_sha" != "$project_revoke_source_sha" ]]; then
+  echo "ERROR: disposable revoked-URI source SHA differed from the active canonical state"; exit 1
 fi
 if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
   echo "ERROR: Project view tree missing after revoked-URI probe"; exit 1

@@ -12131,6 +12131,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     /** Probe the real resolver only after restart has removed temporary picker grants. */
+    /** Probe the real resolver only after restart has removed temporary picker grants. */
     private void probeRevokedProjectUriReadForSmoke() {
         if (!projectUriRevokedProbeMode || currentProjectUri == null) return;
         final Uri target = currentProjectUri;
@@ -12154,21 +12155,40 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int writeGrantCheck = writeCheck;
         final boolean persistedGrantPresent = persistedGrant;
         projectIoExecutor.execute(() -> {
-            String outcome = "UNEXPECTED_ACCESS";
-            String detail = "";
+            String readOutcome = "UNEXPECTED_ACCESS";
+            String readDetail = "";
             try (InputStream input = getContentResolver().openInputStream(target)) {
-                if (input == null) {
-                    outcome = "NULL_INPUT_STREAM";
-                }
+                if (input == null) readOutcome = "NULL_INPUT_STREAM";
             } catch (SecurityException error) {
-                outcome = "SecurityException";
-                detail = String.valueOf(error.getMessage());
+                readOutcome = "SecurityException";
+                readDetail = String.valueOf(error.getMessage());
             } catch (IOException error) {
-                outcome = "IOException";
-                detail = String.valueOf(error.getMessage());
+                readOutcome = "IOException";
+                readDetail = String.valueOf(error.getMessage());
             }
-            final String readOutcome = outcome;
-            final String readDetail = detail;
+
+            // The caller supplies a disposable Save As copy in the debug smoke.
+            // Attempt opening an output stream only after both OS URI checks fail
+            // and all persisted modes are gone. No bytes are written; a successful
+            // "wt" open is still a test failure and is limited to that disposable
+            // provider document, never the original user's only project.
+            String writeOutcome = "UNEXPECTED_ACCESS";
+            String writeDetail = "";
+            try (OutputStream output =
+                         getContentResolver().openOutputStream(target, "wt")) {
+                if (output == null) writeOutcome = "NULL_OUTPUT_STREAM";
+            } catch (SecurityException error) {
+                writeOutcome = "SecurityException";
+                writeDetail = String.valueOf(error.getMessage());
+            } catch (IOException error) {
+                writeOutcome = "IOException";
+                writeDetail = String.valueOf(error.getMessage());
+            }
+
+            final String readResult = readOutcome;
+            final String readError = readDetail;
+            final String writeResult = writeOutcome;
+            final String writeError = writeDetail;
             runOnUiThread(() -> {
                 final String afterSha = currentProjectStateSha256();
                 final boolean readPermissionDenied =
@@ -12176,27 +12196,48 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final boolean writePermissionDenied =
                         writeGrantCheck != PackageManager.PERMISSION_GRANTED;
                 final boolean stateUnchanged = beforeSha.equals(afterSha);
-                final boolean deniedAsExpected =
-                        readPermissionDenied && writePermissionDenied
-                        && !persistedGrantPresent && stateUnchanged
-                        && ("SecurityException".equals(readOutcome)
-                                || "IOException".equals(readOutcome));
-                if (deniedAsExpected) {
+                final boolean noPersistedGrant = !persistedGrantPresent;
+                final boolean readDeniedAsExpected =
+                        readPermissionDenied && noPersistedGrant && stateUnchanged
+                        && ("SecurityException".equals(readResult)
+                                || "IOException".equals(readResult));
+                final boolean writeDeniedAsExpected =
+                        writePermissionDenied && noPersistedGrant && stateUnchanged
+                        && ("SecurityException".equals(writeResult)
+                                || "IOException".equals(writeResult));
+                if (readDeniedAsExpected) {
                     Log.i(TAG, "PROJECT_URI_REVOKED_READ_PROBE_DENIED"
-                            + " readPermission=DENIED writePermission=DENIED persistedGrant=false"
-                            + " outcome=" + readOutcome + " detail=" + readDetail
-                            + " modelUnchanged=true stateSha256=" + afterSha);
-                    setBottomStatus("PROJECT FILE ACCESS REVOKED • active musical state unchanged • use SAVE AS");
+                            + " readPermission=DENIED writePermission="
+                            + (writePermissionDenied ? "DENIED" : "GRANTED")
+                            + " persistedGrant=false outcome=" + readResult
+                            + " detail=" + readError + " modelUnchanged=true stateSha256=" + afterSha);
                 } else {
                     Log.e(TAG, "PROJECT_URI_REVOKED_READ_PROBE_UNEXPECTED"
                             + " readPermissionDenied=" + readPermissionDenied
                             + " writePermissionDenied=" + writePermissionDenied
                             + " persistedGrant=" + persistedGrantPresent
-                            + " outcome=" + readOutcome + " detail=" + readDetail
+                            + " outcome=" + readResult + " detail=" + readError
                             + " modelUnchanged=" + stateUnchanged
                             + " beforeSha256=" + beforeSha + " afterSha=" + afterSha);
-                    setBottomStatus("PROJECT URI REVOCATION TEST FAILED • " + readOutcome);
                 }
+                if (writeDeniedAsExpected) {
+                    Log.i(TAG, "PROJECT_URI_REVOKED_WRITE_PROBE_DENIED"
+                            + " writePermission=DENIED readPermission="
+                            + (readPermissionDenied ? "DENIED" : "GRANTED")
+                            + " persistedGrant=false outcome=" + writeResult
+                            + " detail=" + writeError + " modelUnchanged=true stateSha256=" + afterSha);
+                } else {
+                    Log.e(TAG, "PROJECT_URI_REVOKED_WRITE_PROBE_UNEXPECTED"
+                            + " readPermissionDenied=" + readPermissionDenied
+                            + " writePermissionDenied=" + writePermissionDenied
+                            + " persistedGrant=" + persistedGrantPresent
+                            + " outcome=" + writeResult + " detail=" + writeError
+                            + " modelUnchanged=" + stateUnchanged
+                            + " beforeSha256=" + beforeSha + " afterSha=" + afterSha);
+                }
+                setBottomStatus(readDeniedAsExpected && writeDeniedAsExpected
+                        ? "PROJECT URI ACCESS REVOKED • read/write denied • active state unchanged • use SAVE AS"
+                        : "PROJECT URI REVOCATION TEST FAILED • read=" + readResult + " write=" + writeResult);
                 refreshMpcFunctionBar();
                 scheduleProjectPersistenceViewHierarchyCapture(currentPage);
             });
