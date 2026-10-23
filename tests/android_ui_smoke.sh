@@ -160,6 +160,28 @@ for required in \
   fi
 done
 
+echo "Checking SAF persistable permission mode fidelity..."
+for required in \
+  'MpcProjectUriGrantPolicy.persistableModeFlags(resultFlags)' \
+  'persistProjectUriGrantIfAvailable(uri, resultFlags, "PROJECT_OPEN")' \
+  'persistProjectUriGrantIfAvailable(uri, data.getFlags(), "PROJECT_SAVE_AS")' \
+  'persistProjectUriGrantIfAvailable(uri, data.getFlags(), "PROJECT_RECOVERY_EXPORT")'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: SAF grants are not limited to provider-returned permission modes: $required"; exit 1
+  fi
+done
+for required in \
+  'readOnlyProviderGrantPersistsReadWithoutInventingWriteAccess' \
+  'writeOnlyProviderGrantPersistsWriteWithoutInventingReadAccess' \
+  'bothReturnedModesMayBePersisted' \
+  'transientGrantIsNotPersistable' \
+  'unrelatedIntentFlagsAreNotPassedAsUriModes'; do
+  if ! grep -Fq -- "$required" \
+      "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectUriGrantPolicyTest.java"; then
+    echo "ERROR: URI-grant policy test missing: $required"; exit 1
+  fi
+done
+
 echo "Running async Project-Open request/session isolation preflight..."
 for required in \
   'private long projectOpenRequestGeneration;' \

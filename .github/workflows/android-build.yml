@@ -162,6 +162,7 @@ jobs:
             --tests com.miguelduval.mpcmk2groovebox.MpcProjectOpenSessionPolicyTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcProjectDocumentWriteTransactionTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcProjectRecoveryStoreTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcProjectUriGrantPolicyTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcTrackProgramPolicyTest
 

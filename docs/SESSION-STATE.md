@@ -31,10 +31,10 @@
 
 ## Current queue
 
-1. Build #3087 / [run 39877355909](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39877355909), exact SHA cc6a2b8dbff8a312e86aa49f86ae5af2da46e557, was still running at emulator smoke at the last live check.
-2. The next candidate adds a bounded app-private recovery inventory, explicit RECOVERY Function Bar action, real DocumentsUI export using the verified write transaction, original-source retention, and active-Project state/link invariance. A debug-only serialized native snapshot fixture drives the real export and Open round trip.
-3. Validate the new private-store JVM suite and recovery-export scenario on its own exact SHA, including full Android smoke and evidence upload.
-4. Then test provider permission revocation/write failures where deterministic. Keep PR #28/#29 bases unchanged and hardware acceptance separate.
+1. **Build #3088 / [run 39878406244](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39878406244) passed** on exact SHA `f39fa0a000bcca2ec635cd3a2971a9e405622469`: focused Project Open/write-transaction/recovery-store JVM suites, full emulator smoke, Shortcut assignment/reorder/restart/factory-reset/second-restart acceptance, and recovery export through DocumentsUI followed by exact-state Open round trip. Visual evidence artifact `12470473607` (SHA-256 `cd036ce10524db6d6e1d7f5baa76a98e3b418d1e76aa32b95b67684facbe8646`); APK artifact `12469867908` (SHA-256 `c7c7fb2036fcc2929512d493b4e213897ffd5d13cb3e08b998d9adec0d525acc`).
+2. Build #3087 / [run 39877355909](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39877355909), SHA `cc6a2b8dbff8a312e86aa49f86ae5af2da46e557`, failed late during picker capture: UiTestAutomationBridge returned a null root for `mpc-groovebox-picker-select-source-uiautomator.xml`. The atomic View-tree fix itself is accepted by the next fully green #3088 run; keep strict picker hierarchy checks.
+3. The current candidate corrects SAF URI permission persistence: Open, Save As and Recovery Export formerly attempted to persist READ|WRITE even if the picker returned only one mode. It now persists only actual READ/WRITE bits accompanied by the persistable flag and logs clearly when no permanent grant is obtained.
+4. Validate `MpcProjectUriGrantPolicyTest` with the other Project suites on its own exact SHA. Require full emulator smoke and visual-evidence upload. Then cover deterministic provider permission revocation and actual read/write failure scenarios. PR #28/#29 bases and physical MPC Studio MkII acceptance remain unchanged.
 
 ## Completed in this session
 

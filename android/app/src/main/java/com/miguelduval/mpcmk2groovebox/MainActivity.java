@@ -12193,6 +12193,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private void persistProjectUriGrantIfAvailable(Uri uri, int resultFlags, String operation) {
+        final int modeFlags = MpcProjectUriGrantPolicy.persistableModeFlags(resultFlags);
+        if (modeFlags == 0) {
+            Log.i(TAG, operation + "_URI_GRANT_NOT_PERSISTABLE uri=" + uri
+                    + " resultFlags=" + resultFlags + " reason=no-persistable-read-write-modes");
+            return;
+        }
+        try {
+            getContentResolver().takePersistableUriPermission(uri, modeFlags);
+            Log.i(TAG, operation + "_URI_GRANT_PERSISTED uri=" + uri + " modeFlags=" + modeFlags);
+        } catch (SecurityException error) {
+            Log.i(TAG, operation + "_URI_GRANT_PERSIST_FAILED uri=" + uri
+                    + " resultFlags=" + resultFlags + " modeFlags=" + modeFlags
+                    + " error=" + error.getClass().getSimpleName());
+        }
+    }
+
     private void loadProjectFromUri(Uri uri, int resultFlags) {
         if (uri == null || !startupComplete) {
             setBottomStatus("PROJECT OPEN • project engine is not ready");
@@ -12202,15 +12219,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // must prevent this callback from replacing whichever Project is active then.
         final long openRequestGeneration = ++projectOpenRequestGeneration;
         final long openSessionGeneration = projectSessionGeneration;
-        if ((resultFlags & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
-            try {
-                getContentResolver().takePersistableUriPermission(
-                        uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            } catch (SecurityException ignored) {
-                // Transient access remains enough for the immediate load.
-            }
-        }
+        persistProjectUriGrantIfAvailable(uri, resultFlags, "PROJECT_OPEN");
         setBottomStatus("OPENING PROJECT…");
         projectIoExecutor.execute(() -> {
             final byte[] bytes;
@@ -12369,12 +12378,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         + (copy == null ? "unavailable" : copy.getName()) + " error=source-no-longer-available");
                 return;
             }
-            if ((data.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
-                try {
-                    getContentResolver().takePersistableUriPermission(uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                } catch (SecurityException ignored) { /* transient picker grant is sufficient for immediate export */ }
-            }
+            persistProjectUriGrantIfAvailable(uri, data.getFlags(), "PROJECT_RECOVERY_EXPORT");
             exportProjectRecoveryCopy(copy, uri);
             return;
         }
@@ -12420,15 +12424,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus("PROJECT SAVE AS FAILED • no destination selected");
                 return;
             }
-            if ((data.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
-                try {
-                    getContentResolver().takePersistableUriPermission(
-                            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                    | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                } catch (SecurityException ignored) {
-                    // Transient write access still supports the immediate Save As operation.
-                }
-            }
+            persistProjectUriGrantIfAvailable(uri, data.getFlags(), "PROJECT_SAVE_AS");
             saveProjectToUri(uri, true);
             return;
         }

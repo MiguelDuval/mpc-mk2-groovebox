@@ -14,9 +14,9 @@
 - This candidate still requires its own full exact-SHA Android workflow before acceptance.
 
 ### Next queue
-1. Observe Build #3087 / [run 39877355909](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39877355909) on exact SHA cc6a2b8dbff8a312e86aa49f86ae5af2da46e557.
-2. Validate recovery export on its exact SHA: recovery-store JVM tests, real DocumentsUI export, exact source/destination hash, unchanged active-Project state and URI link, and real Open round trip.
-3. After full workflow acceptance, test provider grant/read/write failure handling where reproducible; keep PR #28/#29 bases and hardware gate unchanged.
+1. Build #3088 / [run 39878406244](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39878406244) accepted the recovery export and Open round trip on exact SHA f39fa0a000bcca2ec635cd3a2971a9e405622469.
+2. Validate the current URI-grant policy candidate: persist only provider-returned READ/WRITE modes and only when the persistable flag is present. Run its unit suite plus all Project safety suites.
+3. Require the whole emulator smoke and evidence-upload step. Then exercise actual provider grant revocation and read/write failure paths where reproducible.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 
