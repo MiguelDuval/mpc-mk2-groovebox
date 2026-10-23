@@ -657,6 +657,10 @@ jobs:
             /tmp/mpc-groovebox-browser-file-size-hidden.png
             /tmp/mpc-groovebox-browser-file-size-hidden-uiautomator.xml
             /tmp/mpc-groovebox-browser-file-size-restored.png
+            /tmp/mpc-groovebox-browser-modified-date-visible.png
+            /tmp/mpc-groovebox-browser-modified-date-visible-uiautomator.xml
+            /tmp/mpc-groovebox-browser-modified-date-hidden.png
+            /tmp/mpc-groovebox-browser-modified-date-hidden-uiautomator.xml
             /tmp/mpc-groovebox-browser-file-size-restored-uiautomator.xml
             /tmp/mpc-browser-options-prefs.xml
             /tmp/mpc-groovebox-browser-local-results-uiautomator.xml

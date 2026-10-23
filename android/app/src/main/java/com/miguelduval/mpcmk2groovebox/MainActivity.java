@@ -97,6 +97,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final String BROWSER_STORAGE_PREFERENCES = "mpc_browser_storage";
     private static final String BROWSER_OPTIONS_PREFERENCES = "mpc_browser_options";
     private static final String PREF_BROWSER_SHOW_FILE_SIZE = "show_file_size";
+    private static final String PREF_BROWSER_SHOW_MODIFIED_DATE = "show_modified_date";
     private static final String MPC_UI_PREFERENCES = "mpc_ui_preferences";
     private static final String PREF_SHORTCUT_MODES = "shortcut_modes_v1";
     private static final String PREF_USER_TREE_URI = "user_tree_uri";
@@ -5835,9 +5836,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         browserView = new MpcBrowserView(this);
-        browserView.setShowFileSize(getSharedPreferences(
-                BROWSER_OPTIONS_PREFERENCES, MODE_PRIVATE)
-                .getBoolean(PREF_BROWSER_SHOW_FILE_SIZE, true));
+        final android.content.SharedPreferences browserOptionsPreferences =
+                getSharedPreferences(BROWSER_OPTIONS_PREFERENCES, MODE_PRIVATE);
+        browserView.setShowFileSize(browserOptionsPreferences.getBoolean(
+                PREF_BROWSER_SHOW_FILE_SIZE, true));
+        browserView.setShowModifiedDate(browserOptionsPreferences.getBoolean(
+                PREF_BROWSER_SHOW_MODIFIED_DATE, false));
         browserView.setListener(new MpcBrowserView.Listener() {
             @Override
             public void onSectionSelected(String section) {
@@ -6587,9 +6591,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 getSharedPreferences(BROWSER_OPTIONS_PREFERENCES, MODE_PRIVATE);
         final boolean showFileSize = optionsPreferences.getBoolean(
                 PREF_BROWSER_SHOW_FILE_SIZE, true);
+        final boolean showModifiedDate = optionsPreferences.getBoolean(
+                PREF_BROWSER_SHOW_MODIFIED_DATE, false);
 
         TextView notice = label(
-                "ACTIVE • Show file size updates real WAV metadata; "
+                "ACTIVE • Show file size and modified date update real WAV metadata; "
                         + "other options remain RESERVED until their behavior exists.",
                 10, MUTED);
         notice.setPadding(0, 0, 0, dp(10));
@@ -6597,7 +6603,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         for (int index = 0; index < labels.length; index++) {
             final String labelText = labels[index];
-            final boolean supported = index == 0;
+            final boolean supported = index <= 1;
             android.widget.CheckBox check = new android.widget.CheckBox(this);
             check.setText(labelText);
             check.setTextColor(TEXT);
@@ -6605,7 +6611,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             check.setContentDescription("MPC Browser Option " + labelText);
             check.setEnabled(supported);
             check.setAlpha(supported ? 1.0f : 0.55f);
-            if (supported) {
+            if (index == 0) {
                 check.setChecked(showFileSize);
                 check.setOnCheckedChangeListener((button, enabled) -> {
                     optionsPreferences.edit()
@@ -6614,6 +6620,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     final MpcBrowserView activeBrowser = browserView;
                     if (activeBrowser != null) activeBrowser.setShowFileSize(enabled);
                     Log.i(TAG, "BROWSER_OPTION_SHOW_FILE_SIZE_CHANGED value=" + enabled);
+                });
+            } else if (index == 1) {
+                check.setChecked(showModifiedDate);
+                check.setOnCheckedChangeListener((button, enabled) -> {
+                    optionsPreferences.edit()
+                            .putBoolean(PREF_BROWSER_SHOW_MODIFIED_DATE, enabled)
+                            .apply();
+                    final MpcBrowserView activeBrowser = browserView;
+                    if (activeBrowser != null) activeBrowser.setShowModifiedDate(enabled);
+                    Log.i(TAG, "BROWSER_OPTION_SHOW_MODIFIED_DATE_CHANGED value=" + enabled);
                 });
             }
             body.addView(check, new LinearLayout.LayoutParams(

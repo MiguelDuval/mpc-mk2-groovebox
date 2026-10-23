@@ -29,7 +29,8 @@ final class MpcLocalAudioCatalog {
                 MediaStore.Audio.Media.DISPLAY_NAME,
                 MediaStore.Audio.Media.MIME_TYPE,
                 MediaStore.Audio.Media.SIZE,
-                MediaStore.Audio.Media.DURATION
+                MediaStore.Audio.Media.DURATION,
+                MediaStore.Audio.Media.DATE_MODIFIED
         };
         final List<MpcBrowserFile> files = new ArrayList<>();
         try (Cursor cursor = resolver.query(
@@ -42,6 +43,7 @@ final class MpcLocalAudioCatalog {
             final int mimeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE);
             final int sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE);
             final int durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION);
+            final int modifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED);
 
             while (cursor.moveToNext()) {
                 final String name = cursor.getString(nameColumn);
@@ -54,9 +56,14 @@ final class MpcLocalAudioCatalog {
                 final long size = cursor.isNull(sizeColumn) ? -1L : cursor.getLong(sizeColumn);
                 final long duration = cursor.isNull(durationColumn)
                         ? -1L : cursor.getLong(durationColumn);
+                final long modifiedSeconds = cursor.isNull(modifiedColumn)
+                        ? -1L : cursor.getLong(modifiedColumn);
+                final long modifiedAtMs = modifiedSeconds <= 0
+                        || modifiedSeconds > Long.MAX_VALUE / 1000L
+                        ? -1L : modifiedSeconds * 1000L;
                 final Uri itemUri = ContentUris.withAppendedId(collection, id);
                 files.add(new MpcBrowserFile(
-                        itemUri.toString(), name, mime, size, duration));
+                        itemUri.toString(), name, mime, size, duration, modifiedAtMs));
             }
         }
         return files;
