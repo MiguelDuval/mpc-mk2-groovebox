@@ -178,7 +178,8 @@ for required in \
   'checkUriPermission(' \
   'currentProjectWritePreviouslyRejected = true;' \
   'READ-ONLY / WRITE ACCESS UNAVAILABLE' \
-  'MpcProjectUriGrantPolicy.directSaveActionAvailable('; do
+  'MpcProjectUriGrantPolicy.directSaveActionAvailable(' \
+  'MpcProjectUriGrantPolicy.isProviderWriteAccessFailure(failure)'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: SAF permission/direct-Save availability contract missing: $required"; exit 1
   fi
@@ -192,7 +193,12 @@ for required in \
   'unlinkedProjectKeepsSaveAvailableAsSaveAsEntryPoint' \
   'linkedWritableDocumentEnablesDirectSave' \
   'readOnlyOrRevokedWriteGrantDisablesDirectSave' \
-  'providerWriteDenialDisablesDirectSaveEvenWhenSystemGrantStillExists'; do
+  'providerWriteDenialDisablesDirectSaveEvenWhenSystemGrantStillExists' \
+  'eaccesProviderFailureDisablesDirectSave' \
+  'epermOperationNotPermittedDisablesDirectSave' \
+  'readOnlyFileSystemProviderFailureDisablesDirectSave' \
+  'genericProviderTimeoutDoesNotLatchReadOnlyWriteState' \
+  'nullOrBlankProviderFailureDoesNotLatchWriteDenial'; do
   if ! grep -Fq -- "$required" \
       "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectUriGrantPolicyTest.java"; then
     echo "ERROR: URI grant/direct-Save policy test missing: $required"; exit 1

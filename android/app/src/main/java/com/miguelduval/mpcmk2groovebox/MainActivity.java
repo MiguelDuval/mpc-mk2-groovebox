@@ -11928,16 +11928,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private static boolean isProjectProviderWriteAccessFailure(String failure) {
-        if (failure == null || failure.isEmpty()) return false;
-        final String normalized = failure.toLowerCase(Locale.ROOT);
-        return normalized.contains("securityexception")
-                || normalized.contains("permission denied")
-                || normalized.contains("accessdeniedexception")
-                || normalized.contains("access denied")
-                || normalized.contains("read-only")
-                || normalized.contains("readonly")
-                || normalized.contains("not writable")
-                || normalized.contains("write permission");
+        return MpcProjectUriGrantPolicy.isProviderWriteAccessFailure(failure);
     }
 
     private void saveCurrentProject() {

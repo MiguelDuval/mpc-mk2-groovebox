@@ -31,11 +31,11 @@
 
 ## Current queue
 
-1. [Build #3094 / run 39923169212](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39923169212), exact SHA `09dfe0e9bb3343585505ef6b0129c88fb1488040`, failed before any Project UI scenario: the newly added source preflight referenced unset `SMOKE_SCRIPT` under Bash `set -u`. Native/JVM tests and APK assembly passed; smoke exited at line 142 before the recovery-cancel fix was exercised.
-2. The next candidate switches that source check to the script's already-used `$0` path. The false Project-page recovery filename assertion remains removed; the exact filename check stays in the RECOVERY chooser.
-3. Require another full exact-SHA Android workflow, including the recovery cancel and export/reopen paths, all selected JVM/native checks and visual-evidence upload. Do not count #3094 as a product UI failure or as acceptance of the recovery cancellation change.
-4. Next product-safety follow-up after CI: improve the write-denial classifier to recognize common provider errno messages (EACCES/EPERM) and test it through the existing URI-grant policy suite.
-5. Keep PR #28/#29 bases unchanged; physical MPC Studio MkII acceptance remains separate.
+1. [Build #3095 / run 39924131537](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39924131537), exact SHA d6cded9d5ac5ff21e8a5b53c6606fa29b5b6b679, passed source syntax/evidence preflight and reached step 52, Android emulator smoke. APK artifact 12489170887 was uploaded (SHA-256 20c7ab50509fc16b24f856296663aac563a4e4b5c40b6a9348e77fd2f51ef818). Full smoke and step 53 evidence-upload status were still pending at the latest API check.
+2. The policy fix in this commit moves provider write-denial classification into the selected MpcProjectUriGrantPolicy and covers errno-only EACCES, EPERM / “Operation not permitted”, and EROFS / read-only filesystem errors. It also tests that generic timeouts/read failures and empty messages do not falsely latch a URI as read-only. This implementation is not accepted until its own exact-SHA workflow completes.
+3. Build #3095 runs the parent SHA and cannot validate the new policy implementation. After its final outcome, check the new exact-SHA workflow for focused JVM policy tests, native tests, real cancellation/export/reopen UI workflow and successful evidence upload.
+4. Keep the recovery acceptance strict: the exact recovery filename must appear in the live RECOVERY chooser, state SHA must survive cancel, export source/destination bytes must match, active Project must remain unchanged and unlinked during export, and the exported Project must reopen to the same canonical state.
+5. Keep PR #28/#29 bases unchanged; physical MPC Studio MkII acceptance remains a separate hardware gate.
 
 ## Completed in this session
 

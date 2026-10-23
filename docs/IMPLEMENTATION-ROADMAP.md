@@ -14,10 +14,10 @@
 - This candidate still requires its own full exact-SHA Android workflow before acceptance.
 
 ### Next queue
-1. The exact-SHA recovery-cancel smoke fix has not yet reached the real UI scenario. Build #3094 / [run 39923169212](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39923169212) failed at a strict-mode source preflight because it referenced undefined shell variable `SMOKE_SCRIPT`; native/JVM checks and APK assembly passed.
-2. Candidate fix uses `$0`, already used elsewhere in the script to refer to its own source. Keep the correction that checks the recovery filename only in the RECOVERY chooser, rather than on the Project page.
-3. The new exact-SHA run must pass the full recovery cancellation/export/reopen journey plus the complete Project/Shortcut workflow and evidence upload before acceptance.
-4. Next isolate an independent provider-error classification edge: recognize EACCES/EPERM/operation-not-permitted write failures so direct SAVE is disabled after a provider rejects writes even when Android's persisted URI permission still exists. Add JVM cases to the selected URI-grant policy suite. Keep PR #28/#29 bases and hardware gate unchanged.
+1. Verify Build #3095 / [run 39924131537](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39924131537) on exact SHA d6cded9d5ac5ff21e8a5b53c6606fa29b5b6b679. The fixed source preflight passed; the latest live check showed emulator smoke step 52 active. Require the final smoke conclusion and evidence-upload step.
+2. The candidate in this commit moves provider write-failure recognition into the selected URI-grant policy, adds EACCES/EPERM/EROFS provider-error cases, and guards against generic timeout/read failures being treated as write-denials. Its own exact-SHA workflow must execute the selected JVM suite, native tests, full Android smoke and evidence upload.
+3. Recovery acceptance remains strict: actual cancellation → exact filename visible in live RECOVERY chooser → real DocumentsUI export and byte verification → active Project unchanged/unlinked during export → successful canonical-state reopen.
+4. After this policy change is fully accepted, exercise real provider grant revocation and read/write failures where deterministic. Keep PR #28/#29 bases and physical hardware gate unchanged.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

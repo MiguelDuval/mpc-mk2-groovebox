@@ -3,6 +3,8 @@ package com.miguelduval.mpcmk2groovebox;
 import android.content.Intent;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class MpcProjectUriGrantPolicyTest {
     @Test public void readOnlyProviderGrantPersistsReadWithoutInventingWriteAccess() {
@@ -45,5 +47,29 @@ public class MpcProjectUriGrantPolicyTest {
 
     @Test public void providerWriteDenialDisablesDirectSaveEvenWhenSystemGrantStillExists() {
         assertEquals(false, MpcProjectUriGrantPolicy.directSaveActionAvailable(true, true, true));
+    }
+
+    @Test public void eaccesProviderFailureDisablesDirectSave() {
+        assertTrue(MpcProjectUriGrantPolicy.isProviderWriteAccessFailure("ErrnoException: EACCES"));
+    }
+
+    @Test public void epermOperationNotPermittedDisablesDirectSave() {
+        assertTrue(MpcProjectUriGrantPolicy.isProviderWriteAccessFailure(
+                "ErrnoException: EPERM (Operation not permitted)"));
+    }
+
+    @Test public void readOnlyFileSystemProviderFailureDisablesDirectSave() {
+        assertTrue(MpcProjectUriGrantPolicy.isProviderWriteAccessFailure(
+                "ErrnoException: EROFS (Read-only file system)"));
+    }
+
+    @Test public void genericProviderTimeoutDoesNotLatchReadOnlyWriteState() {
+        assertFalse(MpcProjectUriGrantPolicy.isProviderWriteAccessFailure(
+                "IOException: provider timed out while reading the pre-write snapshot"));
+    }
+
+    @Test public void nullOrBlankProviderFailureDoesNotLatchWriteDenial() {
+        assertFalse(MpcProjectUriGrantPolicy.isProviderWriteAccessFailure(null));
+        assertFalse(MpcProjectUriGrantPolicy.isProviderWriteAccessFailure("  "));
     }
 }
