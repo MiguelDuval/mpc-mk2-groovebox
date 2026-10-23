@@ -1932,6 +1932,24 @@ require_source_contains() {
   fi
 }
 
+echo "Running Project acceptance-mode isolation preflight..."
+python3 - "$MAIN_ACTIVITY_SOURCE" <<'PY_PROJECT_MODE_ISOLATION'
+import sys
+source = open(sys.argv[1], encoding="utf-8").read()
+start = source.index("projectPersistenceFixtureMode = (")
+end_marker = '&& getPackageName().endsWith(".debug");'
+end = source.index(end_marker, start) + len(end_marker)
+fixture_mode = source[start:end]
+if "projectProviderWriteDenialSmokeMode" in fixture_mode:
+    raise SystemExit(
+        "provider-write-denial must not redundantly run the slower native "
+        "Project-persistence fixture; its own byte-exact snapshot is authoritative")
+provider_start = source.index("if (projectProviderWriteDenialSmokeMode) {", end)
+if "prepareProjectProviderWriteDenialSmoke();" not in source[provider_start:provider_start + 180]:
+    raise SystemExit("provider-write-denial fixture setup was accidentally removed")
+print("Project persistence and provider-write-denial acceptance modes are isolated.")
+PY_PROJECT_MODE_ISOLATION
+
 echo "Running MPC Browser product-scope preflight..."
 if grep -Fqi -- 'splice' "$BROWSER_SOURCE"; then
   echo "ERROR: excluded commercial Splice destination is present in the product Browser"

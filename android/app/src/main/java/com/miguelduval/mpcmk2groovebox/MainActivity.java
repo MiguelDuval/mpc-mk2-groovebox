@@ -658,8 +658,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 && getPackageName().endsWith(".debug");
         projectPersistenceFixtureMode = ("project-persistence".equals(smokeMode)
                 || projectUriGrantRevocationSmokeMode
-                || projectUriRevokedProbeMode
-                || projectProviderWriteDenialSmokeMode)
+                || projectUriRevokedProbeMode)
                 && getPackageName().endsWith(".debug");
 
         try {
