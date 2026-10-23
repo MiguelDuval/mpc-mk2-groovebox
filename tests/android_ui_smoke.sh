@@ -12066,6 +12066,9 @@ fi
 project_recovery_export_name="${project_recovery_source_name%.recovery.mpcproj}-recovered.mpcproj"
 if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_SAVE_XML"; then echo "ERROR: no real Project view for recovery export"; exit 1; fi
 PROJECT_CURRENT_APP_XML="$PROJECT_SAVE_XML"
+# Refresh the marker baseline so return-to-Project cannot pass from the earlier
+# fixture render's cached hierarchy.
+snapshot_project_view_tree_marker_baselines
 # Cancellation is a real lifecycle edge: leave the provider without changing the
 # active musical state, and preserve the private recovery source for a retry.
 project_recovery_cancel_marker_before="$(project_marker_count "PROJECT_RECOVERY_EXPORT_CANCELLED" 5)"
