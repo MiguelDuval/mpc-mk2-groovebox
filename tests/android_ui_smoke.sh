@@ -2382,7 +2382,36 @@ dump_device_ui() {
   if (( remaining <= 0 )); then echo "ERROR: UI hierarchy deadline expired before dump ($requested_remote_path)"; return 1; fi
   if ! adb_bounded "$remaining" "${dump_args[@]}" > "$log_path" 2>&1; then
     echo "ERROR: bounded UI hierarchy dump failed ($requested_remote_path; budget ${timeout_seconds}s)"
-    cat "$log_path" || true
+    # On Android 16 the device-side UiAutomator runner can write a complete
+    # hierarchy, print its completion path, then fail to exit before the host
+    # ADB deadline. Recover only that explicitly completed, fresh dump instead
+    # of deleting it and launching a second dump that competes for the same
+    # remote path. The caller still validates package/page/signature and, for
+    # stable picker capture, requires matching independent snapshots and PNG.
+    if grep -Fq -- "UI hierchary dumped to: $shared_remote_path" "$log_path"; then
+      echo "WARN: UiAutomator reported a completed fresh dump but its ADB shell did not exit; attempting bounded transfer"
+      if adb_bounded 3 exec-out cat "$shared_remote_path" > "$host_path" \
+          && test -s "$host_path" \
+          && python3 - "$host_path" <<'PY_RECOVERED_UI_HIERARCHY'
+import sys
+import xml.etree.ElementTree as ET
+try:
+    root = ET.parse(sys.argv[1]).getroot()
+    if root.tag != "hierarchy":
+        raise ValueError(f"unexpected root element: {root.tag!r}")
+except (OSError, ET.ParseError, ValueError) as exc:
+    print(f"invalid recovered UI hierarchy: {exc}", file=sys.stderr)
+    raise SystemExit(1)
+PY_RECOVERED_UI_HIERARCHY
+      then
+        echo "Recovered fresh UI hierarchy from the completed device-side dump: $requested_remote_path"
+        return 0
+      fi
+      rm -f "$host_path"
+      echo "WARN: bounded transfer or validation of completed UI hierarchy failed"
+    else
+      cat "$log_path" || true
+    fi
     cleanup_stale_device_uiautomator
     return 1
   fi
