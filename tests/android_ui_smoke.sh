@@ -2358,60 +2358,127 @@ cleanup_stale_device_uiautomator() {
   done <<< "$matched_pids"
 }
 
+uiautomator_dump_bounded() {
+  # Stream ADB output instead of waiting for remote-shell teardown. Android 16
+  # can emit the completed-dump marker after writing XML, then keep the shell
+  # open. Return on that marker only; callers still transfer/parse the fresh XML
+  # and keep their independent picker-signature and screenshot checks.
+  local timeout_seconds="$1" log_path="$2" marker_path="$3"
+  shift 3
+  python3 - "$timeout_seconds" "$log_path" "$marker_path" "$@" <<'PY_STREAM_UIAUTOMATOR'
+import os, selectors, signal, subprocess, sys, time
+from shlex import join
+
+seconds = float(sys.argv[1])
+log_path, marker_path = sys.argv[2], sys.argv[3]
+command = ["adb", *sys.argv[4:]]
+marker = ("UI hierchary dumped to: " + marker_path).encode()
+deadline = time.monotonic() + seconds
+try:
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            start_new_session=True, bufsize=0)
+except OSError as exc:
+    print(f"ERROR: cannot start bounded UiAutomator command: {exc}", file=sys.stderr)
+    raise SystemExit(127)
+
+def stop_process_group():
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        proc.wait(timeout=0.1)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    try:
+        proc.wait(timeout=0.5)
+    except subprocess.TimeoutExpired:
+        pass
+
+found = False
+tail = b""
+sel = selectors.DefaultSelector()
+assert proc.stdout is not None
+sel.register(proc.stdout, selectors.EVENT_READ)
+with open(log_path, "wb") as log:
+    while time.monotonic() < deadline:
+        remaining = deadline - time.monotonic()
+        events = sel.select(min(remaining, 0.1)) if sel.get_map() else []
+        for key, _ in events:
+            chunk = os.read(key.fd, 8192)
+            if not chunk:
+                sel.unregister(key.fileobj)
+                continue
+            log.write(chunk)
+            log.flush()
+            combined = tail + chunk
+            if marker in combined:
+                found = True
+                break
+            tail = combined[-(len(marker) - 1):]
+        if found:
+            break
+        if proc.poll() is not None and not sel.get_map():
+            break
+        if not events and not sel.get_map() and proc.poll() is None:
+            time.sleep(min(remaining, 0.02))
+    if found:
+        # The marker is emitted after the device-side dump completes. Avoid
+        # letting slow shell teardown eat the time reserved for XML transfer.
+        stop_process_group()
+        print("INFO: fresh UiAutomator completion marker observed before shell exit", file=sys.stderr)
+        raise SystemExit(0)
+    if proc.poll() is None:
+        stop_process_group()
+    rc = proc.poll()
+
+if rc is not None and rc != 0:
+    print(f"ERROR: UiAutomator ADB command exited {rc} without a completion marker: {join(command)}",
+          file=sys.stderr)
+    raise SystemExit(rc if rc >= 0 else 128 - rc)
+if time.monotonic() >= deadline:
+    print(f"ERROR: timed out after {seconds:g}s waiting for fresh UiAutomator completion marker: {marker_path}",
+          file=sys.stderr)
+    raise SystemExit(124)
+print(f"ERROR: UiAutomator exited without expected completion marker: {marker_path}", file=sys.stderr)
+raise SystemExit(1)
+PY_STREAM_UIAUTOMATOR
+}
+
 dump_device_ui() {
-  # Total wall-clock budget for cleanup + UIAutomator + transfer, not nested retry budgets.
+  # Total wall-clock budget for dump + transfer + parse, including cleanup.
   local requested_remote_path="$1" host_path="$2"
-  local timeout_seconds="${3:-8}" deadline=$((SECONDS + ${3:-8})) remaining
+  local timeout_seconds="${3:-8}" deadline=$((SECONDS + ${3:-8})) remaining dump_budget
   local dump_mode="${4:-standard}"
   local log_path="/tmp/mpc-groovebox-uiautomator-dump.log"
   local shared_remote_path="/sdcard/mpc-groovebox-current-uiautomator.xml"
-  local -a dump_args=(shell uiautomator dump)
-  # Android's `uiautomator dump --compressed` omits unneeded layout nodes and is
-  # reserved for DocumentsUI's large storage-root hierarchy. Standard snapshots
-  # retain the full tree because unrelated selectors rely on surrounding nodes.
+  local remote_command dump_option=""
   case "$dump_mode" in
     standard) ;;
-    compressed) dump_args+=(--compressed) ;;
+    compressed) dump_option="--compressed" ;;
     *) echo "ERROR: unsupported UI hierarchy dump mode: $dump_mode"; return 2 ;;
   esac
-  dump_args+=("$shared_remote_path")
+  # Delete stale output and run the dump in one remote-shell round trip, leaving
+  # more of the bounded capture budget for UiAutomator and the XML transfer.
+  remote_command="rm -f '$shared_remote_path' && uiautomator dump "
+  if [[ -n "$dump_option" ]]; then remote_command+="${dump_option} "; fi
+  remote_command+="'$shared_remote_path'"
   rm -f "$host_path"
-  remaining=$((deadline - SECONDS)); (( remaining > 0 )) || return 1
-  adb_bounded "$remaining" shell rm -f "$shared_remote_path" >/dev/null 2>&1 || true
   remaining=$((deadline - SECONDS))
-  if (( remaining <= 0 )); then echo "ERROR: UI hierarchy deadline expired before dump ($requested_remote_path)"; return 1; fi
-  if ! adb_bounded "$remaining" "${dump_args[@]}" > "$log_path" 2>&1; then
-    echo "ERROR: bounded UI hierarchy dump failed ($requested_remote_path; budget ${timeout_seconds}s)"
-    # On Android 16 the device-side UiAutomator runner can write a complete
-    # hierarchy, print its completion path, then fail to exit before the host
-    # ADB deadline. Recover only that explicitly completed, fresh dump instead
-    # of deleting it and launching a second dump that competes for the same
-    # remote path. The caller still validates package/page/signature and, for
-    # stable picker capture, requires matching independent snapshots and PNG.
-    if grep -Fq -- "UI hierchary dumped to: $shared_remote_path" "$log_path"; then
-      echo "WARN: UiAutomator reported a completed fresh dump but its ADB shell did not exit; attempting bounded transfer"
-      if adb_bounded 3 exec-out cat "$shared_remote_path" > "$host_path" \
-          && test -s "$host_path" \
-          && python3 - "$host_path" <<'PY_RECOVERED_UI_HIERARCHY'
-import sys
-import xml.etree.ElementTree as ET
-try:
-    root = ET.parse(sys.argv[1]).getroot()
-    if root.tag != "hierarchy":
-        raise ValueError(f"unexpected root element: {root.tag!r}")
-except (OSError, ET.ParseError, ValueError) as exc:
-    print(f"invalid recovered UI hierarchy: {exc}", file=sys.stderr)
-    raise SystemExit(1)
-PY_RECOVERED_UI_HIERARCHY
-      then
-        echo "Recovered fresh UI hierarchy from the completed device-side dump: $requested_remote_path"
-        return 0
-      fi
-      rm -f "$host_path"
-      echo "WARN: bounded transfer or validation of completed UI hierarchy failed"
-    else
-      cat "$log_path" || true
-    fi
+  if (( remaining <= 1 )); then
+    echo "ERROR: UI hierarchy deadline expired before dump ($requested_remote_path)"
+    return 1
+  fi
+  # Keep one bounded second for transferring and validating the completed XML.
+  dump_budget=$((remaining - 1))
+  if ! uiautomator_dump_bounded "$dump_budget" "$log_path" "$shared_remote_path" shell "$remote_command"; then
+    echo "ERROR: bounded UI hierarchy dump failed ($requested_remote_path; budget ${dump_budget}s)"
+    cat "$log_path" || true
     cleanup_stale_device_uiautomator
     return 1
   fi
@@ -2429,8 +2496,10 @@ PY_RECOVERED_UI_HIERARCHY
   if ! test -s "$host_path" || ! python3 - "$host_path" <<'PY'
 import sys, xml.etree.ElementTree as ET
 try:
-    ET.parse(sys.argv[1])
-except (OSError, ET.ParseError) as exc:
+    root = ET.parse(sys.argv[1]).getroot()
+    if root.tag != "hierarchy":
+        raise ValueError(f"unexpected root element: {root.tag!r}")
+except (OSError, ET.ParseError, ValueError) as exc:
     print(f"invalid UI hierarchy: {exc}", file=sys.stderr)
     raise SystemExit(1)
 PY
@@ -2441,7 +2510,6 @@ PY
   fi
   return 0
 }
-
 # DocumentsUI sometimes accepts a real folder tap but takes longer than one
 # UIAutomator dump to publish a stable hierarchy. Retry the same fresh capture
 # with per-attempt bounds; never reuse stale picker XML as proof of current UI.
