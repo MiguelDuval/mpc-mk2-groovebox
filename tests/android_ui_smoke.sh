@@ -12066,6 +12066,48 @@ fi
 project_recovery_export_name="${project_recovery_source_name%.recovery.mpcproj}-recovered.mpcproj"
 if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_SAVE_XML"; then echo "ERROR: no real Project view for recovery export"; exit 1; fi
 PROJECT_CURRENT_APP_XML="$PROJECT_SAVE_XML"
+# Cancellation is a real lifecycle edge: leave the provider without changing the
+# active musical state, and preserve the private recovery source for a retry.
+project_recovery_cancel_marker_before="$(project_marker_count "PROJECT_RECOVERY_EXPORT_CANCELLED" 5)"
+if ! tap_project_function_bar 3; then echo "ERROR: RECOVERY action unavailable before cancellation test"; exit 1; fi
+if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_source_name" 15; then
+  echo "ERROR: recovery chooser did not show source for cancellation test"; exit 1
+fi
+if ! tap_ui_text "$PROJECT_SAVE_XML" "$project_recovery_source_name"; then
+  echo "ERROR: could not open recovery destination picker for cancellation test"; exit 1
+fi
+project_recovery_cancel_picker_ready=0
+for ((attempt=1; attempt<=30; attempt++)); do
+  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
+    project_recovery_cancel_picker_ready=1
+    break
+  fi
+  sleep 1
+done
+if [ "$project_recovery_cancel_picker_ready" -ne 1 ]; then
+  echo "ERROR: DocumentsUI did not open before recovery-export cancellation"; exit 1
+fi
+if ! adb_bounded 5 shell input keyevent 4; then
+  echo "ERROR: could not cancel recovery-export destination picker"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_RECOVERY_EXPORT_CANCELLED" "$project_recovery_cancel_marker_before" 20; then
+  echo "ERROR: recovery-export cancellation was not reported"; exit 1
+fi
+project_recovery_cancel_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_RECOVERY_EXPORT_CANCELLED" | tail -n 1 || true)"
+project_recovery_cancel_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_recovery_cancel_line")"
+if [[ "$project_recovery_cancel_sha" != "$project_recovery_source_sha" ]]; then
+  echo "ERROR: canceling recovery export changed the active Project or did not preserve canonical state"
+  echo "$project_recovery_cancel_line"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_SAVE_XML"; then
+  echo "ERROR: app did not return to Project after recovery-export cancellation"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_SAVE_XML"
+if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_source_name" 10; then
+  echo "ERROR: recovery source vanished after picker cancellation"; exit 1
+fi
+echo "Recovery export cancellation passed: canonical active-state SHA unchanged and private source remains available."
+
 if ! tap_project_function_bar 3; then echo "ERROR: RECOVERY action is not enabled"; exit 1; fi
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_source_name" 15; then echo "ERROR: recovery chooser did not show retained source"; exit 1; fi
 if ! tap_ui_text "$PROJECT_SAVE_XML" "$project_recovery_source_name"; then echo "ERROR: could not select retained recovery source"; exit 1; fi
