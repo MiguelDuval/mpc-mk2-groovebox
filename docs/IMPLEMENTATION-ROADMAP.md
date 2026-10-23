@@ -14,10 +14,10 @@
 - This candidate still requires its own full exact-SHA Android workflow before acceptance.
 
 ### Next queue
-1. Observe Build #3092 / https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39891842567 on exact SHA f786c6780d8c4514b89037951aa156269697582c. The gate includes recovery picker cancellation, active canonical SHA unchanged, private source retained, byte-identical export/reopen, all JVM/native tests, full smoke and evidence upload.
-2. The next candidate fixes false Project Save availability for a linked read-only/revoked URI: query Android's live write permission, disable direct SAVE if missing, latch an explicit provider write denial even if the platform grant remains, and state that SAVE AS is still available. Do not disable SAVE for an unlinked Project because it opens SAVE AS.
-3. Four JVM cases cover Save-as entry on an unlinked project, a writable linked URI, missing/revoked write permission, and explicit provider write rejection. Source-contract smoke asserts live grant lookup, denial latch, truthful UI state and enabled SAVE AS. Full exact-SHA acceptance is pending.
-4. After that safety slice is green, investigate deterministic provider grant revocation and actual read/write failures. Keep PR #28/#29 bases and the physical-controller gate unchanged.
+1. Fix the recovery-cancel smoke's incorrect source-visibility assertion. Build #3093 failed after cancellation had returned and a fresh Project tree was captured; smoke searched for the private recovery filename on the Project workspace instead of the RECOVERY chooser.
+2. The candidate removes that search and reopens RECOVERY; exact filename visibility remains required in the actual chooser before export. Preserve strict state-SHA after cancellation and destination-byte/read-back/canonical-state Open checks.
+3. Validate on the new exact SHA: all selected Project JVM suites, native tests, full Project/Shortcut smoke, recovery cancellation/export/reopen and visual-evidence upload.
+4. Then exercise provider I/O failures and URI-grant revocation where deterministic. Keep PR #28/#29 bases and the physical-controller gate unchanged.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

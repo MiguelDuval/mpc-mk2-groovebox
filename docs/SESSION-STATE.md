@@ -31,13 +31,11 @@
 
 ## Current queue
 
-1. Build #3088 / https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39878406244 passed on exact SHA f39fa0a000bcca2ec635cd3a2971a9e405622469: real DocumentsUI recovery export, exact-state reopen, Project/Shortcut smoke and visual-evidence upload. Evidence artifact 12470473607 (SHA-256 cd036ce10524db6d6e1d7f5baa76a98e3b418d1e76aa32b95b67684facbe8646); APK 12469867908 (SHA-256 c7c7fb2036fcc2929512d493b4e213897ffd5d13cb3e08b998d9adec0d525acc).
-2. Build #3089 / https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39885681706 passed on exact SHA 8b02cd05f83b9f9874e8cf816e1809fee0912a8f: persistable URI modes use only provider-returned READ/WRITE flags.
-3. Build #3090 / https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39886168380 failed at recovery-cancel smoke because one BACK key did not close DocumentsUI or return the Activity result. The next attempt reused the measured helper that sends Back until the app resumes.
-4. Build #3091 / https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39891672743, SHA fcdf02b427dd5e2578d7fc4fffeb8871d8a7d490, failed its source preflight because the shell-helper invocation was mistakenly searched for in MainActivity Java. The corrected candidate checks the helper in the smoke script itself.
-5. Build #3092 / https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39891842567 is in progress on exact SHA f786c6780d8c4514b89037951aa156269697582c. The final result must include recovery cancellation, active canonical SHA preservation, private-source retention, byte-verified export/reopen, and evidence upload.
-6. The current prepared direct-SAVE candidate addresses false action availability for linked Project documents. It checks the live Android URI write grant, latches an explicit provider write denial, marks the linked URI read-only/write-unavailable and disables direct SAVE in Project/Menu while keeping SAVE AS enabled. An unlinked SAVE remains available as a Save As entry point. Four additional JVM policy tests and source-contract checks are included. The candidate is prepared but not published or run in CI.
-7. Keep PR #28/#29 bases unchanged. Physical MPC Studio MkII acceptance remains a separate hardware gate.
+1. [Build #3093 / run 39892980426](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39892980426), exact SHA `f8bbb7f6268f674a4a51d122b9d56903610df756`, failed at Android emulator smoke; visual evidence uploaded successfully. The recovery-export cancellation action itself completed and the Project page hierarchy was captured.
+2. Root cause: smoke searched for the private recovery filename on the Project workspace, where the UI intentionally shows only the number of available copies. The filename appears after opening the RECOVERY chooser. The repeated UiAutomator dumps were waiting for content that is not visible on that page.
+3. The candidate removes that false assertion. It then reopens RECOVERY and still requires the exact filename in the chooser before the successful export. State SHA after cancellation, real DocumentsUI export, destination-byte/read-back equality, active Project invariance and the canonical-state Open round trip remain strict.
+4. Require a fresh full exact-SHA workflow: selected JVM/native tests, full Project and Shortcut smoke, recovery cancel/export/reopen and visual-evidence upload. Then cover deterministic provider read/write failure and revoked-grant cases.
+5. Keep PR #28/#29 bases unchanged; physical MPC Studio MkII acceptance remains separate.
 
 ## Completed in this session
 

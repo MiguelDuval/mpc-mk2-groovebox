@@ -138,6 +138,11 @@ for required in \
   fi
 done
 
+echo "Checking recovery filename only in the live RECOVERY chooser..."
+if ! grep -Fq -- 'wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_source_name" 15' "$SMOKE_SCRIPT"; then
+  echo "ERROR: recovery filename must still be checked in the actual chooser"; exit 1
+fi
+
 echo "Checking app-private recovery-copy export implementation..."
 for required in \
   'MpcProjectRecoveryStore.list(getFilesDir())' \
@@ -12121,10 +12126,9 @@ if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_SAVE_XML"; then
   echo "ERROR: app did not return to Project after recovery-export cancellation"; exit 1
 fi
 PROJECT_CURRENT_APP_XML="$PROJECT_SAVE_XML"
-if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_source_name" 10; then
-  echo "ERROR: recovery source vanished after picker cancellation"; exit 1
-fi
-echo "Recovery export cancellation passed: canonical active-state SHA unchanged and private source remains available."
+# The private filename is not shown on the Project workspace itself; it is
+# shown only in the RECOVERY chooser. Reopen that chooser to verify retention.
+echo "Recovery export cancellation passed: canonical active-state SHA unchanged; rechecking source in RECOVERY chooser."
 
 if ! tap_project_function_bar 3; then echo "ERROR: RECOVERY action is not enabled"; exit 1; fi
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_source_name" 15; then echo "ERROR: recovery chooser did not show retained source"; exit 1; fi
