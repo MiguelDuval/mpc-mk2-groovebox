@@ -6,8 +6,9 @@
 ## Last accepted full-workflow baselines
 
 - PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
-- **Latest full exact-HEAD acceptance:** [Android Build #3097 / run 39931641764](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39931641764), exact SHA `549c78a709097a261277b090aa27672dab590c54`. All 57 workflow steps passed, including focused URI-grant policy tests, native/JVM checks, Android emulator smoke (step 52), and visual-evidence upload (step 53).
-- Build #3097 artifacts: APK `app-debug.apk`, ID `12492765076` (10,009,613 bytes); visual evidence `mpc-ui-visual-evidence`, ID `12492653431` (14,066,440 bytes). Artifact archives are available from the linked run.
+- **Latest full exact-HEAD acceptance before this real-provider slice:** [Android Build #3100 / run 39939008154](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39939008154), exact SHA `3eafdf79d38a09100e444e5afa8516a51a02f30d`. The typed transaction failure-phase implementation, focused JVM cases, native/JVM checks, full Android emulator smoke (step 52) and visual-evidence upload (step 53) passed.
+- Build #3100 artifacts: APK ID `12495955478` (10,009,613 bytes); visual evidence ID `12496337751` (14,075,908 bytes). Both artifacts are available from the linked run.
+- Build #3097 / run 39931641764, exact SHA `549c78a709097a261277b090aa27672dab590c54`, remains the predecessor full-green baseline for the preimage-read latch fix.
 - Build #3096 / run 39925775167 on SHA `12f988395c7d6ad50a40c84406770411fa1e72e1` remains the immediately preceding green baseline; Build #3097 verifies the follow-up that guards write-denial latching with `writeAttempted=false`.
 - Build #3082 accepted the native Spinner popup scroll using measured live ListView bounds. The earlier GRID wait was a test-driver gap; it is closed on this exact SHA and should not be re-investigated without a fresh regression.
 - [Build #3077 / run 39846737408](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39846737408), SHA `e5aac93b5ce5b4544ccdde53acd14d421f7ad7e7`, accepted real New Project cancellation/reset/unlinked-file behavior.
@@ -21,7 +22,8 @@
 - A failed Save does not relink Save As to the active Project and does not replace the active in-memory model. Errors before the target write report `destination unchanged`; verified rollback reports `previous document restored`; uncertain rollback reports `recovery copy retained` and tells the user to use Save As.
 - Added JVM fault-injection tests for exact write/readback, partial-write exceptions, silent truncation, preimage-read failure, readback provider failure, failed rollback with byte-exact recovery retention, and over-limit snapshots. Source-contract preflight keeps critical integration and failure tests present.
 - **Transaction acceptance is confirmed on Build #3088 and revalidated through Build #3097** for the supported SAVE / SAVE AS / OPEN and recovery journeys. Build #3097 accepted the fix that a preimage-read EACCES/SecurityException with `writeAttempted=false` must not disable direct SAVE. The transaction uses verified best-effort rollback, not a guarantee of atomic replacement by arbitrary SAF providers.
-- New finding after the accepted checkpoint: the transaction’s old combined try-block treated output write and subsequent result readback as one failure source. A readback `SecurityException` after a completed write can therefore be incorrectly classified as a provider write denial. A candidate introduces explicit transaction failure phases and only latches direct-SAVE denial for permission failures from `PROVIDER_WRITE` or `ROLLBACK_WRITE`; its exact-SHA full workflow is pending.
+- **Build #3100 accepted the typed transaction failure-phase correction** on exact SHA `3eafdf79d38a09100e444e5afa8516a51a02f30d`: provider output, post-write readback/mismatch, private rollback-backup read, rollback output and rollback verification are distinct. A readback-only `SecurityException` no longer counts as evidence that the provider denied a write; actual forward/rollback output permission denial still latches direct SAVE unavailable. JVM fault-injection tests and the complete emulator workflow passed.
+- The remaining Project reliability gap is actual URI-grant revocation. A new debug-only Android smoke path releases the exact persisted modes for a real DocumentsUI URI, force-stops to remove temporary grants, relaunches and probes the URI through the real `ContentResolver`, then verifies that direct SAVE is disabled while SAVE AS can create and verify a replacement document. This test path is a candidate and requires its own exact-SHA full workflow.
 
 ### Live CI — exact-SHA results and provider-failure state
 
@@ -34,9 +36,9 @@
 
 ## Current queue
 
-1. Finish and validate the failure-phase implementation: output write, result readback/mismatch and rollback output must have distinct typed outcomes. Keep direct SAVE enabled after a readback-only denial when rollback is verified; disable it for a genuine provider output permission denial.
-2. Run the new focused JVM cases and required preflight, then require a fresh full Android Build on the exact integrated SHA, including emulator smoke and uploaded visual evidence. Do not call JVM fixtures real DocumentsUI acceptance.
-3. Next, exercise URI-grant revocation and provider read/write failures in separate direct SAVE and SAVE AS user flows, using the real Android DocumentsUI/provider where practical. Record which failures were truly induced; keep deterministic fault injection as unit coverage only.
+1. Complete the new real DocumentsUI URI-revocation smoke on an exact SHA: prove the URI was writable before release, prove there is no persisted/live read or write grant after process restart, and confirm the real ContentResolver read is denied while the active musical-state SHA remains unchanged.
+2. Verify the real Project View has direct SAVE disabled and SAVE AS enabled/clickable with measured bounds. Then create a distinct replacement document via DocumentsUI, confirm exact read-back verification, direct-SAVE it and reopen it.
+3. Require full exact-SHA Android CI including focused JVM suites, native tests, Bash/source-contract checks, the whole emulator smoke and visual-evidence upload. This covers grant revocation, not every provider-specific write-denial mode.
 4. Leave PR #28/#29 bases unchanged, keep `cancel-in-progress: false`, and keep physical MPC Studio MkII verification as a separate hardware gate.
 
 ## Completed in this session

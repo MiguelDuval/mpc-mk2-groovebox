@@ -183,7 +183,12 @@ for required in \
   'transaction.failurePhase' \
   'transaction.rollbackFailurePhase' \
   'MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK' \
-  'MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK_MISMATCH'; do
+  'MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK_MISMATCH' \
+  'projectUriGrantRevocationSmokeMode' \
+  'projectUriRevokedProbeMode' \
+  'PREF_REVOKED_PROJECT_URI' \
+  'PROJECT_URI_GRANT_REVOKE_COMPLETE' \
+  'PROJECT_URI_REVOKED_READ_PROBE_DENIED'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: SAF permission/direct-Save availability contract missing: $required"; exit 1
   fi
@@ -12191,3 +12196,178 @@ if ! show_project_route_extended; then exit 1; fi
 if ! capture_ui_screenshot "/tmp/mpc-groovebox-project-recovery-export-roundtrip.png" 10; then exit 1; fi
 if ! capture_project_persistence_view_tree "PROJECT" "/tmp/mpc-groovebox-project-recovery-export-roundtrip-view-hierarchy.xml"; then exit 1; fi
 echo "Project recovery export passed: private source retained; exported destination hash matched and reopened to identical Project state."
+
+ 
+# Revoke a real persisted URI grant returned by DocumentsUI, force-stop the app so
+# no temporary Activity grant can mask the result, then prove direct SAVE is
+# disabled while SAVE AS still writes a fresh document through DocumentsUI.
+echo "Running real DocumentsUI URI-grant revocation and SAVE AS recovery acceptance..."
+if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
+  echo "ERROR: could not stop app before URI-grant revocation acceptance"; exit 1
+fi
+if ! adb_bounded 5 shell logcat -c; then
+  echo "ERROR: could not clear logcat before URI-grant revocation acceptance"; exit 1
+fi
+snapshot_project_view_tree_marker_baselines
+if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
+      --es "$SMOKE_MODE_EXTRA" "project-uri-grant-revocation"; then
+  echo "ERROR: could not launch debug URI-grant revocation fixture"; exit 1
+fi
+if ! wait_for_new_project_marker "STARTUP_COMPLETE" 0 45; then
+  echo "ERROR: URI-grant revocation fixture native startup timed out"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_TEST_FIXTURE_READY" 0 20; then
+  echo "ERROR: URI-grant revocation fixture musical state was not prepared"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: URI-grant revocation fixture did not render the real Project workspace"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
+if ! open_project_document "Untitled.mpcproj"; then
+  echo "ERROR: could not open the existing real DocumentsUI Project for grant revocation"; exit 1
+fi
+if ! show_project_route_extended; then
+  echo "ERROR: could not return to Project after opening the revocation fixture document"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: linked Project view missing before URI grant revocation"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
+if ! tap_visible_description_early "$PROJECT_ROUTE_XML" "MPC Project test revoke persisted URI grant"; then
+  echo "ERROR: debug revoke action was unavailable for the linked writable SAF document"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_URI_GRANT_REVOKE_COMPLETE" 0 20; then
+  echo "ERROR: Android ContentResolver did not revoke the persisted URI modes"; exit 1
+fi
+project_uri_revoke_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_URI_GRANT_REVOKE_COMPLETE" | tail -n 1 || true)"
+if ! grep -Fq -- "writePermissionBefore=GRANTED" <<<"$project_uri_revoke_line" \
+    || ! grep -Fq -- "remainingPersisted=false" <<<"$project_uri_revoke_line"; then
+  echo "ERROR: URI-revocation fixture did not prove an initially writable URI was released"
+  echo "$project_uri_revoke_line"; exit 1
+fi
+project_uri_revoke_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_uri_revoke_line")"
+if [[ ! "$project_uri_revoke_sha" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "ERROR: URI-revocation fixture omitted the active canonical-state SHA"
+  echo "$project_uri_revoke_line"; exit 1
+fi
+
+if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
+  echo "ERROR: could not stop app to clear temporary picker URI access"; exit 1
+fi
+if ! adb_bounded 5 shell logcat -c; then
+  echo "ERROR: could not clear logcat before revoked-URI probe"; exit 1
+fi
+snapshot_project_view_tree_marker_baselines
+if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
+      --es "$SMOKE_MODE_EXTRA" "project-uri-revoked-probe"; then
+  echo "ERROR: could not relaunch app for revoked-URI provider probe"; exit 1
+fi
+if ! wait_for_new_project_marker "STARTUP_COMPLETE" 0 45; then
+  echo "ERROR: revoked-URI probe Activity startup timed out"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_URI_REVOKED_READ_PROBE_DENIED" 0 20; then
+  echo "ERROR: real ContentResolver unexpectedly retained access to the revoked Project URI"; exit 1
+fi
+project_uri_probe_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_URI_REVOKED_READ_PROBE_DENIED" | tail -n 1 || true)"
+if ! grep -Fq -- "readPermission=DENIED" <<<"$project_uri_probe_line" \
+    || ! grep -Fq -- "writePermission=DENIED" <<<"$project_uri_probe_line" \
+    || ! grep -Fq -- "persistedGrant=false" <<<"$project_uri_probe_line" \
+    || ! grep -Fq -- "modelUnchanged=true" <<<"$project_uri_probe_line" \
+    || ! grep -Fq -- "stateSha256=$project_uri_revoke_sha" <<<"$project_uri_probe_line"; then
+  echo "ERROR: revoked-URI probe failed permission/state preservation assertions"
+  echo "$project_uri_probe_line"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: Project view tree missing after revoked-URI probe"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
+python3 - "$PROJECT_ROUTE_XML" <<'PY_REVOKED_PROJECT_UI'
+import sys
+import xml.etree.ElementTree as ET
+path = sys.argv[1]
+root = ET.parse(path).getroot()
+if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != "PROJECT":
+    raise SystemExit(f"bad real View-tree provenance: {root.attrib!r}")
+nodes = list(root.iter("node"))
+save = [n for n in nodes if n.attrib.get("content-desc", "").startswith("MPC Project Save unavailable:")]
+save_as = [n for n in nodes if n.attrib.get("content-desc") == "MPC Project Save As"]
+def visible_bounds(node):
+    raw = node.attrib.get("bounds", "")
+    try:
+        left_top, right_bottom = raw[1:-1].split("][")
+        left, top = map(int, left_top.split(","))
+        right, bottom = map(int, right_bottom.split(","))
+        return right > left and bottom > top
+    except (ValueError, IndexError):
+        return False
+if len(save) != 1 or save[0].attrib.get("enabled") != "false":
+    raise SystemExit(f"direct SAVE must be disabled by the actual revoked grant; candidates={[(n.attrib.get('enabled'), n.attrib.get('clickable')) for n in save]}")
+if len(save_as) != 1 or save_as[0].attrib.get("enabled") != "true" or save_as[0].attrib.get("clickable") != "true" or not visible_bounds(save_as[0]):
+    raise SystemExit(f"SAVE AS must remain enabled/clickable with live bounds; candidates={[(n.attrib.get('enabled'), n.attrib.get('clickable'), n.attrib.get('bounds')) for n in save_as]}")
+print("REAL URI REVOKE UI VERIFIED: direct SAVE disabled; SAVE AS enabled/clickable with measured live bounds.")
+PY_REVOKED_PROJECT_UI
+
+# SAVE AS remains a separate viable path: write a distinct new document after
+# the previous document's persisted grant has been revoked.
+PROJECT_DOC_REVOKED_B_NAME="mpc-after-revocation-$BASHPID.mpcproj"
+project_save_after_revoke_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+if ! tap_project_function_bar 1; then
+  echo "ERROR: SAVE AS Function Bar action was unavailable after URI revocation"; exit 1
+fi
+project_save_picker_ready=0
+for ((attempt=1; attempt<=25; attempt++)); do
+  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
+      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
+    project_save_picker_ready=1
+    break
+  fi
+  sleep 1
+done
+if [ "$project_save_picker_ready" -ne 1 ]; then
+  echo "ERROR: DocumentsUI did not open for SAVE AS after URI revocation"; exit 1
+fi
+if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
+  echo "ERROR: could not capture SAVE AS picker after URI revocation"; exit 1
+fi
+if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_REVOKED_B_NAME"; then exit 1; fi
+if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then
+  echo "ERROR: Android DocumentsUI Save action unavailable for recovery Save As"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_save_after_revoke_marker_before" 45; then
+  echo "ERROR: SAVE AS could not create a new writable document after old URI revocation"; exit 1
+fi
+project_save_after_revoke_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
+project_save_after_revoke_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_save_after_revoke_line")"
+if [[ "$project_save_after_revoke_sha" != "$project_uri_revoke_sha" ]] \
+    || ! grep -Fq -- "readBackVerified=true" <<<"$project_save_after_revoke_line" \
+    || ! grep -Fq -- "sessionStale=false" <<<"$project_save_after_revoke_line"; then
+  echo "ERROR: post-revocation SAVE AS failed exact-state read-back verification"
+  echo "$project_save_after_revoke_line"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: SAVE AS after revocation did not return to the Project workspace"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
+project_save_replacement_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+if ! tap_project_function_bar 2; then
+  echo "ERROR: direct SAVE was not re-enabled for the newly linked Save As document"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_save_replacement_marker_before" 45; then
+  echo "ERROR: direct SAVE did not work on the replacement document after Save As"; exit 1
+fi
+project_save_replacement_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
+if ! grep -Fq -- "readBackVerified=true" <<<"$project_save_replacement_line" \
+    || ! grep -Fq -- "sessionStale=false" <<<"$project_save_replacement_line"; then
+  echo "ERROR: direct SAVE of the replacement document was not verified"
+  echo "$project_save_replacement_line"; exit 1
+fi
+if ! open_project_document "$PROJECT_DOC_REVOKED_B_NAME"; then
+  echo "ERROR: the new post-revocation Save As document could not be reopened"; exit 1
+fi
+project_save_replacement_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
+if ! grep -Fq -- "domainSha256=$project_uri_revoke_sha" <<<"$project_save_replacement_open_line" \
+    || ! grep -Fq -- "persistedDomainExact=true" <<<"$project_save_replacement_open_line"; then
+  echo "ERROR: new Save As document did not reopen to the unchanged active Project state"
+  echo "$project_save_replacement_open_line"; exit 1
+fi
+echo "REAL DocumentsUI URI-revocation acceptance passed: revoked source read was denied after process restart with the canonical model unchanged; direct SAVE disabled, SAVE AS created/read-back-verified a separate destination, and direct SAVE plus reopen worked on the replacement."
