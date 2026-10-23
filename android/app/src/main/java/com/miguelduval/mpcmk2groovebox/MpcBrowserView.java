@@ -552,13 +552,15 @@ final class MpcBrowserView extends LinearLayout {
         providerState.setText(isDocumentTreeLocation() ? userFolderStatus : localScanMessage);
         final List<MpcBrowserFile> sourceFiles =
                 isDocumentTreeLocation() ? userFolderFiles : localFiles;
-        final List<MpcBrowserFile> visibleFiles = new ArrayList<>();
+        final List<MpcBrowserFile> matchingFiles = new ArrayList<>();
         for (MpcBrowserFile file : sourceFiles) {
             if (file.matchesBrowserQuery(
                     activeSection, activeLocationItem, activeFilter(), searchQuery())) {
-                visibleFiles.add(file);
+                matchingFiles.add(file);
             }
         }
+        final List<MpcBrowserFile> visibleFiles =
+                MpcBrowserFile.sortedByDisplayName(matchingFiles);
 
         if (selectedFile != null) {
             MpcBrowserFile stillVisible = null;

@@ -30,11 +30,20 @@ inline SampleChopPlan makeEvenChopPlan(
         return plan;
     }
 
+    // Divide first so boundaries remain correct even near SIZE_MAX. Because
+    // chopCount is restricted to 4/8/16, remainder * boundaryIndex is bounded
+    // to a small value; quotient * boundaryIndex never exceeds sampleFrameCount.
+    const std::size_t quotient = sampleFrameCount / chopCount;
+    const std::size_t remainder = sampleFrameCount % chopCount;
+    const auto boundary = [quotient, remainder, chopCount](
+            std::size_t boundaryIndex) noexcept {
+        return quotient * boundaryIndex
+                + (remainder * boundaryIndex) / chopCount;
+    };
+
     for (std::size_t index = 0; index < chopCount; ++index) {
-        const std::size_t startFrame =
-                (sampleFrameCount * index) / chopCount;
-        const std::size_t endFrame =
-                (sampleFrameCount * (index + 1)) / chopCount;
+        const std::size_t startFrame = boundary(index);
+        const std::size_t endFrame = boundary(index + 1);
 
         if (startFrame >= endFrame) {
             return SampleChopPlan{};
