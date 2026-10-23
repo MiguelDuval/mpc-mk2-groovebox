@@ -192,6 +192,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private FrameLayout content;
     private Uri currentProjectUri;
     private String currentProjectName = "Untitled";
+    // Latch an explicit provider write denial even if Android retains its URI grant.
+    private boolean currentProjectWritePreviouslyRejected;
     // Async provider writes must not attach a document chosen for a different
     // native Project after an Open/New Project replacement completes.
     private long projectSessionGeneration;
@@ -1966,8 +1968,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Button newProject = addFunction(
                     "NEW PROJECT", startupComplete, v -> requestNewProject());
             newProject.setContentDescription("MPC Menu New Project");
-            Button save = addFunction("SAVE", true, v -> saveCurrentProject());
-            save.setContentDescription("MPC Menu Project Save");
+            final boolean directSaveAvailable = canInvokeProjectSave();
+            Button save = addFunction("SAVE", directSaveAvailable, v -> saveCurrentProject());
+            save.setContentDescription(directSaveAvailable
+                    ? "MPC Menu Project Save"
+                    : "MPC Menu Project Save unavailable: read-only or write access unavailable; use Save As");
             addFunction("PREFERENCES", true, v -> showAudioSettingsPage());
             addFunction("MIDI / CONTROL", true, v -> showMidiPage());
             Button editShortcuts = addFunction(
@@ -1982,8 +1987,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             open.setContentDescription("MPC Project Open");
             Button saveAs = addFunction("SAVE AS", true, v -> openProjectSaveAsPicker());
             saveAs.setContentDescription("MPC Project Save As");
-            Button save = addFunction("SAVE", true, v -> saveCurrentProject());
-            save.setContentDescription("MPC Project Save");
+            final boolean directSaveAvailable = canInvokeProjectSave();
+            Button save = addFunction("SAVE", directSaveAvailable, v -> saveCurrentProject());
+            save.setContentDescription(directSaveAvailable
+                    ? "MPC Project Save"
+                    : "MPC Project Save unavailable: read-only or write access unavailable; use Save As");
             Button recovery = addFunction(
                     "RECOVERY", !MpcProjectRecoveryStore.list(getFilesDir()).isEmpty(),
                     v -> showProjectRecoveryChooser());
@@ -10647,12 +10655,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(summary, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
 
-        TextView storage = label(
-                currentProjectUri == null
-                        ? "NO FILE LINKED • use SAVE AS to create a project file, then OPEN it after restarting."
-                        : "PROJECT FILE LINKED • SAVE updates this document; SAVE AS creates another file.",
-                11, MUTED);
-        storage.setContentDescription("MPC Project file link status");
+        final boolean directSaveAvailable = canInvokeProjectSave();
+        final String storageLabel;
+        final String storageDescription;
+        if (currentProjectUri == null) {
+            storageLabel = "NO FILE LINKED • use SAVE AS to create a project file, then OPEN it after restarting.";
+            storageDescription = "MPC Project file link status: no file linked; Save opens Save As";
+        } else if (directSaveAvailable) {
+            storageLabel = "PROJECT FILE LINKED • SAVE updates this document; SAVE AS creates another file.";
+            storageDescription = "MPC Project file link status: linked and writable";
+        } else {
+            storageLabel = "READ-ONLY / WRITE ACCESS UNAVAILABLE • Direct SAVE disabled; use SAVE AS to create an editable copy.";
+            storageDescription = "MPC Project file link status: read-only or write access unavailable; Save As remains available";
+        }
+        TextView storage = label(storageLabel, 11, directSaveAvailable ? MUTED : ACCENT_2);
+        storage.setContentDescription(storageDescription);
         page.addView(storage, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
@@ -11896,9 +11913,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         });
     }
 
+    private boolean canInvokeProjectSave() {
+        if (currentProjectUri == null) {
+            // With no linked URI, SAVE opens Save As; do not disable that entry point.
+            return true;
+        }
+        final boolean liveWriteGrant = checkUriPermission(
+                currentProjectUri,
+                android.os.Process.myPid(),
+                android.os.Process.myUid(),
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED;
+        return MpcProjectUriGrantPolicy.directSaveActionAvailable(
+                true, liveWriteGrant, currentProjectWritePreviouslyRejected);
+    }
+
+    private static boolean isProjectProviderWriteAccessFailure(String failure) {
+        if (failure == null || failure.isEmpty()) return false;
+        final String normalized = failure.toLowerCase(Locale.ROOT);
+        return normalized.contains("securityexception")
+                || normalized.contains("permission denied")
+                || normalized.contains("accessdeniedexception")
+                || normalized.contains("access denied")
+                || normalized.contains("read-only")
+                || normalized.contains("readonly")
+                || normalized.contains("not writable")
+                || normalized.contains("write permission");
+    }
+
     private void saveCurrentProject() {
         if (currentProjectUri == null) {
             openProjectSaveAsPicker();
+            return;
+        }
+        if (!canInvokeProjectSave()) {
+            setBottomStatus("PROJECT SAVE UNAVAILABLE • provider write access is missing or revoked • use SAVE AS");
+            if ("PROJECT".equals(currentPage)) showProjectPage();
+            refreshMpcFunctionBar();
             return;
         }
         saveProjectToUri(currentProjectUri, false);
@@ -11962,6 +12012,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         projectSessionGeneration++;
         projectOpenRequestGeneration++;
         currentProjectUri = null;
+        currentProjectWritePreviouslyRejected = false;
         currentProjectName = nativeProjectGetName();
         selectedPad = 0;
         selectedLayer = 0;
@@ -12104,6 +12155,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 if (saveFailure != null) {
                     final String recoveryName = transaction.recoveryCopy == null
                             ? "none" : transaction.recoveryCopy.getName();
+                    final boolean directSaveAccessRejected = sameProjectSession
+                            && !selectAsCurrentProject
+                            && currentProjectUri != null
+                            && currentProjectUri.equals(target)
+                            && isProjectProviderWriteAccessFailure(saveFailure);
+                    if (directSaveAccessRejected) currentProjectWritePreviouslyRejected = true;
                     Log.i(TAG, "PROJECT_SAVE_FAILED snapshotStateSha256=" + snapshotStateSha256
                             + " activeStateSha256=" + activeStateSha256
                             + " sessionGeneration=" + saveSessionGeneration
@@ -12111,25 +12168,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             + " sessionStale=" + !sameProjectSession
                             + " writeAttempted=" + transaction.writeAttempted
                             + " previousDocumentPreserved=" + transaction.previousDocumentPreserved
+                            + " directSaveAccessRejected=" + directSaveAccessRejected
                             + " previousBytes=" + transaction.previousBytes
                             + " verifiedBytes=" + transaction.verifiedBytes
                             + " recoveryCopy=" + recoveryName
                             + " error=" + saveFailure);
                     // Never let a stale write failure replace the current Project session's status.
                     if (sameProjectSession) {
+                        final String unavailableSuffix = directSaveAccessRejected
+                                ? " • direct SAVE disabled; use SAVE AS" : "";
                         final String status;
                         if (!transaction.writeAttempted) {
                             status = "PROJECT SAVE FAILED • destination unchanged • "
-                                    + saveFailure;
+                                    + saveFailure + unavailableSuffix;
                         } else if (transaction.previousDocumentPreserved) {
                             status = "PROJECT SAVE FAILED • previous document restored • "
-                                    + saveFailure;
+                                    + saveFailure + unavailableSuffix;
                         } else {
                             status = "PROJECT SAVE FAILED • rollback unverified • recovery copy retained • "
                                     + recoveryName + " • use SAVE AS to preserve current Project • "
                                     + saveFailure;
                         }
                         setBottomStatus(status);
+                        if ("PROJECT".equals(currentPage)) showProjectPage();
+                        refreshMpcFunctionBar();
                     }
                     return;
                 }
@@ -12149,9 +12211,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
 
                 if (selectAsCurrentProject) currentProjectUri = target;
+                if (currentProjectUri != null && currentProjectUri.equals(target)) {
+                    currentProjectWritePreviouslyRejected = false;
+                }
                 currentProjectName = nativeProjectGetName();
                 refreshProjectIdentity();
                 if ("PROJECT".equals(currentPage)) showProjectPage();
+                refreshMpcFunctionBar();
 
                 final boolean changedDuringSave =
                         !MpcProjectSaveSessionPolicy.snapshotMatchesCurrentState(
@@ -12275,6 +12341,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 projectSessionGeneration++;
                 projectOpenRequestGeneration++;
                 currentProjectUri = uri;
+                currentProjectWritePreviouslyRejected = false;
                 currentProjectName = nativeProjectGetName();
                 refreshProjectIdentity();
                 final String audioResult = nativeAudioStart();

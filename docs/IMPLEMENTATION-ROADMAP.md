@@ -14,10 +14,10 @@
 - This candidate still requires its own full exact-SHA Android workflow before acceptance.
 
 ### Next queue
-1. Observe Build #3091 / [run 39891672743](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39891672743), SHA `fcdf02b427dd5e2578d7fc4fffeb8871d8a7d490`. It was running when this corrective candidate was prepared.
-2. On top of the measured cancellation-helper fix, correct a smoke-preflight path mismatch: check `cancel_android_document_picker()` in the shell script (`$0`), not inside MainActivity Java. The preflight should reject regression to one-shot Back without searching the wrong source file.
-3. Require the full exact-SHA run to pass Project Open/write-transaction/recovery-store/URI-grant tests, native tests, recovery cancel + export/Open, Shortcut smoke, and evidence upload.
-4. Next investigate provider grant revocation and real read/write failures. Keep PR #28/#29 bases and physical hardware gate unchanged.
+1. Observe Build #3092 / https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39891842567 on exact SHA f786c6780d8c4514b89037951aa156269697582c. The gate includes recovery picker cancellation, active canonical SHA unchanged, private source retained, byte-identical export/reopen, all JVM/native tests, full smoke and evidence upload.
+2. The next candidate fixes false Project Save availability for a linked read-only/revoked URI: query Android's live write permission, disable direct SAVE if missing, latch an explicit provider write denial even if the platform grant remains, and state that SAVE AS is still available. Do not disable SAVE for an unlinked Project because it opens SAVE AS.
+3. Four JVM cases cover Save-as entry on an unlinked project, a writable linked URI, missing/revoked write permission, and explicit provider write rejection. Source-contract smoke asserts live grant lookup, denial latch, truthful UI state and enabled SAVE AS. Full exact-SHA acceptance is pending.
+4. After that safety slice is green, investigate deterministic provider grant revocation and actual read/write failures. Keep PR #28/#29 bases and the physical-controller gate unchanged.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

@@ -30,4 +30,20 @@ public class MpcProjectUriGrantPolicyTest {
                 | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION;
         assertEquals(Intent.FLAG_GRANT_READ_URI_PERMISSION, MpcProjectUriGrantPolicy.persistableModeFlags(flags));
     }
+
+    @Test public void unlinkedProjectKeepsSaveAvailableAsSaveAsEntryPoint() {
+        assertEquals(true, MpcProjectUriGrantPolicy.directSaveActionAvailable(false, false, false));
+    }
+
+    @Test public void linkedWritableDocumentEnablesDirectSave() {
+        assertEquals(true, MpcProjectUriGrantPolicy.directSaveActionAvailable(true, true, false));
+    }
+
+    @Test public void readOnlyOrRevokedWriteGrantDisablesDirectSave() {
+        assertEquals(false, MpcProjectUriGrantPolicy.directSaveActionAvailable(true, false, false));
+    }
+
+    @Test public void providerWriteDenialDisablesDirectSaveEvenWhenSystemGrantStillExists() {
+        assertEquals(false, MpcProjectUriGrantPolicy.directSaveActionAvailable(true, true, true));
+    }
 }
