@@ -3,20 +3,23 @@
 ## CURRENT EXECUTION QUEUE — 2026-10-23 (exact-SHA CI governs)
 
 ### Latest accepted checkpoint
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on feature/mpc-one-ui-fidelity, targeting fix/ui-shell-format-width-startup.
-- **Latest full exact-HEAD acceptance before this slice:** [Android Build #3096 / run 39925775167](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39925775167), exact SHA 12f988395c7d6ad50a40c84406770411fa1e72e1. Focused policy tests, full Android smoke and evidence upload all passed. Evidence artifact SHA-256 5e18f3a3baaad3290d384f0a25b4738f60571e3085809ee9b685e9df3c1d9f96; APK artifact SHA-256 34009e6cfcae137987a36187e642d2e327ed2bed1f9292c2aa17c4a123585d67.
-- Recovery export and exact-byte read-back were accepted on [Build #3088](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39878406244), SHA f39fa0a000bcca2ec635cd3a2971a9e405622469. URI persistable-mode fidelity was accepted on [Build #3089](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39885681706), SHA 8b02cd05f83b9f9874e8cf816e1809fee0912a8f. Build #3095 on parent SHA d6cded9d5ac5ff21e8a5b53c6606fa29b5b6b679 also passed the complete workflow.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
+- **Latest accepted full exact-HEAD workflow:** [Android Build #3097 / run 39931641764](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39931641764), exact SHA `549c78a709097a261277b090aa27672dab590c54`. All 57 workflow steps passed, including focused URI-grant policy/JVM tests, native checks, Android emulator smoke (step 52) and visual evidence upload (step 53).
+- Build #3097 artifacts: debug APK ID `12492765076` (10,009,613 bytes); visual evidence `mpc-ui-visual-evidence` ID `12492653431` (14,066,440 bytes).
+- Build #3096 / [run 39925775167](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39925775167), SHA `12f988395c7d6ad50a40c84406770411fa1e72e1`, is the preceding green full-workflow baseline. Builds #3088 and #3089 separately accepted recovery export/reopen and URI permission mode fidelity.
+- The accepted #3097 fix ensures a preimage-read failure before any provider write (`writeAttempted=false`) does not latch direct SAVE unavailable.
 
-### Current defect — false read-only latch on preimage-read denial
-- MpcProjectDocumentWriteTransaction explicitly returns writeAttempted=false if it cannot capture the original document before opening the target for output. The failure can still contain EACCES/SecurityException because a provider may deny reading the preimage.
-- The previous availability logic classified the exception string without checking transaction phase, then set currentProjectWritePreviouslyRejected=true. This incorrectly disabled direct SAVE after an operation that never attempted a write, despite the UI status saying the destination was unchanged.
-- The candidate routes write-denial latching through shouldLatchProviderWriteDenial(writeAttempted, failure). An access-denial string changes write availability only when a provider write attempt actually occurred. Focused JVM regressions cover preimage EACCES/SecurityException, genuine attempted-write EACCES, and generic verification timeout.
-- The UI smoke remains strict; new source-contract checks require the gated call site and regression tests. This candidate is not accepted until its own full exact-SHA workflow passes.
+### Current defect — readback permission failures misclassified as write denials
+- The transaction previously performed provider output and the later readback verification in one `try` block. Both could report `SecurityException` / EACCES, so a **readback-only** denial after a completed write was misreported as evidence that the provider denied writing.
+- Candidate fix adds typed `FailurePhase` values for preimage capture, actual provider output, result readback/mismatch, rollback output and rollback verification. The policy now latches direct SAVE unavailable only for a permission failure specifically originating from `PROVIDER_WRITE` or `ROLLBACK_WRITE`; a readback-only SecurityException should not trigger the latch if rollback restores and verifies the original bytes.
+- Regression tests cover readback SecurityException with verified rollback, actual write SecurityException, rollback output denial after a readback failure, mismatch, and the earlier preimage-denial case. These JVM fakes test phase policy, not real Android DocumentsUI provider behavior.
+- This candidate is **not accepted** until its own full exact-SHA Android workflow passes smoke and evidence upload.
 
 ### Next queue
-1. Confirm branch HEAD remains 12f988395c7d6ad50a40c84406770411fa1e72e1, safely fast-forward the single policy fix and docs, then inspect the queued exact-SHA workflow.
-2. Require the URI-grant policy JVM suite, transaction/Open/recovery suites, native checks, complete Android smoke including recovery cancellation/export/reopen, A/B document isolation, Shortcut reset/restart, and evidence upload.
-3. Then cover actual provider permission revocation/read failures with deterministic fixtures where possible. Keep PR #28/#29 bases and physical-controller gate unchanged.
+1. Verify the phase-aware transaction and policy compile and pass all focused JVM/native/source-contract preflight checks. Keep SAVE, SAVE AS and OPEN behavior distinct; errors before writing must not mutate write availability, readback failure must report verification/rollback truthfully, and actual provider write denial may disable direct SAVE.
+2. Require a fresh full Android Build for the integrated exact SHA: selected JVM suites, native tests, Bash syntax/source-contract checks, complete emulator workflow and successful visual-evidence upload. Record its workflow URL, exact SHA and artifacts.
+3. After that acceptance, exercise **actual URI grant revocation and real provider read/write denial** separately through direct SAVE and SAVE AS using DocumentsUI or a deterministic Android provider where practical. Do not describe JVM fault injection as real-provider acceptance.
+4. Keep `cancel-in-progress: false`; do not edit `main`, force-push, reset, rebase, or change PR #23/#28/#29 bases. Physical MPC Studio MkII acceptance remains a separate hardware gate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 
