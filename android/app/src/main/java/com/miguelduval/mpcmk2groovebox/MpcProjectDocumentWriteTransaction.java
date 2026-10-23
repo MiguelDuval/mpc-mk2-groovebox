@@ -3,6 +3,7 @@ package com.miguelduval.mpcmk2groovebox;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -201,47 +202,39 @@ final class MpcProjectDocumentWriteTransaction {
         FailurePhase rollbackFailurePhase = FailurePhase.NONE;
         String rollbackFailureDetail = null;
         String rollbackFailure = null;
-        boolean rollbackProviderWriteAttempted = false;
-        try {
-            try (InputStream input = new FileInputStream(backup)) {
-                final OutputStream rollbackStream;
-                rollbackProviderWriteAttempted = true;
-                try {
-                    rollbackStream = document.openOutputStream();
-                    if (rollbackStream == null) {
-                        throw new IOException("Document provider returned no rollback output stream");
-                    }
-                } catch (Exception error) {
-                    rollbackFailurePhase = FailurePhase.ROLLBACK_WRITE;
-                    rollbackFailureDetail = describe(error);
-                    throw error;
-                }
-
-                try (OutputStream output = rollbackStream) {
-                    try {
-                        copyAndFingerprint(input, output, maxBytes);
-                        output.flush();
-                    } catch (Exception error) {
-                        rollbackFailurePhase = FailurePhase.ROLLBACK_WRITE;
-                        rollbackFailureDetail = describe(error);
-                        throw error;
-                    }
-                } catch (Exception error) {
-                    // OutputStream close can report a failed provider write too.
-                    if (rollbackFailurePhase == FailurePhase.NONE) {
-                        rollbackFailurePhase = rollbackProviderWriteAttempted
-                                ? FailurePhase.ROLLBACK_WRITE
-                                : FailurePhase.ROLLBACK_BACKUP_READ;
-                        rollbackFailureDetail = describe(error);
-                    }
-                    throw error;
-                }
+        byte[] backupBytes = null;
+        // Read and re-verify the private preimage before opening the provider for
+        // rollback. This keeps local backup-read failures distinct from an actual
+        // provider output failure, which is the only rollback phase that can prove
+        // a write-access denial.
+        try (InputStream input = new FileInputStream(backup);
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            final Fingerprint backupFingerprint = copyAndFingerprint(input, output, maxBytes);
+            backupBytes = output.toByteArray();
+            if (!previous.matches(backupFingerprint)
+                    || backupBytes.length != previous.bytes) {
+                throw new IOException("Private recovery backup no longer matches the original document");
             }
         } catch (Exception error) {
-            rollbackFailure = describe(error);
-            if (rollbackFailurePhase == FailurePhase.NONE) {
-                rollbackFailurePhase = FailurePhase.ROLLBACK_BACKUP_READ;
-                rollbackFailureDetail = rollbackFailure;
+            rollbackFailurePhase = FailurePhase.ROLLBACK_BACKUP_READ;
+            rollbackFailureDetail = describe(error);
+            rollbackFailure = rollbackFailureDetail;
+        }
+
+        if (rollbackFailurePhase == FailurePhase.NONE) {
+            try {
+                final OutputStream rollbackStream = document.openOutputStream();
+                if (rollbackStream == null) {
+                    throw new IOException("Document provider returned no rollback output stream");
+                }
+                try (OutputStream output = rollbackStream) {
+                    output.write(backupBytes);
+                    output.flush();
+                }
+            } catch (Exception error) {
+                rollbackFailurePhase = FailurePhase.ROLLBACK_WRITE;
+                rollbackFailureDetail = describe(error);
+                rollbackFailure = rollbackFailureDetail;
             }
         }
 
