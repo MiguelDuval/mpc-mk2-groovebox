@@ -1,6 +1,7 @@
 #include "Audio/SampleChop.h"
 
 #include <cassert>
+#include <limits>
 
 namespace {
 
@@ -47,6 +48,39 @@ void testRejectUnsupportedOrTooShortPlans() {
     assert(!mpc::audio::makeEvenChopPlan(3, 4).isValid());
 }
 
+void testNearSizeLimitPlanAvoidsBoundaryMultiplicationOverflow() {
+    const std::size_t sourceFrames = std::numeric_limits<std::size_t>::max();
+    constexpr std::size_t counts[] = {4, 8, 16};
+
+    for (const std::size_t count : counts) {
+        const auto plan = mpc::audio::makeEvenChopPlan(sourceFrames, count);
+        assert(plan.isValid());
+        assert(plan.count == count);
+        assert(plan.regions[0].startFrame == 0);
+        assert(plan.regions[count - 1].endFrame == sourceFrames);
+
+        std::size_t nextStart = 0;
+        std::size_t shortest = 0;
+        std::size_t longest = 0;
+        for (std::size_t index = 0; index < count; ++index) {
+            const auto& region = plan.regions[index];
+            assert(region.startFrame == nextStart);
+            assert(region.endFrame > region.startFrame);
+            const std::size_t length = region.endFrame - region.startFrame;
+            if (index == 0) {
+                shortest = length;
+                longest = length;
+            } else {
+                if (length < shortest) shortest = length;
+                if (length > longest) longest = length;
+            }
+            nextStart = region.endFrame;
+        }
+        assert(nextStart == sourceFrames);
+        assert(longest - shortest <= 1);
+    }
+}
+
 void testEverySupportedCountCoversUnevenRegionContiguously() {
     constexpr std::size_t sourceFrames = 1027;
     constexpr std::size_t counts[] = {4, 8, 16};
@@ -78,5 +112,6 @@ int main() {
     testEightAndSixteenSlices();
     testRejectUnsupportedOrTooShortPlans();
     testEverySupportedCountCoversUnevenRegionContiguously();
+    testNearSizeLimitPlanAvoidsBoundaryMultiplicationOverflow();
     return 0;
 }

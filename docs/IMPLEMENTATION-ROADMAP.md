@@ -1,28 +1,37 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-23 (exact-SHA CI governs)
+## CURRENT EXECUTION QUEUE — 2026-10-23 (live exact-SHA evidence governs)
 
-### Latest accepted checkpoint
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
-- **Latest accepted full exact-HEAD workflow:** [Android Build #3108 / run 39960456465](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39960456465), exact head SHA `3dc0c4816ffd586fd0ef2eb91fbf849e38e6c2ac`. All 57 steps passed, including initial+persistent URI-mode assertions, the guarded real DocumentsUI revocation/recovery flow, full Android emulator smoke and evidence upload.
-- Build #3108 artifacts: APK ID `12504298578` (10,009,613 bytes); visual evidence ID `12506302998` (14,084,760 bytes; SHA-256 `8418cf25798b6298454560fb22d73272f3215347193415586d8e4686e71967b6`).
-- The exact-SHA run closes the destructive false-probe gap: no provider stream is opened when URI access has not been proven revoked.
+### Latest accepted checkpoint — PR #23
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains OPEN on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
+- **Android Build #3113 / run [39984123027](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39984123027) passed on exact SHA `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`.** Full APK/native/JVM/emulator workflow and visual-evidence upload succeeded after integrating PR #31 and #32.
+- Build #3113 APK artifact `12515141867`; visual-evidence artifact `12516242478`. Smoke covered Browser USER FOLDER/FAVORITE 1, Project SAVE/SAVE AS/OPEN/recovery, Shortcut reset/restart, SAMP-008/009 and SAMP-010.
+- PR #30 was at pre-sync HEAD `352e1319f1377c646f268dad07f54e7336214d6f`; no exact-HEAD full run exists for that SHA. Build #3109 failed on prior SHA `cee0c8b5eef8e09c7197b22274f3c2dcd779e833` during Browser FAVORITE 1 DocumentsUI navigation before provider-denial acceptance.
+- Prior SAF slices remain accepted separately: typed failure phases (Build #3100), real URI revocation/recovery (Build #3107), and guarded revoked-URI probes (Build #3108). Provider-retained-access/output-denial still needs its own full exact-SHA acceptance.
 
-### Accepted SAF validation — phase-aware failure handling and URI revocation
-- The typed transaction failure-phase correction is **accepted on Build #3100 / exact SHA `3eafdf79d38a09100e444e5afa8516a51a02f30d`**.
-- Real DocumentsUI URI revocation and SAVE AS recovery were **accepted on Build #3107 / exact SHA `b5a2dbcea720811a68fc20aa9389fdde309f49b4`**.
-- Probe-precondition safety guards are **accepted on Build #3108 / exact SHA `3dc0c4816ffd586fd0ef2eb91fbf849e38e6c2ac`**. The fixture requires live and persisted read/write modes before release; after restart, resolver streams are opened only when both live modes are denied and no persisted mode remains. This prevents an inconsistent false state from truncating a document when `openOutputStream(uri, "wt")` is called.
-- URI revocation does not exercise a provider that still grants access but rejects output writes. That is the next controlled-provider candidate.
+### Accepted UI slice — SAMP-010 viewport zoom and real Pad audition
+- **Accepted on Build #3113 / exact SHA `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`.** Viewport zoom-in/out/reset changed the visible range without changing native PCM frame count or sample region. A real native Pad audition marker was observed at Pad 01, velocity 112.
 
-### Current candidate — provider retains URI access but rejects output
-- The debug-only controlled ContentProvider seeds the active Project bytes, allows reads, denies the first output open, and permits rollback. Smoke drives the production SAVE transaction through ContentResolver.
-- Acceptance must prove `failurePhase=PROVIDER_WRITE`, `rollbackFailurePhase=NONE`, exact original document SHA after rollback, unchanged active model, direct SAVE disabled and SAVE AS followed by direct SAVE/reopen on a distinct DocumentsUI document.
-- Candidate only until this exact HEAD passes the full Android workflow and evidence upload.
+### Current Project SAF candidate — provider retains access but rejects output
+- The debug-only ContentProvider seeds exact active Project bytes, permits reads, denies the first real output open, then permits rollback. Smoke exercises the production SAVE transaction through ContentResolver.
+- Acceptance requires `failurePhase=PROVIDER_WRITE`, `rollbackFailurePhase=NONE`, byte-exact restoration, unchanged active Project state, direct SAVE disabled, and successful SAVE AS/direct SAVE/reopen on the replacement.
+- Build #3109 did not reach this test; its Browser picker failure is not evidence that Project output-denial handling passed or failed.
 
 ### Next queue
-1. Validate the controlled provider's actual output-denial/rollback and Save As recovery path on the exact HEAD.
-2. Add distinct result-readback-denial and rollback-output-denial tests without conflating failure phases.
-3. Keep `cancel-in-progress: false`; do not edit `main`, force-push, reset, rebase, or change PR #23/#28/#29 bases. Physical Akai MPC Studio MkII acceptance remains a separate hardware gate.
+1. Require a full exact-SHA CI run after synchronizing PR #30 with the current PR #23 base: transaction/policy tests, native tests, APK, emulator Browser/Project/SAMP acceptance, real URI revocation, controlled provider output-denial/rollback, and visual evidence.
+2. If Browser FAVORITE 1 fails, inspect fresh DocumentsUI PNG/XML and the exact failed step. The same flow passed on Build #3113; do not add timeouts or weaken assertions without new evidence of another root cause.
+3. After PR #30 acceptance, select the next real catalog gap; Browser Options remain non-functional until their controls have genuine filtering/display/persistence behavior.
+4. Keep `cancel-in-progress: false`, do not modify `main`, and keep physical MPC Studio MkII validation separate.
+
+- With the primary acceptance run green, port the isolated SAMP-010 feature into the existing workflow without creating another smoke test. Keep the viewport separate from native sample region/PCM state.
+- The candidate adds the accessible viewport readout/callback, finite normalized zoom policy + JVM boundary tests, real-touch ZOOM+/ZOOM−/RESET, native audition marker/getter checks and five unique screenshot/XML milestones.
+- The candidate's full exact-SHA Android workflow is pending; SAMP-010 is not accepted until the complete smoke and evidence upload pass.
+
+### Next acceptance order
+
+1. Verify the new exact-HEAD run for SAMP-010. On failure, inspect the exact step and artifacts and fix the root cause without relaxing assertions.
+2. After SAMP-010 is green, resume the provider read/permission-failure gap already being handled on `fix/project-provider-failure-phases`; Build #3109 / run `39965373487` was active at the last live check on SHA `cee0c8b5eef8e09c7197b22274f3c2dcd779e833`. Do not duplicate that branch's work.
+3. Keep all project persistence assertions and the physical-controller gate intact.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 
