@@ -31,10 +31,10 @@
 
 ## Current queue
 
-1. Run the new atomic View-tree publication commit through the full Android workflow. Require all selected JVM suites, native tests, complete smoke—including A/B and both Shortcut restarts—and evidence upload.
-2. If the fresh run passes, retain the atomic write as a stability fix for the observed zero-byte capture race, not as a reason to relax UI assertions.
-3. Next add user-accessible export/restore for retained private recovery copies and deterministic provider read/write/revoked-grant coverage where possible.
-4. Keep PR #28/#29 bases unchanged. Physical MPC Studio MkII acceptance remains a separate hardware gate.
+1. Build #3087 / [run 39877355909](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39877355909), exact SHA cc6a2b8dbff8a312e86aa49f86ae5af2da46e557, was still running at emulator smoke at the last live check.
+2. The next candidate adds a bounded app-private recovery inventory, explicit RECOVERY Function Bar action, real DocumentsUI export using the verified write transaction, original-source retention, and active-Project state/link invariance. A debug-only serialized native snapshot fixture drives the real export and Open round trip.
+3. Validate the new private-store JVM suite and recovery-export scenario on its own exact SHA, including full Android smoke and evidence upload.
+4. Then test provider permission revocation/write failures where deterministic. Keep PR #28/#29 bases unchanged and hardware acceptance separate.
 
 ## Completed in this session
 

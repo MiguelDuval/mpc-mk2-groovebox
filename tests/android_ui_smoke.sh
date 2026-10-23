@@ -120,7 +120,8 @@ done
 echo "Ensuring Project safety JVM suites are executed by Android CI..."
 for required in \
   '--tests com.miguelduval.mpcmk2groovebox.MpcProjectOpenSessionPolicyTest' \
-  '--tests com.miguelduval.mpcmk2groovebox.MpcProjectDocumentWriteTransactionTest'; do
+  '--tests com.miguelduval.mpcmk2groovebox.MpcProjectDocumentWriteTransactionTest' \
+  '--tests com.miguelduval.mpcmk2groovebox.MpcProjectRecoveryStoreTest'; do
   if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
     echo "ERROR: Project safety JVM suite is present but not selected by Gradle CI: $required"; exit 1
   fi
@@ -134,6 +135,28 @@ for required in \
   'reason=atomic-cache-publish-failed'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Android View-tree evidence is not atomically published: $required"; exit 1
+  fi
+done
+
+echo "Checking app-private recovery-copy export implementation..."
+for required in \
+  'MpcProjectRecoveryStore.list(getFilesDir())' \
+  'MPC Project Export Recovery Copy' \
+  'REQUEST_EXPORT_PROJECT_RECOVERY' \
+  'PROJECT_RECOVERY_EXPORT_COMPLETE' \
+  'targetLinkedToActiveProject=false readBackVerified=true'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: recovery-copy export integration missing: $required"; exit 1
+  fi
+done
+for required in \
+  'inventoryIsRestrictedToNonEmptyRecoveryFilesAndNewestFirst' \
+  'boundedReadReturnsExactBytesWithoutDeletingPrivateOriginal' \
+  'readRejectsRecoveryFilesOutsidePrivateDirectory' \
+  'readRejectsEmptyAndOversizedRecoveryCopies'; do
+  if ! grep -Fq -- "$required" \
+      "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectRecoveryStoreTest.java"; then
+    echo "ERROR: recovery store validation test missing: $required"; exit 1
   fi
 done
 
@@ -10957,6 +10980,7 @@ tap_project_function_bar() {
     0) description="MPC Project Open" ;;
     1) description="MPC Project Save As" ;;
     2) description="MPC Project Save" ;;
+    3) description="MPC Project Export Recovery Copy" ;;
     *) echo "ERROR: unsupported Project Function Bar index $index"; return 2 ;;
   esac
   echo "Real measured Project Function Bar tap target=$description"
@@ -11999,3 +12023,59 @@ fi
 PROJECT_CURRENT_APP_XML="$PROJECT_SHORTCUTS_RESET_MAIN_XML"
 echo "Extended Shortcut Rail UI acceptance passed: actual assignment, reorder, process restart, visible five-slot order, factory reset and second restart."
 
+# Export a genuine native Project snapshot from private recovery storage through
+# DocumentsUI, verify exact source/destination bytes, and reopen the exported file.
+echo "Running real Project recovery-copy export and reopen round trip..."
+if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then echo "ERROR: could not stop app before recovery export"; exit 1; fi
+if ! adb_bounded 5 shell logcat -c; then echo "ERROR: could not clear logs before recovery export"; exit 1; fi
+snapshot_project_view_tree_marker_baselines
+if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
+      --es "$SMOKE_MODE_EXTRA" "project-recovery-export"; then
+  echo "ERROR: could not launch debug-only recovery-export fixture mode"; exit 1
+fi
+if ! wait_for_new_project_marker "STARTUP_COMPLETE" 0 45; then echo "ERROR: recovery fixture native startup timed out"; exit 1; fi
+if ! wait_for_new_project_marker "PROJECT_RECOVERY_TEST_FIXTURE_READY" 0 20; then echo "ERROR: serialized private recovery fixture was not created"; exit 1; fi
+project_recovery_fixture_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_RECOVERY_TEST_FIXTURE_READY" | tail -n 1 || true)"
+project_recovery_source_name="$(sed -nE 's/.*file=([^ ]+).*/\1/p' <<<"$project_recovery_fixture_line")"
+project_recovery_source_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_recovery_fixture_line")"
+if [[ ! "$project_recovery_source_name" =~ ^mpc-project-smoke-[0-9]+\.recovery\.mpcproj$ ]] || [[ ! "$project_recovery_source_sha" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "ERROR: invalid recovery fixture name or SHA"; echo "$project_recovery_fixture_line"; exit 1
+fi
+project_recovery_export_name="${project_recovery_source_name%.recovery.mpcproj}-recovered.mpcproj"
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_SAVE_XML"; then echo "ERROR: no real Project view for recovery export"; exit 1; fi
+PROJECT_CURRENT_APP_XML="$PROJECT_SAVE_XML"
+if ! tap_project_function_bar 3; then echo "ERROR: RECOVERY action is not enabled"; exit 1; fi
+if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_source_name" 15; then echo "ERROR: recovery chooser did not show retained source"; exit 1; fi
+if ! tap_ui_text "$PROJECT_SAVE_XML" "$project_recovery_source_name"; then echo "ERROR: could not select retained recovery source"; exit 1; fi
+project_recovery_picker_ready=0
+for ((attempt=1; attempt<=30; attempt++)); do
+  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then project_recovery_picker_ready=1; break; fi
+  sleep 1
+done
+if [ "$project_recovery_picker_ready" -ne 1 ]; then echo "ERROR: DocumentsUI did not open for recovery-copy export"; exit 1; fi
+if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 20; then echo "ERROR: could not capture recovery-export destination"; exit 1; fi
+if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_export_name" 20; then echo "ERROR: recovery-export filename was not prefilled"; exit 1; fi
+project_recovery_export_marker_before="$(project_marker_count "PROJECT_RECOVERY_EXPORT_COMPLETE" 5)"
+if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then echo "ERROR: recovery export SAVE action is not a real target"; exit 1; fi
+if ! wait_for_new_project_marker "PROJECT_RECOVERY_EXPORT_COMPLETE" "$project_recovery_export_marker_before" 45; then echo "ERROR: SAF recovery export did not complete"; exit 1; fi
+project_recovery_export_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_RECOVERY_EXPORT_COMPLETE" | tail -n 1 || true)"
+project_recovery_export_source_sha="$(sed -nE 's/.*sourceSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_recovery_export_line")"
+project_recovery_export_dest_sha="$(sed -nE 's/.*destinationSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_recovery_export_line")"
+if [[ "$project_recovery_export_source_sha" != "$project_recovery_source_sha" ]] || [[ "$project_recovery_export_dest_sha" != "$project_recovery_source_sha" ]] \
+    || ! grep -Fq -- "activeStateUnchanged=true" <<<"$project_recovery_export_line" \
+    || ! grep -Fq -- "targetLinkedToActiveProject=false" <<<"$project_recovery_export_line" \
+    || ! grep -Fq -- "readBackVerified=true" <<<"$project_recovery_export_line"; then
+  echo "ERROR: export failed byte verification or changed/relinked active Project"; echo "$project_recovery_export_line"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_SAVE_XML"; then echo "ERROR: app did not return to Project after export"; exit 1; fi
+PROJECT_CURRENT_APP_XML="$PROJECT_SAVE_XML"
+if ! open_project_document "$project_recovery_export_name"; then echo "ERROR: exported recovery file could not be reopened"; exit 1; fi
+project_recovery_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
+project_recovery_open_sha="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_recovery_open_line")"
+if [[ "$project_recovery_open_sha" != "$project_recovery_source_sha" ]] || ! grep -Fq -- "persistedDomainExact=true" <<<"$project_recovery_open_line"; then
+  echo "ERROR: exported recovery file did not reopen to exact canonical state"; echo "$project_recovery_open_line"; exit 1
+fi
+if ! show_project_route_extended; then exit 1; fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-project-recovery-export-roundtrip.png" 10; then exit 1; fi
+if ! capture_project_persistence_view_tree "PROJECT" "/tmp/mpc-groovebox-project-recovery-export-roundtrip-view-hierarchy.xml"; then exit 1; fi
+echo "Project recovery export passed: private source retained; exported destination hash matched and reopened to identical Project state."

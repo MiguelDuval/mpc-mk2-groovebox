@@ -14,9 +14,9 @@
 - This candidate still requires its own full exact-SHA Android workflow before acceptance.
 
 ### Next queue
-1. Verify full exact-SHA CI for the atomic-publication candidate, including selected Project JVM suites, native checks, real two-document A/B, complete Shortcut assignment/reorder/factory-reset/process-restart tests, and evidence upload.
-2. After that stability fix is accepted, add an accessible export/restore path for private recovery copies and deterministic provider read/write/revoked-grant tests.
-3. Keep PR #28/#29 bases unchanged; physical MPC Studio MkII remains a separate hardware acceptance gate.
+1. Observe Build #3087 / [run 39877355909](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39877355909) on exact SHA cc6a2b8dbff8a312e86aa49f86ae5af2da46e557.
+2. Validate recovery export on its exact SHA: recovery-store JVM tests, real DocumentsUI export, exact source/destination hash, unchanged active-Project state and URI link, and real Open round trip.
+3. After full workflow acceptance, test provider grant/read/write failure handling where reproducible; keep PR #28/#29 bases and hardware gate unchanged.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

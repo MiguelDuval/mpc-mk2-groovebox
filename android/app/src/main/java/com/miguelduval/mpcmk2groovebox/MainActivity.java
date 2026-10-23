@@ -52,6 +52,7 @@ import android.widget.ArrayAdapter;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -85,6 +86,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int REQUEST_OPEN_DOCUMENT_TREE = 1005;
     private static final int REQUEST_OPEN_PROJECT = 1006;
     private static final int REQUEST_SAVE_PROJECT_AS = 1007;
+    private static final int REQUEST_EXPORT_PROJECT_RECOVERY = 1008;
+    private static final String PROJECT_RECOVERY_PREFERENCES = "mpc_project_recovery";
+    private static final String PREF_PENDING_RECOVERY_EXPORT = "pending_recovery_export";
     private static final int MAX_PROJECT_FILE_BYTES = 128 * 1024 * 1024;
     private static final String TRACK_TYPE_CHANGE_RESERVED_STATUS =
             "TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation";
@@ -193,6 +197,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private long projectSessionGeneration;
     // Async Open results are valid only for the latest request and the Project session it started from.
     private long projectOpenRequestGeneration;
+    private File pendingProjectRecoveryExport;
     private final ExecutorService projectIoExecutor = Executors.newSingleThreadExecutor();
     private MpcNavigationController navigationController;
     private MpcShell mpcShell;
@@ -421,6 +426,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private boolean uiOnlySmokeMode;
     private boolean uiAuditSmokeMode;
     private boolean projectPersistenceSmokeMode;
+    private boolean projectRecoveryExportSmokeMode;
     private boolean projectPersistenceFixtureMode;
     private boolean uiAuditAwaitingBrowserStoragePickerResult;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
@@ -619,8 +625,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         String smokeMode = getIntent().getStringExtra(SMOKE_MODE_EXTRA);
         uiOnlySmokeMode = "ui-only".equals(smokeMode);
         uiAuditSmokeMode = "ui-audit".equals(smokeMode);
+        projectRecoveryExportSmokeMode = "project-recovery-export".equals(smokeMode)
+                && getPackageName().endsWith(".debug");
         projectPersistenceSmokeMode = ("project-persistence".equals(smokeMode)
-                || "project-persistence-view-tree".equals(smokeMode))
+                || "project-persistence-view-tree".equals(smokeMode)
+                || projectRecoveryExportSmokeMode)
                 && getPackageName().endsWith(".debug");
         projectPersistenceFixtureMode = "project-persistence".equals(smokeMode)
                 && getPackageName().endsWith(".debug");
@@ -755,6 +764,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 // Re-hydrate Track/Program/Sequence fields from the live domain
                                 // before publishing the ready-state Main hierarchy.
                                 refreshMainModeFields();
+                            }
+                            if (projectRecoveryExportSmokeMode) {
+                                final byte[] snapshot = nativeProjectSerialize();
+                                if (snapshot == null || snapshot.length == 0 || snapshot.length > MAX_PROJECT_FILE_BYTES) {
+                                    throw new IllegalStateException("native Project snapshot unavailable for recovery-export fixture");
+                                }
+                                final File fixture = new File(getFilesDir(),
+                                        "mpc-project-smoke-" + System.currentTimeMillis()
+                                                + MpcProjectRecoveryStore.FILE_SUFFIX);
+                                try (FileOutputStream output = new FileOutputStream(fixture, false)) {
+                                    output.write(snapshot);
+                                    output.flush();
+                                    output.getFD().sync();
+                                } catch (IOException error) {
+                                    throw new IllegalStateException("Could not create private recovery-export fixture", error);
+                                }
+                                Log.i(TAG, "PROJECT_RECOVERY_TEST_FIXTURE_READY file=" + fixture.getName()
+                                        + " stateSha256=" + projectBytesSha256(snapshot) + " bytes=" + snapshot.length);
+                                showProjectPage();
                             }
                             updateMpcShellState();
                             Log.i(TAG, "STARTUP_COMPLETE");
@@ -1956,6 +1984,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             saveAs.setContentDescription("MPC Project Save As");
             Button save = addFunction("SAVE", true, v -> saveCurrentProject());
             save.setContentDescription("MPC Project Save");
+            Button recovery = addFunction(
+                    "RECOVERY", !MpcProjectRecoveryStore.list(getFilesDir()).isEmpty(),
+                    v -> showProjectRecoveryChooser());
+            recovery.setContentDescription("MPC Project Export Recovery Copy");
             addFunction("BACK", true, v -> navigateBackFromShell());
             return;
         }
@@ -10631,6 +10663,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(note, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
 
+        final List<File> recoveryCopies = MpcProjectRecoveryStore.list(getFilesDir());
+        if (!recoveryCopies.isEmpty()) {
+            TextView recoveryStatus = label(
+                    "RECOVERY COPIES AVAILABLE • " + recoveryCopies.size()
+                            + " • use RECOVERY on the Function Bar to export a copy.",
+                    10, ACCENT_2);
+            recoveryStatus.setContentDescription("MPC Project recovery copies available " + recoveryCopies.size());
+            page.addView(recoveryStatus, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+        }
         content.addView(page);
         updateModeRailSelection();
         notifyMpcWorkspaceAccessibilityChanged();
@@ -11721,6 +11763,139 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private void showProjectRecoveryChooser() {
+        final List<File> copies = MpcProjectRecoveryStore.list(getFilesDir());
+        if (copies.isEmpty()) {
+            setBottomStatus("PROJECT RECOVERY • no retained non-empty recovery copies");
+            refreshMpcFunctionBar();
+            return;
+        }
+        final String[] labels = new String[copies.size()];
+        for (int i = 0; i < copies.size(); i++) labels[i] = copies.get(i).getName();
+        new AlertDialog.Builder(this).setTitle("EXPORT RECOVERY COPY")
+                .setItems(labels, (dialog, which) -> {
+                    if (which >= 0 && which < copies.size()) openProjectRecoveryExportPicker(copies.get(which));
+                })
+                .setNegativeButton("CANCEL", (dialog, which) -> {
+                    setBottomStatus("RECOVERY EXPORT CANCELLED • active Project unchanged");
+                    Log.i(TAG, "PROJECT_RECOVERY_EXPORT_CANCELLED stateSha256=" + currentProjectStateSha256());
+                }).show();
+    }
+
+    private String recoveryExportFilename(File copy) {
+        final String name = copy == null ? "" : copy.getName();
+        final String base = name.endsWith(MpcProjectRecoveryStore.FILE_SUFFIX)
+                ? name.substring(0, name.length() - MpcProjectRecoveryStore.FILE_SUFFIX.length())
+                : "mpc-project-recovery";
+        return safeProjectFilename(base + "-recovered.mpcproj");
+    }
+
+    private void openProjectRecoveryExportPicker(File copy) {
+        if (!MpcProjectRecoveryStore.isRecoveryCopy(copy, getFilesDir())) {
+            setBottomStatus("RECOVERY EXPORT FAILED • selected recovery copy is unavailable");
+            refreshMpcFunctionBar();
+            return;
+        }
+        final android.content.SharedPreferences preferences = getSharedPreferences(PROJECT_RECOVERY_PREFERENCES, MODE_PRIVATE);
+        if (!preferences.edit().putString(PREF_PENDING_RECOVERY_EXPORT, copy.getName()).commit()) {
+            setBottomStatus("RECOVERY EXPORT FAILED • could not preserve selected recovery reference");
+            return;
+        }
+        pendingProjectRecoveryExport = copy;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/octet-stream");
+        intent.putExtra(Intent.EXTRA_TITLE, recoveryExportFilename(copy));
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQUEST_EXPORT_PROJECT_RECOVERY);
+        } catch (RuntimeException error) {
+            pendingProjectRecoveryExport = null;
+            preferences.edit().remove(PREF_PENDING_RECOVERY_EXPORT).apply();
+            setBottomStatus("RECOVERY EXPORT • picker unavailable • " + error.getClass().getSimpleName());
+            Log.i(TAG, "PROJECT_RECOVERY_EXPORT_PICKER_FAILED source=" + copy.getName()
+                    + " stateSha256=" + currentProjectStateSha256() + " error=" + error.getClass().getSimpleName());
+        }
+    }
+
+    private void exportProjectRecoveryCopy(File copy, Uri target) {
+        if (target == null || !MpcProjectRecoveryStore.isRecoveryCopy(copy, getFilesDir())) {
+            setBottomStatus("RECOVERY EXPORT FAILED • invalid source or destination");
+            Log.i(TAG, "PROJECT_RECOVERY_EXPORT_FAILED source="
+                    + (copy == null ? "unavailable" : copy.getName()) + " error=invalid-source-or-destination");
+            return;
+        }
+        final long exportGeneration = projectSessionGeneration;
+        final String stateBefore = currentProjectStateSha256();
+        setBottomStatus("EXPORTING RECOVERY COPY • " + copy.getName());
+        projectIoExecutor.execute(() -> {
+            byte[] snapshot = null;
+            MpcProjectDocumentWriteTransaction.Result tx = null;
+            String failure = null;
+            try {
+                snapshot = MpcProjectRecoveryStore.read(copy, getFilesDir(), MAX_PROJECT_FILE_BYTES);
+                tx = MpcProjectDocumentWriteTransaction.write(
+                        new MpcProjectDocumentWriteTransaction.DocumentAccess() {
+                            @Override public InputStream openInputStream() throws IOException {
+                                InputStream input = getContentResolver().openInputStream(target);
+                                if (input == null) throw new IOException("Destination provider returned no input stream");
+                                return input;
+                            }
+                            @Override public OutputStream openOutputStream() throws IOException {
+                                OutputStream output = getContentResolver().openOutputStream(target, "wt");
+                                if (output == null) throw new IOException("Destination provider returned no output stream");
+                                return output;
+                            }
+                        }, getFilesDir(), snapshot, MAX_PROJECT_FILE_BYTES);
+                if (!tx.success) failure = tx.failure;
+            } catch (Exception error) {
+                failure = error.getClass().getSimpleName() + (error.getMessage() == null ? "" : ": " + error.getMessage());
+            }
+            final byte[] exported = snapshot;
+            final MpcProjectDocumentWriteTransaction.Result result = tx;
+            final String writeFailure = failure;
+            runOnUiThread(() -> {
+                if (destroyed) return;
+                final long activeGeneration = projectSessionGeneration;
+                final String stateAfter = startupComplete ? currentProjectStateSha256() : "unavailable";
+                final boolean sameSession = exportGeneration == activeGeneration;
+                final boolean unchanged = stateBefore.equals(stateAfter);
+                final String sourceSha = exported == null ? "unavailable" : projectBytesSha256(exported);
+                if (writeFailure == null && exported != null && result != null && result.success) {
+                    Log.i(TAG, "PROJECT_RECOVERY_EXPORT_COMPLETE source=" + copy.getName()
+                            + " bytes=" + exported.length + " sourceSha256=" + sourceSha
+                            + " destinationSha256=" + sourceSha + " stateBeforeSha256=" + stateBefore
+                            + " stateAfterSha256=" + stateAfter + " activeStateUnchanged=" + unchanged
+                            + " sessionGeneration=" + exportGeneration + " activeSessionGeneration=" + activeGeneration
+                            + " sessionStale=" + !sameSession
+                            + " targetLinkedToActiveProject=false readBackVerified=true");
+                    if (sameSession) setBottomStatus("RECOVERY COPY EXPORTED • source retained • " + recoveryExportFilename(copy));
+                } else {
+                    final String retained = result == null || result.recoveryCopy == null ? "none" : result.recoveryCopy.getName();
+                    final String error = writeFailure == null ? "unknown recovery export failure" : writeFailure;
+                    Log.i(TAG, "PROJECT_RECOVERY_EXPORT_FAILED source=" + copy.getName() + " sourceSha256=" + sourceSha
+                            + " stateBeforeSha256=" + stateBefore + " stateAfterSha256=" + stateAfter
+                            + " activeStateUnchanged=" + unchanged + " sessionGeneration=" + exportGeneration
+                            + " activeSessionGeneration=" + activeGeneration + " sessionStale=" + !sameSession
+                            + " writeAttempted=" + (result != null && result.writeAttempted)
+                            + " previousDocumentPreserved=" + (result != null && result.previousDocumentPreserved)
+                            + " recoveryCopy=" + retained + " error=" + error);
+                    if (sameSession) {
+                        final String status;
+                        if (result != null && !result.writeAttempted) status = "RECOVERY EXPORT FAILED • destination unchanged • " + error;
+                        else if (result != null && result.previousDocumentPreserved) status = "RECOVERY EXPORT FAILED • destination restored • " + error;
+                        else if (result != null && result.recoveryCopy != null) status = "RECOVERY EXPORT FAILED • rollback unverified • private copy retained • " + retained + " • " + error;
+                        else status = "RECOVERY EXPORT FAILED • " + error;
+                        setBottomStatus(status);
+                    }
+                }
+                if ("PROJECT".equals(currentPage)) { showProjectPage(); refreshMpcFunctionBar(); }
+            });
+        });
+    }
+
     private void saveCurrentProject() {
         if (currentProjectUri == null) {
             openProjectSaveAsPicker();
@@ -12163,6 +12338,47 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_EXPORT_PROJECT_RECOVERY) {
+            final android.content.SharedPreferences preferences =
+                    getSharedPreferences(PROJECT_RECOVERY_PREFERENCES, MODE_PRIVATE);
+            final String storedName = preferences.getString(PREF_PENDING_RECOVERY_EXPORT, null);
+            File copy = pendingProjectRecoveryExport;
+            if (copy == null && storedName != null && !storedName.isEmpty()) copy = new File(getFilesDir(), storedName);
+            pendingProjectRecoveryExport = null;
+            preferences.edit().remove(PREF_PENDING_RECOVERY_EXPORT).apply();
+            if (resultCode != RESULT_OK || data == null) {
+                final String stateSha = startupComplete ? currentProjectStateSha256() : "unavailable";
+                if (resultCode == RESULT_CANCELED) {
+                    setBottomStatus("RECOVERY EXPORT CANCELLED • active Project unchanged");
+                    Log.i(TAG, "PROJECT_RECOVERY_EXPORT_CANCELLED source="
+                            + (copy == null ? "unavailable" : copy.getName()) + " stateSha256=" + stateSha);
+                } else {
+                    setBottomStatus("RECOVERY EXPORT FAILED • picker returned no destination");
+                    Log.i(TAG, "PROJECT_RECOVERY_EXPORT_PICKER_FAILED source="
+                            + (copy == null ? "unavailable" : copy.getName())
+                            + " resultCode=" + resultCode + " dataPresent=" + (data != null));
+                }
+                if ("PROJECT".equals(currentPage)) { showProjectPage(); refreshMpcFunctionBar(); }
+                return;
+            }
+            final Uri uri = data.getData();
+            if (uri == null) { setBottomStatus("RECOVERY EXPORT FAILED • no destination selected"); return; }
+            if (!MpcProjectRecoveryStore.isRecoveryCopy(copy, getFilesDir())) {
+                setBottomStatus("RECOVERY EXPORT FAILED • selected recovery copy is unavailable");
+                Log.i(TAG, "PROJECT_RECOVERY_EXPORT_FAILED source="
+                        + (copy == null ? "unavailable" : copy.getName()) + " error=source-no-longer-available");
+                return;
+            }
+            if ((data.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
+                try {
+                    getContentResolver().takePersistableUriPermission(uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                } catch (SecurityException ignored) { /* transient picker grant is sufficient for immediate export */ }
+            }
+            exportProjectRecoveryCopy(copy, uri);
+            return;
+        }
+
         if (requestCode == REQUEST_OPEN_PROJECT) {
             if (resultCode != RESULT_OK || data == null) {
                 final String stateSha = currentProjectStateSha256();
