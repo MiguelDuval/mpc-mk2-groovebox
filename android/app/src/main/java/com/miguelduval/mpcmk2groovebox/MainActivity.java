@@ -808,10 +808,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 currentProjectName = nativeProjectGetName();
                                 showProjectPage();
                             } else if (projectUriRevokedProbeMode) {
-                                final android.content.SharedPreferences grantSmoke =
-                                        getSharedPreferences(
-                                                PROJECT_URI_GRANT_REVOCATION_PREFERENCES,
-                                                MODE_PRIVATE);
                                 restoreProjectUriRevokedProbeState();
                                 showProjectPage();
                             }

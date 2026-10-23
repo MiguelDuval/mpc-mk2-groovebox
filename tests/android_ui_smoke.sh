@@ -12226,6 +12226,7 @@ PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
 if ! open_project_document "Untitled.mpcproj"; then
   echo "ERROR: could not open the existing real DocumentsUI Project for grant revocation"; exit 1
 fi
+PROJECT_CURRENT_APP_XML="$PROJECT_MAIN_READY_XML"
 if ! show_project_route_extended "TRACKS=2" "PLACEMENTS=2"; then
   echo "ERROR: could not return to Project with the saved A-document canonical counts after opening the revocation fixture"; exit 1
 fi
