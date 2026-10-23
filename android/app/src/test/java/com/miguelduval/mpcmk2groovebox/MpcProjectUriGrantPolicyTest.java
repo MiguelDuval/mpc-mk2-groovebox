@@ -75,21 +75,64 @@ public class MpcProjectUriGrantPolicyTest {
 
     @Test public void preimageReadEaccesDoesNotLatchWriteDenialBeforeAnyWriteAttempt() {
         assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
-                false, "Could not back up destination before writing: ErrnoException: EACCES"));
+                false,
+                MpcProjectDocumentWriteTransaction.FailurePhase.PREIMAGE_CAPTURE,
+                "ErrnoException: EACCES",
+                MpcProjectDocumentWriteTransaction.FailurePhase.NONE,
+                null));
     }
 
     @Test public void preimageReadSecurityExceptionDoesNotLatchWriteDenialBeforeAnyWriteAttempt() {
         assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
-                false, "Could not back up destination before writing: SecurityException"));
+                false,
+                MpcProjectDocumentWriteTransaction.FailurePhase.PREIMAGE_CAPTURE,
+                "SecurityException",
+                MpcProjectDocumentWriteTransaction.FailurePhase.NONE,
+                null));
     }
 
     @Test public void actualWriteAttemptEaccesLatchesWriteDenial() {
         assertTrue(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
-                true, "Project write failed: ErrnoException: EACCES (Permission denied)"));
+                true,
+                MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_WRITE,
+                "ErrnoException: EACCES (Permission denied)",
+                MpcProjectDocumentWriteTransaction.FailurePhase.NONE,
+                null));
     }
 
     @Test public void attemptedWriteWithGenericReadbackTimeoutDoesNotLatchWriteDenial() {
         assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
-                true, "Project write failed: IOException: provider timed out during verification"));
+                true,
+                MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
+                "IOException: provider timed out during verification",
+                MpcProjectDocumentWriteTransaction.FailurePhase.NONE,
+                null));
+    }
+
+    @Test public void providerReadbackSecurityExceptionDoesNotLatchWriteDenialAfterWriteAttempt() {
+        assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                true,
+                MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
+                "SecurityException: Permission denied while verifying output",
+                MpcProjectDocumentWriteTransaction.FailurePhase.NONE,
+                null));
+    }
+
+    @Test public void readbackMismatchDoesNotLatchWriteDenial() {
+        assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                true,
+                MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK_MISMATCH,
+                "Provider read-back did not match the saved Project snapshot",
+                MpcProjectDocumentWriteTransaction.FailurePhase.NONE,
+                null));
+    }
+
+    @Test public void rollbackWriteEaccesLatchesWriteDenialEvenWhenPrimaryFailureWasVerification() {
+        assertTrue(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                true,
+                MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
+                "IOException: readback provider timeout",
+                MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_WRITE,
+                "ErrnoException: EACCES (Permission denied)"));
     }
 }
