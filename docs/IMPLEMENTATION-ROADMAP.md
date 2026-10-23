@@ -14,10 +14,10 @@
 - This candidate still requires its own full exact-SHA Android workflow before acceptance.
 
 ### Next queue
-1. Fix the recovery-cancel smoke-driver edge on top of exact HEAD `02b2084461c3b59c5fb4d18afaae6905f9f79c7a`: use the existing `cancel_android_document_picker()` loop, which checks the resumed Activity after each Back and avoids sending extra Back presses to the app.
-2. The prior exact-SHA Build #3090 failed only at smoke while waiting for `PROJECT_RECOVERY_EXPORT_CANCELLED`; recovery fixture start, Project View hierarchy, and real RECOVERY action tap all succeeded. Re-run the full workflow on the helper-reuse commit and retain the active-state-SHA and private-source-availability assertions.
-3. Require full exact-SHA green, including URI-grant/recovery/open-isolation/write-transaction JVM suites, native/source checks, complete emulator smoke, and evidence upload.
-4. Then test provider permission revocation and actual read/write errors where deterministic. Keep PR #28/#29 bases and physical controller gate unchanged.
+1. Observe Build #3091 / [run 39891672743](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39891672743), SHA `fcdf02b427dd5e2578d7fc4fffeb8871d8a7d490`. It was running when this corrective candidate was prepared.
+2. On top of the measured cancellation-helper fix, correct a smoke-preflight path mismatch: check `cancel_android_document_picker()` in the shell script (`$0`), not inside MainActivity Java. The preflight should reject regression to one-shot Back without searching the wrong source file.
+3. Require the full exact-SHA run to pass Project Open/write-transaction/recovery-store/URI-grant tests, native tests, recovery cancel + export/Open, Shortcut smoke, and evidence upload.
+4. Next investigate provider grant revocation and real read/write failures. Keep PR #28/#29 bases and physical hardware gate unchanged.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

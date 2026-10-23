@@ -144,12 +144,14 @@ for required in \
   'MPC Project Export Recovery Copy' \
   'REQUEST_EXPORT_PROJECT_RECOVERY' \
   'PROJECT_RECOVERY_EXPORT_COMPLETE' \
-  'targetLinkedToActiveProject=false readBackVerified=true' \
-  'cancel_android_document_picker "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Project recovery export"'; do
+  'targetLinkedToActiveProject=false readBackVerified=true'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: recovery-copy export integration missing: $required"; exit 1
   fi
 done
+if ! grep -Fq -- 'cancel_android_document_picker "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Project recovery export"' "$0"; then
+  echo "ERROR: recovery-export cancellation must use the verified DocumentsUI return helper"; exit 1
+fi
 for required in \
   'inventoryIsRestrictedToNonEmptyRecoveryFilesAndNewestFirst' \
   'boundedReadReturnsExactBytesWithoutDeletingPrivateOriginal' \
