@@ -186,6 +186,10 @@ for required in \
   'MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK_MISMATCH' \
   'projectUriGrantRevocationSmokeMode' \
   'projectUriRevokedProbeMode' \
+  'projectProviderWriteDenialSmokeMode' \
+  'prepareProjectProviderWriteDenialSmoke' \
+  'PROJECT_PROVIDER_WRITE_DENIAL_FIXTURE_READY' \
+  'PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE' \
   'PREF_REVOKED_PROJECT_URI' \
   'PROJECT_URI_GRANT_REVOKE_COMPLETE' \
   'readPermissionBefore=GRANTED writePermissionBefore=GRANTED' \
@@ -196,6 +200,14 @@ for required in \
     echo "ERROR: SAF permission/direct-Save availability contract missing: $required"; exit 1
   fi
 done
+PROVIDER_TEST_SOURCE="android/app/src/debug/java/com/miguelduval/mpcmk2groovebox/ProjectWriteDenialTestProvider.java"
+if [[ ! -f "$PROVIDER_TEST_SOURCE" ]] \
+    || ! grep -Fq -- 'ProjectWriteDenialTestProvider' "android/app/src/debug/AndroidManifest.xml" \
+    || ! grep -Fq -- 'openFile(Uri uri, String mode)' "$PROVIDER_TEST_SOURCE" \
+    || ! grep -Fq -- 'Permission denied by controlled debug document provider' "$PROVIDER_TEST_SOURCE"; then
+  echo "ERROR: controlled provider fixture or debug-only manifest registration is missing"
+  exit 1
+fi
 for required in \
   'readOnlyProviderGrantPersistsReadWithoutInventingWriteAccess' \
   'writeOnlyProviderGrantPersistsWriteWithoutInventingReadAccess' \
@@ -12447,4 +12459,152 @@ if ! grep -Fq -- "domainSha256=$project_uri_revoke_sha" <<<"$project_save_replac
   echo "ERROR: new Save As document did not reopen to the unchanged active Project state"
   echo "$project_save_replacement_open_line"; exit 1
 fi
-echo "REAL DocumentsUI URI-revocation acceptance passed: revoked source read was denied after process restart with the canonical model unchanged; direct SAVE disabled, SAVE AS created/read-back-verified a separate destination, and direct SAVE plus reopen worked on the replacement."
+# Test provider-retained-access/output-denial separately from URI revocation.
+echo "Running controlled ContentResolver provider output-denial acceptance..."
+if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
+  echo "ERROR: could not stop app before controlled provider output-denial acceptance"; exit 1
+fi
+if ! adb_bounded 5 shell logcat -c; then
+  echo "ERROR: could not clear logcat before controlled provider output-denial acceptance"; exit 1
+fi
+snapshot_project_view_tree_marker_baselines
+if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
+      --es "$SMOKE_MODE_EXTRA" "project-provider-write-denial"; then
+  echo "ERROR: could not launch controlled provider write-denial fixture"; exit 1
+fi
+if ! wait_for_new_project_marker "STARTUP_COMPLETE" 0 45; then
+  echo "ERROR: controlled provider fixture startup timed out"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_PROVIDER_WRITE_DENIAL_FIXTURE_READY" 0 20; then
+  echo "ERROR: controlled provider did not seed the exact active Project"; exit 1
+fi
+provider_fixture_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_PROVIDER_WRITE_DENIAL_FIXTURE_READY" | tail -n 1 || true)"
+provider_fixture_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$provider_fixture_line")"
+provider_seed_sha="$(sed -nE 's/.*providerSha256=([0-9a-f]{64}).*/\1/p' <<<"$provider_fixture_line")"
+if [[ ! "$provider_fixture_sha" =~ ^[0-9a-f]{64}$ \
+      || "$provider_seed_sha" != "$provider_fixture_sha" ]] \
+    || ! grep -Fq -- "readPermission=GRANTED writePermission=GRANTED" <<<"$provider_fixture_line" \
+    || ! grep -Fq -- "outputDenyAttempt=1" <<<"$provider_fixture_line"; then
+  echo "ERROR: provider fixture did not prove initial access and byte-exact seed"
+  echo "$provider_fixture_line"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: provider fixture did not render the Project workspace"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
+provider_failure_before="$(project_marker_count "PROJECT_SAVE_FAILED")"
+if ! tap_project_function_bar 2; then
+  echo "ERROR: direct SAVE was unavailable before the provider rejected output"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_SAVE_FAILED" "$provider_failure_before" 45; then
+  echo "ERROR: controlled provider did not reject the direct SAVE output open"; exit 1
+fi
+provider_failure_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_FAILED" | tail -n 1 || true)"
+if ! grep -Fq -- "failurePhase=PROVIDER_WRITE" <<<"$provider_failure_line" \
+    || ! grep -Fq -- "rollbackFailurePhase=NONE" <<<"$provider_failure_line" \
+    || ! grep -Fq -- "previousDocumentPreserved=true" <<<"$provider_failure_line" \
+    || ! grep -Fq -- "directSaveAccessRejected=true" <<<"$provider_failure_line" \
+    || ! grep -Fq -- "snapshotStateSha256=$provider_fixture_sha" <<<"$provider_failure_line" \
+    || ! grep -Fq -- "activeStateSha256=$provider_fixture_sha" <<<"$provider_failure_line" \
+    || ! grep -Fq -- "recoveryCopy=none" <<<"$provider_failure_line" \
+    || ! grep -Fq -- "Permission denied by controlled debug document provider" <<<"$provider_failure_line"; then
+  echo "ERROR: output denial did not map to PROVIDER_WRITE with verified restoration"
+  echo "$provider_failure_line"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE" 0 20; then
+  echo "ERROR: controlled provider omitted post-rollback state"; exit 1
+fi
+provider_after_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE" | tail -n 1 || true)"
+if ! grep -Fq -- "documentSha256=$provider_fixture_sha" <<<"$provider_after_line" \
+    || ! grep -Fq -- "outputAttempts=2" <<<"$provider_after_line"; then
+  echo "ERROR: provider bytes were not preserved after output denial plus rollback"
+  echo "$provider_after_line"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML" true; then
+  echo "ERROR: Project view missing after provider write denial"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
+python3 - "$PROJECT_ROUTE_XML" <<'PY_PROVIDER_WRITE_DENIAL_UI'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != "PROJECT":
+    raise SystemExit(f"bad real View-tree provenance: {root.attrib!r}")
+nodes = list(root.iter("node"))
+save = [n for n in nodes if n.attrib.get("content-desc", "").startswith("MPC Project Save unavailable:")]
+save_as = [n for n in nodes if n.attrib.get("content-desc") == "MPC Project Save As"]
+def visible_bounds(node):
+    raw = node.attrib.get("bounds", "")
+    try:
+        left_top, right_bottom = raw[1:-1].split("][")
+        left, top = map(int, left_top.split(","))
+        right, bottom = map(int, right_bottom.split(","))
+        return right > left and bottom > top
+    except (ValueError, IndexError):
+        return False
+if len(save) != 1 or save[0].attrib.get("enabled") != "false":
+    raise SystemExit(f"direct SAVE must be disabled after denial: {[(n.attrib.get('enabled'), n.attrib.get('clickable')) for n in save]}")
+if len(save_as) != 1 or save_as[0].attrib.get("enabled") != "true" or save_as[0].attrib.get("clickable") != "true" or not visible_bounds(save_as[0]):
+    raise SystemExit(f"SAVE AS must remain enabled/clickable with live bounds: {[(n.attrib.get('enabled'), n.attrib.get('clickable'), n.attrib.get('bounds')) for n in save_as]}")
+print("REAL PROVIDER WRITE DENIAL UI VERIFIED: direct SAVE disabled; SAVE AS remains usable.")
+PY_PROVIDER_WRITE_DENIAL_UI
+
+PROJECT_DOC_PROVIDER_RECOVERY_NAME="mpc-after-provider-denial-$BASHPID.mpcproj"
+provider_recovery_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+if ! tap_project_function_bar 1; then
+  echo "ERROR: SAVE AS was unavailable after provider output denial"; exit 1
+fi
+provider_picker_ready=0
+for ((attempt=1; attempt<=25; attempt++)); do
+  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
+      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
+    provider_picker_ready=1; break
+  fi
+  sleep 1
+done
+if [ "$provider_picker_ready" -ne 1 ]; then
+  echo "ERROR: DocumentsUI did not open for SAVE AS after output denial"; exit 1
+fi
+if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
+  echo "ERROR: could not capture SAVE AS picker after provider output denial"; exit 1
+fi
+if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_PROVIDER_RECOVERY_NAME"; then exit 1; fi
+if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then
+  echo "ERROR: DocumentsUI Save unavailable for provider-denial recovery"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$provider_recovery_before" 45; then
+  echo "ERROR: SAVE AS failed after controlled provider output denial"; exit 1
+fi
+provider_recovery_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
+provider_recovery_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$provider_recovery_line")"
+if [[ "$provider_recovery_sha" != "$provider_fixture_sha" ]] \
+    || ! grep -Fq -- "readBackVerified=true" <<<"$provider_recovery_line" \
+    || ! grep -Fq -- "sessionStale=false" <<<"$provider_recovery_line"; then
+  echo "ERROR: SAVE AS recovery did not preserve exact state"
+  echo "$provider_recovery_line"; exit 1
+fi
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: SAVE AS recovery did not return to Project workspace"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
+provider_replacement_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+if ! tap_project_function_bar 2; then
+  echo "ERROR: direct SAVE did not re-enable on the replacement"; exit 1
+fi
+if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$provider_replacement_before" 45; then
+  echo "ERROR: direct SAVE failed on replacement document"; exit 1
+fi
+provider_replacement_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
+if ! grep -Fq -- "readBackVerified=true" <<<"$provider_replacement_line" \
+    || ! grep -Fq -- "sessionStale=false" <<<"$provider_replacement_line"; then
+  echo "ERROR: replacement direct SAVE was not verified"; exit 1
+fi
+if ! open_project_document "$PROJECT_DOC_PROVIDER_RECOVERY_NAME"; then
+  echo "ERROR: replacement document could not be reopened"; exit 1
+fi
+provider_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
+if ! grep -Fq -- "domainSha256=$provider_fixture_sha" <<<"$provider_open_line" \
+    || ! grep -Fq -- "persistedDomainExact=true" <<<"$provider_open_line"; then
+  echo "ERROR: replacement reopened to different Project state"; exit 1
+fi
+echo "REAL DocumentsUI URI revocation and controlled provider output-denial acceptance passed; denial was classified PROVIDER_WRITE, original bytes verified after rollback, and SAVE AS restored working SAVE/Open."

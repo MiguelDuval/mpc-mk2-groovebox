@@ -39,7 +39,7 @@
 
 ## Current queue
 
-1. Add a controllable Android document provider that permits reading an existing document but rejects output operations with a permission-denial exception.
+1. Validate the current debug-only controlled ContentProvider candidate: it permits reads, denies the first output open, then permits rollback; the smoke asserts exact state, `PROVIDER_WRITE`, direct-SAVE disabled and SAVE AS recovery.
 2. Exercise the real Project SAVE transaction path against that provider. Assert failure phase, unchanged active canonical state, rollback/recovery outcome and direct-SAVE policy; keep readback-only and rollback-output denial distinct.
 3. Run focused JVM/native checks, source-contract preflight and full exact-SHA emulator smoke with evidence upload. Do not generalize one fixture to every third-party provider.
 4. Leave PR #28/#29 bases unchanged, keep `cancel-in-progress: false`, and keep physical MPC Studio MkII verification as a separate hardware gate.

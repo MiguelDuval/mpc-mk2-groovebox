@@ -440,6 +440,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private boolean projectPersistenceFixtureMode;
     private boolean projectUriGrantRevocationSmokeMode;
     private boolean projectUriRevokedProbeMode;
+    private boolean projectProviderWriteDenialSmokeMode;
     private boolean uiAuditAwaitingBrowserStoragePickerResult;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
@@ -643,15 +644,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 && getPackageName().endsWith(".debug");
         projectUriRevokedProbeMode = "project-uri-revoked-probe".equals(smokeMode)
                 && getPackageName().endsWith(".debug");
+        projectProviderWriteDenialSmokeMode = "project-provider-write-denial".equals(smokeMode)
+                && getPackageName().endsWith(".debug");
         projectPersistenceSmokeMode = ("project-persistence".equals(smokeMode)
                 || "project-persistence-view-tree".equals(smokeMode)
                 || projectRecoveryExportSmokeMode
                 || projectUriGrantRevocationSmokeMode
-                || projectUriRevokedProbeMode)
+                || projectUriRevokedProbeMode
+                || projectProviderWriteDenialSmokeMode)
                 && getPackageName().endsWith(".debug");
         projectPersistenceFixtureMode = ("project-persistence".equals(smokeMode)
                 || projectUriGrantRevocationSmokeMode
-                || projectUriRevokedProbeMode)
+                || projectUriRevokedProbeMode
+                || projectProviderWriteDenialSmokeMode)
                 && getPackageName().endsWith(".debug");
 
         try {
@@ -778,6 +783,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 refreshAllInspectorState();
                                 refreshSequenceControls();
                                 refreshMainTrackQuickSample();
+                            }
+                            if (projectProviderWriteDenialSmokeMode) {
+                                prepareProjectProviderWriteDenialSmoke();
                             }
                             if ("MAIN".equals(currentPage)) {
                                 // Main was built while native state was still loading.
@@ -12015,6 +12023,51 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 + " uri=" + currentProjectUri);
     }
 
+    /** Seed a debug-only provider which denies one real ContentResolver output open. */
+    private void prepareProjectProviderWriteDenialSmoke() {
+        final byte[] snapshot = nativeProjectSerialize();
+        if (snapshot == null || snapshot.length == 0 || snapshot.length > MAX_PROJECT_FILE_BYTES) {
+            throw new IllegalStateException("Project snapshot unavailable for provider-write-denial fixture");
+        }
+        final String stateSha = projectBytesSha256(snapshot);
+        if (!stateSha.equals(currentProjectStateSha256())) {
+            throw new IllegalStateException("Provider fixture snapshot differs from active canonical state");
+        }
+        final Uri uri = Uri.parse("content://" + getPackageName()
+                + ".projectwritefixture/project/current");
+        final Bundle seedRequest = new Bundle();
+        seedRequest.putByteArray("snapshot_bytes", snapshot);
+        seedRequest.putInt("deny_output_attempt", 1);
+        final Bundle seeded = getContentResolver().call(uri, "seed_document", null, seedRequest);
+        if (seeded == null || !uri.toString().equals(seeded.getString("uri"))
+                || !stateSha.equals(seeded.getString("sha256"))) {
+            throw new IllegalStateException("Controlled provider did not seed exact Project bytes");
+        }
+        currentProjectUri = uri;
+        currentProjectWritePreviouslyRejected = false;
+        currentProjectName = nativeProjectGetName();
+        grantUriPermission(getPackageName(), uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        final boolean readGranted = checkUriPermission(uri, android.os.Process.myPid(),
+                android.os.Process.myUid(), Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                == PackageManager.PERMISSION_GRANTED;
+        final boolean writeGranted = checkUriPermission(uri, android.os.Process.myPid(),
+                android.os.Process.myUid(), Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                == PackageManager.PERMISSION_GRANTED;
+        if (!readGranted || !writeGranted || !canInvokeProjectSave()) {
+            throw new IllegalStateException("Controlled provider URI did not permit initial direct SAVE");
+        }
+        showProjectPage();
+        updateMpcShellState();
+        refreshMpcFunctionBar();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_FIXTURE_READY"
+                + " stateSha256=" + stateSha
+                + " providerSha256=" + seeded.getString("sha256")
+                + " readPermission=GRANTED writePermission=GRANTED"
+                + " outputDenyAttempt=" + seeded.getInt("deny_output_attempt", -1)
+                + " uri=" + uri);
+    }
+
     /**
      * Debug-emulator fixture only: revoke the actual persisted SAF modes for the
      * currently opened DocumentsUI URI, then relaunch in a fresh Activity process
@@ -12510,6 +12563,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             + " verifiedBytes=" + transaction.verifiedBytes
                             + " recoveryCopy=" + recoveryName
                             + " error=" + saveFailure);
+                    if (projectProviderWriteDenialSmokeMode && target.equals(currentProjectUri)) {
+                        try {
+                            final Bundle state = getContentResolver().call(
+                                    target, "get_fixture_state", null, null);
+                            if (state == null) {
+                                Log.e(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE_MISSING");
+                            } else {
+                                Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE"
+                                        + " documentSha256=" + state.getString("sha256")
+                                        + " outputAttempts=" + state.getInt("output_attempts", -1));
+                            }
+                        } catch (RuntimeException providerError) {
+                            Log.e(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE_FAILED", providerError);
+                        }
+                    }
                     // Never let a stale write failure replace the current Project session's status.
                     if (sameProjectSession) {
                         final String unavailableSuffix = directSaveAccessRejected

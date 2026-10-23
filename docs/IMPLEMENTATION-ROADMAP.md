@@ -14,11 +14,15 @@
 - Probe-precondition safety guards are **accepted on Build #3108 / exact SHA `3dc0c4816ffd586fd0ef2eb91fbf849e38e6c2ac`**. The fixture requires live and persisted read/write modes before release; after restart, resolver streams are opened only when both live modes are denied and no persisted mode remains. This prevents an inconsistent false state from truncating a document when `openOutputStream(uri, "wt")` is called.
 - URI revocation does not exercise a provider that still grants access but rejects output writes. That is the next controlled-provider candidate.
 
+### Current candidate — provider retains URI access but rejects output
+- The debug-only controlled ContentProvider seeds the active Project bytes, allows reads, denies the first output open, and permits rollback. Smoke drives the production SAVE transaction through ContentResolver.
+- Acceptance must prove `failurePhase=PROVIDER_WRITE`, `rollbackFailurePhase=NONE`, exact original document SHA after rollback, unchanged active model, direct SAVE disabled and SAVE AS followed by direct SAVE/reopen on a distinct DocumentsUI document.
+- Candidate only until this exact HEAD passes the full Android workflow and evidence upload.
+
 ### Next queue
-1. Add a controllable Android document provider that permits reads but denies output stream opens with a permission error.
-2. Test the production Project SAVE transaction through that provider: check failure phase, unchanged active model, rollback/recovery and direct-SAVE availability. Keep readback-only and rollback-output-denial scenarios separate.
-3. Require a full exact-HEAD workflow and visual-evidence upload before acceptance. Do not generalize the behavior of one fixture to every provider.
-4. Keep `cancel-in-progress: false`; do not edit `main`, force-push, reset, rebase, or change PR #23/#28/#29 bases. Physical MPC Studio MkII acceptance remains a separate hardware gate.
+1. Validate the controlled provider's actual output-denial/rollback and Save As recovery path on the exact HEAD.
+2. Add distinct result-readback-denial and rollback-output-denial tests without conflating failure phases.
+3. Keep `cancel-in-progress: false`; do not edit `main`, force-push, reset, rebase, or change PR #23/#28/#29 bases. Physical Akai MPC Studio MkII acceptance remains a separate hardware gate.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 
