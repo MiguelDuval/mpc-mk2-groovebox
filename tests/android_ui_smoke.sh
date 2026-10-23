@@ -210,13 +210,19 @@ for required in \
   'attemptedWriteWithGenericReadbackTimeoutDoesNotLatchWriteDenial' \
   'providerReadbackSecurityExceptionDoesNotLatchWriteDenialAfterWriteAttempt' \
   'readbackMismatchDoesNotLatchWriteDenial' \
-  'rollbackWriteEaccesLatchesWriteDenialEvenWhenPrimaryFailureWasVerification' \
+  'rollbackWriteEaccesLatchesWriteDenialEvenWhenPrimaryFailureWasVerification'; do
+  if ! grep -Fq -- "$required" \
+      "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectUriGrantPolicyTest.java"; then
+    echo "ERROR: URI grant/direct-Save policy test missing: $required"; exit 1
+  fi
+done
+for required in \
   'providerReadbackSecurityExceptionRestoresDestinationWithoutLatchingWriteDenial' \
   'providerWriteSecurityExceptionIsClassifiedAsWriteDenial' \
   'deniedRollbackWriteIsClassifiedEvenWhenPrimaryFailureWasReadback'; do
   if ! grep -Fq -- "$required" \
-      "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectUriGrantPolicyTest.java"; then
-    echo "ERROR: URI grant/direct-Save policy test missing: $required"; exit 1
+      "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectDocumentWriteTransactionTest.java"; then
+    echo "ERROR: Project document transaction phase test missing: $required"; exit 1
   fi
 done
 if ! grep -Fq -- 'Button saveAs = addFunction("SAVE AS", true, v -> openProjectSaveAsPicker());' "$MAIN_ACTIVITY_SOURCE"; then
