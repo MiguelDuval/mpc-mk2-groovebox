@@ -111,6 +111,32 @@ void testTimingCorrectCanBeDisabled() {
     assert(note.durationTicks == 60);
 }
 
+void testRejectsMalformedQueuedMidiValues() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    auto& track = sequence.tracks[0];
+    track.recordArmed = true;
+    sequence.quantizeGridTicks = 120;
+    sequence.swingPercent = 0;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    // Invalid velocity must not create a note that later fails project
+    // persistence. A non-boolean pressed byte must not arm a held note.
+    assert(queue.tryEnqueue({100, 0, 0, 255, 1}));
+    assert(queue.tryEnqueue({200, 0, 0, 0, 0}));
+    assert(queue.tryEnqueue({300, 0, 1, 100, 2}));
+    assert(queue.tryEnqueue({420, 0, 1, 0, 0}));
+
+    assert(recorder.drain(state, queue) == 0);
+    assert(track.patterns.front().notes.empty());
+    assert(recorder.finish(state, queue, 600) == 0);
+    assert(track.patterns.front().notes.empty());
+}
+
 void testZeroLengthTapUsesGridDuration() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -140,6 +166,7 @@ int main() {
     testOverdubPreservesExistingNotes();
     testFinishClosesHeldNote();
     testZeroLengthTapUsesGridDuration();
+    testRejectsMalformedQueuedMidiValues();
     testTimingCorrectCanBeDisabled();
     return 0;
 }
