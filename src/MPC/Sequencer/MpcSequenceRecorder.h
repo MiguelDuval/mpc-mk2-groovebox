@@ -68,6 +68,15 @@ public:
         SequenceRecordEvent event{};
 
         while (queue.tryDequeue(event)) {
+            // These events cross the real-time input boundary into project
+            // state. The MIDI decoder already validates physical messages,
+            // but the public queue can also receive synthetic/late producers.
+            // Never persist an out-of-range 7-bit velocity or non-boolean
+            // pressed value into a Pattern note.
+            if (event.velocity > 127 || event.pressed > 1) {
+                continue;
+            }
+
             if (event.trackIndex >= replaceCleared_.size()
                     || event.trackIndex >= state.activeSequence().tracks.size()
                     || event.padIndex >= domain::kMaxProgramPads) {
