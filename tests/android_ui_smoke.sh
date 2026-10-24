@@ -12866,8 +12866,10 @@ fi
 provider_fixture_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_PROVIDER_WRITE_DENIAL_FIXTURE_READY" | tail -n 1 || true)"
 provider_fixture_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$provider_fixture_line")"
 provider_seed_sha="$(sed -nE 's/.*providerSha256=([0-9a-f]{64}).*/\1/p' <<<"$provider_fixture_line")"
+provider_readback_sha="$(sed -nE 's/.*readbackSha256=([0-9a-f]{64}).*/\1/p' <<<"$provider_fixture_line")"
 if [[ ! "$provider_fixture_sha" =~ ^[0-9a-f]{64}$ \
-      || "$provider_seed_sha" != "$provider_fixture_sha" ]] \
+      || "$provider_seed_sha" != "$provider_fixture_sha" \
+      || "$provider_readback_sha" != "$provider_fixture_sha" ]] \
     || ! grep -Fq -- "readAccess=VERIFIED writeAccess=ARMED directSave=true" <<<"$provider_fixture_line" \
     || ! grep -Fq -- "outputDenyAttempt=1" <<<"$provider_fixture_line"; then
   echo "ERROR: provider fixture did not prove byte-exact seed, real read-back, and an armed first-write denial"

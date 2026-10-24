@@ -12167,7 +12167,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_FIXTURE_READY"
                 + " stateSha256=" + stateSha
                 + " providerSha256=" + seeded.getString("sha256")
-                + " readPermission=GRANTED writePermission=GRANTED"
+                + " readAccess=" + (readVerified ? "VERIFIED" : "MISMATCH")
+                + " writeAccess=" + (directSaveAvailable ? "ARMED" : "UNAVAILABLE")
+                + " directSave=" + directSaveAvailable
+                + " readbackSha256=" + providerReadSha
                 + " outputDenyAttempt=" + seeded.getInt("deny_output_attempt", -1)
                 + " uri=" + uri);
     }
