@@ -1,6 +1,8 @@
 #include "MPC/Sequencer/MpcSequenceLauncher.h"
 
 #include <cassert>
+#include <cstddef>
+#include <limits>
 
 int main() {
     mpc::MpcProjectState state;
@@ -34,6 +36,15 @@ int main() {
     action = mpc::sequencer::handleSequencePadPress(
             state, transport, 0, 15, 600);
     assert(action == mpc::sequencer::SequenceLaunchAction::Unavailable);
+
+    // A huge bank index would wrap bank * 16 to zero on unsigned arithmetic,
+    // falsely selecting or queueing sequence 0 unless checked beforehand.
+    const auto wrappingBank =
+            std::numeric_limits<std::size_t>::max() / 16u + 1u;
+    action = mpc::sequencer::handleSequencePadPress(
+            state, transport, wrappingBank, 0, 700);
+    assert(action == mpc::sequencer::SequenceLaunchAction::Unavailable);
+    assert(transport.queuedSequenceIndex() == -1);
 
     return 0;
 }
