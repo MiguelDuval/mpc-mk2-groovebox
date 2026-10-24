@@ -9727,10 +9727,29 @@ if [[ -z "$picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$picker_activity"; 
 fi
 printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-picker-select-source-activity.txt
 
-# Always capture the first DocumentsUI frame before reading or tapping its
-# controls. The activity can be resumed before its first accessibility tree is ready.
-if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
-  echo "ERROR: could not capture initial Android Document Picker hierarchy"
+# Always capture the first usable DocumentsUI frame before reading or
+# tapping controls. Activity resume can precede a populated UiAutomator tree;
+# an empty/non-XML dump is transient and must be replaced by a fresh dump, not
+# parsed as if it were the picker's first frame. Each attempt has its own
+# existing bounded dump deadline, removes the shared remote file, and cleans
+# up the previous UiAutomator runner when needed. No assertion or gesture is
+# skipped, and the retry count is deliberately finite.
+picker_hierarchy_ready=0
+for picker_hierarchy_attempt in {1..4}; do
+  if dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML" \
+      && { grep -Fq -- "Show roots" "$PICKER_UI_XML" \
+           || grep -Fq -- "Show navigation drawer" "$PICKER_UI_XML"; }; then
+    picker_hierarchy_ready=1
+    if (( picker_hierarchy_attempt > 1 )); then
+      echo "Android Document Picker accessibility tree became ready on fresh dump attempt $picker_hierarchy_attempt."
+    fi
+    break
+  fi
+  echo "WARN: fresh Document Picker hierarchy attempt $picker_hierarchy_attempt did not expose a valid root-navigation control."
+  if (( picker_hierarchy_attempt < 4 )); then sleep 1; fi
+done
+if [[ "$picker_hierarchy_ready" != "1" ]]; then
+  echo "ERROR: could not capture a fresh, actionable Android Document Picker hierarchy after 4 bounded attempts"
   exit 1
 fi
 
