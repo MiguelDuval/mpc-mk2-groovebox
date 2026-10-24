@@ -342,10 +342,11 @@ bool MpcProjectState::setSequenceTimeSignature(
             oldSequence.loopStartTicks / oldPerBar + 1,
             1,
             bars);
-    const auto endBar = std::clamp(
-            (oldSequence.loopEndTicks + oldPerBar - 1) / oldPerBar,
-            startBar,
-            bars);
+    const auto roundedEndBar =
+            (static_cast<std::int64_t>(oldSequence.loopEndTicks)
+             + oldPerBar - 1) / oldPerBar;
+    const auto endBar = static_cast<std::int32_t>(
+            std::clamp<std::int64_t>(roundedEndBar, startBar, bars));
 
     const auto length = sequencer::sequenceLengthForBars(
             bars, numerator, denominator);
@@ -353,16 +354,25 @@ bool MpcProjectState::setSequenceTimeSignature(
         return false;
     }
 
+    const auto newPerBar = sequencer::barLengthTicks(numerator, denominator);
+    // The supported tick length is int32, but endBar * ticks-per-bar may
+    // exceed INT32_MAX by almost a bar for an imported maximal-length Sequence.
+    // Widen before multiplying, then clamp both loop points to the new length.
+    const auto requestedLoopStart =
+            static_cast<std::int64_t>(startBar - 1) * newPerBar;
+    const auto requestedLoopEnd =
+            static_cast<std::int64_t>(endBar) * newPerBar;
+    const auto newLoopStart = std::clamp<std::int64_t>(
+            requestedLoopStart, 0, static_cast<std::int64_t>(length) - 1);
+    const auto newLoopEnd = std::clamp<std::int64_t>(
+            requestedLoopEnd, newLoopStart + 1, length);
+
     auto& sequence = activeSequence();
     sequence.numerator = numerator;
     sequence.denominator = denominator;
     sequence.lengthTicks = length;
-
-    const auto newPerBar = sequencer::barLengthTicks(numerator, denominator);
-    sequence.loopStartTicks = (startBar - 1) * newPerBar;
-    sequence.loopEndTicks = std::min(
-            length,
-            endBar * newPerBar);
+    sequence.loopStartTicks = static_cast<std::int32_t>(newLoopStart);
+    sequence.loopEndTicks = static_cast<std::int32_t>(newLoopEnd);
 
     for (auto& track : sequence.tracks) {
         for (auto& pattern : track.patterns) {
@@ -399,15 +409,27 @@ bool MpcProjectState::setSequenceLoop(
         return false;
     }
 
-    sequence.loopEnabled = enabled;
-    sequence.loopStartTicks = (start - 1) * perBar;
-    sequence.loopEndTicks =
-            std::min(
-                    sequence.lengthTicks,
-                    end * perBar);
-    if (sequence.loopEndTicks <= sequence.loopStartTicks) {
+    if (sequence.lengthTicks <= 0) {
         return false;
     }
+
+    const auto requestedStart =
+            static_cast<std::int64_t>(start - 1) * perBar;
+    const auto requestedEnd =
+            static_cast<std::int64_t>(end) * perBar;
+    const auto loopStart = std::clamp<std::int64_t>(
+            requestedStart, 0, static_cast<std::int64_t>(sequence.lengthTicks) - 1);
+    const auto loopEnd = std::clamp<std::int64_t>(
+            requestedEnd, loopStart + 1, sequence.lengthTicks);
+
+    // Validate all computed values before mutating the Sequence. Invalid or
+    // extreme imported state must not leave a partial loop-setting update.
+    if (loopEnd <= loopStart) {
+        return false;
+    }
+    sequence.loopEnabled = enabled;
+    sequence.loopStartTicks = static_cast<std::int32_t>(loopStart);
+    sequence.loopEndTicks = static_cast<std::int32_t>(loopEnd);
     return true;
 }
 
