@@ -50,21 +50,32 @@ inline float sampleEnvelopeGain(
         return 0.0f;
     }
 
+    // Public callers may pass an unnormalized parameter aggregate. Normalize
+    // at the DSP boundary so NaN, infinity, negative times, or out-of-range
+    // sustain cannot reach rounding/conversion or escape the supported range.
+    const auto normalized = normalizeSampleEnvelopeParameters(
+            parameters.attackMs,
+            parameters.decayMs,
+            parameters.sustain,
+            parameters.releaseMs);
+
     const auto timeToFrames = [sampleRate](float milliseconds) {
+        // Use llround: on 32-bit targets a valid 2000 ms envelope at a high
+        // integer sample rate can exceed LONG_MAX while still fitting size_t.
         return static_cast<std::size_t>(
-                std::lround(
+                std::llround(
                         static_cast<double>(milliseconds)
                         * static_cast<double>(sampleRate)
                         / 1000.0));
     };
 
     const std::size_t attackFrames = std::min(
-            timeToFrames(parameters.attackMs), totalFrames);
+            timeToFrames(normalized.attackMs), totalFrames);
     const std::size_t decayFrames = std::min(
-            timeToFrames(parameters.decayMs),
+            timeToFrames(normalized.decayMs),
             totalFrames - attackFrames);
     const std::size_t releaseFrames = std::min(
-            timeToFrames(parameters.releaseMs), totalFrames);
+            timeToFrames(normalized.releaseMs), totalFrames);
     const std::size_t releaseStart = totalFrames - releaseFrames;
 
     if (ageFrames < attackFrames) {
@@ -77,12 +88,12 @@ inline float sampleEnvelopeGain(
     const std::size_t decayEnd = attackFrames + decayFrames;
     if (ageFrames < decayEnd) {
         if (decayFrames == 0) {
-            return parameters.sustain;
+            return normalized.sustain;
         }
         const float amount =
                 static_cast<float>(ageFrames - attackFrames)
                 / static_cast<float>(decayFrames);
-        return 1.0f + (parameters.sustain - 1.0f) * amount;
+        return 1.0f + (normalized.sustain - 1.0f) * amount;
     }
 
     if (releaseFrames > 0 && ageFrames >= releaseStart) {
@@ -92,10 +103,10 @@ inline float sampleEnvelopeGain(
         const float amount =
                 static_cast<float>(ageFrames - releaseStart)
                 / static_cast<float>(releaseFrames);
-        return parameters.sustain * std::max(0.0f, 1.0f - amount);
+        return normalized.sustain * std::max(0.0f, 1.0f - amount);
     }
 
-    return parameters.sustain;
+    return normalized.sustain;
 }
 
 inline int normalizeSampleFilterCutoffMilliHz(float cutoffHz) noexcept {
