@@ -2032,6 +2032,8 @@ done
 for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
     'open_project_document()' 'PROJECT_OPEN_REJECTED)' \
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
+    'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..4}; do' \
+    'initial DocumentsUI hierarchy is not ready' 'after 4 fresh, bounded attempts' \
     'expected Project Open outcome $expected_marker'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
@@ -9727,10 +9729,28 @@ if [[ -z "$picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$picker_activity"; 
 fi
 printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-picker-select-source-activity.txt
 
-# Always capture the first DocumentsUI frame before reading or tapping its
-# controls. The activity can be resumed before its first accessibility tree is ready.
-if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
-  echo "ERROR: could not capture initial Android Document Picker hierarchy"
+# DocumentsUI can be resumed a moment before its first accessibility tree
+# is ready. Retry only fresh, bounded dumps: dump_device_ui removes the shared
+# remote file and host file each attempt, then rejects empty/malformed XML, so
+# this can never fall back to a stale tree from the previous activity.
+picker_hierarchy_ready=0
+for picker_hierarchy_attempt in {1..4}; do
+  if dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8; then
+    picker_hierarchy_ready=1
+    break
+  fi
+  if (( picker_hierarchy_attempt < 4 )); then
+    echo "WARN: initial DocumentsUI hierarchy is not ready (attempt $picker_hierarchy_attempt/4); retrying a fresh bounded capture"
+    sleep 1
+  fi
+done
+if [[ "$picker_hierarchy_ready" != "1" ]]; then
+  echo "ERROR: could not capture initial Android Document Picker hierarchy after 4 fresh, bounded attempts"
+  adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 \
+    > /tmp/mpc-groovebox-picker-select-source-activity-final.txt || true
+  cat /tmp/mpc-groovebox-picker-select-source-activity-final.txt || true
+  cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   exit 1
 fi
 
