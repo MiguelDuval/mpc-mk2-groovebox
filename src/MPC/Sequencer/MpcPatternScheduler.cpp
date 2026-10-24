@@ -46,6 +46,26 @@ std::uint32_t mixCycleSeed(
     return state;
 }
 
+
+bool windowOffsetFitsInt64(
+        std::int64_t loopLength,
+        std::int64_t begin,
+        std::int64_t end,
+        std::uint64_t completedCycles) noexcept {
+    if (completedCycles == 0 || loopLength <= 0) return true;
+
+    const auto maxTicks = static_cast<std::uint64_t>(
+            std::numeric_limits<std::int64_t>::max());
+    const auto length = static_cast<std::uint64_t>(loopLength);
+    if (completedCycles > maxTicks / length) return false;
+
+    const auto cycleTicks = completedCycles * length;
+    if (end <= begin) return true;
+
+    const auto tailTicks = static_cast<std::uint64_t>(end - begin);
+    return tailTicks <= maxTicks - cycleTicks;
+}
+
 } // namespace
 
 ScheduleResult schedulePatternWindow(
@@ -69,9 +89,9 @@ ScheduleResult schedulePatternWindow(
         return result;
     }
 
-    if (window.completedCycles >
-        static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) /
-                static_cast<std::uint64_t>(length)) {
+    if (!windowOffsetFitsInt64(
+                length, window.begin, window.end, window.completedCycles)) {
+        result.truncated = true;
         return result;
     }
 
@@ -107,7 +127,7 @@ ScheduleResult schedulePatternWindow(
 
             auto& scheduled = output[result.written++];
             scheduled.offsetTicks =
-                    baseOffset + effectiveTick - segmentBegin;
+                    baseOffset + (effectiveTick - segmentBegin);
             scheduled.patternTick = note.tick;
             scheduled.durationTicks = note.durationTicks;
             scheduled.note = note.note;
@@ -169,6 +189,11 @@ ScheduleResult schedulePatternWindowInRange(
     }
 
     const auto loopLength = loopEndTicks - loopStartTicks;
+    if (!windowOffsetFitsInt64(
+                loopLength, window.begin, window.end, window.completedCycles)) {
+        result.truncated = true;
+        return result;
+    }
 
     const auto emitSegment = [&](std::int64_t segmentBegin,
                                  std::int64_t segmentEnd,
@@ -206,7 +231,7 @@ ScheduleResult schedulePatternWindowInRange(
 
             auto& scheduled = output[result.written++];
             scheduled.offsetTicks =
-                    baseOffset + effectiveTick - segmentBegin;
+                    baseOffset + (effectiveTick - segmentBegin);
             scheduled.patternTick = note.tick;
             scheduled.durationTicks = note.durationTicks;
             scheduled.note = note.note;
