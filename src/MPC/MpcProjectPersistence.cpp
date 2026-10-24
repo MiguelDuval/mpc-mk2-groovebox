@@ -284,11 +284,35 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
     return true;
 }
 
-} // namespace
+
+bool validatePatternNotes(const domain::Project& project, std::string* error) {
+    for (const auto& sequence : project.sequences) {
+        for (const auto& track : sequence.tracks) {
+            for (const auto& pattern : track.patterns) {
+                for (const auto& note : pattern.notes) {
+                    // Keep serialization aligned with readPattern(): otherwise
+                    // saveProjectFile can successfully write a file that this
+                    // same build rejects when the user reopens it.
+                    if (note.note > 127 || note.velocity > 127
+                            || note.probability > 127
+                            || note.ratchet < 1 || note.ratchet > 8) {
+                        return setError(error, "MIDI note field is out of range");
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+ } // namespace
 
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
-    if (!validatePlacements(project, error)) return {};
+    if (!validatePlacements(project, error)
+            || !validatePatternNotes(project, error)) {
+        return {};
+    }
     std::ostringstream out;
     out << std::setprecision(std::numeric_limits<double>::max_digits10);
     out << "MPCMK2_PROJECT " << kCurrentProjectFormatVersion << '\n';

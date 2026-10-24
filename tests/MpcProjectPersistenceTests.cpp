@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -148,6 +149,37 @@ int main() {
     assert(serialized.find("PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120")
             != std::string::npos);
 
+    // Every persisted MIDI field must satisfy the decoder's own constraints.
+    // Reject the in-memory Project before producing bytes that cannot be loaded.
+    const auto assertInvalidNoteRejected = [](auto mutateNote) {
+        auto invalid = makeProject();
+        auto& note = invalid.sequences[0].tracks[0].patterns[0].notes.front();
+        mutateNote(note);
+        std::string validationError;
+        const auto bytes = persistence::serializeProject(invalid, &validationError);
+        assert(bytes.empty());
+        assert(validationError == "MIDI note field is out of range");
+    };
+    assertInvalidNoteRejected([](auto& note) { note.note = 128; });
+    assertInvalidNoteRejected([](auto& note) { note.velocity = 128; });
+    assertInvalidNoteRejected([](auto& note) { note.probability = 128; });
+    assertInvalidNoteRejected([](auto& note) { note.ratchet = 0; });
+    assertInvalidNoteRejected([](auto& note) { note.ratchet = 9; });
+
+    // Velocity zero remains representable for compatibility with existing
+    // silent note data because readPattern() accepts zero as an in-range value.
+    auto silentNoteProject = makeProject();
+    silentNoteProject.sequences[0].tracks[0].patterns[0].notes[0].velocity = 0;
+    std::string silentNoteError;
+    const auto silentNoteBytes =
+            persistence::serializeProject(silentNoteProject, &silentNoteError);
+    assert(!silentNoteBytes.empty());
+    assert(silentNoteError.empty());
+    domain::Project silentNoteRoundTrip;
+    assert(persistence::deserializeProject(
+            silentNoteBytes, silentNoteRoundTrip, &silentNoteError));
+    assert(silentNoteRoundTrip.sequences[0].tracks[0].patterns[0].notes[0].velocity == 0);
+
     const auto filePath = (std::filesystem::temp_directory_path()
             / "mpc-project-persistence-test.mpcproj").string();
     std::remove(filePath.c_str());
@@ -285,10 +317,29 @@ int main() {
     assert(legacyNote.ratchet == 2);
     assert(legacyNote.nudgeTicks == -3);
 
+    // A failed parse must leave every field of the already-open Project intact,
+    // not merely preserve its identity. The truncated v2 payload is valid through
+    // all model records and fails only at END_PROJECT after candidate decoding.
+    const std::string loadedSerializedBeforeFailure =
+            persistence::serializeProject(loaded, &error);
+    assert(!loadedSerializedBeforeFailure.empty());
+    assert(error.empty());
+
+    const auto endProjectMarker = serialized.find("END_PROJECT\n");
+    assert(endProjectMarker != std::string::npos);
+    const std::string truncatedAfterRecords = serialized.substr(0, endProjectMarker);
+    assert(!persistence::deserializeProject(truncatedAfterRecords, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
+    // Unsupported versions must obey the same all-or-nothing contract.
+    error.clear();
     const auto loadedIdBeforeFailure = loaded.id;
     assert(!persistence::deserializeProject(
             "MPCMK2_PROJECT 99\n", loaded, &error));
+    assert(!error.empty());
     assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
 
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
