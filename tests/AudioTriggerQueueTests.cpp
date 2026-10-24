@@ -25,6 +25,16 @@ int main() {
             mpc::audio::AudioTriggerEvent{0, 128, 0}, padCount));
     assert(!mpc::audio::isValidAudioTriggerEvent(
             mpc::audio::AudioTriggerEvent{0, 255, 0}, padCount));
+    assert(!mpc::audio::isValidAudioTriggerEvent(
+            mpc::audio::AudioTriggerEvent{0, 127, -1}, padCount));
+    // The render queue accepts only a short look-ahead window: hostile or
+    // stale offsets must not monopolize all pending slots before live hits.
+    assert(mpc::audio::isValidAudioTriggerEvent(
+            mpc::audio::AudioTriggerEvent{0, 127, 48000}, padCount, 48000));
+    assert(!mpc::audio::isValidAudioTriggerEvent(
+            mpc::audio::AudioTriggerEvent{0, 127, 48001}, padCount, 48000));
+    assert(!mpc::audio::isValidAudioTriggerEvent(
+            mpc::audio::AudioTriggerEvent{0, 127, 2147483647}, padCount, 48000));
 
     mpc::audio::AudioTriggerQueue queue;
 

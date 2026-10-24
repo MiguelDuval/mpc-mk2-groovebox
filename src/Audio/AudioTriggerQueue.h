@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <type_traits>
 
 namespace mpc::audio {
@@ -23,11 +24,16 @@ struct AudioTriggerEvent final {
 
 // Final render-boundary policy: reject malformed events even if a producer
 // bypasses the validated ingress methods and writes directly to the queue.
+// Offsets are relative to the immediate audio render window; a bounded horizon
+// prevents far-future queue entries from occupying every pending render slot.
 [[nodiscard]] inline constexpr bool isValidAudioTriggerEvent(
         const AudioTriggerEvent& event,
-        std::size_t padCount) noexcept {
+        std::size_t padCount,
+        std::int32_t maxOffsetFrames = std::numeric_limits<std::int32_t>::max()) noexcept {
     return event.padIndex < padCount
-            && isValidAudioTriggerVelocity(event.velocity);
+            && isValidAudioTriggerVelocity(event.velocity)
+            && event.offsetFrames >= 0
+            && event.offsetFrames <= maxOffsetFrames;
 }
 
 template <typename T, std::size_t Capacity>
