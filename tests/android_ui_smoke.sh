@@ -237,8 +237,14 @@ for required in \
 done
 for required in \
   'providerReadbackSecurityExceptionRestoresDestinationWithoutLatchingWriteDenial' \
-  'providerWriteSecurityExceptionIsClassifiedAsWriteDenial' \
-  'deniedRollbackWriteIsClassifiedEvenWhenPrimaryFailureWasReadback'; do
+  'providerOutputOpenSecurityExceptionIsClassifiedAsWriteDenial' \
+    'deniedRollbackOutputOpenIsClassifiedEvenWhenPrimaryFailureWasReadback' \\
+  'providerStreamWriteSecurityExceptionDoesNotLatchWriteDenial' \\
+  'providerStreamFlushEaccesDoesNotLatchWriteDenial' \\
+  'providerStreamCloseEaccesDoesNotLatchWriteDenial' \\
+  'rollbackStreamWriteSecurityExceptionDoesNotLatchWriteDenial' \\
+  'rollbackStreamFlushEaccesDoesNotLatchWriteDenial' \\
+  'rollbackStreamCloseEaccesDoesNotLatchWriteDenial'; do
   if ! grep -Fq -- "$required" \
       "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectDocumentWriteTransactionTest.java"; then
     echo "ERROR: Project document transaction phase test missing: $required"; exit 1
