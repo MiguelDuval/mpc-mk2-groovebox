@@ -198,6 +198,38 @@ void testRejectsZeroVelocityPressFromSyntheticQueue() {
     assert(track.patterns.front().notes.empty());
 }
 
+void testSequenceSwitchAbortsRecordingWithoutCrossSequenceNotes() {
+    mpc::MpcProjectState state;
+    state.activeSequence().tracks[0].recordArmed = true;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Replace);
+    recorder.begin(state);
+
+    // Hold a press in Sequence 01; its release must never be replayed against
+    // Sequence 02 after track index 0 acquires a different musical meaning.
+    assert(queue.tryEnqueue({100, 0, 0, 100, 1}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(recorder.active());
+
+    assert(state.addSequence("Sequence 02"));
+    auto& secondSequence = state.activeSequence();
+    assert(secondSequence.id != "sequence-01");
+    secondSequence.tracks[0].recordArmed = true;
+
+    assert(queue.tryEnqueue({220, 0, 0, 0, 0}));
+    assert(queue.tryEnqueue({240, 0, 0, 110, 1}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(!recorder.active());
+    assert(secondSequence.tracks[0].patterns.front().notes.empty());
+
+    mpc::sequencer::SequenceRecordEvent stale{};
+    assert(!queue.tryDequeue(stale));
+    assert(recorder.finish(state, queue, 480) == 0);
+    assert(secondSequence.tracks[0].patterns.front().notes.empty());
+}
+
 void testZeroLengthTapUsesGridDuration() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -283,6 +315,7 @@ int main() {
     testRejectsZeroVelocityPressFromSyntheticQueue();
     testZeroLengthTapUsesGridDuration();
     testRejectsMalformedQueuedMidiValues();
+    testSequenceSwitchAbortsRecordingWithoutCrossSequenceNotes();
     testNonActiveArmedTrackUsesItsOwnDrumProgram();
     testTimingCorrectCanBeDisabled();
     return 0;
