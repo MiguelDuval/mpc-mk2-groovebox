@@ -330,7 +330,7 @@ bool validatePatternNotes(const domain::Project& project, std::string* error) {
     return true;
 }
 
- } // namespace
+} // namespace
 
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();

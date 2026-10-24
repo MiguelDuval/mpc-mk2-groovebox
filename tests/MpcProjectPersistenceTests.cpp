@@ -354,8 +354,9 @@ int main() {
     assert(legacyNote.nudgeTicks == -3);
 
     // A failed parse must leave every field of the already-open Project intact,
-    // not merely preserve its identity. The truncated v2 payload is valid through
-    // all model records and fails only at END_PROJECT after candidate decoding.
+    // not merely preserve its identity. The truncated v2 payload is deliberately
+    // valid through all serialized model records and fails only at END_PROJECT,
+    // after a large candidate has already been decoded.
     const std::string loadedSerializedBeforeFailure =
             persistence::serializeProject(loaded, &error);
     assert(!loadedSerializedBeforeFailure.empty());
@@ -368,7 +369,7 @@ int main() {
     assert(!error.empty());
     assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
 
-    // Unsupported versions must obey the same all-or-nothing contract.
+    // Unsupported format versions must obey the same all-or-nothing contract.
     error.clear();
     const auto loadedIdBeforeFailure = loaded.id;
     assert(!persistence::deserializeProject(
