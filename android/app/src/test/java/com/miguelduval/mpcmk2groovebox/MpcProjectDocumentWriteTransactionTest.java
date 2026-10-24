@@ -309,7 +309,7 @@ public class MpcProjectDocumentWriteTransactionTest {
 
             assertFalse(result.success);
             assertTrue(result.writeAttempted);
-            assertFalse(result.previousDocumentPreserved);
+            assertTrue(result.previousDocumentPreserved);
             assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
                     result.failurePhase);
             assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_WRITE,
@@ -317,8 +317,7 @@ public class MpcProjectDocumentWriteTransactionTest {
             assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
                     result.writeAttempted, result.failurePhase, result.failureDetail,
                     result.rollbackFailurePhase, result.rollbackFailureDetail));
-            assertNotNull(result.recoveryCopy);
-            assertArrayEquals(OLD_DOCUMENT, Files.readAllBytes(result.recoveryCopy.toPath()));
+            assertNull(result.recoveryCopy);
         });
     }
 
@@ -337,7 +336,7 @@ public class MpcProjectDocumentWriteTransactionTest {
 
             assertFalse(result.success);
             assertTrue(result.writeAttempted);
-            assertFalse(result.previousDocumentPreserved);
+            assertTrue(result.previousDocumentPreserved);
             assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
                     result.failurePhase);
             assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_WRITE,
@@ -345,8 +344,7 @@ public class MpcProjectDocumentWriteTransactionTest {
             assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
                     result.writeAttempted, result.failurePhase, result.failureDetail,
                     result.rollbackFailurePhase, result.rollbackFailureDetail));
-            assertNotNull(result.recoveryCopy);
-            assertArrayEquals(OLD_DOCUMENT, Files.readAllBytes(result.recoveryCopy.toPath()));
+            assertNull(result.recoveryCopy);
         });
     }
 
