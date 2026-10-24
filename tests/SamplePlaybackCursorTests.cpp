@@ -1,6 +1,7 @@
 #include "Audio/SamplePlaybackCursor.h"
 
 #include <cassert>
+#include <limits>
 
 int main() {
     double position = 0.0;
@@ -27,7 +28,7 @@ int main() {
             negativePosition, 1.0f, 8u, 8u));
     assert(negativePosition == -1.0);
 
-    double nonFinitePosition = __builtin_nan("");
+    double nonFinitePosition = std::numeric_limits<double>::quiet_NaN();
     assert(!mpc::audio::advanceSamplePlaybackCursor(
             nonFinitePosition, 1.0f, 8u, 8u));
 
@@ -39,7 +40,7 @@ int main() {
             validPosition, -1.0f, 8u, 8u));
     assert(validPosition == 1.0);
     assert(!mpc::audio::advanceSamplePlaybackCursor(
-            validPosition, __builtin_inff(), 8u, 8u));
+            validPosition, std::numeric_limits<float>::infinity(), 8u, 8u));
     assert(validPosition == 1.0);
 
     double exhaustedPosition = 4.0;
