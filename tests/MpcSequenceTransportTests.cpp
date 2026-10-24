@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <limits>
 
 namespace {
 
@@ -38,6 +39,39 @@ void testNonLoopPositionDoesNotWrap() {
     assert(clock.positionAtTimestamp(3000000000) == 1919);
 }
 
+
+void testLoopNormalizationHandlesMinimumSignedPosition() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    sequence.lengthTicks = 2880;
+    sequence.loopEnabled = true;
+    sequence.loopStartTicks = 480;
+    sequence.loopEndTicks = 2400;
+
+    mpc::sequencer::MpcSequenceTransportClock clock;
+    clock.start(sequence, std::numeric_limits<std::int64_t>::min(), 1000000000);
+
+    // The loop-relative position is normalized without subtracting 480 from
+    // INT64_MIN, which would overflow signed arithmetic.
+    assert(clock.snapshot().positionTicks == 1792);
+}
+
+void testNonLoopAdvanceSaturatesBeforeClampingForExtremeElapsedTempo() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    sequence.tempoBpm = 1000000000.0;
+    sequence.lengthTicks = 1920;
+    sequence.loopEnabled = false;
+
+    mpc::sequencer::MpcSequenceTransportClock clock;
+    clock.start(sequence, 1000, 1);
+
+    // Extreme elapsed time at a hostile tempo exceeds int64 tick range. The
+    // clock must saturate the advance before clamping to the sequence end.
+    assert(clock.positionAtTimestamp(std::numeric_limits<std::int64_t>::max())
+            == 1919);
+}
+
 void testStopFreezesPosition() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -61,6 +95,8 @@ void testStopFreezesPosition() {
 int main() {
     testLoopedPosition();
     testNonLoopPositionDoesNotWrap();
+    testLoopNormalizationHandlesMinimumSignedPosition();
+    testNonLoopAdvanceSaturatesBeforeClampingForExtremeElapsedTempo();
     testStopFreezesPosition();
     return 0;
 }

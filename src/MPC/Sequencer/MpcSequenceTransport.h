@@ -97,18 +97,30 @@ public:
                     state.loopEndTicks);
         }
 
+        // Both timestamps are positive here and timestampNanos is newer, so
+        // their difference is representable as a signed 64-bit duration.
         const auto elapsedNanos = timestampNanos - state.timestampNanos;
-        const auto bpm = static_cast<double>(state.tempoMilliBpm) / 1000.0;
         const auto ticksPerSecond =
-                bpm * 960.0 / 60.0;
-        const auto deltaTicks = static_cast<std::int64_t>(
-                std::llround(
-                        static_cast<double>(elapsedNanos)
-                        * ticksPerSecond
-                        / 1000000000.0));
+                static_cast<long double>(state.tempoMilliBpm) * 16.0L / 1000.0L;
+        const auto exactDeltaTicks =
+                static_cast<long double>(elapsedNanos) * ticksPerSecond
+                / 1000000000.0L;
 
-        const auto advanced =
-                state.positionTicks + std::max<std::int64_t>(0, deltaTicks);
+        std::int64_t deltaTicks = 0;
+        const auto maxTicks = std::numeric_limits<std::int64_t>::max();
+        if (exactDeltaTicks >= static_cast<long double>(maxTicks)) {
+            // Avoid llround outside its representable range for hostile tempo
+            // or timestamp input. The eventual transport position saturates.
+            deltaTicks = maxTicks;
+        } else if (std::isfinite(exactDeltaTicks) && exactDeltaTicks > 0.0L) {
+            deltaTicks = std::llround(exactDeltaTicks);
+        }
+
+        const auto basePosition = std::max<std::int64_t>(0, state.positionTicks);
+        const auto positiveDelta = std::max<std::int64_t>(0, deltaTicks);
+        const auto advanced = positiveDelta > maxTicks - basePosition
+                ? maxTicks
+                : basePosition + positiveDelta;
         if (!state.loopEnabled) {
             return std::clamp<std::int64_t>(
                     advanced,
@@ -174,8 +186,17 @@ private:
         }
 
         const auto length = loopEnd - loopStart;
-        const auto relative = (ticks - loopStart) % length;
-        return loopStart + (relative < 0 ? relative + length : relative);
+        // Compute (ticks - loopStart) mod length without the potentially
+        // overflowing subtraction when ticks is INT64_MIN.
+        const auto positionRemainder = ticks % length;
+        const auto normalizedPosition = positionRemainder < 0
+                ? positionRemainder + length
+                : positionRemainder;
+        const auto startRemainder = loopStart % length;
+        const auto relative = normalizedPosition >= startRemainder
+                ? normalizedPosition - startRemainder
+                : length - (startRemainder - normalizedPosition);
+        return loopStart + relative;
     }
 
     std::atomic<std::int64_t> positionTicks_{0};
