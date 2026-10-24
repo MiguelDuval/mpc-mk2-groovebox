@@ -1,6 +1,7 @@
 #include "MPC/Sequencer/MpcNoteRepeatTiming.h"
 
 #include <cassert>
+#include <limits>
 
 int main() {
     using namespace mpc::sequencer::note_repeat_timing;
@@ -27,6 +28,10 @@ int main() {
     assert(repeatRateTicksForIndex(7) == 160);
     assert(repeatRateIndexForTicks(240) == 2);
     assert(repeatRateIndexForTicks(640) == 5);
+    // Malformed/extreme values must not overflow the signed subtraction used
+    // to find the closest supported repeat rate.
+    assert(repeatRateIndexForTicks(std::numeric_limits<std::int32_t>::min()) == 4);
+    assert(repeatRateIndexForTicks(std::numeric_limits<std::int32_t>::max()) == 0);
     assert(repeatRateIndexForTouch(0) == 0);
     assert(repeatRateIndexForTouch(31) == 1);
     assert(repeatRateIndexForTouch(32) == 2);
