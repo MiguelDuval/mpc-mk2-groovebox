@@ -43,7 +43,29 @@ public:
     }
 
     float process(float input) noexcept {
+        // Never allow non-finite source samples to enter the filter state or
+        // propagate to the audio output, even while the filter is bypassed.
+        if (!std::isfinite(input)) {
+            state_ = 0.0f;
+            initialized_ = false;
+            return 0.0f;
+        }
+
+        // Defend state/coefficient invariants if a previous input was extreme.
+        if (!std::isfinite(state_)) {
+            state_ = 0.0f;
+            initialized_ = false;
+        }
+        if (!std::isfinite(alpha_)) {
+            alpha_ = 1.0f;
+            bypass_ = true;
+        }
+
         if (bypass_) {
+            // Keep continuity state warm while bypassed. Re-enabling a filter
+            // starts from the most recent bypassed sample, not stale state.
+            state_ = input;
+            initialized_ = true;
             return input;
         }
 
@@ -53,7 +75,14 @@ public:
             return input;
         }
 
-        state_ += alpha_ * (input - state_);
+        const float nextState = state_ + alpha_ * (input - state_);
+        if (!std::isfinite(nextState)) {
+            state_ = 0.0f;
+            initialized_ = false;
+            return 0.0f;
+        }
+
+        state_ = nextState;
         return state_;
     }
 
