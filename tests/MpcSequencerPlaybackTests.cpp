@@ -1,4 +1,5 @@
 #include "MPC/Sequencer/MpcSequencerPlayback.h"
+#include "MPC/Sequencer/MpcSequencePlaybackSession.h"
 
 #include <array>
 #include <cassert>
