@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 
 namespace {
 
@@ -47,6 +48,35 @@ int main() {
                 500, 1000, 1000, parameters), 0.5f);
         assert(mpc::audio::sampleEnvelopeGain(
                 900, 1000, 1000, parameters) < 0.3f);
+    }
+
+    {
+        // The DSP helper is also a public entry point: it must not assume
+        // every caller has already passed values through the normalizer.
+        const mpc::audio::SampleEnvelopeParameters raw{
+                -10.0f, -5.0f, 2.0f, -1.0f};
+        expectNear(mpc::audio::sampleEnvelopeGain(
+                100, 1000, 1000, raw), 1.0f);
+
+        const mpc::audio::SampleEnvelopeParameters nonFinite{
+                std::numeric_limits<float>::quiet_NaN(),
+                std::numeric_limits<float>::infinity(),
+                std::numeric_limits<float>::quiet_NaN(),
+                -std::numeric_limits<float>::infinity()};
+        const auto gain = mpc::audio::sampleEnvelopeGain(
+                500, 1000, 1000, nonFinite);
+        assert(std::isfinite(gain));
+        expectNear(gain, 1.0f);
+
+        // The maximum normalized duration can exceed LONG_MAX frames on a
+        // 32-bit target, although the valid frame count fits size_t.
+        const mpc::audio::SampleEnvelopeParameters longAttack{
+                2000.0f, 0.0f, 1.0f, 0.0f};
+        const auto highRateGain = mpc::audio::sampleEnvelopeGain(
+                100, std::numeric_limits<std::size_t>::max(),
+                std::numeric_limits<int>::max(), longAttack);
+        assert(std::isfinite(highRateGain));
+        assert(highRateGain >= 0.0f && highRateGain <= 1.0f);
     }
 
     {
