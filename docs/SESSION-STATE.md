@@ -1,38 +1,25 @@
 # Session State — MPC MkII Groovebox
 
-**Checkpoint date:** 2026-10-23  
+**Checkpoint date:** 2026-10-24  
 **Purpose:** live handoff; exact branch HEAD and exact-SHA Actions evidence govern.
 
 ## Latest verified full exact-HEAD acceptance
 
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains OPEN on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
-- **Latest full exact-HEAD acceptance:** [Android Build #3113 / run 39984123027](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39984123027), exact SHA `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`. All native/JVM checks, APK assembly, full emulator smoke and evidence upload passed after PR #31/#32 integration.
-- APK artifact ID `12515141867`; visual evidence artifact ID `12516242478`. Smoke confirmed Browser USER FOLDER/FAVORITE 1 restoration, Project SAVE/SAVE AS/OPEN and recovery, Shortcut reset/restart, SAMP-008/009 and SAMP-010 native audition/viewport invariants.
-- PR #30 was at `352e1319f1377c646f268dad07f54e7336214d6f` before this sync. No exact-SHA full run exists for that head. Build #3109 failed on prior SHA `cee0c8b5eef8e09c7197b22274f3c2dcd779e833` while navigating DocumentsUI FAVORITE 1; it did not reach the controlled output-denial test.
-- SAF work already accepted on earlier exact SHAs: transaction failure-phase classification Build #3100; real DocumentsUI URI revocation and SAVE AS recovery Build #3107; revocation probe safety guards Build #3108. The controlled provider-output-denial test remains pending.
-- Physical Akai MPC Studio MkII acceptance remains a separate pending hardware gate.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) is OPEN on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`. Current verified HEAD: `985fdd3df616b0d0c0a284282527fbb15540e069`.
+- **Android Build #3156 / run [40100660011](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40100660011) PASSED on exact SHA `985fdd3df616b0d0c0a284282527fbb15540e069`.** All workflow steps completed successfully, including APK assembly, full emulator smoke (step 52) and visual-evidence upload (step 53).
+- APK artifact ID `12562642906`, size 10,009,933 bytes, SHA-256 `e787429c0338397ab9defa076acc5a8e9599a6dd5b4f199cc971601859a6224c`. Visual-evidence artifact ID `12563432229`, size 15,202,931 bytes, SHA-256 `34c9d6bb91561cd3a4b0c5f5da43898a8225048a41d638e82bcdc172fb8b0615`.
+- Accepted smoke coverage includes Browser USER FOLDER/FAVORITE 1 and DocumentsUI restoration, Project save/open/overwrite/restart/recovery and malformed-load preservation, Arrangement placement operations, SAMP-008/009 and SAMP-010 waveform viewport/audition invariants.
+- `.github/workflows/android-build.yml` retains `cancel-in-progress: false`. Physical Akai MPC Studio MkII validation remains a separate pending hardware gate.
 
-## Current candidate — SAMP-010 waveform zoom/audition
+## Current execution queue — 2026-10-24
 
-- `MpcProjectDocumentWriteTransaction` captures and SHA-256-verifies a bounded private preimage before output, writes the serialized snapshot, verifies exact read-back bytes, and attempts rollback on ambiguous write/readback failures. If rollback cannot be verified, it retains the byte-exact recovery copy; this is best-effort rollback, not an arbitrary-provider atomicity guarantee.
-- The transaction exposes distinct failure phases. Build #3100 accepted that readback-only `SecurityException` is not evidence of write denial, while a denied forward or rollback output operation can disable direct SAVE. Build #3097 accepted the earlier guard that preimage-read EACCES/`SecurityException` with `writeAttempted=false` does not latch read-only state.
-- Build #3107 accepted real DocumentsUI URI revocation and recovery using a disposable document; Build #3108 accepted the guard that no resolver stream is opened after restart unless read/write access is actually denied and no persisted grant remains.
-- Added a debug-only provider fixture that returns the exact active Project bytes on read, denies the first output open, then permits rollback. Its full acceptance must verify `PROVIDER_WRITE`, `rollbackFailurePhase=NONE`, unchanged active canonical SHA, exact provider restoration, disabled direct SAVE, and working SAVE AS/direct SAVE/reopen.
-- Separately, PR #23 Build #3113 accepted SAMP-010 real Pad audition and viewport-only zoom with unchanged sample PCM/region state. Those results do not substitute for PR #30's output-denial acceptance.
+1. **PR #30 — Project SAF failure phases.** Head `1db2898cae1a5da914b36289167be1e262363076`; original code head `eeef2a864126bca34e08410b063a9f1f3ec36287` passed Build #3129. GitHub reports `mergeable=false` as the branch catches up with primary HEAD `985fdd3df616b0d0c0a284282527fbb15540e069`. Canonical roadmap content has been reconciled; session state is being synchronized by a normal commit on the owning branch. Verify the live diff/mergeability and run full CI on the new exact SHA. Do not retarget automatically or rewrite history.
+2. **PR #57 — provider output-open classification.** Head `d1b7b8b49da2fd7899b9457a82e37c6a80faafe6` passed Android Build #3165 / run [40109297128](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40109297128): focused Android policy tests, APK, full emulator smoke and visual-evidence upload all succeeded. APK artifact `12565778824`; visual evidence artifact `12566209009`. This PR is stacked on #30; recheck its dependency after #30 advances.
+3. **PR #56 — Browser Show file size.** Head `8a672ba9fc0ec44bd6b71f088506a35229e958b0` passed Android Build #3162 / run [40108676401](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40108676401), including complete emulator smoke and visual-evidence upload. The storage-picker action is measured after a real pre-draw/layout pass; strict hit-target assertions remain enabled.
+4. **PR #55 — low-pass filter state.** Head `d4c9324270548ef47b132fa9b655e9a0aadc2717` passed Android Build #3158 / run [40108527287](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40108527287), including native/JVM checks, full emulator smoke and evidence upload. The transition test resets state before the separate impulse/decay assertions.
 
-## Current execution queue
+Physical-controller acceptance remains separate. Never modify `main`, rewrite history, or merge PRs without authorization.
 
-### Live CI — exact-SHA results and provider-failure state
-- **PR #23 baseline:** Build #3113 / run [39984123027](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39984123027) passed the complete workflow on exact SHA `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`; APK artifact `12515141867`, visual evidence `12516242478`.
-- **PR #30 current pre-sync result:** head `352e1319f1377c646f268dad07f54e7336214d6f` has no corresponding complete run. Build #3109 / run [39965373487](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39965373487) failed on the earlier SHA `cee0c8b5eef8e09c7197b22274f3c2dcd779e833` at Browser FAVORITE 1 DocumentsUI navigation. Fresh PNG/XML showed the smoke remained in an empty `Audiobooks` folder after a tap aimed at the Favorite folder; this is a UI-driver failure, not a Project-provider result.
-- **Previously accepted SAF tests:** Build #3100 accepted typed transaction failure phases; Build #3107 accepted real URI revocation/recovery; Build #3108 accepted revocation safety guards. These do not cover a provider that retains URI access but denies the output stream.
-- **Remaining gap:** run the controlled provider-output-denial scenario through the current production SAVE path, verify exact rollback and active-state invariance, then achieve a new full exact-SHA workflow and evidence upload.
-
-## Current queue
-1. Check the merged PR #30 branch HEAD and wait for its own exact-SHA Android workflow; require APK, focused JVM/native tests, full Browser/Project/SAMP smoke, real grant-revocation and controlled output-denial assertions, plus visual evidence.
-2. If a step fails, inspect that exact step and its fresh logs/PNG/XML. Keep grant-revocation preconditions and assertions strict; do not infer Project failure from a Browser picker failure.
-3. Fix only demonstrated root causes. Then use the catalog to choose the next semantic feature slice; Browser Options must remain unavailable until real state/behavior is implemented.
-4. Preserve `cancel-in-progress: false`, do not modify `main` or rewrite history, and keep physical MPC Studio MkII validation separate.
 ## Completed in this session
 
 ### 1. Track Edit sample-layer tuning — VERIFIED
