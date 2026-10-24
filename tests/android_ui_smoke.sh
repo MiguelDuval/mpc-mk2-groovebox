@@ -9728,9 +9728,28 @@ fi
 printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-picker-select-source-activity.txt
 
 # Always capture the first DocumentsUI frame before reading or tapping its
-# controls. The activity can be resumed before its first accessibility tree is ready.
-if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
-  echo "ERROR: could not capture initial Android Document Picker hierarchy"
+# controls. Android 16 can report DocumentsUI as resumed before UiTestAutomationBridge
+# has a root node. Treat an empty/malformed hierarchy as "not ready" and retry with
+# a shared, bounded readiness budget. Every attempt deletes and freshly captures the
+# tree; stale XML is never reused as evidence.
+picker_tree_deadline=$((SECONDS + 20))
+picker_tree_ready=0
+for picker_tree_attempt in {1..3}; do
+  remaining=$((picker_tree_deadline - SECONDS))
+  (( remaining > 0 )) || break
+  dump_budget=$((remaining < 8 ? remaining : 8))
+  if dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML" "$dump_budget"; then
+    picker_tree_ready=1
+    echo "Initial Android Document Picker hierarchy captured from a fresh tree on attempt $picker_tree_attempt."
+    break
+  fi
+  if (( picker_tree_attempt < 3 && SECONDS < picker_tree_deadline )); then
+    echo "WARN: DocumentsUI is resumed but its accessibility root is not ready; retrying with the remaining bounded budget (attempt $picker_tree_attempt/3)."
+    sleep 1
+  fi
+done
+if [[ "$picker_tree_ready" != "1" ]]; then
+  echo "ERROR: could not capture a fresh Android Document Picker hierarchy within the bounded readiness budget"
   exit 1
 fi
 
