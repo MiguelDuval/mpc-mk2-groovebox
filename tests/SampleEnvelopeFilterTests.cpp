@@ -31,6 +31,10 @@ int main() {
             expectNear(mpc::audio::sampleEnvelopeGain(
                     age, 1000, 1000, flat), 1.0f);
         }
+        // Sample lifetime is half-open: the last valid frame index is 999.
+        // With the default zero release, the envelope must still end at 1000.
+        expectNear(mpc::audio::sampleEnvelopeGain(1000, 1000, 1000, flat), 0.0f);
+        expectNear(mpc::audio::sampleEnvelopeGain(1001, 1000, 1000, flat), 0.0f);
     }
 
     {
