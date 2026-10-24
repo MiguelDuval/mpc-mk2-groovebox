@@ -12025,16 +12025,27 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         });
     }
 
+    private boolean isControlledProjectProviderWriteDenialUri(Uri uri) {
+        // This debug-only provider runs under our own UID, so Android does not
+        // expose a cross-UID URI grant through checkUriPermission. Its real
+        // openInputStream read-back is verified before direct SAVE is enabled;
+        // the provider itself rejects the first real output open.
+        return projectProviderWriteDenialSmokeMode
+                && uri != null
+                && (getPackageName() + ".projectwritefixture").equals(uri.getAuthority());
+    }
+
     private boolean canInvokeProjectSave() {
         if (currentProjectUri == null) {
             // With no linked URI, SAVE opens Save As; do not disable that entry point.
             return true;
         }
-        final boolean liveWriteGrant = checkUriPermission(
-                currentProjectUri,
-                android.os.Process.myPid(),
-                android.os.Process.myUid(),
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED;
+        final boolean liveWriteGrant = isControlledProjectProviderWriteDenialUri(currentProjectUri)
+                || checkUriPermission(
+                        currentProjectUri,
+                        android.os.Process.myPid(),
+                        android.os.Process.myUid(),
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED;
         return MpcProjectUriGrantPolicy.directSaveActionAvailable(
                 true, liveWriteGrant, currentProjectWritePreviouslyRejected);
     }
@@ -12119,21 +12130,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         currentProjectUri = uri;
         currentProjectWritePreviouslyRejected = false;
         currentProjectName = nativeProjectGetName();
-        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE grants-begin");
-        grantUriPermission(getPackageName(), uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-        final boolean readGranted = checkUriPermission(uri, android.os.Process.myPid(),
-                android.os.Process.myUid(), Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                == PackageManager.PERMISSION_GRANTED;
-        final boolean writeGranted = checkUriPermission(uri, android.os.Process.myPid(),
-                android.os.Process.myUid(), Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                == PackageManager.PERMISSION_GRANTED;
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE readback-begin");
+        final byte[] providerReadBack;
+        try (InputStream input = getContentResolver().openInputStream(uri);
+                ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
+            if (input == null) {
+                throw new IOException("Controlled provider returned no input stream");
+            }
+            final byte[] buffer = new byte[8192];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                bytes.write(buffer, 0, count);
+            }
+            providerReadBack = bytes.toByteArray();
+        } catch (IOException error) {
+            throw new IllegalStateException("Controlled provider did not permit real document read", error);
+        }
+        final String providerReadSha = projectBytesSha256(providerReadBack);
+        final boolean readVerified = stateSha.equals(providerReadSha);
         final boolean directSaveAvailable = canInvokeProjectSave();
-        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE grants-result"
-                + " read=" + readGranted + " write=" + writeGranted
-                + " directSave=" + directSaveAvailable);
-        if (!readGranted || !writeGranted || !directSaveAvailable) {
-            throw new IllegalStateException("Controlled provider URI did not permit initial direct SAVE");
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE access-result"
+                + " readAccess=" + (readVerified ? "VERIFIED" : "MISMATCH")
+                + " writeAccess=" + (directSaveAvailable ? "ARMED" : "UNAVAILABLE")
+                + " directSave=" + directSaveAvailable
+                + " readbackSha256=" + providerReadSha);
+        if (!readVerified || !directSaveAvailable) {
+            throw new IllegalStateException("Controlled provider URI could not verify read and expose initial direct SAVE");
         }
         Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE project-render-begin");
         showProjectPage();

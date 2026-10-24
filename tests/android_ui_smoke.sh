@@ -12868,9 +12868,9 @@ provider_fixture_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$pro
 provider_seed_sha="$(sed -nE 's/.*providerSha256=([0-9a-f]{64}).*/\1/p' <<<"$provider_fixture_line")"
 if [[ ! "$provider_fixture_sha" =~ ^[0-9a-f]{64}$ \
       || "$provider_seed_sha" != "$provider_fixture_sha" ]] \
-    || ! grep -Fq -- "readPermission=GRANTED writePermission=GRANTED" <<<"$provider_fixture_line" \
+    || ! grep -Fq -- "readAccess=VERIFIED writeAccess=ARMED directSave=true" <<<"$provider_fixture_line" \
     || ! grep -Fq -- "outputDenyAttempt=1" <<<"$provider_fixture_line"; then
-  echo "ERROR: provider fixture did not prove initial access and byte-exact seed"
+  echo "ERROR: provider fixture did not prove byte-exact seed, real read-back, and an armed first-write denial"
   echo "$provider_fixture_line"; exit 1
 fi
 if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
