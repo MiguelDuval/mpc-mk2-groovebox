@@ -88,12 +88,36 @@ int main() {
         filter.configure(0.0f, 48000);
         expectNear(filter.process(0.75f), 0.75f);
 
+        // Bypass must follow the live signal so re-enabling the filter does
+        // not restart from a stale pre-bypass sample.
         filter.configure(1000.0f, 48000);
+        expectNear(filter.process(1.0f), 1.0f);
+        filter.setCutoff(0.0f, 48000);
+        expectNear(filter.process(0.0f), 0.0f);
+        filter.setCutoff(1000.0f, 48000);
+        expectNear(filter.process(0.0f), 0.0f);
+
+        // The following legacy impulse/decay assertion intentionally begins
+        // with an uninitialized filter, as it did before the transition test.
+        filter.reset();
         const float first = filter.process(1.0f);
         const float second = filter.process(0.0f);
         expectNear(first, 1.0f);
         assert(second > 0.0f);
         assert(second < 1.0f);
+
+        // NaN and infinity must never leak to output or poison the subsequent
+        // running state, including when the filter is bypassed.
+        const auto notANumber = std::numeric_limits<float>::quiet_NaN();
+        const auto positiveInfinity = std::numeric_limits<float>::infinity();
+        assert(filter.process(notANumber) == 0.0f);
+        assert(std::isfinite(filter.process(0.25f)));
+        filter.setCutoff(0.0f, 48000);
+        assert(filter.process(positiveInfinity) == 0.0f);
+        expectNear(filter.process(0.25f), 0.25f);
+
+        filter.setCutoff(1000.0f, 48000);
+        expectNear(filter.process(0.25f), 0.25f);
     }
 
     return 0;
