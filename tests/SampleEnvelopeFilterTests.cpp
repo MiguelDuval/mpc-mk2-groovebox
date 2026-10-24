@@ -5,7 +5,6 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
-#include <limits>
 
 namespace {
 
@@ -94,6 +93,9 @@ int main() {
         filter.setCutoff(1000.0f, 48000);
         expectNear(filter.process(0.0f), 0.0f);
 
+        // The following legacy impulse/decay assertion intentionally begins
+        // with an uninitialized filter, as it did before the transition test.
+        filter.reset();
         const float first = filter.process(1.0f);
         const float second = filter.process(0.0f);
         expectNear(first, 1.0f);
