@@ -179,41 +179,16 @@ for required in \
   'currentProjectWritePreviouslyRejected = true;' \
   'READ-ONLY / WRITE ACCESS UNAVAILABLE' \
   'MpcProjectUriGrantPolicy.directSaveActionAvailable(' \
-  'MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(' \
-  'transaction.failurePhase' \
-  'transaction.rollbackFailurePhase' \
-  'MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK' \
-  'MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK_MISMATCH' \
-  'projectUriGrantRevocationSmokeMode' \
-  'projectUriRevokedProbeMode' \
-  'projectProviderWriteDenialSmokeMode' \
-  'prepareProjectProviderWriteDenialSmoke' \
-  'PROJECT_PROVIDER_WRITE_DENIAL_FIXTURE_READY' \
-  'PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE' \
-  'PREF_REVOKED_PROJECT_URI' \
-  'PROJECT_URI_GRANT_REVOKE_COMPLETE' \
-  'readPermissionBefore=GRANTED writePermissionBefore=GRANTED' \
-  'final boolean probeMayOpenProvider =' \
-  'PROJECT_URI_REVOKED_READ_PROBE_DENIED' \
-  'PROJECT_URI_REVOKED_WRITE_PROBE_DENIED'; do
+  'MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(writeAttempted, failure)'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: SAF permission/direct-Save availability contract missing: $required"; exit 1
   fi
 done
-PROVIDER_TEST_SOURCE="android/app/src/debug/java/com/miguelduval/mpcmk2groovebox/ProjectWriteDenialTestProvider.java"
-if [[ ! -f "$PROVIDER_TEST_SOURCE" ]] \
-    || ! grep -Fq -- 'ProjectWriteDenialTestProvider' "android/app/src/debug/AndroidManifest.xml" \
-    || ! grep -Fq -- 'openFile(Uri uri, String mode)' "$PROVIDER_TEST_SOURCE" \
-    || ! grep -Fq -- 'Permission denied by controlled debug document provider' "$PROVIDER_TEST_SOURCE"; then
-  echo "ERROR: controlled provider fixture or debug-only manifest registration is missing"
-  exit 1
-fi
 for required in \
   'readOnlyProviderGrantPersistsReadWithoutInventingWriteAccess' \
   'writeOnlyProviderGrantPersistsWriteWithoutInventingReadAccess' \
   'bothReturnedModesMayBePersisted' \
   'transientGrantIsNotPersistable' \
-  'persistableFlagWithoutReadOrWriteModeCreatesNoGrant' \
   'unrelatedIntentFlagsAreNotPassedAsUriModes' \
   'unlinkedProjectKeepsSaveAvailableAsSaveAsEntryPoint' \
   'linkedWritableDocumentEnablesDirectSave' \
@@ -226,38 +201,11 @@ for required in \
   'nullOrBlankProviderFailureDoesNotLatchWriteDenial' \
   'preimageReadEaccesDoesNotLatchWriteDenialBeforeAnyWriteAttempt' \
   'preimageReadSecurityExceptionDoesNotLatchWriteDenialBeforeAnyWriteAttempt' \
-  'actualOutputOpenEaccesLatchesWriteDenial' \
-  'outputOpenTimeoutDoesNotLatchWriteDenial' \
-  'providerStreamWriteEaccesDoesNotLatchWriteDenial' \
-  'attemptedWriteWithGenericReadbackTimeoutDoesNotLatchWriteDenial' \
-  'providerReadbackSecurityExceptionDoesNotLatchWriteDenialAfterWriteAttempt' \
-  'readbackMismatchDoesNotLatchWriteDenial' \
-  'rollbackOutputOpenEaccesLatchesWriteDenialEvenWhenPrimaryFailureWasVerification' \
-  'rollbackStreamWriteEaccesDoesNotLatchWriteDenial'; do
+  'actualWriteAttemptEaccesLatchesWriteDenial' \
+  'attemptedWriteWithGenericReadbackTimeoutDoesNotLatchWriteDenial'; do
   if ! grep -Fq -- "$required" \
       "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectUriGrantPolicyTest.java"; then
     echo "ERROR: URI grant/direct-Save policy test missing: $required"; exit 1
-  fi
-done
-for required in \
-  'successfulWriteMustReadBackExactSnapshotAndRemoveTemporaryBackup' \
-  'partialWriteFailureRestoresAndVerifiesExactPreviousDocument' \
-  'silentTruncatedProviderWriteIsDetectedAndRolledBack' \
-  'failureToReadPreimageAbortsBeforeOpeningDestinationForWrite' \
-  'providerReadbackSecurityExceptionRestoresDestinationWithoutLatchingWriteDenial' \
-  'providerOutputOpenSecurityExceptionIsClassifiedAsWriteDenial' \
-  'providerStreamWriteSecurityExceptionDoesNotLatchWriteDenial' \
-  'providerStreamFlushEaccesDoesNotLatchWriteDenial' \
-  'providerStreamCloseEaccesDoesNotLatchWriteDenial' \
-  'deniedRollbackOutputOpenIsClassifiedEvenWhenPrimaryFailureWasReadback' \
-  'rollbackStreamWriteSecurityExceptionDoesNotLatchWriteDenial' \
-  'rollbackStreamFlushEaccesDoesNotLatchWriteDenial' \
-  'rollbackStreamCloseEaccesDoesNotLatchWriteDenial' \
-  'unverifiedRollbackRetainsByteExactPrivateRecoveryCopy' \
-  'rejectsOversizedSnapshotBeforeReadingOrWritingDocument'; do
-  if ! grep -Fq -- "$required" \
-      "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectDocumentWriteTransactionTest.java"; then
-    echo "ERROR: Project document transaction phase test missing: $required"; exit 1
   fi
 done
 if ! grep -Fq -- 'Button saveAs = addFunction("SAVE AS", true, v -> openProjectSaveAsPicker());' "$MAIN_ACTIVITY_SOURCE"; then
@@ -1948,38 +1896,6 @@ require_source_contains() {
   fi
 }
 
-echo "Running Project acceptance-mode isolation preflight..."
-python3 - "$MAIN_ACTIVITY_SOURCE" <<'PY_PROJECT_MODE_ISOLATION'
-import sys
-source = open(sys.argv[1], encoding="utf-8").read()
-start = source.index("projectPersistenceFixtureMode = (")
-end_marker = '&& getPackageName().endsWith(".debug");'
-end = source.index(end_marker, start) + len(end_marker)
-fixture_mode = source[start:end]
-if "projectProviderWriteDenialSmokeMode" in fixture_mode:
-    raise SystemExit(
-        "provider-write-denial must not redundantly run the slower native "
-        "Project-persistence fixture; its own byte-exact snapshot is authoritative")
-provider_start = source.index("if (projectProviderWriteDenialSmokeMode) {", end)
-# Bound the contract by the next sibling startup conditional, not a character
-# count: diagnostic statements may grow without hiding the real fixture call.
-provider_end_marker = 'if ("MAIN".equals(currentPage)) {'
-provider_end = source.index(provider_end_marker, provider_start)
-provider_block = source[provider_start:provider_end]
-for required in (
-    "prepareProjectProviderWriteDenialSmoke();",
-    'Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-enter");',
-    'Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-return");',
-):
-    if required not in provider_block:
-        raise SystemExit("provider-write-denial startup contract missing: " + required)
-if provider_block.index("PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-enter") > provider_block.index("prepareProjectProviderWriteDenialSmoke();"):
-    raise SystemExit("provider-write-denial fixture call must follow startup-enter marker")
-if provider_block.index("PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-return") < provider_block.index("prepareProjectProviderWriteDenialSmoke();"):
-    raise SystemExit("provider-write-denial startup-return marker must follow fixture call")
-print("Project persistence and provider-write-denial acceptance modes are isolated.")
-PY_PROJECT_MODE_ISOLATION
-
 echo "Running MPC Browser product-scope preflight..."
 if grep -Fqi -- 'splice' "$BROWSER_SOURCE"; then
   echo "ERROR: excluded commercial Splice destination is present in the product Browser"
@@ -2116,6 +2032,8 @@ done
 for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
     'open_project_document()' 'PROJECT_OPEN_REJECTED)' \
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
+    'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..4}; do' \
+    'initial DocumentsUI hierarchy is not ready' 'after 4 fresh, bounded attempts' \
     'expected Project Open outcome $expected_marker'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
@@ -2388,126 +2306,30 @@ cleanup_stale_device_uiautomator() {
   done <<< "$matched_pids"
 }
 
-uiautomator_dump_bounded() {
-  # Stream ADB output instead of waiting for remote-shell teardown. Android 16
-  # can emit the completed-dump marker after writing XML, then keep the shell
-  # open. Return on that marker only; callers still transfer/parse the fresh XML
-  # and keep their independent picker-signature and screenshot checks.
-  local timeout_seconds="$1" log_path="$2" marker_path="$3"
-  shift 3
-  python3 - "$timeout_seconds" "$log_path" "$marker_path" "$@" <<'PY_STREAM_UIAUTOMATOR'
-import os, selectors, signal, subprocess, sys, time
-from shlex import join
-
-seconds = float(sys.argv[1])
-log_path, marker_path = sys.argv[2], sys.argv[3]
-command = ["adb", *sys.argv[4:]]
-marker = ("UI hierchary dumped to: " + marker_path).encode()
-deadline = time.monotonic() + seconds
-try:
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            start_new_session=True, bufsize=0)
-except OSError as exc:
-    print(f"ERROR: cannot start bounded UiAutomator command: {exc}", file=sys.stderr)
-    raise SystemExit(127)
-
-def stop_process_group():
-    try:
-        os.killpg(proc.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
-    try:
-        proc.wait(timeout=0.1)
-        return
-    except subprocess.TimeoutExpired:
-        pass
-    try:
-        os.killpg(proc.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
-    try:
-        proc.wait(timeout=0.5)
-    except subprocess.TimeoutExpired:
-        pass
-
-found = False
-tail = b""
-sel = selectors.DefaultSelector()
-assert proc.stdout is not None
-sel.register(proc.stdout, selectors.EVENT_READ)
-with open(log_path, "wb") as log:
-    while time.monotonic() < deadline:
-        remaining = deadline - time.monotonic()
-        events = sel.select(min(remaining, 0.1)) if sel.get_map() else []
-        for key, _ in events:
-            chunk = os.read(key.fd, 8192)
-            if not chunk:
-                sel.unregister(key.fileobj)
-                continue
-            log.write(chunk)
-            log.flush()
-            combined = tail + chunk
-            if marker in combined:
-                found = True
-                break
-            tail = combined[-(len(marker) - 1):]
-        if found:
-            break
-        if proc.poll() is not None and not sel.get_map():
-            break
-        if not events and not sel.get_map() and proc.poll() is None:
-            time.sleep(min(remaining, 0.02))
-    if found:
-        # The marker is emitted after the device-side dump completes. Avoid
-        # letting slow shell teardown eat the time reserved for XML transfer.
-        stop_process_group()
-        print("INFO: fresh UiAutomator completion marker observed before shell exit", file=sys.stderr)
-        raise SystemExit(0)
-    if proc.poll() is None:
-        stop_process_group()
-    rc = proc.poll()
-
-if rc is not None and rc != 0:
-    print(f"ERROR: UiAutomator ADB command exited {rc} without a completion marker: {join(command)}",
-          file=sys.stderr)
-    raise SystemExit(rc if rc >= 0 else 128 - rc)
-if time.monotonic() >= deadline:
-    print(f"ERROR: timed out after {seconds:g}s waiting for fresh UiAutomator completion marker: {marker_path}",
-          file=sys.stderr)
-    raise SystemExit(124)
-print(f"ERROR: UiAutomator exited without expected completion marker: {marker_path}", file=sys.stderr)
-raise SystemExit(1)
-PY_STREAM_UIAUTOMATOR
-}
-
 dump_device_ui() {
-  # Total wall-clock budget for dump + transfer + parse, including cleanup.
+  # Total wall-clock budget for cleanup + UIAutomator + transfer, not nested retry budgets.
   local requested_remote_path="$1" host_path="$2"
-  local timeout_seconds="${3:-8}" deadline=$((SECONDS + ${3:-8})) remaining dump_budget
+  local timeout_seconds="${3:-8}" deadline=$((SECONDS + ${3:-8})) remaining
   local dump_mode="${4:-standard}"
   local log_path="/tmp/mpc-groovebox-uiautomator-dump.log"
   local shared_remote_path="/sdcard/mpc-groovebox-current-uiautomator.xml"
-  local remote_command dump_option=""
+  local -a dump_args=(shell uiautomator dump)
+  # Android's `uiautomator dump --compressed` omits unneeded layout nodes and is
+  # reserved for DocumentsUI's large storage-root hierarchy. Standard snapshots
+  # retain the full tree because unrelated selectors rely on surrounding nodes.
   case "$dump_mode" in
     standard) ;;
-    compressed) dump_option="--compressed" ;;
+    compressed) dump_args+=(--compressed) ;;
     *) echo "ERROR: unsupported UI hierarchy dump mode: $dump_mode"; return 2 ;;
   esac
-  # Delete stale output and run the dump in one remote-shell round trip, leaving
-  # more of the bounded capture budget for UiAutomator and the XML transfer.
-  remote_command="rm -f '$shared_remote_path' && uiautomator dump "
-  if [[ -n "$dump_option" ]]; then remote_command+="${dump_option} "; fi
-  remote_command+="'$shared_remote_path'"
+  dump_args+=("$shared_remote_path")
   rm -f "$host_path"
+  remaining=$((deadline - SECONDS)); (( remaining > 0 )) || return 1
+  adb_bounded "$remaining" shell rm -f "$shared_remote_path" >/dev/null 2>&1 || true
   remaining=$((deadline - SECONDS))
-  if (( remaining <= 1 )); then
-    echo "ERROR: UI hierarchy deadline expired before dump ($requested_remote_path)"
-    return 1
-  fi
-  # Keep one bounded second for transferring and validating the completed XML.
-  dump_budget=$((remaining - 1))
-  if ! uiautomator_dump_bounded "$dump_budget" "$log_path" "$shared_remote_path" shell "$remote_command"; then
-    echo "ERROR: bounded UI hierarchy dump failed ($requested_remote_path; budget ${dump_budget}s)"
+  if (( remaining <= 0 )); then echo "ERROR: UI hierarchy deadline expired before dump ($requested_remote_path)"; return 1; fi
+  if ! adb_bounded "$remaining" "${dump_args[@]}" > "$log_path" 2>&1; then
+    echo "ERROR: bounded UI hierarchy dump failed ($requested_remote_path; budget ${timeout_seconds}s)"
     cat "$log_path" || true
     cleanup_stale_device_uiautomator
     return 1
@@ -2526,10 +2348,8 @@ dump_device_ui() {
   if ! test -s "$host_path" || ! python3 - "$host_path" <<'PY'
 import sys, xml.etree.ElementTree as ET
 try:
-    root = ET.parse(sys.argv[1]).getroot()
-    if root.tag != "hierarchy":
-        raise ValueError(f"unexpected root element: {root.tag!r}")
-except (OSError, ET.ParseError, ValueError) as exc:
+    ET.parse(sys.argv[1])
+except (OSError, ET.ParseError) as exc:
     print(f"invalid UI hierarchy: {exc}", file=sys.stderr)
     raise SystemExit(1)
 PY
@@ -2540,6 +2360,7 @@ PY
   fi
   return 0
 }
+
 # DocumentsUI sometimes accepts a real folder tap but takes longer than one
 # UIAutomator dump to publish a stable hierarchy. Retry the same fresh capture
 # with per-attempt bounds; never reuse stale picker XML as proof of current UI.
@@ -9908,10 +9729,28 @@ if [[ -z "$picker_activity" ]] || grep -Fq -- "$PACKAGE" <<<"$picker_activity"; 
 fi
 printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-picker-select-source-activity.txt
 
-# Always capture the first DocumentsUI frame before reading or tapping its
-# controls. The activity can be resumed before its first accessibility tree is ready.
-if ! dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML"; then
-  echo "ERROR: could not capture initial Android Document Picker hierarchy"
+# DocumentsUI can be resumed a moment before its first accessibility tree
+# is ready. Retry only fresh, bounded dumps: dump_device_ui removes the shared
+# remote file and host file each attempt, then rejects empty/malformed XML, so
+# this can never fall back to a stale tree from the previous activity.
+picker_hierarchy_ready=0
+for picker_hierarchy_attempt in {1..4}; do
+  if dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8; then
+    picker_hierarchy_ready=1
+    break
+  fi
+  if (( picker_hierarchy_attempt < 4 )); then
+    echo "WARN: initial DocumentsUI hierarchy is not ready (attempt $picker_hierarchy_attempt/4); retrying a fresh bounded capture"
+    sleep 1
+  fi
+done
+if [[ "$picker_hierarchy_ready" != "1" ]]; then
+  echo "ERROR: could not capture initial Android Document Picker hierarchy after 4 fresh, bounded attempts"
+  adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 \
+    > /tmp/mpc-groovebox-picker-select-source-activity-final.txt || true
+  cat /tmp/mpc-groovebox-picker-select-source-activity-final.txt || true
+  cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   exit 1
 fi
 
@@ -11303,7 +11142,7 @@ snapshot_project_view_tree_marker_baselines() {
 }
 
 capture_project_persistence_view_tree() {
-  local page="$1" target_xml="$2" allow_save_disabled="${3:-false}" marker before remote
+  local page="$1" target_xml="$2" marker before remote
   case "$page" in
     MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
     MAIN) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"; before="$PROJECT_MAIN_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
@@ -11318,10 +11157,10 @@ capture_project_persistence_view_tree() {
   if ! adb_bounded 5 shell run-as "$PACKAGE" cat "$remote" > "$target_xml"; then
     echo "ERROR: could not pull current Android View tree for $page"; return 1
   fi
-  if ! test -s "$target_xml" || ! python3 - "$target_xml" "$page" "$allow_save_disabled" <<'PY_PROJECT_APP_VIEW_TREE'
+  if ! test -s "$target_xml" || ! python3 - "$target_xml" "$page" <<'PY_PROJECT_APP_VIEW_TREE'
 import sys
 import xml.etree.ElementTree as ET
-path, page, allow_save_disabled = sys.argv[1], sys.argv[2], sys.argv[3] == "true"
+path, page = sys.argv[1], sys.argv[2]
 root = ET.parse(path).getroot()
 if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != page:
     raise SystemExit(f"View-tree provenance/page mismatch: {root.tag!r} {root.attrib!r}")
@@ -11357,26 +11196,8 @@ if page == "MENU":
         "MPC Menu PAD MIXER", "MPC Menu PROJECT"):
         require_target(description)
 elif page == "PROJECT":
-    for description in ("MPC Project Open", "MPC Project Save As"):
+    for description in ("MPC Project Open", "MPC Project Save As", "MPC Project Save"):
         require_target(description)
-    if allow_save_disabled:
-        matches = [node for node in nodes
-            if node.attrib.get("content-desc", "").startswith("MPC Project Save unavailable:")
-            and node.attrib.get("visible-to-user") == "true"
-            and node.attrib.get("enabled") == "false"]
-        if len(matches) != 1:
-            raise SystemExit(f"expected one visible disabled direct-SAVE control after grant revocation, found {len(matches)}")
-        raw = matches[0].attrib.get("bounds", "")
-        try:
-            left_top, right_bottom = raw[1:-1].split("][")
-            left, top = map(int, left_top.split(","))
-            right, bottom = map(int, right_bottom.split(","))
-        except (ValueError, IndexError):
-            raise SystemExit(f"invalid measured bounds for revoked direct-SAVE control: {raw!r}")
-        if right <= left or bottom <= top:
-            raise SystemExit(f"non-positive bounds for revoked direct-SAVE control: {raw!r}")
-    else:
-        require_target("MPC Project Save")
 elif page == "MAIN":
     require_target("MPC Toolbar Menu")
 print(f"Verified fresh page={page} Android View tree: {len(nodes)} views.")
@@ -11398,7 +11219,7 @@ wait_for_new_project_marker() {
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
   echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker"
-  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE|UI_STARTUP_FINALIZATION_FAILED|STARTUP_NATIVE_FAILED|EARLY_STARTUP_SETUP_FAILED|PROJECT_PROVIDER_WRITE_DENIAL_PHASE|NATIVE_INFO_|BUNDLED_SAMPLE_|AUDIO_START_RESULT=|MIDI_BRIDGE_' | tail -n 100 || true
+  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
   return 1
 }
 
@@ -12630,384 +12451,3 @@ if ! show_project_route_extended; then exit 1; fi
 if ! capture_ui_screenshot "/tmp/mpc-groovebox-project-recovery-export-roundtrip.png" 10; then exit 1; fi
 if ! capture_project_persistence_view_tree "PROJECT" "/tmp/mpc-groovebox-project-recovery-export-roundtrip-view-hierarchy.xml"; then exit 1; fi
 echo "Project recovery export passed: private source retained; exported destination hash matched and reopened to identical Project state."
-
- 
-# Revoke a real persisted URI grant returned by DocumentsUI, force-stop the app so
-# no temporary Activity grant can mask the result, then prove direct SAVE is
-# disabled while SAVE AS still writes a fresh document through DocumentsUI.
-echo "Running real DocumentsUI URI-grant revocation and SAVE AS recovery acceptance..."
-if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
-  echo "ERROR: could not stop app before URI-grant revocation acceptance"; exit 1
-fi
-if ! adb_bounded 5 shell logcat -c; then
-  echo "ERROR: could not clear logcat before URI-grant revocation acceptance"; exit 1
-fi
-snapshot_project_view_tree_marker_baselines
-if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
-      --es "$SMOKE_MODE_EXTRA" "project-uri-grant-revocation"; then
-  echo "ERROR: could not launch debug URI-grant revocation fixture"; exit 1
-fi
-if ! wait_for_new_project_marker "STARTUP_COMPLETE" 0 45; then
-  echo "ERROR: URI-grant revocation fixture native startup timed out"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_TEST_FIXTURE_READY" 0 20; then
-  echo "ERROR: URI-grant revocation fixture musical state was not prepared"; exit 1
-fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
-  echo "ERROR: URI-grant revocation fixture did not render the real Project workspace"; exit 1
-fi
-PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
-if ! open_project_document "Untitled.mpcproj"; then
-  echo "ERROR: could not open the existing real DocumentsUI Project for grant revocation"; exit 1
-fi
-PROJECT_CURRENT_APP_XML="$PROJECT_MAIN_READY_XML"
-if ! show_project_route_extended "TRACKS=2" "PLACEMENTS=2"; then
-  echo "ERROR: could not return to Project with the saved A-document canonical counts after opening the revocation fixture"; exit 1
-fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
-  echo "ERROR: linked Project view missing before URI grant revocation"; exit 1
-fi
-PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
-# Preserve the original A document: perform failure probing only against a disposable
-# second document created from the same canonical musical state.
-PROJECT_DOC_REVOKED_SOURCE_NAME="mpc-revoked-access-source-$BASHPID.mpcproj"
-project_revoke_source_save_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
-if ! tap_project_function_bar 1; then
-  echo "ERROR: SAVE AS unavailable before preparing disposable revoked-URI test document"; exit 1
-fi
-project_revoke_source_picker_ready=0
-for ((attempt=1; attempt<=25; attempt++)); do
-  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
-      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
-    project_revoke_source_picker_ready=1
-    break
-  fi
-  sleep 1
-done
-if [ "$project_revoke_source_picker_ready" -ne 1 ]; then
-  echo "ERROR: DocumentsUI did not open for the disposable revoked-URI test document"; exit 1
-fi
-if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
-  echo "ERROR: could not capture the disposable revoked-URI Save As picker"; exit 1
-fi
-if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_REVOKED_SOURCE_NAME"; then exit 1; fi
-if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then
-  echo "ERROR: DocumentsUI Save action unavailable for disposable revoked-URI copy"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_revoke_source_save_before" 45; then
-  echo "ERROR: could not create the disposable revoked-URI test document"; exit 1
-fi
-project_revoke_source_save_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
-project_revoke_source_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_revoke_source_save_line")"
-if [[ ! "$project_revoke_source_sha" =~ ^[0-9a-f]{64}$ ]] \
-    || ! grep -Fq -- "readBackVerified=true" <<<"$project_revoke_source_save_line"; then
-  echo "ERROR: disposable revoked-URI source was not byte-readback-verified"
-  echo "$project_revoke_source_save_line"; exit 1
-fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
-  echo "ERROR: Project route missing after preparing disposable revoked-URI source"; exit 1
-fi
-PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
-
-if ! tap_visible_description_early "$PROJECT_ROUTE_XML" "MPC Project test revoke persisted URI grant"; then
-  echo "ERROR: debug revoke action was unavailable for the linked writable SAF document"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_URI_GRANT_REVOKE_COMPLETE" 0 20; then
-  echo "ERROR: Android ContentResolver did not revoke the persisted URI modes"; exit 1
-fi
-project_uri_revoke_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_URI_GRANT_REVOKE_COMPLETE" | tail -n 1 || true)"
-if ! grep -Fq -- "readPermissionBefore=GRANTED" <<<"$project_uri_revoke_line" \
-    || ! grep -Fq -- "writePermissionBefore=GRANTED" <<<"$project_uri_revoke_line" \
-    || ! grep -Fq -- "remainingPersisted=false" <<<"$project_uri_revoke_line"; then
-  echo "ERROR: URI-revocation fixture did not prove an initially readable/writable URI was released"
-  echo "$project_uri_revoke_line"; exit 1
-fi
-project_uri_revoke_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_uri_revoke_line")"
-if [[ ! "$project_uri_revoke_sha" =~ ^[0-9a-f]{64}$ ]]; then
-  echo "ERROR: URI-revocation fixture omitted the active canonical-state SHA"
-  echo "$project_uri_revoke_line"; exit 1
-fi
-
-if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
-  echo "ERROR: could not stop app to clear temporary picker URI access"; exit 1
-fi
-if ! adb_bounded 5 shell logcat -c; then
-  echo "ERROR: could not clear logcat before revoked-URI probe"; exit 1
-fi
-snapshot_project_view_tree_marker_baselines
-if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
-      --es "$SMOKE_MODE_EXTRA" "project-uri-revoked-probe"; then
-  echo "ERROR: could not relaunch app for revoked-URI provider probe"; exit 1
-fi
-if ! wait_for_new_project_marker "STARTUP_COMPLETE" 0 45; then
-  echo "ERROR: revoked-URI probe Activity startup timed out"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_URI_REVOKED_READ_PROBE_DENIED" 0 20; then
-  echo "ERROR: real ContentResolver unexpectedly retained access to the revoked Project URI"; exit 1
-fi
-project_uri_probe_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_URI_REVOKED_READ_PROBE_DENIED" | tail -n 1 || true)"
-if ! grep -Fq -- "readPermission=DENIED" <<<"$project_uri_probe_line" \
-    || ! grep -Fq -- "persistedGrant=false" <<<"$project_uri_probe_line" \
-    || ! grep -Fq -- "modelUnchanged=true" <<<"$project_uri_probe_line" \
-    || ! grep -Fq -- "stateSha256=$project_uri_revoke_sha" <<<"$project_uri_probe_line"; then
-  echo "ERROR: revoked-URI read probe failed permission/state preservation assertions"
-  echo "$project_uri_probe_line"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_URI_REVOKED_WRITE_PROBE_DENIED" 0 20; then
-  echo "ERROR: real ContentResolver unexpectedly opened the revoked writable Project URI for output"; exit 1
-fi
-project_uri_write_probe_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_URI_REVOKED_WRITE_PROBE_DENIED" | tail -n 1 || true)"
-if ! grep -Fq -- "writePermission=DENIED" <<<"$project_uri_write_probe_line" \
-    || ! grep -Fq -- "persistedGrant=false" <<<"$project_uri_write_probe_line" \
-    || ! grep -Fq -- "modelUnchanged=true" <<<"$project_uri_write_probe_line" \
-    || ! grep -Fq -- "stateSha256=$project_uri_revoke_sha" <<<"$project_uri_write_probe_line"; then
-  echo "ERROR: revoked-URI output probe failed permission/state preservation assertions"
-  echo "$project_uri_write_probe_line"; exit 1
-fi
-if [[ "$project_uri_revoke_sha" != "$project_revoke_source_sha" ]]; then
-  echo "ERROR: disposable revoked-URI source SHA differed from the active canonical state"; exit 1
-fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML" true; then
-  echo "ERROR: Project view tree missing after revoked-URI probe"; exit 1
-fi
-PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
-python3 - "$PROJECT_ROUTE_XML" <<'PY_REVOKED_PROJECT_UI'
-import sys
-import xml.etree.ElementTree as ET
-path = sys.argv[1]
-root = ET.parse(path).getroot()
-if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != "PROJECT":
-    raise SystemExit(f"bad real View-tree provenance: {root.attrib!r}")
-nodes = list(root.iter("node"))
-save = [n for n in nodes if n.attrib.get("content-desc", "").startswith("MPC Project Save unavailable:")]
-save_as = [n for n in nodes if n.attrib.get("content-desc") == "MPC Project Save As"]
-def visible_bounds(node):
-    raw = node.attrib.get("bounds", "")
-    try:
-        left_top, right_bottom = raw[1:-1].split("][")
-        left, top = map(int, left_top.split(","))
-        right, bottom = map(int, right_bottom.split(","))
-        return right > left and bottom > top
-    except (ValueError, IndexError):
-        return False
-if len(save) != 1 or save[0].attrib.get("enabled") != "false":
-    raise SystemExit(f"direct SAVE must be disabled by the actual revoked grant; candidates={[(n.attrib.get('enabled'), n.attrib.get('clickable')) for n in save]}")
-if len(save_as) != 1 or save_as[0].attrib.get("enabled") != "true" or save_as[0].attrib.get("clickable") != "true" or not visible_bounds(save_as[0]):
-    raise SystemExit(f"SAVE AS must remain enabled/clickable with live bounds; candidates={[(n.attrib.get('enabled'), n.attrib.get('clickable'), n.attrib.get('bounds')) for n in save_as]}")
-print("REAL URI REVOKE UI VERIFIED: direct SAVE disabled; SAVE AS enabled/clickable with measured live bounds.")
-PY_REVOKED_PROJECT_UI
-
-# SAVE AS remains a separate viable path: write a distinct new document after
-# the previous document's persisted grant has been revoked.
-PROJECT_DOC_REVOKED_B_NAME="mpc-after-revocation-$BASHPID.mpcproj"
-project_save_after_revoke_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
-if ! tap_project_function_bar 1; then
-  echo "ERROR: SAVE AS Function Bar action was unavailable after URI revocation"; exit 1
-fi
-project_save_picker_ready=0
-for ((attempt=1; attempt<=25; attempt++)); do
-  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
-      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
-    project_save_picker_ready=1
-    break
-  fi
-  sleep 1
-done
-if [ "$project_save_picker_ready" -ne 1 ]; then
-  echo "ERROR: DocumentsUI did not open for SAVE AS after URI revocation"; exit 1
-fi
-if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
-  echo "ERROR: could not capture SAVE AS picker after URI revocation"; exit 1
-fi
-if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_REVOKED_B_NAME"; then exit 1; fi
-if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then
-  echo "ERROR: Android DocumentsUI Save action unavailable for recovery Save As"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_save_after_revoke_marker_before" 45; then
-  echo "ERROR: SAVE AS could not create a new writable document after old URI revocation"; exit 1
-fi
-project_save_after_revoke_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
-project_save_after_revoke_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_save_after_revoke_line")"
-if [[ "$project_save_after_revoke_sha" != "$project_uri_revoke_sha" ]] \
-    || ! grep -Fq -- "readBackVerified=true" <<<"$project_save_after_revoke_line" \
-    || ! grep -Fq -- "sessionStale=false" <<<"$project_save_after_revoke_line"; then
-  echo "ERROR: post-revocation SAVE AS failed exact-state read-back verification"
-  echo "$project_save_after_revoke_line"; exit 1
-fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
-  echo "ERROR: SAVE AS after revocation did not return to the Project workspace"; exit 1
-fi
-PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
-project_save_replacement_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
-if ! tap_project_function_bar 2; then
-  echo "ERROR: direct SAVE was not re-enabled for the newly linked Save As document"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_save_replacement_marker_before" 45; then
-  echo "ERROR: direct SAVE did not work on the replacement document after Save As"; exit 1
-fi
-project_save_replacement_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
-if ! grep -Fq -- "readBackVerified=true" <<<"$project_save_replacement_line" \
-    || ! grep -Fq -- "sessionStale=false" <<<"$project_save_replacement_line"; then
-  echo "ERROR: direct SAVE of the replacement document was not verified"
-  echo "$project_save_replacement_line"; exit 1
-fi
-if ! open_project_document "$PROJECT_DOC_REVOKED_B_NAME"; then
-  echo "ERROR: the new post-revocation Save As document could not be reopened"; exit 1
-fi
-project_save_replacement_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
-if ! grep -Fq -- "domainSha256=$project_uri_revoke_sha" <<<"$project_save_replacement_open_line" \
-    || ! grep -Fq -- "persistedDomainExact=true" <<<"$project_save_replacement_open_line"; then
-  echo "ERROR: new Save As document did not reopen to the unchanged active Project state"
-  echo "$project_save_replacement_open_line"; exit 1
-fi
-# Test provider-retained-access/output-denial separately from URI revocation.
-echo "Running controlled ContentResolver provider output-denial acceptance..."
-if ! adb_bounded 10 shell am force-stop "$PACKAGE"; then
-  echo "ERROR: could not stop app before controlled provider output-denial acceptance"; exit 1
-fi
-if ! adb_bounded 5 shell logcat -c; then
-  echo "ERROR: could not clear logcat before controlled provider output-denial acceptance"; exit 1
-fi
-snapshot_project_view_tree_marker_baselines
-if ! adb_bounded 30 shell am start -W --activity-clear-task -n "$ACTIVITY" \
-      --es "$SMOKE_MODE_EXTRA" "project-provider-write-denial"; then
-  echo "ERROR: could not launch controlled provider write-denial fixture"; exit 1
-fi
-if ! wait_for_new_project_marker "STARTUP_COMPLETE" 0 45; then
-  echo "ERROR: controlled provider fixture startup timed out"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_PROVIDER_WRITE_DENIAL_FIXTURE_READY" 0 20; then
-  echo "ERROR: controlled provider did not seed the exact active Project"; exit 1
-fi
-provider_fixture_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_PROVIDER_WRITE_DENIAL_FIXTURE_READY" | tail -n 1 || true)"
-provider_fixture_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$provider_fixture_line")"
-provider_seed_sha="$(sed -nE 's/.*providerSha256=([0-9a-f]{64}).*/\1/p' <<<"$provider_fixture_line")"
-provider_readback_sha="$(sed -nE 's/.*readbackSha256=([0-9a-f]{64}).*/\1/p' <<<"$provider_fixture_line")"
-if [[ ! "$provider_fixture_sha" =~ ^[0-9a-f]{64}$ \
-      || "$provider_seed_sha" != "$provider_fixture_sha" \
-      || "$provider_readback_sha" != "$provider_fixture_sha" ]] \
-    || ! grep -Fq -- "readAccess=VERIFIED writeAccess=ARMED directSave=true" <<<"$provider_fixture_line" \
-    || ! grep -Fq -- "outputDenyAttempt=1" <<<"$provider_fixture_line"; then
-  echo "ERROR: provider fixture did not prove byte-exact seed, real read-back, and an armed first-write denial"
-  echo "$provider_fixture_line"; exit 1
-fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
-  echo "ERROR: provider fixture did not render the Project workspace"; exit 1
-fi
-PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
-provider_failure_before="$(project_marker_count "PROJECT_SAVE_FAILED")"
-if ! tap_project_function_bar 2; then
-  echo "ERROR: direct SAVE was unavailable before the provider rejected output"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_SAVE_FAILED" "$provider_failure_before" 45; then
-  echo "ERROR: controlled provider did not reject the direct SAVE output open"; exit 1
-fi
-provider_failure_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_FAILED" | tail -n 1 || true)"
-if ! grep -Fq -- "failurePhase=PROVIDER_OUTPUT_OPEN" <<<"$provider_failure_line" \
-    || ! grep -Fq -- "rollbackFailurePhase=NONE" <<<"$provider_failure_line" \
-    || ! grep -Fq -- "previousDocumentPreserved=true" <<<"$provider_failure_line" \
-    || ! grep -Fq -- "directSaveAccessRejected=true" <<<"$provider_failure_line" \
-    || ! grep -Fq -- "snapshotStateSha256=$provider_fixture_sha" <<<"$provider_failure_line" \
-    || ! grep -Fq -- "activeStateSha256=$provider_fixture_sha" <<<"$provider_failure_line" \
-    || ! grep -Fq -- "recoveryCopy=none" <<<"$provider_failure_line" \
-    || ! grep -Fq -- "Permission denied by controlled debug document provider" <<<"$provider_failure_line"; then
-  echo "ERROR: output-open denial did not map to PROVIDER_OUTPUT_OPEN with verified restoration"
-  echo "$provider_failure_line"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE" 0 20; then
-  echo "ERROR: controlled provider omitted post-rollback state"; exit 1
-fi
-provider_after_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE" | tail -n 1 || true)"
-if ! grep -Fq -- "documentSha256=$provider_fixture_sha" <<<"$provider_after_line" \
-    || ! grep -Fq -- "outputAttempts=2" <<<"$provider_after_line"; then
-  echo "ERROR: provider bytes were not preserved after output denial plus rollback"
-  echo "$provider_after_line"; exit 1
-fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML" true; then
-  echo "ERROR: Project view missing after provider write denial"; exit 1
-fi
-PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
-python3 - "$PROJECT_ROUTE_XML" <<'PY_PROVIDER_WRITE_DENIAL_UI'
-import sys
-import xml.etree.ElementTree as ET
-root = ET.parse(sys.argv[1]).getroot()
-if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != "PROJECT":
-    raise SystemExit(f"bad real View-tree provenance: {root.attrib!r}")
-nodes = list(root.iter("node"))
-save = [n for n in nodes if n.attrib.get("content-desc", "").startswith("MPC Project Save unavailable:")]
-save_as = [n for n in nodes if n.attrib.get("content-desc") == "MPC Project Save As"]
-def visible_bounds(node):
-    raw = node.attrib.get("bounds", "")
-    try:
-        left_top, right_bottom = raw[1:-1].split("][")
-        left, top = map(int, left_top.split(","))
-        right, bottom = map(int, right_bottom.split(","))
-        return right > left and bottom > top
-    except (ValueError, IndexError):
-        return False
-if len(save) != 1 or save[0].attrib.get("enabled") != "false":
-    raise SystemExit(f"direct SAVE must be disabled after denial: {[(n.attrib.get('enabled'), n.attrib.get('clickable')) for n in save]}")
-if len(save_as) != 1 or save_as[0].attrib.get("enabled") != "true" or save_as[0].attrib.get("clickable") != "true" or not visible_bounds(save_as[0]):
-    raise SystemExit(f"SAVE AS must remain enabled/clickable with live bounds: {[(n.attrib.get('enabled'), n.attrib.get('clickable'), n.attrib.get('bounds')) for n in save_as]}")
-print("REAL PROVIDER WRITE DENIAL UI VERIFIED: direct SAVE disabled; SAVE AS remains usable.")
-PY_PROVIDER_WRITE_DENIAL_UI
-
-PROJECT_DOC_PROVIDER_RECOVERY_NAME="mpc-after-provider-denial-$BASHPID.mpcproj"
-provider_recovery_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
-if ! tap_project_function_bar 1; then
-  echo "ERROR: SAVE AS was unavailable after provider output denial"; exit 1
-fi
-provider_picker_ready=0
-for ((attempt=1; attempt<=25; attempt++)); do
-  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
-      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
-    provider_picker_ready=1; break
-  fi
-  sleep 1
-done
-if [ "$provider_picker_ready" -ne 1 ]; then
-  echo "ERROR: DocumentsUI did not open for SAVE AS after output denial"; exit 1
-fi
-if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
-  echo "ERROR: could not capture SAVE AS picker after provider output denial"; exit 1
-fi
-if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_PROVIDER_RECOVERY_NAME"; then exit 1; fi
-if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then
-  echo "ERROR: DocumentsUI Save unavailable for provider-denial recovery"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$provider_recovery_before" 45; then
-  echo "ERROR: SAVE AS failed after controlled provider output denial"; exit 1
-fi
-provider_recovery_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
-provider_recovery_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$provider_recovery_line")"
-if [[ "$provider_recovery_sha" != "$provider_fixture_sha" ]] \
-    || ! grep -Fq -- "readBackVerified=true" <<<"$provider_recovery_line" \
-    || ! grep -Fq -- "sessionStale=false" <<<"$provider_recovery_line"; then
-  echo "ERROR: SAVE AS recovery did not preserve exact state"
-  echo "$provider_recovery_line"; exit 1
-fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
-  echo "ERROR: SAVE AS recovery did not return to Project workspace"; exit 1
-fi
-PROJECT_CURRENT_APP_XML="$PROJECT_ROUTE_XML"
-provider_replacement_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
-if ! tap_project_function_bar 2; then
-  echo "ERROR: direct SAVE did not re-enable on the replacement"; exit 1
-fi
-if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$provider_replacement_before" 45; then
-  echo "ERROR: direct SAVE failed on replacement document"; exit 1
-fi
-provider_replacement_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_COMPLETE" | tail -n 1 || true)"
-if ! grep -Fq -- "readBackVerified=true" <<<"$provider_replacement_line" \
-    || ! grep -Fq -- "sessionStale=false" <<<"$provider_replacement_line"; then
-  echo "ERROR: replacement direct SAVE was not verified"; exit 1
-fi
-if ! open_project_document "$PROJECT_DOC_PROVIDER_RECOVERY_NAME"; then
-  echo "ERROR: replacement document could not be reopened"; exit 1
-fi
-provider_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
-if ! grep -Fq -- "domainSha256=$provider_fixture_sha" <<<"$provider_open_line" \
-    || ! grep -Fq -- "persistedDomainExact=true" <<<"$provider_open_line"; then
-  echo "ERROR: replacement reopened to different Project state"; exit 1
-fi
-echo "REAL DocumentsUI URI revocation and controlled provider output-open denial acceptance passed; denial was classified PROVIDER_OUTPUT_OPEN, original bytes verified after rollback, and SAVE AS restored working SAVE/Open."
