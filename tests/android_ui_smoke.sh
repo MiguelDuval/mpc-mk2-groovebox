@@ -1945,16 +1945,22 @@ if "projectProviderWriteDenialSmokeMode" in fixture_mode:
         "provider-write-denial must not redundantly run the slower native "
         "Project-persistence fixture; its own byte-exact snapshot is authoritative")
 provider_start = source.index("if (projectProviderWriteDenialSmokeMode) {", end)
-# Keep this assertion bounded but tolerant of diagnostic-only lines added to
-# the startup callsite; do not couple the test to formatting beyond the block.
-provider_block = source[provider_start:provider_start + 500]
+# Bound the contract by the next sibling startup conditional, not a character
+# count: diagnostic statements may grow without hiding the real fixture call.
+provider_end_marker = 'if ("MAIN".equals(currentPage)) {'
+provider_end = source.index(provider_end_marker, provider_start)
+provider_block = source[provider_start:provider_end]
 for required in (
     "prepareProjectProviderWriteDenialSmoke();",
-    "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-enter",
-    "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-return",
+    'Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-enter");',
+    'Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-return");',
 ):
     if required not in provider_block:
         raise SystemExit("provider-write-denial startup contract missing: " + required)
+if provider_block.index("PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-enter") > provider_block.index("prepareProjectProviderWriteDenialSmoke();"):
+    raise SystemExit("provider-write-denial fixture call must follow startup-enter marker")
+if provider_block.index("PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-return") < provider_block.index("prepareProjectProviderWriteDenialSmoke();"):
+    raise SystemExit("provider-write-denial startup-return marker must follow fixture call")
 print("Project persistence and provider-write-denial acceptance modes are isolated.")
 PY_PROJECT_MODE_ISOLATION
 
