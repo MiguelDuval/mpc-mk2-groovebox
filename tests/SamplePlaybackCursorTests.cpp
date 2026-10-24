@@ -22,5 +22,30 @@ int main() {
             shorterSamplePosition, 1.0f, 8u, 3u));
     assert(shorterSamplePosition == 3.0);
 
+    double negativePosition = -1.0;
+    assert(!mpc::audio::advanceSamplePlaybackCursor(
+            negativePosition, 1.0f, 8u, 8u));
+    assert(negativePosition == -1.0);
+
+    double nonFinitePosition = __builtin_nan("");
+    assert(!mpc::audio::advanceSamplePlaybackCursor(
+            nonFinitePosition, 1.0f, 8u, 8u));
+
+    double validPosition = 1.0;
+    assert(!mpc::audio::advanceSamplePlaybackCursor(
+            validPosition, 0.0f, 8u, 8u));
+    assert(validPosition == 1.0);
+    assert(!mpc::audio::advanceSamplePlaybackCursor(
+            validPosition, -1.0f, 8u, 8u));
+    assert(validPosition == 1.0);
+    assert(!mpc::audio::advanceSamplePlaybackCursor(
+            validPosition, __builtin_inff(), 8u, 8u));
+    assert(validPosition == 1.0);
+
+    double exhaustedPosition = 4.0;
+    assert(!mpc::audio::advanceSamplePlaybackCursor(
+            exhaustedPosition, 1.0f, 4u, 8u));
+    assert(exhaustedPosition == 4.0);
+
     return 0;
 }
