@@ -335,7 +335,7 @@ public:
                     continue;
                 }
 
-                if (pending.padIndex < kPadCount && pending.velocity != 0) {
+                if (isValidAudioTriggerEvent(pending, kPadCount)) {
                     startVoice(
                             pending.padIndex,
                             pending.velocity,
@@ -1814,7 +1814,7 @@ void AudioEngine::triggerPadAtOffset(
         std::uint8_t padIndex,
         std::uint8_t velocity,
         std::int32_t offsetFrames) {
-    if (padIndex >= kPadCount || velocity == 0) {
+    if (padIndex >= kPadCount || !isValidAudioTriggerVelocity(velocity)) {
         return;
     }
 
