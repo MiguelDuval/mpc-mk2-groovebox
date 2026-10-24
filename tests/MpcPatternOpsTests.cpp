@@ -329,6 +329,28 @@ int main() {
     assert(pattern.notes[1].tick == 3720);
     assert(pattern.notes[1].note == 50);
 
+    // Malformed captured MIDI fields must not create in-memory notes that
+    // later cause Project persistence to reject an otherwise valid Project.
+    // Replace stays atomic when every incoming event is rejected.
+    mpc::domain::Pattern malformedRecordPattern;
+    malformedRecordPattern.lengthTicks = 1920;
+    malformedRecordPattern.notes = {{720, 120, 40, 100, 127, 1}};
+    const std::array<mpc::domain::MidiNoteEvent, 6> malformedCaptured{{
+            {0, 120, 128, 100, 127, 1, 0},
+            {120, 120, 36, 128, 127, 1, 0},
+            {240, 120, 37, 100, 128, 1, 0},
+            {360, 120, 38, 100, 127, 9, 0},
+            {480, 120, 39, 100, 127, 1, 961},
+            {600, -1, 40, 100, 127, 1, 0},
+    }};
+    assert(mpc::sequencer::recordNotes(
+            malformedRecordPattern, malformedCaptured,
+            mpc::sequencer::PatternRecordMode::Replace) == 0);
+    assert(malformedRecordPattern.notes.size() == 1);
+    assert(malformedRecordPattern.notes.front().tick == 720);
+    assert(malformedRecordPattern.notes.front().note == 40);
+    assert(malformedRecordPattern.notes.front().velocity == 100);
+
     std::array<mpc::domain::MidiNoteEvent, 1> overdub{{
             {240, 120, 54, 110, 127, 1}}};
 
