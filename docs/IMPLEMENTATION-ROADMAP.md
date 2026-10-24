@@ -1,37 +1,42 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-23 (live exact-SHA evidence governs)
+## CURRENT EXECUTION QUEUE — 2026-10-24 (live exact-SHA evidence governs)
 
 ### Latest accepted checkpoint — PR #23
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains OPEN on `feature/mpc-one-ui-fidelity`, targeting `fix/ui-shell-format-width-startup`.
-- **Android Build #3113 / run [39984123027](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39984123027) passed on exact SHA `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`.** Full APK/native/JVM/emulator workflow and visual-evidence upload succeeded after integrating PR #31 and #32.
-- Build #3113 APK artifact `12515141867`; visual-evidence artifact `12516242478`. Smoke covered Browser USER FOLDER/FAVORITE 1, Project SAVE/SAVE AS/OPEN/recovery, Shortcut reset/restart, SAMP-008/009 and SAMP-010.
-- PR #30 was at pre-sync HEAD `352e1319f1377c646f268dad07f54e7336214d6f`; no exact-HEAD full run exists for that SHA. Build #3109 failed on prior SHA `cee0c8b5eef8e09c7197b22274f3c2dcd779e833` during Browser FAVORITE 1 DocumentsUI navigation before provider-denial acceptance.
-- Prior SAF slices remain accepted separately: typed failure phases (Build #3100), real URI revocation/recovery (Build #3107), and guarded revoked-URI probes (Build #3108). Provider-retained-access/output-denial still needs its own full exact-SHA acceptance.
 
-### Accepted UI slice — SAMP-010 viewport zoom and real Pad audition
-- **Accepted on Build #3113 / exact SHA `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`.** Viewport zoom-in/out/reset changed the visible range without changing native PCM frame count or sample region. A real native Pad audition marker was observed at Pad 01, velocity 112.
+- PR #23 remains OPEN: `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`.
+- **Android Build #3150 / run [40098511757](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40098511757) passed on exact SHA `f067a252904a242b284cf8b077570c2e04225fc8`.** All 57 steps succeeded, including full emulator smoke and evidence upload.
+- APK artifact `12561652251`, SHA-256 `7ad1a55431daeb926f14dd92cdbeb8e972d2a013efab98d9a24efb2fa49fab44`; visual-evidence artifact `12561778921`, SHA-256 `bb678d8cbe0fc3e07f75ac904f1dbcc3bdb551397d170d2163fd3cac1493ad45`. Evidence archive was inspected (87 PNG, 97 XML, 3 text/log files).
+- SAMP-008 CROP passed (3,840 → 2,840 frames, region reset); SAMP-009 CH4/CH8/CH16 passed exact frame coverage; SAMP-010 viewport-only zoom/reset and native Pad audition passed without mutating sample data.
+- Browser USER FOLDER/FAVORITE 1 passed real DocumentsUI selection, exact `Browser-Favorite-Only.wav` result/indexing, isolated state and process-restart restoration.
+- Project Save As/mutate/Open, changed overwrite digest, force-stop/reopen, cancellation invariance, malformed-load preservation, placement-free v1 canonical-state equality, A/B document isolation, New Project and recovery-export round trips passed.
+- Keep `cancel-in-progress: false`. Physical MPC Studio MkII validation remains a separate pending hardware gate. A docs-only follow-up commit still needs its own exact-SHA full workflow.
 
-### Current Project SAF candidate — provider retains access but rejects output
-- The debug-only ContentProvider seeds exact active Project bytes, permits reads, denies the first real output open, then permits rollback. Smoke exercises the production SAVE transaction through ContentResolver.
-- Acceptance requires `failurePhase=PROVIDER_WRITE`, `rollbackFailurePhase=NONE`, byte-exact restoration, unchanged active Project state, direct SAVE disabled, and successful SAVE AS/direct SAVE/reopen on the replacement.
-- Build #3109 did not reach this test; its Browser picker failure is not evidence that Project output-denial handling passed or failed.
+### Project SAF failure phases — PR #30 integration blocker
 
-### Next queue
-1. Require a full exact-SHA CI run after synchronizing PR #30 with the current PR #23 base: transaction/policy tests, native tests, APK, emulator Browser/Project/SAMP acceptance, real URI revocation, controlled provider output-denial/rollback, and visual evidence.
-2. If Browser FAVORITE 1 fails, inspect fresh DocumentsUI PNG/XML and the exact failed step. The same flow passed on Build #3113; do not add timeouts or weaken assertions without new evidence of another root cause.
-3. After PR #30 acceptance, select the next real catalog gap; Browser Options remain non-functional until their controls have genuine filtering/display/persistence behavior.
-4. Keep `cancel-in-progress: false`, do not modify `main`, and keep physical MPC Studio MkII validation separate.
+- PR #30 remains OPEN on `fix/project-provider-failure-phases`, exact head `eeef2a864126bca34e08410b063a9f1f3ec36287`. Android Build #3129 / run [40083641707](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40083641707) passed that SHA.
+- GitHub currently reports `mergeable=false`. Its base metadata is stale at `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`; current primary HEAD is `985fdd3df616b0d0c0a284282527fbb15540e069`. The primary-side commits changed `docs/IMPLEMENTATION-ROADMAP.md` and `docs/SESSION-STATE.md`, both also changed by PR #30. Reconcile canonical documentation with a normal commit on the owning branch; do not retarget, rebase, reset, force-push, or merge automatically.
+- PR #57 is stacked on PR #30 and separates provider output-open denials from stream write/flush/close failures. Its latest head `d1b7b8b49da2fd7899b9457a82e37c6a80faafe6` passed Android Build #3165 / run [40109297128](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40109297128), including focused policy tests, full emulator smoke and visual evidence. APK artifact `12565778824`, SHA-256 `d431b5933ec46c20bcebde9aea9f960c9e9fd93ec6b2cf3ab8d3fece17cebb2e`; evidence artifact `12566209009`, SHA-256 `1237d781ecc6cef9c3ef35701b329f90527f68ee0b708cdd8ef6e03887d5e567` (87 PNG, 97 XML, 5 text/log files).
+- Keep direct SAVE denial latching limited to permission-denial evidence from output-stream opening. Stream errors after opening must not be misclassified; rollback bytes are verified by actual read-back.
 
-- With the primary acceptance run green, port the isolated SAMP-010 feature into the existing workflow without creating another smoke test. Keep the viewport separate from native sample region/PCM state.
-- The candidate adds the accessible viewport readout/callback, finite normalized zoom policy + JVM boundary tests, real-touch ZOOM+/ZOOM−/RESET, native audition marker/getter checks and five unique screenshot/XML milestones.
-- The candidate's full exact-SHA Android workflow is pending; SAMP-010 is not accepted until the complete smoke and evidence upload pass.
+### Browser Show file size — RESOLVED / FULL CI PASSED
+
+- PR #56 head `8a672ba9fc0ec44bd6b71f088506a35229e958b0` passed Android Build #3162 / run [40108676401](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40108676401), including native/JVM checks, APK assembly, the complete emulator smoke and visual-evidence upload.
+- The storage-picker action is re-found after a real Android pre-draw/layout pass, then strict visibility/clickability/size checks remain active. No timeout increase or skipped assertion was used.
+- APK artifact `12566365052`, SHA-256 `7ec98570d619b8fce003e81a00675189785ed5b44ec5436ae455f600251b8416`; evidence artifact `12566338082`, SHA-256 `5fe76db0547faea93bea7c88bf57e92a34804ef12b106e133389e7e5c68c854f` (87 PNG, 97 XML, 5 text/log files).
+
+### Low-pass filter state — RESOLVED / FULL CI PASSED
+
+- PR #55 head `d4c9324270548ef47b132fa9b655e9a0aadc2717` passed Android Build #3158 / run [40108527287](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40108527287), including native/JVM checks, APK assembly, complete emulator smoke and visual-evidence upload.
+- Regression coverage resets filter state between the bypass-transition assertion and the independent impulse/decay assertion; no production DSP behavior or assertion tolerance was weakened.
+- APK artifact `12565686895`, SHA-256 `634ce51277ae68bb316fd752cb5acb6c8f3c7a92d9edbd1848dc9e2d17416ddb`; evidence artifact `12566003588`, SHA-256 `1142257533d3b39fd139dc61eb0e6d5efa3601eb28e5859548bcf8684669af10` (87 PNG, 97 XML, 5 text/log files).
 
 ### Next acceptance order
 
-1. Verify the new exact-HEAD run for SAMP-010. On failure, inspect the exact step and artifacts and fix the root cause without relaxing assertions.
-2. After SAMP-010 is green, resume the provider read/permission-failure gap already being handled on `fix/project-provider-failure-phases`; Build #3109 / run `39965373487` was active at the last live check on SHA `cee0c8b5eef8e09c7197b22274f3c2dcd779e833`. Do not duplicate that branch's work.
-3. Keep all project persistence assertions and the physical-controller gate intact.
+1. Reconcile the two overlapping canonical documents on PR #30's owning branch with a regular commit, then confirm live mergeability and the actual file diff.
+2. Require a new full exact-SHA CI run for the resulting PR #30 head; do not treat its historical Build #3129 as proof for the changed SHA.
+3. Refresh PR #57's live base/head relationship after PR #30 advances. Preserve the stacked dependency; do not change its base automatically. Re-run exact-SHA acceptance if its head/tree must change.
+4. Keep physical MPC Studio MkII validation separate from emulator acceptance.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 
