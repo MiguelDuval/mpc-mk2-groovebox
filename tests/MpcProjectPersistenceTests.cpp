@@ -285,10 +285,30 @@ int main() {
     assert(legacyNote.ratchet == 2);
     assert(legacyNote.nudgeTicks == -3);
 
+    // A failed parse must leave every field of the already-open Project intact,
+    // not merely preserve its identity. The truncated v2 payload is deliberately
+    // valid through all serialized model records and fails only at END_PROJECT,
+    // after a large candidate has already been decoded.
+    const std::string loadedSerializedBeforeFailure =
+            persistence::serializeProject(loaded, &error);
+    assert(!loadedSerializedBeforeFailure.empty());
+    assert(error.empty());
+
+    const auto endProjectMarker = serialized.find("END_PROJECT\n");
+    assert(endProjectMarker != std::string::npos);
+    const std::string truncatedAfterRecords = serialized.substr(0, endProjectMarker);
+    assert(!persistence::deserializeProject(truncatedAfterRecords, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
+    // Unsupported format versions must obey the same all-or-nothing contract.
+    error.clear();
     const auto loadedIdBeforeFailure = loaded.id;
     assert(!persistence::deserializeProject(
             "MPCMK2_PROJECT 99\n", loaded, &error));
+    assert(!error.empty());
     assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
 
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
