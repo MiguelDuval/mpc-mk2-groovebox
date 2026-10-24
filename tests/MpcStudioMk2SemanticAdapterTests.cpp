@@ -207,6 +207,16 @@ int main(){
       InputEvent{InputEventType::PadAftertouch,9,37,96,0,true});
   typeOf(pressureAction,SemanticActionType::PadAftertouch);
   assert(pressureAction->value0==0 && pressureAction->value1==96);
+  auto maximumPressure = pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,127,15,true});
+  typeOf(maximumPressure,SemanticActionType::PadAftertouch);
+  assert(maximumPressure->value0==15 && maximumPressure->value1==127);
+  auto outOfRangePressure = pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,128,0,true});
+  assert(!outOfRangePressure.has_value());
+  auto outOfRangePressurePad = pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,96,16,true});
+  assert(!outOfRangePressurePad.has_value());
 
   return 0;
 }

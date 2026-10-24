@@ -22,6 +22,12 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const I
         case InputEventType::JogWheel: return handleJog(e.value);
         case InputEventType::JogPress: return handleJogPress(e.pressed);
         case InputEventType::PadAftertouch:
+            // The semantic adapter is a second input boundary for tests and
+            // alternate producers; only valid 16-pad indices and 7-bit
+            // pressure values may become controller actions.
+            if (e.padIndex >= 16 || e.value > 127) {
+                return std::nullopt;
+            }
             return make(
                     Type::PadAftertouch,
                     static_cast<std::int32_t>(e.padIndex),
