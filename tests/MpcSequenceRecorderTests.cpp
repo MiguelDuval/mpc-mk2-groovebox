@@ -4,7 +4,6 @@
 
 #include <cassert>
 #include <cstdint>
-#include <cstdint>
 
 namespace {
 
@@ -138,6 +137,43 @@ void testRejectsMalformedQueuedMidiValues() {
     assert(track.patterns.front().notes.empty());
 }
 
+void testDisarmedTrackClearsHeldNotesBeforeRearm() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    auto& track = sequence.tracks[0];
+    track.recordArmed = true;
+    sequence.timingCorrectEnabled = false;
+    sequence.quantizeGridTicks = 120;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    // A note-on is held while this track is armed.
+    assert(queue.tryEnqueue({100, 0, 0, 100, 1}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(track.patterns.front().notes.empty());
+
+    // The track is disarmed before the release reaches the recorder.
+    track.recordArmed = false;
+    assert(queue.tryEnqueue({200, 0, 0, 0, 0}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(track.patterns.front().notes.empty());
+
+    // After re-arm, the next press must start fresh, not inherit tick 100/vel 100.
+    track.recordArmed = true;
+    assert(queue.tryEnqueue({300, 0, 0, 110, 1}));
+    assert(queue.tryEnqueue({420, 0, 0, 0, 0}));
+    assert(recorder.drain(state, queue) == 1);
+
+    const auto& notes = track.patterns.front().notes;
+    assert(notes.size() == 1);
+    assert(notes.front().tick == 300);
+    assert(notes.front().durationTicks == 120);
+    assert(notes.front().velocity == 110);
+}
+
 void testZeroLengthTapUsesGridDuration() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -219,6 +255,7 @@ int main() {
     testReplaceAndQuantize();
     testOverdubPreservesExistingNotes();
     testFinishClosesHeldNote();
+    testDisarmedTrackClearsHeldNotesBeforeRearm();
     testZeroLengthTapUsesGridDuration();
     testRejectsMalformedQueuedMidiValues();
     testNonActiveArmedTrackUsesItsOwnDrumProgram();

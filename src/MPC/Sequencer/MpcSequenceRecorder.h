@@ -87,12 +87,14 @@ public:
             if (!track.recordArmed
                     || track.kind != domain::TrackKind::Drum
                     || track.patterns.empty()) {
+                clearHeldForTrack(event.trackIndex);
                 continue;
             }
 
             const auto* trackProgram = state.findDrumProgram(track.programId);
             if (trackProgram == nullptr
                     || trackProgram->type != domain::ProgramType::Drum) {
+                clearHeldForTrack(event.trackIndex);
                 continue;
             }
 
@@ -307,6 +309,13 @@ private:
         }
 
         note.tick = static_cast<std::int32_t>(tick);
+    }
+
+    void clearHeldForTrack(std::size_t trackIndex) noexcept {
+        if (trackIndex >= held_.size()) return;
+        held_[trackIndex].fill(false);
+        startTicks_[trackIndex].fill(0);
+        startVelocities_[trackIndex].fill(0);
     }
 
     void sortTouchedPatterns(MpcProjectState& state) noexcept {
