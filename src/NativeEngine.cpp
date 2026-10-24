@@ -36,7 +36,7 @@ mpc::sequencer::MpcSequencePlaybackSession& sequenceSession() {
         sequencePlayback =
                 std::make_unique<mpc::sequencer::MpcSequencePlaybackSession>(
                         core.projectState(),
-                        core.audio());
+                        core.audio().triggerQueue());
     }
     return *sequencePlayback;
 }
