@@ -107,6 +107,48 @@ int main(){
   assert(previousEvent->value0 == 1);
 
 
+  // Malformed pad events must not mutate gesture state or generate actions.
+  MpcStudioMk2SemanticAdapter invalidPad;
+  auto invalidPadEvent = invalidPad.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 112, 255, true});
+  assert(invalidPadEvent.consumed);
+  assert(!invalidPadEvent.action.has_value());
+  assert(invalidPadEvent.targetPadIndex == 0xFF);
+  assert(invalidPadEvent.velocity == 0);
+  assert(invalidPad.lastPadIndex() == 0xFF);
+  auto nextValidPad = invalidPad.handlePad(pad(7));
+  assert(!nextValidPad.consumed);
+  assert(nextValidPad.targetPadIndex == 7);
+  assert(invalidPad.lastPadIndex() == 7);
+
+  MpcStudioMk2SemanticAdapter invalidVelocity;
+  auto outOfRangeVelocity = invalidVelocity.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 128, 3, true});
+  assert(outOfRangeVelocity.consumed);
+  assert(!outOfRangeVelocity.action.has_value());
+  assert(invalidVelocity.lastPadIndex() == 0xFF);
+  auto zeroVelocityPress = invalidVelocity.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 0, 3, true});
+  assert(zeroVelocityPress.consumed);
+  assert(!zeroVelocityPress.action.has_value());
+  assert(invalidVelocity.lastPadIndex() == 0xFF);
+
+  MpcStudioMk2SemanticAdapter malformedCopy;
+  typeOf(malformedCopy.handleControl(btn(122)), SemanticActionType::CopyContext);
+  auto validSourceBeforeMalformed = malformedCopy.handlePad(pad(2));
+  typeOf(validSourceBeforeMalformed.action, SemanticActionType::CopyPadSelection);
+  auto malformedCopyPad = malformedCopy.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 112, 255, true});
+  assert(malformedCopyPad.consumed);
+  assert(!malformedCopyPad.action.has_value());
+  auto validDestinationAfterMalformed = malformedCopy.handlePad(pad(4));
+  typeOf(validDestinationAfterMalformed.action, SemanticActionType::CopyPadSelection);
+  assert(validDestinationAfterMalformed.action->value1 == 4);
+  auto malformedCopyCommit = malformedCopy.handleControl(btn(122, false));
+  typeOf(malformedCopyCommit, SemanticActionType::CopyPadCommit);
+  assert(malformedCopyCommit->value1 == 2);
+  assert(malformedCopyCommit->value2 == (1 << 4));
+
   MpcStudioMk2SemanticAdapter copy;
   auto copyContext = copy.handleControl(btn(122));
   typeOf(copyContext, SemanticActionType::CopyContext);
@@ -165,6 +207,16 @@ int main(){
       InputEvent{InputEventType::PadAftertouch,9,37,96,0,true});
   typeOf(pressureAction,SemanticActionType::PadAftertouch);
   assert(pressureAction->value0==0 && pressureAction->value1==96);
+  auto maximumPressure = pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,127,15,true});
+  typeOf(maximumPressure,SemanticActionType::PadAftertouch);
+  assert(maximumPressure->value0==15 && maximumPressure->value1==127);
+  auto outOfRangePressure = pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,128,0,true});
+  assert(!outOfRangePressure.has_value());
+  auto outOfRangePressurePad = pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,96,16,true});
+  assert(!outOfRangePressurePad.has_value());
 
   return 0;
 }
