@@ -335,7 +335,7 @@ public:
                     continue;
                 }
 
-                if (pending.padIndex < kPadCount && pending.velocity != 0) {
+                if (isValidAudioTriggerEvent(pending, kPadCount)) {
                     startVoice(
                             pending.padIndex,
                             pending.velocity,

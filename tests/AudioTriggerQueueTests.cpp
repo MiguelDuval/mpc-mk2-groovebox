@@ -14,6 +14,18 @@ int main() {
     assert(!mpc::audio::isValidAudioTriggerVelocity(128));
     assert(!mpc::audio::isValidAudioTriggerVelocity(255));
 
+    constexpr std::size_t padCount = 16;
+    assert(mpc::audio::isValidAudioTriggerEvent(
+            mpc::audio::AudioTriggerEvent{15, 127, 0}, padCount));
+    assert(!mpc::audio::isValidAudioTriggerEvent(
+            mpc::audio::AudioTriggerEvent{16, 127, 0}, padCount));
+    assert(!mpc::audio::isValidAudioTriggerEvent(
+            mpc::audio::AudioTriggerEvent{0, 0, 0}, padCount));
+    assert(!mpc::audio::isValidAudioTriggerEvent(
+            mpc::audio::AudioTriggerEvent{0, 128, 0}, padCount));
+    assert(!mpc::audio::isValidAudioTriggerEvent(
+            mpc::audio::AudioTriggerEvent{0, 255, 0}, padCount));
+
     mpc::audio::AudioTriggerQueue queue;
 
     mpc::audio::AudioTriggerEvent initiallyEmpty;

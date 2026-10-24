@@ -21,6 +21,15 @@ struct AudioTriggerEvent final {
     return velocity > 0 && velocity <= 127;
 }
 
+// Final render-boundary policy: reject malformed events even if a producer
+// bypasses the validated ingress methods and writes directly to the queue.
+[[nodiscard]] inline constexpr bool isValidAudioTriggerEvent(
+        const AudioTriggerEvent& event,
+        std::size_t padCount) noexcept {
+    return event.padIndex < padCount
+            && isValidAudioTriggerVelocity(event.velocity);
+}
+
 template <typename T, std::size_t Capacity>
 class BoundedMpmcQueue final {
     static_assert(Capacity >= 2 && (Capacity & (Capacity - 1)) == 0,
