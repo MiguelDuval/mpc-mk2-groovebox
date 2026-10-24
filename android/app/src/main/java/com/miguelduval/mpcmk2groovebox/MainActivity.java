@@ -14089,7 +14089,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 });
         decor.requestLayout();
     }
-    }
 
     private void continueUiAuditAfterBrowserStoragePicker(boolean pickerReturned) {
         if (destroyed) return;
