@@ -166,6 +166,21 @@ int main() {
     assertInvalidNoteRejected([](auto& note) { note.ratchet = 0; });
     assertInvalidNoteRejected([](auto& note) { note.ratchet = 9; });
 
+    const auto assertInvalidNoteTimingRejected = [](auto mutateNote) {
+        auto invalid = makeProject();
+        auto& note = invalid.sequences[0].tracks[0].patterns[0].notes.front();
+        mutateNote(note);
+        std::string validationError;
+        const auto bytes = persistence::serializeProject(invalid, &validationError);
+        assert(bytes.empty());
+        assert(validationError == "MIDI note timing is out of range");
+    };
+    assertInvalidNoteTimingRejected([](auto& note) { note.tick = -1; });
+    assertInvalidNoteTimingRejected([](auto& note) { note.tick = 1920; });
+    assertInvalidNoteTimingRejected([](auto& note) { note.durationTicks = -1; });
+    assertInvalidNoteTimingRejected([](auto& note) { note.nudgeTicks = 961; });
+    assertInvalidNoteTimingRejected([](auto& note) { note.nudgeTicks = -961; });
+
     // Velocity zero remains representable for compatibility with existing
     // silent note data because readPattern() accepts zero as an in-range value.
     auto silentNoteProject = makeProject();
@@ -286,6 +301,27 @@ int main() {
     assert(history.undo());
     assert(loaded.sequences[0].tracks[0].placements.size() == 3);
     assert(notesEqual(loaded.sequences[0].tracks[0].patterns[0].notes, baselineNotes));
+
+    // The reader must reject the same timing violations as the serializer and
+    // preserve the already-open Project on every malformed payload.
+    const std::string validNoteRecord = "NOTE 120 180 36 97 88 3 -11\n";
+    const std::string projectBeforeMalformedNotes = persistence::serializeProject(loaded);
+    assert(!projectBeforeMalformedNotes.empty());
+    const auto assertInvalidSerializedNoteRejected = [&](const std::string& invalidRecord) {
+        std::string invalidBytes = serialized;
+        const auto position = invalidBytes.find(validNoteRecord);
+        assert(position != std::string::npos);
+        invalidBytes.replace(position, validNoteRecord.size(), invalidRecord);
+        std::string parseError;
+        assert(!persistence::deserializeProject(invalidBytes, loaded, &parseError));
+        assert(!parseError.empty());
+        assert(persistence::serializeProject(loaded) == projectBeforeMalformedNotes);
+    };
+    assertInvalidSerializedNoteRejected("NOTE -1 180 36 97 88 3 -11\n");
+    assertInvalidSerializedNoteRejected("NOTE 1920 180 36 97 88 3 -11\n");
+    assertInvalidSerializedNoteRejected("NOTE 120 -1 36 97 88 3 -11\n");
+    assertInvalidSerializedNoteRejected("NOTE 120 180 36 97 88 3 961\n");
+    assertInvalidSerializedNoteRejected("NOTE 120 180 36 97 88 3 -961\n");
 
     // Version 1 represented a legacy project with Patterns but no placement
     // section. It still loads, and leaves placements empty for the existing

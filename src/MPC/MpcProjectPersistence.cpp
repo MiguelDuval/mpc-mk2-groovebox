@@ -1,4 +1,5 @@
 #include "MPC/MpcProjectPersistence.h"
+#include "MPC/Sequencer/MpcPatternOps.h"
 
 #include <algorithm>
 #include <cmath>
@@ -203,6 +204,18 @@ bool readPad(Decoder& in, domain::Pad& pad) {
     return true;
 }
 
+
+bool validPatternNoteTiming(
+        const domain::Pattern& pattern,
+        const domain::MidiNoteEvent& note) noexcept {
+    return pattern.lengthTicks > 0
+            && note.tick >= 0
+            && note.tick < pattern.lengthTicks
+            && note.durationTicks >= 0
+            && note.nudgeTicks >= -sequencer::kMaxStepNudgeTicks
+            && note.nudgeTicks <= sequencer::kMaxStepNudgeTicks;
+}
+
 bool readPattern(Decoder& in, domain::Pattern& pattern) {
     std::size_t noteCount = 0;
     if (!in.tag("PATTERN")
@@ -211,6 +224,9 @@ bool readPattern(Decoder& in, domain::Pattern& pattern) {
             || !in.value(pattern.lengthTicks)
             || !in.count(noteCount, kMaxNotesPerPattern, "Pattern note")) {
         return false;
+    }
+    if (pattern.lengthTicks <= 0) {
+        return in.fail("Pattern length must be positive");
     }
     pattern.notes.reserve(noteCount);
     for (std::size_t i = 0; i < noteCount; ++i) {
@@ -232,6 +248,9 @@ bool readPattern(Decoder& in, domain::Pattern& pattern) {
         if (pitch > 127 || velocity > 127 || probability > 127
                 || ratchet < 1 || ratchet > 8) {
             return in.fail("MIDI note field is out of range");
+        }
+        if (!validPatternNoteTiming(pattern, note)) {
+            return in.fail("MIDI note timing is out of range");
         }
         note.note = static_cast<std::uint8_t>(pitch);
         note.velocity = static_cast<std::uint8_t>(velocity);
@@ -289,10 +308,16 @@ bool validatePatternNotes(const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
         for (const auto& track : sequence.tracks) {
             for (const auto& pattern : track.patterns) {
+                if (pattern.lengthTicks <= 0) {
+                    return setError(error, "Pattern length must be positive");
+                }
                 for (const auto& note : pattern.notes) {
                     // Keep serialization aligned with readPattern(): otherwise
                     // saveProjectFile can successfully write a file that this
                     // same build rejects when the user reopens it.
+                    if (!validPatternNoteTiming(pattern, note)) {
+                        return setError(error, "MIDI note timing is out of range");
+                    }
                     if (note.note > 127 || note.velocity > 127
                             || note.probability > 127
                             || note.ratchet < 1 || note.ratchet > 8) {
