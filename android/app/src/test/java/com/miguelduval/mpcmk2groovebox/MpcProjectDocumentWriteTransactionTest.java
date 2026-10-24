@@ -140,7 +140,7 @@ public class MpcProjectDocumentWriteTransactionTest {
     }
 
     @Test
-    public void providerWriteSecurityExceptionIsClassifiedAsWriteDenial() throws Exception {
+    public void providerOutputOpenSecurityExceptionIsClassifiedAsWriteDenial() throws Exception {
         withDirectory(directory -> {
             final FakeDocument document = new FakeDocument(OLD_DOCUMENT);
             document.failOutputOpenNumber = 1;
@@ -153,7 +153,7 @@ public class MpcProjectDocumentWriteTransactionTest {
             assertFalse(result.success);
             assertTrue(result.writeAttempted);
             assertTrue(result.previousDocumentPreserved);
-            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_WRITE,
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_OUTPUT_OPEN,
                     result.failurePhase);
             assertTrue(result.failureDetail.contains("SecurityException"));
             assertTrue(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
@@ -164,7 +164,32 @@ public class MpcProjectDocumentWriteTransactionTest {
     }
 
     @Test
-    public void deniedRollbackWriteIsClassifiedEvenWhenPrimaryFailureWasReadback() throws Exception {
+    public void providerStreamWriteSecurityExceptionDoesNotLatchWriteDenial() throws Exception {
+        withDirectory(directory -> {
+            final FakeDocument document = new FakeDocument(OLD_DOCUMENT);
+            document.failOutputWriteNumber = 1;
+            document.failOutputWriteMessage =
+                    "SecurityException: permission denied after provider output stream opened";
+
+            final MpcProjectDocumentWriteTransaction.Result result =
+                    MpcProjectDocumentWriteTransaction.write(document, directory, NEW_DOCUMENT, 1024);
+
+            assertFalse(result.success);
+            assertTrue(result.writeAttempted);
+            assertTrue(result.previousDocumentPreserved);
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_WRITE,
+                    result.failurePhase);
+            assertTrue(result.failureDetail.contains("SecurityException"));
+            assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                    result.writeAttempted, result.failurePhase, result.failureDetail,
+                    result.rollbackFailurePhase, result.rollbackFailureDetail));
+            assertArrayEquals(OLD_DOCUMENT, document.content);
+            assertNull(result.recoveryCopy);
+        });
+    }
+
+    @Test
+    public void deniedRollbackOutputOpenIsClassifiedEvenWhenPrimaryFailureWasReadback() throws Exception {
         withDirectory(directory -> {
             final FakeDocument document = new FakeDocument(OLD_DOCUMENT);
             document.failInputOpenNumber = 2;
@@ -181,9 +206,37 @@ public class MpcProjectDocumentWriteTransactionTest {
             assertFalse(result.previousDocumentPreserved);
             assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
                     result.failurePhase);
-            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_WRITE,
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_OUTPUT_OPEN,
                     result.rollbackFailurePhase);
             assertTrue(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                    result.writeAttempted, result.failurePhase, result.failureDetail,
+                    result.rollbackFailurePhase, result.rollbackFailureDetail));
+            assertNotNull(result.recoveryCopy);
+            assertArrayEquals(OLD_DOCUMENT, Files.readAllBytes(result.recoveryCopy.toPath()));
+        });
+    }
+
+    @Test
+    public void rollbackStreamWriteSecurityExceptionDoesNotLatchWriteDenial() throws Exception {
+        withDirectory(directory -> {
+            final FakeDocument document = new FakeDocument(OLD_DOCUMENT);
+            document.failInputOpenNumber = 2;
+            document.failInputOpenMessage = "IOException: injected verification read failure";
+            document.failOutputWriteNumber = 2;
+            document.failOutputWriteMessage =
+                    "SecurityException: permission denied after rollback output stream opened";
+
+            final MpcProjectDocumentWriteTransaction.Result result =
+                    MpcProjectDocumentWriteTransaction.write(document, directory, NEW_DOCUMENT, 1024);
+
+            assertFalse(result.success);
+            assertTrue(result.writeAttempted);
+            assertFalse(result.previousDocumentPreserved);
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
+                    result.failurePhase);
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_WRITE,
+                    result.rollbackFailurePhase);
+            assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
                     result.writeAttempted, result.failurePhase, result.failureDetail,
                     result.rollbackFailurePhase, result.rollbackFailureDetail));
             assertNotNull(result.recoveryCopy);
@@ -262,8 +315,10 @@ public class MpcProjectDocumentWriteTransactionTest {
         int outputOpenCount;
         int failInputOpenNumber = -1;
         int failOutputOpenNumber = -1;
+        int failOutputWriteNumber = -1;
         String failInputOpenMessage = "injected provider read failure";
         String failOutputOpenMessage = "injected provider write-open failure";
+        String failOutputWriteMessage = "injected provider stream write failure";
         boolean partialWriteThenThrow;
         boolean silentlyTruncateFirstWrite;
 
@@ -300,6 +355,9 @@ public class MpcProjectDocumentWriteTransactionTest {
 
                 @Override
                 public void write(byte[] bytes, int offset, int length) throws IOException {
+                    if (attempt == failOutputWriteNumber) {
+                        throw new IOException(failOutputWriteMessage);
+                    }
                     if (attempt == 1 && partialWriteThenThrow && !partialFailureInjected) {
                         partialFailureInjected = true;
                         final int partialLength = Math.max(1, length / 2);

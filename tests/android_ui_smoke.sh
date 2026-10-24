@@ -12887,7 +12887,7 @@ if ! wait_for_new_project_marker "PROJECT_SAVE_FAILED" "$provider_failure_before
   echo "ERROR: controlled provider did not reject the direct SAVE output open"; exit 1
 fi
 provider_failure_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_SAVE_FAILED" | tail -n 1 || true)"
-if ! grep -Fq -- "failurePhase=PROVIDER_WRITE" <<<"$provider_failure_line" \
+if ! grep -Fq -- "failurePhase=PROVIDER_OUTPUT_OPEN" <<<"$provider_failure_line" \
     || ! grep -Fq -- "rollbackFailurePhase=NONE" <<<"$provider_failure_line" \
     || ! grep -Fq -- "previousDocumentPreserved=true" <<<"$provider_failure_line" \
     || ! grep -Fq -- "directSaveAccessRejected=true" <<<"$provider_failure_line" \
@@ -12895,7 +12895,7 @@ if ! grep -Fq -- "failurePhase=PROVIDER_WRITE" <<<"$provider_failure_line" \
     || ! grep -Fq -- "activeStateSha256=$provider_fixture_sha" <<<"$provider_failure_line" \
     || ! grep -Fq -- "recoveryCopy=none" <<<"$provider_failure_line" \
     || ! grep -Fq -- "Permission denied by controlled debug document provider" <<<"$provider_failure_line"; then
-  echo "ERROR: output denial did not map to PROVIDER_WRITE with verified restoration"
+  echo "ERROR: output-open denial did not map to PROVIDER_OUTPUT_OPEN with verified restoration"
   echo "$provider_failure_line"; exit 1
 fi
 if ! wait_for_new_project_marker "PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE" 0 20; then
@@ -12994,4 +12994,4 @@ if ! grep -Fq -- "domainSha256=$provider_fixture_sha" <<<"$provider_open_line" \
     || ! grep -Fq -- "persistedDomainExact=true" <<<"$provider_open_line"; then
   echo "ERROR: replacement reopened to different Project state"; exit 1
 fi
-echo "REAL DocumentsUI URI revocation and controlled provider output-denial acceptance passed; denial was classified PROVIDER_WRITE, original bytes verified after rollback, and SAVE AS restored working SAVE/Open."
+echo "REAL DocumentsUI URI revocation and controlled provider output-open denial acceptance passed; denial was classified PROVIDER_OUTPUT_OPEN, original bytes verified after rollback, and SAVE AS restored working SAVE/Open."

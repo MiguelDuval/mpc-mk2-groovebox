@@ -34,9 +34,11 @@ final class MpcProjectDocumentWriteTransaction {
         PRECONDITION,
         PREIMAGE_CAPTURE,
         SNAPSHOT_FINGERPRINT,
+        PROVIDER_OUTPUT_OPEN,
         PROVIDER_WRITE,
         PROVIDER_READBACK,
         PROVIDER_READBACK_MISMATCH,
+        ROLLBACK_OUTPUT_OPEN,
         ROLLBACK_WRITE,
         ROLLBACK_BACKUP_READ,
         ROLLBACK_VERIFICATION
@@ -161,18 +163,28 @@ final class MpcProjectDocumentWriteTransaction {
         // the attempt before calling the provider, but classify its phase below.
         FailurePhase failurePhase = FailurePhase.NONE;
         String failureDetail = null;
+        OutputStream providerStream = null;
         try {
-            final OutputStream providerStream = document.openOutputStream();
-            if (providerStream == null) {
-                throw new IOException("Document provider returned no output stream");
-            }
-            try (OutputStream output = providerStream) {
-                output.write(replacement);
-                output.flush();
-            }
+            providerStream = document.openOutputStream();
         } catch (Exception error) {
-            failurePhase = FailurePhase.PROVIDER_WRITE;
+            // Only an exception thrown while opening the provider output is
+            // evidence that this specific access operation was denied.
+            failurePhase = FailurePhase.PROVIDER_OUTPUT_OPEN;
             failureDetail = describe(error);
+        }
+        if (failurePhase == FailurePhase.NONE) {
+            if (providerStream == null) {
+                failurePhase = FailurePhase.PROVIDER_WRITE;
+                failureDetail = "Document provider returned no output stream";
+            } else {
+                try (OutputStream output = providerStream) {
+                    output.write(replacement);
+                    output.flush();
+                } catch (Exception error) {
+                    failurePhase = FailurePhase.PROVIDER_WRITE;
+                    failureDetail = describe(error);
+                }
+            }
         }
 
         long verifiedBytes = 0;
@@ -195,7 +207,8 @@ final class MpcProjectDocumentWriteTransaction {
             }
         }
 
-        final String primaryFailure = failurePhase == FailurePhase.PROVIDER_WRITE
+        final String primaryFailure = failurePhase == FailurePhase.PROVIDER_OUTPUT_OPEN
+                || failurePhase == FailurePhase.PROVIDER_WRITE
                 ? "Project write failed: " + failureDetail
                 : "Project result verification failed: " + failureDetail;
 
@@ -222,19 +235,29 @@ final class MpcProjectDocumentWriteTransaction {
         }
 
         if (rollbackFailurePhase == FailurePhase.NONE) {
+            OutputStream rollbackStream = null;
             try {
-                final OutputStream rollbackStream = document.openOutputStream();
-                if (rollbackStream == null) {
-                    throw new IOException("Document provider returned no rollback output stream");
-                }
-                try (OutputStream output = rollbackStream) {
-                    output.write(backupBytes);
-                    output.flush();
-                }
+                rollbackStream = document.openOutputStream();
             } catch (Exception error) {
-                rollbackFailurePhase = FailurePhase.ROLLBACK_WRITE;
+                rollbackFailurePhase = FailurePhase.ROLLBACK_OUTPUT_OPEN;
                 rollbackFailureDetail = describe(error);
                 rollbackFailure = rollbackFailureDetail;
+            }
+            if (rollbackFailurePhase == FailurePhase.NONE) {
+                if (rollbackStream == null) {
+                    rollbackFailurePhase = FailurePhase.ROLLBACK_WRITE;
+                    rollbackFailureDetail = "Document provider returned no rollback output stream";
+                    rollbackFailure = rollbackFailureDetail;
+                } else {
+                    try (OutputStream output = rollbackStream) {
+                        output.write(backupBytes);
+                        output.flush();
+                    } catch (Exception error) {
+                        rollbackFailurePhase = FailurePhase.ROLLBACK_WRITE;
+                        rollbackFailureDetail = describe(error);
+                        rollbackFailure = rollbackFailureDetail;
+                    }
+                }
             }
         }
 

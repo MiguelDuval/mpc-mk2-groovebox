@@ -91,11 +91,29 @@ public class MpcProjectUriGrantPolicyTest {
                 null));
     }
 
-    @Test public void actualWriteAttemptEaccesLatchesWriteDenial() {
+    @Test public void actualOutputOpenEaccesLatchesWriteDenial() {
         assertTrue(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
                 true,
-                MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_WRITE,
+                MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_OUTPUT_OPEN,
                 "ErrnoException: EACCES (Permission denied)",
+                MpcProjectDocumentWriteTransaction.FailurePhase.NONE,
+                null));
+    }
+
+    @Test public void outputOpenTimeoutDoesNotLatchWriteDenial() {
+        assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                true,
+                MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_OUTPUT_OPEN,
+                "IOException: provider timed out before output stream opened",
+                MpcProjectDocumentWriteTransaction.FailurePhase.NONE,
+                null));
+    }
+
+    @Test public void providerStreamWriteEaccesDoesNotLatchWriteDenial() {
+        assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                true,
+                MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_WRITE,
+                "ErrnoException: EACCES (Permission denied after output stream opened)",
                 MpcProjectDocumentWriteTransaction.FailurePhase.NONE,
                 null));
     }
@@ -127,12 +145,21 @@ public class MpcProjectUriGrantPolicyTest {
                 null));
     }
 
-    @Test public void rollbackWriteEaccesLatchesWriteDenialEvenWhenPrimaryFailureWasVerification() {
+    @Test public void rollbackOutputOpenEaccesLatchesWriteDenialEvenWhenPrimaryFailureWasVerification() {
         assertTrue(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
                 true,
                 MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
                 "IOException: readback provider timeout",
-                MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_WRITE,
+                MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_OUTPUT_OPEN,
                 "ErrnoException: EACCES (Permission denied)"));
+    }
+
+    @Test public void rollbackStreamWriteEaccesDoesNotLatchWriteDenial() {
+        assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                true,
+                MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
+                "IOException: readback provider timeout",
+                MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_WRITE,
+                "ErrnoException: EACCES (Permission denied after rollback stream opened)"));
     }
 }
