@@ -2029,7 +2029,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' 'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..4}; do' 'initial DocumentsUI hierarchy is not ready' 'after 4 fresh, bounded attempts' \
     'open_project_document()' 'PROJECT_OPEN_REJECTED)' \
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
     'expected Project Open outcome $expected_marker'; do
@@ -9745,11 +9745,18 @@ for picker_hierarchy_attempt in {1..4}; do
     fi
     break
   fi
-  echo "WARN: fresh Document Picker hierarchy attempt $picker_hierarchy_attempt did not expose a valid root-navigation control."
-  if (( picker_hierarchy_attempt < 4 )); then sleep 1; fi
+  if (( picker_hierarchy_attempt < 4 )); then
+    echo "WARN: initial DocumentsUI hierarchy is not ready/actionable (attempt $picker_hierarchy_attempt/4); retrying a fresh bounded capture"
+    sleep 1
+  fi
 done
 if [[ "$picker_hierarchy_ready" != "1" ]]; then
-  echo "ERROR: could not capture a fresh, actionable Android Document Picker hierarchy after 4 bounded attempts"
+  echo "ERROR: could not capture initial Android Document Picker hierarchy after 4 fresh, bounded attempts"
+  adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 \
+    > /tmp/mpc-groovebox-picker-select-source-activity-final.txt || true
+  cat /tmp/mpc-groovebox-picker-select-source-activity-final.txt || true
+  cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   exit 1
 fi
 
