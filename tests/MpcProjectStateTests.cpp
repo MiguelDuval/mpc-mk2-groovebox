@@ -116,6 +116,22 @@ int main() {
     assert(extremeLoopState.activeSequence().loopEndTicks
             == std::numeric_limits<std::int32_t>::max());
 
+    // A malformed imported time signature makes barLengthTicks return zero,
+    // which used to fall back to one and overflow loopStartTicks + 1.
+    auto& invalidSignatureSequence = extremeLoopState.activeSequence();
+    invalidSignatureSequence.numerator = 0;
+    invalidSignatureSequence.denominator = 0;
+    invalidSignatureSequence.loopStartTicks = std::numeric_limits<std::int32_t>::max();
+    invalidSignatureSequence.loopEndTicks = std::numeric_limits<std::int32_t>::max();
+    assert(extremeLoopState.setSequenceTimeSignature(1, 32));
+    assert(extremeLoopState.activeSequence().numerator == 1);
+    assert(extremeLoopState.activeSequence().denominator == 32);
+    assert(extremeLoopState.activeSequence().loopStartTicks >= 0);
+    assert(extremeLoopState.activeSequence().loopStartTicks
+            < extremeLoopState.activeSequence().loopEndTicks);
+    assert(extremeLoopState.activeSequence().loopEndTicks
+            <= extremeLoopState.activeSequence().lengthTicks);
+
     assert(state.setSequenceQuantizeGrid(240));
     assert(state.activeSequence().quantizeGridTicks == 240);
     assert(!state.setSequenceQuantizeGrid(241));

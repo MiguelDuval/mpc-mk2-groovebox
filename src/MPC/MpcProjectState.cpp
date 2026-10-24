@@ -338,10 +338,13 @@ bool MpcProjectState::setSequenceTimeSignature(
             sequencer::barLengthTicks(
                     oldSequence.numerator,
                     oldSequence.denominator));
-    const auto startBar = std::clamp(
-            oldSequence.loopStartTicks / oldPerBar + 1,
-            1,
-            bars);
+    // Imported Sequence fields may be malformed. Widen the bar division
+    // before adding one so INT32_MAX loop starts cannot overflow when the
+    // previous time signature is invalid and oldPerBar falls back to one.
+    const auto requestedStartBar =
+            static_cast<std::int64_t>(oldSequence.loopStartTicks) / oldPerBar + 1;
+    const auto startBar = static_cast<std::int32_t>(
+            std::clamp<std::int64_t>(requestedStartBar, 1, bars));
     const auto roundedEndBar =
             (static_cast<std::int64_t>(oldSequence.loopEndTicks)
              + oldPerBar - 1) / oldPerBar;
