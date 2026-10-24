@@ -176,6 +176,28 @@ void testDisarmedTrackClearsHeldNotesBeforeRearm() {
     assert(notes.front().velocity == 110);
 }
 
+void testRejectsZeroVelocityPressFromSyntheticQueue() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    auto& track = sequence.tracks[0];
+    track.recordArmed = true;
+    sequence.timingCorrectEnabled = false;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    // A zero-velocity Note On must not become a minimum-velocity note when a
+    // malformed/synthetic producer bypasses the MIDI decoder.
+    assert(queue.tryEnqueue({100, 0, 0, 0, 1}));
+    assert(queue.tryEnqueue({220, 0, 0, 0, 0}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(track.patterns.front().notes.empty());
+    assert(recorder.finish(state, queue, 360) == 0);
+    assert(track.patterns.front().notes.empty());
+}
+
 void testZeroLengthTapUsesGridDuration() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -258,6 +280,7 @@ int main() {
     testOverdubPreservesExistingNotes();
     testFinishClosesHeldNote();
     testDisarmedTrackClearsHeldNotesBeforeRearm();
+    testRejectsZeroVelocityPressFromSyntheticQueue();
     testZeroLengthTapUsesGridDuration();
     testRejectsMalformedQueuedMidiValues();
     testNonActiveArmedTrackUsesItsOwnDrumProgram();

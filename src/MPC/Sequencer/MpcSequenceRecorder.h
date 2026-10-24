@@ -90,7 +90,11 @@ public:
             // but the public queue can also receive synthetic/late producers.
             // Never persist an out-of-range 7-bit velocity or non-boolean
             // pressed value into a Pattern note.
-            if (event.velocity > 127 || event.pressed > 1) {
+            // A zero-velocity MIDI Note On is a release, never a new
+            // press. The physical decoder normalizes it to pressed=false;
+            // reject synthetic queue producers that violate that contract.
+            if (event.velocity > 127 || event.pressed > 1
+                    || (event.pressed != 0 && event.velocity == 0)) {
                 continue;
             }
 
@@ -122,10 +126,7 @@ public:
                 if (!held_[trackIndex][padIndex]) {
                     held_[trackIndex][padIndex] = true;
                     startTicks_[trackIndex][padIndex] = event.tick;
-                    startVelocities_[trackIndex][padIndex] =
-                            event.velocity == 0
-                            ? static_cast<std::uint8_t>(1)
-                            : event.velocity;
+                    startVelocities_[trackIndex][padIndex] = event.velocity;
                 }
                 continue;
             }
