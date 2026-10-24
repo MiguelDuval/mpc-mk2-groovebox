@@ -95,6 +95,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final String TRACK_TYPE_CHANGE_RESERVED_STATUS =
             "TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation";
     private static final String BROWSER_STORAGE_PREFERENCES = "mpc_browser_storage";
+    private static final String PREF_BROWSER_SHOW_FILE_SIZE = "show_file_size";
     private static final String MPC_UI_PREFERENCES = "mpc_ui_preferences";
     private static final String PREF_SHORTCUT_MODES = "shortcut_modes_v1";
     private static final String PREF_USER_TREE_URI = "user_tree_uri";
@@ -5833,6 +5834,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         browserView = new MpcBrowserView(this);
+        browserView.setShowFileSize(getSharedPreferences(
+                BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
+                .getBoolean(PREF_BROWSER_SHOW_FILE_SIZE, true));
         browserView.setListener(new MpcBrowserView.Listener() {
             @Override
             public void onSectionSelected(String section) {
@@ -6579,20 +6583,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         body.setContentDescription("MPC Browser Options");
 
         TextView notice = label(
-                "FILE PROVIDER: PARTIAL • options are exposed as MPC taxonomy only; "
-                        + "unsupported provider behaviors remain inactive.",
+                "FILE PROVIDER: PARTIAL • file size visibility is active; date, subfolder, "
+                        + "system-folder and cleanup options remain RESERVED / UNAVAILABLE.",
                 10, MUTED);
         notice.setPadding(0, 0, 0, dp(10));
         body.addView(notice);
 
+        final android.content.SharedPreferences browserOptionsPreferences =
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE);
         for (String labelText : labels) {
             android.widget.CheckBox check = new android.widget.CheckBox(this);
             check.setText(labelText);
             check.setTextColor(TEXT);
             check.setTextSize(11);
             check.setContentDescription("MPC Browser Option " + labelText);
-            check.setEnabled(false);
-            check.setAlpha(0.55f);
+            if ("Show file size".equals(labelText)) {
+                check.setEnabled(true);
+                check.setAlpha(1.0f);
+                check.setChecked(browserOptionsPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_FILE_SIZE, true));
+                check.setOnCheckedChangeListener((button, checked) -> {
+                    browserOptionsPreferences.edit()
+                            .putBoolean(PREF_BROWSER_SHOW_FILE_SIZE, checked)
+                            .apply();
+                    final MpcBrowserView activeBrowser = browserView;
+                    if (activeBrowser != null) activeBrowser.setShowFileSize(checked);
+                    setBottomStatus("BROWSER • FILE SIZE " + (checked ? "SHOWN" : "HIDDEN"));
+                });
+            } else {
+                check.setEnabled(false);
+                check.setAlpha(0.55f);
+            }
             body.addView(check, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
         }
@@ -13954,9 +13975,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         final View optionsDialogRoot = optionsDialog.getWindow().getDecorView();
-        if (findViewWithContentDescription(
-                optionsDialogRoot, "MPC Browser Option Show file size") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options dialog hierarchy");
+        View fileSizeOption = findViewWithContentDescription(
+                optionsDialogRoot, "MPC Browser Option Show file size");
+        if (!(fileSizeOption instanceof android.widget.CheckBox)
+                || !fileSizeOption.isEnabled() || browserView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option is not actionable");
+            return;
+        }
+        final android.content.SharedPreferences browserOptionPreferences =
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE);
+        final boolean initialShowFileSize = browserView.isShowFileSize();
+        if (((android.widget.CheckBox) fileSizeOption).isChecked() != initialShowFileSize
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_FILE_SIZE, true) != initialShowFileSize) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option did not restore saved state");
+            return;
+        }
+        if (!fileSizeOption.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option did not click");
+            return;
+        }
+        final boolean toggledShowFileSize = !initialShowFileSize;
+        if (browserView.isShowFileSize() != toggledShowFileSize
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_FILE_SIZE, initialShowFileSize) != toggledShowFileSize) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option did not change presentation and preference");
             return;
         }
 
@@ -13966,6 +14009,38 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options close");
             return;
         }
+        showBrowserOptionsDialog();
+        final AlertDialog reopenedOptionsDialog = browserOptionsDialog;
+        if (reopenedOptionsDialog == null || !reopenedOptionsDialog.isShowing()
+                || reopenedOptionsDialog.getWindow() == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options did not reopen");
+            return;
+        }
+        final View reopenedOptionsRoot = reopenedOptionsDialog.getWindow().getDecorView();
+        final View reopenedFileSizeOption = findViewWithContentDescription(
+                reopenedOptionsRoot, "MPC Browser Option Show file size");
+        if (!(reopenedFileSizeOption instanceof android.widget.CheckBox)
+                || !reopenedFileSizeOption.isEnabled()
+                || ((android.widget.CheckBox) reopenedFileSizeOption).isChecked()
+                        != toggledShowFileSize) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size preference was not restored on dialog reopen");
+            return;
+        }
+        if (!reopenedFileSizeOption.performClick()
+                || browserView.isShowFileSize() != initialShowFileSize
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_FILE_SIZE, !initialShowFileSize) != initialShowFileSize) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option could not restore baseline");
+            return;
+        }
+        final View reopenedClose = findViewWithContentDescription(
+                reopenedOptionsRoot, "MPC Browser Options close");
+        if (reopenedClose == null || !reopenedClose.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options close after restore");
+            return;
+        }
+        Log.i(TAG, "BROWSER_OPTIONS_SHOW_FILE_SIZE_VERIFIED before=" + initialShowFileSize
+                + " toggled=" + toggledShowFileSize + " restored=" + browserView.isShowFileSize());
 
         final View browserStorageAction = findViewWithContentDescription(
                 getWindow().getDecorView(),
