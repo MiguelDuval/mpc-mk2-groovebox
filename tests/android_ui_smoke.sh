@@ -225,7 +225,7 @@ for required in \
   'nullOrBlankProviderFailureDoesNotLatchWriteDenial' \
   'preimageReadEaccesDoesNotLatchWriteDenialBeforeAnyWriteAttempt' \
   'preimageReadSecurityExceptionDoesNotLatchWriteDenialBeforeAnyWriteAttempt' \
-  'actualWriteAttemptEaccesLatchesWriteDenial' \
+  'actualOutputOpenEaccesLatchesWriteDenial' \
   'attemptedWriteWithGenericReadbackTimeoutDoesNotLatchWriteDenial' \
   'providerReadbackSecurityExceptionDoesNotLatchWriteDenialAfterWriteAttempt' \
   'readbackMismatchDoesNotLatchWriteDenial' \
