@@ -14041,27 +14041,54 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Log.i(TAG, "BROWSER_OPTIONS_SHOW_FILE_SIZE_VERIFIED before=" + initialShowFileSize
                 + " toggled=" + toggledShowFileSize + " restored=" + browserView.isShowFileSize());
 
-        final View browserStorageAction = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC Browser open Android storage picker");
-        if (browserStorageAction == null || !browserStorageAction.isShown()
-                || !browserStorageAction.isClickable()
-                || browserStorageAction.getWidth() <= dp(200)
-                || browserStorageAction.getHeight() <= dp(36)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action not hittable"
-                    + " | action=" + describeAuditView(browserStorageAction));
+        // The file-size toggle refreshes the Browser result list. That refresh
+        // legitimately replaces the storage-action row; do not inspect or tap its
+        // bounds until the new row has passed a real Android pre-draw/layout pass.
+        continueUiAuditAfterBrowserOptionsLayout();
+    }
+
+    private void continueUiAuditAfterBrowserOptionsLayout() {
+        final View decor = getWindow().getDecorView();
+        final android.view.ViewTreeObserver browserLayoutObserver = decor.getViewTreeObserver();
+        if (!browserLayoutObserver.isAlive()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser layout has no live pre-draw observer");
             return;
         }
-        if (uiAuditSmokeMode) {
-            uiAuditAwaitingBrowserStoragePickerResult = true;
-            Log.i(TAG, "UI_STORAGE_PICKER_LAUNCH_REQUESTED");
-            if (!browserStorageAction.performClick()) {
-                uiAuditAwaitingBrowserStoragePickerResult = false;
-                Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action click");
-            }
-            return;
-        }
-        continueUiAuditAfterBrowserStoragePicker(false);
+        browserLayoutObserver.addOnPreDrawListener(
+                new android.view.ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        if (browserLayoutObserver.isAlive()) {
+                            browserLayoutObserver.removeOnPreDrawListener(this);
+                        }
+                        final View browserStorageAction = findViewWithContentDescription(
+                                decor, "MPC Browser open Android storage picker");
+                        if (browserStorageAction == null || !browserStorageAction.isShown()
+                                || !browserStorageAction.isClickable()
+                                || browserStorageAction.getWidth() <= dp(200)
+                                || browserStorageAction.getHeight() <= dp(36)) {
+                            Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action not hittable"
+                                    + " | action=" + describeAuditView(browserStorageAction));
+                            return true;
+                        }
+                        Log.i(TAG, "BROWSER_STORAGE_ACTION_MEASURED width="
+                                + browserStorageAction.getWidth()
+                                + " height=" + browserStorageAction.getHeight());
+                        if (uiAuditSmokeMode) {
+                            uiAuditAwaitingBrowserStoragePickerResult = true;
+                            Log.i(TAG, "UI_STORAGE_PICKER_LAUNCH_REQUESTED");
+                            if (!browserStorageAction.performClick()) {
+                                uiAuditAwaitingBrowserStoragePickerResult = false;
+                                Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action click");
+                            }
+                            return true;
+                        }
+                        continueUiAuditAfterBrowserStoragePicker(false);
+                        return true;
+                    }
+                });
+        decor.requestLayout();
+    }
     }
 
     private void continueUiAuditAfterBrowserStoragePicker(boolean pickerReturned) {
