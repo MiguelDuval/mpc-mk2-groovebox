@@ -1,26 +1,34 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-23 (live exact-SHA evidence governs)
+## CURRENT EXECUTION QUEUE — 2026-10-24 (live exact-SHA evidence governs)
 
 ### Latest accepted checkpoint — PR #23
 
 - PR #23 remains OPEN: `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`.
-- **Build #3097 / run [39931641764](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39931641764) passed on exact SHA `549c78a709097a261277b090aa27672dab590c54`.** All 57 steps passed, including APK build, full emulator smoke and evidence upload.
-- APK artifact `12492765076`, SHA-256 `5cc0a7e4b06356a6f9a03457c4937c645a57f9719cee6f642572305710b7eaa8`; evidence artifact `12492653431`, SHA-256 `7c8ea85eac7d884a252b54baf9ced830e69eaf15d46a715f24ed96764cc18a30`.
-- Full acceptance covers SAMP-008 crop (3,840 → 2,840 frames, region reset), SAMP-009 CH4/CH8/CH16 exact frame coverage, Browser USER FOLDER/FAVORITE 1 real provider selection and process-restart restoration, and Project SAVE AS/mutate/OPEN, overwrite digest change, process restart, cancellation invariance, malformed-load preservation, v1 compatibility and A/B document isolation.
-- Preserve `cancel-in-progress: false`. Physical MPC Studio MkII remains a separate pending gate.
+- **Android Build #3150 / run [40098511757](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40098511757) passed on exact SHA `f067a252904a242b284cf8b077570c2e04225fc8`.** All 57 steps succeeded, including full emulator smoke and evidence upload.
+- APK artifact `12561652251`, SHA-256 `7ad1a55431daeb926f14dd92cdbeb8e972d2a013efab98d9a24efb2fa49fab44`; visual-evidence artifact `12561778921`, SHA-256 `bb678d8cbe0fc3e07f75ac904f1dbcc3bdb551397d170d2163fd3cac1493ad45`. Evidence archive was inspected (87 PNG, 97 XML, 3 text/log files).
+- SAMP-008 CROP passed (3,840 → 2,840 frames, region reset); SAMP-009 CH4/CH8/CH16 passed exact frame coverage; SAMP-010 viewport-only zoom/reset and native Pad audition passed without mutating sample data.
+- Browser USER FOLDER/FAVORITE 1 passed real DocumentsUI selection, exact `Browser-Favorite-Only.wav` result/indexing, isolated state and process-restart restoration.
+- Project Save As/mutate/Open, changed overwrite digest, force-stop/reopen, cancellation invariance, malformed-load preservation, placement-free v1 canonical-state equality, A/B document isolation, New Project and recovery-export round trips passed.
+- Keep `cancel-in-progress: false`. Physical MPC Studio MkII validation remains a separate pending hardware gate. A docs-only follow-up commit still needs its own exact-SHA full workflow.
 
-### Current slice — SAMP-010 viewport-only waveform zoom and actual Pad audition
+### Next isolated engineering slice — Project provider output-open classification
 
-- With the primary acceptance run green, port the isolated SAMP-010 feature into the existing workflow without creating another smoke test. Keep the viewport separate from native sample region/PCM state.
-- The candidate adds the accessible viewport readout/callback, finite normalized zoom policy + JVM boundary tests, real-touch ZOOM+/ZOOM−/RESET, native audition marker/getter checks and five unique screenshot/XML milestones.
-- The candidate's full exact-SHA Android workflow is pending; SAMP-010 is not accepted until the complete smoke and evidence upload pass.
+- PR #30 head `eeef2a864126bca34e08410b063a9f1f3ec36287` passed Android Build #3129 / run [40083641707](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40083641707), but its base metadata still points to `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`, behind the live primary head. Refresh before integration; no automatic merge or retarget.
+- Follow-up PR #57 (stacked on #30) splits provider output-open denial from failures after an OutputStream has been returned. Direct SAVE should only latch on permission-denial evidence in the output-open phase. New transaction/policy tests cover primary and rollback open denials, stream-write permission failures and generic open timeouts.
+- Build #3155 / run [40100283734](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40100283734) is pending at focused Android unit policy tests (step 14) on exact SHA `2dd936c3d9d26ace0d198f6cefabe4387d712318`. Do not call this change accepted before the exact-SHA full workflow and evidence upload pass.
+
+### Parallel Browser Options blocker
+
+- PR #56 / Build #3154 / run [40099462547](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40099462547) failed at emulator smoke step 52 on SHA `d6a06ba8186d78eeaa03761e429c6505bc40fb85`.
+- The Show file size preference audit passed, but the immediately following Browser storage-picker action was observed at `w=0,h=0,vis=0`. Likely cause is checking live bounds in the same UI callback after the preference rerender/dialog close, before the parent layout remeasures. Preserve strict assertions; defer to the next pre-draw / existing measured-view continuation. No timeout increase and no duplicate smoke test.
 
 ### Next acceptance order
 
-1. Verify the new exact-HEAD run for SAMP-010. On failure, inspect the exact step and artifacts and fix the root cause without relaxing assertions.
-2. After SAMP-010 is green, resume the provider read/permission-failure gap already being handled on `fix/project-provider-failure-phases`; Build #3109 / run `39965373487` was active at the last live check on SHA `cee0c8b5eef8e09c7197b22274f3c2dcd779e833`. Do not duplicate that branch's work.
-3. Keep all project persistence assertions and the physical-controller gate intact.
+1. Let PR #57's exact-SHA Build #3155 finish; inspect focused unit results, the full emulator workflow and artifacts.
+2. Resolve PR #56 with a layout-measurement continuation on its owning branch, then require exact-SHA CI.
+3. Refresh PR #30's live base/diff before considering integration. Do not merge/retarget automatically.
+4. Keep physical MPC Studio MkII validation separate from emulator acceptance.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 
