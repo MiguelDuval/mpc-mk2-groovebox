@@ -1990,7 +1990,7 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement move Pattern placem
 require_source_contains "$0" 'Pattern placement real-touch PLACE → MOVE ± GRID'
 require_source_contains "$0" 'UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE|DUPLICATE|UNDO|REDO)'
 echo "Running MPC Browser Options preflight..."
-for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
+for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'PREF_BROWSER_SHOW_FILE_SIZE'   'BROWSER_OPTIONS_SHOW_FILE_SIZE_VERIFIED'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "$BROWSER_SOURCE"; then
     echo "ERROR: MPC Browser Options contract missing: $required"
     exit 1
