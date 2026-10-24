@@ -132,6 +132,19 @@ int main() {
     assert(extremeLoopState.activeSequence().loopEndTicks
             <= extremeLoopState.activeSequence().lengthTicks);
 
+    // An imported non-full loop can already have start >= end while both
+    // positions fit the resized Sequence. Resizing must restore a valid range.
+    mpc::MpcProjectState malformedLoopState;
+    auto& malformedLoopSequence = malformedLoopState.activeSequence();
+    malformedLoopSequence.loopStartTicks = 10000;
+    malformedLoopSequence.loopEndTicks = 9000;
+    assert(malformedLoopState.setSequenceBars(3));
+    assert(malformedLoopState.activeSequence().loopStartTicks == 10000);
+    assert(malformedLoopState.activeSequence().loopStartTicks
+            < malformedLoopState.activeSequence().loopEndTicks);
+    assert(malformedLoopState.activeSequence().loopEndTicks
+            <= malformedLoopState.activeSequence().lengthTicks);
+
     assert(state.setSequenceQuantizeGrid(240));
     assert(state.activeSequence().quantizeGridTicks == 240);
     assert(!state.setSequenceQuantizeGrid(241));

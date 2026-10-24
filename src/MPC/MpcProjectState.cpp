@@ -301,6 +301,13 @@ bool MpcProjectState::setSequenceBars(std::int32_t bars) noexcept {
     }
     mutableSequence.loopStartTicks =
             std::clamp(mutableSequence.loopStartTicks, 0, length - 1);
+    // Imported state can have a start at/after the prior end even when both
+    // values are within the new Sequence length. Keep the loop non-empty after
+    // clamping the start, and never leave loopEnd beyond the resized Sequence.
+    mutableSequence.loopEndTicks = std::clamp(
+            mutableSequence.loopEndTicks,
+            mutableSequence.loopStartTicks + 1,
+            length);
 
     for (auto& track : mutableSequence.tracks) {
         for (auto& pattern : track.patterns) {
