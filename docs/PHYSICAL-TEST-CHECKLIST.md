@@ -1,12 +1,15 @@
 # MPC Studio MkII Physical Test Checklist
 
-Run these tests with the public MIDI port.
+Run these tests with the public MIDI port. Use [MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md](MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md) for the source, code and test path of each control.
 
-## A. Software preflight
+**Build-specific truthfulness:** The historical physical verification record below is dated 2026-09-24 and names the APK commit used for that session. It does not verify current HEAD. Re-run software preflight for the exact build being physically tested. MPC Desktop instructions in source materials are outside this checklist's scope; test the Android app as the MIDI host.
 
-- [x] Latest branch commit has a green Android Actions build.
-- [x] MPC Studio MkII native decoder tests pass.
-- [x] Debug APK artifact is produced.
+## A. Software preflight (verify for each physical-test build)
+
+- [ ] Exact current branch HEAD has a green Android Actions build; record its SHA and run ID.
+- [ ] MPC Studio MkII native decoder and semantic-adapter tests pass for the tested SHA.
+- [ ] Debug APK for that exact SHA is produced and installed.
+
 
 ## B. Discovery
 

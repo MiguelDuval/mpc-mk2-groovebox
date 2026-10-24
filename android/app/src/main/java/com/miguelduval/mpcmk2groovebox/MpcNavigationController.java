@@ -27,9 +27,18 @@ final class MpcNavigationController {
     }
 
     MpcNavigationController(Listener listener) {
+        this(listener, null);
+    }
+
+    MpcNavigationController(
+            Listener listener,
+            MpcUiState.Mode[] initialShortcuts) {
         this.listener = listener;
-        MpcUiState.Mode[] defaults = MpcModeRegistry.defaultShortcuts();
-        System.arraycopy(defaults, 0, shortcuts, 0, SHORTCUT_COUNT);
+        final MpcUiState.Mode[] initial = initialShortcuts == null
+                ? MpcModeRegistry.defaultShortcuts()
+                : initialShortcuts;
+        validateShortcutModes(initial);
+        System.arraycopy(initial, 0, shortcuts, 0, SHORTCUT_COUNT);
     }
 
     MpcUiState state() {
@@ -53,9 +62,9 @@ final class MpcNavigationController {
         }
         final MpcUiState.Mode value = Objects.requireNonNull(
                 mode, "mode");
-        if (!isPromotable(value)) {
+        if (!isShortcutMode(value)) {
             throw new IllegalArgumentException(
-                    "Shortcut mode is not implemented: " + value);
+                    "Shortcut mode is not part of the MPC shortcut catalog: " + value);
         }
         shortcuts[slot] = value;
         notifyListener();
@@ -79,20 +88,69 @@ final class MpcNavigationController {
         notifyListener();
     }
 
+    void resetDefaultShortcuts() {
+        final MpcUiState.Mode[] defaults = MpcModeRegistry.defaultShortcuts();
+        System.arraycopy(defaults, 0, shortcuts, 0, SHORTCUT_COUNT);
+        notifyListener();
+    }
+
     void setShortcuts(MpcUiState.Mode... modes) {
+        validateShortcutModes(modes);
+        System.arraycopy(modes, 0, shortcuts, 0, SHORTCUT_COUNT);
+        notifyListener();
+    }
+
+    /**
+     * Stable, versioned-preference payload for the five configurable shell slots.
+     * The format deliberately stores enum names rather than display labels.
+     */
+    static String encodeShortcuts(MpcUiState.Mode[] modes) {
+        validateShortcutModes(modes);
+        final StringBuilder encoded = new StringBuilder();
+        for (int i = 0; i < SHORTCUT_COUNT; i++) {
+            if (i > 0) encoded.append(',');
+            encoded.append(modes[i].name());
+        }
+        return encoded.toString();
+    }
+
+    /**
+     * Decode persisted slot identity/order. A stale or corrupt preference must
+     * never prevent app startup or create a non-catalog navigation target.
+     */
+    static MpcUiState.Mode[] decodeShortcuts(String encoded) {
+        if (encoded == null) return MpcModeRegistry.defaultShortcuts();
+        final String[] names = encoded.split(",", -1);
+        if (names.length != SHORTCUT_COUNT) {
+            return MpcModeRegistry.defaultShortcuts();
+        }
+
+        final MpcUiState.Mode[] decoded = new MpcUiState.Mode[SHORTCUT_COUNT];
+        try {
+            for (int i = 0; i < SHORTCUT_COUNT; i++) {
+                decoded[i] = MpcUiState.Mode.valueOf(names[i]);
+                if (!isShortcutMode(decoded[i])) {
+                    return MpcModeRegistry.defaultShortcuts();
+                }
+            }
+        } catch (IllegalArgumentException invalidMode) {
+            return MpcModeRegistry.defaultShortcuts();
+        }
+        return decoded;
+    }
+
+    private static void validateShortcutModes(MpcUiState.Mode[] modes) {
         if (modes == null || modes.length != SHORTCUT_COUNT) {
             throw new IllegalArgumentException("Exactly five shortcuts are required");
         }
         for (int i = 0; i < SHORTCUT_COUNT; i++) {
             final MpcUiState.Mode value = Objects.requireNonNull(
                     modes[i], "shortcut[" + i + "]");
-            if (!isPromotable(value)) {
+            if (!isShortcutMode(value)) {
                 throw new IllegalArgumentException(
-                        "Shortcut mode is not implemented: " + value);
+                        "Shortcut mode is not part of the MPC shortcut catalog: " + value);
             }
-            shortcuts[i] = value;
         }
-        notifyListener();
     }
 
     boolean navigate(MpcUiState.Mode mode) {
@@ -203,10 +261,12 @@ final class MpcNavigationController {
         notifyListener();
     }
 
-    private boolean isPromotable(MpcUiState.Mode mode) {
-        for (MpcModeRegistry.Entry entry : MpcModeRegistry.menuEntries()) {
+    private static boolean isShortcutMode(MpcUiState.Mode mode) {
+        // Shortcut catalog deliberately promotes SOUNDS and XY ahead of Menu-only
+        // entries; these factory destinations are valid even though not 4x4 tiles.
+        for (MpcModeRegistry.Entry entry : MpcModeRegistry.shortcutEntries()) {
             if (entry.mode == mode) {
-                return entry.available;
+                return true;
             }
         }
         return false;

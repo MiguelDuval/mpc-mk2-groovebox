@@ -33,6 +33,29 @@ public final class MpcSequenceZoomPolicyTest {
     }
 
     @Test
+    public void arrangementTickMapsToTheCorrectBoundedGridStep() {
+        assertEquals(0, MpcSequenceZoomPolicy.stepIndexForTick(0, 120, 64));
+        assertEquals(40, MpcSequenceZoomPolicy.stepIndexForTick(4_800, 120, 64));
+        assertEquals(0, MpcSequenceZoomPolicy.stepIndexForTick(-120, 120, 64));
+        assertEquals(0, MpcSequenceZoomPolicy.stepIndexForTick(480, 120, 0));
+        assertEquals(
+                63,
+                MpcSequenceZoomPolicy.stepIndexForTick(
+                        Long.MAX_VALUE, 1, 64));
+    }
+
+    @Test
+    public void focusedGridWindowContainsTargetAndClampsAtSequenceEnds() {
+        assertEquals(0, MpcSequenceZoomPolicy.gridStartForStep(0, 16, 64));
+        assertEquals(32, MpcSequenceZoomPolicy.gridStartForStep(40, 16, 64));
+        assertEquals(48, MpcSequenceZoomPolicy.gridStartForStep(63, 16, 64));
+        assertEquals(0, MpcSequenceZoomPolicy.gridStartForStep(6, 16, 8));
+        assertEquals(40, MpcSequenceZoomPolicy.gridStartForStep(40, 1, 64));
+        assertEquals(0, MpcSequenceZoomPolicy.gridStartForStep(-3, 8, 64));
+        assertEquals(0, MpcSequenceZoomPolicy.gridStartForStep(12, 0, 0));
+    }
+
+    @Test
     public void timelineZoomRespectsSequenceLength() {
         int visible = 16;
         visible = MpcSequenceZoomPolicy.zoomTimelineBarsIn(visible, 16);

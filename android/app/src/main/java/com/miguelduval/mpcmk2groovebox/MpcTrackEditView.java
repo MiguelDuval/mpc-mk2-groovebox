@@ -153,6 +153,7 @@ final class MpcTrackEditView extends LinearLayout {
     private final TextView padContextView;
     private final Button editAllLayersButton;
     private final LinearLayout body;
+    private final ScrollView scroll;
     private Tab tab = Tab.GLOBAL;
     private Snapshot snapshot;
 
@@ -195,7 +196,7 @@ final class MpcTrackEditView extends LinearLayout {
         addView(header, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
-        ScrollView scroll = new ScrollView(context);
+        scroll = new ScrollView(context);
         scroll.setFillViewport(true);
         body = column();
         body.setPadding(0, dp(4), 0, dp(4));
@@ -223,6 +224,9 @@ final class MpcTrackEditView extends LinearLayout {
             Button button = actionButton(labels[i], v -> {
                 tab = Tab.values()[index];
                 render();
+                // Each Track Edit context has its own content height. Do not carry
+                // the previous tab's vertical offset into the newly selected tab.
+                scroll.post(() -> scroll.scrollTo(0, 0));
             });
             button.setContentDescription(descriptions[i]);
             tabButtons[i] = button;
@@ -387,10 +391,26 @@ final class MpcTrackEditView extends LinearLayout {
                         : "NO SAMPLE"));
 
         LinearLayout region = row();
-        region.addView(actionButton("S −1K", v -> listener.onRegionStartDelta(-1000)), weight());
-        region.addView(actionButton("S +1K", v -> listener.onRegionStartDelta(1000)), weight());
-        region.addView(actionButton("E −1K", v -> listener.onRegionEndDelta(-1000)), weight());
-        region.addView(actionButton("E +1K", v -> listener.onRegionEndDelta(1000)), weight());
+        Button regionStartDecrease = actionButton(
+                "S −1K", v -> listener.onRegionStartDelta(-1000));
+        regionStartDecrease.setContentDescription(
+                "Track Edit layer region start decrease");
+        region.addView(regionStartDecrease, weight());
+        Button regionStartIncrease = actionButton(
+                "S +1K", v -> listener.onRegionStartDelta(1000));
+        regionStartIncrease.setContentDescription(
+                "Track Edit layer region start increase");
+        region.addView(regionStartIncrease, weight());
+        Button regionEndDecrease = actionButton(
+                "E −1K", v -> listener.onRegionEndDelta(-1000));
+        regionEndDecrease.setContentDescription(
+                "Track Edit layer region end decrease");
+        region.addView(regionEndDecrease, weight());
+        Button regionEndIncrease = actionButton(
+                "E +1K", v -> listener.onRegionEndDelta(1000));
+        regionEndIncrease.setContentDescription(
+                "Track Edit layer region end increase");
+        region.addView(regionEndIncrease, weight());
         body.addView(region, height(42));
 
         body.addView(parameterRow(
@@ -405,15 +425,34 @@ final class MpcTrackEditView extends LinearLayout {
                 "PAN", formatPan(snapshot.layerPan), "L", "R",
                 v -> listener.onLayerPan(-1f),
                 v -> listener.onLayerPan(1f)));
-        body.addView(actionButton("CENTER LAYER PAN", v -> listener.onLayerPan(0f)), height(40));
+        Button centerLayerPan = actionButton(
+                "CENTER LAYER PAN", v -> listener.onLayerPan(0f));
+        centerLayerPan.setContentDescription("Track Edit layer pan center");
+        body.addView(centerLayerPan, height(40));
 
         body.addView(infoField("VELOCITY", String.format(
                 Locale.ROOT, "%d — %d", snapshot.velocityMin, snapshot.velocityMax)));
         LinearLayout velocity = row();
-        velocity.addView(parameterButton("MIN −", v -> listener.onLayerVelocityMinDelta(-1)));
-        velocity.addView(parameterButton("MIN +", v -> listener.onLayerVelocityMinDelta(1)));
-        velocity.addView(parameterButton("MAX −", v -> listener.onLayerVelocityMaxDelta(-1)));
-        velocity.addView(parameterButton("MAX +", v -> listener.onLayerVelocityMaxDelta(1)));
+        Button velocityMinDecrease = parameterButton(
+                "MIN −", v -> listener.onLayerVelocityMinDelta(-1));
+        velocityMinDecrease.setContentDescription(
+                "Track Edit layer velocity minimum decrease");
+        velocity.addView(velocityMinDecrease);
+        Button velocityMinIncrease = parameterButton(
+                "MIN +", v -> listener.onLayerVelocityMinDelta(1));
+        velocityMinIncrease.setContentDescription(
+                "Track Edit layer velocity minimum increase");
+        velocity.addView(velocityMinIncrease);
+        Button velocityMaxDecrease = parameterButton(
+                "MAX −", v -> listener.onLayerVelocityMaxDelta(-1));
+        velocityMaxDecrease.setContentDescription(
+                "Track Edit layer velocity maximum decrease");
+        velocity.addView(velocityMaxDecrease);
+        Button velocityMaxIncrease = parameterButton(
+                "MAX +", v -> listener.onLayerVelocityMaxDelta(1));
+        velocityMaxIncrease.setContentDescription(
+                "Track Edit layer velocity maximum increase");
+        velocity.addView(velocityMaxIncrease);
         body.addView(velocity, height(42));
 
         body.addView(actionButton("AUDITION", v -> listener.onAudition()), height(42));
@@ -456,12 +495,24 @@ final class MpcTrackEditView extends LinearLayout {
         body.addView(sectionLabel("FILTER"));
         body.addView(infoField("CUTOFF", formatCutoff(snapshot.filterCutoff)));
         LinearLayout filter = row();
-        filter.addView(parameterButton("−500", v -> listener.onFilterDelta(-500)));
-        filter.addView(parameterButton("+500", v -> listener.onFilterDelta(500)));
-        filter.addView(parameterButton("3K", v -> listener.onFilterSet(3000)));
-        filter.addView(parameterButton("6K", v -> listener.onFilterSet(6000)));
-        filter.addView(parameterButton("12K", v -> listener.onFilterSet(12000)));
-        filter.addView(parameterButton("20K", v -> listener.onFilterSet(20000)));
+        Button cutoffDecrease = parameterButton("−500", v -> listener.onFilterDelta(-500));
+        cutoffDecrease.setContentDescription("Track Edit filter cutoff decrease");
+        filter.addView(cutoffDecrease);
+        Button cutoffIncrease = parameterButton("+500", v -> listener.onFilterDelta(500));
+        cutoffIncrease.setContentDescription("Track Edit filter cutoff increase");
+        filter.addView(cutoffIncrease);
+        Button cutoff3k = parameterButton("3K", v -> listener.onFilterSet(3000));
+        cutoff3k.setContentDescription("Track Edit filter cutoff 3000 Hz");
+        filter.addView(cutoff3k);
+        Button cutoff6k = parameterButton("6K", v -> listener.onFilterSet(6000));
+        cutoff6k.setContentDescription("Track Edit filter cutoff 6000 Hz");
+        filter.addView(cutoff6k);
+        Button cutoff12k = parameterButton("12K", v -> listener.onFilterSet(12000));
+        cutoff12k.setContentDescription("Track Edit filter cutoff 12000 Hz");
+        filter.addView(cutoff12k);
+        Button cutoff20k = parameterButton("20K", v -> listener.onFilterSet(20000));
+        cutoff20k.setContentDescription("Track Edit filter cutoff 20000 Hz");
+        filter.addView(cutoff20k);
         body.addView(filter, height(42));
     }
 
@@ -518,17 +569,41 @@ final class MpcTrackEditView extends LinearLayout {
             View.OnClickListener leftAction,
             View.OnClickListener rightAction) {
         LinearLayout row = row();
+        final String semanticName = parameterSemanticName(title);
         TextView valueField = field(title + "\n" + value);
+        valueField.setContentDescription("Track Edit " + semanticName + " value");
         row.addView(valueField, new LinearLayout.LayoutParams(0, dp(42), 1.5f));
-        row.addView(parameterButton(left, leftAction),
-                new LinearLayout.LayoutParams(0, dp(42), 0.65f));
-        row.addView(parameterButton(right, rightAction),
-                new LinearLayout.LayoutParams(0, dp(42), 0.65f));
+        Button decrease = parameterButton(left, leftAction);
+        decrease.setContentDescription("Track Edit " + semanticName + " decrease");
+        row.addView(decrease, new LinearLayout.LayoutParams(0, dp(42), 0.65f));
+        Button increase = parameterButton(right, rightAction);
+        increase.setContentDescription("Track Edit " + semanticName + " increase");
+        row.addView(increase, new LinearLayout.LayoutParams(0, dp(42), 0.65f));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(42));
         lp.bottomMargin = dp(4);
         row.setLayoutParams(lp);
         return row;
+    }
+
+    private String parameterSemanticName(String title) {
+        final String key = title == null ? "" : title.trim().toUpperCase(Locale.ROOT);
+        if (tab == Tab.SAMPLES) {
+            if ("TUNE".equals(key)) return "layer tuning";
+            if ("GAIN".equals(key)) return "layer gain";
+            if ("PAN".equals(key)) return "layer pan";
+            return "layer " + key.toLowerCase(Locale.ROOT);
+        }
+        if (tab == Tab.GLOBAL) {
+            if ("TUNE".equals(key)) return "pad tuning";
+            if ("LEVEL".equals(key)) return "pad level";
+            if ("PAN".equals(key)) return "pad pan";
+            return "pad " + key.toLowerCase(Locale.ROOT);
+        }
+        if (tab == Tab.ENVELOPES) {
+            return "envelope " + key.toLowerCase(Locale.ROOT);
+        }
+        return key.toLowerCase(Locale.ROOT);
     }
 
     private Button parameterButton(String text, View.OnClickListener listener) {

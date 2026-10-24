@@ -5,13 +5,13 @@ on:
     branches:
       - main
       - "foundation/**"
-      - "feature/**"
       - "work/**"
   pull_request:
 
 concurrency:
   group: android-build-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: true
+  # Let critical acceptance checks finish; newer commits wait in the same group.
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -19,7 +19,25 @@ permissions:
 jobs:
   android-debug:
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     steps:
+      - name: Enable KVM group permissions
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            ls -l /dev/kvm
+            test -r /dev/kvm
+            test -w /dev/kvm
+          else
+            echo "/dev/kvm is unavailable on this runner"
+            exit 1
+          fi
+
       - name: Checkout sources
         uses: actions/checkout@v6
         with:
@@ -131,10 +149,23 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/MpcLocatePolicyTests.cpp             -o build/native-tests/mpc_locate_policy_tests
           build/native-tests/mpc_locate_policy_tests
 
-      - name: Test Android LCD renderer signature
-        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcStudioMk2LcdRendererTest
-      - name: Test Android sequence zoom policy
-        run: gradle --no-daemon :app:testDebugUnitTest --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest
+      - name: Run focused Android unit policy tests
+        timeout-minutes: 20
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcStudioMk2LcdRendererTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcSequenceZoomPolicyTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcWaveformZoomPolicyTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcSequenceStepPagePolicyTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcModeRegistryTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcNavigationControllerTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcProjectSaveSessionPolicyTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcProjectOpenSessionPolicyTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcProjectDocumentWriteTransactionTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcProjectRecoveryStoreTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcProjectUriGrantPolicyTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcTrackProgramPolicyTest
 
       - name: Test MPC Studio MkII semantic routing
         shell: bash
@@ -374,6 +405,18 @@ jobs:
             -o build/native-tests/mpc_project_state_tests
           build/native-tests/mpc_project_state_tests
 
+      - name: Test versioned project save/load and Arrangement Pattern placements
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcProjectPersistenceTests.cpp \
+            src/MPC/MpcProjectPersistence.cpp \
+            -o build/native-tests/mpc_project_persistence_tests
+          build/native-tests/mpc_project_persistence_tests
+
       - name: Test sequence transport clock
         shell: bash
         run: |
@@ -460,6 +503,7 @@ jobs:
           build/native-tests/mpc_edit_history_tests
 
       - name: Assemble debug APK
+        timeout-minutes: 15
         run: gradle --no-daemon :app:assembleDebug
 
       - name: Upload debug APK
@@ -471,14 +515,212 @@ jobs:
           archive: false
           if-no-files-found: error
 
+      - name: Validate Android UI smoke syntax and evidence contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n tests/android_ui_smoke.sh
+          python3 - <<'PY'
+          import fnmatch
+          import re
+          from pathlib import Path
+
+          smoke = Path("tests/android_ui_smoke.sh").read_text(encoding="utf-8")
+          workflow = Path(".github/workflows/android-build.yml").read_text(encoding="utf-8")
+          helper_start = smoke.index('capture_ui_screenshot() {')
+          helper_end = smoke.index("esac", helper_start) + len("esac")
+          helper = smoke[helper_start:helper_end]
+
+          patterns = []
+          in_case = False
+          for line in helper.splitlines():
+              if 'case "$filename" in' in line:
+                  in_case = True
+                  continue
+              if in_case and line.strip() == "*)":
+                  break
+              if not in_case:
+                  continue
+              item = line.strip().rstrip(chr(92)).strip()
+              item = item.removesuffix("|").removesuffix(")").strip()
+              if re.fullmatch(r"mpc-groovebox-[A-Za-z0-9.*_-]+[.]png", item):
+                  patterns.append(item)
+
+          required = sorted({
+              match.group(1)
+              for line in smoke.splitlines()
+              if (match := re.search(r"test -s (/tmp/[A-Za-z0-9_.-]+[.]png)", line))
+          })
+          upload_marker = " " * 6 + "- name: Upload MPC UI visual evidence"
+          upload = workflow.split(upload_marker, 1)[1]
+          upload_patterns = [
+              line.strip() for line in upload.splitlines()
+              if line.strip().startswith("/tmp/")
+          ]
+
+          missing_capture = [
+              path for path in required
+              if not any(fnmatch.fnmatchcase(Path(path).name, pattern) for pattern in patterns)
+          ]
+          missing_upload = [
+              path for path in required
+              if not any(fnmatch.fnmatchcase(path, pattern) for pattern in upload_patterns)
+          ]
+          if missing_capture or missing_upload:
+              if missing_capture:
+                  print("Required smoke screenshots are not captured: " + ", ".join(missing_capture))
+              if missing_upload:
+                  print("Required smoke screenshots are not uploaded: " + ", ".join(missing_upload))
+              raise SystemExit(1)
+          print(
+              f"Shell syntax OK; {len(required)} mandatory screenshot paths are "
+              f"captured and uploaded. {len(patterns)} screenshot allowlist patterns."
+          )
+          PY
+
       - name: Run Android emulator smoke test
+        timeout-minutes: 35
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: 31
           target: default
           arch: x86_64
           profile: pixel_2
           emulator-options: -no-snapshot-load -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
-          emulator-boot-timeout: 1200
+          emulator-boot-timeout: 600
+          disable-linux-hw-accel: false
           disable-animations: true
-          script: bash tests/android_ui_smoke.sh
+          script: timeout --signal=TERM --kill-after=10s 32m bash tests/android_ui_smoke.sh
+
+      - name: Upload MPC UI visual evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mpc-ui-visual-evidence
+          path: |
+            /tmp/mpc-groovebox-startup.png
+            /tmp/mpc-groovebox-startup-uiautomator.xml
+            /tmp/mpc-groovebox-main-ready.png
+            /tmp/mpc-groovebox-main-ready-uiautomator.xml
+            /tmp/mpc-groovebox-browser-device.png
+            /tmp/mpc-groovebox-browser-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-before.png
+            /tmp/mpc-groovebox-step-touch-before-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-after-add.png
+            /tmp/mpc-groovebox-step-touch-after-add-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-velocity-changed.png
+            /tmp/mpc-groovebox-step-touch-velocity-changed-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-velocity-restored.png
+            /tmp/mpc-groovebox-step-touch-velocity-restored-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-ratchet-changed.png
+            /tmp/mpc-groovebox-step-touch-ratchet-changed-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-duration-changed.png
+            /tmp/mpc-groovebox-step-touch-duration-changed-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-after-erase.png
+            /tmp/mpc-groovebox-step-touch-after-erase-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-page2.png
+            /tmp/mpc-groovebox-step-touch-page2-uiautomator.xml
+            /tmp/mpc-groovebox-step-touch-pad2.png
+            /tmp/mpc-groovebox-step-touch-pad2-uiautomator.xml
+            /tmp/mpc-groovebox-track-view-muted.png
+            /tmp/mpc-groovebox-track-view-muted-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-grid-focus.png
+            /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-back.png
+            /tmp/mpc-groovebox-arrange-back-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-grid-reentry.png
+            /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-event-selected.png
+            /tmp/mpc-groovebox-arrange-event-selected-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-event-moved.png
+            /tmp/mpc-groovebox-arrange-event-moved-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-event-restored.png
+            /tmp/mpc-groovebox-arrange-event-restored-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-event-duplicated.png
+            /tmp/mpc-groovebox-arrange-event-duplicated-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-event-pasted.png
+            /tmp/mpc-groovebox-arrange-event-pasted-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-event-cut.png
+            /tmp/mpc-groovebox-arrange-event-cut-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-split.png
+            /tmp/mpc-groovebox-arrange-placement-split-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-flow-final.png
+            /tmp/mpc-groovebox-arrange-placement-flow-final-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-placement-duplicate.png
+            /tmp/mpc-groovebox-arrange-placement-duplicate-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-loop-changed.png
+            /tmp/mpc-groovebox-arrange-loop-changed-uiautomator.xml
+            /tmp/mpc-groovebox-grid-edit-after-draw.png
+            /tmp/mpc-groovebox-grid-edit-after-draw-uiautomator.xml
+            /tmp/mpc-groovebox-browser.png
+            /tmp/mpc-groovebox-browser-local-results.png
+            /tmp/mpc-groovebox-browser-local-results-uiautomator.xml
+            /tmp/mpc-groovebox-picker-select-source.png
+            /tmp/mpc-groovebox-picker-select-source-uiautomator.xml
+            /tmp/mpc-groovebox-browser-picker-assignment.png
+            /tmp/mpc-groovebox-browser-picker-assignment-uiautomator.xml
+            /tmp/mpc-groovebox-browser-tree-picker.png
+            /tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml
+            /tmp/mpc-groovebox-browser-tree-root.png
+            /tmp/mpc-groovebox-browser-tree-root-uiautomator.xml
+            /tmp/mpc-groovebox-browser-tree-restored.png
+            /tmp/mpc-groovebox-browser-tree-restored-uiautomator.xml
+            /tmp/mpc-groovebox-browser-favorite-tree-picker.png
+            /tmp/mpc-groovebox-browser-favorite-tree-picker-uiautomator.xml
+            /tmp/mpc-groovebox-browser-favorite-tree-root.png
+            /tmp/mpc-groovebox-browser-favorite-tree-root-uiautomator.xml
+            /tmp/mpc-groovebox-browser-favorite-tree-results.png
+            /tmp/mpc-groovebox-browser-favorite-tree-results-uiautomator.xml
+            /tmp/mpc-groovebox-browser-favorite-tree-restored.png
+            /tmp/mpc-groovebox-browser-favorite-tree-restored-uiautomator.xml
+            /tmp/mpc-groovebox-storage-picker.png
+            /tmp/mpc-groovebox-storage-picker-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-tuning-before.png
+            /tmp/mpc-groovebox-track-edit-tuning-before-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-tuning-changed.png
+            /tmp/mpc-groovebox-track-edit-tuning-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-tuning-reopened.png
+            /tmp/mpc-groovebox-track-edit-tuning-reopened-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-tuning-restored.png
+            /tmp/mpc-groovebox-track-edit-tuning-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-gain-changed.png
+            /tmp/mpc-groovebox-track-edit-gain-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-pan-changed.png
+            /tmp/mpc-groovebox-track-edit-pan-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-region-start-changed.png
+            /tmp/mpc-groovebox-track-edit-region-start-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-region-end-changed.png
+            /tmp/mpc-groovebox-track-edit-region-end-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-velocity-min-changed.png
+            /tmp/mpc-groovebox-track-edit-velocity-min-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-velocity-max-changed.png
+            /tmp/mpc-groovebox-track-edit-velocity-max-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-envelope-filter-before.png
+            /tmp/mpc-groovebox-track-edit-envelope-filter-before-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-envelope-attack-changed.png
+            /tmp/mpc-groovebox-track-edit-envelope-attack-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-filter-cutoff-changed.png
+            /tmp/mpc-groovebox-track-edit-filter-cutoff-changed-uiautomator.xml
+            /tmp/mpc-groovebox-sample-browser-return.png
+            /tmp/mpc-groovebox-sample-browser-return-uiautomator.xml
+            /tmp/mpc-groovebox-sample-zoom-*.png
+            /tmp/mpc-groovebox-sample-zoom-*-uiautomator.xml
+            /tmp/mpc-groovebox-sample-crop-*.png
+            /tmp/mpc-groovebox-sample-crop*-uiautomator.xml
+            /tmp/mpc-groovebox-sample-chop-*.png
+            /tmp/mpc-groovebox-sample-chop*-uiautomator.xml
+            /tmp/mpc-groovebox-project-*.png
+            /tmp/mpc-groovebox-project*-uiautomator.xml
+            /tmp/mpc-groovebox-project*-view-hierarchy.xml
+            /tmp/mpc-groovebox-*-cancel*.png
+            /tmp/mpc-groovebox-ui.xml
+            /tmp/mpc-groovebox-browser-hierarchy.txt
+            /tmp/mpc-groovebox-storage-picker-activity.txt
+            /tmp/mpc-groovebox-picker-select-source-activity.txt
+            /tmp/mpc-groovebox-picker-root-drawer-missing.png
+            /tmp/mpc-browser-favorite-prefs.xml
+            /tmp/mpc-browser-storage-seed.xml
+            /tmp/mpc-groovebox-uiautomator-dump.log
+            /tmp/mpc-groovebox-track-edit-bounded-uiautomator.log
+          if-no-files-found: warn
+          archive: true

@@ -134,6 +134,17 @@ struct Pattern {
     std::vector<MidiNoteEvent> notes;
 };
 
+struct PatternPlacement {
+    std::string id;
+    std::string patternId;
+    // Timeline destination in sequence ticks.
+    std::int32_t startTick = 0;
+    // Visible/source duration of this placement; it may be shorter than its Pattern.
+    std::int32_t lengthTicks = 3840;
+    // Starting tick inside the referenced Pattern.
+    std::int32_t sourceOffsetTicks = 0;
+};
+
 enum class TrackKind : std::uint8_t {
     Drum,
     Keygroup,
@@ -152,6 +163,7 @@ struct Track {
     bool soloed = false;
     bool recordArmed = false;
     std::vector<Pattern> patterns;
+    std::vector<PatternPlacement> placements;
 };
 
 struct Sequence {

@@ -1065,10 +1065,6 @@ std::string AudioEngine::chopPadSampleToPads(
         return "Chop failed: invalid source pad or layer";
     }
 
-    if (stream_ != nullptr) {
-        return "Stop audio before chopping a sample";
-    }
-
     if (!isSupportedChopCount(chopCount)) {
         return "Chop failed: supported counts are 4, 8 or 16";
     }
@@ -1113,15 +1109,6 @@ std::string AudioEngine::chopPadSampleToPads(
         return "Chop failed: source region is too short";
     }
 
-    mpc::domain::SampleId resolvedSourceSampleId = sourceSampleId;
-    if (!resolvedSourceSampleId.isAssigned()) {
-        resolvedSourceSampleId = projectState_.registerSample(
-                "Chop source sample",
-                "",
-                static_cast<double>(sourceSample->sampleRate),
-                static_cast<std::int64_t>(sourceSample->frameCount()));
-    }
-
     for (std::size_t destinationPad = 0;
             destinationPad < plan.count;
             ++destinationPad) {
@@ -1147,6 +1134,28 @@ std::string AudioEngine::chopPadSampleToPads(
         }
     }
 
+    // Validation is complete. Stop the output stream before replacing the
+    // pad sample/region grid; immutable PCM buffers may be shared, but the
+    // grid and project-domain references must not change under the callback.
+    const bool wasRunning = stream_ != nullptr;
+    if (wasRunning) {
+        const auto stopResult = stopOutputStream();
+        if (stream_ != nullptr
+                || stopResult.rfind("Audio stop failed:", 0) == 0
+                || stopResult.rfind("Audio close failed:", 0) == 0) {
+            return "Chop failed: " + stopResult;
+        }
+    }
+
+    mpc::domain::SampleId resolvedSourceSampleId = sourceSampleId;
+    if (!resolvedSourceSampleId.isAssigned()) {
+        resolvedSourceSampleId = projectState_.registerSample(
+                "Chop source sample",
+                "",
+                static_cast<double>(sourceSample->sampleRate),
+                static_cast<std::int64_t>(sourceSample->frameCount()));
+    }
+
     for (std::size_t destinationPad = 0;
             destinationPad < plan.count;
             ++destinationPad) {
@@ -1161,13 +1170,24 @@ std::string AudioEngine::chopPadSampleToPads(
         padSampleDescriptions_[destinationPad][0] = sourceDescription;
     }
 
-    return "Chop complete: Pad "
+    const std::string message =
+            "Chop complete: Pad "
             + std::to_string(static_cast<unsigned>(sourcePadIndex + 1))
             + " layer "
             + std::to_string(static_cast<unsigned>(sourceLayerIndex + 1))
             + " -> pads 1-"
             + std::to_string(plan.count)
             + " (" + std::to_string(plan.count) + " slices)";
+
+    if (!wasRunning) {
+        return message;
+    }
+
+    const auto startResult = start();
+    if (stream_ == nullptr) {
+        return message + " | restart failed | " + startResult;
+    }
+    return message + " | " + startResult;
 }
 
 std::string AudioEngine::cropPadSampleRegion(
@@ -1215,7 +1235,9 @@ std::string AudioEngine::cropPadSampleRegion(
     const bool wasRunning = stream_ != nullptr;
     if (wasRunning) {
         const auto stopResult = stopOutputStream();
-        if (stream_ != nullptr) {
+        if (stream_ != nullptr
+                || stopResult.rfind("Audio stop failed:", 0) == 0
+                || stopResult.rfind("Audio close failed:", 0) == 0) {
             return "Crop failed: " + stopResult;
         }
     }
@@ -2354,8 +2376,11 @@ std::string AudioEngine::start() {
 
         for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
             samples[pad][layer] = padSamples_[pad][layer];
-            regions[pad][layer] = projectState_.activeDrumProgram().pad(pad).layer(layer).region;
+            const auto& layerState = projectState_.activeDrumProgram().pad(pad).layer(layer);
+            regions[pad][layer] = layerState.region;
+            // Saved assignments without decoded PCM must suppress the unrelated bundled fallback.
             anyExplicitLayer = anyExplicitLayer
+                    || layerState.sample.isAssigned()
                     || (samples[pad][layer] != nullptr
                         && samples[pad][layer]->frameCount() > 0);
         }
@@ -2493,6 +2518,24 @@ std::string AudioEngine::stop() {
     }
 
     return "Audio stopped";
+}
+
+
+bool AudioEngine::clearRuntimeSamplesForProjectReplacement() noexcept {
+    if (stream_ != nullptr || inputStream_ != nullptr) return false;
+    for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            padSamples_[pad][layer].reset();
+            padSampleDescriptions_[pad][layer].clear();
+        }
+    }
+    return true;
+}
+
+void AudioEngine::refreshActiveProgramRuntimeProjection() noexcept {
+    for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+        syncPadRuntimeProjection(static_cast<std::uint8_t>(pad));
+    }
 }
 
 std::string AudioEngine::status() const {

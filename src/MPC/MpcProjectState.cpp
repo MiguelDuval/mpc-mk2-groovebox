@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 
 namespace mpc {
@@ -39,6 +40,12 @@ domain::Sequence makeDefaultSequence(std::size_t sequenceNumber) {
     pattern.name = "Pattern 01";
     pattern.lengthTicks = sequence.lengthTicks;
     drumTrack.patterns.push_back(std::move(pattern));
+    domain::PatternPlacement initialPlacement;
+    initialPlacement.id = drumTrack.id + "-placement-1";
+    initialPlacement.patternId = drumTrack.patterns.front().id;
+    initialPlacement.startTick = 0;
+    initialPlacement.lengthTicks = sequence.lengthTicks;
+    drumTrack.placements.push_back(std::move(initialPlacement));
     sequence.tracks.push_back(std::move(drumTrack));
 
     return sequence;
@@ -65,6 +72,58 @@ MpcProjectState::MpcProjectState() {
     project_.sequences.push_back(makeDefaultSequence(1));
 }
 
+
+bool MpcProjectState::resetToDefault() {
+    MpcProjectState defaults;
+    return replaceProject(std::move(defaults.project_));
+}
+
+bool MpcProjectState::canReplaceProject(const domain::Project& project) noexcept {
+    if (project.id.empty() || project.sequences.empty() || project.drumPrograms.empty()) {
+        return false;
+    }
+    for (const auto& sequence : project.sequences) {
+        if (sequence.id.empty() || sequence.tracks.empty()) return false;
+        for (const auto& track : sequence.tracks) {
+            if (track.id.empty() || track.patterns.empty()) return false;
+        }
+    }
+    return true;
+}
+
+bool MpcProjectState::replaceProject(domain::Project project) {
+    if (!canReplaceProject(project)) return false;
+    project_ = std::move(project);
+    activeSequenceIndex_ = 0;
+    activeTrackIndex_ = 0;
+    activeDrumProgramIndex_ = 0;
+    const auto programIndex = activeProgramIndexForTrack(activeTrackIndex_);
+    if (programIndex < project_.drumPrograms.size()) activeDrumProgramIndex_ = programIndex;
+
+    std::uint32_t maximumId = 0;
+    for (const auto& sample : project_.samples) maximumId = std::max(maximumId, sample.assetId.value);
+    for (const auto& program : project_.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) maximumId = std::max(maximumId, layer.sample.value);
+        }
+    }
+    if (maximumId != std::numeric_limits<std::uint32_t>::max()) {
+        nextSampleId_ = maximumId + 1;
+    } else {
+        nextSampleId_ = 1;
+        const auto used = [this](std::uint32_t candidate) {
+            for (const auto& sample : project_.samples) if (sample.assetId.value == candidate) return true;
+            for (const auto& program : project_.drumPrograms) {
+                for (const auto& pad : program.pads) {
+                    for (const auto& layer : pad.layers) if (layer.sample.value == candidate) return true;
+                }
+            }
+            return false;
+        };
+        while (nextSampleId_ != 0 && used(nextSampleId_)) ++nextSampleId_;
+    }
+    return true;
+}
 
 bool MpcProjectState::selectSequence(std::size_t sequenceIndex) noexcept {
     if (sequenceIndex >= project_.sequences.size()) {
@@ -227,6 +286,7 @@ bool MpcProjectState::setSequenceBars(std::int32_t bars) noexcept {
         return false;
     }
 
+    const auto previousLength = sequence.lengthTicks;
     const bool loopWasFullLength =
             sequence.loopStartTicks == 0
             && sequence.loopEndTicks == sequence.lengthTicks;
@@ -246,6 +306,13 @@ bool MpcProjectState::setSequenceBars(std::int32_t bars) noexcept {
         for (auto& pattern : track.patterns) {
             pattern.lengthTicks = length;
         }
+        // Keep only the legacy full-sequence placement coupled to sequence length.
+        // Explicit shorter clip placements remain independent of later sequence resizing.
+        for (auto& placement : track.placements) {
+            if (placement.startTick == 0 && placement.lengthTicks == previousLength) {
+                placement.lengthTicks = length;
+            }
+        }
     }
 
     if (activeTrackIndex_ >= mutableSequence.tracks.size()) {
@@ -264,6 +331,7 @@ bool MpcProjectState::setSequenceTimeSignature(
     }
 
     const auto& oldSequence = activeSequence();
+    const auto previousLength = oldSequence.lengthTicks;
     const auto bars = sequencer::sequenceBars(oldSequence);
     const auto oldPerBar = std::max(
             1,
@@ -299,6 +367,13 @@ bool MpcProjectState::setSequenceTimeSignature(
     for (auto& track : sequence.tracks) {
         for (auto& pattern : track.patterns) {
             pattern.lengthTicks = length;
+        }
+        // Preserve a full-sequence placement as the sequence's length changes,
+        // while keeping intentional short/offset placements unchanged.
+        for (auto& placement : track.placements) {
+            if (placement.startTick == 0 && placement.lengthTicks == previousLength) {
+                placement.lengthTicks = length;
+            }
         }
     }
     return true;
@@ -403,6 +478,12 @@ bool MpcProjectState::addTrack(
     pattern.name = "Pattern 01";
     pattern.lengthTicks = sequence.lengthTicks;
     track.patterns.push_back(std::move(pattern));
+    domain::PatternPlacement initialPlacement;
+    initialPlacement.id = track.id + "-placement-1";
+    initialPlacement.patternId = track.patterns.front().id;
+    initialPlacement.startTick = 0;
+    initialPlacement.lengthTicks = sequence.lengthTicks;
+    track.placements.push_back(std::move(initialPlacement));
 
     sequence.tracks.push_back(std::move(track));
     activeTrackIndex_ = sequence.tracks.size() - 1;

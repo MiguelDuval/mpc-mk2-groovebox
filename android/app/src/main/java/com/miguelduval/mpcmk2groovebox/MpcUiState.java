@@ -29,6 +29,7 @@ final class MpcUiState {
         MIDI_CONTROL("MIDI / CONTROL"),
         LOOPER("LOOPER"),
         XYFX("XYFX"),
+        SOUNDS("SOUNDS"),
         RESERVED("RESERVED");
 
         private final String label;
@@ -71,6 +72,9 @@ final class MpcUiState {
         PROGRAM,
         TRACK_TYPE,
         PAD,
+        PAD_MIXER_LEVEL,
+        PAD_MIXER_PAN,
+        PAD_MIXER_TUNE,
         SAMPLE_LAYER,
         SAMPLE_START,
         SAMPLE_END,
@@ -155,7 +159,7 @@ final class MpcUiState {
                 false,
                 false,
                 true,
-                false,
+                true,
                 false);
     }
 

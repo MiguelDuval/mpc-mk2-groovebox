@@ -4,11 +4,13 @@
 #include "MPC/Domain/MpcDomain.h"
 #include "MPC/MpcProjectState.h"
 #include "MPC/Sequencer/MpcSequencerPlayback.h"
+#include "MPC/Sequencer/MpcArrangementOps.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace mpc::sequencer {
@@ -38,6 +40,9 @@ public:
         stop();
 
         const auto& sequence = projectState_.activeSequence();
+        // Reserve before creating playback sessions: each session references
+        // one stable sequence-length Pattern assembled from the track's clips.
+        arrangementPatterns_.reserve(sequence.tracks.size());
 
         for (const auto& track : sequence.tracks) {
             if (track.patterns.empty()) {
@@ -53,9 +58,15 @@ public:
                 continue;
             }
 
+            domain::Pattern arrangedPattern;
+            if (!buildArrangementPlaybackPattern(
+                    sequence, track, arrangedPattern)) {
+                continue;
+            }
+            arrangementPatterns_.push_back(std::move(arrangedPattern));
             playbacks_.push_back(std::make_unique<MpcSequencerPlayback>(
                     sequence,
-                    track.patterns.front(),
+                    arrangementPatterns_.back(),
                     *program,
                     audio_.triggerQueue(),
                     &track.muted));
@@ -78,6 +89,7 @@ public:
             playback->stop();
         }
         playbacks_.clear();
+        arrangementPatterns_.clear();
     }
 
     void reset() noexcept {
@@ -130,6 +142,7 @@ public:
 private:
     MpcProjectState& projectState_;
     audio::AudioEngine& audio_;
+    std::vector<domain::Pattern> arrangementPatterns_;
     std::vector<std::unique_ptr<MpcSequencerPlayback>> playbacks_;
 };
 

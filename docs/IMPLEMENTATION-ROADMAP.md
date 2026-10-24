@@ -1,5 +1,97 @@
 # Implementation Roadmap
 
+## CURRENT EXECUTION QUEUE — 2026-10-24 (live exact-SHA evidence governs)
+
+### Latest accepted checkpoint — PR #23
+
+- PR #23 remains OPEN: `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`.
+- **Android Build #3150 / run [40098511757](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40098511757) passed on exact SHA `f067a252904a242b284cf8b077570c2e04225fc8`.** All 57 steps succeeded, including full emulator smoke and evidence upload.
+- APK artifact `12561652251`, SHA-256 `7ad1a55431daeb926f14dd92cdbeb8e972d2a013efab98d9a24efb2fa49fab44`; visual-evidence artifact `12561778921`, SHA-256 `bb678d8cbe0fc3e07f75ac904f1dbcc3bdb551397d170d2163fd3cac1493ad45`. Evidence archive was inspected (87 PNG, 97 XML, 3 text/log files).
+- SAMP-008 CROP passed (3,840 → 2,840 frames, region reset); SAMP-009 CH4/CH8/CH16 passed exact frame coverage; SAMP-010 viewport-only zoom/reset and native Pad audition passed without mutating sample data.
+- Browser USER FOLDER/FAVORITE 1 passed real DocumentsUI selection, exact `Browser-Favorite-Only.wav` result/indexing, isolated state and process-restart restoration.
+- Project Save As/mutate/Open, changed overwrite digest, force-stop/reopen, cancellation invariance, malformed-load preservation, placement-free v1 canonical-state equality, A/B document isolation, New Project and recovery-export round trips passed.
+- Keep `cancel-in-progress: false`. Physical MPC Studio MkII validation remains a separate pending hardware gate. A docs-only follow-up commit still needs its own exact-SHA full workflow.
+
+### Next isolated engineering slice — Project provider output-open classification
+
+- PR #30 head `eeef2a864126bca34e08410b063a9f1f3ec36287` passed Android Build #3129 / run [40083641707](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40083641707), but its base metadata still points to `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`, behind the live primary head. Refresh before integration; no automatic merge or retarget.
+- Follow-up PR #57 (stacked on #30) splits provider output-open denial from failures after an OutputStream has been returned. Direct SAVE should only latch on permission-denial evidence in the output-open phase. New transaction/policy tests cover primary and rollback open denials, stream-write permission failures and generic open timeouts.
+- Build #3155 / run [40100283734](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40100283734) is pending at focused Android unit policy tests (step 14) on exact SHA `2dd936c3d9d26ace0d198f6cefabe4387d712318`. Do not call this change accepted before the exact-SHA full workflow and evidence upload pass.
+
+### Parallel Browser Options blocker
+
+- PR #56 / Build #3154 / run [40099462547](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40099462547) failed at emulator smoke step 52 on SHA `d6a06ba8186d78eeaa03761e429c6505bc40fb85`.
+- The Show file size preference audit passed, but the immediately following Browser storage-picker action was observed at `w=0,h=0,vis=0`. Likely cause is checking live bounds in the same UI callback after the preference rerender/dialog close, before the parent layout remeasures. Preserve strict assertions; defer to the next pre-draw / existing measured-view continuation. No timeout increase and no duplicate smoke test.
+
+### Next acceptance order
+
+1. Let PR #57's exact-SHA Build #3155 finish; inspect focused unit results, the full emulator workflow and artifacts.
+2. Resolve PR #56 with a layout-measurement continuation on its owning branch, then require exact-SHA CI.
+3. Refresh PR #30's live base/diff before considering integration. Do not merge/retarget automatically.
+4. Keep physical MPC Studio MkII validation separate from emulator acceptance.
+
+## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
+
+Older dated “next task” sections below retain history only. Start each slice from live HEAD, current source and real test gaps.
+
+### 1. Track Edit sample-layer tuning — COMPLETE / VERIFIED
+- The real Samples ScrollView places TUNE below the initial viewport. The smoke scrolls using live accessibility bounds, checks a real one-semitone TUNE+ touch against sampler state, verifies persistence after re-entry, and restores the original value.
+- Reconfirmed in successful exact-SHA [Android Build #2781](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39062512475), commit [`af266a38bb850a20313bccfef9a7b953c4191151`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/af266a38bb850a20313bccfef9a7b953c4191151).
+
+### 2. Main XL Channel Strip geometry — COMPLETE / VERIFIED
+- The duplicate legacy mixer remains GONE while preserving shell visibility wiring and state dependencies. The runtime hierarchy verifies the XL strips fill the persistent context region and that the legacy panel is absent.
+- Full workflow Build #2781 passed on the commit above.
+
+### 3. Grid DRAW/ERASE — COMPLETE / VERIFIED
+- Grid's custom Canvas now exposes selected-cell note state from the native sequencer projection, not duplicate UI state.
+- The emulator added Pad 01 / Step 34 at velocity 100, erased that note via a real touch, and preserved the seeded Step 33 event. Build #2781 passed with both screenshots and hierarchies uploaded.
+
+### 4. Step Sequencer add/parameter/remove — COMPLETE / VERIFIED
+- Real emulator touches added Pad 01 / Step 02, changed its probability from 127 to 126 through visible PARAM/decrement controls, then erased the temporary event. Step 01 remained unchanged and native cleanup passed.
+- Build #2781 passed the complete workflow with the before/add/parameter/erase evidence.
+
+### 5. Arrangement loop-brace touch/restore — COMPLETE / VERIFIED
+- The emulator dragged the loop end from bar 4 to bar 3, then restored bar 4; native loop state and the app-side acknowledgement passed.
+- Build #2781 passed the exact-SHA loop acceptance.
+
+### 6. Arrangement event MOVE ± GRID — COMPLETE / VERIFIED
+- The Arrangement event projection now includes native MIDI note identity. Tapping a real event enables EVENT − / EVENT +; either control moves the selected Pattern event exactly one current quantize-grid interval, uses native edit history, rejects a same-note collision or invalid destination, and reloads the native projection to confirm the change.
+- The domain move operation preserves note duration, velocity, probability, ratchet and nudge. PatternOps and Arrangement projection unit tests passed.
+- The real-emulator test selected Track 01 / Note 036 at tick 7680, moved it to tick 7920 through EVENT +, then restored tick 7680 through EVENT −. The before/moved/restored screenshot and hierarchy set was downloaded and inspected.
+- Verified in successful exact-SHA [Android Build #2781](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39062512475), commit [`af266a38bb850a20313bccfef9a7b953c4191151`](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/af266a38bb850a20313bccfef9a7b953c4191151).
+
+### 7. Arrangement event DUP — COMPLETE / VERIFIED
+- Added native Pattern duplication for a uniquely identified event. Source and all musical fields are preserved; same-pitch destination collisions, ambiguous sources, invalid ticks and Pattern boundaries are rejected. The native edit-history entry supports undo/redo.
+- Full Android Emulator smoke tapped DUP, checked the authoritative Pattern projection, and performed UNDO → REDO → UNDO. The serialized Pattern returned exactly to its baseline; the selected-event accessibility state returned to the source.
+- Verified by successful exact-SHA [Android Build #2785](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39065465364), commit [ef7f8728ebffe9481647b373fa8867c20af15278](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/ef7f8728ebffe9481647b373fa8867c20af15278). The initial #2784 failure exposed clipped/unhittable DUP UI geometry; the compact header plus second action row fixed the real cause.
+
+### 8. Arrangement event COPY / PASTE — COMPLETE / VERIFIED
+- Added a value-owned native event clipboard and PatternOps copy/paste operations. COPY resolves exactly one source event without mutating the Pattern. PASTE preserves duration, note, velocity, probability, ratchet and nudge, changes only the destination tick, rejects same-pitch collisions and out-of-Pattern targets, and records undo/redo with the existing native edit history.
+- Full Android Emulator smoke performed actual COPY and PASTE touches. It confirmed COPY leaves the serialized Pattern unchanged, PASTE adds exactly one event without changing other events, and UNDO → REDO → UNDO restores the exact original Pattern and source selection. MOVE ± GRID, DUP/UNDO/REDO, loop-brace restoration, Grid draw/erase, Step probability and Track Edit tuning acceptance also remained green.
+- Verified by successful exact-SHA [Android Build #2789](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39068765934) on application commit [ec41174ae729d6c4e7a13de8fd8171e80b904134](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/ec41174ae729d6c4e7a13de8fd8171e80b904134).
+- Inspected APK artifact 12114811559 (8,656,477 bytes; SHA-256 32a474f2c4e5871c234fb4d0d1adab567b3d4e49ec6f816a86664dfe300cfe98) and visual-evidence artifact 12114423332 (6,997,526 bytes; SHA-256 4cff56a245109f14c05a887769d4fc1d23744366a3abae6073f8d9e7c3e71d6c). The Arrangement screenshots and accessibility hierarchies show selected tick 7680 → pasted/redo tick 7920 → final undo tick 7680; the Pattern-state assertion passed exact restoration.
+
+### 9. Arrangement CUT + canonical Function Bar actions — COMPLETE / VERIFIED
+- Implemented native `cutPatternNoteTick` and a JNI CUT action backed by the existing native Pattern/edit-history path. It removes exactly one uniquely identified event, retains the full musical event in the value-owned native clipboard, rejects missing/ambiguous/out-of-range sources, and publishes the new clipboard value only after history registration succeeds. Failed mutations preserve the prior clipboard and Pattern.
+- Promoted CUT / COPY / PASTE / DUP into the bottom Function Bar. The actions are enabled from current event selection and native clipboard state; the existing secondary row retains UNDO / REDO and EVENT ± GRID.
+- Full Android Emulator touch smoke verified CUT removes only the selected Track 01 / Note 036 event at tick 7680; UNDO restored the original Pattern and selection; REDO cut it again; final UNDO restored exact serialized Pattern state. The source-event MOVE, DUP, COPY/PASTE, loop brace, Grid draw/erase, Step probability and Track Edit tuning tests remained green.
+- Verified by successful exact-SHA [Android Build #2791](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39072384402) on application commit [830e47f2eddcf46bccbb5333de5edc9c402c39ce](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/830e47f2eddcf46bccbb5333de5edc9c402c39ce), all 57 workflow steps successful.
+- Inspected APK artifact 12116190078 (8,746,381 bytes; SHA-256 `a302c6244c859eaa3acd10fb07e029fe2f781385c955bb903a3258d87ecd9076`) and visual-evidence artifact 12115971268 (7,427,085 bytes; SHA-256 `a1737612ca1510ca73b35d10a2702344a8b51a2ae19b7e1214f8569561fa21fc`). Screenshots and accessibility XML confirm action availability follows selection state and CUT's four-state round trip returns to Track 01 / Tick 7680 / Note 036 with the Pattern exactly restored.
+- The Browser DocumentsUI test reported a timeout for Browser-Favorite-Only.wav in the remembered folder; its root-navigation fallback then succeeded, and independent USER FOLDER / FAVORITE 1 grants, preference isolation, and cold process restart restoration all passed. The overall run is green.
+
+### 10. Arrangement empty-timeline paste cursor — COMPLETE / VERIFIED
+- Added a separate insertion cursor to `MpcArrangeView`; an empty timeline tap selects a target, not a MIDI event. The cursor snaps to the current quantize grid, clamps inside the selected Track's Pattern, renders a visible cyan marker, and exposes an accessible Track/tick label.
+- The canonical Function Bar enables PASTE only when both this valid target and the native event clipboard exist. CUT / COPY / DUP remain disabled while the cursor—not an existing MIDI event—is selected. PASTE writes exactly at the cursor tick; selected-event PASTE retains its existing one-grid-later behavior for compatibility.
+- Full emulator interaction verified CUT → empty target (tick 240) → PASTE → UNDO → REDO → UNDO → undo CUT. Cursor placement left native Pattern data unchanged; PASTE preserved duration, pitch, velocity, probability, ratchet and nudge; Undo restored the cursor and pre-paste cut state; the final Undo CUT restored the exact baseline Pattern and selection.
+- Verified by successful exact-SHA [Android Build #2793](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39075574304) on application commit [f49748de9db450ffc3b3b781befac99916f2a134](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/f49748de9db450ffc3b3b781befac99916f2a134); all 57 workflow steps passed.
+- Inspected APK artifact 12117086509 (8,746,381 bytes; SHA-256 `a47c767a9c476fe696c75b6dbba0922c1b9a8d8830d704b4555abc29249ee8fc`) and UI evidence artifact 12116759419 (8,382,189 bytes; SHA-256 `7074520600906be7a5cf3c348da795f7426c94e4f60613fbffcb57f076cdf5df`). ZIP integrity passed; cursor, pasted, restored screenshots and accessibility XML were downloaded and inspected.
+
+### 11. Historical placement slice — SUPERSEDED
+- This was the placement proposal for the earlier 2026-10-17 checkpoint; do not restart it. Explicit Pattern placement operations are present and have real-emulator acceptance evidence in Android Build #2807, with regressions passing in Build #2808.
+- The real remaining persistence gap was then investigated: there was no project serialization/file save-load implementation. The versioned native codec and true file round-trip test are now in place, verified on the code SHA recorded in the current queue above.
+- The current task is Android user-facing Project Save/Open integration, not another PatternPlacement domain or clip-operation implementation.
+- Physical MPC Studio MkII verification remains pending.
+
 ## Stage 0 — Foundation
 - Android shell.
 - C++20 native core.
@@ -133,9 +225,9 @@ Lower-layer edits are allowed only for truthful semantic prerequisites such as T
 No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry path, semantic state, backend command and controller feedback are documented first.
 
 ## Stage 7 — MPC 3.9 standalone UI migration
-- UI shell. **MPC 3.9 MIGRATION FOUNDATION IMPLEMENTED — `MpcShell` owns the persistent Toolbar / five configurable shortcuts / compact channel context / Workspace / contextual Function Bar. Legacy seven-page rail is no longer the canonical shell; legacy workspace pages remain temporary adapters.**
-- Main. **UI FOUNDATION + MPC MAIN CONTEXT REFINEMENT IMPLEMENTED — 4x4 software performance pads, selected-pad context, quick sample waveform with Start/End editing, layer selection, direct audition trigger, persistent Main Pad Mixer Strip level/pan/tuning readout, real imported sample-name display, and MPC-style BAR/BEAT/TICK toolbar position display. Full Track Edit and full Channel Mixer remain separately gated by backend support.**
-- Browser. **UI FOUNDATION IMPLEMENTED — dedicated Browser mode with explicit WAV load target; full indexed/searchable browser is a later slice.**
+- UI shell. **MPC 3.9 MIGRATION FOUNDATION IMPLEMENTED — `MpcShell` owns the persistent Toolbar / five configurable shortcuts / XL Channel Strip region / Workspace / contextual Function Bar. Legacy seven-page rail is no longer the canonical shell; legacy workspace pages remain temporary adapters.**
+- Main. **UI FOUNDATION + MPC MAIN CONTEXT REFINEMENT IMPLEMENTED — controller-first selected-pad context, quick sample waveform with Start/End editing, layer selection, direct audition trigger, persistent Main Pad Mixer Strip level/pan/tuning readout, real imported sample-name display, and MPC-style BAR/BEAT/TICK toolbar position display. The canonical Main composition no longer embeds an Android 4x4 pad grid, matching the hardware-first MPC workflow. Full Track Edit and full Channel Mixer remain separately gated by backend support.**
+- Browser. **LOCAL WAV VERTICAL SLICE + SEARCH/FILTER INTERACTIONS IMPLEMENTED AND ANDROID E2E VERIFIED (Build #2637, code SHA `94ee3bfa9a8407d20ab6f0c69bde47519fe8fb07`) — MediaStore-backed WAV rows, real selection, MediaPlayer audition, native Pad/Layer assignment, matching/non-matching Search, Clear, PROJECTS empty result and ALL/SAMPLES restoration all pass emulator smoke. Actual Android Document Picker selection/return target-preservation, user-selected document trees and persisted favourites remain the next slices. Unsupported categories stay honestly unavailable.**
 - Sampler. **UI FOUNDATION + WAVEFORM IMPLEMENTED — dedicated sample editor context with a shared editable waveform, region/edit, envelope, filter and layer tabs.**
 - Sample Edit. **UI FOUNDATION + WAVEFORM IMPLEMENTED — direct S/E drag editing, zoom/pan, audition, crop and chop actions are isolated to the sample context.**
 - Grid. **SEQUENCE CONTEXT IMPLEMENTED — dedicated track/sequence context is now available from the Sequencer page; detailed note editing remains next.**
@@ -145,6 +237,17 @@ No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry 
 - 16 Levels. **SEMANTIC VELOCITY SLICE IMPLEMENTED — Level16 captures the last played pad as the source sample, uses the 16 physical positions as fixed velocity steps from 1 to 127, and keeps note-on/note-off bound to the same source pad for recording. Tune/Filter/Layer/Attack/Decay parameter variants remain future slices.**
 - Pad Perform.
 - Q-Link.
+
+## 2026-10-06 Main geometry fidelity increment
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+- Main Sequence and Track/Arrangement zones now use dense rectangular surfaces with a thin MPC-red boundary between them rather than heavy outer card framing.
+- Field-level borders remain available for active/editable controls.
+- No semantic/backend ownership changed; this is presentation-only Main geometry fidelity.
+- Source regression contract added to `tests/android_ui_smoke.sh`.
+- Fresh Android Build + emulator smoke + UI visual evidence remain mandatory before acceptance.
+- Physical MPC Studio MkII verification remains pending.
 
 ## Stage 8 — Ableton Link
 - tempo.
@@ -397,10 +500,10 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 
 ## 2026-10-02 Main Track quick-sample increment
 
-- **MPC-style Main Track surface implemented:** the default Main Track view now pairs 4×4 performance pads with a selected Pad/Layer quick waveform context.
+- **Historical implementation checkpoint:** this early Main composition paired a software 4×4 performance grid with the selected Pad/Layer quick waveform context.
 - **Quick sample editing reuses existing backend semantics:** waveform Start/End edits call the existing sample-region command; no new realtime/audio engine boundary was added.
-- **Layer context is explicit:** Layer −/+ remains inside Main and does not leave the selected Track/Sequence context.
-- **Full Sample Edit remains separate:** Main offers AUDITION and SAMPLE EDIT rather than duplicating the full editor's controls.
+- **Layer context is explicit:** Main exposes Layer as one Track-state field; tapping it enters the shared SAMPLE_LAYER Data Dial focus while the standard hardware +/- path changes the value without leaving the selected Track/Sequence context.
+- **Superseded by the 2026-10-04 controller-first correction:** the canonical Main layout no longer renders a software 4×4 pad matrix, and the Main canvas no longer carries a permanent SAMPLE EDIT duplicate. Pads are selected from the MPC Studio MkII; waveform double-tap remains the Track Edit entry.
 
 ## 2026-10-02 Main Track state-row parity increment
 
@@ -456,3 +559,349 @@ Hardware indication is now treated as a first-class part of every MkII controlle
 - **IMPLEMENTED —** replaced the oversized page-title/context stack with the documented TRACK/PAD header and Edit All Layers affordance.
 - **IMPLEMENTED —** aligned visible tab labels to MPC terminology: GLOBAL, SAMPLES, AMP ENV, LFO, MODS, EFFECTS.
 - **PRESERVED —** existing semantic/backend coverage and explicit RESERVED states.
+
+
+### Pad Mixer Data Dial checkpoint — 2026-10-04
+
+**IMPLEMENTED on feature/mpc-one-ui-fidelity**
+
+- Replaced the obsolete four-strip Pad Mixer diagnostic view with a dedicated 16-pad MPC-style workspace.
+- Eight compact strips are sized for simultaneous visibility, with horizontal access to all 16 pads.
+- Level uses a custom vertical fader; Pan and Tune remain directly editable through existing native pad operations.
+- Data Dial semantics are explicit: selected Pad + focused Level/Pan/Tune field. Dial press cycles the focus; Dial delta edits only the focused parameter.
+- Channel Mixer remains explicitly RESERVED because track-strip mixer backend semantics are not yet implemented.
+- Browser chrome was brought onto the same zero-radius, red-selection shell language.
+
+
+### 2026-10-04 UI fidelity checkpoint — Toolbar / Browser / Menu
+
+- **Toolbar:** graphite persistent chrome; red reserved for selection/accent semantics.
+- **Browser:** three MPC context tabs (`Places / Content / Expansions`), official file-type filter vocabulary, single-workspace composition, and Function Bar actions for Sample Assign / Audition / Load.
+- **Menu:** 4×4 mode launcher remains intact; system actions moved to the single shell Function Bar to avoid nested command bars.
+- **Pad Mixer:** dedicated 16-pad workspace, eight visible strips, real Level/Pan/Tune operations, and Data Dial focus cycle.
+
+
+### 2026-10-04 Main fidelity checkpoint — XL Mixer Strips
+
+The highest-priority Main-shell correction is complete at the presentation layer: the visible 210dp context column now hosts a dedicated `MpcMainMixerStripView` with Track/Pad/Output strip hierarchy. Legacy persistent context widgets remain mounted but hidden during migration.
+
+Acceptance focus for the next run:
+- Main launches with Mixer Strips visible.
+- Track mode shows Track + Main Output.
+- Drum Pad mode shows Pad + selected Track.
+- Track/Pad switching remains only in the Main Track/Arrangement control.
+- Toolbar uses the documented graphite Main surface; red is reserved for semantic selection/accent surfaces.
+- Existing audio, sequencer, MIDI and controller semantics remain untouched.
+
+
+### 2026-10-04 Main XL Strip visual confirmation
+
+- Official MPC3 references were used to validate the left-side Main composition.
+- Main XL strips stay compact: in Track context, selected Track + Main Output; in Drum Pad context, selected Pad + selected Track.
+- The Track/Pad selector remains in the lower-right Track/Arrangement context and is not duplicated in the strip header.
+- Vertical meter rendering is presentation-only; unsupported track/output gain semantics remain explicitly reserved.
+- Shortcut icons are rendered by an original deterministic Drawable rather than platform-dependent Unicode glyphs.
+
+
+## 2026-10-04 XL Channel Strip fidelity checkpoint
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The Main XL Channel Strip has been tightened against the documented MPC 3.9 Mixer Strips composition. The presentation now uses:
+
+- two adjacent full-height channel strips after the five shortcut icons;
+- Track mode: selected Track on the left, Main Output on the right;
+- Drum Pad mode: selected Pad on the left, its selected Track on the right;
+- flat LVL / FX / SEND / I/O header vocabulary with LVL as the currently implemented view;
+- compact icon-only top visibility control rather than a redundant textual MIXER header;
+- dense level meter + white-line fader geometry and dedicated pan slider;
+- strip-local Track/Pad identity and program/sample context;
+- Track Mute / Solo / Automation / Record surfaces with truthful availability;
+- no standalone duplicate Data Dial row inside the XL strip.
+
+The right-hand strip remains context-aware by model, but FX/SEND/I/O content is not fabricated until corresponding mixer backend semantics exist.
+
+Primary source: MPC Standalone OS User Guide v3.9, Mixer Strips section (pp. 135-136 in the indexed manual). Akai's MPC3 FAQ also identifies the XL Channel Strip and One-to-One Track Workflow as MPC3 features.
+
+No realtime audio callback, sampler scheduler, sequencer clock, raw MkII decoder, or hardware SysEx protocol was changed.
+
+Verification target:
+- Android compile/unit tests;
+- Android emulator smoke;
+- UI visual evidence artifact;
+- physical MPC Studio MkII verification remains separate.
+
+
+## 2026-10-04 Main Track Type UI correction
+
+The earlier six-icon Track Type presentation was identified as an interpretation error during a direct re-check of the MPC 3.9 User Guide. The documented Main Track workflow uses a single Track Type icon beside the Track identity; tapping it opens Track Type selection. The six types (Drum, Keygroup, Plugin, MIDI, Clip, CV) are selector choices, not six persistent Main-header controls.
+
+The implementation has therefore been corrected:
+- one deterministic Track Type icon is visible in the Main Track header;
+- its icon changes with the selected Track Type;
+- tap and Data Dial focus enter the existing Track Type Select subcontext;
+- unsupported Track Types remain truthful/unavailable in the current backend;
+- the six-type vocabulary remains in the selector/domain mapping.
+
+This correction takes precedence over the earlier 2026-10-04 Main Track type affordance fidelity checkpoint wording that described a persistent six-icon cluster.
+
+Primary source: MPC Standalone OS User Guide v3.9, Main Mode Track section; the manual explicitly describes tapping the Track Type icon next to the track number to change type.
+
+
+## 2026-10-04 Main Track identity geometry correction
+
+The selected Track Type icon is positioned directly beside the Track identity and before the Track name, matching the documented Main Track workflow where the Track Type icon sits next to the track number. The icon remains a single selector affordance; six Track Types remain choices inside Track Type Select rather than persistent header controls.
+
+
+## 2026-10-04 Main Track controller-first layout correction
+
+The canonical Main Track/Arrangement workspace no longer embeds the Android 4x4 performance pad grid. MPC 3.9 selects Pads from the physical MPC surface; the Main display prioritizes the selected Pad/Layer waveform and its Track-state controls. The existing pad-grid renderer remains reusable only outside the canonical Main composition until a separate touch-first surface is intentionally designed.
+
+## 2026-10-04 Main Track sample-area fidelity correction
+
+- **IMPLEMENTED —** the Track sample canvas now uses the full available Main workspace width instead of the obsolete 64% split.
+- **IMPLEMENTED —** an empty selected Drum pad presents large in-canvas BROWSE / RECORD actions, matching the documented MPC Main empty-sample workflow.
+- **IMPLEMENTED —** a loaded sample keeps the waveform dominant and reduces audition to one compact play control; permanent SAMPLE EDIT duplication was removed from the Main canvas.
+- **PRESERVED —** waveform selection editing and double-tap to Track Edit semantics; no audio, sampler, sequencer, MIDI or controller transport changes.
+
+
+## 2026-10-04 Shortcut Rail selection indicator fidelity
+
+- **IMPLEMENTED —** active Main shortcut selection now remains on the graphite shortcut surface and uses a thin red edge indicator instead of a full red tile.
+- **PRESERVED —** five-shortcut navigation, deterministic icon rendering and controller semantics are unchanged.
+- **RATIONALE —** the MPC Main shortcut rail communicates selection with a compact edge accent, keeping the rail visually subordinate to the central workspace.
+
+
+
+### 2026-10-05 MPC Pull-Down Menu fidelity checkpoint
+
+- **IMPLEMENTED —** added a persistent shell-owned Pull-Down surface with two visual pages: MPC Control and Q-Link.
+- **IMPLEMENTED —** Main transport/position area accepts a downward swipe to open the panel; tapping outside or the panel close button dismisses it; upward swipe closes from the panel.
+- **IMPLEMENTED —** current Sequence/BPM and MIDI/Audio readiness are projected into the Control page from existing UI/native state.
+- **TRUTHFUL RESERVED —** Q-Link Learn / Momentary / Go To Min / Go To Previous remain explicitly unavailable until semantic Q-Link backend contracts exist.
+- **PRESERVED —** transport, audio engine, sequencer, raw MkII decoder and hardware SysEx layers are untouched.
+- **Verification target —** Android source/unit tests, emulator smoke, visual evidence, then physical MPC Studio MkII interaction review.
+
+
+### 2026-10-05 MPC Pull-Down + Menu acceptance checkpoint
+
+- Android Build #2299 (`83790e38d20d74687102bcd2f60e4d8b796ed912`) completed successfully.
+- Full source/unit preflight, Debug APK assembly, emulator startup and `runUiAudit()` passed.
+- Pull-Down now exposes the two-page Control/Q-Link shell; Q-Link operations remain explicitly RESERVED until backend semantics exist.
+- Main 4×4 Menu tiles now use the deterministic MPC shortcut vector vocabulary instead of visible Unicode glyphs.
+- KVM-enabled emulator smoke is now stable enough to exercise the real application runtime instead of failing during AVD boot.
+- Physical MPC Studio MkII verification is still pending; this acceptance does not claim hardware validation.
+
+## 2026-10-05 Pull-Down chrome fidelity correction
+
+- **IMPLEMENTED —** Pull-Down close/previous/next controls now use deterministic original vector iconography rather than Unicode glyphs.
+- **PRESERVED —** two-page Control/Q-Link overlay, truthful RESERVED actions, and existing shell/state ownership.
+- **LOWER LAYERS —** none touched; audio callback, sampler/sequencer timing, MIDI transport, raw MkII decoder and hardware SysEx are unchanged.
+- **Verification target —** source/unit preflight, Android emulator smoke, visual evidence, then physical MPC Studio MkII verification.
+
+
+## 2026-10-05 Android runtime smoke synchronization checkpoint
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The Android emulator smoke gate now waits for the application-side `runUiAudit()` to report `UI_INTERACTION_COMPLETE` before requesting the external `uiautomator dump`. The previous fixed 5-second delay could race the long UI-thread audit: the app was alive and had produced a screenshot, but `uiautomator dump` could still report an idle-state failure while MainActivity was actively rebuilding contexts.
+
+The gate now:
+- fails immediately on an application-side `UI_HIERARCHY_FAILED` / `UI_INTERACTION_FAILED` / startup-finalization failure;
+- bounds the application-audit wait to 120 seconds;
+- bounds the accessibility dump itself to 30 seconds;
+- preserves the real hierarchy/content assertion and therefore does not mask a runtime failure.
+
+Lower layers touched: none.
+Physical MPC Studio MkII verification: pending.
+
+
+## 2026-10-05 UI-audit hierarchy correction
+
+The runtime audit was aligned with the canonical MPC Main composition after Run #2323 exposed a stale test assumption. Main no longer exposes the legacy 4×4 pad grid or an always-visible Main shortcut, so the audit now validates the persistent Toolbar, exactly five shortcut destinations, Sequence/Track workspace, XL Channel Strip control and Main Function Bar directly.
+
+Navigation checks now use the real shell hierarchy: Browser returns to Main through its Function Bar, and secondary modes are entered from the Toolbar Menu. The audit verifies controller-first Pad state through semantic selection/focus rather than fabricating an on-screen pad grid.
+
+No product UI compatibility elements were reintroduced and no protected audio/MIDI/sequencer layers were changed.
+
+
+## 2026-10-05 Factory Shortcut accessibility vocabulary correction
+
+The factory fifth Shortcut Rail destination remains the `XY` user-facing destination while the internal navigation enum is `XYFX`. The shell now exposes the canonical `XY` label in the accessibility/semantic surface without changing the underlying mode identity or routing.
+
+This is a presentation/accessibility vocabulary correction only; no audio, MIDI, decoder, SysEx or sequencer layer was touched.
+
+
+## 2026-10-05 Compact context geometry correction
+
+The runtime audit previously required the retired compact Track/Program context to exceed 300dp height. The implementation intentionally uses `WRAP_CONTENT` for this rail, with a compact stack of Sequence/Track/Program/Pad/Data Dial/overview fields, so the 300dp threshold was not a valid fidelity invariant.
+
+The audit now requires a minimum 200dp content height plus the existing width and child-presence checks. This keeps the test anchored to a meaningful persistent context surface without forcing artificial empty space into the MPC shell.
+
+
+## 2026-10-05 Main runtime audit lifecycle correction
+
+Runtime evidence showed the Main UI was visually laid out correctly in the captured screenshot while the application audit could observe a still-unmeasured WaveformView when invoked directly from startup finalization. The audit is now scheduled from the decor root's first `OnPreDraw` callback.
+
+This keeps geometry assertions tied to the actual rendered MPC shell lifecycle instead of adding sleeps or weakening the checks.
+
+
+## 2026-10-05 Exact accessibility target correction
+
+The Main LAYER audit now uses the field's complete accessibility description (`Main Track View selected layer • tap to focus Layer`). The view search helper intentionally uses exact semantic labels, so the previous shortened lookup could not find an otherwise functional controller-first Layer focus control.
+
+## 2026-10-06 Main LAYER vocabulary fidelity
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+`Main` now presents the selected Drum layer as `LAYER 1` / `LAYER 2` / etc., matching the documented MPC Main field vocabulary. The semantic layer range remains unchanged; the UI no longer adds a synthetic `/8` suffix that is not part of the MPC Main surface.
+
+Presentation-only. No audio, sampler, sequencer, MIDI, MkII decoder or SysEx ownership changed.
+
+## 2026-10-06 Startup visual-evidence ordering
+
+Branch: `feature/mpc-one-ui-fidelity`
+
+The Android smoke harness now captures the startup screenshot after launch/process/activity/fatal-crash checks and before the settling interval that allows the application-side UI audit to navigate across contexts. This keeps the visual artifact anchored to the canonical Main surface.
+
+Acceptance-harness synchronization only. No audio, sampler, sequencer, MIDI, MPC Studio MkII decoder or SysEx behavior changed.
+
+## 2026-10-06 MPC3 shell reconciliation
+
+This roadmap is subordinate to `docs/MPC3-UI-MIGRATION-MASTER-SPEC.md` and `docs/MPC3-9-OS-KNOWLEDGE-BASE.md`. The canonical visible shell is **Toolbar → five Shortcuts → XL Channel Strip region → Main workspace → Function Bar**. Any historical references to a persistent Android Sequence/Track/Program/Data Dial context rail are migration-only and must not be reintroduced into the visible Main UI.
+
+Source: official MPC Standalone OS User Guide v3.9 Main Mode Overview (p15) and Akai Output Routing Basics.
+Checked: 2026-10-06.
+Confidence: HIGH.
+
+
+## Current execution directive — local-first product / 2026-10-10
+
+This directive updates the order of work; it does not authorize backend rewrites or replace the detailed stage history above. Consult `docs/SESSION-STATE.md` and `docs/DEVELOPMENT-OPERATING-PROTOCOL.md` before choosing the next task.
+
+### Product-scope decision
+
+MPC Standalone OS 3.9 remains the UI/interaction reference, but reproducing Akai's commercial ecosystem is explicitly out of scope. Do not implement Splice, marketplaces, paid-expansion promotion, partner advertising, upsells or unnecessary vendor-specific cloud/account dependencies. Generic local file access, Android Document Provider, available USB storage, local user content, and real sample loading remain in scope. In reference documents, label factory commercial items as reference-only/intentionally excluded rather than erasing the historical research.
+
+### Ordered implementation priorities
+
+1. **Commercial exclusion DONE:** Splice is absent from product navigation and source smoke rejects its reintroduction. Stores, paid-content promotion, advertising, upsells and unnecessary vendor cloud/account dependencies remain excluded.
+2. **Local Browser + Document Picker E2E — VERIFIED:** real local WAV discovery/filter/search, selection, audition, native loading/assignment, picker return to the correct Pad/Layer, and user document-tree results with persisted SAF grant survive process restart.
+3. **Main Track Type correctness — VERIFIED:** native AUDIO/DRUM map to the correct icons; CLIP is not used as a Track Type; unsupported conversion truthfully reports RESERVED. Build #2704 onward passed.
+4. **Arrangement event → Grid focus — VERIFIED on #2713:** seeded real note, production Arrangement hit-test, actual View/GestureDetector double-tap path, exact Track/tick delivery and focus target in Grid screenshot/XML; target step 33 is inside 25–40/64.
+5. **Arrange loop handle — VERIFIED on #2713:** real handle drag changes native loop end; second handle drag restores the original loop; no pattern-event mutation is used for this check.
+6. **Arrange lane selection — PARTIAL, honest fixture limitation:** on the clean one-Track fixture, the real lane tap preserves native and View selection state and proves Arrangement event data is unchanged. Build #2712 first exposed that the fixture has only one Track. The code now does not fail or fabricate an extra Track; the multi-Track change-and-restore branch is present but has not been exercised by this fixture because there is no native Track-removal contract.
+7. **Arrange ↔ Grid Back/context round-trip — VERIFIED on #2741:** the real Grid Function Bar BACK returns to ARRANGE with the same Track/sequence/tick/event and unchanged pattern snapshots; a fresh same-event double-tap reopens the same absolute Grid step/window. Fresh screenshot/XML evidence was inspected.
+8. **Favorite folders 1–5 — IMPLEMENTED; FAVORITE 1 E2E VERIFIED on #2741:** separate persisted SAF URI/name per slot and real WAV scanning. The real picker flow, independent USER/FAVORITE URI preferences and Favorite 1 restoration after process restart passed with screenshot/XML evidence. Slots 2–5 do not yet have separate real-picker/restart acceptance fixtures.
+9. **Other local-storage gaps remain:** Content places without real providers stay truthfully unavailable/no-result, never fake populated.
+10. Physical MPC Studio MkII behavior remains pending; emulator success is not hardware verification.
+
+### Definition of done for a roadmap item
+
+A UI item is not done because its button is drawn or an audit assertion passes. Record the real semantic action/state change, relevant tests, current-SHA Actions result, APK identity, inspected screenshots/UI hierarchy, and physical hardware status if relevant. Confirm that expected evidence files are actually present in the downloadable artifact.
+
+Do not let repeated geometry-only smoke hardening displace feature delivery once a screen's key safety/interaction contracts pass. Fix real regressions promptly, then return to the highest-value incomplete workflow.
+
+
+## 2026-10-11 — MPC 3.9.1 Gen1 firmware research checkpoint
+
+A first-pass offline static audit is documented in `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md` with structured facts in `docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`. The supplied image's XZ rootfs digest was verified, the ext4-format rootfs was traversed, and the stripped 32-bit ARM `MPC` ELF version note was identified as `3.9.1.2 (f3af35cdc95)`. Bundled resources include 759 PNGs and 13 ACVS JSON layout descriptors; static strings/type-info identify Main layout and Q-Link/Browser-related research anchors.
+
+This is a research/documentation-only milestone; no Android code or realtime/audio/MIDI layer changed. No firmware, extracted proprietary images/content or full decompilation was added to the public repository. Bundled panel layout values are not yet confirmed as physical MPC One Main geometry. Follow-up native analysis (Ghidra plus nested SquashFS extraction) is optional research, not a prerequisite for the next product task. **The next implementation priority remains Android Document Picker selection → return → sample-target preservation**, then permissions/restoration tests for a persisted user-selected directory and favourites.
+
+
+## 2026-10-11 — Firmware second-pass UI schema research
+
+The second pass parsed Program Edit TUI JSON schema counts and Main/touch UI type-name anchors from the 3.9.1 Gen1 ELF. Main-specific names include `TouchMainPageNavigationPanel`, `TouchMainPageContentPanel`, track-specific panels, `TouchMainModeMixerProperties`, and dedicated Mixer strip containers. These are static identifiers, not decompiled behavior.
+
+**New correctness lead:** both the firmware's six Track Type selector assets and the official v3.9 guide point to **Audio / Drum / Keygroup / Plugin / MIDI / CV**. The recent project selector vocabulary places CLIP where AUDIO should be audited. Treat this as a high-priority fidelity discrepancy: inspect the existing selector/enum/tests after completing the current Document Picker select-return-target-preservation workflow, and keep Clip/Arrangement and Mixer strip categories separate. No app code was changed by this research checkpoint.
+
+Full data and limitations: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`.
+
+
+### 2026-10-14 — Arrangement event navigation slice
+
+The current source review identified that `onEventDoubleTapped(trackIndex, tick)` discarded `tick` before entering Grid. Grid therefore opened at its stale viewport, a real workflow defect rather than a styling gap. The current changeset adds a pure tick→step/viewport policy, centers the target step when possible and clamps at the start/end of the sequence; boundary/overflow unit tests and source preflight cover the route. Exact-SHA Android CI is pending. The preceding Track Type correction is already verified on #2704.
+
+
+### 2026-10-14 — Direct runtime evidence for Arrange → Grid event focus
+
+Build #2705 passed the event-tick policy tests and full emulator workflow. The current follow-up upgrades evidence quality: the UI audit invokes the same production route used by Arrangement's double-tap listener at a non-zero synthetic tick, asserts the Activity and rendered Grid viewport agree, then pauses so the emulator harness can capture an actual screenshot and UI hierarchy. The harness checks the focus status and displayed `STEPS first–last / total` window before releasing the app-side audit. Exact-SHA CI is pending.
+
+
+### 2026-10-14 — Build #2707 accepts Arrangement → Grid focus evidence
+
+Android Build #2707 tested SHA `8c5bfcc114b5e2becfdf50a4cdf861bb0d57a623` and succeeded (57/57 steps). APK artifact `11867684347` (SHA-256 `38557fcdf0ac7b92d7a5b7ad0df9f8199dea67b59fbba44fd7955d04ab53e844`) and a 23-entry evidence archive `11867864670` (SHA-256 `7dae7d4c1b054cfa76ace4ce6744b5fbb82232b89e09aeb6f52bf01a4708f6cd`) were downloaded, integrity checked and inspected. The focused Grid screen shows step 33 inside 25–40/64; semantic accessibility matches. Browser E2E and SAF restoration also passed.
+
+The remaining coverage gap is at the event boundary: runtime audit invokes the shared production route with a synthetic non-zero tick, but does not yet double-tap a populated Arrangement event through Android hit testing and listener delivery. Cover that real event-to-Grid transition next.
+
+
+### 2026-10-14 — Build #2709 validates the real Arrange event gesture path
+
+Android Build #2709 tested SHA `20ac2f54ca0075256a6b6534f5ffa7e06d358b77` and passed all 57 steps. The emulator audit creates a real note via the current sequencer API, derives the rendered Arrangement event center and first validates that the view hit-test resolves to that exact event. It then dispatches Android down/up events into the actual view and GestureDetector, verifies the listener returns the exact seeded track/tick, and checks that Grid's visible range contains step 33. The captured screenshot shows the seeded note in the `25–40/64` window; XML semantic range agrees. APK artifact `11871064482` SHA-256 `e653b9b42b4ec971fed383dbb9a1dd033ec0285f50cb94f7b8d6fc369624eb6a`; 23-file evidence archive `11871970352` SHA-256 `53f5e282f46e97e16ea399a1813bb8913192136385f06bb86f4541dd2fc0478e`. Next focus is real Arrange state/loop interactions, without inventing clip-placement semantics.
+
+
+### 2026-10-15 — Build #2713 validates Arrange loop and single-lane contracts (historical checkpoint)
+
+Android Build #2713 on exact SHA `cdcfdfb2500b4c6eaebeab5018b4cdce33213462` passed all 57 workflow steps. The preceding #2712 failure was an invalid test-fixture assumption (the clean emulator starts with one Track); the follow-up validates the actual single-lane tap without adding a disposable Track or claiming an alternate Track change. The multi-Track change/restore branch remains for fixtures that truly contain multiple Tracks. The loop-end drag/commit/restore, seeded event double-tap → Grid focus (step 33 within 25–40/64), local Browser assignment, Android Document Picker assignment and SAF folder restoration all passed.
+
+APK artifact `11958217657` SHA-256 `4ca32dee06e76b69314446ab5a12b9ec8bf9a488d84c5d7487f1a4861783f960`; 23-entry visual archive `11958527786` SHA-256 `09fa5c463ee3f7449f4cf36907b89e38fae3ddafb057d4d1e3257bd99bbd10c5`. The next interaction slice is BACK from Grid to Arrange and re-entry through the same event, verifying Track/event context without mutating pattern data.
+
+### 2026-10-15 — Browser Favorite folders 1–5 implementation (original acceptance pending; later verified by #2732)
+
+Added five independently persisted SAF folder targets to the Browser Places list. Each Favorite stores its own URI/name, requires the persisted read grant, loads actual WAV entries through the existing document-tree catalog and can be reassigned through the Android tree picker. The local WAV filter policy accepts Favorite 1–5 only; an old folder's cached rows are cleared while switching locations. The later exact-HEAD acceptance result is recorded below.
+
+
+### 2026-10-15 — Favorite picker runtime failure (#2721)
+
+Android Build #2721 compiled and uploaded an APK for exact SHA `829b006a5f9e8547d82ed341c772155215c008b2`, but the full emulator smoke failed during FAVORITE 1 assignment. Inspected screenshot evidence shows DocumentsUI reopened inside `AAA-MPC-Browser-Tree` (USER FOLDER) instead of at the provider root; the previous test required `BBB-MPC-Browser-Favorite` to already be visible and exited before assignment. The revised smoke flow navigates the visible breadcrumb to the provider root, requires the Android `Use this folder` tree-grant action, and locates the Favorite-only fixture using bounded scrolling. **Favorites E2E remains unverified** until an exact-HEAD run passes assignment, isolated URI preferences, bidirectional switching and process-restart restoration. If the tree-grant action is still missing after navigation, fix the runtime route rather than weakening the assertion.
+
+
+### 2026-10-15 — API 31 system overlay preflight (#2730)
+
+Android Build #2730 on exact SHA `004ab89c3e4041f36f8ebfaeca63fe8283c3d3d7` failed before Browser or Favorite navigation. Its captured Main-ready screenshot and hierarchy show Android 12's first-run fullscreen confirmation over the real rendered Main workspace: `Viewing full screen` (`android:id/immersive_cling_title`) and enabled `GOT IT` (`android:id/ok`). This explains the missing `MPC One Main Toolbar` accessibility node; it is a system overlay, not evidence of a product shell regression. Run #2730: https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38785925092
+
+The smoke harness now inspects the initial hierarchy, taps the exact enabled OS `GOT IT` target through the API 31 system input injector, verifies the cling is gone, and only then captures startup/Main evidence. This is a bounded platform setup step and preserves strict Main assertions.
+
+The previous #2729 evidence establishes that coordinates are stable and that title, icon, row centre, and right-side row gutter taps do not enter the Favorite directory on API 30. The API 31 `cmd input touchscreen tap` folder-row correction is still untested because #2730 stopped earlier. Do not call Favorites fixed until a new exact-head run completes separate-folder assignment, distinct URI persistence, bidirectional WAV switching and Favorite restoration after process restart.
+
+
+### 2026-10-15 — Build #2732 verifies Browser Favorite 1 end to end
+
+Android Build #2732 passed all 57 workflow steps on exact SHA `b7cebdc73943b55dd5440c549ec40e2ca7cde1c8` ([Actions run](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38798857884)). The emulator opened the real DocumentsUI provider root, entered `BBB-MPC-Browser-Favorite`, confirmed the Android tree grant and showed the real `Browser-Favorite-Only.wav`. Saved preferences contained independent `user_tree_uri` and `favorite_tree_uri_1` values for `AAA-MPC-Browser-Tree` and `BBB-MPC-Browser-Favorite`. Switching both directions restored the distinct real WAV rows/status, and force-stop/relaunch restored FAVORITE 1 and its file. Screenshot/UI hierarchy evidence was inspected. This remains emulator-only; physical MPC Studio MkII testing is pending.
+
+### 2026-10-15 — Arrange → Grid → BACK → Arrange → same-event re-entry (runtime validation added; CI pending)
+
+The audit uses the actual Grid Function Bar `BACK` click, verifies Arrangement returns with the same native/UI Track, sequence index and tick-addressable event, then compares all Tracks' Arrangement projections and every quantized Pad velocity on the selected Drum Track before and after navigation. It clears the old callback result and dispatches a fresh double-tap through the real `MpcArrangeView` gesture/listener path to the same event, verifying exact Track/tick, step and viewport before comparing the pattern again. The Android smoke harness captures and validates screenshots and accessibility hierarchies for both Arrange-after-BACK and the re-entered Grid. These assertions are not accepted until the commit's exact-HEAD Android Build passes and its evidence is inspected.
+
+
+### 2026-10-15 — Build #2734: correct the Grid step-range test oracle
+
+Build #2734 (`3e49c0d37f5115befd9af15b7a3f1f8ccb374216`) successfully compiled the app and reached emulator evidence capture after real Grid Function Bar BACK and re-opening the same Arrangement event. The Arrange screenshot/hierarchy verified the restored Arrangement workspace and enabled GRID action. The Grid re-entry screenshot/hierarchy showed the same Track 01 and step 25–40 of 64, but the test parser demanded a literal `STEPS` prefix not present in the actual visible label (`25–40/64`). That was a test-oracle mismatch, not evidence of a navigation or pattern-data failure. The parser is corrected to accept the real label format while continuing to check the accessibility semantic description and event step. The new exact-HEAD build must pass before this interaction slice can be marked VERIFIED.
+
+
+### 2026-10-16 — Build #2741 validates Step-page focus, Arrange round-trip and Browser restoration
+
+Android Build #2741 ([run 38941636973](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/38941636973)) succeeded on exact implementation SHA `0ee28f46d1d2dfa04514a839b9c7a8744ae72909`. The build ran both `MpcSequenceZoomPolicyTest` and the newly wired `MpcSequenceStepPagePolicyTest`; all native/unit tests, APK assembly, emulator smoke and evidence upload completed successfully.
+
+The new Step policy preserves the relative cursor column while changing the visible 16-step page and computes an absolute step within the sequence boundary. The app-side emulator audit then uses real Step controls: page 1 → page 2, toggles an empty matching column, adjusts the new event's probability through the existing selected-step operation, returns to page 1, re-enters page 2, removes the test event and checks that the existing Step 1 parameters remain unchanged. No new native or realtime audio/MIDI behaviour was added.
+
+The same build verifies Arrange → Grid step 33 in the visible `25–40/64` window → actual Function Bar BACK → unchanged Arrangement event/pattern → same-event re-entry into the same Grid window. The downloaded evidence archive contains 36 files and passed ZIP integrity verification. Inspected screenshot/XML pairs confirm the Arrangement event remains at the focused step, the BACK action returns to Arrangement, and Grid re-entry restores Track 1 and the semantic range. Browser local WAV selection/audition/assignment, Android Document Picker return-target preservation, USER FOLDER permission/result restoration, and FAVORITE 1 independent URI + real WAV restoration after process restart also passed.
+
+Artifact identity for this implementation SHA: APK artifact `12062804474`, 8,228,253 bytes, SHA-256 `e6f07253e8cb83240eba7ac924708363a672fb5b408773750f08069ab7da212b`; visual evidence artifact `12063274521`, 2,654,002 bytes, SHA-256 `938ebfd35935fe83378b233357466458207ddcbcfd5c11bd7f9601fe92449809`. The artifact has no dedicated Step-page screenshot/XML; its Step behavior is asserted by the app-side runtime path and the new unit tests. Physical MPC Studio MkII testing remains pending.
+
+Builds #2738 and #2739 exposed Browser smoke harness issues after the successful APK compile: stale Search state after returning from DocumentsUI, then a false non-empty-query report because UIAutomator placed the empty EditText hint `Search files` in the `text` attribute. The test now explicitly clears Search after picker return and accepts only empty text or the exact hint. The resulting Build #2741 passed, including Browser's real tree and Favorite 1 restoration paths.
+
+### Next implementation target — Track View musical edit round-trip
+
+The current smoke audit checks the Track View workspace/Track strip before moving into Arrangement, but does not prove a user-driven Track View musical edit round-trip. Inspect the live handlers and reuse the existing sequencer operations to test one supported Track View action, confirm the native event and visible result, then return/re-enter Grid and verify the same musical location/data. Do not expand into a Track View rewrite or introduce unimplemented non-Drum operations.
+
+### 2026-10-17 — Build #2747: Track View MUTE state round-trip with a populated Drum pattern
+
+Android Build #2747 ([run 39026004772](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/39026004772)) passed on exact implementation SHA `70800387a4d133405be09dcc2cc8a6f6f616463a`. The targeted change moves the existing seeded Arrangement/Drum event setup before the Track View action; the MUTE test's existing Grid velocity snapshot is therefore taken with a real Pad 1 note present rather than an empty pattern.
+
+The emulator path taps the actual Track View MUTE button, checks the native `nativeSequenceIsTrackMuted` result flips and the displayed label reflects the new state, holds that state for an external screenshot/UIAutomator capture, validates the visible/accessibility button, then clicks again and verifies the original mute state, Track/sequence cursor and full per-step velocity snapshot are restored. The captured Track View image shows `EVENTS • 1` and a green `MUTE` control; accessibility XML reports the button as enabled/clickable with real hit bounds. The same audit continues through Arrangement event → Grid step 33 → BACK to Arrangement → same-event Grid re-entry, with the pattern remaining intact.
+
+APK artifact: `12098428540`, 8,228,253 bytes, SHA-256 `41168cb1e1999fb0489fc5ee402c363a333ba32ddad5d63ea2c278c96b83f18a`. Visual evidence artifact: `12098488760`, 2,786,502 bytes, SHA-256 `c9075550b7c5b0b48bfcbdc3611b1aaf7fcbcd4201e2c39fea28bd0a3452fe84`; ZIP integrity passed, 38 files, and the Track View screenshot/XML plus Arrange/Grid screenshot/XML and Browser/SAF evidence were inspected. Physical MPC Studio MkII verification remains pending.
+
+The new fixture is intentionally a test/interaction-acceptance improvement, not a claim that Track View itself edits notes: it verifies the existing MUTE operation does not alter musical event data. The next targeted product workflow is Track Edit sample-layer tuning/gain: change one real supported parameter, verify native/visible state, navigate away and return to the same Pad/Layer and confirm persistence through the existing sampler model. Avoid redesigning the sampler/backend.
