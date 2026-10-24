@@ -64,6 +64,19 @@ int main() {
     rangedCursor.setPositionTicks(100);
     assert(rangedCursor.positionTicks() == 2020);
 
+    // Setting an extreme signed transport position must normalize within the
+    // non-zero loop window without evaluating ticks - loopStart in int64_t.
+    mpc::domain::Sequence extremeLoopSequence;
+    extremeLoopSequence.lengthTicks = 2880;
+    extremeLoopSequence.loopEnabled = true;
+    extremeLoopSequence.loopStartTicks = 480;
+    extremeLoopSequence.loopEndTicks = 2400;
+    mpc::sequencer::MpcSequencerCursor extremeLoopCursor(extremeLoopSequence);
+    extremeLoopCursor.setPositionTicks(std::numeric_limits<std::int64_t>::min());
+    assert(extremeLoopCursor.positionTicks() == 1792);
+    extremeLoopCursor.setPositionTicks(std::numeric_limits<std::int64_t>::max());
+    assert(extremeLoopCursor.positionTicks() == 2047);
+
     mpc::domain::Sequence nonLoopSequence;
     nonLoopSequence.lengthTicks = 1920;
     nonLoopSequence.loopEnabled = false;
