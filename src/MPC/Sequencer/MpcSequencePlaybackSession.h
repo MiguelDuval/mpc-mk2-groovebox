@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Audio/AudioEngine.h"
+#include "Audio/AudioTriggerQueue.h"
 #include "MPC/Domain/MpcDomain.h"
 #include "MPC/MpcProjectState.h"
 #include "MPC/Sequencer/MpcSequencerPlayback.h"
@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -28,9 +29,9 @@ class MpcSequencePlaybackSession final {
 public:
     MpcSequencePlaybackSession(
             MpcProjectState& projectState,
-            audio::AudioEngine& audio) noexcept
+            audio::AudioTriggerQueue& audioQueue) noexcept
             : projectState_(projectState),
-              audio_(audio) {
+              audioQueue_(audioQueue) {
     }
 
     MpcSequencePlaybackSession(const MpcSequencePlaybackSession&) = delete;
@@ -40,9 +41,14 @@ public:
         stop();
 
         const auto& sequence = projectState_.activeSequence();
+        projectGeneration_ = projectState_.projectGeneration();
+        sequenceIndex_ = projectState_.activeSequenceIndex();
+        sequenceId_ = sequence.id;
+        contextCaptured_ = true;
         // Reserve before creating playback sessions: each session references
         // one stable sequence-length Pattern assembled from the track's clips.
         arrangementPatterns_.reserve(sequence.tracks.size());
+        playbacks_.reserve(sequence.tracks.size());
 
         for (const auto& track : sequence.tracks) {
             if (track.patterns.empty()) {
@@ -68,11 +74,12 @@ public:
                     sequence,
                     arrangementPatterns_.back(),
                     *program,
-                    audio_.triggerQueue(),
+                    audioQueue_,
                     &track.muted));
         }
 
         if (playbacks_.empty()) {
+            stop();
             return false;
         }
 
@@ -90,15 +97,26 @@ public:
         }
         playbacks_.clear();
         arrangementPatterns_.clear();
+        contextCaptured_ = false;
+        projectGeneration_ = 0;
+        sequenceIndex_ = 0;
+        sequenceId_.clear();
     }
 
     void reset() noexcept {
+        if (!playbackContextMatches()) {
+            stop();
+            return;
+        }
         for (auto& playback : playbacks_) {
             playback->reset();
         }
     }
 
     bool isPlaying() const noexcept {
+        if (!playbackContextMatches()) {
+            return false;
+        }
         for (const auto& playback : playbacks_) {
             if (playback->isPlaying()) {
                 return true;
@@ -112,6 +130,10 @@ public:
             std::uint32_t seed,
             std::int32_t sampleRate) noexcept {
         SequencePlaybackAggregate result;
+        if (!playbackContextMatches()) {
+            stop();
+            return result;
+        }
 
         for (auto& playback : playbacks_) {
             const auto value = playback->advance(
@@ -127,21 +149,40 @@ public:
     }
 
     std::int64_t positionTicks() const noexcept {
-        if (playbacks_.empty()) {
+        if (!playbackContextMatches() || playbacks_.empty()) {
             return 0;
         }
         return playbacks_.front()->positionTicks();
     }
 
     void setPositionTicks(std::int64_t ticks) noexcept {
+        if (!playbackContextMatches()) {
+            stop();
+            return;
+        }
         for (auto& playback : playbacks_) {
             playback->setPositionTicks(ticks);
         }
     }
 
 private:
+    bool playbackContextMatches() const noexcept {
+        if (!contextCaptured_
+                || projectState_.projectGeneration() != projectGeneration_
+                || projectState_.activeSequenceIndex() != sequenceIndex_) {
+            return false;
+        }
+        const auto& sequences = projectState_.project().sequences;
+        return sequenceIndex_ < sequences.size()
+                && sequences[sequenceIndex_].id == sequenceId_;
+    }
+
     MpcProjectState& projectState_;
-    audio::AudioEngine& audio_;
+    audio::AudioTriggerQueue& audioQueue_;
+    std::uint64_t projectGeneration_ = 0;
+    std::size_t sequenceIndex_ = 0;
+    std::string sequenceId_;
+    bool contextCaptured_ = false;
     std::vector<domain::Pattern> arrangementPatterns_;
     std::vector<std::unique_ptr<MpcSequencerPlayback>> playbacks_;
 };

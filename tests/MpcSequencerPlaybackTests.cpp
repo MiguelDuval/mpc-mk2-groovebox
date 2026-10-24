@@ -4,6 +4,51 @@
 #include <cassert>
 #include <cstdint>
 
+
+namespace {
+
+void testPlaybackSessionStopsBeforeDereferencingReplacedProject() {
+    mpc::MpcProjectState state;
+    mpc::audio::AudioTriggerQueue queue;
+    mpc::sequencer::MpcSequencePlaybackSession session(state, queue);
+
+    assert(session.start());
+    assert(session.isPlaying());
+    const auto initialGeneration = state.projectGeneration();
+    const auto initialSequenceId = state.activeSequence().id;
+
+    // Replace the Project with a copy preserving all persistent IDs. The
+    // session must notice the generation change before touching its old
+    // Sequence/Pattern/Program references.
+    assert(state.replaceProject(state.project()));
+    assert(state.projectGeneration() != initialGeneration);
+    assert(state.activeSequence().id == initialSequenceId);
+
+    const auto replaced = session.advance(960, 99u, 48000);
+    assert(replaced.scheduled == 0);
+    assert(replaced.queued == 0);
+    assert(!session.isPlaying());
+    assert(session.positionTicks() == 0);
+
+    // Restart captures the new generation. A sequence switch invalidates the
+    // session too, even though the Project generation itself remains unchanged.
+    assert(session.start());
+    assert(session.isPlaying());
+    const auto generationAfterRestart = state.projectGeneration();
+    assert(state.addSequence("Sequence 02"));
+    assert(state.projectGeneration() == generationAfterRestart);
+
+    const auto switched = session.advance(960, 99u, 48000);
+    assert(switched.scheduled == 0);
+    assert(switched.queued == 0);
+    assert(!session.isPlaying());
+    assert(session.positionTicks() == 0);
+    mpc::audio::AudioTriggerEvent stale{};
+    assert(!queue.tryDequeue(stale));
+}
+
+} // namespace
+
 int main() {
     mpc::domain::Sequence sequence;
     sequence.lengthTicks = 3840;
@@ -119,6 +164,8 @@ int main() {
     assert(ratchetEvents[2].offsetFrames == 6000);
     assert(ratchetEvents[3].offsetFrames == 9000);
     assert(!ratchetQueue.tryDequeue(ratchetEvents[0]));
+
+    testPlaybackSessionStopsBeforeDereferencingReplacedProject();
 
     return 0;
 }
