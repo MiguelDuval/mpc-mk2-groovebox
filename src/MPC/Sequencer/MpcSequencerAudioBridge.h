@@ -6,7 +6,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <span>
 
 namespace mpc::sequencer {
@@ -35,8 +34,8 @@ struct AudioBridgeResult final {
         const auto frameOffset = offsetFrames[index];
 
         if (frameOffset < 0
-                || event.velocity == 0
-                || event.padIndex > std::numeric_limits<std::uint8_t>::max()) {
+                || event.velocity == 0 || event.velocity > 127
+                || event.padIndex >= domain::kMaxProgramPads) {
             ++result.invalid;
             continue;
         }
@@ -71,8 +70,8 @@ struct AudioBridgeResult final {
                 ticksToFrames(event.offsetTicks, tempoBpm, sampleRate);
 
         if (!frameOffset.has_value()
-                || event.velocity == 0
-                || event.padIndex > std::numeric_limits<std::uint8_t>::max()) {
+                || event.velocity == 0 || event.velocity > 127
+                || event.padIndex >= domain::kMaxProgramPads) {
             ++result.invalid;
             continue;
         }
