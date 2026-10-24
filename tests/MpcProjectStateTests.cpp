@@ -2,6 +2,8 @@
 #include "MPC/Sequencer/MpcPatternOps.h"
 
 #include <cassert>
+#include <cstdint>
+#include <limits>
 
 int main() {
     mpc::MpcProjectState state;
@@ -82,6 +84,66 @@ int main() {
     assert(state.activeSequence().tracks[0].placements.front().lengthTicks == 23040);
     assert(state.activeSequence().loopStartTicks == 5760);
     assert(state.activeSequence().loopEndTicks == 17280);
+
+    // Imported projects can be near the int32 tick ceiling even though the UI
+    // normally creates much shorter sequences. Widen bar arithmetic before
+    // multiplication and keep the loop range representable.
+    mpc::MpcProjectState extremeLoopState;
+    auto& extremeLoopSequence = extremeLoopState.activeSequence();
+    extremeLoopSequence.lengthTicks = std::numeric_limits<std::int32_t>::max();
+    extremeLoopSequence.numerator = 1;
+    extremeLoopSequence.denominator = 32;
+    extremeLoopSequence.loopStartTicks = 0;
+    extremeLoopSequence.loopEndTicks = std::numeric_limits<std::int32_t>::max();
+    const auto extremeBars = mpc::sequencer::sequenceBars(extremeLoopSequence);
+    assert(extremeLoopState.setSequenceLoop(true, extremeBars, extremeBars));
+    assert(extremeLoopState.activeSequence().loopStartTicks >= 0);
+    assert(extremeLoopState.activeSequence().loopStartTicks
+            < extremeLoopState.activeSequence().loopEndTicks);
+    assert(extremeLoopState.activeSequence().loopEndTicks
+            == std::numeric_limits<std::int32_t>::max());
+
+    // A time-signature change on a maximal-length imported Sequence must not
+    // overflow when ceiling the old loop-end bar or calculating the new range.
+    auto& signatureSequence = extremeLoopState.activeSequence();
+    signatureSequence.loopStartTicks = std::numeric_limits<std::int32_t>::max() - 7;
+    signatureSequence.loopEndTicks = std::numeric_limits<std::int32_t>::max();
+    assert(extremeLoopState.setSequenceTimeSignature(1, 32));
+    assert(extremeLoopState.activeSequence().lengthTicks
+            == std::numeric_limits<std::int32_t>::max());
+    assert(extremeLoopState.activeSequence().loopStartTicks
+            < extremeLoopState.activeSequence().loopEndTicks);
+    assert(extremeLoopState.activeSequence().loopEndTicks
+            == std::numeric_limits<std::int32_t>::max());
+
+    // A malformed imported time signature makes barLengthTicks return zero,
+    // which used to fall back to one and overflow loopStartTicks + 1.
+    auto& invalidSignatureSequence = extremeLoopState.activeSequence();
+    invalidSignatureSequence.numerator = 0;
+    invalidSignatureSequence.denominator = 0;
+    invalidSignatureSequence.loopStartTicks = std::numeric_limits<std::int32_t>::max();
+    invalidSignatureSequence.loopEndTicks = std::numeric_limits<std::int32_t>::max();
+    assert(extremeLoopState.setSequenceTimeSignature(1, 32));
+    assert(extremeLoopState.activeSequence().numerator == 1);
+    assert(extremeLoopState.activeSequence().denominator == 32);
+    assert(extremeLoopState.activeSequence().loopStartTicks >= 0);
+    assert(extremeLoopState.activeSequence().loopStartTicks
+            < extremeLoopState.activeSequence().loopEndTicks);
+    assert(extremeLoopState.activeSequence().loopEndTicks
+            <= extremeLoopState.activeSequence().lengthTicks);
+
+    // An imported non-full loop can already have start >= end while both
+    // positions fit the resized Sequence. Resizing must restore a valid range.
+    mpc::MpcProjectState malformedLoopState;
+    auto& malformedLoopSequence = malformedLoopState.activeSequence();
+    malformedLoopSequence.loopStartTicks = 10000;
+    malformedLoopSequence.loopEndTicks = 9000;
+    assert(malformedLoopState.setSequenceBars(3));
+    assert(malformedLoopState.activeSequence().loopStartTicks == 10000);
+    assert(malformedLoopState.activeSequence().loopStartTicks
+            < malformedLoopState.activeSequence().loopEndTicks);
+    assert(malformedLoopState.activeSequence().loopEndTicks
+            <= malformedLoopState.activeSequence().lengthTicks);
 
     assert(state.setSequenceQuantizeGrid(240));
     assert(state.activeSequence().quantizeGridTicks == 240);
