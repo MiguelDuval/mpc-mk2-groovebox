@@ -88,6 +88,42 @@ void testFinishClosesHeldNote() {
     assert(track.patterns.front().notes.front().durationTicks == 120);
 }
 
+void testProjectReplacementAbortsEvenWhenStableIdsMatch() {
+    mpc::MpcProjectState state;
+    state.activeSequence().tracks[0].recordArmed = true;
+
+    const auto originalProjectId = state.project().id;
+    const auto originalSequenceId = state.activeSequence().id;
+    const auto originalGeneration = state.projectGeneration();
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    assert(queue.tryEnqueue({100, 0, 0, 100, 1}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(recorder.active());
+
+    // Opening a document can reuse all serialized IDs; the in-memory Project
+    // generation still changes and invalidates the held press.
+    assert(state.replaceProject(state.project()));
+    assert(state.project().id == originalProjectId);
+    assert(state.activeSequence().id == originalSequenceId);
+    assert(state.projectGeneration() != originalGeneration);
+    assert(state.activeSequence().tracks[0].recordArmed);
+
+    assert(queue.tryEnqueue({220, 0, 0, 0, 0}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(!recorder.active());
+    assert(state.activeSequence().tracks[0].patterns.front().notes.empty());
+
+    mpc::sequencer::SequenceRecordEvent stale{};
+    assert(!queue.tryDequeue(stale));
+    assert(recorder.finish(state, queue, 480) == 0);
+    assert(state.activeSequence().tracks[0].patterns.front().notes.empty());
+}
+
 void testTimingCorrectCanBeDisabled() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -317,6 +353,7 @@ int main() {
     testRejectsMalformedQueuedMidiValues();
     testSequenceSwitchAbortsRecordingWithoutCrossSequenceNotes();
     testNonActiveArmedTrackUsesItsOwnDrumProgram();
+    testProjectReplacementAbortsEvenWhenStableIdsMatch();
     testTimingCorrectCanBeDisabled();
     return 0;
 }
