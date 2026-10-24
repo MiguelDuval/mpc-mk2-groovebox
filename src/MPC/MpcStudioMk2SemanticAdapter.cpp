@@ -52,9 +52,22 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const I
 }
 PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noexcept {
     PadRoutingResult r;
-    r.velocity=e.value;
-    r.targetPadIndex=e.padIndex;
-    if(e.type!=InputEventType::PadNote) return r;
+    if (e.type != InputEventType::PadNote) {
+        r.velocity = e.value;
+        r.targetPadIndex = e.padIndex;
+        return r;
+    }
+
+    // This adapter is also a public boundary for non-decoder/synthetic input.
+    // Reject malformed events before they update gesture state or reach the
+    // Copy/Delete bit masks (where an unchecked pad index is an invalid shift).
+    if (e.padIndex >= 16 || e.value > 127 || (e.pressed && e.value == 0)) {
+        r.consumed = true;
+        return r;
+    }
+
+    r.velocity = e.value;
+    r.targetPadIndex = e.padIndex;
     if(!e.pressed){
         if(copyMode_ != CopyMode::None){
             r.consumed=true;
