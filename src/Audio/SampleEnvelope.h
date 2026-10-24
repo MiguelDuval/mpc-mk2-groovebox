@@ -46,7 +46,10 @@ inline float sampleEnvelopeGain(
         std::size_t totalFrames,
         int sampleRate,
         const SampleEnvelopeParameters& parameters) noexcept {
-    if (totalFrames == 0 || sampleRate <= 0) {
+    // The lifetime contains frames [0, totalFrames). Beyond that window
+    // the envelope is finished even when releaseMs is zero; otherwise a
+    // zero-release voice can retain sustain gain in direct/helper callers.
+    if (totalFrames == 0 || ageFrames >= totalFrames || sampleRate <= 0) {
         return 0.0f;
     }
 
