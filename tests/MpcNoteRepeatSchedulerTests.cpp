@@ -20,6 +20,14 @@ int main() {
     // Loop-relative alignment must work when the loop does not start at zero.
     assert(ticksToNextBoundary(600, 480, 2400, 240) == 120);
     assert(ticksToNextBoundary(480, 480, 2400, 240) == 240);
+    // Extreme transport positions must wrap without signed overflow.
+    assert(ticksToNextBoundary(
+                   std::numeric_limits<std::int64_t>::min(), 480, 2400, 240)
+            == 128);
+    assert(ticksToNextBoundary(
+                   std::numeric_limits<std::int64_t>::max(), 480, 2400, 240)
+            == 113);
+    assert(ticksToNextBoundary(0, -1, 2400, 240) == 240);
 
     // Repeat timing also supports MPC-style triplet divisions.
     assert(repeatRateTicksForIndex(0) == 960);
