@@ -14,6 +14,13 @@ struct AudioTriggerEvent final {
     std::int32_t offsetFrames = 0;
 };
 
+// AudioTriggerQueue carries note-on events, not note-off/velocity-zero
+// messages. Keep the public audio-trigger boundary inside MIDI's 7-bit range.
+[[nodiscard]] inline constexpr bool isValidAudioTriggerVelocity(
+        std::uint8_t velocity) noexcept {
+    return velocity > 0 && velocity <= 127;
+}
+
 template <typename T, std::size_t Capacity>
 class BoundedMpmcQueue final {
     static_assert(Capacity >= 2 && (Capacity & (Capacity - 1)) == 0,

@@ -7,6 +7,13 @@
 #include <vector>
 
 int main() {
+    assert(!mpc::audio::isValidAudioTriggerVelocity(0));
+    assert(mpc::audio::isValidAudioTriggerVelocity(1));
+    assert(mpc::audio::isValidAudioTriggerVelocity(64));
+    assert(mpc::audio::isValidAudioTriggerVelocity(127));
+    assert(!mpc::audio::isValidAudioTriggerVelocity(128));
+    assert(!mpc::audio::isValidAudioTriggerVelocity(255));
+
     mpc::audio::AudioTriggerQueue queue;
 
     mpc::audio::AudioTriggerEvent initiallyEmpty;
