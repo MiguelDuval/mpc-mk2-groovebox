@@ -12,23 +12,38 @@
 - Project Save As/mutate/Open, changed overwrite digest, force-stop/reopen, cancellation invariance, malformed-load preservation, placement-free v1 canonical-state equality, A/B document isolation, New Project and recovery-export round trips passed.
 - Keep `cancel-in-progress: false`. Physical MPC Studio MkII validation remains a separate pending hardware gate. A docs-only follow-up commit still needs its own exact-SHA full workflow.
 
-### Next isolated engineering slice — Project provider output-open classification
+### Project SAF failure phases — FULL CI PASSED ON THE CODE AND DOCS HEADS
 
-- PR #30 head `eeef2a864126bca34e08410b063a9f1f3ec36287` passed Android Build #3129 / run [40083641707](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40083641707), but its base metadata still points to `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`, behind the live primary head. Refresh before integration; no automatic merge or retarget.
-- Follow-up PR #57 (stacked on #30) splits provider output-open denial from failures after an OutputStream has been returned. Direct SAVE should only latch on permission-denial evidence in the output-open phase. New transaction/policy tests cover primary and rollback open denials, stream-write permission failures and generic open timeouts.
-- Build #3155 / run [40100283734](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40100283734) is pending at focused Android unit policy tests (step 14) on exact SHA `2dd936c3d9d26ace0d198f6cefabe4387d712318`. Do not call this change accepted before the exact-SHA full workflow and evidence upload pass.
+- PR #30 remains OPEN on fix/project-provider-failure-phases. Code merge commit 2b9ee07a0ab45f2a526e24f7c5dfc4f9c7c2b862 passed full Android Build #3166 / [run 40113958801](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40113958801). The docs head db0d1f64f9a7201d97423d9f67a6401c01f5aace also passed full Build #3174 / [run 40123853966](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40123853966), including emulator smoke and evidence upload.
+- This refresh itself will create a newer PR #30 head and must pass its own exact-SHA workflow before that new head is called green.
+- Preserve the SAF classification rule: only a demonstrated permission denial while opening the output stream may latch direct SAVE as unavailable. Write/flush/close failures after a successful open must not be reclassified as open denials; rollback bytes are verified by actual read-back. No assertions may be weakened.
 
-### Parallel Browser Options blocker
+### Project SAF output-open classification — PR #57 STACK / FULL CI PASSED ON CURRENT STACK HEAD
 
-- PR #56 / Build #3154 / run [40099462547](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40099462547) failed at emulator smoke step 52 on SHA `d6a06ba8186d78eeaa03761e429c6505bc40fb85`.
-- The Show file size preference audit passed, but the immediately following Browser storage-picker action was observed at `w=0,h=0,vis=0`. Likely cause is checking live bounds in the same UI callback after the preference rerender/dialog close, before the parent layout remeasures. Preserve strict assertions; defer to the next pre-draw / existing measured-view continuation. No timeout increase and no duplicate smoke test.
+- PR #57 remains OPEN and stacked on PR #30. Current stack head 40532b213e29dd57e235e9eeb3e8ff281d1c6fab targets PR #30 docs head db0d1f64f9a7201d97423d9f67a6401c01f5aace; Android Build #3175 / [run 40124007948](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40124007948) passed full emulator smoke and evidence upload on that exact SHA.
+- This docs refresh will create a newer base head. After that commit exists, synchronize PR #57 with a normal two-parent merge commit, preserving both histories and production code, then require full CI on the new exact PR #57 head.
+- Physical MPC Studio MkII testing remains a separate hardware gate. Do not merge either PR without authorization.
+
+### Browser Show file size — RESOLVED / FULL CI PASSED
+
+- PR #56 head `8a672ba9fc0ec44bd6b71f088506a35229e958b0` passed Android Build #3162 / run [40108676401](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40108676401), including native/JVM checks, APK assembly, the complete emulator smoke and visual-evidence upload.
+- The storage-picker action is re-found after a real Android pre-draw/layout pass, then strict visibility/clickability/size checks remain active. No timeout increase or skipped assertion was used.
+- APK artifact `12566365052`, SHA-256 `7ec98570d619b8fce003e81a00675189785ed5b44ec5436ae455f600251b8416`; evidence artifact `12566338082`, SHA-256 `5fe76db0547faea93bea7c88bf57e92a34804ef12b106e133389e7e5c68c854f` (87 PNG, 97 XML, 5 text/log files).
+
+### Low-pass filter state — RESOLVED / FULL CI PASSED
+
+- PR #55 head `d4c9324270548ef47b132fa9b655e9a0aadc2717` passed Android Build #3158 / run [40108527287](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40108527287), including native/JVM checks, APK assembly, complete emulator smoke and visual-evidence upload.
+- Regression coverage resets filter state between the bypass-transition assertion and the independent impulse/decay assertion; no production DSP behavior or assertion tolerance was weakened.
+- APK artifact `12565686895`, SHA-256 `634ce51277ae68bb316fd752cb5acb6c8f3c7a92d9edbd1848dc9e2d17416ddb`; evidence artifact `12566003588`, SHA-256 `1142257533d3b39fd139dc61eb0e6d5efa3601eb28e5859548bcf8684669af10` (87 PNG, 97 XML, 5 text/log files).
 
 ### Next acceptance order
 
-1. Let PR #57's exact-SHA Build #3155 finish; inspect focused unit results, the full emulator workflow and artifacts.
-2. Resolve PR #56 with a layout-measurement continuation on its owning branch, then require exact-SHA CI.
-3. Refresh PR #30's live base/diff before considering integration. Do not merge/retarget automatically.
-4. Keep physical MPC Studio MkII validation separate from emulator acceptance.
+1. Documentation synchronization: this roadmap/session refresh creates a new PR #30 head; run full exact-SHA CI on it, then re-sync PR #57 with a normal two-parent merge commit and run full exact-SHA CI on that stack head. Do not report either new head green until emulator smoke and evidence upload finish.
+2. Project persistence: PR #49 head 34f9e50016a720cae4f44933a0405609a4346be0 passed Build #3171 / [run 40123460041](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40123460041). PR #51 head 302f5e78e626b9e7006c26adf7ae5fba159d4848 passed Build #3172 / [run 40123548876](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40123548876). The stacked PR #51 preserves both field-validation tests and the primary-side all-or-nothing load regressions.
+3. Audio boundary: PR #54 head 4b81293521965212a145e180237f01092ed6a7e6 passed Build #3173 / [run 40123724866](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40123724866).
+4. Input, recorder and event boundaries — all exact-head builds passed: PR #53 77737cd95f27bbfbf41d32564cb34447470af1cd / Build #3177; PR #46 e011e0edfcf34d48eda6480157b36f4a074d79e1 / #3178; PR #43 a08f89b1e4061c5eba9847de3aa2ee1a33d6af0a / #3179; PR #50 8da23e1770b35c018e1f4617b3ab26155e45ad70 / #3180; PR #44 3834f697c793ab86199b9cc607ca6cd42af84013 / #3181; PR #42 4707d108f793e462a635f97379dcce6bfafacac9 / #3182; PR #41 cf74677e60144c5bc584aefd5a4f848e6d19f005 / #3183; PR #40 4f46254ab43d0df140e50578f658fd4565e8010b / #3184; PR #39 2695ce1daa6ccefb92bd5685293a68e5e2513503 / #3185; PR #38 1a9ad9c6e71dc2066b342bd052ad9601e377a62d / #3186. All corresponding workflows completed successfully on the exact heads listed.
+5. Sequence and DSP arithmetic: PR #36 268fd0f0cbc97f1178b98aea1e0f528d24aeee52 passed Build #3187; PR #37 latest head a6078eb8527c0504479385b11bbd017b38dab717 passed Build #3193 / [run 40133085489](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40133085489). Earlier Build #3188 used a superseded head and failed at a transient empty DocumentsUI accessibility hierarchy; latest head adds a bounded fresh-tree retry and full CI passed. PR #45 86795eb2d2472953fca7079a51d9b6d52c1dd915 passed #3189; PR #52 682114d42e0463d86192c613be4ddaa229428623 passed #3190; PR #55 0666bfa0ea721cef93ec8b54891eefeffa083087 passed #3191; PR #48 latest head 6737cea7f836650c4a7a447bc8f5d144dec49399 passed #3192, including the malformed-signature/INT32-boundary regression.
+6. Do not merge automatically. Keep main untouched; do not rewrite history or disable cancel-in-progress: false. Hardware acceptance using a physical MPC Studio MkII remains separate from emulator evidence.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

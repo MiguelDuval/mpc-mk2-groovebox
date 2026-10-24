@@ -52,6 +52,7 @@ import android.widget.ArrayAdapter;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -104,6 +105,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final String PREF_PENDING_FAVORITE_SLOT = "pending_favorite_slot";
     private static final int MAX_SAMPLE_BYTES = 32 * 1024 * 1024;
     private static final String SMOKE_MODE_EXTRA = "mpc.groovebox.smoke.mode";
+    private static final String PROJECT_URI_GRANT_REVOCATION_PREFERENCES =
+            "mpc_project_uri_grant_revocation_smoke";
+    private static final String PREF_REVOKED_PROJECT_URI = "revoked_project_uri";
+    private static final String PREF_REVOKED_PROJECT_NAME = "revoked_project_name";
+    private static final String PREF_REVOKED_PROJECT_STATE_SHA = "revoked_project_state_sha";
+    private static final String REVOKED_PROJECT_SNAPSHOT_FILENAME =
+            "mpc-uri-revocation-active-state.mpcproj";
     private static final boolean NATIVE_LIBRARY_LOADED;
     private static final String NATIVE_LIBRARY_ERROR;
 
@@ -433,6 +441,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private boolean projectPersistenceSmokeMode;
     private boolean projectRecoveryExportSmokeMode;
     private boolean projectPersistenceFixtureMode;
+    private boolean projectUriGrantRevocationSmokeMode;
+    private boolean projectUriRevokedProbeMode;
+    private boolean projectProviderWriteDenialSmokeMode;
     private boolean uiAuditAwaitingBrowserStoragePickerResult;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
@@ -632,11 +643,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         uiAuditSmokeMode = "ui-audit".equals(smokeMode);
         projectRecoveryExportSmokeMode = "project-recovery-export".equals(smokeMode)
                 && getPackageName().endsWith(".debug");
+        projectUriGrantRevocationSmokeMode = "project-uri-grant-revocation".equals(smokeMode)
+                && getPackageName().endsWith(".debug");
+        projectUriRevokedProbeMode = "project-uri-revoked-probe".equals(smokeMode)
+                && getPackageName().endsWith(".debug");
+        projectProviderWriteDenialSmokeMode = "project-provider-write-denial".equals(smokeMode)
+                && getPackageName().endsWith(".debug");
         projectPersistenceSmokeMode = ("project-persistence".equals(smokeMode)
                 || "project-persistence-view-tree".equals(smokeMode)
-                || projectRecoveryExportSmokeMode)
+                || projectRecoveryExportSmokeMode
+                || projectUriGrantRevocationSmokeMode
+                || projectUriRevokedProbeMode
+                || projectProviderWriteDenialSmokeMode)
                 && getPackageName().endsWith(".debug");
-        projectPersistenceFixtureMode = "project-persistence".equals(smokeMode)
+        projectPersistenceFixtureMode = ("project-persistence".equals(smokeMode)
+                || projectUriGrantRevocationSmokeMode
+                || projectUriRevokedProbeMode)
                 && getPackageName().endsWith(".debug");
 
         try {
@@ -764,6 +786,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 refreshSequenceControls();
                                 refreshMainTrackQuickSample();
                             }
+                            if (projectProviderWriteDenialSmokeMode) {
+                                Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-enter");
+                                prepareProjectProviderWriteDenialSmoke();
+                                Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE startup-return");
+                            }
                             if ("MAIN".equals(currentPage)) {
                                 // Main was built while native state was still loading.
                                 // Re-hydrate Track/Program/Sequence fields from the live domain
@@ -789,8 +816,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         + " stateSha256=" + projectBytesSha256(snapshot) + " bytes=" + snapshot.length);
                                 showProjectPage();
                             }
+                            if (projectUriGrantRevocationSmokeMode) {
+                                currentProjectName = nativeProjectGetName();
+                                showProjectPage();
+                            } else if (projectUriRevokedProbeMode) {
+                                restoreProjectUriRevokedProbeState();
+                                showProjectPage();
+                            }
                             updateMpcShellState();
                             Log.i(TAG, "STARTUP_COMPLETE");
+                            if (projectUriRevokedProbeMode && currentProjectUri != null) {
+                                probeRevokedProjectUriReadForSmoke();
+                            }
                             // The initial Main pre-draw can happen while native startup is
                             // still running. Publish the acceptance tree only after the
                             // workspace is fully ready, and only for the current live page.
@@ -802,12 +839,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 scheduleUiAuditAfterFirstLayout();
                             }
                         } catch (Throwable error) {
-                            Log.e(TAG, "UI_STARTUP_FINALIZATION_FAILED", error);
+                            Log.e(TAG, "UI_STARTUP_FINALIZATION_FAILED exception=" + error, error);
                             showStartupFailure("UI startup finalization failed", error);
                         }
                     });
                 } catch (Throwable error) {
-                    Log.e(TAG, "STARTUP_NATIVE_FAILED", error);
+                    Log.e(TAG, "STARTUP_NATIVE_FAILED exception=" + error, error);
                     runOnUiThread(() -> showStartupFailure("Native startup failed", error));
                 }
             });
@@ -10719,6 +10756,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             page.addView(recoveryStatus, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
         }
+        if (projectUriGrantRevocationSmokeMode) {
+            Button revokeGrant = new Button(this);
+            revokeGrant.setText("TEST • REVOKE PERSISTED URI GRANT");
+            revokeGrant.setTextSize(10);
+            revokeGrant.setContentDescription("MPC Project test revoke persisted URI grant");
+            revokeGrant.setEnabled(currentProjectUri != null && canInvokeProjectSave());
+            revokeGrant.setOnClickListener(v -> revokePersistedProjectUriGrantForSmoke());
+            page.addView(revokeGrant, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
+        }
         content.addView(page);
         updateModeRailSelection();
         notifyMpcWorkspaceAccessibilityChanged();
@@ -11978,23 +12025,414 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         });
     }
 
+    private boolean isControlledProjectProviderWriteDenialUri(Uri uri) {
+        // This debug-only provider runs under our own UID, so Android does not
+        // expose a cross-UID URI grant through checkUriPermission. Its real
+        // openInputStream read-back is verified before direct SAVE is enabled;
+        // the provider itself rejects the first real output open.
+        return projectProviderWriteDenialSmokeMode
+                && uri != null
+                && (getPackageName() + ".projectwritefixture").equals(uri.getAuthority());
+    }
+
     private boolean canInvokeProjectSave() {
         if (currentProjectUri == null) {
             // With no linked URI, SAVE opens Save As; do not disable that entry point.
             return true;
         }
-        final boolean liveWriteGrant = checkUriPermission(
-                currentProjectUri,
-                android.os.Process.myPid(),
-                android.os.Process.myUid(),
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED;
+        final boolean liveWriteGrant = isControlledProjectProviderWriteDenialUri(currentProjectUri)
+                || checkUriPermission(
+                        currentProjectUri,
+                        android.os.Process.myPid(),
+                        android.os.Process.myUid(),
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED;
         return MpcProjectUriGrantPolicy.directSaveActionAvailable(
                 true, liveWriteGrant, currentProjectWritePreviouslyRejected);
     }
 
+    private void restoreProjectUriRevokedProbeState() {
+        final android.content.SharedPreferences grantSmoke =
+                getSharedPreferences(PROJECT_URI_GRANT_REVOCATION_PREFERENCES, MODE_PRIVATE);
+        final String revokedUri = grantSmoke.getString(PREF_REVOKED_PROJECT_URI, null);
+        final String expectedSha = grantSmoke.getString(PREF_REVOKED_PROJECT_STATE_SHA, null);
+        if (revokedUri == null || revokedUri.trim().isEmpty()
+                || expectedSha == null || !expectedSha.matches("[0-9a-f]{64}")) {
+            throw new IllegalStateException("Revoked-URI probe fixture is missing URI or canonical-state SHA");
+        }
+
+        final File snapshotFile = new File(getFilesDir(), REVOKED_PROJECT_SNAPSHOT_FILENAME);
+        final byte[] snapshot;
+        try (InputStream input = new FileInputStream(snapshotFile);
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            final byte[] buffer = new byte[16 * 1024];
+            int total = 0;
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                total += count;
+                if (total > MAX_PROJECT_FILE_BYTES) {
+                    throw new IOException("Revoked-URI test snapshot exceeds Project size limit");
+                }
+                output.write(buffer, 0, count);
+            }
+            snapshot = output.toByteArray();
+        } catch (IOException error) {
+            throw new IllegalStateException("Could not restore pre-revocation Project snapshot", error);
+        }
+        if (!expectedSha.equals(projectBytesSha256(snapshot))) {
+            throw new IllegalStateException("Private pre-revocation Project snapshot SHA mismatch");
+        }
+
+        final String loaded = nativeProjectLoad(snapshot);
+        if (loaded == null || !loaded.startsWith("PROJECT_LOADED")) {
+            throw new IllegalStateException("Could not restore active Project for URI-revocation probe: " + loaded);
+        }
+        final String restoredSha = currentProjectStateSha256();
+        if (!expectedSha.equals(restoredSha)) {
+            throw new IllegalStateException("Restored Project canonical SHA mismatch: expected="
+                    + expectedSha + " actual=" + restoredSha);
+        }
+
+        currentProjectUri = Uri.parse(revokedUri);
+        currentProjectWritePreviouslyRejected = false;
+        currentProjectName = nativeProjectGetName();
+        Log.i(TAG, "PROJECT_URI_REVOKED_PROBE_STATE_RESTORED"
+                + " stateSha256=" + restoredSha + " snapshotBytes=" + snapshot.length
+                + " uri=" + currentProjectUri);
+    }
+
+    /** Seed a debug-only provider which denies one real ContentResolver output open. */
+    private void prepareProjectProviderWriteDenialSmoke() {
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE snapshot-begin");
+        final byte[] snapshot = nativeProjectSerialize();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE snapshot-result"
+                + " bytes=" + (snapshot == null ? -1 : snapshot.length));
+        if (snapshot == null || snapshot.length == 0 || snapshot.length > MAX_PROJECT_FILE_BYTES) {
+            throw new IllegalStateException("Project snapshot unavailable for provider-write-denial fixture");
+        }
+        final String stateSha = projectBytesSha256(snapshot);
+        if (!stateSha.equals(currentProjectStateSha256())) {
+            throw new IllegalStateException("Provider fixture snapshot differs from active canonical state");
+        }
+        final Uri uri = Uri.parse("content://" + getPackageName()
+                + ".projectwritefixture/project/current");
+        final Bundle seedRequest = new Bundle();
+        seedRequest.putByteArray("snapshot_bytes", snapshot);
+        seedRequest.putInt("deny_output_attempt", 1);
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE provider-seed-call-begin");
+        final Bundle seeded = getContentResolver().call(uri, "seed_document", null, seedRequest);
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE provider-seed-call-return"
+                + " resultPresent=" + (seeded != null)
+                + " providerShaMatches=" + (seeded != null && stateSha.equals(seeded.getString("sha256"))));
+        if (seeded == null || !uri.toString().equals(seeded.getString("uri"))
+                || !stateSha.equals(seeded.getString("sha256"))) {
+            throw new IllegalStateException("Controlled provider did not seed exact Project bytes");
+        }
+        currentProjectUri = uri;
+        currentProjectWritePreviouslyRejected = false;
+        currentProjectName = nativeProjectGetName();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE readback-begin");
+        final byte[] providerReadBack;
+        try (InputStream input = getContentResolver().openInputStream(uri);
+                ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
+            if (input == null) {
+                throw new IOException("Controlled provider returned no input stream");
+            }
+            final byte[] buffer = new byte[8192];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                bytes.write(buffer, 0, count);
+            }
+            providerReadBack = bytes.toByteArray();
+        } catch (IOException error) {
+            throw new IllegalStateException("Controlled provider did not permit real document read", error);
+        }
+        final String providerReadSha = projectBytesSha256(providerReadBack);
+        final boolean readVerified = stateSha.equals(providerReadSha);
+        final boolean directSaveAvailable = canInvokeProjectSave();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE access-result"
+                + " readAccess=" + (readVerified ? "VERIFIED" : "MISMATCH")
+                + " writeAccess=" + (directSaveAvailable ? "ARMED" : "UNAVAILABLE")
+                + " directSave=" + directSaveAvailable
+                + " readbackSha256=" + providerReadSha);
+        if (!readVerified || !directSaveAvailable) {
+            throw new IllegalStateException("Controlled provider URI could not verify read and expose initial direct SAVE");
+        }
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE project-render-begin");
+        showProjectPage();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE project-render-return");
+        updateMpcShellState();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE shell-state-return");
+        refreshMpcFunctionBar();
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PHASE function-bar-return");
+        Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_FIXTURE_READY"
+                + " stateSha256=" + stateSha
+                + " providerSha256=" + seeded.getString("sha256")
+                + " readAccess=" + (readVerified ? "VERIFIED" : "MISMATCH")
+                + " writeAccess=" + (directSaveAvailable ? "ARMED" : "UNAVAILABLE")
+                + " directSave=" + directSaveAvailable
+                + " readbackSha256=" + providerReadSha
+                + " outputDenyAttempt=" + seeded.getInt("deny_output_attempt", -1)
+                + " uri=" + uri);
+    }
+
+    /**
+     * Debug-emulator fixture only: revoke the actual persisted SAF modes for the
+     * currently opened DocumentsUI URI, then relaunch in a fresh Activity process
+     * before probing it. This avoids confusing temporary Activity grants with a
+     * persisted grant revocation.
+     */
+    private void revokePersistedProjectUriGrantForSmoke() {
+        if (!projectUriGrantRevocationSmokeMode || currentProjectUri == null) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=not-in-debug-revocation-mode-or-no-linked-document");
+            return;
+        }
+        final Uri target = currentProjectUri;
+        final boolean readPermissionBefore = checkUriPermission(
+                target, android.os.Process.myPid(), android.os.Process.myUid(),
+                Intent.FLAG_GRANT_READ_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED;
+        final boolean writePermissionBefore = checkUriPermission(
+                target, android.os.Process.myPid(), android.os.Process.myUid(),
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED;
+        if (!readPermissionBefore || !writePermissionBefore || !canInvokeProjectSave()) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=linked-document-was-not-direct-save-readable-and-writable"
+                    + " readPermissionBefore=" + (readPermissionBefore ? "GRANTED" : "DENIED")
+                    + " writePermissionBefore=" + (writePermissionBefore ? "GRANTED" : "DENIED"));
+            setBottomStatus("TEST REVOKE FAILED • document was not readable and writable before revocation");
+            return;
+        }
+
+        int persistedModes = 0;
+        for (android.content.UriPermission permission
+                : getContentResolver().getPersistedUriPermissions()) {
+            if (!target.equals(permission.getUri())) continue;
+            if (permission.isReadPermission()) {
+                persistedModes |= Intent.FLAG_GRANT_READ_URI_PERMISSION;
+            }
+            if (permission.isWritePermission()) {
+                persistedModes |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+            }
+        }
+        final int requiredPersistedModes = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+        if ((persistedModes & requiredPersistedModes) != requiredPersistedModes) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=no-persisted-read-and-write-grant-for-linked-uri"
+                    + " persistedModes=" + persistedModes);
+            setBottomStatus("TEST REVOKE FAILED • no persisted read/write grant for this URI");
+            return;
+        }
+
+        final byte[] stateSnapshot = nativeProjectSerialize();
+        if (stateSnapshot == null || stateSnapshot.length == 0
+                || stateSnapshot.length > MAX_PROJECT_FILE_BYTES) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=active-state-snapshot-unavailable");
+            setBottomStatus("TEST REVOKE FAILED • active-state snapshot unavailable");
+            return;
+        }
+        final String stateSha = projectBytesSha256(stateSnapshot);
+        if (!stateSha.equals(currentProjectStateSha256())) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=active-state-snapshot-did-not-match"
+                    + " snapshotSha256=" + stateSha
+                    + " activeSha256=" + currentProjectStateSha256());
+            setBottomStatus("TEST REVOKE FAILED • active-state snapshot mismatch");
+            return;
+        }
+        final File snapshotFile = new File(getFilesDir(), REVOKED_PROJECT_SNAPSHOT_FILENAME);
+        try (FileOutputStream output = new FileOutputStream(snapshotFile, false)) {
+            output.write(stateSnapshot);
+            output.flush();
+            output.getFD().sync();
+        } catch (IOException error) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=could-not-preserve-active-state-snapshot", error);
+            setBottomStatus("TEST REVOKE FAILED • could not preserve active state");
+            return;
+        }
+
+        final android.content.SharedPreferences grantSmoke =
+                getSharedPreferences(PROJECT_URI_GRANT_REVOCATION_PREFERENCES, MODE_PRIVATE);
+        final boolean fixtureSaved = grantSmoke.edit()
+                .putString(PREF_REVOKED_PROJECT_URI, target.toString())
+                .putString(PREF_REVOKED_PROJECT_NAME, currentProjectName)
+                .putString(PREF_REVOKED_PROJECT_STATE_SHA, stateSha)
+                .commit();
+        if (!fixtureSaved) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=could-not-persist-probe-uri-or-state");
+            setBottomStatus("TEST REVOKE FAILED • could not preserve test URI/state");
+            return;
+        }
+
+        try {
+            // Pass exactly the read/write modes which the OS says are persisted.
+            getContentResolver().releasePersistableUriPermission(target, persistedModes);
+        } catch (SecurityException error) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=release-denied"
+                    + " modes=" + persistedModes, error);
+            setBottomStatus("TEST REVOKE FAILED • " + error.getClass().getSimpleName());
+            return;
+        }
+
+        boolean remainingPersisted = false;
+        for (android.content.UriPermission permission
+                : getContentResolver().getPersistedUriPermissions()) {
+            if (target.equals(permission.getUri())
+                    && (permission.isReadPermission() || permission.isWritePermission())) {
+                remainingPersisted = true;
+                break;
+            }
+        }
+        final String afterReleaseStateSha = currentProjectStateSha256();
+        if (!stateSha.equals(afterReleaseStateSha)) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=active-state-changed-after-release"
+                    + " expectedSha256=" + stateSha + " actualSha256=" + afterReleaseStateSha);
+            setBottomStatus("TEST REVOKE FAILED • active Project state changed");
+            return;
+        }
+        if (remainingPersisted) {
+            Log.e(TAG, "PROJECT_URI_GRANT_REVOKE_FAILED reason=persisted-mode-remains"
+                    + " releasedModes=" + persistedModes + " stateSha256=" + stateSha);
+            setBottomStatus("TEST REVOKE FAILED • a persisted URI mode remains");
+            return;
+        }
+        Log.i(TAG, "PROJECT_URI_GRANT_REVOKE_COMPLETE releasedModes=" + persistedModes
+                + " readPermissionBefore=GRANTED writePermissionBefore=GRANTED remainingPersisted=false"
+                + " uri=" + target + " stateSha256=" + stateSha);
+        setBottomStatus("TEST URI GRANT REVOKED • restart required to clear temporary access");
+    }
+
+    /** Probe the real resolver only after restart has removed temporary picker grants. */
+    private void probeRevokedProjectUriReadForSmoke() {
+        if (!projectUriRevokedProbeMode || currentProjectUri == null) return;
+        final Uri target = currentProjectUri;
+        final int readCheck = checkUriPermission(
+                target, android.os.Process.myPid(), android.os.Process.myUid(),
+                Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        final int writeCheck = checkUriPermission(
+                target, android.os.Process.myPid(), android.os.Process.myUid(),
+                Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        boolean persistedGrant = false;
+        for (android.content.UriPermission permission
+                : getContentResolver().getPersistedUriPermissions()) {
+            if (target.equals(permission.getUri())
+                    && (permission.isReadPermission() || permission.isWritePermission())) {
+                persistedGrant = true;
+                break;
+            }
+        }
+        final String beforeSha = currentProjectStateSha256();
+        final int readGrantCheck = readCheck;
+        final int writeGrantCheck = writeCheck;
+        final boolean persistedGrantPresent = persistedGrant;
+        final boolean probeMayOpenProvider =
+                readGrantCheck != PackageManager.PERMISSION_GRANTED
+                        && writeGrantCheck != PackageManager.PERMISSION_GRANTED
+                        && !persistedGrantPresent;
+        projectIoExecutor.execute(() -> {
+            String readOutcome = "SKIPPED_UNEXPECTED_GRANT_STATE";
+            String readDetail = "";
+            if (probeMayOpenProvider) {
+                readOutcome = "UNEXPECTED_ACCESS";
+                try (InputStream input = getContentResolver().openInputStream(target)) {
+                    if (input == null) readOutcome = "NULL_INPUT_STREAM";
+                } catch (SecurityException error) {
+                    readOutcome = "SecurityException";
+                    readDetail = String.valueOf(error.getMessage());
+                } catch (IOException error) {
+                    readOutcome = "IOException";
+                    readDetail = String.valueOf(error.getMessage());
+                }
+            } else {
+                readDetail = "Precondition failed; no provider stream opened because URI access may remain";
+            }
+
+            // The caller supplies a disposable Save As copy in the debug smoke.
+            // Even this disposable output probe must not run unless both OS URI
+            // checks deny access and every persisted mode is gone: openOutputStream
+            // with "wt" can truncate the target as soon as it opens.
+            String writeOutcome = "SKIPPED_UNEXPECTED_GRANT_STATE";
+            String writeDetail = "";
+            if (probeMayOpenProvider) {
+                writeOutcome = "UNEXPECTED_ACCESS";
+                try (OutputStream output =
+                             getContentResolver().openOutputStream(target, "wt")) {
+                    if (output == null) writeOutcome = "NULL_OUTPUT_STREAM";
+                } catch (SecurityException error) {
+                    writeOutcome = "SecurityException";
+                    writeDetail = String.valueOf(error.getMessage());
+                } catch (IOException error) {
+                    writeOutcome = "IOException";
+                    writeDetail = String.valueOf(error.getMessage());
+                }
+            } else {
+                writeDetail = "Precondition failed; output stream was not opened";
+            }
+
+            final String readResult = readOutcome;
+            final String readError = readDetail;
+            final String writeResult = writeOutcome;
+            final String writeError = writeDetail;
+            runOnUiThread(() -> {
+                final String afterSha = currentProjectStateSha256();
+                final boolean readPermissionDenied =
+                        readGrantCheck != PackageManager.PERMISSION_GRANTED;
+                final boolean writePermissionDenied =
+                        writeGrantCheck != PackageManager.PERMISSION_GRANTED;
+                final boolean stateUnchanged = beforeSha.equals(afterSha);
+                final boolean noPersistedGrant = !persistedGrantPresent;
+                final boolean readDeniedAsExpected =
+                        readPermissionDenied && noPersistedGrant && stateUnchanged
+                        && ("SecurityException".equals(readResult)
+                                || "IOException".equals(readResult));
+                final boolean writeDeniedAsExpected =
+                        writePermissionDenied && noPersistedGrant && stateUnchanged
+                        && ("SecurityException".equals(writeResult)
+                                || "IOException".equals(writeResult));
+                if (readDeniedAsExpected) {
+                    Log.i(TAG, "PROJECT_URI_REVOKED_READ_PROBE_DENIED"
+                            + " readPermission=DENIED writePermission="
+                            + (writePermissionDenied ? "DENIED" : "GRANTED")
+                            + " persistedGrant=false outcome=" + readResult
+                            + " detail=" + readError + " modelUnchanged=true stateSha256=" + afterSha);
+                } else {
+                    Log.e(TAG, "PROJECT_URI_REVOKED_READ_PROBE_UNEXPECTED"
+                            + " readPermissionDenied=" + readPermissionDenied
+                            + " writePermissionDenied=" + writePermissionDenied
+                            + " persistedGrant=" + persistedGrantPresent
+                            + " outcome=" + readResult + " detail=" + readError
+                            + " modelUnchanged=" + stateUnchanged
+                            + " beforeSha256=" + beforeSha + " afterSha=" + afterSha);
+                }
+                if (writeDeniedAsExpected) {
+                    Log.i(TAG, "PROJECT_URI_REVOKED_WRITE_PROBE_DENIED"
+                            + " writePermission=DENIED readPermission="
+                            + (readPermissionDenied ? "DENIED" : "GRANTED")
+                            + " persistedGrant=false outcome=" + writeResult
+                            + " detail=" + writeError + " modelUnchanged=true stateSha256=" + afterSha);
+                } else {
+                    Log.e(TAG, "PROJECT_URI_REVOKED_WRITE_PROBE_UNEXPECTED"
+                            + " readPermissionDenied=" + readPermissionDenied
+                            + " writePermissionDenied=" + writePermissionDenied
+                            + " persistedGrant=" + persistedGrantPresent
+                            + " outcome=" + writeResult + " detail=" + writeError
+                            + " modelUnchanged=" + stateUnchanged
+                            + " beforeSha256=" + beforeSha + " afterSha=" + afterSha);
+                }
+                setBottomStatus(readDeniedAsExpected && writeDeniedAsExpected
+                        ? "PROJECT URI ACCESS REVOKED • read/write denied • active state unchanged • use SAVE AS"
+                        : "PROJECT URI REVOCATION TEST FAILED • read=" + readResult + " write=" + writeResult);
+                refreshMpcFunctionBar();
+                scheduleProjectPersistenceViewHierarchyCapture(currentPage);
+            });
+        });
+    }
+
     private static boolean isProjectProviderWriteAccessFailure(
-            boolean writeAttempted, String failure) {
-        return MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(writeAttempted, failure);
+            MpcProjectDocumentWriteTransaction.Result transaction) {
+        return transaction != null
+                && MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                        transaction.writeAttempted,
+                        transaction.failurePhase,
+                        transaction.failureDetail,
+                        transaction.rollbackFailurePhase,
+                        transaction.rollbackFailureDetail);
     }
 
     private void saveCurrentProject() {
@@ -12216,7 +12654,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             && !selectAsCurrentProject
                             && currentProjectUri != null
                             && currentProjectUri.equals(target)
-                            && isProjectProviderWriteAccessFailure(transaction.writeAttempted, saveFailure);
+                            && isProjectProviderWriteAccessFailure(transaction);
                     if (directSaveAccessRejected) currentProjectWritePreviouslyRejected = true;
                     Log.i(TAG, "PROJECT_SAVE_FAILED snapshotStateSha256=" + snapshotStateSha256
                             + " activeStateSha256=" + activeStateSha256
@@ -12224,12 +12662,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             + " activeSessionGeneration=" + projectSessionGeneration
                             + " sessionStale=" + !sameProjectSession
                             + " writeAttempted=" + transaction.writeAttempted
+                            + " failurePhase=" + transaction.failurePhase
+                            + " rollbackFailurePhase=" + transaction.rollbackFailurePhase
                             + " previousDocumentPreserved=" + transaction.previousDocumentPreserved
                             + " directSaveAccessRejected=" + directSaveAccessRejected
                             + " previousBytes=" + transaction.previousBytes
                             + " verifiedBytes=" + transaction.verifiedBytes
                             + " recoveryCopy=" + recoveryName
                             + " error=" + saveFailure);
+                    if (projectProviderWriteDenialSmokeMode && target.equals(currentProjectUri)) {
+                        try {
+                            final Bundle state = getContentResolver().call(
+                                    target, "get_fixture_state", null, null);
+                            if (state == null) {
+                                Log.e(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE_MISSING");
+                            } else {
+                                Log.i(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE"
+                                        + " documentSha256=" + state.getString("sha256")
+                                        + " outputAttempts=" + state.getInt("output_attempts", -1));
+                            }
+                        } catch (RuntimeException providerError) {
+                            Log.e(TAG, "PROJECT_PROVIDER_WRITE_DENIAL_PROVIDER_STATE_FAILED", providerError);
+                        }
+                    }
                     // Never let a stale write failure replace the current Project session's status.
                     if (sameProjectSession) {
                         final String unavailableSuffix = directSaveAccessRejected
@@ -12239,8 +12694,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             status = "PROJECT SAVE FAILED • destination unchanged • "
                                     + saveFailure + unavailableSuffix;
                         } else if (transaction.previousDocumentPreserved) {
-                            status = "PROJECT SAVE FAILED • previous document restored • "
-                                    + saveFailure + unavailableSuffix;
+                            final boolean resultVerificationFailed =
+                                    transaction.failurePhase
+                                            == MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK
+                                    || transaction.failurePhase
+                                            == MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK_MISMATCH;
+                            status = resultVerificationFailed
+                                    ? "PROJECT SAVE FAILED • result verification failed • previous document restored • "
+                                            + saveFailure + unavailableSuffix
+                                    : "PROJECT SAVE FAILED • previous document restored • "
+                                            + saveFailure + unavailableSuffix;
                         } else {
                             status = "PROJECT SAVE FAILED • rollback unverified • recovery copy retained • "
                                     + recoveryName + " • use SAVE AS to preserve current Project • "
