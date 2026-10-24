@@ -2,8 +2,80 @@
 
 #include <array>
 #include <cassert>
+#include <cstdint>
+#include <limits>
+
+
+void testRatchetExpansionHandlesMaximumSpanWithoutMultiplicationOverflow() {
+    mpc::sequencer::ScheduledMidiEvent event;
+    event.offsetTicks = 0;
+    event.ratchetCount = 8;
+    const std::array<mpc::sequencer::ScheduledMidiEvent, 1> input{{event}};
+    std::array<mpc::sequencer::ScheduledMidiEvent, 8> output{};
+
+    const auto span = std::numeric_limits<std::int64_t>::max();
+    const auto expanded = mpc::sequencer::expandScheduledRatchets(
+            input, span, output);
+
+    assert(expanded.written == 8);
+    assert(!expanded.invalid);
+    assert(!expanded.truncated);
+
+    const auto step = span / 8;
+    const auto remainder = span % 8;
+    for (std::int64_t index = 0; index < 8; ++index) {
+        const auto expected = step * index + (remainder * index) / 8;
+        assert(output[static_cast<std::size_t>(index)].offsetTicks == expected);
+        assert(output[static_cast<std::size_t>(index)].ratchetCount == 1);
+    }
+}
+
+void testRatchetExpansionRejectsUnrepresentableOffsetAtomically() {
+    mpc::sequencer::ScheduledMidiEvent event;
+    event.offsetTicks = std::numeric_limits<std::int64_t>::max() - 2;
+    event.ratchetCount = 4;
+    const std::array<mpc::sequencer::ScheduledMidiEvent, 1> input{{event}};
+    std::array<mpc::sequencer::ScheduledMidiEvent, 4> output{};
+
+    const auto expanded = mpc::sequencer::expandScheduledRatchets(
+            input, 8, output);
+
+    assert(expanded.written == 0);
+    assert(expanded.invalid);
+    assert(!expanded.truncated);
+}
+
+void testPatternWindowRejectsUnrepresentableCycleTailBeforeScheduling() {
+    mpc::domain::Pattern tinyPattern;
+    tinyPattern.lengthTicks = 3;
+    const auto maximumCycles = static_cast<std::uint64_t>(
+            std::numeric_limits<std::int64_t>::max()) / 3u;
+    std::array<mpc::sequencer::ScheduledMidiEvent, 1> output{};
+
+    const auto ordinary = mpc::sequencer::schedulePatternWindow(
+            tinyPattern,
+            mpc::sequencer::TickWindow{0, 2, maximumCycles},
+            0u,
+            output);
+    assert(ordinary.written == 0);
+    assert(ordinary.truncated);
+
+    const auto ranged = mpc::sequencer::schedulePatternWindowInRange(
+            tinyPattern,
+            mpc::sequencer::TickWindow{0, 2, maximumCycles},
+            0,
+            3,
+            0u,
+            output);
+    assert(ranged.written == 0);
+    assert(ranged.truncated);
+}
 
 int main() {
+    testRatchetExpansionHandlesMaximumSpanWithoutMultiplicationOverflow();
+    testRatchetExpansionRejectsUnrepresentableOffsetAtomically();
+    testPatternWindowRejectsUnrepresentableCycleTailBeforeScheduling();
+
     mpc::domain::Pattern pattern;
     pattern.lengthTicks = 1000;
     pattern.notes = {
