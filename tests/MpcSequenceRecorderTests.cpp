@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <cstdint>
 
 namespace {
 
@@ -159,6 +160,59 @@ void testZeroLengthTapUsesGridDuration() {
     assert(track.patterns.front().notes.back().durationTicks == 240);
 }
 
+
+void testNonActiveArmedTrackUsesItsOwnDrumProgram() {
+    const auto configure = [](mpc::MpcProjectState& state) {
+        mpc::domain::DrumProgram secondProgram;
+        secondProgram.id = "drum-program-2";
+        secondProgram.name = "Second Drum Program";
+        secondProgram.type = mpc::domain::ProgramType::Drum;
+        for (std::size_t pad = 0; pad < mpc::domain::kMaxProgramPads; ++pad) {
+            secondProgram.pads[pad].index = static_cast<std::uint16_t>(pad);
+            secondProgram.pads[pad].name = "Second Pad " + std::to_string(pad + 1);
+            secondProgram.pads[pad].midiNote = static_cast<std::uint8_t>(72 + pad);
+        }
+        state.project().drumPrograms.push_back(secondProgram);
+        assert(state.addTrack(mpc::domain::TrackKind::Drum));
+        assert(state.setTrackProgram(1, "drum-program-2"));
+        // Keep track 0 selected: the recorder must not use its activeProgram
+        // mapping when handling events destined for the separately-armed track.
+        assert(state.selectTrack(0));
+        state.activeSequence().tracks[0].recordArmed = false;
+        state.activeSequence().tracks[1].recordArmed = true;
+    };
+
+    // The drain path records a completed press/release on non-active track 1.
+    mpc::MpcProjectState drainState;
+    configure(drainState);
+    mpc::sequencer::SequenceRecordQueue drainQueue;
+    mpc::sequencer::MpcSequenceRecorder drainRecorder;
+    drainRecorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    drainRecorder.begin(drainState);
+    assert(drainQueue.tryEnqueue({100, 1, 0, 100, 1}));
+    assert(drainQueue.tryEnqueue({220, 1, 0, 0, 0}));
+    assert(drainRecorder.drain(drainState, drainQueue) == 1);
+    const auto& drainedNotes = drainState.activeSequence().tracks[1].patterns.front().notes;
+    assert(drainedNotes.size() == 1);
+    assert(drainedNotes.front().note == 72);
+    assert(drainedNotes.front().velocity == 100);
+
+    // The finish path must use the same track-specific mapping when closing a
+    // held note without an explicit release event.
+    mpc::MpcProjectState finishState;
+    configure(finishState);
+    mpc::sequencer::SequenceRecordQueue finishQueue;
+    mpc::sequencer::MpcSequenceRecorder finishRecorder;
+    finishRecorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    finishRecorder.begin(finishState);
+    assert(finishQueue.tryEnqueue({300, 1, 0, 96, 1}));
+    assert(finishRecorder.finish(finishState, finishQueue, 420) == 1);
+    const auto& finishedNotes = finishState.activeSequence().tracks[1].patterns.front().notes;
+    assert(finishedNotes.size() == 1);
+    assert(finishedNotes.front().note == 72);
+    assert(finishedNotes.front().velocity == 96);
+}
+
 } // namespace
 
 int main() {
@@ -167,6 +221,7 @@ int main() {
     testFinishClosesHeldNote();
     testZeroLengthTapUsesGridDuration();
     testRejectsMalformedQueuedMidiValues();
+    testNonActiveArmedTrackUsesItsOwnDrumProgram();
     testTimingCorrectCanBeDisabled();
     return 0;
 }

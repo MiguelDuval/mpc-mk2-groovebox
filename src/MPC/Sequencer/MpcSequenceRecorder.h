@@ -90,6 +90,12 @@ public:
                 continue;
             }
 
+            const auto* trackProgram = state.findDrumProgram(track.programId);
+            if (trackProgram == nullptr
+                    || trackProgram->type != domain::ProgramType::Drum) {
+                continue;
+            }
+
             const auto trackIndex = static_cast<std::size_t>(event.trackIndex);
             const auto padIndex = static_cast<std::size_t>(event.padIndex);
 
@@ -144,7 +150,7 @@ public:
             domain::MidiNoteEvent note;
             note.tick = static_cast<std::int32_t>(normalizedStart);
             note.durationTicks = static_cast<std::int32_t>(duration);
-            note.note = state.activeDrumProgram().pad(padIndex).midiNote;
+            note.note = trackProgram->pad(padIndex).midiNote;
             note.velocity = startVelocities_[trackIndex][padIndex];
             note.probability = 127;
             note.ratchet = 1;
@@ -192,6 +198,12 @@ public:
                 continue;
             }
 
+            const auto* trackProgram = state.findDrumProgram(track.programId);
+            if (trackProgram == nullptr
+                    || trackProgram->type != domain::ProgramType::Drum) {
+                continue;
+            }
+
             const auto loopLength = static_cast<std::int64_t>(
                     std::max<std::int32_t>(
                             1,
@@ -234,7 +246,7 @@ public:
                 domain::MidiNoteEvent note;
                 note.tick = static_cast<std::int32_t>(normalizedStart);
                 note.durationTicks = static_cast<std::int32_t>(duration);
-                note.note = state.activeDrumProgram().pad(padIndex).midiNote;
+                note.note = trackProgram->pad(padIndex).midiNote;
                 note.velocity = startVelocities_[trackIndex][padIndex];
                 note.probability = 127;
                 note.ratchet = 1;
