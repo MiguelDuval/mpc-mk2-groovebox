@@ -213,6 +213,7 @@ for required in \
   'writeOnlyProviderGrantPersistsWriteWithoutInventingReadAccess' \
   'bothReturnedModesMayBePersisted' \
   'transientGrantIsNotPersistable' \
+  'persistableFlagWithoutReadOrWriteModeCreatesNoGrant' \
   'unrelatedIntentFlagsAreNotPassedAsUriModes' \
   'unlinkedProjectKeepsSaveAvailableAsSaveAsEntryPoint' \
   'linkedWritableDocumentEnablesDirectSave' \
@@ -226,25 +227,34 @@ for required in \
   'preimageReadEaccesDoesNotLatchWriteDenialBeforeAnyWriteAttempt' \
   'preimageReadSecurityExceptionDoesNotLatchWriteDenialBeforeAnyWriteAttempt' \
   'actualOutputOpenEaccesLatchesWriteDenial' \
+  'outputOpenTimeoutDoesNotLatchWriteDenial' \
+  'providerStreamWriteEaccesDoesNotLatchWriteDenial' \
   'attemptedWriteWithGenericReadbackTimeoutDoesNotLatchWriteDenial' \
   'providerReadbackSecurityExceptionDoesNotLatchWriteDenialAfterWriteAttempt' \
   'readbackMismatchDoesNotLatchWriteDenial' \
-  'rollbackWriteEaccesLatchesWriteDenialEvenWhenPrimaryFailureWasVerification'; do
+  'rollbackOutputOpenEaccesLatchesWriteDenialEvenWhenPrimaryFailureWasVerification' \
+  'rollbackStreamWriteEaccesDoesNotLatchWriteDenial'; do
   if ! grep -Fq -- "$required" \
       "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectUriGrantPolicyTest.java"; then
     echo "ERROR: URI grant/direct-Save policy test missing: $required"; exit 1
   fi
 done
 for required in \
+  'successfulWriteMustReadBackExactSnapshotAndRemoveTemporaryBackup' \
+  'partialWriteFailureRestoresAndVerifiesExactPreviousDocument' \
+  'silentTruncatedProviderWriteIsDetectedAndRolledBack' \
+  'failureToReadPreimageAbortsBeforeOpeningDestinationForWrite' \
   'providerReadbackSecurityExceptionRestoresDestinationWithoutLatchingWriteDenial' \
   'providerOutputOpenSecurityExceptionIsClassifiedAsWriteDenial' \
-    'deniedRollbackOutputOpenIsClassifiedEvenWhenPrimaryFailureWasReadback' \\
-  'providerStreamWriteSecurityExceptionDoesNotLatchWriteDenial' \\
-  'providerStreamFlushEaccesDoesNotLatchWriteDenial' \\
-  'providerStreamCloseEaccesDoesNotLatchWriteDenial' \\
-  'rollbackStreamWriteSecurityExceptionDoesNotLatchWriteDenial' \\
-  'rollbackStreamFlushEaccesDoesNotLatchWriteDenial' \\
-  'rollbackStreamCloseEaccesDoesNotLatchWriteDenial'; do
+  'providerStreamWriteSecurityExceptionDoesNotLatchWriteDenial' \
+  'providerStreamFlushEaccesDoesNotLatchWriteDenial' \
+  'providerStreamCloseEaccesDoesNotLatchWriteDenial' \
+  'deniedRollbackOutputOpenIsClassifiedEvenWhenPrimaryFailureWasReadback' \
+  'rollbackStreamWriteSecurityExceptionDoesNotLatchWriteDenial' \
+  'rollbackStreamFlushEaccesDoesNotLatchWriteDenial' \
+  'rollbackStreamCloseEaccesDoesNotLatchWriteDenial' \
+  'unverifiedRollbackRetainsByteExactPrivateRecoveryCopy' \
+  'rejectsOversizedSnapshotBeforeReadingOrWritingDocument'; do
   if ! grep -Fq -- "$required" \
       "android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcProjectDocumentWriteTransactionTest.java"; then
     echo "ERROR: Project document transaction phase test missing: $required"; exit 1
