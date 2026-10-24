@@ -101,9 +101,93 @@ public class MpcProjectDocumentWriteTransactionTest {
                     MpcProjectDocumentWriteTransaction.write(document, directory, NEW_DOCUMENT, 1024);
 
             assertFalse(result.success);
+            assertTrue(result.writeAttempted);
             assertTrue(result.previousDocumentPreserved);
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
+                    result.failurePhase);
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.NONE,
+                    result.rollbackFailurePhase);
             assertArrayEquals(OLD_DOCUMENT, document.content);
             assertNull(result.recoveryCopy);
+        });
+    }
+
+    @Test
+    public void providerReadbackSecurityExceptionRestoresDestinationWithoutLatchingWriteDenial() throws Exception {
+        withDirectory(directory -> {
+            final FakeDocument document = new FakeDocument(OLD_DOCUMENT);
+            document.failInputOpenNumber = 2;
+            document.failInputOpenMessage =
+                    "SecurityException: permission denied while verifying provider output";
+
+            final MpcProjectDocumentWriteTransaction.Result result =
+                    MpcProjectDocumentWriteTransaction.write(document, directory, NEW_DOCUMENT, 1024);
+
+            assertFalse(result.success);
+            assertTrue(result.writeAttempted);
+            assertTrue(result.previousDocumentPreserved);
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
+                    result.failurePhase);
+            assertTrue(result.failureDetail.contains("SecurityException"));
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.NONE,
+                    result.rollbackFailurePhase);
+            assertFalse(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                    result.writeAttempted, result.failurePhase, result.failureDetail,
+                    result.rollbackFailurePhase, result.rollbackFailureDetail));
+            assertArrayEquals(OLD_DOCUMENT, document.content);
+            assertNull(result.recoveryCopy);
+        });
+    }
+
+    @Test
+    public void providerWriteSecurityExceptionIsClassifiedAsWriteDenial() throws Exception {
+        withDirectory(directory -> {
+            final FakeDocument document = new FakeDocument(OLD_DOCUMENT);
+            document.failOutputOpenNumber = 1;
+            document.failOutputOpenMessage =
+                    "SecurityException: permission denied during provider write";
+
+            final MpcProjectDocumentWriteTransaction.Result result =
+                    MpcProjectDocumentWriteTransaction.write(document, directory, NEW_DOCUMENT, 1024);
+
+            assertFalse(result.success);
+            assertTrue(result.writeAttempted);
+            assertTrue(result.previousDocumentPreserved);
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_WRITE,
+                    result.failurePhase);
+            assertTrue(result.failureDetail.contains("SecurityException"));
+            assertTrue(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                    result.writeAttempted, result.failurePhase, result.failureDetail,
+                    result.rollbackFailurePhase, result.rollbackFailureDetail));
+            assertArrayEquals(OLD_DOCUMENT, document.content);
+        });
+    }
+
+    @Test
+    public void deniedRollbackWriteIsClassifiedEvenWhenPrimaryFailureWasReadback() throws Exception {
+        withDirectory(directory -> {
+            final FakeDocument document = new FakeDocument(OLD_DOCUMENT);
+            document.failInputOpenNumber = 2;
+            document.failInputOpenMessage = "IOException: injected verification read failure";
+            document.failOutputOpenNumber = 2;
+            document.failOutputOpenMessage =
+                    "SecurityException: EACCES permission denied during rollback write";
+
+            final MpcProjectDocumentWriteTransaction.Result result =
+                    MpcProjectDocumentWriteTransaction.write(document, directory, NEW_DOCUMENT, 1024);
+
+            assertFalse(result.success);
+            assertTrue(result.writeAttempted);
+            assertFalse(result.previousDocumentPreserved);
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_READBACK,
+                    result.failurePhase);
+            assertEquals(MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_WRITE,
+                    result.rollbackFailurePhase);
+            assertTrue(MpcProjectUriGrantPolicy.shouldLatchProviderWriteDenial(
+                    result.writeAttempted, result.failurePhase, result.failureDetail,
+                    result.rollbackFailurePhase, result.rollbackFailureDetail));
+            assertNotNull(result.recoveryCopy);
+            assertArrayEquals(OLD_DOCUMENT, Files.readAllBytes(result.recoveryCopy.toPath()));
         });
     }
 
@@ -178,6 +262,8 @@ public class MpcProjectDocumentWriteTransactionTest {
         int outputOpenCount;
         int failInputOpenNumber = -1;
         int failOutputOpenNumber = -1;
+        String failInputOpenMessage = "injected provider read failure";
+        String failOutputOpenMessage = "injected provider write-open failure";
         boolean partialWriteThenThrow;
         boolean silentlyTruncateFirstWrite;
 
@@ -189,7 +275,7 @@ public class MpcProjectDocumentWriteTransactionTest {
         public InputStream openInputStream() throws IOException {
             inputOpenCount++;
             if (inputOpenCount == failInputOpenNumber) {
-                throw new IOException("injected provider read failure");
+                throw new IOException(failInputOpenMessage);
             }
             return new ByteArrayInputStream(content.clone());
         }
@@ -199,7 +285,7 @@ public class MpcProjectDocumentWriteTransactionTest {
             outputOpenCount++;
             final int attempt = outputOpenCount;
             if (attempt == failOutputOpenNumber) {
-                throw new IOException("injected provider write-open failure");
+                throw new IOException(failOutputOpenMessage);
             }
             // Emulate providers that truncate as soon as "wt" is opened.
             content = new byte[0];

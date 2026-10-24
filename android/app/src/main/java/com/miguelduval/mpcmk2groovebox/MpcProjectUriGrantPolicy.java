@@ -29,12 +29,25 @@ final class MpcProjectUriGrantPolicy {
     }
 
     /**
-     * A preimage/read failure must not latch a document as read-only: until the
-     * transaction actually enters its provider write attempt, no write denial
-     * has been observed. Result.writeAttempted is the transaction's phase signal.
+     * Latch direct SAVE as unavailable only on evidence from an actual provider
+     * output operation. Readback/verification SecurityExceptions describe a read
+     * failure, not proof that the provider denied the write that just occurred.
+     * A denied rollback output operation is also relevant write-access evidence.
      */
-    static boolean shouldLatchProviderWriteDenial(boolean writeAttempted, String failure) {
-        return writeAttempted && isProviderWriteAccessFailure(failure);
+    static boolean shouldLatchProviderWriteDenial(
+            boolean writeAttempted,
+            MpcProjectDocumentWriteTransaction.FailurePhase failurePhase,
+            String failureDetail,
+            MpcProjectDocumentWriteTransaction.FailurePhase rollbackFailurePhase,
+            String rollbackFailureDetail) {
+        if (!writeAttempted) return false;
+        final boolean primaryWriteDenied =
+                failurePhase == MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_WRITE
+                        && isProviderWriteAccessFailure(failureDetail);
+        final boolean rollbackWriteDenied =
+                rollbackFailurePhase == MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_WRITE
+                        && isProviderWriteAccessFailure(rollbackFailureDetail);
+        return primaryWriteDenied || rollbackWriteDenied;
     }
 
     static boolean directSaveActionAvailable(
