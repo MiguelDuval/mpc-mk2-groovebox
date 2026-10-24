@@ -15,7 +15,7 @@
 ### Project SAF failure phases — PR #30 integration blocker
 
 - PR #30 remains OPEN on `fix/project-provider-failure-phases`, exact head `eeef2a864126bca34e08410b063a9f1f3ec36287`. Android Build #3129 / run [40083641707](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40083641707) passed that SHA.
-- GitHub currently reports `mergeable=false`. Its base metadata is stale at `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`; current primary HEAD is `985fdd3df616b0d0c0a284282527fbb15540e069`. The primary-side commits changed `docs/IMPLEMENTATION-ROADMAP.md` and `docs/SESSION-STATE.md`, both also changed by PR #30. Reconcile canonical documentation with a normal commit on the owning branch; do not retarget, rebase, reset, force-push, or merge automatically.
+- GitHub currently reports `mergeable=false`. Its base metadata is stale at `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`; current primary HEAD is `985fdd3df616b0d0c0a284282527fbb15540e069`. The primary-side commits changed `docs/IMPLEMENTATION-ROADMAP.md` and `docs/SESSION-STATE.md`, both also changed by PR #30. Use an explicit two-parent merge commit to incorporate current primary-side docs and persistence-test changes without rewriting history. Do not retarget automatically or rebase, reset, or force-push.
 - PR #57 is stacked on PR #30 and separates provider output-open denials from stream write/flush/close failures. Its latest head `d1b7b8b49da2fd7899b9457a82e37c6a80faafe6` passed Android Build #3165 / run [40109297128](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40109297128), including focused policy tests, full emulator smoke and visual evidence. APK artifact `12565778824`, SHA-256 `d431b5933ec46c20bcebde9aea9f960c9e9fd93ec6b2cf3ab8d3fece17cebb2e`; evidence artifact `12566209009`, SHA-256 `1237d781ecc6cef9c3ef35701b329f90527f68ee0b708cdd8ef6e03887d5e567` (87 PNG, 97 XML, 5 text/log files).
 - Keep direct SAVE denial latching limited to permission-denial evidence from output-stream opening. Stream errors after opening must not be misclassified; rollback bytes are verified by actual read-back.
 
@@ -33,7 +33,7 @@
 
 ### Next acceptance order
 
-1. Reconcile the two overlapping canonical documents on PR #30's owning branch with a regular commit, then confirm live mergeability and the actual file diff.
+1. Create a normal two-parent merge commit with current primary HEAD, preserving history; then confirm live mergeability and the exact changed-file diff.
 2. Require a new full exact-SHA CI run for the resulting PR #30 head; do not treat its historical Build #3129 as proof for the changed SHA.
 3. Refresh PR #57's live base/head relationship after PR #30 advances. Preserve the stacked dependency; do not change its base automatically. Re-run exact-SHA acceptance if its head/tree must change.
 4. Keep physical MPC Studio MkII validation separate from emulator acceptance.
