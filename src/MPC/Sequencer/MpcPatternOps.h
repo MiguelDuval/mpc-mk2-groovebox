@@ -485,6 +485,18 @@ inline bool eraseStepNote(
     return pattern.notes.size() != before;
 }
 
+inline bool isRecordableMidiNote(const domain::MidiNoteEvent& note) noexcept {
+    // Mirror the MIDI field constraints used by the Step Editor and Project
+    // persistence. A zero-velocity Note On is a release, not a note to record.
+    return note.durationTicks >= 0
+            && note.note <= 127
+            && note.velocity > 0
+            && note.velocity <= 127
+            && note.probability <= 127
+            && note.ratchet >= 1
+            && note.ratchet <= 8;
+}
+
 inline std::size_t recordNotes(
         domain::Pattern& pattern,
         std::span<const domain::MidiNoteEvent> captured,
@@ -495,7 +507,7 @@ inline std::size_t recordNotes(
 
     std::size_t validCount = 0;
     for (const auto& source : captured) {
-        if (source.durationTicks >= 0 && source.ratchet != 0) {
+        if (isRecordableMidiNote(source)) {
             ++validCount;
         }
     }
@@ -515,7 +527,7 @@ inline std::size_t recordNotes(
     std::size_t accepted = 0;
 
     for (const auto& source : captured) {
-        if (source.durationTicks < 0 || source.ratchet == 0) {
+        if (!isRecordableMidiNote(source)) {
             continue;
         }
 

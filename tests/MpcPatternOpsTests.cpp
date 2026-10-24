@@ -636,6 +636,41 @@ int main() {
     assert(pattern.notes.size() == 1);
     assert(pattern.notes[0].tick == 960);
 
+    // The Replace mode must not clear prior material when every captured
+    // event is malformed, and mixed input must retain only valid MIDI notes.
+    const std::array<mpc::domain::MidiNoteEvent, 5> malformedCaptured{{
+            {0, 120, 128, 100, 127, 1},
+            {120, 120, 36, 128, 127, 1},
+            {240, 120, 36, 100, 128, 1},
+            {360, 120, 36, 100, 127, 9},
+            {480, 120, 36, 0, 127, 1}}};
+    assert(mpc::sequencer::recordNotes(
+                   pattern,
+                   malformedCaptured,
+                   mpc::sequencer::PatternRecordMode::Replace) == 0);
+    assert(pattern.notes.size() == 1);
+    assert(pattern.notes[0].tick == 960 && pattern.notes[0].note == 60);
+
+    const std::array<mpc::domain::MidiNoteEvent, 3> mixedCaptured{{
+            {120, 60, 42, 90, 80, 2, 12},
+            {240, 60, 42, 128, 80, 2, 0},
+            {360, -1, 43, 90, 80, 2, 0}}};
+    assert(mpc::sequencer::recordNotes(
+                   pattern,
+                   mixedCaptured,
+                   mpc::sequencer::PatternRecordMode::Overdub) == 1);
+    assert(pattern.notes.size() == 2);
+    const auto recordedValid = std::find_if(
+            pattern.notes.begin(), pattern.notes.end(),
+            [](const mpc::domain::MidiNoteEvent& note) {
+                return note.tick == 120 && note.note == 42;
+            });
+    assert(recordedValid != pattern.notes.end());
+    assert(recordedValid->velocity == 90);
+    assert(recordedValid->probability == 80);
+    assert(recordedValid->ratchet == 2);
+    assert(recordedValid->nudgeTicks == 12);
+
     mpc::domain::Pattern swingPattern;
     swingPattern.lengthTicks = 3840;
     swingPattern.notes = {
