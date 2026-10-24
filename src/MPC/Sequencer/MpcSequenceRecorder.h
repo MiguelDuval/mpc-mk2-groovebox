@@ -64,6 +64,23 @@ public:
             return 0;
         }
 
+        // Track arming can change without a queued MIDI event. Clear held
+        // presses on every drain so a later re-arm cannot revive stale note data.
+        const auto& tracks = state.activeSequence().tracks;
+        for (std::size_t trackIndex = 0;
+                trackIndex < tracks.size() && trackIndex < held_.size();
+                ++trackIndex) {
+            const auto& track = tracks[trackIndex];
+            const auto* trackProgram = state.findDrumProgram(track.programId);
+            if (!track.recordArmed
+                    || track.kind != domain::TrackKind::Drum
+                    || track.patterns.empty()
+                    || trackProgram == nullptr
+                    || trackProgram->type != domain::ProgramType::Drum) {
+                clearHeldForTrack(trackIndex);
+            }
+        }
+
         std::size_t recorded = 0;
         SequenceRecordEvent event{};
 
@@ -87,6 +104,14 @@ public:
             if (!track.recordArmed
                     || track.kind != domain::TrackKind::Drum
                     || track.patterns.empty()) {
+                clearHeldForTrack(event.trackIndex);
+                continue;
+            }
+
+            const auto* trackProgram = state.findDrumProgram(track.programId);
+            if (trackProgram == nullptr
+                    || trackProgram->type != domain::ProgramType::Drum) {
+                clearHeldForTrack(event.trackIndex);
                 continue;
             }
 
@@ -144,7 +169,7 @@ public:
             domain::MidiNoteEvent note;
             note.tick = static_cast<std::int32_t>(normalizedStart);
             note.durationTicks = static_cast<std::int32_t>(duration);
-            note.note = state.activeDrumProgram().pad(padIndex).midiNote;
+            note.note = trackProgram->pad(padIndex).midiNote;
             note.velocity = startVelocities_[trackIndex][padIndex];
             note.probability = 127;
             note.ratchet = 1;
@@ -192,6 +217,12 @@ public:
                 continue;
             }
 
+            const auto* trackProgram = state.findDrumProgram(track.programId);
+            if (trackProgram == nullptr
+                    || trackProgram->type != domain::ProgramType::Drum) {
+                continue;
+            }
+
             const auto loopLength = static_cast<std::int64_t>(
                     std::max<std::int32_t>(
                             1,
@@ -234,7 +265,7 @@ public:
                 domain::MidiNoteEvent note;
                 note.tick = static_cast<std::int32_t>(normalizedStart);
                 note.durationTicks = static_cast<std::int32_t>(duration);
-                note.note = state.activeDrumProgram().pad(padIndex).midiNote;
+                note.note = trackProgram->pad(padIndex).midiNote;
                 note.velocity = startVelocities_[trackIndex][padIndex];
                 note.probability = 127;
                 note.ratchet = 1;
@@ -295,6 +326,13 @@ private:
         }
 
         note.tick = static_cast<std::int32_t>(tick);
+    }
+
+    void clearHeldForTrack(std::size_t trackIndex) noexcept {
+        if (trackIndex >= held_.size()) return;
+        held_[trackIndex].fill(false);
+        startTicks_[trackIndex].fill(0);
+        startVelocities_[trackIndex].fill(0);
     }
 
     void sortTouchedPatterns(MpcProjectState& state) noexcept {
