@@ -56,18 +56,19 @@ void testLoopNormalizationHandlesMinimumSignedPosition() {
     assert(clock.snapshot().positionTicks == 1792);
 }
 
-void testNonLoopAdvanceSaturatesBeforeClampingForExtremeElapsedTempo() {
+void testInvalidFiniteTempoFallsBackBeforeTransportClockConversion() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
-    sequence.tempoBpm = 1000000000.0;
+    sequence.tempoBpm = std::numeric_limits<double>::max();
     sequence.lengthTicks = 1920;
     sequence.loopEnabled = false;
 
     mpc::sequencer::MpcSequenceTransportClock clock;
     clock.start(sequence, 1000, 1);
 
-    // Extreme elapsed time at a hostile tempo exceeds int64 tick range. The
-    // clock must saturate the advance before clamping to the sequence end.
+    // Finite is not the same as supported: avoid a floating-to-integer
+    // overflow in store(), and keep playback within the defined tempo policy.
+    assert(clock.snapshot().tempoMilliBpm == 120000);
     assert(clock.positionAtTimestamp(std::numeric_limits<std::int64_t>::max())
             == 1919);
 }
@@ -96,7 +97,7 @@ int main() {
     testLoopedPosition();
     testNonLoopPositionDoesNotWrap();
     testLoopNormalizationHandlesMinimumSignedPosition();
-    testNonLoopAdvanceSaturatesBeforeClampingForExtremeElapsedTempo();
+    testInvalidFiniteTempoFallsBackBeforeTransportClockConversion();
     testStopFreezesPosition();
     return 0;
 }

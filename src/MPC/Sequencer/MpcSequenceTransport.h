@@ -159,9 +159,17 @@ private:
         loopStartTicks_.store(loopStart, std::memory_order_release);
         loopEndTicks_.store(loopEnd, std::memory_order_release);
         loopEnabled_.store(sequence.loopEnabled, std::memory_order_release);
+        // Project loading validates finite numbers, while legacy or malformed
+        // project data may still contain a finite tempo outside the supported
+        // 20–300 BPM range. Never llround an out-of-range float into int64_t.
+        const auto safeTempoBpm = std::isfinite(sequence.tempoBpm)
+                        && sequence.tempoBpm >= 20.0
+                        && sequence.tempoBpm <= 300.0
+                ? sequence.tempoBpm
+                : 120.0;
         tempoMilliBpm_.store(
                 static_cast<std::int64_t>(
-                        std::llround(sequence.tempoBpm * 1000.0)),
+                        std::llround(safeTempoBpm * 1000.0)),
                 std::memory_order_release);
         quantizeGridTicks_.store(
                 std::clamp(sequence.quantizeGridTicks, 1, 3840),
