@@ -120,6 +120,43 @@ void testSequenceSwitchAbortsRecordingWithoutCrossSequenceNotes() {
     assert(secondSequence.tracks[0].patterns.front().notes.empty());
 }
 
+void testProjectReplacementAbortsEvenWhenStableIdsMatch() {
+    mpc::MpcProjectState state;
+    state.activeSequence().tracks[0].recordArmed = true;
+
+    const auto originalProjectId = state.project().id;
+    const auto originalSequenceId = state.activeSequence().id;
+    const auto originalGeneration = state.projectGeneration();
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    assert(queue.tryEnqueue({100, 0, 0, 100, 1}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(recorder.active());
+
+    // Simulate opening a document that legitimately reuses the same persistent
+    // Project/Sequence IDs. IDs alone cannot identify the active recording
+    // session because its in-memory Project has been replaced.
+    assert(state.replaceProject(state.project()));
+    assert(state.project().id == originalProjectId);
+    assert(state.activeSequence().id == originalSequenceId);
+    assert(state.projectGeneration() != originalGeneration);
+    assert(state.activeSequence().tracks[0].recordArmed);
+
+    assert(queue.tryEnqueue({220, 0, 0, 0, 0}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(!recorder.active());
+    assert(state.activeSequence().tracks[0].patterns.front().notes.empty());
+
+    mpc::sequencer::SequenceRecordEvent stale{};
+    assert(!queue.tryDequeue(stale));
+    assert(recorder.finish(state, queue, 480) == 0);
+    assert(state.activeSequence().tracks[0].patterns.front().notes.empty());
+}
+
 void testTimingCorrectCanBeDisabled() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -200,6 +237,7 @@ int main() {
     testZeroLengthTapUsesGridDuration();
     testRejectsMalformedQueuedMidiValues();
     testSequenceSwitchAbortsRecordingWithoutCrossSequenceNotes();
+    testProjectReplacementAbortsEvenWhenStableIdsMatch();
     testTimingCorrectCanBeDisabled();
     return 0;
 }

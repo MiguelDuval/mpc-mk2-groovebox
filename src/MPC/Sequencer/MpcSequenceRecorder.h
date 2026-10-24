@@ -35,6 +35,7 @@ public:
         startVelocities_.fill({});
         replaceCleared_.fill(false);
         recordingProjectId_ = state.project().id;
+        recordingProjectGeneration_ = state.projectGeneration();
         recordingSequenceId_ = state.activeSequence().id;
         recordingSequenceIndex_ = state.activeSequenceIndex();
         active_ = true;
@@ -324,6 +325,7 @@ private:
 
     bool recordingContextMatches(const MpcProjectState& state) const noexcept {
         return state.project().id == recordingProjectId_
+                && state.projectGeneration() == recordingProjectGeneration_
                 && state.activeSequenceIndex() == recordingSequenceIndex_
                 && state.activeSequence().id == recordingSequenceId_;
     }
@@ -346,6 +348,7 @@ private:
     }
 
     std::string recordingProjectId_;
+    std::uint64_t recordingProjectGeneration_ = 0;
     std::string recordingSequenceId_;
     std::size_t recordingSequenceIndex_ = 0;
     std::array<std::array<bool, domain::kMaxProgramPads>,
