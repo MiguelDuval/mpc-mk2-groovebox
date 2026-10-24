@@ -157,6 +157,38 @@ int main() {
     assert(persistence::saveProjectFile(source, filePath, &error));
     assert(error.empty());
 
+    // A rejected save must not replace an already-valid file on disk.
+    domain::Project invalidForSave = source;
+    bool invalidatedPlacement = false;
+    for (auto& placement : invalidForSave.sequences[0].tracks[0].placements) {
+        if (placement.id == "clip-b") {
+            placement.patternId = "pattern-missing-01";
+            invalidatedPlacement = true;
+            break;
+        }
+    }
+    assert(invalidatedPlacement);
+    error.clear();
+    assert(!persistence::saveProjectFile(invalidForSave, filePath, &error));
+    assert(!error.empty());
+    {
+        std::ifstream savedFile(filePath, std::ios::binary);
+        assert(savedFile.good());
+        savedFile.seekg(0, std::ios::end);
+        const auto fileSize = savedFile.tellg();
+        assert(fileSize >= 0);
+        savedFile.seekg(0, std::ios::beg);
+        std::string preservedBytes(
+                static_cast<std::size_t>(fileSize), '\0');
+        if (!preservedBytes.empty()) {
+            savedFile.read(
+                    preservedBytes.data(),
+                    static_cast<std::streamsize>(preservedBytes.size()));
+            assert(savedFile.good());
+        }
+        assert(preservedBytes == serialized);
+    }
+
     // Load from disk into a distinct project instance. This is a real file
     // round trip, not a re-render of the original in-memory model.
     domain::Project loaded;
@@ -285,11 +317,62 @@ int main() {
     assert(legacyNote.ratchet == 2);
     assert(legacyNote.nudgeTicks == -3);
 
+    // A failed decode must preserve the entire active model, not only its ID.
+    const auto serializedBeforeFailure = persistence::serializeProject(loaded);
     const auto loadedIdBeforeFailure = loaded.id;
+    error.clear();
     assert(!persistence::deserializeProject(
             "MPCMK2_PROJECT 99\n", loaded, &error));
+    assert(!error.empty());
     assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
 
+    // Use a valid v2 header and Project record so failure occurs after the parser
+    // has consumed some input. This catches partial mutation on a truncated file.
+    error.clear();
+    const std::string truncatedV2 =
+            "MPCMK2_PROJECT 2\n"
+            "PROJECT \"partial-project\" \"Partial Project\"\n"
+            "SAMPLES 1\n";
+    assert(!persistence::deserializeProject(truncatedV2, loaded, &error));
+    assert(!error.empty());
+    assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
+
+    // Force the decoder through the entire valid file, then fail semantic
+    // validation at a Pattern placement. The active model must still be atomic.
+    std::string invalidPlacement = serializedBeforeFailure;
+    const std::string validPlacement =
+            "PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120";
+    const auto placementPosition = invalidPlacement.find(validPlacement);
+    assert(placementPosition != std::string::npos);
+    invalidPlacement.replace(
+            placementPosition, validPlacement.size(),
+            "PLACEMENT \"clip-b\" \"pattern-missing-01\" 1200 720 120");
+    error.clear();
+    assert(!persistence::deserializeProject(invalidPlacement, loaded, &error));
+    assert(!error.empty());
+    assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
+
+    // Exercise the real file reader too; a truncated disk document must not
+    // replace any persisted field in the destination model.
+    const std::string malformedFilePath = filePath + ".malformed";
+    {
+        std::ofstream malformedFile(
+                malformedFilePath, std::ios::binary | std::ios::trunc);
+        assert(malformedFile.good());
+        malformedFile << truncatedV2;
+        assert(malformedFile.good());
+    }
+    error.clear();
+    assert(!persistence::loadProjectFile(malformedFilePath, loaded, &error));
+    assert(!error.empty());
+    assert(loaded.id == loadedIdBeforeFailure);
+    assert(persistence::serializeProject(loaded) == serializedBeforeFailure);
+
+    std::remove(malformedFilePath.c_str());
+    std::remove((malformedFilePath + ".tmp").c_str());
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
     return 0;
