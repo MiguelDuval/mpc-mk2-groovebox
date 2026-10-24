@@ -157,12 +157,14 @@ void testDisarmedTrackClearsHeldNotesBeforeRearm() {
 
     // The track is disarmed before the release reaches the recorder.
     track.recordArmed = false;
-    assert(queue.tryEnqueue({200, 0, 0, 0, 0}));
+    // No MIDI event arrives during the disarmed interval. drain() still has
+    // to invalidate the held press based on the authoritative track state.
     assert(recorder.drain(state, queue) == 0);
     assert(track.patterns.front().notes.empty());
 
-    // After re-arm, the next press must start fresh, not inherit tick 100/vel 100.
+    // Once re-armed, a delayed release must not close the old tick-100 press.
     track.recordArmed = true;
+    assert(queue.tryEnqueue({200, 0, 0, 0, 0}));
     assert(queue.tryEnqueue({300, 0, 0, 110, 1}));
     assert(queue.tryEnqueue({420, 0, 0, 0, 0}));
     assert(recorder.drain(state, queue) == 1);

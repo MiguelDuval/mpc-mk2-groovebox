@@ -64,6 +64,23 @@ public:
             return 0;
         }
 
+        // Track arming can change without a queued MIDI event. Clear held
+        // presses on every drain so a later re-arm cannot revive stale note data.
+        const auto& tracks = state.activeSequence().tracks;
+        for (std::size_t trackIndex = 0;
+                trackIndex < tracks.size() && trackIndex < held_.size();
+                ++trackIndex) {
+            const auto& track = tracks[trackIndex];
+            const auto* trackProgram = state.findDrumProgram(track.programId);
+            if (!track.recordArmed
+                    || track.kind != domain::TrackKind::Drum
+                    || track.patterns.empty()
+                    || trackProgram == nullptr
+                    || trackProgram->type != domain::ProgramType::Drum) {
+                clearHeldForTrack(trackIndex);
+            }
+        }
+
         std::size_t recorded = 0;
         SequenceRecordEvent event{};
 
