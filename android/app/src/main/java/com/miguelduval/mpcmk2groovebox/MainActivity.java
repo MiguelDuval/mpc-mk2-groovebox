@@ -13991,12 +13991,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option did not restore saved state");
             return;
         }
-        if (!fileSizeOption.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option did not click");
-            return;
-        }
+        fileSizeOption.performClick();
         final boolean toggledShowFileSize = !initialShowFileSize;
-        if (browserView.isShowFileSize() != toggledShowFileSize
+        if (((android.widget.CheckBox) fileSizeOption).isChecked() != toggledShowFileSize
+                || browserView.isShowFileSize() != toggledShowFileSize
                 || browserOptionPreferences.getBoolean(
                         PREF_BROWSER_SHOW_FILE_SIZE, initialShowFileSize) != toggledShowFileSize) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option did not change presentation and preference");
@@ -14026,7 +14024,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size preference was not restored on dialog reopen");
             return;
         }
-        if (!reopenedFileSizeOption.performClick()
+        reopenedFileSizeOption.performClick();
+        if (((android.widget.CheckBox) reopenedFileSizeOption).isChecked() != initialShowFileSize
                 || browserView.isShowFileSize() != initialShowFileSize
                 || browserOptionPreferences.getBoolean(
                         PREF_BROWSER_SHOW_FILE_SIZE, !initialShowFileSize) != initialShowFileSize) {
