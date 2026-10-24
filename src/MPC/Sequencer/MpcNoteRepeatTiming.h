@@ -107,17 +107,24 @@ inline constexpr std::array<RepeatRate, 8> kRepeatRates{{
         std::int64_t loopStartTicks,
         std::int64_t loopEndTicks,
         std::int32_t gridTicks) noexcept {
-    if (loopEndTicks <= loopStartTicks) {
+    if (loopStartTicks < 0 || loopEndTicks <= loopStartTicks) {
         return clampGrid(gridTicks);
     }
 
+    // Sequence loop positions are non-negative. Reduce each operand before
+    // taking their difference so extreme transport ticks cannot overflow
+    // positionTicks - loopStartTicks (or the old remainder + loopLength).
     const auto loopLength = loopEndTicks - loopStartTicks;
     const auto grid =
             static_cast<std::int64_t>(clampGrid(gridTicks));
-    const auto relative =
-            ((positionTicks - loopStartTicks) % loopLength
-                    + loopLength)
-            % loopLength;
+    const auto positionRemainder = positionTicks % loopLength;
+    const auto normalizedPosition = positionRemainder < 0
+            ? positionRemainder + loopLength
+            : positionRemainder;
+    const auto startRemainder = loopStartTicks % loopLength;
+    const auto relative = normalizedPosition >= startRemainder
+            ? normalizedPosition - startRemainder
+            : loopLength - (startRemainder - normalizedPosition);
     const auto remainder = relative % grid;
 
     return remainder == 0 ? grid : grid - remainder;
