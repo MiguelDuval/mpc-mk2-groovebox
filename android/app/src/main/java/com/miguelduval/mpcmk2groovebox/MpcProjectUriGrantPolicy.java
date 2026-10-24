@@ -29,10 +29,9 @@ final class MpcProjectUriGrantPolicy {
     }
 
     /**
-     * Latch direct SAVE as unavailable only on evidence from an actual provider
-     * output operation. Readback/verification SecurityExceptions describe a read
-     * failure, not proof that the provider denied the write that just occurred.
-     * A denied rollback output operation is also relevant write-access evidence.
+     * Latch direct SAVE as unavailable only when opening a provider output stream
+     * is denied. A failure after a stream was returned (write/flush/close) or while
+     * reading/verifying describes a different phase and is not proof of open denial.
      */
     static boolean shouldLatchProviderWriteDenial(
             boolean writeAttempted,
@@ -42,10 +41,10 @@ final class MpcProjectUriGrantPolicy {
             String rollbackFailureDetail) {
         if (!writeAttempted) return false;
         final boolean primaryWriteDenied =
-                failurePhase == MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_WRITE
+                failurePhase == MpcProjectDocumentWriteTransaction.FailurePhase.PROVIDER_OUTPUT_OPEN
                         && isProviderWriteAccessFailure(failureDetail);
         final boolean rollbackWriteDenied =
-                rollbackFailurePhase == MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_WRITE
+                rollbackFailurePhase == MpcProjectDocumentWriteTransaction.FailurePhase.ROLLBACK_OUTPUT_OPEN
                         && isProviderWriteAccessFailure(rollbackFailureDetail);
         return primaryWriteDenied || rollbackWriteDenied;
     }
