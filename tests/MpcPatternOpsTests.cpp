@@ -452,6 +452,16 @@ int main() {
     assert(stepPattern.notes.size() == 1);
     assert(!mpc::sequencer::eraseStepNote(stepPattern, 4, 120, 38));
 
+    mpc::domain::Pattern ambiguousErasePattern;
+    ambiguousErasePattern.lengthTicks = 960;
+    ambiguousErasePattern.notes = {
+            {120, 120, 36, 100, 127, 1, -12},
+            {120, 60, 36, 80, 100, 2, 24}};
+    assert(!mpc::sequencer::eraseStepNote(ambiguousErasePattern, 1, 120, 36));
+    assert(ambiguousErasePattern.notes.size() == 2);
+    assert(ambiguousErasePattern.notes[0].durationTicks == 120);
+    assert(ambiguousErasePattern.notes[1].durationTicks == 60);
+
     assert(!mpc::sequencer::setStepNote(
             stepPattern, 16, 120, 40, 100));
     assert(!mpc::sequencer::setStepNote(
