@@ -2067,13 +2067,14 @@ filename_assertion = 'if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_R
 runtime = source[guard_end:]
 if runtime.count(save_as_call) != 1:
     raise SystemExit("second-document Save As must use exactly one compressed, per-dump-capped capture")
-if runtime.count(filename_assertion) != 1:
-    raise SystemExit("second-document Save As prefilled-filename assertion must remain enabled")
 capture_pos = runtime.index(save_as_call)
-filename_pos = runtime.index(filename_assertion)
+filename_pos = runtime.find(filename_assertion, capture_pos)
 capture_error = 'echo "ERROR: could not capture the second-document Save As picker"; exit 1'
 replace_filename = 'if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_B_NAME"; then exit 1; fi'
-if runtime.find(capture_error, capture_pos) < capture_pos or runtime.find(capture_error, capture_pos) > filename_pos:
+if filename_pos < 0:
+    raise SystemExit("second-document Save As prefilled-filename assertion must remain enabled after picker capture")
+capture_error_pos = runtime.find(capture_error, capture_pos)
+if capture_error_pos < capture_pos or capture_error_pos > filename_pos:
     raise SystemExit("second-document Save As capture must fail hard before filename acceptance")
 replace_pos = runtime.find(replace_filename, filename_pos)
 if replace_pos <= filename_pos:
