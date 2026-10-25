@@ -200,7 +200,7 @@ int main() {
 
     // Assigned layers need a non-empty playback region, and any known sample
     // length bounds the region's exclusive end frame.
-    const auto assertInvalidSampleRegionRejected =
+    const auto assertInvalidSampleLayerRejected =
             [](auto mutateLayer, const std::string& expectedError) {
         auto invalid = makeProject();
         mutateLayer(invalid.drumPrograms[0].pads[0].layer(0));
@@ -209,19 +209,25 @@ int main() {
         assert(bytes.empty());
         assert(validationError == expectedError);
     };
-    assertInvalidSampleRegionRejected(
+    assertInvalidSampleLayerRejected(
             [](auto& layer) { layer.region = domain::SampleRegion{1777, 1777}; },
             "Sample region is empty or reversed");
-    assertInvalidSampleRegionRejected(
+    assertInvalidSampleLayerRejected(
             [](auto& layer) { layer.region = domain::SampleRegion{1777, 17}; },
             "Sample region is empty or reversed");
-    assertInvalidSampleRegionRejected(
+    assertInvalidSampleLayerRejected(
             [](auto& layer) { layer.region = domain::SampleRegion{17, 24001}; },
             "Sample region exceeds the referenced sample");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) {
+                layer.velocityMinimum = 119;
+                layer.velocityMaximum = 7;
+            },
+            "Sample layer velocity range is reversed");
 
     const std::string validLayerRecord =
             "LAYER 101 17 1777 0.625 0.125 -3.5 7 119 100 1700 1\n";
-    const auto assertInvalidSerializedSampleRegionRejected =
+    const auto assertInvalidSerializedSampleLayerRejected =
             [&](const std::string& from, const std::string& to,
                     const std::string& expectedError) {
         std::string invalidBytes = serialized;
@@ -240,12 +246,15 @@ int main() {
         assert(parseError == expectedError);
         assert(persistence::serializeProject(source) == sourceBeforeFailure);
     };
-    assertInvalidSerializedSampleRegionRejected(
+    assertInvalidSerializedSampleLayerRejected(
             " 17 1777 ", " 1777 1777 ",
             "Sample region is empty or reversed");
-    assertInvalidSerializedSampleRegionRejected(
+    assertInvalidSerializedSampleLayerRejected(
             " 17 1777 ", " 17 24001 ",
             "Sample region exceeds the referenced sample");
+    assertInvalidSerializedSampleLayerRejected(
+            " 7 119 ", " 119 7 ",
+            "Sample layer velocity range is reversed");
 
     // Sequence fields are part of the persisted project contract. Reject the
     // same invalid values at serialization and deserialization boundaries

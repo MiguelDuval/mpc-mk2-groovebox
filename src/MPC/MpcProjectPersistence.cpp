@@ -305,11 +305,14 @@ bool validateSequenceSettings(
     return true;
 }
 
-bool validateSampleLayerRegions(
+bool validateSampleLayerState(
         const domain::Project& project, std::string* error) {
     for (const auto& program : project.drumPrograms) {
         for (const auto& pad : program.pads) {
             for (const auto& layer : pad.layers) {
+                if (!layer.velocityRange().isValid()) {
+                    return setError(error, "Sample layer velocity range is reversed");
+                }
                 if (!layer.sample.isAssigned()) {
                     // Empty/unassigned layers serialize with the default
                     // [0, 0) region; that is not a playable sample region.
@@ -425,7 +428,7 @@ bool validatePatternNotes(const domain::Project& project, std::string* error) {
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
     if (!validateSequenceSettings(project, error)
-            || !validateSampleLayerRegions(project, error)
+            || !validateSampleLayerState(project, error)
             || !validatePlacements(project, error)
             || !validatePatternNotes(project, error)) {
         return {};
@@ -646,7 +649,7 @@ bool deserializeProject(
 
     if (!in.tag("END_PROJECT") || !in.finished()) return false;
     if (!validateSequenceSettings(candidate, error)
-            || !validateSampleLayerRegions(candidate, error)
+            || !validateSampleLayerState(candidate, error)
             || !validatePlacements(candidate, error)) {
         return false;
     }
