@@ -307,7 +307,14 @@ bool validateSequenceSettings(
 
 bool validateSampleReferences(
         const domain::Project& project, std::string* error) {
+    std::set<std::uint32_t> assignedAssetIds;
     for (const auto& sample : project.samples) {
+        // SampleId zero means unassigned; duplicate assigned IDs would make
+        // findSample() and SampleLayer frame-bound lookup order-dependent.
+        if (sample.assetId.isAssigned()
+                && !assignedAssetIds.insert(sample.assetId.value).second) {
+            return setError(error, "Sample asset IDs are duplicated");
+        }
         // Zero means metadata is not known yet; negative values are never
         // meaningful. Keep rate/length independently optional for compatibility.
         if (!std::isfinite(sample.sampleRate) || sample.sampleRate < 0.0) {

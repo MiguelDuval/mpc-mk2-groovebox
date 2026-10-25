@@ -338,6 +338,16 @@ int main() {
     assertInvalidSampleReferenceRejected(
             [](auto& sample) { sample.lengthSamples = -1; },
             "Sample length is out of range");
+    auto duplicateSampleIds = makeProject();
+    auto duplicateSample = duplicateSampleIds.samples.front();
+    duplicateSample.id = "sample-kick-duplicate";
+    duplicateSample.name = "Duplicate Kick";
+    duplicateSample.path = "/fixtures/short-kick.wav";
+    duplicateSample.lengthSamples = 1200;
+    duplicateSampleIds.samples.push_back(std::move(duplicateSample));
+    std::string duplicateSampleError;
+    assert(persistence::serializeProject(duplicateSampleIds, &duplicateSampleError).empty());
+    assert(duplicateSampleError == "Sample asset IDs are duplicated");
 
     const std::string validSampleRecord =
             "SAMPLE \"sample-kick-01\" \"Kick\" \"/fixtures/kick.wav\" 48000 24000 101\n";
@@ -364,6 +374,24 @@ int main() {
             " 48000 ", " -48000 ", "Sample rate is out of range");
     assertInvalidSerializedSampleReferenceRejected(
             " 24000 101", " -1 101", "Sample length is out of range");
+    auto duplicateSampleIdBytes = serialized;
+    const std::string sampleCountRecord = "SAMPLES 1\n";
+    const auto sampleCountPos = duplicateSampleIdBytes.find(sampleCountRecord);
+    assert(sampleCountPos != std::string::npos);
+    duplicateSampleIdBytes.replace(
+            sampleCountPos, sampleCountRecord.size(), "SAMPLES 2\n");
+    const auto programRecordPos = duplicateSampleIdBytes.find("PROGRAMS 1\n");
+    assert(programRecordPos != std::string::npos);
+    const std::string duplicateSampleRecord =
+            "SAMPLE \"sample-kick-duplicate\" \"Duplicate Kick\" \"/fixtures/short-kick.wav\" 48000 1200 101\n";
+    duplicateSampleIdBytes.insert(programRecordPos, duplicateSampleRecord);
+    const auto sourceBeforeDuplicateSampleFailure = persistence::serializeProject(source);
+    assert(!sourceBeforeDuplicateSampleFailure.empty());
+    std::string duplicateSampleParseError;
+    assert(!persistence::deserializeProject(
+            duplicateSampleIdBytes, source, &duplicateSampleParseError));
+    assert(duplicateSampleParseError == "Sample asset IDs are duplicated");
+    assert(persistence::serializeProject(source) == sourceBeforeDuplicateSampleFailure);
 
     // Pad controls are clamped by the live audio engine. Persisting values
     // outside those bounds would produce a Project whose UI state and runtime
