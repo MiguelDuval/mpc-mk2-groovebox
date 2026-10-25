@@ -224,6 +224,9 @@ int main() {
                 layer.velocityMaximum = 7;
             },
             "Sample layer velocity range is reversed");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.velocityMaximum = 128; },
+            "Sample layer velocity range is out of range");
 
     const std::string validLayerRecord =
             "LAYER 101 17 1777 0.625 0.125 -3.5 7 119 100 1700 1\n";
@@ -255,6 +258,9 @@ int main() {
     assertInvalidSerializedSampleLayerRejected(
             " 7 119 ", " 119 7 ",
             "Sample layer velocity range is reversed");
+    assertInvalidSerializedSampleLayerRejected(
+            " 7 119 ", " 7 128 ",
+            "sample-layer field is out of range");
 
     // Sequence fields are part of the persisted project contract. Reject the
     // same invalid values at serialization and deserialization boundaries

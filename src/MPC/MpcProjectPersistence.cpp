@@ -310,6 +310,12 @@ bool validateSampleLayerState(
     for (const auto& program : project.drumPrograms) {
         for (const auto& pad : program.pads) {
             for (const auto& layer : pad.layers) {
+                // The serialized decoder reads these as 7-bit velocity
+                // values. Reject wider in-memory uint8 values before writing,
+                // otherwise serializeProject could emit a file it cannot read.
+                if (layer.velocityMinimum > 127 || layer.velocityMaximum > 127) {
+                    return setError(error, "Sample layer velocity range is out of range");
+                }
                 if (!layer.velocityRange().isValid()) {
                     return setError(error, "Sample layer velocity range is reversed");
                 }
