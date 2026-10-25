@@ -2053,7 +2053,8 @@ from pathlib import Path
 import sys
 
 source = Path(sys.argv[1]).read_text(encoding="utf-8")
-start = source.index("capture_stable_picker_state() {")
+guard_end = source.index("\nPY_PROJECT_SAVE_PICKER_CONTRACT\n") + len("\nPY_PROJECT_SAVE_PICKER_CONTRACT\n")
+start = source.index("capture_stable_picker_state() {", guard_end)
 end = source.index("\ntap_ui_picker_folder_until_child()", start)
 helper = source[start:end]
 cap_contract = '(( dump_timeout > dump_timeout_cap )) && dump_timeout="$dump_timeout_cap"'
