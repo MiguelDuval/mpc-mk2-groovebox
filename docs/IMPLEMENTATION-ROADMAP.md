@@ -1,36 +1,28 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-24 (live exact-SHA evidence governs)
+## CURRENT EXECUTION QUEUE — 2026-10-25 (live exact-SHA evidence governs)
 
-### Latest accepted checkpoint — PR #23
+### 1. Resolve the PR #43 Android Document Picker smoke failure
 
-- PR #23 remains OPEN: `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`.
-- **Android Build #3150 / run [40098511757](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40098511757) passed on exact SHA `f067a252904a242b284cf8b077570c2e04225fc8`.** All 57 steps succeeded, including full emulator smoke and evidence upload.
-- APK artifact `12561652251`, SHA-256 `7ad1a55431daeb926f14dd92cdbeb8e972d2a013efab98d9a24efb2fa49fab44`; visual-evidence artifact `12561778921`, SHA-256 `bb678d8cbe0fc3e07f75ac904f1dbcc3bdb551397d170d2163fd3cac1493ad45`. Evidence archive was inspected (87 PNG, 97 XML, 3 text/log files).
-- SAMP-008 CROP passed (3,840 → 2,840 frames, region reset); SAMP-009 CH4/CH8/CH16 passed exact frame coverage; SAMP-010 viewport-only zoom/reset and native Pad audition passed without mutating sample data.
-- Browser USER FOLDER/FAVORITE 1 passed real DocumentsUI selection, exact `Browser-Favorite-Only.wav` result/indexing, isolated state and process-restart restoration.
-- Project Save As/mutate/Open, changed overwrite digest, force-stop/reopen, cancellation invariance, malformed-load preservation, placement-free v1 canonical-state equality, A/B document isolation, New Project and recovery-export round trips passed.
-- Keep `cancel-in-progress: false`. Physical MPC Studio MkII validation remains a separate pending hardware gate. A docs-only follow-up commit still needs its own exact-SHA full workflow.
+- PR [#43](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/43), exact head `67583ed41f9d86db6a8244a666b3a8322742de31`, failed Build #3242 / [run 40145378936](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145378936), job `121031806244`, step 52, during second-document Save As picker capture.
+- The log shows that Android DocumentsUI was the active package and that a hierarchy was emitted, but a UIAutomator dump consumed the stable-capture helper's full 8-second budget before the host transfer could begin. The helper had only one attempt. The app's Save As transaction and document-state assertions had not failed at this point.
+- Comparison: PR [#50](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/50), exact head `2390f23670c3679a6a33c348aeb589440ff6765b`, passed full Build #3244 / [run 40145568578](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145568578), including emulator smoke and evidence upload. The smoke script blob on both heads was identical (`f2406e89993944696b86a5533b3470725d3e6ecb`); PR #50 modified recorder code and native tests only. Evidence therefore supports a transient UIAutomator/emulator stall plus a capture helper budget flaw, not a demonstrated product-level Save As defect.
+- Isolated fix branch: `fix/project-save-picker-capture-retries`, based on exact PR #43 head. The helper now has a validated per-dump budget cap applied to all three stable snapshots. Only the second-document Save As capture uses compressed hierarchy snapshots capped at 3 seconds; its total helper budget remains 8 seconds. Stable hierarchy agreement, screenshot correspondence, filename-field validation, SAVE, persisted-state digest/read-back and A/B document isolation assertions are unchanged.
+- Added a source regression guard for all three capped dumps, the targeted caller mode/budget, and preservation of the prefilled-filename assertion. Implementation commits include `0c803b7b702961aef8bcb1c6b2fff996a2553924` and `b8f2f36a61f0f6578a2da081fc254fc5c0c15d53`; later documentation sync commits are on the same isolated branch. **No green result is claimed for the new branch until its final exact HEAD completes the full Android workflow, emulator smoke and evidence upload.**
 
-### Next isolated engineering slice — Project provider output-open classification
+### 2. Preserve the live primary checkpoint and PR stack
 
-- PR #30 head `eeef2a864126bca34e08410b063a9f1f3ec36287` passed Android Build #3129 / run [40083641707](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40083641707), but its base metadata still points to `2c00c1603ea7228e4eacd384a4e73b6ac0fedb69`, behind the live primary head. Refresh before integration; no automatic merge or retarget.
-- Follow-up PR #57 (stacked on #30) splits provider output-open denial from failures after an OutputStream has been returned. Direct SAVE should only latch on permission-denial evidence in the output-open phase. New transaction/policy tests cover primary and rollback open denials, stream-write permission failures and generic open timeouts.
-- Build #3155 / run [40100283734](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40100283734) is pending at focused Android unit policy tests (step 14) on exact SHA `2dd936c3d9d26ace0d198f6cefabe4387d712318`. Do not call this change accepted before the exact-SHA full workflow and evidence upload pass.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open, branch `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`, live head `30e270c51038afdd037e9d226f20eb5cc310bc82`, base SHA `5f562e54e2cf8235041590933232a3836d74a16a`.
+- Android Build #3215 / [run 40141743745](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40141743745) passed on that exact SHA; APK artifact `12579022465`, visual-evidence artifact `12579887000`.
+- PR #50 is intentionally stacked on PR #43; its successful exact-SHA CI is evidence that the same picker smoke can pass, not proof that #43's failed run was fixed. Do not retarget, merge or close either PR automatically.
 
-### Parallel Browser Options blocker
+### 3. Acceptance and safety gates
 
-- PR #56 / Build #3154 / run [40099462547](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40099462547) failed at emulator smoke step 52 on SHA `d6a06ba8186d78eeaa03761e429c6505bc40fb85`.
-- The Show file size preference audit passed, but the immediately following Browser storage-picker action was observed at `w=0,h=0,vis=0`. Likely cause is checking live bounds in the same UI callback after the preference rerender/dialog close, before the parent layout remeasures. Preserve strict assertions; defer to the next pre-draw / existing measured-view continuation. No timeout increase and no duplicate smoke test.
+1. Open the isolated follow-up PR against `fix/sequence-recorder-event-validation`, then inspect the workflow triggered for its final exact SHA. Require native/JVM tests, APK, emulator smoke (step 52), and evidence upload (step 53) all to pass.
+2. Inspect the uploaded picker screenshot/hierarchy and full run logs after CI; do not raise the 8-second helper budget or weaken filename/read-back/isolation assertions to obtain green.
+3. Keep `cancel-in-progress: false`, leave `main` untouched, and preserve linear history without reset/rebase/force-push. Physical MPC Studio MkII validation remains a separate pending hardware gate.
 
-### Next acceptance order
-
-1. Let PR #57's exact-SHA Build #3155 finish; inspect focused unit results, the full emulator workflow and artifacts.
-2. Resolve PR #56 with a layout-measurement continuation on its owning branch, then require exact-SHA CI.
-3. Refresh PR #30's live base/diff before considering integration. Do not merge/retarget automatically.
-4. Keep physical MPC Studio MkII validation separate from emulator acceptance.
-
-## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
+## HISTORICAL EXECUTION NOTES (older entries are non-authoritative) (superseded by the current 2026-10-23 status above)
 
 Older dated “next task” sections below retain history only. Start each slice from live HEAD, current source and real test gaps.
 
