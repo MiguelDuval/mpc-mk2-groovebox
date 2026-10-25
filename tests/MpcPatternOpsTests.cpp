@@ -462,6 +462,28 @@ int main() {
     assert(ambiguousErasePattern.notes[0].durationTicks == 120);
     assert(ambiguousErasePattern.notes[1].durationTicks == 60);
 
+    // All step edits keyed only by (tick, pitch) refuse ambiguous source notes.
+    assert(mpc::sequencer::findStepNote(ambiguousErasePattern, 1, 120, 36) == nullptr);
+    assert(!mpc::sequencer::setStepNote(
+            ambiguousErasePattern, 1, 120, 36, 90, 90, 90, 2));
+    assert(!mpc::sequencer::setStepNoteVelocity(
+            ambiguousErasePattern, 1, 120, 36, 90));
+    assert(!mpc::sequencer::setStepNoteProbability(
+            ambiguousErasePattern, 1, 120, 36, 90));
+    assert(!mpc::sequencer::setStepNoteNudge(
+            ambiguousErasePattern, 1, 120, 36, 12));
+    assert(!mpc::sequencer::setStepNoteRatchet(
+            ambiguousErasePattern, 1, 120, 36, 3));
+    assert(!mpc::sequencer::setStepNoteDuration(
+            ambiguousErasePattern, 1, 120, 36, 90));
+    assert(ambiguousErasePattern.notes.size() == 2);
+    assert(ambiguousErasePattern.notes[0].durationTicks == 120);
+    assert(ambiguousErasePattern.notes[0].velocity == 100);
+    assert(ambiguousErasePattern.notes[0].nudgeTicks == -12);
+    assert(ambiguousErasePattern.notes[1].durationTicks == 60);
+    assert(ambiguousErasePattern.notes[1].velocity == 80);
+    assert(ambiguousErasePattern.notes[1].nudgeTicks == 24);
+
     assert(!mpc::sequencer::setStepNote(
             stepPattern, 16, 120, 40, 100));
     assert(!mpc::sequencer::setStepNote(
