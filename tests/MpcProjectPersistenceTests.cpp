@@ -283,6 +283,75 @@ int main() {
             " -3.5 ", " 24.5 ",
             "Sample layer tuning is out of range");
 
+    // Pad controls are clamped by the live audio engine. Persisting values
+    // outside those bounds would produce a Project whose UI state and runtime
+    // projection disagree, and could overflow milli-unit conversions.
+    const auto assertInvalidPadParameterRejected =
+            [](auto mutatePad, const std::string& expectedError) {
+        auto invalid = makeProject();
+        mutatePad(invalid.drumPrograms[0].pads[0]);
+        std::string validationError;
+        const auto bytes = persistence::serializeProject(invalid, &validationError);
+        assert(bytes.empty());
+        assert(validationError == expectedError);
+    };
+    assertInvalidPadParameterRejected(
+            [](auto& pad) { pad.tuningSemitones = 24.5f; },
+            "Pad tuning is out of range");
+    assertInvalidPadParameterRejected(
+            [](auto& pad) { pad.level = 1.25f; },
+            "Pad level is out of range");
+    assertInvalidPadParameterRejected(
+            [](auto& pad) { pad.level = std::numeric_limits<float>::quiet_NaN(); },
+            "Pad level is out of range");
+    assertInvalidPadParameterRejected(
+            [](auto& pad) { pad.pan = -1.25f; },
+            "Pad pan is out of range");
+    assertInvalidPadParameterRejected(
+            [](auto& pad) { pad.envelopeAttackMs = 2001.0f; },
+            "Pad envelope time is out of range");
+    assertInvalidPadParameterRejected(
+            [](auto& pad) { pad.envelopeSustain = 1.25f; },
+            "Pad envelope sustain is out of range");
+    assertInvalidPadParameterRejected(
+            [](auto& pad) { pad.filterCutoffHz = 20001.0f; },
+            "Pad filter cutoff is out of range");
+
+    const std::string originalPadPrefix = "PAD 0 \"Kick\"";
+    const auto assertInvalidSerializedPadParameterRejected =
+            [&](const std::string& from, const std::string& to,
+                    const std::string& expectedError) {
+        std::string invalidBytes = serialized;
+        const auto padStart = invalidBytes.find(originalPadPrefix);
+        assert(padStart != std::string::npos);
+        const auto padEnd = invalidBytes.find('\n', padStart);
+        assert(padEnd != std::string::npos);
+        auto padRecord = invalidBytes.substr(padStart, padEnd - padStart);
+        const auto fieldPosition = padRecord.find(from);
+        assert(fieldPosition != std::string::npos);
+        padRecord.replace(fieldPosition, from.size(), to);
+        invalidBytes.replace(padStart, padEnd - padStart, padRecord);
+
+        const auto sourceBeforeFailure = persistence::serializeProject(source);
+        assert(!sourceBeforeFailure.empty());
+        std::string parseError;
+        assert(!persistence::deserializeProject(invalidBytes, source, &parseError));
+        assert(parseError == expectedError);
+        assert(persistence::serializeProject(source) == sourceBeforeFailure);
+    };
+    assertInvalidSerializedPadParameterRejected(
+            " -1.25 ", " 24.5 ", "Pad tuning is out of range");
+    assertInvalidSerializedPadParameterRejected(
+            " 0.875 ", " 1.25 ", "Pad level is out of range");
+    assertInvalidSerializedPadParameterRejected(
+            " -0.25 ", " 1.25 ", "Pad pan is out of range");
+    assertInvalidSerializedPadParameterRejected(
+            " 3.5 ", " 2001 ", "Pad envelope time is out of range");
+    assertInvalidSerializedPadParameterRejected(
+            " 0.75 ", " 1.25 ", "Pad envelope sustain is out of range");
+    assertInvalidSerializedPadParameterRejected(
+            " 12500 ", " 20001 ", "Pad filter cutoff is out of range");
+
     // Sequence fields are part of the persisted project contract. Reject the
     // same invalid values at serialization and deserialization boundaries
     // rather than opening a project with transport settings the UI setters
