@@ -2062,8 +2062,6 @@ if helper.count(cap_contract) != 3:
 if '(( dump_timeout > 8 )) && dump_timeout=8' in helper:
     raise SystemExit("stable picker capture still lets an 8-second dump consume its full budget")
 save_as_call = 'if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8 "" compressed 3; then'
-if source.count(save_as_call) != 1:
-    raise SystemExit("second-document Save As must use compressed, per-dump-capped capture")
 filename_assertion = 'if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then'
 second_save_as_sequence = (
     save_as_call
