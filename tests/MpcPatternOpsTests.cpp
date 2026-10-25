@@ -514,6 +514,23 @@ int main() {
     assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, -120));
     assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, 1920));
 
+    // The API identifies a note only by (tick, pitch); duplicated matches are
+    // ambiguous and must not move just the first event or alter Pattern state.
+    mpc::domain::Pattern ambiguousMovePattern;
+    ambiguousMovePattern.lengthTicks = 960;
+    ambiguousMovePattern.notes = {
+            {120, 120, 36, 100, 127, 1},
+            {120, 60, 36, 80, 100, 2}};
+    assert(!mpc::sequencer::movePatternNoteTick(
+            ambiguousMovePattern, 120, 36, 240));
+    assert(ambiguousMovePattern.notes.size() == 2);
+    assert(ambiguousMovePattern.notes[0].tick == 120);
+    assert(ambiguousMovePattern.notes[0].durationTicks == 120);
+    assert(ambiguousMovePattern.notes[0].velocity == 100);
+    assert(ambiguousMovePattern.notes[1].tick == 120);
+    assert(ambiguousMovePattern.notes[1].durationTicks == 60);
+    assert(ambiguousMovePattern.notes[1].velocity == 80);
+
     // Arrangement duplicate is non-destructive, preserves every musical field,
     // rejects same-pitch collisions/boundaries, and can be undone/redone exactly.
     mpc::domain::Pattern duplicatePattern;

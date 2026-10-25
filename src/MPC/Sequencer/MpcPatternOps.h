@@ -137,12 +137,15 @@ inline bool movePatternNoteTick(
     if (pattern.lengthTicks <= 0 || sourceTick < 0 || targetTick < 0
             || sourceTick >= pattern.lengthTicks
             || targetTick >= pattern.lengthTicks || sourceTick == targetTick) return false;
+    const auto matchesSource = [sourceTick, noteNumber](
+            const domain::MidiNoteEvent& note) {
+        return note.tick == sourceTick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matchesSource) != 1) {
+        return false;
+    }
     auto source = std::find_if(
-            pattern.notes.begin(), pattern.notes.end(),
-            [sourceTick, noteNumber](const domain::MidiNoteEvent& note) {
-                return note.tick == sourceTick && note.note == noteNumber;
-            });
-    if (source == pattern.notes.end()) return false;
+            pattern.notes.begin(), pattern.notes.end(), matchesSource);
     const auto collision = std::find_if(
             pattern.notes.begin(), pattern.notes.end(),
             [targetTick, noteNumber](const domain::MidiNoteEvent& note) {
