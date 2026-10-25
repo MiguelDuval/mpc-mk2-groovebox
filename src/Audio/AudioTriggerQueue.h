@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <type_traits>
 
 namespace mpc::audio {
@@ -13,6 +14,27 @@ struct AudioTriggerEvent final {
     std::uint8_t velocity = 0;
     std::int32_t offsetFrames = 0;
 };
+
+// AudioTriggerQueue carries note-on events, not note-off/velocity-zero
+// messages. Keep the public audio-trigger boundary inside MIDI's 7-bit range.
+[[nodiscard]] inline constexpr bool isValidAudioTriggerVelocity(
+        std::uint8_t velocity) noexcept {
+    return velocity > 0 && velocity <= 127;
+}
+
+// Final render-boundary policy: reject malformed events even if a producer
+// bypasses the validated ingress methods and writes directly to the queue.
+// Offsets are relative to the immediate audio render window; a bounded horizon
+// prevents far-future queue entries from occupying every pending render slot.
+[[nodiscard]] inline constexpr bool isValidAudioTriggerEvent(
+        const AudioTriggerEvent& event,
+        std::size_t padCount,
+        std::int32_t maxOffsetFrames = std::numeric_limits<std::int32_t>::max()) noexcept {
+    return event.padIndex < padCount
+            && isValidAudioTriggerVelocity(event.velocity)
+            && event.offsetFrames >= 0
+            && event.offsetFrames <= maxOffsetFrames;
+}
 
 template <typename T, std::size_t Capacity>
 class BoundedMpmcQueue final {
