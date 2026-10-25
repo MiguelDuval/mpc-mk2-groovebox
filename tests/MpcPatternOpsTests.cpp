@@ -4,6 +4,8 @@
 
 #include <array>
 #include <cassert>
+#include <cstdint>
+#include <limits>
 
 int main() {
     // Explicit Arrangement Pattern placements reference Pattern data without copying it.
@@ -328,6 +330,24 @@ int main() {
     assert(pattern.notes[1].tick == 3720);
     assert(pattern.notes[1].note == 50);
 
+    // Captured MIDI must obey the same 7-bit field, ratchet and microtiming
+    // contract as persisted notes; invalid-only Replace must not erase notes.
+    const auto notesBeforeInvalidCapture = pattern.notes;
+    const std::array<mpc::domain::MidiNoteEvent, 5> invalidCaptures{{
+            {120, 60, 128, 90, 127, 1, 0},
+            {120, 60, 52, 128, 127, 1, 0},
+            {120, 60, 52, 90, 128, 1, 0},
+            {120, 60, 52, 90, 127, 9, 0},
+            {120, 60, 52, 90, 127, 1, 961}}};
+    assert(mpc::sequencer::recordNotes(
+            pattern, invalidCaptures, mpc::sequencer::PatternRecordMode::Replace) == 0);
+    assert(pattern.notes.size() == notesBeforeInvalidCapture.size());
+    for (std::size_t i = 0; i < pattern.notes.size(); ++i) {
+        assert(pattern.notes[i].tick == notesBeforeInvalidCapture[i].tick);
+        assert(pattern.notes[i].note == notesBeforeInvalidCapture[i].note);
+        assert(pattern.notes[i].durationTicks == notesBeforeInvalidCapture[i].durationTicks);
+    }
+
     std::array<mpc::domain::MidiNoteEvent, 1> overdub{{
             {240, 120, 54, 110, 127, 1}}};
 
@@ -437,6 +457,24 @@ int main() {
             stepPattern, 1, 0, 40, 100));
     assert(!mpc::sequencer::setStepNote(
             stepPattern, 1, 120, 40, 0));
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, 1, 120, 128, 100));
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, 1, 120, 40, 128));
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, 1, 120, 40, 100, -1));
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, 1, 120, 40, 100, 120, 127, 9));
+
+    // Wide arithmetic is required for the duration cap; multiplying an
+    // arbitrary positive int32 grid by four in int32 overflows.
+    mpc::domain::Pattern wideDurationPattern;
+    wideDurationPattern.lengthTicks = 1920;
+    assert(mpc::sequencer::setStepNote(
+            wideDurationPattern, 0, 120, 36, 100, 120));
+    assert(mpc::sequencer::setStepNoteDuration(
+            wideDurationPattern, 0, 1'000'000'000, 36, 1'000'000'000));
+    assert(wideDurationPattern.notes.front().durationTicks == 1'000'000'000);
 
     // Arrangement moves change only event position and reject collisions.
     mpc::domain::Pattern arrangementPattern;

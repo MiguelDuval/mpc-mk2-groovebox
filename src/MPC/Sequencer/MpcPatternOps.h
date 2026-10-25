@@ -261,8 +261,10 @@ inline bool setStepNote(
         std::int32_t durationTicks = 0,
         std::uint8_t probability = 127,
         std::uint8_t ratchet = 1) {
-    if (stepIndex < 0 || gridTicks <= 0 || pattern.lengthTicks <= 0 ||
-        velocity == 0 || ratchet == 0 || probability > 127) {
+    if (stepIndex < 0 || gridTicks <= 0 || pattern.lengthTicks <= 0
+            || noteNumber > 127 || velocity == 0 || velocity > 127
+            || durationTicks < 0 || probability > 127
+            || ratchet == 0 || ratchet > 8) {
         return false;
     }
 
@@ -436,7 +438,8 @@ inline bool setStepNoteDuration(
         std::int32_t durationTicks) noexcept {
     if (gridTicks <= 0
             || durationTicks < std::max(1, gridTicks / 4)
-            || durationTicks > gridTicks * 4) {
+            || static_cast<std::int64_t>(durationTicks)
+                    > static_cast<std::int64_t>(gridTicks) * 4) {
         return false;
     }
     const auto* existing = findStepNote(
@@ -480,6 +483,17 @@ inline bool eraseStepNote(
     return pattern.notes.size() != before;
 }
 
+inline bool validRecordedMidiEvent(
+        const domain::MidiNoteEvent& note) noexcept {
+    return note.note <= 127
+            && note.velocity <= 127
+            && note.probability <= 127
+            && note.ratchet >= 1 && note.ratchet <= 8
+            && note.durationTicks >= 0
+            && note.nudgeTicks >= -kMaxStepNudgeTicks
+            && note.nudgeTicks <= kMaxStepNudgeTicks;
+}
+
 inline std::size_t recordNotes(
         domain::Pattern& pattern,
         std::span<const domain::MidiNoteEvent> captured,
@@ -490,7 +504,7 @@ inline std::size_t recordNotes(
 
     std::size_t validCount = 0;
     for (const auto& source : captured) {
-        if (source.durationTicks >= 0 && source.ratchet != 0) {
+        if (validRecordedMidiEvent(source)) {
             ++validCount;
         }
     }
@@ -510,7 +524,7 @@ inline std::size_t recordNotes(
     std::size_t accepted = 0;
 
     for (const auto& source : captured) {
-        if (source.durationTicks < 0 || source.ratchet == 0) {
+        if (!validRecordedMidiEvent(source)) {
             continue;
         }
 
