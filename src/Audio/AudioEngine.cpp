@@ -1098,11 +1098,14 @@ std::string AudioEngine::chopPadSampleToPads(
         return "Chop failed: no source sample assigned";
     }
 
+    // The legacy master-sample fallback is not the SampleLayer's buffer, so
+    // don't carry that layer's old loop coordinates into the fallback source.
+    const bool sourceHasLayerBuffer = padSamples_[sourcePadIndex][sourceLayerIndex] != nullptr;
     const auto& sourceLayerState =
             projectState_.activeDrumProgram().pad(sourcePadIndex).layer(sourceLayerIndex);
     const auto sourceSampleId = sourceLayerState.sample;
-    const auto sourceLoopStart = sourceLayerState.loopStartSample;
-    const auto sourceLoopEnd = sourceLayerState.loopEndSample;
+    const auto sourceLoopStart = sourceHasLayerBuffer ? sourceLayerState.loopStartSample : 0;
+    const auto sourceLoopEnd = sourceHasLayerBuffer ? sourceLayerState.loopEndSample : 0;
 
     if (!sourceRegion.isValidFor(sourceSample->frameCount())) {
         return "Chop failed: invalid source sample region";
