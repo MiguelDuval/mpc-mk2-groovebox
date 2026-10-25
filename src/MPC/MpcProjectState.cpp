@@ -546,6 +546,12 @@ domain::SampleId MpcProjectState::registerSample(
         std::string path,
         double sampleRate,
         std::int64_t lengthSamples) {
+    // Keep the live model inside the same metadata range enforced by project
+    // persistence. Zero remains the supported "unknown" value.
+    if (!std::isfinite(sampleRate) || sampleRate < 0.0 || lengthSamples < 0) {
+        return {};
+    }
+
     // A project replacement can put the cursor immediately after UINT32_MAX;
     // post-increment then wraps to zero. Always skip IDs already used by either
     // SampleRefs or layer references before publishing another SampleRef.
