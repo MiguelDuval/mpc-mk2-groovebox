@@ -88,6 +88,75 @@ void testFinishClosesHeldNote() {
     assert(track.patterns.front().notes.front().durationTicks == 120);
 }
 
+void testSequenceSwitchAbortsRecordingWithoutCrossSequenceNotes() {
+    mpc::MpcProjectState state;
+    state.activeSequence().tracks[0].recordArmed = true;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Replace);
+    recorder.begin(state);
+
+    // Hold a press in Sequence 01; its release must never be replayed against
+    // Sequence 02 after track index 0 acquires a different musical meaning.
+    assert(queue.tryEnqueue({100, 0, 0, 100, 1}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(recorder.active());
+
+    assert(state.addSequence("Sequence 02"));
+    auto& secondSequence = state.activeSequence();
+    assert(secondSequence.id != "sequence-01");
+    secondSequence.tracks[0].recordArmed = true;
+
+    assert(queue.tryEnqueue({220, 0, 0, 0, 0}));
+    assert(queue.tryEnqueue({240, 0, 0, 110, 1}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(!recorder.active());
+    assert(secondSequence.tracks[0].patterns.front().notes.empty());
+
+    mpc::sequencer::SequenceRecordEvent stale{};
+    assert(!queue.tryDequeue(stale));
+    assert(recorder.finish(state, queue, 480) == 0);
+    assert(secondSequence.tracks[0].patterns.front().notes.empty());
+}
+
+void testProjectReplacementAbortsEvenWhenStableIdsMatch() {
+    mpc::MpcProjectState state;
+    state.activeSequence().tracks[0].recordArmed = true;
+
+    const auto originalProjectId = state.project().id;
+    const auto originalSequenceId = state.activeSequence().id;
+    const auto originalGeneration = state.projectGeneration();
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    assert(queue.tryEnqueue({100, 0, 0, 100, 1}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(recorder.active());
+
+    // Simulate opening a document that legitimately reuses the same persistent
+    // Project/Sequence IDs. IDs alone cannot identify the active recording
+    // session because its in-memory Project has been replaced.
+    assert(state.replaceProject(state.project()));
+    assert(state.project().id == originalProjectId);
+    assert(state.activeSequence().id == originalSequenceId);
+    assert(state.projectGeneration() != originalGeneration);
+    assert(state.activeSequence().tracks[0].recordArmed);
+
+    assert(queue.tryEnqueue({220, 0, 0, 0, 0}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(!recorder.active());
+    assert(state.activeSequence().tracks[0].patterns.front().notes.empty());
+
+    mpc::sequencer::SequenceRecordEvent stale{};
+    assert(!queue.tryDequeue(stale));
+    assert(recorder.finish(state, queue, 480) == 0);
+    assert(state.activeSequence().tracks[0].patterns.front().notes.empty());
+}
+
 void testTimingCorrectCanBeDisabled() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -109,6 +178,32 @@ void testTimingCorrectCanBeDisabled() {
     const auto& note = track.patterns.front().notes.front();
     assert(note.tick == 485);
     assert(note.durationTicks == 60);
+}
+
+void testRejectsMalformedQueuedMidiValues() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    auto& track = sequence.tracks[0];
+    track.recordArmed = true;
+    sequence.quantizeGridTicks = 120;
+    sequence.swingPercent = 0;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    // Invalid velocity must not create a note that later fails project
+    // persistence. A non-boolean pressed byte must not arm a held note.
+    assert(queue.tryEnqueue({100, 0, 0, 255, 1}));
+    assert(queue.tryEnqueue({200, 0, 0, 0, 0}));
+    assert(queue.tryEnqueue({300, 0, 1, 100, 2}));
+    assert(queue.tryEnqueue({420, 0, 1, 0, 0}));
+
+    assert(recorder.drain(state, queue) == 0);
+    assert(track.patterns.front().notes.empty());
+    assert(recorder.finish(state, queue, 600) == 0);
+    assert(track.patterns.front().notes.empty());
 }
 
 void testZeroLengthTapUsesGridDuration() {
@@ -140,6 +235,9 @@ int main() {
     testOverdubPreservesExistingNotes();
     testFinishClosesHeldNote();
     testZeroLengthTapUsesGridDuration();
+    testRejectsMalformedQueuedMidiValues();
+    testSequenceSwitchAbortsRecordingWithoutCrossSequenceNotes();
+    testProjectReplacementAbortsEvenWhenStableIdsMatch();
     testTimingCorrectCanBeDisabled();
     return 0;
 }
