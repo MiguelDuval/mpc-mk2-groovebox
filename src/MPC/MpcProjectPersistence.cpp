@@ -305,6 +305,38 @@ bool validateSequenceSettings(
     return true;
 }
 
+bool validateSampleLayerRegions(
+        const domain::Project& project, std::string* error) {
+    for (const auto& program : project.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) {
+                if (!layer.sample.isAssigned()) {
+                    // Empty/unassigned layers serialize with the default
+                    // [0, 0) region; that is not a playable sample region.
+                    continue;
+                }
+                if (layer.region.startFrame >= layer.region.endFrame) {
+                    return setError(error, "Sample region is empty or reversed");
+                }
+
+                const auto sample = std::find_if(
+                        project.samples.begin(), project.samples.end(),
+                        [&layer](const domain::SampleRef& candidate) {
+                            return candidate.assetId.value == layer.sample.value;
+                        });
+                if (sample != project.samples.end() && sample->lengthSamples > 0
+                        && static_cast<std::uint64_t>(layer.region.endFrame)
+                                > static_cast<std::uint64_t>(sample->lengthSamples)) {
+                    return setError(
+                            error,
+                            "Sample region exceeds the referenced sample");
+                }
+            }
+        }
+    }
+    return true;
+}
+
 bool validatePlacements(const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
         for (const auto& track : sequence.tracks) {
@@ -393,6 +425,7 @@ bool validatePatternNotes(const domain::Project& project, std::string* error) {
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
     if (!validateSequenceSettings(project, error)
+            || !validateSampleLayerRegions(project, error)
             || !validatePlacements(project, error)
             || !validatePatternNotes(project, error)) {
         return {};
@@ -613,6 +646,7 @@ bool deserializeProject(
 
     if (!in.tag("END_PROJECT") || !in.finished()) return false;
     if (!validateSequenceSettings(candidate, error)
+            || !validateSampleLayerRegions(candidate, error)
             || !validatePlacements(candidate, error)) {
         return false;
     }
