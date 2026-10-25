@@ -175,6 +175,21 @@ int main() {
             [](auto& project) { project.sequences[0].tracks[0].programId = "missing-program-01"; },
             "Track references a missing Program");
 
+    // An empty Track programId is intentional and remains round-trippable;
+    // only non-empty dangling references are rejected.
+    auto unassignedTrackProject = makeProject();
+    unassignedTrackProject.sequences[0].tracks[0].programId.clear();
+    std::string unassignedTrackError;
+    const auto unassignedTrackBytes =
+            persistence::serializeProject(unassignedTrackProject, &unassignedTrackError);
+    assert(!unassignedTrackBytes.empty());
+    assert(unassignedTrackError.empty());
+    domain::Project unassignedTrackRoundTrip;
+    assert(persistence::deserializeProject(
+            unassignedTrackBytes, unassignedTrackRoundTrip, &unassignedTrackError));
+    assert(unassignedTrackError.empty());
+    assert(unassignedTrackRoundTrip.sequences[0].tracks[0].programId.empty());
+
     // Arrangement playback resolves source Patterns by track-local ID. The
     // serializer/reader must reject ambiguous IDs rather than emit a file that
     // loads successfully but cannot be flattened for playback.
