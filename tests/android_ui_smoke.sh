@@ -2064,13 +2064,20 @@ if '(( dump_timeout > 8 )) && dump_timeout=8' in helper:
     raise SystemExit("stable picker capture still lets an 8-second dump consume its full budget")
 save_as_call = 'if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8 "" compressed 3; then'
 filename_assertion = 'if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then'
-second_save_as_sequence = (
-    save_as_call
-    + '\n  echo "ERROR: could not capture the second-document Save As picker"; exit 1\nfi\n'
-    + filename_assertion
-)
-if source.count(second_save_as_sequence) != 1:
-    raise SystemExit("second-document Save As must retain its prefilled-filename assertion immediately after capture")
+runtime = source[guard_end:]
+if runtime.count(save_as_call) != 1:
+    raise SystemExit("second-document Save As must use exactly one compressed, per-dump-capped capture")
+if runtime.count(filename_assertion) != 1:
+    raise SystemExit("second-document Save As prefilled-filename assertion must remain enabled")
+capture_pos = runtime.index(save_as_call)
+filename_pos = runtime.index(filename_assertion)
+capture_error = 'echo "ERROR: could not capture the second-document Save As picker"; exit 1'
+replace_filename = 'if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_B_NAME"; then exit 1; fi'
+if runtime.find(capture_error, capture_pos) < capture_pos or runtime.find(capture_error, capture_pos) > filename_pos:
+    raise SystemExit("second-document Save As capture must fail hard before filename acceptance")
+replace_pos = runtime.find(replace_filename, filename_pos)
+if replace_pos <= filename_pos:
+    raise SystemExit("second-document Save As must validate the prefilled filename before replacing it")
 
 runtime = source[guard_end:]
 preserve_call_contracts = (
