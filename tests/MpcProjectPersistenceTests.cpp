@@ -175,17 +175,17 @@ int main() {
     // files, not just projects serialized by this build.
     auto duplicatePatternBytes = serialized;
     const std::string originalTrackHeader =
-            "TRACK \"track-drums-01\" \"DRUMS\" 0 0 \"program-drums-01\" 0 1 0 1 3\\n";
+            "TRACK \"track-drums-01\" \"DRUMS\" 0 0 \"program-drums-01\" 0 1 0 1 3\n";
     const auto trackHeaderPos = duplicatePatternBytes.find(originalTrackHeader);
     assert(trackHeaderPos != std::string::npos);
     auto duplicateTrackHeader = originalTrackHeader;
-    const auto patternCountPos = duplicateTrackHeader.rfind(" 1 3\\n");
+    const auto patternCountPos = duplicateTrackHeader.rfind(" 1 3\n");
     assert(patternCountPos != std::string::npos);
-    duplicateTrackHeader.replace(patternCountPos, 5, " 2 3\\n");
+    duplicateTrackHeader.replace(patternCountPos, 5, " 2 3\n");
     duplicatePatternBytes.replace(
             trackHeaderPos, originalTrackHeader.size(), duplicateTrackHeader);
-    const auto patternRecordPos = duplicatePatternBytes.find("PATTERN \\"pattern-shared-01\\"");
-    const auto firstPlacementPos = duplicatePatternBytes.find("PLACEMENT \\"clip-a\\"");
+    const auto patternRecordPos = duplicatePatternBytes.find("PATTERN \"pattern-shared-01\"");
+    const auto firstPlacementPos = duplicatePatternBytes.find("PLACEMENT \"clip-a\"");
     assert(patternRecordPos != std::string::npos);
     assert(firstPlacementPos != std::string::npos);
     const auto duplicateRecord = duplicatePatternBytes.substr(
