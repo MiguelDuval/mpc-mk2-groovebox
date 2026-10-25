@@ -213,7 +213,7 @@ final class MpcPadMixerView extends LinearLayout {
             addView(panValue, new LayoutParams(
                     LayoutParams.MATCH_PARENT, dp(context, 28)));
 
-            LinearLayout panButtons = compactButtons(context,
+            LinearLayout panButtons = compactButtons(context, pad, "PAN",
                     "−", "＋",
                     () -> {
                         listener.onControlFocus(pad, ControlFocus.PAN);
@@ -232,7 +232,7 @@ final class MpcPadMixerView extends LinearLayout {
             addView(tuneValue, new LayoutParams(
                     LayoutParams.MATCH_PARENT, dp(context, 28)));
 
-            LinearLayout tuneButtons = compactButtons(context,
+            LinearLayout tuneButtons = compactButtons(context, pad, "TUNE",
                     "−", "＋",
                     () -> {
                         listener.onControlFocus(pad, ControlFocus.TUNE);
@@ -308,6 +308,8 @@ final class MpcPadMixerView extends LinearLayout {
 
     private LinearLayout compactButtons(
             Context context,
+            int pad,
+            String control,
             String left,
             String right,
             Runnable leftAction,
@@ -317,6 +319,8 @@ final class MpcPadMixerView extends LinearLayout {
         row.setGravity(Gravity.CENTER_VERTICAL);
 
         Button l = button(context, left);
+        l.setContentDescription(
+                MpcPadMixerAccessibilityPolicy.controlButtonDescription(pad, control, false));
         l.setOnClickListener(v -> {
             leftAction.run();
             refreshAll();
@@ -324,6 +328,8 @@ final class MpcPadMixerView extends LinearLayout {
         row.addView(l, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
 
         Button r = button(context, right);
+        r.setContentDescription(
+                MpcPadMixerAccessibilityPolicy.controlButtonDescription(pad, control, true));
         r.setOnClickListener(v -> {
             rightAction.run();
             refreshAll();
