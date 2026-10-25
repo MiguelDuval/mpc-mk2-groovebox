@@ -307,7 +307,14 @@ bool validateSequenceSettings(
 
 bool validateSampleReferences(
         const domain::Project& project, std::string* error) {
+    std::set<std::uint32_t> assignedAssetIds;
     for (const auto& sample : project.samples) {
+        // SampleId zero means unassigned; duplicate assigned IDs would make
+        // findSample() and SampleLayer frame-bound lookup order-dependent.
+        if (sample.assetId.isAssigned()
+                && !assignedAssetIds.insert(sample.assetId.value).second) {
+            return setError(error, "Sample asset IDs are duplicated");
+        }
         // Zero means metadata is not known yet; negative values are never
         // meaningful. Keep rate/length independently optional for compatibility.
         if (!std::isfinite(sample.sampleRate) || sample.sampleRate < 0.0) {
@@ -386,6 +393,13 @@ bool validateSampleLayerState(
                     // [0, 0) region; that is not a playable sample region.
                     continue;
                 }
+                if (layer.loopStartSample < 0 || layer.loopEndSample < 0) {
+                    return setError(error, "Sample loop bounds are negative");
+                }
+                if ((layer.loopStartSample != 0 || layer.loopEndSample != 0)
+                        && layer.loopEndSample <= layer.loopStartSample) {
+                    return setError(error, "Sample loop range is empty or reversed");
+                }
                 if (layer.region.startFrame >= layer.region.endFrame) {
                     return setError(error, "Sample region is empty or reversed");
                 }
@@ -395,12 +409,18 @@ bool validateSampleLayerState(
                         [&layer](const domain::SampleRef& candidate) {
                             return candidate.assetId.value == layer.sample.value;
                         });
-                if (sample != project.samples.end() && sample->lengthSamples > 0
-                        && static_cast<std::uint64_t>(layer.region.endFrame)
-                                > static_cast<std::uint64_t>(sample->lengthSamples)) {
-                    return setError(
-                            error,
-                            "Sample region exceeds the referenced sample");
+                if (sample != project.samples.end() && sample->lengthSamples > 0) {
+                    if (static_cast<std::uint64_t>(layer.region.endFrame)
+                            > static_cast<std::uint64_t>(sample->lengthSamples)) {
+                        return setError(
+                                error,
+                                "Sample region exceeds the referenced sample");
+                    }
+                    if (layer.loopEndSample > sample->lengthSamples) {
+                        return setError(
+                                error,
+                                "Sample loop exceeds the referenced sample");
+                    }
                 }
             }
         }
