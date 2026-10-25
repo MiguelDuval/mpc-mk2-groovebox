@@ -6928,10 +6928,25 @@ PY
 
 wait_for_ui_description() {
   local hierarchy_path="$1" remote_path="$2" expected_description="$3"
-  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining hierarchy_failures=0
+  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining dump_budget hierarchy_failures=0
+  local scratch_path="${hierarchy_path%.xml}-wait-current.xml"
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then hierarchy_failures=$((hierarchy_failures + 1)); continue; fi
+    # Bound each dump so a transient UiAutomator stall cannot consume the
+    # entire wait, and capture into scratch so a timeout never erases the last
+    # validated hierarchy needed to diagnose a missing target.
+    dump_budget="$remaining"
+    (( dump_budget > 6 )) && dump_budget=6
+    if ! dump_device_ui "$remote_path" "$scratch_path" "$dump_budget"; then
+      hierarchy_failures=$((hierarchy_failures + 1))
+      rm -f "$scratch_path"
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
+      continue
+    fi
+    if ! mv -f -- "$scratch_path" "$hierarchy_path"; then
+      echo "ERROR: could not publish fresh UI hierarchy while waiting for $expected_description"
+      return 1
+    fi
     if python3 - "$hierarchy_path" "$expected_description" <<'PY'
 import sys, xml.etree.ElementTree as ET
 path, expected = sys.argv[1], sys.argv[2]
