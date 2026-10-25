@@ -2,30 +2,28 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-25 (live exact-SHA evidence governs)
 
-### 1. PR #58 — retry-safe Project Save As picker capture
+### 1. Save As picker reliability and evidence integrity
 
-- PR #43 head `67583ed41f9d86db6a8244a666b3a8322742de31` failed Build #3242 / [run 40145378936](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145378936), step 52: DocumentsUI was foreground but a single UIAutomator dump consumed the entire eight-second stable-capture budget. Successful PR #50 Build #3244 / [run 40145568578](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145568578) used the identical script blob. Evidence supports a transient UIAutomator stall plus retry-budget flaw, not a demonstrated product Save As defect.
-- Draft PR #58 HEAD `63ea6805e819537a96eed446bdde1b3aa518531d` caps all three snapshots and uses compressed 3-second per-dump captures for second Save As while keeping the 8-second total budget. Build #3254 / [run 40177584543](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177584543) passed steps 1–51; smoke step 52 is still running.
+- PR #58 at head `63ea6805e819537a96eed446bdde1b3aa518531d` makes each DocumentsUI snapshot bounded and caps individual dumps while preserving the overall 8-second capture budget. Build #3254 / [run 40177584543](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177584543) passed tests, APK, smoke and evidence upload.
+- PR #59 at head `819128356f7e097907c5cc4cbf881f040b093f24` stores matched PNG/XML evidence pairs for the initial Save As, second-document Save As and recovery export. Build #3264 / [run 40178922087](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178922087) passed all 57 steps. I inspected the artifact: each pair has a DocumentsUI hierarchy with the expected name, and the screenshot shows the matching picker state. Builds #3255/#3258 failed only the earlier guard's whole-line matching; corrected guard passed on #3264.
 
-### 2. PR #59 — immutable paired picker visual evidence
+### 2. Stacked persistence hardening — exact-head gates
 
-- Draft PR #59 HEAD `d720593329682ae76809a4cb022dc79bf8886c80` preserves matched PNG/XML pairs for initial Save As, second-document Save As and recovery export. It validates both package (`com.android.documentsui`) and expected filename before publication.
-- Builds #3255 / [run 40177629034](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177629034) and #3258 / [run 40178020925](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178020925) failed before UI interactions because the source guard demanded whole-line equality for a recovery-export call that also carried its error handler on that line. The guard now checks unique substring occurrences instead. Build #3259 / [run 40178251124](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178251124) passed steps 1–51; step 52 emulator smoke is running, step 53 evidence upload pending.
+- PR #60, HEAD `596a8110565a99316ccb0d5aa2a04d1e0bba5c56`: rejects empty/duplicate Pattern IDs on Tracks with Arrangement placements. Build #3253 / [run 40177392571](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177392571) passed all 57 steps.
+- PR #61, HEAD `0fdba37e521e1b39a96e3c95ee9d0078a43e9883`: validates persisted tempo/time signature/length/loop/quantize/swing/locator settings. Build #3256 / [run 40177684480](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177684480) passed all 57 steps.
+- PR #62, HEAD `26579254409aa1a5a5d0f0f8cac9bda5cd368832`: validates SampleRegion ordering/bounds and SampleLayer velocity/gain/pan/tuning ranges. Build #3262 / [run 40178612521](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178612521) passed all 57 steps.
+- PR #63, HEAD `04b4ab82635d49ca104a10a036702cf99c496c5c`: validates Pad tuning, level, pan, envelope times/sustain and filter cutoff. Build #3263 / [run 40178770260](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178770260) passed all 57 steps.
+- PR #64, HEAD `85dd29b49b8a91fd9c033c4b839857778ad4674b`: rejects negative/non-finite SampleRef rates and negative lengths. Build #3265 / [run 40185698676](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40185698676) passed focused tests (step 14) and was at APK assembly (step 49) at the latest poll.
+- PR #65, HEAD `2f05794ad449339cff8c1077b5aea9658a861db9`: validates non-negative ordered sample-loop frames and bounds loops by known sample length, keeping `[0,0)` as disabled. Build #3266 / [run 40185895495](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40185895495) is in early setup.
 
-### 3. Independent persistence fixes
-
-- Draft PR #60 HEAD `596a8110565a99316ccb0d5aa2a04d1e0bba5c56` rejects empty/duplicate Pattern IDs on Tracks with Arrangement placements. Build #3253 / [run 40177392571](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177392571) passed steps 1–51; step 52 pending completion.
-- Draft PR #61 HEAD `0fdba37e521e1b39a96e3c95ee9d0078a43e9883` validates sequence BPM, time signature, positive length, loop bounds, quantize grid, swing and assigned locator positions. Build #3256 / [run 40177684480](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177684480) passed steps 1–51; step 52 pending completion.
-- Draft PR #62 HEAD `26579254409aa1a5a5d0f0f8cac9bda5cd368832` validates sample regions, known sample frame bounds, ordered 7-bit velocity range, finite gain 0–1, pan −1–1 and tuning −24–24. Build #3257 / [run 40177862491](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177862491) is on older head `7b3f30282d141b6777b8ec0192a12be94ec016e5`, with steps 1–51 passed and step 52 active. Current-head Build #3262 / [run 40178612521](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178612521) is registered but job details aren't currently exposed.
-- Draft PR #63 HEAD `04b4ab82635d49ca104a10a036702cf99c496c5c` validates Pad tuning/level/pan, envelope times/sustain and filter cutoff against AudioEngine's supported ranges on serialization and deserialization. Build #3263 / [run 40178770260](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178770260) is at focused Android test step 14, after steps 1–13 passed.
-
-### 4. Acceptance and safety gates
+### 3. Acceptance and safety gates
 
 - Primary PR #23 remains open at head `30e270c51038afdd037e9d226f20eb5cc310bc82`; Build #3215 / [run 40141743745](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40141743745) passed on that exact SHA.
-- Require each draft's latest exact SHA to pass tests, APK assembly/upload, emulator smoke step 52 and visual-evidence upload step 53. Inspect the actual UI transaction and the preserved PNG/XML evidence.
-- `.github/workflows/android-build.yml` retains `cancel-in-progress: false`. Do not modify `main`, rewrite history, or automatically retarget/merge/close stacked PRs. Physical MPC Studio MkII validation remains separate.
+- The picker evidence integrity fix is verified by exact-head CI and direct artifact inspection, but no stacked draft has been auto-merged. Keep requiring latest exact-SHA native/JVM tests, APK assembly/upload, emulator smoke step 52 and visual-evidence upload step 53 for every code PR.
+- `.github/workflows/android-build.yml` remains unchanged with `cancel-in-progress: false`. Do not alter `main`, rewrite history, or automatically retarget/merge/close stacked PRs. Physical MPC Studio MkII testing remains separate.
 
 ## HISTORICAL EXECUTION NOTES (older entries are non-authoritative)
+
 
 
 
