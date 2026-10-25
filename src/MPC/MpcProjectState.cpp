@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <limits>
 #include <sstream>
+#include <unordered_set>
 
 namespace mpc {
 
@@ -545,11 +546,32 @@ domain::SampleId MpcProjectState::registerSample(
         std::string path,
         double sampleRate,
         std::int64_t lengthSamples) {
-    if (nextSampleId_ == 0) {
-        nextSampleId_ = 1;
+    // A project replacement can put the cursor immediately after UINT32_MAX;
+    // post-increment then wraps to zero. Always skip IDs already used by either
+    // SampleRefs or layer references before publishing another SampleRef.
+    std::unordered_set<std::uint32_t> usedIds;
+    usedIds.reserve(project_.samples.size() + project_.drumPrograms.size() * 4);
+    for (const auto& sample : project_.samples) {
+        if (sample.assetId.isAssigned()) usedIds.insert(sample.assetId.value);
+    }
+    for (const auto& program : project_.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) {
+                if (layer.sample.isAssigned()) usedIds.insert(layer.sample.value);
+            }
+        }
     }
 
-    const auto id = domain::SampleId{nextSampleId_++};
+    const auto maximumId = std::numeric_limits<std::uint32_t>::max();
+    if (usedIds.size() >= static_cast<std::size_t>(maximumId)) {
+        return {};
+    }
+    auto candidate = nextSampleId_ == 0 ? std::uint32_t{1} : nextSampleId_;
+    while (usedIds.find(candidate) != usedIds.end()) {
+        candidate = candidate == maximumId ? std::uint32_t{1} : candidate + 1;
+    }
+    const auto id = domain::SampleId{candidate};
+    nextSampleId_ = candidate == maximumId ? std::uint32_t{0} : candidate + 1;
 
     domain::SampleRef ref;
     ref.id = "sample-" + std::to_string(id.value);

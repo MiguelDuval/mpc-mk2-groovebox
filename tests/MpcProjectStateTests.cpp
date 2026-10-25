@@ -2,6 +2,8 @@
 #include "MPC/Sequencer/MpcPatternOps.h"
 
 #include <cassert>
+#include <cstdint>
+#include <limits>
 
 int main() {
     mpc::MpcProjectState state;
@@ -242,5 +244,38 @@ int main() {
     const auto firstNewSample = state.registerSample(
             "First sample in new project", "", 48000.0, 1000);
     assert(firstNewSample.value == 1);
+
+    // Reproduce the unsigned cursor wrap deterministically with sparse IDs:
+    // nextSampleId_ becomes UINT32_MAX, that ID is allocated, then the next
+    // registration must skip already-used ID 1 after the cursor wraps to zero.
+    mpc::MpcProjectState wrapState;
+    auto wrapProject = wrapState.project();
+    mpc::domain::SampleRef lowSample;
+    lowSample.id = "sample-low";
+    lowSample.name = "Existing low ID";
+    lowSample.assetId.value = 1;
+    mpc::domain::SampleRef nearMaximumSample;
+    nearMaximumSample.id = "sample-near-max";
+    nearMaximumSample.name = "Existing near-maximum ID";
+    nearMaximumSample.assetId.value =
+            std::numeric_limits<std::uint32_t>::max() - 1;
+    wrapProject.samples.push_back(lowSample);
+    wrapProject.samples.push_back(nearMaximumSample);
+    assert(wrapState.replaceProject(std::move(wrapProject)));
+    const auto maximumSampleId =
+            wrapState.registerSample("Maximum ID", "", 48000.0, 64);
+    assert(maximumSampleId.value == std::numeric_limits<std::uint32_t>::max());
+    const auto postWrapSampleId =
+            wrapState.registerSample("After wrap", "", 48000.0, 64);
+    assert(postWrapSampleId.value == 2);
+    assert(wrapState.findSample(postWrapSampleId) != nullptr);
+    assert(wrapState.project().samples.size() == 4);
+    for (std::size_t left = 0; left < wrapState.project().samples.size(); ++left) {
+        for (std::size_t right = left + 1;
+                right < wrapState.project().samples.size(); ++right) {
+            assert(wrapState.project().samples[left].assetId.value
+                    != wrapState.project().samples[right].assetId.value);
+        }
+    }
     return 0;
 }
