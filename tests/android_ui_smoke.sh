@@ -9500,6 +9500,18 @@ if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser scan local audio files
 # deterministic catalog view rather than the audit's last navigation context.
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then exit 1; fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter ALL"; then exit 1; fi
+# The indexed WAV rows can extend below the Browser results viewport when the
+# two pinned actions are present. Scroll the live results list before waiting
+# for a row that may be present in MediaStore but clipped from the hierarchy.
+if ! adb_bounded 10 shell input swipe 1400 930 1400 760 300; then
+  echo "ERROR: could not scroll Browser results to reveal indexed WAV rows"
+  exit 1
+fi
+sleep 1
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not capture Browser results after scrolling to indexed WAV rows"
+  exit 1
+fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
     "MPC Browser file $LOCAL_SAMPLE_NAME" 20; then
   echo "ERROR: clearing inherited Browser state did not reveal the indexed local WAV"
