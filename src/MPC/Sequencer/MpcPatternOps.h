@@ -84,6 +84,9 @@ inline std::size_t applySwing(
 
         const auto shifted =
                 (static_cast<std::int64_t>(note.tick) + delay) % length;
+        if (shifted == note.tick) {
+            continue;
+        }
         note.tick = static_cast<std::int32_t>(shifted);
         ++changed;
     }
