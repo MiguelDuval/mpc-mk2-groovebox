@@ -82,10 +82,30 @@ bool MpcProjectState::canReplaceProject(const domain::Project& project) noexcept
     if (project.id.empty() || project.sequences.empty() || project.drumPrograms.empty()) {
         return false;
     }
+
+    // Drum Program IDs are the routing key used by Tracks. Reject ambiguous
+    // definitions and dangling references before the Project becomes live state.
+    for (std::size_t i = 0; i < project.drumPrograms.size(); ++i) {
+        const auto& program = project.drumPrograms[i];
+        if (program.id.empty()) return false;
+        for (std::size_t j = 0; j < i; ++j) {
+            if (project.drumPrograms[j].id == program.id) return false;
+        }
+    }
+
     for (const auto& sequence : project.sequences) {
         if (sequence.id.empty() || sequence.tracks.empty()) return false;
         for (const auto& track : sequence.tracks) {
             if (track.id.empty() || track.patterns.empty()) return false;
+            // Empty remains a supported explicitly-unassigned routing state.
+            if (!track.programId.empty()) {
+                const auto matchCount = static_cast<std::size_t>(std::count_if(
+                        project.drumPrograms.begin(), project.drumPrograms.end(),
+                        [&track](const domain::DrumProgram& program) {
+                            return program.id == track.programId;
+                        }));
+                if (matchCount != 1) return false;
+            }
         }
     }
     return true;
