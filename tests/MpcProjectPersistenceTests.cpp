@@ -149,6 +149,54 @@ int main() {
     assert(serialized.find("PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120")
             != std::string::npos);
 
+    // Arrangement playback resolves source Patterns by track-local ID. The
+    // serializer/reader must reject ambiguous IDs rather than emit a file that
+    // loads successfully but cannot be flattened for playback.
+    const auto assertPatternIdsRejected = [](bool makeEmptyId) {
+        auto invalid = makeProject();
+        auto& track = invalid.sequences[0].tracks[0];
+        auto duplicate = track.patterns.front();
+        if (makeEmptyId) {
+            track.patterns.front().id.clear();
+        } else {
+            duplicate.name = "Duplicate Pattern";
+            track.patterns.push_back(std::move(duplicate));
+        }
+        std::string validationError;
+        const auto bytes = persistence::serializeProject(invalid, &validationError);
+        assert(bytes.empty());
+        assert(validationError
+                == "Pattern ids must be non-empty and unique on a Track with placements");
+    };
+    assertPatternIdsRejected(false);
+    assertPatternIdsRejected(true);
+
+    // The reader must apply the same ambiguity check to externally supplied
+    // files, not just projects serialized by this build.
+    auto duplicatePatternBytes = serialized;
+    const std::string originalTrackHeader =
+            "TRACK \"track-drums-01\" \"DRUMS\" 0 0 \"program-drums-01\" 0 1 0 1 3\\n";
+    const auto trackHeaderPos = duplicatePatternBytes.find(originalTrackHeader);
+    assert(trackHeaderPos != std::string::npos);
+    auto duplicateTrackHeader = originalTrackHeader;
+    const auto patternCountPos = duplicateTrackHeader.rfind(" 1 3\\n");
+    assert(patternCountPos != std::string::npos);
+    duplicateTrackHeader.replace(patternCountPos, 5, " 2 3\\n");
+    duplicatePatternBytes.replace(
+            trackHeaderPos, originalTrackHeader.size(), duplicateTrackHeader);
+    const auto patternRecordPos = duplicatePatternBytes.find("PATTERN \\"pattern-shared-01\\"");
+    const auto firstPlacementPos = duplicatePatternBytes.find("PLACEMENT \\"clip-a\\"");
+    assert(patternRecordPos != std::string::npos);
+    assert(firstPlacementPos != std::string::npos);
+    const auto duplicateRecord = duplicatePatternBytes.substr(
+            patternRecordPos, firstPlacementPos - patternRecordPos);
+    duplicatePatternBytes.insert(firstPlacementPos, duplicateRecord);
+    std::string duplicatePatternError;
+    assert(!persistence::deserializeProject(
+            duplicatePatternBytes, source, &duplicatePatternError));
+    assert(duplicatePatternError
+            == "Pattern ids must be non-empty and unique on a Track with placements");
+
     // Every persisted MIDI field must satisfy the decoder's own constraints.
     // Reject the in-memory Project before producing bytes that cannot be loaded.
     const auto assertInvalidNoteRejected = [](auto mutateNote) {
