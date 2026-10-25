@@ -282,14 +282,23 @@ inline bool setStepNote(
     }
 
     const auto tick = static_cast<std::int32_t>(tick64);
-    for (auto& note : pattern.notes) {
-        if (note.tick == tick && note.note == noteNumber) {
-            note.durationTicks = durationTicks;
-            note.velocity = velocity;
-            note.probability = probability;
-            note.ratchet = ratchet;
-            return true;
-        }
+    const auto matchesExisting = [tick, noteNumber](
+            const domain::MidiNoteEvent& note) {
+        return note.tick == tick && note.note == noteNumber;
+    };
+    const auto existingCount = static_cast<std::size_t>(std::count_if(
+            pattern.notes.begin(), pattern.notes.end(), matchesExisting));
+    if (existingCount > 1) {
+        return false;
+    }
+    if (existingCount == 1) {
+        const auto existing = std::find_if(
+                pattern.notes.begin(), pattern.notes.end(), matchesExisting);
+        existing->durationTicks = durationTicks;
+        existing->velocity = velocity;
+        existing->probability = probability;
+        existing->ratchet = ratchet;
+        return true;
     }
 
     pattern.notes.push_back({
@@ -328,12 +337,14 @@ inline domain::MidiNoteEvent* findStepNote(
     }
 
     const auto tick = static_cast<std::int32_t>(tick64);
-    for (auto& note : pattern.notes) {
-        if (note.tick == tick && note.note == noteNumber) {
-            return &note;
-        }
+    const auto matches = [tick, noteNumber](const domain::MidiNoteEvent& note) {
+        return note.tick == tick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matches) != 1) {
+        return nullptr;
     }
-    return nullptr;
+    const auto found = std::find_if(pattern.notes.begin(), pattern.notes.end(), matches);
+    return found == pattern.notes.end() ? nullptr : &*found;
 }
 
 inline const domain::MidiNoteEvent* findStepNote(
@@ -354,12 +365,14 @@ inline const domain::MidiNoteEvent* findStepNote(
     }
 
     const auto tick = static_cast<std::int32_t>(tick64);
-    for (const auto& note : pattern.notes) {
-        if (note.tick == tick && note.note == noteNumber) {
-            return &note;
-        }
+    const auto matches = [tick, noteNumber](const domain::MidiNoteEvent& note) {
+        return note.tick == tick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matches) != 1) {
+        return nullptr;
     }
-    return nullptr;
+    const auto found = std::find_if(pattern.notes.begin(), pattern.notes.end(), matches);
+    return found == pattern.notes.end() ? nullptr : &*found;
 }
 
 inline bool setStepNoteVelocity(
@@ -476,16 +489,15 @@ inline bool eraseStepNote(
     }
 
     const auto tick = static_cast<std::int32_t>(tick64);
-    const auto before = pattern.notes.size();
-    pattern.notes.erase(
-            std::remove_if(
-                    pattern.notes.begin(),
-                    pattern.notes.end(),
-                    [tick, noteNumber](const domain::MidiNoteEvent& note) {
-                        return note.tick == tick && note.note == noteNumber;
-                    }),
-            pattern.notes.end());
-    return pattern.notes.size() != before;
+    const auto matches = [tick, noteNumber](const domain::MidiNoteEvent& note) {
+        return note.tick == tick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matches) != 1) {
+        return false;
+    }
+    const auto event = std::find_if(pattern.notes.begin(), pattern.notes.end(), matches);
+    pattern.notes.erase(event);
+    return true;
 }
 
 inline std::size_t recordNotes(
