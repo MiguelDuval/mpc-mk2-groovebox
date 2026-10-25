@@ -2065,8 +2065,13 @@ save_as_call = 'if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJEC
 if source.count(save_as_call) != 1:
     raise SystemExit("second-document Save As must use compressed, per-dump-capped capture")
 filename_assertion = 'if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then'
-if source.count(filename_assertion) != 1:
-    raise SystemExit("second-document Save As filename assertion must remain enabled")
+second_save_as_sequence = (
+    save_as_call
+    + '\n  echo "ERROR: could not capture the second-document Save As picker"; exit 1\nfi\n'
+    + filename_assertion
+)
+if source.count(second_save_as_sequence) != 1:
+    raise SystemExit("second-document Save As must retain its prefilled-filename assertion immediately after capture")
 print("Project Save As picker retry/cap regression contract passed.")
 PY_PROJECT_SAVE_PICKER_CONTRACT
 
