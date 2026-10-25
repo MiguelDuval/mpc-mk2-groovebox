@@ -7844,9 +7844,14 @@ if not any(node.attrib.get("package") == "com.android.documentsui" for node in n
 if not any(node.attrib.get("text", "").strip() == expected for node in nodes):
     raise SystemExit("staged Project picker hierarchy lost expected filename")
 PY_PROJECT_PICKER_EVIDENCE_COPY
-     || [[ ! -s "$png_tmp" ]]; then
+  then
     rm -f -- "$xml_tmp" "$png_tmp"
-    echo "ERROR: staged Project picker evidence pair failed validation"
+    echo "ERROR: staged Project picker hierarchy failed validation"
+    return 1
+  fi
+  if [[ ! -s "$png_tmp" ]]; then
+    rm -f -- "$xml_tmp" "$png_tmp"
+    echo "ERROR: staged Project picker screenshot is empty"
     return 1
   fi
 
