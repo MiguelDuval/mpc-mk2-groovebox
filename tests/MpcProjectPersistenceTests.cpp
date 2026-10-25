@@ -150,6 +150,31 @@ int main() {
     assert(serialized.find("PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120")
             != std::string::npos);
 
+    // Track routing uses Program IDs to select the program state. Reject
+    // duplicate Program IDs and non-empty references which do not resolve.
+    const auto assertInvalidProgramReferenceRejected =
+            [](auto mutateProject, const std::string& expectedError) {
+        auto invalid = makeProject();
+        mutateProject(invalid);
+        std::string validationError;
+        const auto bytes = persistence::serializeProject(invalid, &validationError);
+        assert(bytes.empty());
+        assert(validationError == expectedError);
+    };
+    assertInvalidProgramReferenceRejected(
+            [](auto& project) { project.drumPrograms[0].id.clear(); },
+            "Program IDs are empty or duplicated");
+    assertInvalidProgramReferenceRejected(
+            [](auto& project) {
+                auto duplicate = project.drumPrograms.front();
+                duplicate.name = "Duplicate Drum Program";
+                project.drumPrograms.push_back(std::move(duplicate));
+            },
+            "Program IDs are empty or duplicated");
+    assertInvalidProgramReferenceRejected(
+            [](auto& project) { project.sequences[0].tracks[0].programId = "missing-program-01"; },
+            "Track references a missing Program");
+
     // Arrangement playback resolves source Patterns by track-local ID. The
     // serializer/reader must reject ambiguous IDs rather than emit a file that
     // loads successfully but cannot be flattened for playback.
@@ -171,6 +196,43 @@ int main() {
     };
     assertPatternIdsRejected(false);
     assertPatternIdsRejected(true);
+
+    auto missingProgramBytes = serialized;
+    const std::string assignedTrackPrefix =
+            "TRACK \"track-drums-01\" \"DRUMS\" 0 0 \"program-drums-01\"";
+    const auto assignedTrackPos = missingProgramBytes.find(assignedTrackPrefix);
+    assert(assignedTrackPos != std::string::npos);
+    missingProgramBytes.replace(
+            assignedTrackPos, assignedTrackPrefix.size(),
+            "TRACK \"track-drums-01\" \"DRUMS\" 0 0 \"missing-program-01\"");
+    const auto sourceBeforeMissingProgram = persistence::serializeProject(source);
+    assert(!sourceBeforeMissingProgram.empty());
+    std::string missingProgramError;
+    assert(!persistence::deserializeProject(
+            missingProgramBytes, source, &missingProgramError));
+    assert(missingProgramError == "Track references a missing Program");
+    assert(persistence::serializeProject(source) == sourceBeforeMissingProgram);
+
+    auto duplicateProgramBytes = serialized;
+    const std::string programCountRecord = "PROGRAMS 1\n";
+    const auto programCountPos = duplicateProgramBytes.find(programCountRecord);
+    assert(programCountPos != std::string::npos);
+    duplicateProgramBytes.replace(
+            programCountPos, programCountRecord.size(), "PROGRAMS 2\n");
+    const std::string programRecordPrefix =
+            "PROGRAM \"program-drums-01\" \"Drum Program\" 0\n";
+    const auto programStart = duplicateProgramBytes.find(programRecordPrefix);
+    const auto sequenceStart = duplicateProgramBytes.find("SEQUENCES 1\n");
+    assert(programStart != std::string::npos);
+    assert(sequenceStart != std::string::npos);
+    const auto firstProgramBlock = duplicateProgramBytes.substr(
+            programStart, sequenceStart - programStart);
+    duplicateProgramBytes.insert(sequenceStart, firstProgramBlock);
+    std::string duplicateProgramError;
+    assert(!persistence::deserializeProject(
+            duplicateProgramBytes, source, &duplicateProgramError));
+    assert(duplicateProgramError == "Program IDs are empty or duplicated");
+    assert(persistence::serializeProject(source) == sourceBeforeMissingProgram);
 
     // The reader must apply the same ambiguity check to externally supplied
     // files, not just projects serialized by this build.
