@@ -305,6 +305,42 @@ bool validateSequenceSettings(
     return true;
 }
 
+bool validatePadParameters(
+        const domain::Project& project, std::string* error) {
+    for (const auto& program : project.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            if (!std::isfinite(pad.tuningSemitones)
+                    || pad.tuningSemitones < -24.0f
+                    || pad.tuningSemitones > 24.0f) {
+                return setError(error, "Pad tuning is out of range");
+            }
+            if (!std::isfinite(pad.level) || pad.level < 0.0f || pad.level > 1.0f) {
+                return setError(error, "Pad level is out of range");
+            }
+            if (!std::isfinite(pad.pan) || pad.pan < -1.0f || pad.pan > 1.0f) {
+                return setError(error, "Pad pan is out of range");
+            }
+            if (!std::isfinite(pad.envelopeAttackMs)
+                    || !std::isfinite(pad.envelopeDecayMs)
+                    || !std::isfinite(pad.envelopeReleaseMs)
+                    || pad.envelopeAttackMs < 0.0f || pad.envelopeAttackMs > 2000.0f
+                    || pad.envelopeDecayMs < 0.0f || pad.envelopeDecayMs > 2000.0f
+                    || pad.envelopeReleaseMs < 0.0f || pad.envelopeReleaseMs > 2000.0f) {
+                return setError(error, "Pad envelope time is out of range");
+            }
+            if (!std::isfinite(pad.envelopeSustain)
+                    || pad.envelopeSustain < 0.0f || pad.envelopeSustain > 1.0f) {
+                return setError(error, "Pad envelope sustain is out of range");
+            }
+            if (!std::isfinite(pad.filterCutoffHz)
+                    || pad.filterCutoffHz < 0.0f || pad.filterCutoffHz > 20000.0f) {
+                return setError(error, "Pad filter cutoff is out of range");
+            }
+        }
+    }
+    return true;
+}
+
 bool validateSampleLayerState(
         const domain::Project& project, std::string* error) {
     for (const auto& program : project.drumPrograms) {
@@ -445,6 +481,7 @@ bool validatePatternNotes(const domain::Project& project, std::string* error) {
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
     if (!validateSequenceSettings(project, error)
+            || !validatePadParameters(project, error)
             || !validateSampleLayerState(project, error)
             || !validatePlacements(project, error)
             || !validatePatternNotes(project, error)) {
@@ -666,6 +703,7 @@ bool deserializeProject(
 
     if (!in.tag("END_PROJECT") || !in.finished()) return false;
     if (!validateSequenceSettings(candidate, error)
+            || !validatePadParameters(candidate, error)
             || !validateSampleLayerState(candidate, error)
             || !validatePlacements(candidate, error)) {
         return false;
