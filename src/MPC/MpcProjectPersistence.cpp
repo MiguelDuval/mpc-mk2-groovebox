@@ -316,6 +316,17 @@ bool validateSampleLayerState(
                 if (layer.velocityMinimum > 127 || layer.velocityMaximum > 127) {
                     return setError(error, "Sample layer velocity range is out of range");
                 }
+                if (!std::isfinite(layer.gain) || layer.gain < 0.0f || layer.gain > 1.0f) {
+                    return setError(error, "Sample layer gain is out of range");
+                }
+                if (!std::isfinite(layer.pan) || layer.pan < -1.0f || layer.pan > 1.0f) {
+                    return setError(error, "Sample layer pan is out of range");
+                }
+                if (!std::isfinite(layer.tuningSemitones)
+                        || layer.tuningSemitones < -24.0f
+                        || layer.tuningSemitones > 24.0f) {
+                    return setError(error, "Sample layer tuning is out of range");
+                }
                 if (!layer.velocityRange().isValid()) {
                     return setError(error, "Sample layer velocity range is reversed");
                 }

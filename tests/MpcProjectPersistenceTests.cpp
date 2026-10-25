@@ -227,6 +227,18 @@ int main() {
     assertInvalidSampleLayerRejected(
             [](auto& layer) { layer.velocityMaximum = 128; },
             "Sample layer velocity range is out of range");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.gain = 1.25f; },
+            "Sample layer gain is out of range");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.gain = std::numeric_limits<float>::quiet_NaN(); },
+            "Sample layer gain is out of range");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.pan = -1.25f; },
+            "Sample layer pan is out of range");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.tuningSemitones = 24.5f; },
+            "Sample layer tuning is out of range");
 
     const std::string validLayerRecord =
             "LAYER 101 17 1777 0.625 0.125 -3.5 7 119 100 1700 1\n";
@@ -261,6 +273,15 @@ int main() {
     assertInvalidSerializedSampleLayerRejected(
             " 7 119 ", " 7 128 ",
             "sample-layer field is out of range");
+    assertInvalidSerializedSampleLayerRejected(
+            " 0.625 ", " 1.25 ",
+            "Sample layer gain is out of range");
+    assertInvalidSerializedSampleLayerRejected(
+            " 0.125 ", " -1.25 ",
+            "Sample layer pan is out of range");
+    assertInvalidSerializedSampleLayerRejected(
+            " -3.5 ", " 24.5 ",
+            "Sample layer tuning is out of range");
 
     // Sequence fields are part of the persisted project contract. Reject the
     // same invalid values at serialization and deserialization boundaries
