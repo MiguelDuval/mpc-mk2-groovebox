@@ -2,27 +2,27 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-25 (live exact-SHA evidence governs)
 
-### 1. Resolve the PR #43 Android Document Picker smoke failure
+### 1. PR #58 — retryable second-document Save As picker capture
 
-- PR [#43](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/43), exact head `67583ed41f9d86db6a8244a666b3a8322742de31`, failed Build #3242 / [run 40145378936](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145378936), job `121031806244`, step 52, during second-document Save As picker capture.
-- The log shows that Android DocumentsUI was the active package and that a hierarchy was emitted, but a UIAutomator dump consumed the stable-capture helper's full 8-second budget before the host transfer could begin. The helper had only one attempt. The app's Save As transaction and document-state assertions had not failed at this point.
-- Comparison: PR [#50](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/50), exact head `2390f23670c3679a6a33c348aeb589440ff6765b`, passed full Build #3244 / [run 40145568578](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145568578), including emulator smoke and evidence upload. The smoke script blob on both heads was identical (`f2406e89993944696b86a5533b3470725d3e6ecb`); PR #50 modified recorder code and native tests only. Evidence therefore supports a transient UIAutomator/emulator stall plus a capture helper budget flaw, not a demonstrated product-level Save As defect.
-- Isolated fix branch: `fix/project-save-picker-capture-retries`, based on exact PR #43 head. The helper now has a validated per-dump budget cap applied to all three stable snapshots. Only the second-document Save As capture uses compressed hierarchy snapshots capped at 3 seconds; its total helper budget remains 8 seconds. Stable hierarchy agreement, screenshot correspondence, filename-field validation, SAVE, persisted-state digest/read-back and A/B document isolation assertions are unchanged.
-- Added a source regression guard for all three capped dumps, the targeted caller mode/budget, and preservation of the prefilled-filename assertion. Implementation commits include `0c803b7b702961aef8bcb1c6b2fff996a2553924` and `b8f2f36a61f0f6578a2da081fc254fc5c0c15d53`; later documentation sync commits are on the same isolated branch. **No green result is claimed for the new branch until its final exact HEAD completes the full Android workflow, emulator smoke and evidence upload.**
+- PR [#43](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/43), head `67583ed41f9d86db6a8244a666b3a8322742de31`, failed Build #3242 / [run 40145378936](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145378936), job `121031806244`, step 52. The real DocumentsUI hierarchy was present, but a single UIAutomator dump consumed the stable-capture helper's entire 8-second budget before host transfer; no product Save As persistence assertion had failed.
+- The comparison is exact: PR [#50](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/50), head `2390f23670c3679a6a33c348aeb589440ff6765b`, passed full Build #3244 / [run 40145568578](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145568578). Both heads used the same smoke script blob `f2406e89993944696b86a5533b3470725d3e6ecb`; PR #50 changed recorder code/tests only. Evidence points to a transient UIAutomator stall exposed by retry-budget design, not a demonstrated application Save As defect.
+- Draft PR [#58](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/58) adds a validated per-dump cap for all three hierarchy snapshots; only the second-document Save As uses compressed snapshots capped at 3 seconds. The total helper budget remains 8 seconds and the existing stable comparison, screenshot match, filename, SAVE, persisted-state read-back and A/B isolation checks remain strict.
+- Build #3245 / [run 40150452575](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40150452575) failed step 52 on obsolete SHA `cfbd2ef80f65df65e9b55f5452c24a06e2f3f1a3`: the new source guard selected its own embedded helper literal, so it did not inspect the runtime helper. The guard was adjusted to start after the heredoc terminator. Build #3246 / [run 40150693685](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40150693685) ran on superseded SHA `10b6f3eb0d9a952968c3f5c6e7454f7fe0f61434`. Current PR #58 head at this checkpoint is `3586b15157d995a804141c72cb05b1c83663b5ea`; Build #3247 / [run 40151006514](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40151006514) was pending and is the workflow that must validate the current head.
 
-### 2. Preserve the live primary checkpoint and PR stack
+### 2. PR #59 — immutable matched picker evidence
 
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open, branch `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`, live head `30e270c51038afdd037e9d226f20eb5cc310bc82`, base SHA `5f562e54e2cf8235041590933232a3836d74a16a`.
-- Android Build #3215 / [run 40141743745](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40141743745) passed on that exact SHA; APK artifact `12579022465`, visual-evidence artifact `12579887000`.
-- PR #50 is intentionally stacked on PR #43; its successful exact-SHA CI is evidence that the same picker smoke can pass, not proof that #43's failed run was fixed. Do not retarget, merge or close either PR automatically.
+- Inspecting successful Build #3244 visual evidence exposed an independent defect: `mpc-groovebox-project-save-picker.png` depicts a DocumentsUI picker, but XML of the same basename is an app `page="PROJECT"` hierarchy (`com.miguelduval.mpcmk2groovebox.debug`). The script reuses shared `PROJECT_SAVE_XML`/`PROJECT_SAVE_PNG` paths, and later waits and Project-page captures can overwrite them.
+- Draft PR [#59](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/59) preserves the initial Save As, second-document Save As and recovery-export destination PNG/XML pairs immediately after stable capture, under unique filenames. It validates the package is `com.android.documentsui` and the expected filename appears in the hierarchy; missing/mismatched evidence fails the smoke rather than being uploaded as a false pair.
+- The code-only head before documentation sync was `5add15b7ccb92b150dc5ba2e2415ef6fdf5dd1c7`; Build #3248 / [run 40151105453](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40151105453) started on that older SHA. Subsequent documentation commits change the head; acceptance must come from the final exact-SHA workflow and inspection of the newly preserved artifact pairs.
 
-### 3. Acceptance and safety gates
+### 3. Baseline and acceptance gates
 
-1. Open the isolated follow-up PR against `fix/sequence-recorder-event-validation`, then inspect the workflow triggered for its final exact SHA. Require native/JVM tests, APK, emulator smoke (step 52), and evidence upload (step 53) all to pass.
-2. Inspect the uploaded picker screenshot/hierarchy and full run logs after CI; do not raise the 8-second helper budget or weaken filename/read-back/isolation assertions to obtain green.
-3. Keep `cancel-in-progress: false`, leave `main` untouched, and preserve linear history without reset/rebase/force-push. Physical MPC Studio MkII validation remains a separate pending hardware gate.
+- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open with primary branch head `30e270c51038afdd037e9d226f20eb5cc310bc82`; Android Build #3215 / [run 40141743745](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40141743745) passed on that exact SHA (APK artifact `12579022465`, visual evidence `12579887000`).
+- Require the latest exact-head workflow to pass tests, APK assembly/upload, emulator smoke step 52 and evidence upload step 53 before accepting either draft follow-up. A green older SHA is not acceptance of a newer head.
+- `.github/workflows/android-build.yml` remains unchanged with `cancel-in-progress: false`. Do not modify `main`, retarget/merge/close PRs automatically, or rewrite history. Physical MPC Studio MkII validation remains a separate hardware gate.
 
-## HISTORICAL EXECUTION NOTES (older entries are non-authoritative) (superseded by the current 2026-10-23 status above)
+## HISTORICAL EXECUTION NOTES (older entries are non-authoritative)
+
 
 Older dated “next task” sections below retain history only. Start each slice from live HEAD, current source and real test gaps.
 
