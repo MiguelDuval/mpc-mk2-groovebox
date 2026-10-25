@@ -264,6 +264,20 @@ bool readPattern(Decoder& in, domain::Pattern& pattern) {
 bool validatePlacements(const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
         for (const auto& track : sequence.tracks) {
+            if (!track.placements.empty()) {
+                // Arrangement playback resolves a placement's source Pattern by
+                // track-local ID. Duplicate or empty IDs make that reference
+                // ambiguous at runtime even though the first-match serializer
+                // validation below could otherwise accept the project.
+                std::set<std::string> patternIds;
+                for (const auto& pattern : track.patterns) {
+                    if (pattern.id.empty() || !patternIds.insert(pattern.id).second) {
+                        return setError(
+                                error,
+                                "Pattern ids must be non-empty and unique on a Track with placements");
+                    }
+                }
+            }
             std::set<std::string> ids;
             for (std::size_t i = 0; i < track.placements.size(); ++i) {
                 const auto& placement = track.placements[i];
