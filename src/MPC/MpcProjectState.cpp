@@ -251,7 +251,18 @@ bool MpcProjectState::addSequence(std::string name) {
         return false;
     }
 
-    const auto number = project_.sequences.size() + 1;
+    auto number = project_.sequences.size() + 1;
+    const auto sequenceIdUsed = [this](std::size_t candidate) {
+        const auto candidateId = "sequence-" + std::to_string(candidate);
+        return std::any_of(
+                project_.sequences.begin(), project_.sequences.end(),
+                [&candidateId](const domain::Sequence& existing) {
+                    return existing.id == candidateId;
+                });
+    };
+    while (sequenceIdUsed(number)) {
+        ++number;
+    }
     auto sequence = makeDefaultSequence(number);
     if (!name.empty()) {
         sequence.name = std::move(name);
@@ -442,7 +453,18 @@ bool MpcProjectState::addTrack(
         return false;
     }
     domain::Track track;
-    const auto number = sequence.tracks.size() + 1;
+    auto number = sequence.tracks.size() + 1;
+    const auto trackIdUsed = [&sequence](std::size_t candidate) {
+        const auto candidateId = "track-" + std::to_string(candidate);
+        return std::any_of(
+                sequence.tracks.begin(), sequence.tracks.end(),
+                [&candidateId](const domain::Track& existing) {
+                    return existing.id == candidateId;
+                });
+    };
+    while (trackIdUsed(number)) {
+        ++number;
+    }
     track.id = "track-" + std::to_string(number);
     track.name = name.empty()
             ? ("TRACK " + std::to_string(number))
