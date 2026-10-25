@@ -100,17 +100,23 @@ final class MpcBrowserFile {
     }
 
     String metadataLine(boolean showFileSize, boolean showModifiedDate) {
-        final List<String> fields = new ArrayList<>();
+        final StringBuilder line = new StringBuilder();
         if (showFileSize) {
-            fields.add(sizeBytes < 0 ? "SIZE UNKNOWN" : formatSize(sizeBytes));
+            appendMetadataPart(line, sizeBytes < 0 ? "SIZE UNKNOWN" : formatSize(sizeBytes));
         }
         if (showModifiedDate) {
-            fields.add(lastModifiedMs <= 0
+            appendMetadataPart(line, lastModifiedMs <= 0
                     ? "DATE UNKNOWN" : "MODIFIED " + formatModifiedDate(lastModifiedMs));
         }
-        fields.add(durationMs <= 0 ? "DURATION UNKNOWN" : formatDuration(durationMs));
-        fields.add("WAV");
-        return String.join(" • ", fields);
+        appendMetadataPart(line, durationMs <= 0
+                ? "DURATION UNKNOWN" : formatDuration(durationMs));
+        appendMetadataPart(line, "WAV");
+        return line.toString();
+    }
+
+    private static void appendMetadataPart(StringBuilder line, String part) {
+        if (line.length() > 0) line.append(" • ");
+        line.append(part);
     }
 
     static String formatModifiedDate(long epochMillis) {
