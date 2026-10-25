@@ -305,6 +305,21 @@ bool validateSequenceSettings(
     return true;
 }
 
+bool validateSampleReferences(
+        const domain::Project& project, std::string* error) {
+    for (const auto& sample : project.samples) {
+        // Zero means metadata is not known yet; negative values are never
+        // meaningful. Keep rate/length independently optional for compatibility.
+        if (!std::isfinite(sample.sampleRate) || sample.sampleRate < 0.0) {
+            return setError(error, "Sample rate is out of range");
+        }
+        if (sample.lengthSamples < 0) {
+            return setError(error, "Sample length is out of range");
+        }
+    }
+    return true;
+}
+
 bool validatePadParameters(
         const domain::Project& project, std::string* error) {
     for (const auto& program : project.drumPrograms) {
@@ -481,6 +496,7 @@ bool validatePatternNotes(const domain::Project& project, std::string* error) {
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
     if (!validateSequenceSettings(project, error)
+            || !validateSampleReferences(project, error)
             || !validatePadParameters(project, error)
             || !validateSampleLayerState(project, error)
             || !validatePlacements(project, error)
@@ -703,6 +719,7 @@ bool deserializeProject(
 
     if (!in.tag("END_PROJECT") || !in.finished()) return false;
     if (!validateSequenceSettings(candidate, error)
+            || !validateSampleReferences(candidate, error)
             || !validatePadParameters(candidate, error)
             || !validateSampleLayerState(candidate, error)
             || !validatePlacements(candidate, error)) {

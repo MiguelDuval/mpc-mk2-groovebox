@@ -283,6 +283,54 @@ int main() {
             " -3.5 ", " 24.5 ",
             "Sample layer tuning is out of range");
 
+    // Sample rate and frame count are optional metadata when zero, but
+    // negative values cannot describe a valid sample and must not silently
+    // disable the sample-region upper-bound check.
+    const auto assertInvalidSampleReferenceRejected =
+            [](auto mutateSample, const std::string& expectedError) {
+        auto invalid = makeProject();
+        mutateSample(invalid.samples[0]);
+        std::string validationError;
+        const auto bytes = persistence::serializeProject(invalid, &validationError);
+        assert(bytes.empty());
+        assert(validationError == expectedError);
+    };
+    assertInvalidSampleReferenceRejected(
+            [](auto& sample) { sample.sampleRate = -48000.0; },
+            "Sample rate is out of range");
+    assertInvalidSampleReferenceRejected(
+            [](auto& sample) { sample.sampleRate = std::numeric_limits<double>::quiet_NaN(); },
+            "Sample rate is out of range");
+    assertInvalidSampleReferenceRejected(
+            [](auto& sample) { sample.lengthSamples = -1; },
+            "Sample length is out of range");
+
+    const std::string validSampleRecord =
+            "SAMPLE \"sample-kick-01\" \"Kick\" \"/fixtures/kick.wav\" 48000 24000 101\n";
+    const auto assertInvalidSerializedSampleReferenceRejected =
+            [&](const std::string& from, const std::string& to,
+                    const std::string& expectedError) {
+        std::string invalidBytes = serialized;
+        const auto position = invalidBytes.find(validSampleRecord);
+        assert(position != std::string::npos);
+        auto invalidRecord = validSampleRecord;
+        const auto fieldPosition = invalidRecord.find(from);
+        assert(fieldPosition != std::string::npos);
+        invalidRecord.replace(fieldPosition, from.size(), to);
+        invalidBytes.replace(position, validSampleRecord.size(), invalidRecord);
+
+        const auto sourceBeforeFailure = persistence::serializeProject(source);
+        assert(!sourceBeforeFailure.empty());
+        std::string parseError;
+        assert(!persistence::deserializeProject(invalidBytes, source, &parseError));
+        assert(parseError == expectedError);
+        assert(persistence::serializeProject(source) == sourceBeforeFailure);
+    };
+    assertInvalidSerializedSampleReferenceRejected(
+            " 48000 ", " -48000 ", "Sample rate is out of range");
+    assertInvalidSerializedSampleReferenceRejected(
+            " 24000 101", " -1 101", "Sample length is out of range");
+
     // Pad controls are clamped by the live audio engine. Persisting values
     // outside those bounds would produce a Project whose UI state and runtime
     // projection disagree, and could overflow milli-unit conversions.
