@@ -324,7 +324,7 @@ int main() {
         std::string invalidBytes = serialized;
         const auto padStart = invalidBytes.find(originalPadPrefix);
         assert(padStart != std::string::npos);
-        const auto padEnd = invalidBytes.find('\\n', padStart);
+        const auto padEnd = invalidBytes.find('\n', padStart);
         assert(padEnd != std::string::npos);
         auto padRecord = invalidBytes.substr(padStart, padEnd - padStart);
         const auto fieldPosition = padRecord.find(from);
