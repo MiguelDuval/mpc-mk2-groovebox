@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <span>
 
 namespace mpc::sequencer {
@@ -485,8 +484,7 @@ inline bool eraseStepNote(
 }
 
 inline bool validRecordedNote(const domain::MidiNoteEvent& note) noexcept {
-    return note.tick >= std::numeric_limits<std::int32_t>::min()
-            && note.durationTicks >= 0
+    return note.durationTicks >= 0
             && note.note <= 127
             && note.velocity <= 127
             && note.probability <= 127
