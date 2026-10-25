@@ -1,34 +1,33 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-25 (live exact-SHA evidence governs)
+## CURRENT EXECUTION QUEUE — 2026-10-25 (verify live exact-SHA evidence)
 
-### Latest accepted product-code checkpoint — PR #23
+### Product branch checkpoint — PR #23
 
-- PR #23 remains OPEN: `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`.
-- **Android Build #3296 / run [40205072938](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40205072938) passed on exact SHA `3de910cc0e28b5abe82e588766b77c49262fe650`.** All 57 workflow steps passed, including the complete emulator smoke and evidence upload.
-- APK artifact `12602514729` (10,009,933 bytes; SHA-256 `6361f319c682457e34a183b089388bdbd621a7989054cee046fc9359af8bc8c9`); visual-evidence artifact `12604850216` (15,206,981 bytes; SHA-256 `665358fae296e0ceba8593d34abc728560da1193e4fbf0a404f3b6045614198e`). ZIP integrity passed; 87 PNG, 97 XML, 3 text and 2 log files were inspected.
-- SAMP-008 CROP, SAMP-009 CH4/CH8/CH16, SAMP-010 zoom/reset/audition, Browser local WAV and FAVORITE 1, Project malformed-load preservation and the existing Project persistence acceptance all passed. Physical MPC Studio MkII validation remains a separate pending hardware gate.
-- Keep `cancel-in-progress: false`; no changes to `main`, history rewrites, automatic merges or retargets.
+- PR #23 remains OPEN, `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`, head `d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991`.
+- Android Build #3301 / [run 40207854314](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40207854314) passed on that exact SHA. All 57 steps passed through emulator smoke and visual-evidence upload. Physical controller validation remains pending.
+- Preserve `cancel-in-progress: false`; no change to `main`, history rewrite, automatic merge or retarget.
 
-### Active isolated slices — do not call accepted until exact-SHA full CI finishes
+### Save As and persistence follow-ups — exact-head CI
 
-- **PR #80 — Browser Drums/Demos local paths:** head `9e62c91c5d0437649150bbcce73b3eaefce3cbf8`; Build #3298 / run [40206997235](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40206997235) is in progress at emulator smoke step 52. The previous run failed before category assertions because the real local WAV result was not found; the final UI hierarchy dump timed out and removed the last host snapshot. The current commit preserves validated XML across failed dumps so the next run can expose the actual final state. Keep the WAV-row assertions strict.
-- **PR #81 — Browser modified date:** head `f88b5050c93455c9e60a26d697cc0dd705448fb5`; Build #3297 / run [40205769766](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40205769766) is in progress at emulator smoke step 52. Build #3295 succeeded only on predecessor SHA `72a2ea59d06115871ecc9d388062e76bcb46c721`.
-- **PR #82 — Pad Mixer accessibility labels:** head `7ae58ea9744c8b5b28608807d105398b5212d22e`; Build #3300 / run [40207666754](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40207666754) is in progress, last observed at step 7 (Android toolchain setup). The preceding #3299 failed at focused unit tests because Android View class initialization leaked into a JVM-only policy test; the follow-up extracted a pure label policy and kept the test independent of Android runtime stubs.
+- PR #58 (head `63ea6805e819537a96eed446bdde1b3aa518531d`) / Build #3254 [run 40177584543](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177584543) passed.
+- PR #59 (head `5a12f545c6b798a6a8dce2e3f53448fb2ba06f41`) / Build #3280 [run 40192720803](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40192720803) passed. Evidence artifact `12599204885` was downloaded and inspected. Separate screenshot/XML pairs prove initial Save As, second document picker with existing project file, and recovery export destination. No merge/retarget performed.
+- The latest recorded heads of PRs #60–67 have all passed their own full Android workflows: #60 `596a8110565a99316ccb0d5aa2a04d1e0bba5c56` / [40177392571](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177392571); #61 `0fdba37e521e1b39a96e3c95ee9d0078a43e9883` / [40177684480](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177684480); #62 `26579254409aa1a5a5d0f0f8cac9bda5cd368832` / [40178612521](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178612521); #63 `04b4ab82635d49ca104a10a036702cf99c496c5c` / [40178770260](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178770260); #64 `85dd29b49b8a91fd9c033c4b839857778ad4674b` / [40185698676](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40185698676); #65 `396a7b46d0c2995aae3b1b240df01136fdd05ae8` / [40186113233](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40186113233); #66 `0ca8355ce704e35a57f90f6936053e54f5577296` / [40186451595](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40186451595); #67 `232923a956367c1a984c1878d014bffbec3fc6df` / [40191346634](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40191346634). These remain OPEN and isolated; #67 includes the corrected validation ordering.
 
-### Previously green follow-ups with base ancestry still to reconcile
+### Current isolated blockers and fixes
 
-- **PR #56 — Browser Show file size:** head `20e33dd7b9d2462dcd816da1281b2206948d243b`; Build #3239 / run [40144540628](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40144540628) passed on that exact SHA.
-- **PR #30 — Project provider failure phases:** head `918b195768a2e2326adb4edb73f046e0a34a1da1`; Build #3240 / run [40144775117](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40144775117) passed on that exact SHA.
-- **PR #57 — output-open vs stream-write classification, stacked on #30:** head `345872ba400cac7bd9df665e619609f1ffaa25d6`; Build #3241 / run [40144832991](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40144832991) passed on that exact SHA.
-- #30 and #56 still report the older primary base SHA `30e270c51038afdd037e9d226f20eb5cc310bc82`; verify current branch refs, merge base and live diff before considering integration. Do not automatically retarget, rebase or merge.
+- **PR #80** — previous SHA `9e62c91c5d0437649150bbcce73b3eaefce3cbf8`, Build #3298 [run 40206997235](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40206997235) failed emulator smoke step 52. The diagnostic hierarchy showed three indexed WAVs but only the Demo row in the visible viewport; the local WAV was not surfaced because the results ScrollView had not been scrolled. A strict test-only scroll/capture fix is now on SHA `60f7b73e9a5888e9dbbdd20b7ffbb6d0e5bb4056`; Build #3302 [run 40210755051](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40210755051) was last observed IN PROGRESS. Re-check live head, final step results and evidence before claiming acceptance; do not relax assertions.
+- **PR #81** — SHA `f88b5050c93455c9e60a26d697cc0dd705448fb5`, Build #3297 [run 40205769766](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40205769766) passed exact head.
+- **PR #82** — SHA `7ae58ea9744c8b5b28608807d105398b5212d22e`, Build #3300 [run 40207666754](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40207666754) passed exact head.
+- **PR #83** — fix signed overflow in both `MpcSequenceTransportClock::normalize` and `MpcSequencerCursor::setPositionTicks`. Code commits `60e5575a460fb5de66ee9ed30346132ad2fb85a0` and `674d388e6f91690a286141b0c2b86883bb68d960` use modulo-before-subtraction and add `INT64_MIN`/`INT64_MAX` regressions for `[960, 2880)`. This documentation checkpoint changes the head again; use only the full Android workflow attached to the live latest PR SHA for acceptance.
+- #30/#56/#57 remain separate green follow-ups whose base ancestry must be reconciled through a live diff before integration.
 
 ### Next acceptance order
 
-1. Resolve exact-SHA full workflows for PRs #80, #81 and #82; inspect their precise failed steps and uploaded evidence before accepting any.
-2. If #80 still fails, use the preserved last-valid hierarchy and device/log diagnostics to fix the actual state/touch issue, not just the dump timeout.
-3. Reconcile #30/#56/#57 branch ancestry with the live primary head; integrate only after explicit review and successful acceptance on the resulting exact SHA.
-4. Perform the physical MPC Studio MkII gate separately; emulator success is not hardware certification.
+1. Verify the latest exact-SHA full Android workflow and evidence for #80.
+2. Verify the latest exact-SHA workflow for #83, including the new native transport regression.
+3. Review the live diffs and branch ancestry for #60–67 and other green follow-ups before any explicit integration.
+4. Keep physical MPC Studio MkII validation pending until tested on the actual controller.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 

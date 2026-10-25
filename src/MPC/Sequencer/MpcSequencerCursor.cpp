@@ -36,8 +36,14 @@ void MpcSequencerCursor::setPositionTicks(std::int64_t ticks) noexcept {
         return;
     }
 
-    const auto relative = (ticks - loopStart) % loopLength;
-    positionTicks_ = loopStart + (relative < 0 ? relative + loopLength : relative);
+    // Reduce both operands before subtracting: ticks may be INT64_MIN,
+    // making ticks - loopStart overflow signed int64 when loopStart is positive.
+    auto relative = (ticks % loopLength) - (loopStart % loopLength);
+    relative %= loopLength;
+    if (relative < 0) {
+        relative += loopLength;
+    }
+    positionTicks_ = loopStart + relative;
 }
 
 TickWindow MpcSequencerCursor::advanceTicks(

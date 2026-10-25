@@ -174,8 +174,14 @@ private:
         }
 
         const auto length = loopEnd - loopStart;
-        const auto relative = (ticks - loopStart) % length;
-        return loopStart + (relative < 0 ? relative + length : relative);
+        // Reduce both operands before subtracting: ticks can be INT64_MIN,
+        // so computing ticks - loopStart directly would overflow signed int64.
+        auto relative = (ticks % length) - (loopStart % length);
+        relative %= length;
+        if (relative < 0) {
+            relative += length;
+        }
+        return loopStart + relative;
     }
 
     std::atomic<std::int64_t> positionTicks_{0};
