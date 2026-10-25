@@ -2034,12 +2034,54 @@ for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + 
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
     'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..4}; do' \
     'initial DocumentsUI hierarchy is not ready' 'after 4 fresh, bounded attempts' \
-    'expected Project Open outcome $expected_marker'; do
+    'expected Project Open outcome $expected_marker' \
+    'dump_timeout_cap="${7:-8}"' \
+    '(( dump_timeout > dump_timeout_cap )) && dump_timeout="$dump_timeout_cap"' \
+    'capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8 "" compressed 3' \
+    'second Save As did not show the current filename'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
   fi
 done
+
+# Regression guard for Android 16 DocumentsUI/UIAutomator dump stalls during
+# the second Save As. Keep the existing total budget and all persistence checks;
+# cap each of the three fresh snapshots so a single dump cannot consume it.
+python3 - "$0" <<'PY_PROJECT_SAVE_PICKER_CONTRACT'
+from pathlib import Path
+import sys
+
+source = Path(sys.argv[1]).read_text(encoding="utf-8")
+guard_end = source.index("\nPY_PROJECT_SAVE_PICKER_CONTRACT\n") + len("\nPY_PROJECT_SAVE_PICKER_CONTRACT\n")
+start = source.index("capture_stable_picker_state() {", guard_end)
+end = source.index("\ntap_ui_picker_folder_until_child()", start)
+helper = source[start:end]
+cap_contract = '(( dump_timeout > dump_timeout_cap )) && dump_timeout="$dump_timeout_cap"'
+if helper.count(cap_contract) != 3:
+    raise SystemExit("stable picker capture must cap all three hierarchy dumps")
+if '(( dump_timeout > 8 )) && dump_timeout=8' in helper:
+    raise SystemExit("stable picker capture still lets an 8-second dump consume its full budget")
+save_as_call = 'if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8 "" compressed 3; then'
+filename_assertion = 'if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then'
+runtime = source[guard_end:]
+if runtime.count(save_as_call) != 1:
+    raise SystemExit("second-document Save As must use exactly one compressed, per-dump-capped capture")
+capture_pos = runtime.index(save_as_call)
+filename_pos = runtime.find(filename_assertion, capture_pos)
+capture_error = 'echo "ERROR: could not capture the second-document Save As picker"; exit 1'
+replace_filename = 'if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_B_NAME"; then exit 1; fi'
+if filename_pos < 0:
+    raise SystemExit("second-document Save As prefilled-filename assertion must remain enabled after picker capture")
+capture_error_pos = runtime.find(capture_error, capture_pos)
+if capture_error_pos < capture_pos or capture_error_pos > filename_pos:
+    raise SystemExit("second-document Save As capture must fail hard before filename acceptance")
+replace_pos = runtime.find(replace_filename, filename_pos)
+if replace_pos <= filename_pos:
+    raise SystemExit("second-document Save As must validate the prefilled filename before replacing it")
+print("Project Save As picker retry/cap regression contract passed.")
+PY_PROJECT_SAVE_PICKER_CONTRACT
+
 adb_bounded() {
   local seconds="$1"
   shift
@@ -7629,7 +7671,11 @@ PY
 capture_stable_picker_state() {
   local remote_path="$1" hierarchy_path="$2" screenshot_path="$3"
   local timeout_seconds="${4:-6}" stable_folder_label="${5:-}" deadline=$((SECONDS + ${4:-6}))
-  local dump_mode="${6:-standard}"
+  local dump_mode="${6:-standard}" dump_timeout_cap="${7:-8}"
+  if [[ ! "$dump_timeout_cap" =~ ^[1-9][0-9]*$ ]] || (( dump_timeout_cap > 20 )); then
+    echo "ERROR: invalid per-dump timeout cap for stable picker capture: $dump_timeout_cap"
+    return 2
+  fi
   local check_path="${hierarchy_path%.xml}-stability-check.xml"
   local candidate_path="${hierarchy_path%.xml}-stability-candidate.xml"
   local screenshot_candidate_path="${screenshot_path%.png}-stability-candidate.png"
@@ -7644,7 +7690,7 @@ capture_stable_picker_state() {
     attempt=$((attempt + 1))
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
     dump_timeout="$remaining"
-    (( dump_timeout > 8 )) && dump_timeout=8
+    (( dump_timeout > dump_timeout_cap )) && dump_timeout="$dump_timeout_cap"
     rm -f "$candidate_path"
     if ! dump_device_ui "$remote_path" "$candidate_path" "$dump_timeout" "$dump_mode"; then
       rm -f "$candidate_path"
@@ -7666,7 +7712,7 @@ capture_stable_picker_state() {
     sleep 0.25
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
     dump_timeout="$remaining"
-    (( dump_timeout > 8 )) && dump_timeout=8
+    (( dump_timeout > dump_timeout_cap )) && dump_timeout="$dump_timeout_cap"
     if ! dump_device_ui "$remote_path" "$check_path" "$dump_timeout" "$dump_mode"; then
       rm -f "$check_path"
       remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 0.25
@@ -7692,7 +7738,7 @@ capture_stable_picker_state() {
     fi
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
     dump_timeout="$remaining"
-    (( dump_timeout > 8 )) && dump_timeout=8
+    (( dump_timeout > dump_timeout_cap )) && dump_timeout="$dump_timeout_cap"
     rm -f "$candidate_path"
     if ! dump_device_ui "$remote_path" "$candidate_path" "$dump_timeout" "$dump_mode"; then
       rm -f "$candidate_path" "$screenshot_candidate_path"
@@ -11795,7 +11841,7 @@ done
 if [ "$project_save_b_picker_ready" -ne 1 ]; then
   echo "ERROR: Android DocumentsUI did not appear for second-document Save As"; exit 1
 fi
-if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
+if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8 "" compressed 3; then
   echo "ERROR: could not capture the second-document Save As picker"; exit 1
 fi
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
