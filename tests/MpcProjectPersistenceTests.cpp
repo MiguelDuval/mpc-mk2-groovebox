@@ -220,7 +220,7 @@ int main() {
             "Sample region exceeds the referenced sample");
 
     const std::string validLayerRecord =
-            "LAYER 101 17 1777 0.625 0.125 -3.5 7 119 100 1700 1\\n";
+            "LAYER 101 17 1777 0.625 0.125 -3.5 7 119 100 1700 1\n";
     const auto assertInvalidSerializedSampleRegionRejected =
             [&](const std::string& from, const std::string& to,
                     const std::string& expectedError) {
