@@ -69,9 +69,9 @@ public:
             return 0;
         }
 
-        // A recording session belongs to the Project and Sequence where it
-        // began. Never carry held presses or Replace bookkeeping across a
-        // project/sequence switch, where track indices refer to other Patterns.
+        // Keep this session tied to its original musical context. Without this
+        // check, a release from one Sequence can close a held press in another
+        // and Replace-mode flags can leak across Pattern sets.
         if (!recordingContextMatches(state)) {
             held_.fill({});
             startTicks_.fill({});
@@ -87,6 +87,23 @@ public:
             return 0;
         }
 
+        // Track arming can change without a queued MIDI event. Clear held
+        // presses on every drain so a later re-arm cannot revive stale note data.
+        const auto& tracks = state.activeSequence().tracks;
+        for (std::size_t trackIndex = 0;
+                trackIndex < tracks.size() && trackIndex < held_.size();
+                ++trackIndex) {
+            const auto& track = tracks[trackIndex];
+            const auto* trackProgram = state.findDrumProgram(track.programId);
+            if (!track.recordArmed
+                    || track.kind != domain::TrackKind::Drum
+                    || track.patterns.empty()
+                    || trackProgram == nullptr
+                    || trackProgram->type != domain::ProgramType::Drum) {
+                clearHeldForTrack(trackIndex);
+            }
+        }
+
         std::size_t recorded = 0;
         SequenceRecordEvent event{};
 
@@ -96,7 +113,11 @@ public:
             // but the public queue can also receive synthetic/late producers.
             // Never persist an out-of-range 7-bit velocity or non-boolean
             // pressed value into a Pattern note.
-            if (event.velocity > 127 || event.pressed > 1) {
+            // A zero-velocity MIDI Note On is a release, never a new
+            // press. The physical decoder normalizes it to pressed=false;
+            // reject synthetic queue producers that violate that contract.
+            if (event.velocity > 127 || event.pressed > 1
+                    || (event.pressed != 0 && event.velocity == 0)) {
                 continue;
             }
 
@@ -110,6 +131,14 @@ public:
             if (!track.recordArmed
                     || track.kind != domain::TrackKind::Drum
                     || track.patterns.empty()) {
+                clearHeldForTrack(event.trackIndex);
+                continue;
+            }
+
+            const auto* trackProgram = state.findDrumProgram(track.programId);
+            if (trackProgram == nullptr
+                    || trackProgram->type != domain::ProgramType::Drum) {
+                clearHeldForTrack(event.trackIndex);
                 continue;
             }
 
@@ -120,10 +149,7 @@ public:
                 if (!held_[trackIndex][padIndex]) {
                     held_[trackIndex][padIndex] = true;
                     startTicks_[trackIndex][padIndex] = event.tick;
-                    startVelocities_[trackIndex][padIndex] =
-                            event.velocity == 0
-                            ? static_cast<std::uint8_t>(1)
-                            : event.velocity;
+                    startVelocities_[trackIndex][padIndex] = event.velocity;
                 }
                 continue;
             }
@@ -167,7 +193,7 @@ public:
             domain::MidiNoteEvent note;
             note.tick = static_cast<std::int32_t>(normalizedStart);
             note.durationTicks = static_cast<std::int32_t>(duration);
-            note.note = state.activeDrumProgram().pad(padIndex).midiNote;
+            note.note = trackProgram->pad(padIndex).midiNote;
             note.velocity = startVelocities_[trackIndex][padIndex];
             note.probability = 127;
             note.ratchet = 1;
@@ -218,6 +244,12 @@ public:
                 continue;
             }
 
+            const auto* trackProgram = state.findDrumProgram(track.programId);
+            if (trackProgram == nullptr
+                    || trackProgram->type != domain::ProgramType::Drum) {
+                continue;
+            }
+
             const auto loopLength = static_cast<std::int64_t>(
                     std::max<std::int32_t>(
                             1,
@@ -260,7 +292,7 @@ public:
                 domain::MidiNoteEvent note;
                 note.tick = static_cast<std::int32_t>(normalizedStart);
                 note.durationTicks = static_cast<std::int32_t>(duration);
-                note.note = state.activeDrumProgram().pad(padIndex).midiNote;
+                note.note = trackProgram->pad(padIndex).midiNote;
                 note.velocity = startVelocities_[trackIndex][padIndex];
                 note.probability = 127;
                 note.ratchet = 1;
@@ -328,6 +360,13 @@ private:
                 && state.projectGeneration() == recordingProjectGeneration_
                 && state.activeSequenceIndex() == recordingSequenceIndex_
                 && state.activeSequence().id == recordingSequenceId_;
+    }
+
+    void clearHeldForTrack(std::size_t trackIndex) noexcept {
+        if (trackIndex >= held_.size()) return;
+        held_[trackIndex].fill(false);
+        startTicks_[trackIndex].fill(0);
+        startVelocities_[trackIndex].fill(0);
     }
 
     void sortTouchedPatterns(MpcProjectState& state) noexcept {
