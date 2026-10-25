@@ -2071,7 +2071,31 @@ second_save_as_sequence = (
 )
 if source.count(second_save_as_sequence) != 1:
     raise SystemExit("second-document Save As must retain its prefilled-filename assertion immediately after capture")
-print("Project Save As picker retry/cap regression contract passed.")
+
+runtime = source[guard_end:]
+preserve_call_contracts = (
+    'if ! preserve_project_picker_evidence "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" '
+    '"mpc-groovebox-project-save-as-initial-picker" "Untitled.mpcproj"; then',
+    'if ! preserve_project_picker_evidence "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" '
+    '"mpc-groovebox-project-save-as-second-document-picker" "Untitled.mpcproj"; then',
+    'if ! preserve_project_picker_evidence "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" '
+    '"mpc-groovebox-project-recovery-export-destination-picker" "$project_recovery_export_name"; then',
+)
+for required_call in preserve_call_contracts:
+    if sum(line.strip() == required_call for line in runtime.splitlines()) != 1:
+        raise SystemExit("each Project picker capture must preserve one unique immutable evidence pair")
+evidence_helper_start = runtime.index("preserve_project_picker_evidence() {")
+evidence_helper_end = runtime.index("\ntap_ui_picker_folder_until_child()", evidence_helper_start)
+evidence_helper = runtime[evidence_helper_start:evidence_helper_end]
+for required in (
+    'node.attrib.get("package") == "com.android.documentsui"',
+    'node.attrib.get("text", "").strip() == expected',
+    'cp -- "$hierarchy_path" "$xml_tmp"',
+    'cp -- "$screenshot_path" "$png_tmp"',
+):
+    if required not in evidence_helper:
+        raise SystemExit(f"Project picker evidence validation/copy contract missing: {required}")
+print("Project Save As picker retry/cap/evidence-pair regression contract passed.")
 PY_PROJECT_SAVE_PICKER_CONTRACT
 
 adb_bounded() {
@@ -7767,6 +7791,72 @@ capture_stable_picker_state() {
   cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   return 1
 }
+
+# Preserve immutable, matched DocumentsUI hierarchy/screenshot pairs before
+# later app-page captures and text waits reuse the shared Project XML/PNG paths.
+preserve_project_picker_evidence() {
+  local hierarchy_path="$1" screenshot_path="$2" evidence_stem="$3" expected_text="$4"
+  local evidence_xml="/tmp/${evidence_stem}-uiautomator.xml"
+  local evidence_png="/tmp/${evidence_stem}.png"
+  local xml_tmp="${evidence_xml}.tmp" png_tmp="${evidence_png}.tmp"
+
+  if [[ ! "$evidence_stem" =~ ^mpc-groovebox-project-[a-z0-9-]+$ ]]; then
+    echo "ERROR: invalid immutable Project picker evidence stem: $evidence_stem"
+    return 2
+  fi
+  if [[ ! -s "$hierarchy_path" || ! -s "$screenshot_path" ]]; then
+    echo "ERROR: cannot preserve empty Project picker evidence pair"
+    return 1
+  fi
+  if ! python3 - "$hierarchy_path" "$expected_text" <<'PY_PROJECT_PICKER_EVIDENCE'
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1], sys.argv[2]
+try:
+    nodes = list(ET.parse(path).getroot().iter("node"))
+except (OSError, ET.ParseError) as exc:
+    raise SystemExit(f"Project picker evidence hierarchy is not valid XML: {exc}")
+if not any(node.attrib.get("package") == "com.android.documentsui" for node in nodes):
+    raise SystemExit("Project picker evidence hierarchy is not from Android DocumentsUI")
+if not any(node.attrib.get("text", "").strip() == expected for node in nodes):
+    raise SystemExit(f"Project picker evidence hierarchy does not contain expected text: {expected}")
+PY_PROJECT_PICKER_EVIDENCE
+  then
+    echo "ERROR: refusing to publish an app-page or mismatched Project picker hierarchy"
+    return 1
+  fi
+
+  rm -f -- "$xml_tmp" "$png_tmp"
+  if ! cp -- "$hierarchy_path" "$xml_tmp" || ! cp -- "$screenshot_path" "$png_tmp"; then
+    rm -f -- "$xml_tmp" "$png_tmp"
+    echo "ERROR: could not stage immutable Project picker evidence pair"
+    return 1
+  fi
+  if ! python3 - "$xml_tmp" "$expected_text" <<'PY_PROJECT_PICKER_EVIDENCE_COPY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected = sys.argv[1], sys.argv[2]
+nodes = list(ET.parse(path).getroot().iter("node"))
+if not any(node.attrib.get("package") == "com.android.documentsui" for node in nodes):
+    raise SystemExit("staged Project picker hierarchy changed package")
+if not any(node.attrib.get("text", "").strip() == expected for node in nodes):
+    raise SystemExit("staged Project picker hierarchy lost expected filename")
+PY_PROJECT_PICKER_EVIDENCE_COPY
+     || [[ ! -s "$png_tmp" ]]; then
+    rm -f -- "$xml_tmp" "$png_tmp"
+    echo "ERROR: staged Project picker evidence pair failed validation"
+    return 1
+  fi
+
+  if ! mv -f -- "$xml_tmp" "$evidence_xml" || ! mv -f -- "$png_tmp" "$evidence_png"; then
+    rm -f -- "$xml_tmp" "$png_tmp" "$evidence_xml" "$evidence_png"
+    echo "ERROR: could not publish immutable Project picker evidence pair"
+    return 1
+  fi
+  echo "Preserved matched Project picker evidence: $evidence_png + $evidence_xml"
+}
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
   local evidence_prefix="${5:-document-tree}" root_stability_timeout="${6:-6}"
@@ -11490,6 +11580,9 @@ fi
 if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
   echo "ERROR: could not capture stable DocumentsUI state for Project Save As"; exit 1
 fi
+if ! preserve_project_picker_evidence "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "mpc-groovebox-project-save-as-initial-picker" "Untitled.mpcproj"; then
+  echo "ERROR: could not preserve initial Project Save As evidence"; exit 1
+fi
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
   echo "ERROR: Save As did not prefill the project filename"; exit 1
 fi
@@ -11835,6 +11928,9 @@ if [ "$project_save_b_picker_ready" -ne 1 ]; then
 fi
 if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8 "" compressed 3; then
   echo "ERROR: could not capture the second-document Save As picker"; exit 1
+fi
+if ! preserve_project_picker_evidence "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "mpc-groovebox-project-save-as-second-document-picker" "Untitled.mpcproj"; then
+  echo "ERROR: could not preserve second-document Save As evidence"; exit 1
 fi
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
   echo "ERROR: second Save As did not show the current filename"; exit 1
@@ -12464,6 +12560,7 @@ for ((attempt=1; attempt<=30; attempt++)); do
 done
 if [ "$project_recovery_picker_ready" -ne 1 ]; then echo "ERROR: DocumentsUI did not open for recovery-copy export"; exit 1; fi
 if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 20; then echo "ERROR: could not capture recovery-export destination"; exit 1; fi
+if ! preserve_project_picker_evidence "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "mpc-groovebox-project-recovery-export-destination-picker" "$project_recovery_export_name"; then echo "ERROR: could not preserve recovery-export picker evidence"; exit 1; fi
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_export_name" 20; then echo "ERROR: recovery-export filename was not prefilled"; exit 1; fi
 project_recovery_export_marker_before="$(project_marker_count "PROJECT_RECOVERY_EXPORT_COMPLETE" 5)"
 if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then echo "ERROR: recovery export SAVE action is not a real target"; exit 1; fi
