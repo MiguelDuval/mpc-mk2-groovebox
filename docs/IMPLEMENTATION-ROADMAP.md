@@ -2,30 +2,31 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-25 (live exact-SHA evidence governs)
 
-### 1. PR #58 — bounded second-document Save As picker capture
+### 1. PR #58 — retry-safe Project Save As picker capture
 
-- PR #43 head `67583ed41f9d86db6a8244a666b3a8322742de31` failed Build #3242 / [run 40145378936](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145378936), step 52, because the first UIAutomator dump consumed the whole 8-second stable-capture budget while DocumentsUI was foreground. Successful PR #50 Build #3244 / [run 40145568578](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145568578) used the same smoke-script blob, supporting transient UIAutomator instability and a retry-budget flaw rather than a proven product Save As defect.
-- Draft PR [#58](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/58), HEAD `63ea6805e819537a96eed446bdde1b3aa518531d`, caps each of three hierarchy snapshots and applies compressed 3-second dumps to second Save As while preserving the 8-second total budget. Build #3254 / [run 40177584543](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177584543) had reached smoke step 52 after prior steps passed; acceptance awaited the actual smoke and upload results.
+- PR #43 head `67583ed41f9d86db6a8244a666b3a8322742de31` failed Build #3242 / [run 40145378936](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145378936), step 52: DocumentsUI was foreground but a single UIAutomator dump consumed the entire eight-second stable-capture budget. Successful PR #50 Build #3244 / [run 40145568578](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145568578) used the identical script blob. Evidence supports a transient UIAutomator stall plus retry-budget flaw, not a demonstrated product Save As defect.
+- Draft PR #58 HEAD `63ea6805e819537a96eed446bdde1b3aa518531d` caps all three snapshots and uses compressed 3-second per-dump captures for second Save As while keeping the 8-second total budget. Build #3254 / [run 40177584543](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177584543) passed steps 1–51; smoke step 52 is still running.
 
-### 2. PR #59 — immutable and matched DocumentsUI evidence
+### 2. PR #59 — immutable paired picker visual evidence
 
-- The successful Build #3244 artifact contained an invalid same-name pair: the PNG showed DocumentsUI while the XML contained the app Project view tree, because later steps overwrite shared paths.
-- Draft PR [#59](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/59) preserves initial Save As, second-document Save As and recovery-export screenshot/XML pairs using unique paths, validating package and expected filename before publication.
-- Build #3255 / [run 40177629034](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177629034) failed at the smoke preflight, not in the app: the source guard compared an entire runtime line to the expected call, while recovery-export places its call and error handler on one line. The guard has been corrected to require exactly one occurrence of each required call as a substring. This retains all package/filename/pair validations and the hard failure on mismatch. A new exact-SHA workflow is required to validate the correction and artifacts.
+- Draft PR #59 HEAD `d720593329682ae76809a4cb022dc79bf8886c80` preserves matched PNG/XML pairs for initial Save As, second-document Save As and recovery export. It validates both package (`com.android.documentsui`) and expected filename before publication.
+- Builds #3255 / [run 40177629034](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177629034) and #3258 / [run 40178020925](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178020925) failed before UI interactions because the source guard demanded whole-line equality for a recovery-export call that also carried its error handler on that line. The guard now checks unique substring occurrences instead. Build #3259 / [run 40178251124](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178251124) passed steps 1–51; step 52 emulator smoke is running, step 53 evidence upload pending.
 
-### 3. Parallel persistence hardening
+### 3. Independent persistence fixes
 
-- Draft PR [#60](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/60), HEAD `596a8110565a99316ccb0d5aa2a04d1e0bba5c56`, rejects empty/duplicate Pattern IDs for Tracks containing Arrangement placements. Build #3253 / [run 40177392571](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177392571) had reached smoke step 52.
-- Draft PR [#61](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/61), HEAD `0fdba37e521e1b39a96e3c95ee9d0078a43e9883`, validates persisted BPM, time signature, length, loop range, quantize grid, swing and assigned locator positions on both serialize and decode paths. Build #3256 / [run 40177684480](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177684480) had reached smoke step 52.
-- Draft PR [#62](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/62), HEAD `7b3f30282d141b6777b8ec0192a12be94ec016e5`, rejects empty/reversed assigned sample playback regions and regions that exceed a known positive SampleRef length. Build #3257 / [run 40177862491](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177862491) had reached smoke step 52.
+- Draft PR #60 HEAD `596a8110565a99316ccb0d5aa2a04d1e0bba5c56` rejects empty/duplicate Pattern IDs on Tracks with Arrangement placements. Build #3253 / [run 40177392571](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177392571) passed steps 1–51; step 52 pending completion.
+- Draft PR #61 HEAD `0fdba37e521e1b39a96e3c95ee9d0078a43e9883` validates sequence BPM, time signature, positive length, loop bounds, quantize grid, swing and assigned locator positions. Build #3256 / [run 40177684480](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177684480) passed steps 1–51; step 52 pending completion.
+- Draft PR #62 HEAD `26579254409aa1a5a5d0f0f8cac9bda5cd368832` validates sample regions, known sample frame bounds, ordered 7-bit velocity range, finite gain 0–1, pan −1–1 and tuning −24–24. Build #3257 / [run 40177862491](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177862491) is on older head `7b3f30282d141b6777b8ec0192a12be94ec016e5`, with steps 1–51 passed and step 52 active. Current-head Build #3262 / [run 40178612521](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178612521) is registered but job details aren't currently exposed.
+- Draft PR #63 HEAD `04b4ab82635d49ca104a10a036702cf99c496c5c` validates Pad tuning/level/pan, envelope times/sustain and filter cutoff against AudioEngine's supported ranges on serialization and deserialization. Build #3263 / [run 40178770260](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40178770260) is at focused Android test step 14, after steps 1–13 passed.
 
 ### 4. Acceptance and safety gates
 
-- PR #23 remains open at primary HEAD `30e270c51038afdd037e9d226f20eb5cc310bc82`; Build #3215 / [run 40141743745](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40141743745) passed on that exact SHA.
-- Require the latest exact SHA to pass tests, APK assembly/upload, emulator smoke step 52 and visual-evidence upload step 53. Inspect the true UI transaction result and final preserved PNG/XML pairs.
-- Workflow `.github/workflows/android-build.yml` remains unchanged with `cancel-in-progress: false`. Do not modify `main`, rewrite history, or automatically retarget/merge/close stacked PRs. Physical MPC Studio MkII validation remains separate.
+- Primary PR #23 remains open at head `30e270c51038afdd037e9d226f20eb5cc310bc82`; Build #3215 / [run 40141743745](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40141743745) passed on that exact SHA.
+- Require each draft's latest exact SHA to pass tests, APK assembly/upload, emulator smoke step 52 and visual-evidence upload step 53. Inspect the actual UI transaction and the preserved PNG/XML evidence.
+- `.github/workflows/android-build.yml` retains `cancel-in-progress: false`. Do not modify `main`, rewrite history, or automatically retarget/merge/close stacked PRs. Physical MPC Studio MkII validation remains separate.
 
 ## HISTORICAL EXECUTION NOTES (older entries are non-authoritative)
+
 
 
 
