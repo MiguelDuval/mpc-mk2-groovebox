@@ -9,23 +9,24 @@ public final class MpcPadMixerViewAccessibilityTest {
     public void panButtonsIdentifyPadControlAndDirection() {
         assertEquals(
                 "PAD 01 PAN decrease",
-                MpcPadMixerView.controlButtonDescription(
-                        0, MpcPadMixerView.ControlFocus.PAN, false));
+                MpcPadMixerAccessibilityPolicy.controlButtonDescription(0, "PAN", false));
         assertEquals(
                 "PAD 01 PAN increase",
-                MpcPadMixerView.controlButtonDescription(
-                        0, MpcPadMixerView.ControlFocus.PAN, true));
+                MpcPadMixerAccessibilityPolicy.controlButtonDescription(0, "PAN", true));
     }
 
     @Test
     public void tuningButtonsIdentifyPadControlAndDirection() {
         assertEquals(
                 "PAD 16 TUNE decrease",
-                MpcPadMixerView.controlButtonDescription(
-                        15, MpcPadMixerView.ControlFocus.TUNE, false));
+                MpcPadMixerAccessibilityPolicy.controlButtonDescription(15, "TUNE", false));
         assertEquals(
                 "PAD 16 TUNE increase",
-                MpcPadMixerView.controlButtonDescription(
-                        15, MpcPadMixerView.ControlFocus.TUNE, true));
+                MpcPadMixerAccessibilityPolicy.controlButtonDescription(15, "TUNE", true));
+    }
+    
+    @Test(expected = IllegalArgumentException.class)
+    public void unsupportedControlDoesNotCreateAmbiguousLabel() {
+        MpcPadMixerAccessibilityPolicy.controlButtonDescription(0, "LEVEL", true);
     }
 }
