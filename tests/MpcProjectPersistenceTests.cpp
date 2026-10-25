@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -214,6 +215,11 @@ int main() {
             [](auto& sequence) { sequence.tempoBpm = 19.0; },
             "Sequence tempo is out of range");
     assertInvalidSequenceSettingRejected(
+            [](auto& sequence) {
+                sequence.tempoBpm = std::numeric_limits<double>::quiet_NaN();
+            },
+            "Sequence tempo is out of range");
+    assertInvalidSequenceSettingRejected(
             [](auto& sequence) { sequence.numerator = 0; },
             "Sequence time signature is out of range");
     assertInvalidSequenceSettingRejected(
@@ -233,7 +239,7 @@ int main() {
             "Sequence locator is outside the Sequence");
 
     const std::string validSequenceRecord =
-            "SEQUENCE \"sequence-main-01\" \"Main Sequence\" 137.125 4 4 3840 1 240 3840 240 37 1 1 0 0 240 960 -1 -1 3600 1\\n";
+            "SEQUENCE \"sequence-main-01\" \"Main Sequence\" 137.125 4 4 3840 1 240 3840 240 37 1 1 0 0 240 960 -1 -1 3600 1\n";
     const auto assertInvalidSerializedSequenceRejected =
             [&](const std::string& from, const std::string& to,
                     const std::string& expectedError) {
@@ -272,8 +278,8 @@ int main() {
             " 240 37 1 1 0 ", " 240 101 1 1 0 ",
             "Sequence swing is out of range");
     assertInvalidSerializedSequenceRejected(
-            " 0 240 960 -1 -1 3600 1\\n",
-            " 0 240 960 -1 -1 3841 1\\n",
+            " 0 240 960 -1 -1 3600 1\n",
+            " 0 240 960 -1 -1 3841 1\n",
             "Sequence locator is outside the Sequence");
 
     // Every persisted MIDI field must satisfy the decoder's own constraints.
