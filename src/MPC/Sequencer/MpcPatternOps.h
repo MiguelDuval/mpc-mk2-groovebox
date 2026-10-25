@@ -476,16 +476,15 @@ inline bool eraseStepNote(
     }
 
     const auto tick = static_cast<std::int32_t>(tick64);
-    const auto before = pattern.notes.size();
-    pattern.notes.erase(
-            std::remove_if(
-                    pattern.notes.begin(),
-                    pattern.notes.end(),
-                    [tick, noteNumber](const domain::MidiNoteEvent& note) {
-                        return note.tick == tick && note.note == noteNumber;
-                    }),
-            pattern.notes.end());
-    return pattern.notes.size() != before;
+    const auto matches = [tick, noteNumber](const domain::MidiNoteEvent& note) {
+        return note.tick == tick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matches) != 1) {
+        return false;
+    }
+    const auto event = std::find_if(pattern.notes.begin(), pattern.notes.end(), matches);
+    pattern.notes.erase(event);
+    return true;
 }
 
 inline std::size_t recordNotes(
