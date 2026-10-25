@@ -198,6 +198,55 @@ int main() {
     assert(duplicatePatternError
             == "Pattern ids must be non-empty and unique on a Track with placements");
 
+    // Assigned layers need a non-empty playback region, and any known sample
+    // length bounds the region's exclusive end frame.
+    const auto assertInvalidSampleRegionRejected =
+            [](auto mutateLayer, const std::string& expectedError) {
+        auto invalid = makeProject();
+        mutateLayer(invalid.drumPrograms[0].pads[0].layer(0));
+        std::string validationError;
+        const auto bytes = persistence::serializeProject(invalid, &validationError);
+        assert(bytes.empty());
+        assert(validationError == expectedError);
+    };
+    assertInvalidSampleRegionRejected(
+            [](auto& layer) { layer.region = domain::SampleRegion{1777, 1777}; },
+            "Sample region is empty or reversed");
+    assertInvalidSampleRegionRejected(
+            [](auto& layer) { layer.region = domain::SampleRegion{1777, 17}; },
+            "Sample region is empty or reversed");
+    assertInvalidSampleRegionRejected(
+            [](auto& layer) { layer.region = domain::SampleRegion{17, 24001}; },
+            "Sample region exceeds the referenced sample");
+
+    const std::string validLayerRecord =
+            "LAYER 101 17 1777 0.625 0.125 -3.5 7 119 100 1700 1\\n";
+    const auto assertInvalidSerializedSampleRegionRejected =
+            [&](const std::string& from, const std::string& to,
+                    const std::string& expectedError) {
+        std::string invalidBytes = serialized;
+        const auto position = invalidBytes.find(validLayerRecord);
+        assert(position != std::string::npos);
+        auto invalidRecord = validLayerRecord;
+        const auto fieldPosition = invalidRecord.find(from);
+        assert(fieldPosition != std::string::npos);
+        invalidRecord.replace(fieldPosition, from.size(), to);
+        invalidBytes.replace(position, validLayerRecord.size(), invalidRecord);
+
+        const auto sourceBeforeFailure = persistence::serializeProject(source);
+        assert(!sourceBeforeFailure.empty());
+        std::string parseError;
+        assert(!persistence::deserializeProject(invalidBytes, source, &parseError));
+        assert(parseError == expectedError);
+        assert(persistence::serializeProject(source) == sourceBeforeFailure);
+    };
+    assertInvalidSerializedSampleRegionRejected(
+            " 17 1777 ", " 1777 1777 ",
+            "Sample region is empty or reversed");
+    assertInvalidSerializedSampleRegionRejected(
+            " 17 1777 ", " 17 24001 ",
+            "Sample region exceeds the referenced sample");
+
     // Sequence fields are part of the persisted project contract. Reject the
     // same invalid values at serialization and deserialization boundaries
     // rather than opening a project with transport settings the UI setters
