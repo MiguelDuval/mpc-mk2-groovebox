@@ -342,6 +342,27 @@ int main() {
     assert(pattern.notes[1].tick == 481);
     assert(pattern.notes[2].tick == 3720);
 
+    // Invalid captured MIDI fields are skipped before Replace can clear
+    // currently valid musical state.
+    mpc::domain::Pattern protectedRecordPattern;
+    protectedRecordPattern.lengthTicks = 1920;
+    protectedRecordPattern.notes = {{480, 120, 42, 80, 127, 1}};
+    const std::array<mpc::domain::MidiNoteEvent, 6> invalidCaptured{{
+            {0, 120, 128, 90, 127, 1, 0},
+            {120, 120, 36, 128, 127, 1, 0},
+            {240, 120, 36, 90, 128, 1, 0},
+            {360, 120, 36, 90, 127, 9, 0},
+            {480, 120, 36, 90, 127, 1, 961},
+            {600, -1, 36, 90, 127, 1, 0}}};
+    const auto invalidRecorded = mpc::sequencer::recordNotes(
+            protectedRecordPattern, invalidCaptured,
+            mpc::sequencer::PatternRecordMode::Replace);
+    assert(invalidRecorded == 0);
+    assert(protectedRecordPattern.notes.size() == 1);
+    assert(protectedRecordPattern.notes.front().tick == 480);
+    assert(protectedRecordPattern.notes.front().note == 42);
+    assert(protectedRecordPattern.notes.front().velocity == 80);
+
     mpc::domain::Pattern stepPattern;
     stepPattern.lengthTicks = 1920;
     assert(mpc::sequencer::setStepNote(
@@ -437,6 +458,33 @@ int main() {
             stepPattern, 1, 0, 40, 100));
     assert(!mpc::sequencer::setStepNote(
             stepPattern, 1, 120, 40, 0));
+
+    // Step edits must not produce values the MIDI/persistence layer rejects.
+    const auto midiNoteCountBeforeInvalidEdits = stepPattern.notes.size();
+    const auto* noteBeforeInvalidEdits = mpc::sequencer::findStepNote(
+            stepPattern, 4, 120, 38);
+    assert(noteBeforeInvalidEdits != nullptr);
+    const auto validDurationBeforeInvalidEdits = noteBeforeInvalidEdits->durationTicks;
+    const auto validVelocityBeforeInvalidEdits = noteBeforeInvalidEdits->velocity;
+    assert(!mpc::sequencer::setStepNote(stepPattern, 4, 120, 128, 100));
+    assert(!mpc::sequencer::setStepNote(stepPattern, 4, 120, 38, 128));
+    assert(!mpc::sequencer::setStepNote(stepPattern, 4, 120, 38, 100, -1));
+    assert(!mpc::sequencer::setStepNote(stepPattern, 4, 120, 38, 100, 120, 127, 9));
+    assert(!mpc::sequencer::setStepNoteVelocity(stepPattern, 4, 120, 38, 128));
+    assert(stepPattern.notes.size() == midiNoteCountBeforeInvalidEdits);
+    noteBeforeInvalidEdits = mpc::sequencer::findStepNote(stepPattern, 4, 120, 38);
+    assert(noteBeforeInvalidEdits != nullptr);
+    assert(noteBeforeInvalidEdits->durationTicks == validDurationBeforeInvalidEdits);
+    assert(noteBeforeInvalidEdits->velocity == validVelocityBeforeInvalidEdits);
+
+    // A huge valid grid must not overflow the four-grid duration bound.
+    mpc::domain::Pattern largeGridPattern;
+    largeGridPattern.lengthTicks = 1000000000;
+    assert(mpc::sequencer::setStepNote(
+            largeGridPattern, 0, 600000000, 36, 100));
+    assert(mpc::sequencer::setStepNoteDuration(
+            largeGridPattern, 0, 600000000, 36, 600000000));
+    assert(largeGridPattern.notes.front().durationTicks == 600000000);
 
     // Arrangement moves change only event position and reject collisions.
     mpc::domain::Pattern arrangementPattern;
