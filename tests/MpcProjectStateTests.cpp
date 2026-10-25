@@ -155,8 +155,9 @@ int main() {
     assert(state.selectNextSequence());
     assert(state.activeSequenceIndex() == 1);
     assert(state.activeTrackIndex() == 0);
-    assert(state.activeDrumProgram().id == "drum-program-1");
-    assert(state.activeProgramIndexForTrack(0) == 0);
+    // The new Sequence inherits the currently selected DrumProgram.
+    assert(state.activeDrumProgram().id == "drum-program-2");
+    assert(state.activeProgramIndexForTrack(0) == 1);
     assert(state.selectSequence(0));
     assert(state.activeSequenceIndex() == 0);
     assert(!state.selectSequence(99));
