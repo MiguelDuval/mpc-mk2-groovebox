@@ -155,8 +155,9 @@ int main() {
     assert(state.selectNextSequence());
     assert(state.activeSequenceIndex() == 1);
     assert(state.activeTrackIndex() == 0);
-    assert(state.activeDrumProgram().id == "drum-program-1");
-    assert(state.activeProgramIndexForTrack(0) == 0);
+    // The new Sequence inherits the currently selected DrumProgram.
+    assert(state.activeDrumProgram().id == "drum-program-2");
+    assert(state.activeProgramIndexForTrack(0) == 1);
     assert(state.selectSequence(0));
     assert(state.activeSequenceIndex() == 0);
     assert(!state.selectSequence(99));
@@ -244,6 +245,13 @@ int main() {
     assert(state.activeTrackIndex() == 0);
     assert(state.activeDrumProgram().id == "opened-program");
     assert(state.activeSequence().tracks[0].patterns[0].notes[0].nudgeTicks == -5);
+
+    // New Sequences must bind their default Drum track to a Program that
+    // actually exists in the opened project, not the factory default ID.
+    assert(state.addSequence());
+    assert(state.activeSequence().tracks[0].programId == "opened-program");
+    assert(state.activeProgramIndexForTrack(0) == 0);
+
     const auto newSampleId = state.registerSample("New sample", "", 44100.0, 9000);
     assert(newSampleId.value == 42);
     mpc::domain::Project invalid;

@@ -264,6 +264,11 @@ bool MpcProjectState::addSequence(std::string name) {
         ++number;
     }
     auto sequence = makeDefaultSequence(number);
+    if (!sequence.tracks.empty() && !project_.drumPrograms.empty()) {
+        const auto programIndex = std::min(
+                activeDrumProgramIndex_, project_.drumPrograms.size() - 1);
+        sequence.tracks.front().programId = project_.drumPrograms[programIndex].id;
+    }
     if (!name.empty()) {
         sequence.name = std::move(name);
     }
