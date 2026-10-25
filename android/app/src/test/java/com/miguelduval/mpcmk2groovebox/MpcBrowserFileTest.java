@@ -78,6 +78,28 @@ public final class MpcBrowserFileTest {
     }
 
     @Test
+    public void modifiedDateOptionAddsAvailableDateWithoutLosingOtherMetadata() {
+        MpcBrowserFile file = new MpcBrowserFile(
+                "content://media/external/audio/media/12",
+                "Kick.wav", "audio/wav", 1536L, 1200L, System.currentTimeMillis());
+
+        String withSizeAndDate = file.metadataLine(true, true);
+        assertTrue(withSizeAndDate.startsWith("1.5 KB • MODIFIED "));
+        assertTrue(withSizeAndDate.matches(
+                "1\\.5 KB • MODIFIED \\d{4}-\\d{2}-\\d{2} • 0:01 • WAV"));
+        assertEquals("1.5 KB • 0:01 • WAV", file.metadataLine(true, false));
+        assertEquals("MODIFIED " + MpcBrowserFile.formatModifiedDate(file.lastModifiedMs())
+                + " • 0:01 • WAV", file.metadataLine(false, true));
+
+        MpcBrowserFile unknownDate = new MpcBrowserFile(
+                "content://media/external/audio/media/13",
+                "Unknown.wav", "audio/wav", -1L, 0L);
+        assertEquals("DATE UNKNOWN • DURATION UNKNOWN • WAV",
+                unknownDate.metadataLine(false, true));
+        assertEquals("DURATION UNKNOWN • WAV", unknownDate.metadataLine(false));
+    }
+
+    @Test
     public void onlyWaveFilesAreEligibleForTheCurrentNativeLoader() {
         assertTrue(MpcBrowserFile.isWavName("Kick.WAV"));
         assertTrue(MpcBrowserFile.isWavName("  snare.wav  "));
