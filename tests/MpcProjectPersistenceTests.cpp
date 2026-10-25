@@ -198,6 +198,91 @@ int main() {
     assert(duplicatePatternError
             == "Pattern ids must be non-empty and unique on a Track with placements");
 
+    // Assigned layers need a non-empty playback region, and any known sample
+    // length bounds the region's exclusive end frame.
+    const auto assertInvalidSampleLayerRejected =
+            [](auto mutateLayer, const std::string& expectedError) {
+        auto invalid = makeProject();
+        mutateLayer(invalid.drumPrograms[0].pads[0].layer(0));
+        std::string validationError;
+        const auto bytes = persistence::serializeProject(invalid, &validationError);
+        assert(bytes.empty());
+        assert(validationError == expectedError);
+    };
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.region = domain::SampleRegion{1777, 1777}; },
+            "Sample region is empty or reversed");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.region = domain::SampleRegion{1777, 17}; },
+            "Sample region is empty or reversed");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.region = domain::SampleRegion{17, 24001}; },
+            "Sample region exceeds the referenced sample");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) {
+                layer.velocityMinimum = 119;
+                layer.velocityMaximum = 7;
+            },
+            "Sample layer velocity range is reversed");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.velocityMaximum = 128; },
+            "Sample layer velocity range is out of range");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.gain = 1.25f; },
+            "Sample layer gain is out of range");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.gain = std::numeric_limits<float>::quiet_NaN(); },
+            "Sample layer gain is out of range");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.pan = -1.25f; },
+            "Sample layer pan is out of range");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.tuningSemitones = 24.5f; },
+            "Sample layer tuning is out of range");
+
+    const std::string validLayerRecord =
+            "LAYER 101 17 1777 0.625 0.125 -3.5 7 119 100 1700 1\n";
+    const auto assertInvalidSerializedSampleLayerRejected =
+            [&](const std::string& from, const std::string& to,
+                    const std::string& expectedError) {
+        std::string invalidBytes = serialized;
+        const auto position = invalidBytes.find(validLayerRecord);
+        assert(position != std::string::npos);
+        auto invalidRecord = validLayerRecord;
+        const auto fieldPosition = invalidRecord.find(from);
+        assert(fieldPosition != std::string::npos);
+        invalidRecord.replace(fieldPosition, from.size(), to);
+        invalidBytes.replace(position, validLayerRecord.size(), invalidRecord);
+
+        const auto sourceBeforeFailure = persistence::serializeProject(source);
+        assert(!sourceBeforeFailure.empty());
+        std::string parseError;
+        assert(!persistence::deserializeProject(invalidBytes, source, &parseError));
+        assert(parseError == expectedError);
+        assert(persistence::serializeProject(source) == sourceBeforeFailure);
+    };
+    assertInvalidSerializedSampleLayerRejected(
+            " 17 1777 ", " 1777 1777 ",
+            "Sample region is empty or reversed");
+    assertInvalidSerializedSampleLayerRejected(
+            " 17 1777 ", " 17 24001 ",
+            "Sample region exceeds the referenced sample");
+    assertInvalidSerializedSampleLayerRejected(
+            " 7 119 ", " 119 7 ",
+            "Sample layer velocity range is reversed");
+    assertInvalidSerializedSampleLayerRejected(
+            " 7 119 ", " 7 128 ",
+            "sample-layer field is out of range");
+    assertInvalidSerializedSampleLayerRejected(
+            " 0.625 ", " 1.25 ",
+            "Sample layer gain is out of range");
+    assertInvalidSerializedSampleLayerRejected(
+            " 0.125 ", " -1.25 ",
+            "Sample layer pan is out of range");
+    assertInvalidSerializedSampleLayerRejected(
+            " -3.5 ", " 24.5 ",
+            "Sample layer tuning is out of range");
+
     // Sequence fields are part of the persisted project contract. Reject the
     // same invalid values at serialization and deserialization boundaries
     // rather than opening a project with transport settings the UI setters
