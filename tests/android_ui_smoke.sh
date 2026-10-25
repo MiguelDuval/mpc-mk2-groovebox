@@ -2090,7 +2090,7 @@ preserve_call_contracts = (
     '"mpc-groovebox-project-recovery-export-destination-picker" "$project_recovery_export_name"; then',
 )
 for required_call in preserve_call_contracts:
-    if sum(line.strip() == required_call for line in runtime.splitlines()) != 1:
+    if runtime.count(required_call) != 1:
         raise SystemExit("each Project picker capture must preserve one unique immutable evidence pair")
 evidence_helper_start = runtime.index("preserve_project_picker_evidence() {")
 evidence_helper_end = runtime.index("\ntap_ui_picker_folder_until_child()", evidence_helper_start)
