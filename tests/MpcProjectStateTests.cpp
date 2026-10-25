@@ -2,6 +2,7 @@
 #include "MPC/Sequencer/MpcPatternOps.h"
 
 #include <cassert>
+#include <limits>
 #include <cstdint>
 #include <limits>
 
@@ -12,11 +13,20 @@ int main() {
     assert(state.activeDrumProgram().pads.size() == mpc::domain::kMaxProgramPads);
     assert(state.activeDrumProgram().pad(0).midiNote == 36);
 
+    // Invalid metadata is rejected before consuming an asset ID or
+    // polluting the live Project; zero remains valid for unknown metadata.
+    assert(!state.registerSample("Negative rate", "", -1.0, 24000).isAssigned());
+    assert(!state.registerSample(
+            "Non-finite rate", "", std::numeric_limits<double>::quiet_NaN(), 24000).isAssigned());
+    assert(!state.registerSample("Negative length", "", 48000.0, -1).isAssigned());
+    assert(state.project().samples.empty());
+
     const auto sampleId = state.registerSample(
             "Kick",
             "",
             48000.0,
             24000);
+    assert(sampleId.value == 1);
 
     assert(sampleId.isAssigned());
     assert(state.project().samples.size() == 1);
