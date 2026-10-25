@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -196,6 +197,90 @@ int main() {
             duplicatePatternBytes, source, &duplicatePatternError));
     assert(duplicatePatternError
             == "Pattern ids must be non-empty and unique on a Track with placements");
+
+    // Sequence fields are part of the persisted project contract. Reject the
+    // same invalid values at serialization and deserialization boundaries
+    // rather than opening a project with transport settings the UI setters
+    // would never allow.
+    const auto assertInvalidSequenceSettingRejected =
+            [](auto mutateSequence, const std::string& expectedError) {
+        auto invalid = makeProject();
+        mutateSequence(invalid.sequences[0]);
+        std::string validationError;
+        const auto bytes = persistence::serializeProject(invalid, &validationError);
+        assert(bytes.empty());
+        assert(validationError == expectedError);
+    };
+    assertInvalidSequenceSettingRejected(
+            [](auto& sequence) { sequence.tempoBpm = 19.0; },
+            "Sequence tempo is out of range");
+    assertInvalidSequenceSettingRejected(
+            [](auto& sequence) {
+                sequence.tempoBpm = std::numeric_limits<double>::quiet_NaN();
+            },
+            "Sequence tempo is out of range");
+    assertInvalidSequenceSettingRejected(
+            [](auto& sequence) { sequence.numerator = 0; },
+            "Sequence time signature is out of range");
+    assertInvalidSequenceSettingRejected(
+            [](auto& sequence) { sequence.lengthTicks = 0; },
+            "Sequence length must be positive");
+    assertInvalidSequenceSettingRejected(
+            [](auto& sequence) { sequence.loopStartTicks = sequence.lengthTicks; },
+            "Sequence loop range is out of range");
+    assertInvalidSequenceSettingRejected(
+            [](auto& sequence) { sequence.quantizeGridTicks = 241; },
+            "Sequence quantize grid is out of range");
+    assertInvalidSequenceSettingRejected(
+            [](auto& sequence) { sequence.swingPercent = 101; },
+            "Sequence swing is out of range");
+    assertInvalidSequenceSettingRejected(
+            [](auto& sequence) { sequence.locatorTicks[5] = sequence.lengthTicks + 1LL; },
+            "Sequence locator is outside the Sequence");
+
+    const std::string validSequenceRecord =
+            "SEQUENCE \"sequence-main-01\" \"Main Sequence\" 137.125 4 4 3840 1 240 3840 240 37 1 1 0 0 240 960 -1 -1 3600 1\n";
+    const auto assertInvalidSerializedSequenceRejected =
+            [&](const std::string& from, const std::string& to,
+                    const std::string& expectedError) {
+        std::string invalidBytes = serialized;
+        const auto position = invalidBytes.find(validSequenceRecord);
+        assert(position != std::string::npos);
+        auto invalidRecord = validSequenceRecord;
+        const auto fieldPosition = invalidRecord.find(from);
+        assert(fieldPosition != std::string::npos);
+        invalidRecord.replace(fieldPosition, from.size(), to);
+        invalidBytes.replace(position, validSequenceRecord.size(), invalidRecord);
+
+        const auto sourceBeforeFailure = persistence::serializeProject(source);
+        assert(!sourceBeforeFailure.empty());
+        std::string parseError;
+        assert(!persistence::deserializeProject(invalidBytes, source, &parseError));
+        assert(parseError == expectedError);
+        assert(persistence::serializeProject(source) == sourceBeforeFailure);
+    };
+    assertInvalidSerializedSequenceRejected(
+            "137.125", "19", "Sequence tempo is out of range");
+    assertInvalidSerializedSequenceRejected(
+            " 4 4 3840 ", " 0 4 3840 ",
+            "Sequence time signature is out of range");
+    assertInvalidSerializedSequenceRejected(
+            " 4 4 3840 ", " 4 4 0 ",
+            "Sequence length must be positive");
+    assertInvalidSerializedSequenceRejected(
+            " 1 240 3840 ", " 1 3840 3840 ",
+            "Sequence loop range is out of range");
+    assertInvalidSerializedSequenceRejected(
+            " 3840 1 240 3840 240 37 ",
+            " 3840 1 240 3840 241 37 ",
+            "Sequence quantize grid is out of range");
+    assertInvalidSerializedSequenceRejected(
+            " 240 37 1 1 0 ", " 240 101 1 1 0 ",
+            "Sequence swing is out of range");
+    assertInvalidSerializedSequenceRejected(
+            " 0 240 960 -1 -1 3600 1\n",
+            " 0 240 960 -1 -1 3841 1\n",
+            "Sequence locator is outside the Sequence");
 
     // Every persisted MIDI field must satisfy the decoder's own constraints.
     // Reject the in-memory Project before producing bytes that cannot be loaded.
