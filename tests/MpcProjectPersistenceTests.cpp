@@ -219,6 +219,9 @@ int main() {
             [](auto& layer) { layer.region = domain::SampleRegion{17, 24001}; },
             "Sample region exceeds the referenced sample");
     assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.sample.value = 999; },
+            "Sample layer references a missing SampleRef");
+    assertInvalidSampleLayerRejected(
             [](auto& layer) {
                 layer.velocityMinimum = 119;
                 layer.velocityMaximum = 7;
@@ -252,6 +255,12 @@ int main() {
     assertInvalidSampleLayerRejected(
             [](auto& layer) { layer.loopEndSample = 24001; },
             "Sample loop exceeds the referenced sample");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.loopStartSample = 0; },
+            "Sample loop is outside the playback region");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.loopEndSample = 1800; },
+            "Sample loop is outside the playback region");
 
     // [0, 0) is the explicit disabled-loop state and remains round-trippable.
     auto noLoopProject = makeProject();
@@ -293,6 +302,9 @@ int main() {
             " 17 1777 ", " 17 24001 ",
             "Sample region exceeds the referenced sample");
     assertInvalidSerializedSampleLayerRejected(
+            "LAYER 101 ", "LAYER 999 ",
+            "Sample layer references a missing SampleRef");
+    assertInvalidSerializedSampleLayerRejected(
             " 100 1700 ", " -1 1700 ",
             "Sample loop bounds are negative");
     assertInvalidSerializedSampleLayerRejected(
@@ -301,6 +313,12 @@ int main() {
     assertInvalidSerializedSampleLayerRejected(
             " 100 1700 ", " 100 24001 ",
             "Sample loop exceeds the referenced sample");
+    assertInvalidSerializedSampleLayerRejected(
+            " 100 1700 ", " 0 1700 ",
+            "Sample loop is outside the playback region");
+    assertInvalidSerializedSampleLayerRejected(
+            " 100 1700 ", " 100 1800 ",
+            "Sample loop is outside the playback region");
     assertInvalidSerializedSampleLayerRejected(
             " 7 119 ", " 119 7 ",
             "Sample layer velocity range is reversed");

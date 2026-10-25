@@ -403,13 +403,15 @@ bool validateSampleLayerState(
                 if (layer.region.startFrame >= layer.region.endFrame) {
                     return setError(error, "Sample region is empty or reversed");
                 }
-
                 const auto sample = std::find_if(
                         project.samples.begin(), project.samples.end(),
                         [&layer](const domain::SampleRef& candidate) {
                             return candidate.assetId.value == layer.sample.value;
                         });
-                if (sample != project.samples.end() && sample->lengthSamples > 0) {
+                if (sample == project.samples.end()) {
+                    return setError(error, "Sample layer references a missing SampleRef");
+                }
+                if (sample->lengthSamples > 0) {
                     if (static_cast<std::uint64_t>(layer.region.endFrame)
                             > static_cast<std::uint64_t>(sample->lengthSamples)) {
                         return setError(
@@ -422,6 +424,20 @@ bool validateSampleLayerState(
                                 "Sample loop exceeds the referenced sample");
                     }
                 }
+                // Check the selected playback region after the full-sample
+                // bound so an overlong loop reports the more specific source
+                // length violation rather than the secondary region violation.
+                // Active loop points use the source-frame timeline represented
+                // by SampleRegion. Reject loops outside the region selected for
+                // playback, even when the wider source sample contains them.
+                if ((layer.loopStartSample != 0 || layer.loopEndSample != 0)
+                        && (static_cast<std::uint64_t>(layer.loopStartSample)
+                                    < static_cast<std::uint64_t>(layer.region.startFrame)
+                            || static_cast<std::uint64_t>(layer.loopEndSample)
+                                    > static_cast<std::uint64_t>(layer.region.endFrame))) {
+                    return setError(error, "Sample loop is outside the playback region");
+                }
+
             }
         }
     }
