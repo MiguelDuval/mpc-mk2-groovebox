@@ -200,6 +200,25 @@ int main() {
     openedTrack.patterns.push_back(openedPattern);
     openedSequence.tracks.push_back(openedTrack);
     opened.sequences.push_back(openedSequence);
+
+    // Project replacement is also a public model boundary; it must not
+    // accept dangling or ambiguous Track-to-Program routing even if a caller
+    // bypasses the persistence decoder.
+    const auto previousProjectId = state.project().id;
+    auto missingProgramProject = opened;
+    missingProgramProject.sequences[0].tracks[0].programId = "missing-program";
+    assert(!mpc::MpcProjectState::canReplaceProject(missingProgramProject));
+    assert(!state.replaceProject(missingProgramProject));
+    assert(state.project().id == previousProjectId);
+
+    auto duplicateProgramProject = opened;
+    auto duplicateProgram = openedProgram;
+    duplicateProgram.name = "Duplicate Opened Drums";
+    duplicateProgramProject.drumPrograms.push_back(duplicateProgram);
+    assert(!mpc::MpcProjectState::canReplaceProject(duplicateProgramProject));
+    assert(!state.replaceProject(duplicateProgramProject));
+    assert(state.project().id == previousProjectId);
+
     assert(mpc::MpcProjectState::canReplaceProject(opened));
     assert(state.replaceProject(opened));
     assert(state.project().id == "opened-project");
