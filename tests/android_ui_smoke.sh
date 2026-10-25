@@ -6449,6 +6449,13 @@ LOCAL_SAMPLE_SOURCE="android/app/src/main/assets/samples/pad01.wav.b64"
 LOCAL_SAMPLE_NAME="Browser-Smoke-Local.wav"
 LOCAL_SAMPLE_DEVICE="/sdcard/Music/$LOCAL_SAMPLE_NAME"
 LOCAL_SAMPLE_HOST="/tmp/$LOCAL_SAMPLE_NAME"
+BROWSER_DRUMS_NAME="Browser-Smoke-Drum.wav"
+BROWSER_DRUMS_DEVICE="/sdcard/Music/Drums/$BROWSER_DRUMS_NAME"
+BROWSER_DRUMS_CANONICAL="/storage/emulated/0/Music/Drums/$BROWSER_DRUMS_NAME"
+BROWSER_DEMOS_NAME="Browser-Smoke-Demo.wav"
+BROWSER_DEMOS_DEVICE="/sdcard/Music/Demos/$BROWSER_DEMOS_NAME"
+BROWSER_DEMOS_CANONICAL="/storage/emulated/0/Music/Demos/$BROWSER_DEMOS_NAME"
+BROWSER_CATEGORY_PATH_FIXTURES_SEEDED=0
 BROWSER_LOCAL_XML="/tmp/mpc-groovebox-browser-local-results-uiautomator.xml"
 BROWSER_LOCAL_REMOTE="/sdcard/mpc-groovebox-browser-local-results-uiautomator.xml"
 
@@ -6528,6 +6535,59 @@ if ! grep -Fq -- "$LOCAL_SAMPLE_NAME" "$MEDIASTORE_FIXTURE_QUERY"; then
   exit 1
 fi
 echo "MediaStore fixture indexed and verified: $LOCAL_SAMPLE_NAME (ID $MEDIA_ITEM_ID)"
+
+seed_browser_content_category_fixture() {
+  local name="$1" device_path="$2" canonical_path="$3" expected_relative_path="$4" label="$5"
+  local scan_log="/tmp/mpc-browser-category-$label-scan.txt"
+  local query_file="/tmp/mpc-browser-category-$label-query.txt"
+  local item_uri item_id collection_uri
+  if ! adb_bounded 10 shell mkdir -p "${device_path%/*}"; then
+    echo "ERROR: could not prepare MediaStore category folder for $label"
+    return 1
+  fi
+  if ! adb_bounded 30 push "$LOCAL_SAMPLE_HOST" "$device_path"; then
+    echo "ERROR: could not copy WAV fixture into the $label category folder"
+    return 1
+  fi
+  if ! adb_bounded 15 shell content call --uri content://media --method scan_file \
+      --arg "$canonical_path" > "$scan_log" 2>&1; then
+    echo "ERROR: MediaStore scan_file failed for $label category fixture"
+    cat "$scan_log" || true
+    return 1
+  fi
+  item_uri="$(grep -oE 'content://media/[^[:space:]]+/audio/media/[0-9]+' "$scan_log" | head -n 1 || true)"
+  item_id="${item_uri##*/}"
+  collection_uri="${item_uri%/*}"
+  if [[ ! "$item_id" =~ ^[0-9]+$ || -z "$collection_uri" ]]; then
+    echo "ERROR: MediaStore did not return a usable URI for $label category fixture"
+    cat "$scan_log" || true
+    return 1
+  fi
+  if ! adb_bounded 10 shell content query --uri "$collection_uri" \
+      --projection _id:_display_name:relative_path --where "_id=$item_id" \
+      > "$query_file" 2>&1; then
+    echo "ERROR: could not query the indexed $label category fixture"
+    cat "$query_file" || true
+    return 1
+  fi
+  if ! grep -Fq -- "$name" "$query_file" \
+      || ! grep -Fq -- "$expected_relative_path" "$query_file"; then
+    echo "ERROR: MediaStore category fixture path mismatch for $label"
+    cat "$query_file" || true
+    return 1
+  fi
+  echo "MediaStore category fixture indexed and path-verified: $name ($expected_relative_path)"
+}
+
+if [[ "$emulator_sdk" =~ ^[0-9]+$ ]] && (( emulator_sdk >= 29 )); then
+  if ! seed_browser_content_category_fixture "$BROWSER_DRUMS_NAME" "$BROWSER_DRUMS_DEVICE" \
+      "$BROWSER_DRUMS_CANONICAL" "Music/Drums/" "drums"; then exit 1; fi
+  if ! seed_browser_content_category_fixture "$BROWSER_DEMOS_NAME" "$BROWSER_DEMOS_DEVICE" \
+      "$BROWSER_DEMOS_CANONICAL" "Music/Demos/" "demos"; then exit 1; fi
+  BROWSER_CATEGORY_PATH_FIXTURES_SEEDED=1
+else
+  echo "Android API below 29: MediaStore path-based Drums/Demos categories remain explicitly unavailable."
+fi
 
 
 
@@ -9433,31 +9493,50 @@ fi
 
 echo "Running BROW-003 real local Content category provider boundaries..."
 assert_browser_content_category() {
-  local hierarchy="$1" category="$2" expected="$3"
-  python3 - "$hierarchy" "$category" "$expected" "$LOCAL_SAMPLE_NAME" <<'PY'
+  local hierarchy="$1" category="$2" expected="$3" expected_name="${4:-$LOCAL_SAMPLE_NAME}"
+  python3 - "$hierarchy" "$category" "$expected" "$expected_name" \
+      "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME" \
+      "$BROWSER_CATEGORY_PATH_FIXTURES_SEEDED" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 
-path, category, expected, sample_name = sys.argv[1:]
+path, category, expected, expected_name, root_name, drum_name, demo_name, path_fixtures = sys.argv[1:]
 root = ET.parse(path).getroot()
 nodes = list(root.iter("node"))
 descriptions = {node.attrib.get("content-desc", "") for node in nodes}
 texts = [node.attrib.get("text", "") for node in nodes]
 if f"MPC Browser current location: CONTENT • {category}" not in descriptions:
     raise SystemExit(f"Content location did not resolve to {category}")
-file_rows = [d for d in descriptions if d == f"MPC Browser file {sample_name}"
-             or d.startswith(f"MPC Browser file {sample_name} ")]
+
+def file_rows(name):
+    prefix = f"MPC Browser file {name}"
+    return [description for description in descriptions
+            if description == prefix or description.startswith(prefix + " ")]
+
+fixture_names = (root_name, drum_name, demo_name)
 if expected == "AVAILABLE":
-    if not file_rows:
-        raise SystemExit(f"real local WAV missing from supported CONTENT/{category}")
+    if not file_rows(expected_name):
+        raise SystemExit(f"expected real local WAV {expected_name!r} missing from CONTENT/{category}")
+    if category in ("DRUMS", "DEMOS"):
+        wrong_category = demo_name if category == "DRUMS" else drum_name
+        for forbidden in (root_name, wrong_category):
+            if file_rows(forbidden):
+                raise SystemExit(
+                    f"CONTENT/{category} leaked WAV outside its real folder: {forbidden!r}")
+    elif category in ("SAMPLES", "MY FILES") and path_fixtures == "1":
+        for name in fixture_names:
+            if not file_rows(name):
+                raise SystemExit(f"CONTENT/{category} omitted indexed WAV {name!r}")
     if "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" in descriptions:
         raise SystemExit(f"supported CONTENT/{category} reported unavailable")
 else:
-    if file_rows:
-        raise SystemExit(f"unsupported CONTENT/{category} fabricated a WAV row")
+    leaked = [name for name in fixture_names if file_rows(name)]
+    if leaked:
+        raise SystemExit(f"unsupported CONTENT/{category} fabricated WAV rows: {leaked!r}")
     if "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" not in descriptions:
         raise SystemExit(f"unsupported CONTENT/{category} didn't report provider limitation")
-    if not any("No real local provider is available" in text for text in texts):
+    if not any("No real local provider is available" in text
+               or "MediaStore folder paths" in text for text in texts):
         raise SystemExit(f"unsupported CONTENT/{category} has no actionable limitation detail")
 print(f"Browser CONTENT/{category}: {expected.lower()} provider behavior verified.")
 PY
@@ -9468,17 +9547,36 @@ if ! tap_ui_description "$BROWSER_LOCAL_XML" "Browser CONTENT tab"; then
 fi
 for category in DRUMS INSTRUMENTS DEMOS; do
   category_lower="$(printf '%s' "$category" | tr '[:upper:]' '[:lower:]')"
+  category_expected="UNAVAILABLE"
+  expected_name="$LOCAL_SAMPLE_NAME"
+  if [[ "$emulator_sdk" =~ ^[0-9]+$ ]] && (( emulator_sdk >= 29 )); then
+    if [[ "$category" == "DRUMS" ]]; then
+      category_expected="AVAILABLE"
+      expected_name="$BROWSER_DRUMS_NAME"
+    elif [[ "$category" == "DEMOS" ]]; then
+      category_expected="AVAILABLE"
+      expected_name="$BROWSER_DEMOS_NAME"
+    fi
+  fi
   if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser navigation CONTENT $category"; then
     echo "ERROR: Browser CONTENT/$category navigation row was not actionable"; exit 1
   fi
-  if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-      "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" 10; then
-    echo "ERROR: Browser CONTENT/$category must explicitly report its unavailable local provider"; exit 1
+  if [[ "$category_expected" == "AVAILABLE" ]]; then
+    if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+        "MPC Browser file $expected_name" 12; then
+      echo "ERROR: indexed category WAV $expected_name missing from CONTENT/$category"; exit 1
+    fi
+  else
+    if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+        "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" 10; then
+      echo "ERROR: Browser CONTENT/$category must explicitly report its unavailable provider"; exit 1
+    fi
   fi
   if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
     echo "ERROR: could not capture Browser CONTENT/$category hierarchy"; exit 1
   fi
-  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "UNAVAILABLE"; then
+  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" \
+      "$category_expected" "$expected_name"; then
     echo "ERROR: Browser CONTENT/$category category/results contract failed"; exit 1
   fi
   if ! capture_ui_screenshot "/tmp/mpc-groovebox-browser-content-$category_lower.png" 10; then
@@ -9501,7 +9599,7 @@ for category in SAMPLES "MY FILES"; do
     echo "ERROR: Browser CONTENT/$category provider/results contract failed"; exit 1
   fi
 done
-echo "BROW-003 local Content categories show real WAVs only in supported providers."
+echo "BROW-003 local Content categories filter real MediaStore paths; Instruments remains unavailable."
 
 # Exercise the real on-screen Search field against the indexed MediaStore rows.
 # Positive and negative queries must change the visible result set, not only the
