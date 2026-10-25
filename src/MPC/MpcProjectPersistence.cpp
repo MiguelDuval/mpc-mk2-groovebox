@@ -265,7 +265,8 @@ bool readPattern(Decoder& in, domain::Pattern& pattern) {
 bool validateSequenceSettings(
         const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
-        if (sequence.tempoBpm < 20.0 || sequence.tempoBpm > 300.0) {
+        if (!std::isfinite(sequence.tempoBpm)
+                || sequence.tempoBpm < 20.0 || sequence.tempoBpm > 300.0) {
             return setError(error, "Sequence tempo is out of range");
         }
         if (!sequencer::isValidTimeSignature(
