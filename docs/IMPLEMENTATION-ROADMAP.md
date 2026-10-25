@@ -2,27 +2,40 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-25 (live exact-SHA evidence governs)
 
-### 1. Resolve the PR #43 Android Document Picker smoke failure
+### 1. Project Save As picker robustness and evidence integrity
 
-- PR [#43](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/43), exact head `67583ed41f9d86db6a8244a666b3a8322742de31`, failed Build #3242 / [run 40145378936](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145378936), job `121031806244`, step 52, during second-document Save As picker capture.
-- The log shows that Android DocumentsUI was the active package and that a hierarchy was emitted, but a UIAutomator dump consumed the stable-capture helper's full 8-second budget before the host transfer could begin. The helper had only one attempt. The app's Save As transaction and document-state assertions had not failed at this point.
-- Comparison: PR [#50](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/50), exact head `2390f23670c3679a6a33c348aeb589440ff6765b`, passed full Build #3244 / [run 40145568578](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40145568578), including emulator smoke and evidence upload. The smoke script blob on both heads was identical (`f2406e89993944696b86a5533b3470725d3e6ecb`); PR #50 modified recorder code and native tests only. Evidence therefore supports a transient UIAutomator/emulator stall plus a capture helper budget flaw, not a demonstrated product-level Save As defect.
-- Isolated fix branch: `fix/project-save-picker-capture-retries`, based on exact PR #43 head. The helper now has a validated per-dump budget cap applied to all three stable snapshots. Only the second-document Save As capture uses compressed hierarchy snapshots capped at 3 seconds; its total helper budget remains 8 seconds. Stable hierarchy agreement, screenshot correspondence, filename-field validation, SAVE, persisted-state digest/read-back and A/B document isolation assertions are unchanged.
-- Added a source regression guard for all three capped dumps, the targeted caller mode/budget, and preservation of the prefilled-filename assertion. Implementation commits include `0c803b7b702961aef8bcb1c6b2fff996a2553924` and `b8f2f36a61f0f6578a2da081fc254fc5c0c15d53`; later documentation sync commits are on the same isolated branch. **No green result is claimed for the new branch until its final exact HEAD completes the full Android workflow, emulator smoke and evidence upload.**
+- PR #58, HEAD `63ea6805e819537a96eed446bdde1b3aa518531d`, bounds individual UIAutomator dump attempts while retaining the overall picker retry budget. Build #3254 passed all 57 steps.
+- PR #59, docs/evidence HEAD `972449dc2040c2909c34b8b388860b875bcab0ff`, preserves matching immutable PNG/XML pairs for three Document Picker states. Build #3270 passed all 57 steps on an older docs HEAD; Build #3277 is still running on the previous docs HEAD, while current exact-head Build #3278 is queued. Build #3264's archive was directly inspected and its matched evidence is valid.
 
-### 2. Preserve the live primary checkpoint and PR stack
+### 2. Persistence, ID allocation and Note Repeat hardening
 
-- PR [#23](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/23) remains open, branch `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`, live head `30e270c51038afdd037e9d226f20eb5cc310bc82`, base SHA `5f562e54e2cf8235041590933232a3836d74a16a`.
-- Android Build #3215 / [run 40141743745](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40141743745) passed on that exact SHA; APK artifact `12579022465`, visual-evidence artifact `12579887000`.
-- PR #50 is intentionally stacked on PR #43; its successful exact-SHA CI is evidence that the same picker smoke can pass, not proof that #43's failed run was fixed. Do not retarget, merge or close either PR automatically.
+- PR #60, HEAD `596a8110565a99316ccb0d5aa2a04d1e0bba5c56`: rejects empty/duplicate Pattern IDs when Arrangement placements reference Patterns. Build #3253 passed all 57 steps.
+- PR #61, HEAD `0fdba37e521e1b39a96e3c95ee9d0078a43e9883`: validates persisted sequence settings and Locate positions. Build #3256 passed all 57 steps.
+- PR #62, HEAD `26579254409aa1a5a5d0f0f8cac9bda5cd368832`: validates SampleRegion and SampleLayer velocity/gain/pan/tuning. Build #3262 passed all 57 steps.
+- PR #63, HEAD `04b4ab82635d49ca104a10a036702cf99c496c5c`: validates Pad parameter ranges. Build #3263 passed all 57 steps.
+- PR #64, HEAD `85dd29b49b8a91fd9c033c4b839857778ad4674b`: rejects negative/non-finite sample rates and negative frame counts. Build #3265 passed all 57 steps.
+- PR #65, HEAD `396a7b46d0c2995aae3b1b240df01136fdd05ae8`: validates loop metadata and unique SampleRef asset IDs. Build #3268 passed all 57 steps.
+- PR #66, HEAD `0ca8355ce704e35a57f90f6936053e54f5577296`: validates Program ID uniqueness and Track references. Build #3271 passed all 57 steps.
+- PR #67, HEAD `232923a956367c1a984c1878d014bffbec3fc6df`: validates SampleLayer references and active loop positions within both full sample and selected region. Builds #3272/#3273 exposed an error-precedence test mismatch; ordering was corrected without weakening checks. Build #3274 passed steps 1–51 and was running smoke step 52.
+- PR #68, HEAD `c0d7ae13ba70a1bf32339eaf3ef9ba3cff00a371`: avoids SampleId collision after uint32 allocation cursor wrap. Build #3275 passed steps 1–51 and was running smoke step 52.
+- PR #69 was closed as a duplicate of existing PR #42 (Step note field bounds/int64 duration cap, Build #3232 green) and PR #45 (captured MIDI validation, Build #3233 green). Those existing PRs remain open and unchanged.
+- PR #70, HEAD `49d3642ea9b0398c435347e2713bcf25491c7202`: fixes a Note Repeat worker busy-loop caused by leaving `generation_` in the idle condition-variable predicate. Changes to the rate while no Pad is held no longer cause repeated immediate wakeups; held-pad/shutdown wake conditions remain. Added a pure policy regression to the existing CI test step without changing the acceptance step numbering. Build #3279 passed steps 1–13 and was executing focused tests.
 
 ### 3. Acceptance and safety gates
 
-1. Open the isolated follow-up PR against `fix/sequence-recorder-event-validation`, then inspect the workflow triggered for its final exact SHA. Require native/JVM tests, APK, emulator smoke (step 52), and evidence upload (step 53) all to pass.
-2. Inspect the uploaded picker screenshot/hierarchy and full run logs after CI; do not raise the 8-second helper budget or weaken filename/read-back/isolation assertions to obtain green.
-3. Keep `cancel-in-progress: false`, leave `main` untouched, and preserve linear history without reset/rebase/force-push. Physical MPC Studio MkII validation remains a separate pending hardware gate.
+- Primary PR #23 remains open at head `30e270c51038afdd037e9d226f20eb5cc310bc82`, targeting base SHA `5f562e54e2cf8235041590933232a3836d74a16a`. Build #3215 passed on that exact head.
+- At the latest poll, builds #3274/#3275/#3276/#3277 were in smoke step 52 without a recorded failure; evidence upload step 53 had not started. Build #3278 for latest docs was queued. Treat each as pending until its real result and artifacts are available.
+- Require current exact-head tests, APK assembly/upload, emulator smoke step 52 and visual-evidence upload step 53 before accepting a code PR. `.github/workflows/android-build.yml` retains `cancel-in-progress: false`. Do not modify `main`, rewrite history, or automatically retarget/merge/close stacked PRs. Physical MPC Studio MkII testing remains separate.
 
-## HISTORICAL EXECUTION NOTES (older entries are non-authoritative) (superseded by the current 2026-10-23 status above)
+## HISTORICAL EXECUTION NOTES (older entries are non-authoritative)
+
+
+
+
+
+
+
+
 
 Older dated “next task” sections below retain history only. Start each slice from live HEAD, current source and real test gaps.
 
