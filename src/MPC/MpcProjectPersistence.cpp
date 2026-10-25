@@ -262,6 +262,28 @@ bool readPattern(Decoder& in, domain::Pattern& pattern) {
     return true;
 }
 
+bool validateProgramReferences(
+        const domain::Project& project, std::string* error) {
+    std::set<std::string> programIds;
+    for (const auto& program : project.drumPrograms) {
+        if (program.id.empty() || !programIds.insert(program.id).second) {
+            return setError(error, "Program IDs are empty or duplicated");
+        }
+    }
+
+    for (const auto& sequence : project.sequences) {
+        for (const auto& track : sequence.tracks) {
+            // Empty means intentionally unassigned; a non-empty ID must
+            // resolve uniquely because track routing selects Programs by ID.
+            if (!track.programId.empty()
+                    && programIds.find(track.programId) == programIds.end()) {
+                return setError(error, "Track references a missing Program");
+            }
+        }
+    }
+    return true;
+}
+
 bool validateSequenceSettings(
         const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
@@ -515,7 +537,8 @@ bool validatePatternNotes(const domain::Project& project, std::string* error) {
 
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
-    if (!validateSequenceSettings(project, error)
+    if (!validateProgramReferences(project, error)
+            || !validateSequenceSettings(project, error)
             || !validateSampleReferences(project, error)
             || !validatePadParameters(project, error)
             || !validateSampleLayerState(project, error)
@@ -738,7 +761,8 @@ bool deserializeProject(
     }
 
     if (!in.tag("END_PROJECT") || !in.finished()) return false;
-    if (!validateSequenceSettings(candidate, error)
+    if (!validateProgramReferences(candidate, error)
+            || !validateSequenceSettings(candidate, error)
             || !validateSampleReferences(candidate, error)
             || !validatePadParameters(candidate, error)
             || !validateSampleLayerState(candidate, error)
