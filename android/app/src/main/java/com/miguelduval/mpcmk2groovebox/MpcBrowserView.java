@@ -72,6 +72,7 @@ final class MpcBrowserView extends LinearLayout {
     private boolean userFolderAccessReady;
     private boolean userFolderScanComplete;
     private boolean userFolderScanFailed;
+    private boolean showFileSize = true;
 
     MpcBrowserView(Context context) {
         super(context);
@@ -257,6 +258,16 @@ final class MpcBrowserView extends LinearLayout {
     void setScanState(String status) {
         setProviderStatus(status);
         renderResults();
+    }
+
+    void setShowFileSize(boolean show) {
+        if (showFileSize == show) return;
+        showFileSize = show;
+        renderResults();
+    }
+
+    boolean isShowFileSize() {
+        return showFileSize;
     }
 
     void setProviderStatus(String status) {
@@ -741,7 +752,7 @@ final class MpcBrowserView extends LinearLayout {
         main.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(main, new LayoutParams(0, dp(getContext(), 34), 1));
 
-        final TextView sub = info(getContext(), file.metadataLine());
+        final TextView sub = info(getContext(), file.metadataLine(showFileSize));
         sub.setTextSize(8);
         sub.setSingleLine(true);
         sub.setEllipsize(TextUtils.TruncateAt.END);
