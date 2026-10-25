@@ -419,7 +419,10 @@ bool validateSampleLayerState(
                         [&layer](const domain::SampleRef& candidate) {
                             return candidate.assetId.value == layer.sample.value;
                         });
-                if (sample != project.samples.end() && sample->lengthSamples > 0) {
+                if (sample == project.samples.end()) {
+                    return setError(error, "Sample layer references a missing SampleRef");
+                }
+                if (sample->lengthSamples > 0) {
                     if (static_cast<std::uint64_t>(layer.region.endFrame)
                             > static_cast<std::uint64_t>(sample->lengthSamples)) {
                         return setError(

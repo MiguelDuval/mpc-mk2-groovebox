@@ -219,6 +219,9 @@ int main() {
             [](auto& layer) { layer.region = domain::SampleRegion{17, 24001}; },
             "Sample region exceeds the referenced sample");
     assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.sample.value = 999; },
+            "Sample layer references a missing SampleRef");
+    assertInvalidSampleLayerRejected(
             [](auto& layer) {
                 layer.velocityMinimum = 119;
                 layer.velocityMaximum = 7;
@@ -298,6 +301,9 @@ int main() {
     assertInvalidSerializedSampleLayerRejected(
             " 17 1777 ", " 17 24001 ",
             "Sample region exceeds the referenced sample");
+    assertInvalidSerializedSampleLayerRejected(
+            "LAYER 101 ", "LAYER 999 ",
+            "Sample layer references a missing SampleRef");
     assertInvalidSerializedSampleLayerRejected(
             " 100 1700 ", " -1 1700 ",
             "Sample loop bounds are negative");
