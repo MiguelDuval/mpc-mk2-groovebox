@@ -4,29 +4,31 @@
 
 ### 1. Project Save As picker robustness and evidence integrity
 
-- PR #58, HEAD `63ea6805e819537a96eed446bdde1b3aa518531d`, bounds individual UIAutomator dump attempts while preserving the overall retry budget. Build #3254 / [run 40177584543](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40177584543) passed all 57 steps.
-- PR #59, current docs/evidence HEAD `db1b5f56ffdf8624bc7619681b5d552492f859fb`, stores matched PNG/XML evidence for initial Save As, second Save As and recovery export. Build #3270 / [run 40186337716](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40186337716) passed on the previous docs HEAD; current-head Build #3277 / [run 40191892166](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40191892166) was in progress. Build #3264's artifact was directly inspected; all three XML/screenshots matched package, expected name and visible picker state.
+- PR #58, HEAD `63ea6805e819537a96eed446bdde1b3aa518531d`, bounds individual UIAutomator dump attempts while retaining the overall picker retry budget. Build #3254 passed all 57 steps.
+- PR #59, docs/evidence HEAD `972449dc2040c2909c34b8b388860b875bcab0ff`, preserves matching immutable PNG/XML pairs for three Document Picker states. Build #3270 passed all 57 steps on an older docs HEAD; Build #3277 is still running on the previous docs HEAD, while current exact-head Build #3278 is queued. Build #3264's archive was directly inspected and its matched evidence is valid.
 
-### 2. Persistence hardening — exact-head CI
+### 2. Persistence, ID allocation and Note Repeat hardening
 
-- PR #60, HEAD `596a8110565a99316ccb0d5aa2a04d1e0bba5c56`: rejects empty/duplicate Pattern IDs on Tracks with Arrangement placements. Build #3253 passed all 57 steps.
-- PR #61, HEAD `0fdba37e521e1b39a96e3c95ee9d0078a43e9883`: validates persisted sequence settings and assigned Locate positions. Build #3256 passed all 57 steps.
+- PR #60, HEAD `596a8110565a99316ccb0d5aa2a04d1e0bba5c56`: rejects empty/duplicate Pattern IDs when Arrangement placements reference Patterns. Build #3253 passed all 57 steps.
+- PR #61, HEAD `0fdba37e521e1b39a96e3c95ee9d0078a43e9883`: validates persisted sequence settings and Locate positions. Build #3256 passed all 57 steps.
 - PR #62, HEAD `26579254409aa1a5a5d0f0f8cac9bda5cd368832`: validates SampleRegion and SampleLayer velocity/gain/pan/tuning. Build #3262 passed all 57 steps.
-- PR #63, HEAD `04b4ab82635d49ca104a10a036702cf99c496c5c`: validates Pad tuning/level/pan/envelope/filter ranges. Build #3263 passed all 57 steps.
-- PR #64, HEAD `85dd29b49b8a91fd9c033c4b839857778ad4674b`: rejects negative/non-finite SampleRef rates and negative frame counts. Build #3265 passed all 57 steps.
-- PR #65, HEAD `396a7b46d0c2995aae3b1b240df01136fdd05ae8`: validates loop metadata and unique assigned SampleRef asset IDs; included parent code passed in Build #3271.
-- PR #66, HEAD `0ca8355ce704e35a57f90f6936053e54f5577296`: validates Program ID uniqueness and Track references; Build #3271 / [run 40186451595](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40186451595) passed all 57 steps.
-- PR #67, HEAD `232923a956367c1a984c1878d014bffbec3fc6df`: validates assigned sample layer references and keeps active loops inside both the source sample and selected playback region. Builds #3272/#3273 exposed validation error precedence (same loop violated two bounds). The check order was corrected with assertions intact. Build #3274 / [run 40191346634](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40191346634) passed steps 1–51; smoke step 52 active at the last poll.
-- PR #68, HEAD `c0d7ae13ba70a1bf32339eaf3ef9ba3cff00a371`: avoids SampleId collision after uint32 cursor wrap with sparse-ID regression. Build #3275 / [run 40191579540](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40191579540) passed steps 1–51; smoke step 52 active at the last poll.
-- PR #69 was closed as a duplicate of existing PRs #42 (step note bounds and int64 duration arithmetic, green Build #3232) and #45 (captured MIDI validation, green Build #3233). Those existing PRs remain open and unchanged.
+- PR #63, HEAD `04b4ab82635d49ca104a10a036702cf99c496c5c`: validates Pad parameter ranges. Build #3263 passed all 57 steps.
+- PR #64, HEAD `85dd29b49b8a91fd9c033c4b839857778ad4674b`: rejects negative/non-finite sample rates and negative frame counts. Build #3265 passed all 57 steps.
+- PR #65, HEAD `396a7b46d0c2995aae3b1b240df01136fdd05ae8`: validates loop metadata and unique SampleRef asset IDs. Build #3268 passed all 57 steps.
+- PR #66, HEAD `0ca8355ce704e35a57f90f6936053e54f5577296`: validates Program ID uniqueness and Track references. Build #3271 passed all 57 steps.
+- PR #67, HEAD `232923a956367c1a984c1878d014bffbec3fc6df`: validates SampleLayer references and active loop positions within both full sample and selected region. Builds #3272/#3273 exposed an error-precedence test mismatch; ordering was corrected without weakening checks. Build #3274 passed steps 1–51 and was running smoke step 52.
+- PR #68, HEAD `c0d7ae13ba70a1bf32339eaf3ef9ba3cff00a371`: avoids SampleId collision after uint32 allocation cursor wrap. Build #3275 passed steps 1–51 and was running smoke step 52.
+- PR #69 was closed as a duplicate of existing PR #42 (Step note field bounds/int64 duration cap, Build #3232 green) and PR #45 (captured MIDI validation, Build #3233 green). Those existing PRs remain open and unchanged.
+- PR #70, HEAD `49d3642ea9b0398c435347e2713bcf25491c7202`: fixes a Note Repeat worker busy-loop caused by leaving `generation_` in the idle condition-variable predicate. Changes to the rate while no Pad is held no longer cause repeated immediate wakeups; held-pad/shutdown wake conditions remain. Added a pure policy regression to the existing CI test step without changing the acceptance step numbering. Build #3279 passed steps 1–13 and was executing focused tests.
 
 ### 3. Acceptance and safety gates
 
-- Primary PR #23 remains open at head `30e270c51038afdd037e9d226f20eb5cc310bc82`, targeting base SHA `5f562e54e2cf8235041590933232a3836d74a16a`. Build #3215 / [run 40141743745](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40141743745) passed on that exact head.
-- Require current exact-head tests, APK assembly/upload, emulator smoke step 52 and visual-evidence upload step 53 before accepting code. A successful compile or APK alone is not acceptance.
-- `.github/workflows/android-build.yml` remains unchanged with `cancel-in-progress: false`. Do not modify `main`, rewrite history, or automatically retarget/merge/close stacked PRs. Physical MPC Studio MkII testing remains separate.
+- Primary PR #23 remains open at head `30e270c51038afdd037e9d226f20eb5cc310bc82`, targeting base SHA `5f562e54e2cf8235041590933232a3836d74a16a`. Build #3215 passed on that exact head.
+- At the latest poll, builds #3274/#3275/#3276/#3277 were in smoke step 52 without a recorded failure; evidence upload step 53 had not started. Build #3278 for latest docs was queued. Treat each as pending until its real result and artifacts are available.
+- Require current exact-head tests, APK assembly/upload, emulator smoke step 52 and visual-evidence upload step 53 before accepting a code PR. `.github/workflows/android-build.yml` retains `cancel-in-progress: false`. Do not modify `main`, rewrite history, or automatically retarget/merge/close stacked PRs. Physical MPC Studio MkII testing remains separate.
 
 ## HISTORICAL EXECUTION NOTES (older entries are non-authoritative)
+
 
 
 
