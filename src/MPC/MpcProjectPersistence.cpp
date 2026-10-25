@@ -386,6 +386,13 @@ bool validateSampleLayerState(
                     // [0, 0) region; that is not a playable sample region.
                     continue;
                 }
+                if (layer.loopStartSample < 0 || layer.loopEndSample < 0) {
+                    return setError(error, "Sample loop bounds are negative");
+                }
+                if ((layer.loopStartSample != 0 || layer.loopEndSample != 0)
+                        && layer.loopEndSample <= layer.loopStartSample) {
+                    return setError(error, "Sample loop range is empty or reversed");
+                }
                 if (layer.region.startFrame >= layer.region.endFrame) {
                     return setError(error, "Sample region is empty or reversed");
                 }
@@ -395,12 +402,18 @@ bool validateSampleLayerState(
                         [&layer](const domain::SampleRef& candidate) {
                             return candidate.assetId.value == layer.sample.value;
                         });
-                if (sample != project.samples.end() && sample->lengthSamples > 0
-                        && static_cast<std::uint64_t>(layer.region.endFrame)
-                                > static_cast<std::uint64_t>(sample->lengthSamples)) {
-                    return setError(
-                            error,
-                            "Sample region exceeds the referenced sample");
+                if (sample != project.samples.end() && sample->lengthSamples > 0) {
+                    if (static_cast<std::uint64_t>(layer.region.endFrame)
+                            > static_cast<std::uint64_t>(sample->lengthSamples)) {
+                        return setError(
+                                error,
+                                "Sample region exceeds the referenced sample");
+                    }
+                    if (layer.loopEndSample > sample->lengthSamples) {
+                        return setError(
+                                error,
+                                "Sample loop exceeds the referenced sample");
+                    }
                 }
             }
         }

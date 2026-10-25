@@ -240,6 +240,31 @@ int main() {
             [](auto& layer) { layer.tuningSemitones = 24.5f; },
             "Sample layer tuning is out of range");
 
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.loopStartSample = -1; },
+            "Sample loop bounds are negative");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) {
+                layer.loopStartSample = 1700;
+                layer.loopEndSample = 100;
+            },
+            "Sample loop range is empty or reversed");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.loopEndSample = 24001; },
+            "Sample loop exceeds the referenced sample");
+
+    // [0, 0) is the explicit disabled-loop state and remains round-trippable.
+    auto noLoopProject = makeProject();
+    noLoopProject.drumPrograms[0].pads[0].layer(0).loopStartSample = 0;
+    noLoopProject.drumPrograms[0].pads[0].layer(0).loopEndSample = 0;
+    std::string noLoopError;
+    const auto noLoopBytes = persistence::serializeProject(noLoopProject, &noLoopError);
+    assert(!noLoopBytes.empty());
+    domain::Project noLoopRoundTrip;
+    assert(persistence::deserializeProject(noLoopBytes, noLoopRoundTrip, &noLoopError));
+    assert(noLoopRoundTrip.drumPrograms[0].pads[0].layer(0).loopStartSample == 0);
+    assert(noLoopRoundTrip.drumPrograms[0].pads[0].layer(0).loopEndSample == 0);
+
     const std::string validLayerRecord =
             "LAYER 101 17 1777 0.625 0.125 -3.5 7 119 100 1700 1\n";
     const auto assertInvalidSerializedSampleLayerRejected =
@@ -267,6 +292,15 @@ int main() {
     assertInvalidSerializedSampleLayerRejected(
             " 17 1777 ", " 17 24001 ",
             "Sample region exceeds the referenced sample");
+    assertInvalidSerializedSampleLayerRejected(
+            " 100 1700 ", " -1 1700 ",
+            "Sample loop bounds are negative");
+    assertInvalidSerializedSampleLayerRejected(
+            " 100 1700 ", " 1700 100 ",
+            "Sample loop range is empty or reversed");
+    assertInvalidSerializedSampleLayerRejected(
+            " 100 1700 ", " 100 24001 ",
+            "Sample loop exceeds the referenced sample");
     assertInvalidSerializedSampleLayerRejected(
             " 7 119 ", " 119 7 ",
             "Sample layer velocity range is reversed");
