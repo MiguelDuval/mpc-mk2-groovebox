@@ -213,7 +213,7 @@ final class MpcPadMixerView extends LinearLayout {
             addView(panValue, new LayoutParams(
                     LayoutParams.MATCH_PARENT, dp(context, 28)));
 
-            LinearLayout panButtons = compactButtons(context,
+            LinearLayout panButtons = compactButtons(context, pad, ControlFocus.PAN,
                     "−", "＋",
                     () -> {
                         listener.onControlFocus(pad, ControlFocus.PAN);
@@ -232,7 +232,7 @@ final class MpcPadMixerView extends LinearLayout {
             addView(tuneValue, new LayoutParams(
                     LayoutParams.MATCH_PARENT, dp(context, 28)));
 
-            LinearLayout tuneButtons = compactButtons(context,
+            LinearLayout tuneButtons = compactButtons(context, pad, ControlFocus.TUNE,
                     "−", "＋",
                     () -> {
                         listener.onControlFocus(pad, ControlFocus.TUNE);
@@ -306,8 +306,23 @@ final class MpcPadMixerView extends LinearLayout {
         return field;
     }
 
+    static String controlButtonDescription(
+            int pad, ControlFocus focus, boolean increase) {
+        final int safePad = Math.max(0, Math.min(15, pad));
+        final String control = focus == ControlFocus.PAN
+                ? "PAN" : focus == ControlFocus.TUNE ? "TUNE" : "LEVEL";
+        return String.format(
+                Locale.ROOT,
+                "PAD %02d %s %s",
+                safePad + 1,
+                control,
+                increase ? "increase" : "decrease");
+    }
+
     private LinearLayout compactButtons(
             Context context,
+            int pad,
+            ControlFocus focus,
             String left,
             String right,
             Runnable leftAction,
@@ -317,6 +332,7 @@ final class MpcPadMixerView extends LinearLayout {
         row.setGravity(Gravity.CENTER_VERTICAL);
 
         Button l = button(context, left);
+        l.setContentDescription(controlButtonDescription(pad, focus, false));
         l.setOnClickListener(v -> {
             leftAction.run();
             refreshAll();
@@ -324,6 +340,7 @@ final class MpcPadMixerView extends LinearLayout {
         row.addView(l, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
 
         Button r = button(context, right);
+        r.setContentDescription(controlButtonDescription(pad, focus, true));
         r.setOnClickListener(v -> {
             rightAction.run();
             refreshAll();
