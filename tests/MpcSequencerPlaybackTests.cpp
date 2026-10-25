@@ -8,6 +8,61 @@
 
 namespace {
 
+void testPlaybackSessionStopsBeforeDereferencingMutatedSequenceStorage() {
+    mpc::MpcProjectState state;
+    state.activeSequence().tracks.front().patterns.front().notes = {
+            {0, 120, 36, 100, 127, 1}};
+
+    mpc::audio::AudioTriggerQueue queue;
+    mpc::sequencer::MpcSequencePlaybackSession session(state, queue);
+    assert(session.start());
+    assert(session.isPlaying());
+
+    // Add Track changes the authoritative track count and may reallocate the
+    // Track vector whose mute flags active playback sessions reference.
+    assert(state.addTrack(mpc::domain::TrackKind::Drum, "DRUMS 2"));
+    assert(state.activeSequence().tracks.size() == 2);
+    const auto changedTracks = session.advance(960, 71u, 48000);
+    assert(changedTracks.scheduled == 0);
+    assert(changedTracks.queued == 0);
+    assert(!session.isPlaying());
+    mpc::audio::AudioTriggerEvent stale{};
+    assert(!queue.tryDequeue(stale));
+
+    // Adding a DrumProgram can invalidate the const Program references held by
+    // each playback. The guard must also detect storage/size changes here.
+    assert(session.start());
+    auto extraProgram = state.project().drumPrograms.front();
+    extraProgram.id = "drum-program-extra";
+    extraProgram.name = "Extra Drum Program";
+    state.project().drumPrograms.push_back(std::move(extraProgram));
+    const auto changedPrograms = session.advance(960, 72u, 48000);
+    assert(changedPrograms.scheduled == 0);
+    assert(changedPrograms.queued == 0);
+    assert(!session.isPlaying());
+    assert(!queue.tryDequeue(stale));
+
+    // In-place Sequence timing changes do not reallocate the Sequence vector,
+    // but invalidate the arrangement snapshot used by the session.
+    assert(session.start());
+    assert(state.setSequenceBars(8));
+    const auto changedLength = session.advance(960, 73u, 48000);
+    assert(changedLength.scheduled == 0);
+    assert(changedLength.queued == 0);
+    assert(!session.isPlaying());
+    assert(!queue.tryDequeue(stale));
+
+    // A track can be retargeted without reallocating its storage; its original
+    // Program reference is stale semantically even if the address stays valid.
+    assert(session.start());
+    assert(state.setTrackProgram(0, "drum-program-extra"));
+    const auto changedProgramMapping = session.advance(960, 74u, 48000);
+    assert(changedProgramMapping.scheduled == 0);
+    assert(changedProgramMapping.queued == 0);
+    assert(!session.isPlaying());
+    assert(!queue.tryDequeue(stale));
+}
+
 void testPlaybackSessionStopsBeforeDereferencingReplacedProject() {
     mpc::MpcProjectState state;
     mpc::audio::AudioTriggerQueue queue;
@@ -166,6 +221,7 @@ int main() {
     assert(ratchetEvents[3].offsetFrames == 9000);
     assert(!ratchetQueue.tryDequeue(ratchetEvents[0]));
 
+    testPlaybackSessionStopsBeforeDereferencingMutatedSequenceStorage();
     testPlaybackSessionStopsBeforeDereferencingReplacedProject();
 
     return 0;
