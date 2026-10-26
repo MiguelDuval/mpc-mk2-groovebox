@@ -242,6 +242,29 @@ bool readPattern(Decoder& in, domain::Pattern& pattern) {
     return true;
 }
 
+bool validatePatternData(const domain::Project& project, std::string* error) {
+    for (const auto& sequence : project.sequences) {
+        for (const auto& track : sequence.tracks) {
+            for (const auto& pattern : track.patterns) {
+                if (pattern.lengthTicks <= 0) {
+                    return setError(error, "Pattern length must be positive");
+                }
+                for (const auto& note : pattern.notes) {
+                    if (note.tick < 0 || note.tick >= pattern.lengthTicks
+                            || note.durationTicks <= 0
+                            || note.durationTicks > pattern.lengthTicks
+                            || note.note > 127 || note.velocity > 127
+                            || note.probability > 127
+                            || note.ratchet < 1 || note.ratchet > 8) {
+                        return setError(error, "MIDI note range is invalid for its Pattern");
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
 bool validatePlacements(const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
         for (const auto& track : sequence.tracks) {
@@ -288,7 +311,10 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
 
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
-    if (!validatePlacements(project, error)) return {};
+    if (!validatePatternData(project, error)
+            || !validatePlacements(project, error)) {
+        return {};
+    }
     std::ostringstream out;
     out << std::setprecision(std::numeric_limits<double>::max_digits10);
     out << "MPCMK2_PROJECT " << kCurrentProjectFormatVersion << '\n';
@@ -504,7 +530,10 @@ bool deserializeProject(
     }
 
     if (!in.tag("END_PROJECT") || !in.finished()) return false;
-    if (!validatePlacements(candidate, error)) return false;
+    if (!validatePatternData(candidate, error)
+            || !validatePlacements(candidate, error)) {
+        return false;
+    }
 
     project = std::move(candidate);
     return true;
