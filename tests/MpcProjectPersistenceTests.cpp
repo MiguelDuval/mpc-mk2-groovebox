@@ -399,16 +399,26 @@ int main() {
     domain::Project largeArrangement = source;
     auto& largeSequence = largeArrangement.sequences.front();
     auto& largeTrack = largeSequence.tracks.front();
-    auto& largePattern = largeTrack.patterns.front();
     constexpr std::int32_t kPlacementCount = 12000;
+    constexpr std::int32_t kPatternCount = 4096;
     largeSequence.lengthTicks = kPlacementCount * 2;
-    largePattern.lengthTicks = largeSequence.lengthTicks;
+    largeTrack.patterns.clear();
+    largeTrack.patterns.reserve(kPatternCount);
+    for (std::int32_t index = 0; index < kPatternCount; ++index) {
+        mpc::domain::Pattern pattern;
+        pattern.id = "large-pattern-" + std::to_string(index);
+        pattern.name = pattern.id;
+        pattern.lengthTicks = largeSequence.lengthTicks;
+        largeTrack.patterns.push_back(std::move(pattern));
+    }
     largeTrack.placements.clear();
     largeTrack.placements.reserve(kPlacementCount);
     for (std::int32_t index = kPlacementCount - 1; index >= 0; --index) {
+        const auto& pattern = largeTrack.patterns[
+                static_cast<std::size_t>(index % kPatternCount)];
         largeTrack.placements.push_back({
                 "large-clip-" + std::to_string(index),
-                largePattern.id,
+                pattern.id,
                 index * 2,
                 1,
                 0
