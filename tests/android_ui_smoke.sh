@@ -11031,7 +11031,7 @@ PY_VALIDATE_VISIBLE_ROOT
   if ! cp -- "$FAVORITE_TREE_PICKER_XML" /tmp/mpc-groovebox-browser-favorite-tree-root-uiautomator.xml; then
     echo "ERROR: could not preserve the fresh Favorite provider-root hierarchy"; exit 1
   fi
-  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME" "favorite-tree" 12 compressed stabilize; then
+  if ! tap_ui_picker_folder_until_child "$FAVORITE_TREE_PICKER_XML" "$FAVORITE_TREE_PICKER_REMOTE" "$FAVORITE_FOLDER_NAME" "$FAVORITE_SAMPLE_NAME" "favorite-tree" 12 compressed reuse-fresh-pair; then
     echo "ERROR: FAVORITE 1 picker did not navigate into the actual Favorite-only WAV folder"; exit 1
   fi
 fi
