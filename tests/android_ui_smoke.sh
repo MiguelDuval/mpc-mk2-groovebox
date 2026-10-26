@@ -7340,8 +7340,10 @@ def visible(predicate, minimum=28):
     return False
 
 waveform = visible(lambda value: value == "Track Edit Samples waveform", 55)
+# Even a clipped velocity marker means the viewport is at the lower
+# end; use its smallest visible intersection to reverse out of that endpoint.
 velocity = visible(lambda value: value == "Track Edit velocity"
-                   or value.startswith("Track Edit layer velocity "), 28)
+                   or value.startswith("Track Edit layer velocity "), 1)
 gain = visible(lambda value: value == "Track Edit layer gain value", 28)
 tuning = visible(lambda value: value == "Track Edit layer tuning value", 28)
 pan = visible(lambda value: value == "Track Edit layer pan value", 28)
@@ -7363,13 +7365,28 @@ else:
 
 height = bottom - top
 margin = max(45, min(90, height // 5))
-if scroll_forward:
-    start_y, end_y = bottom - margin, top + margin
-    direction = "toward REGION/GAIN/TUNE/PAN"
+if target == "region":
+    # REGION sits directly after the waveform and before GAIN/TUNE/PAN. A
+    # full-height swipe jumps between the ScrollView endpoints and can never
+    # make the REGION text and its buttons simultaneously visible. Use bounded
+    # incremental steps to stop at the intermediate region viewport.
+    distance = max(100, min(180, height // 4))
+    if scroll_forward:
+        start_y = bottom - margin
+        end_y = max(top + margin, start_y - distance)
+        direction = "toward REGION controls"
+    else:
+        start_y = top + margin
+        end_y = min(bottom - margin, start_y + distance)
+        direction = "back toward REGION controls"
 else:
-    start_y, end_y = top + margin, bottom - margin
-    direction = "toward earlier layer controls"
-if abs(start_y - end_y) < 100:
+    if scroll_forward:
+        start_y, end_y = bottom - margin, top + margin
+        direction = "toward GAIN/TUNE/PAN"
+    else:
+        start_y, end_y = top + margin, bottom - margin
+        direction = "toward earlier layer controls"
+if abs(start_y - end_y) < 85:
     raise SystemExit("Track Edit scroll gesture is too short")
 print((left + right) // 2, start_y, end_y, direction)
 PY_TRACK_EDIT_SCROLL
