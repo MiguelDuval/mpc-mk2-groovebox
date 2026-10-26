@@ -7339,18 +7339,36 @@ def marker_visible(predicate, minimum_height=28):
             return True
     return False
 
-# Ignore off-screen descendants retained in the accessibility tree. Both
-# ends can exist in one hierarchy even when only a few pixels of a row remain
-# inside the viewport; direction must follow geometry, not mere descriptions.
-at_top = marker_visible(lambda value: value == "Track Edit Samples waveform", 55)
-at_bottom = (marker_visible(lambda value: value == "Track Edit velocity", 28)
-             or marker_visible(lambda value: value.startswith("Track Edit layer velocity "), 28))
-if at_bottom and not at_top:
+# Choose direction from the actual target controls, not inferred top/bottom
+# markers. The waveform/velocity markers may both remain mounted or may be
+# absent from UiAutomator, making the old heuristic oscillate between endpoints.
+# REGION and GAIN are the upper controls; if any are not sufficiently visible,
+# swipe down to reveal them. Once they fit, a reverse swipe can expose any lower
+# TUNE/PAN fields that are still clipped.
+def visible_description(description, minimum_height=28):
+    return any(
+        node.attrib.get("content-desc", "") == description
+        and sufficiently_visible(node, minimum_height)
+        for node in nodes
+    )
+
+top_controls_visible = all([
+    visible_description("Track Edit region"),
+    visible_description("Track Edit layer gain value"),
+    visible_description("Track Edit layer gain decrease"),
+])
+lower_controls_visible = all([
+    visible_description("Track Edit layer tuning value"),
+    visible_description("Track Edit layer pan value"),
+])
+if not top_controls_visible:
     start_y, end_y = top + margin, bottom - margin
     direction = "toward the upper layer controls"
-else:
+elif not lower_controls_visible:
     start_y, end_y = bottom - margin, top + margin
-    direction = "toward REGION/GAIN/TUNE/PAN"
+    direction = "toward TUNE/PAN"
+else:
+    raise SystemExit("Track Edit controls are geometrically visible but failed the shared visibility contract")
 if abs(start_y - end_y) < 100:
     raise SystemExit("Track Edit scroll gesture is too short")
 print((left+right)//2, start_y, end_y, direction)
