@@ -65,6 +65,7 @@ public:
         }
 
         std::size_t recorded = 0;
+        std::array<bool, domain::kMaxSequenceTracks> touchedTracks{};
         SequenceRecordEvent event{};
 
         while (queue.tryDequeue(event)) {
@@ -155,10 +156,13 @@ public:
             }
 
             pattern.notes.push_back(note);
+            touchedTracks[trackIndex] = true;
             ++recorded;
         }
 
-        sortTouchedPatterns(state);
+        if (recorded != 0) {
+            sortTouchedPatterns(state, touchedTracks);
+        }
         return recorded;
     }
 
@@ -171,6 +175,7 @@ public:
         }
 
         std::size_t recorded = drain(state, queue);
+        std::array<bool, domain::kMaxSequenceTracks> touchedTracks{};
 
         for (std::size_t trackIndex = 0;
              trackIndex < state.activeSequence().tracks.size()
@@ -244,11 +249,12 @@ public:
                     replaceCleared_[trackIndex] = true;
                 }
                 track.patterns.front().notes.push_back(note);
+                touchedTracks[trackIndex] = true;
                 ++recorded;
             }
         }
 
-        sortTouchedPatterns(state);
+        sortTouchedPatterns(state, touchedTracks);
         active_ = false;
         held_.fill({});
         startTicks_.fill({});
@@ -288,8 +294,17 @@ private:
         note.tick = static_cast<std::int32_t>(tick);
     }
 
-    void sortTouchedPatterns(MpcProjectState& state) noexcept {
-        for (auto& track : state.activeSequence().tracks) {
+    void sortTouchedPatterns(
+            MpcProjectState& state,
+            const std::array<bool, domain::kMaxSequenceTracks>& touchedTracks) noexcept {
+        auto& tracks = state.activeSequence().tracks;
+        for (std::size_t trackIndex = 0;
+             trackIndex < tracks.size() && trackIndex < touchedTracks.size();
+             ++trackIndex) {
+            if (!touchedTracks[trackIndex]) {
+                continue;
+            }
+            auto& track = tracks[trackIndex];
             if (track.kind != domain::TrackKind::Drum
                     || track.patterns.empty()) {
                 continue;
