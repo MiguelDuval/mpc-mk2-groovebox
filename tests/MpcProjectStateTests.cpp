@@ -246,7 +246,8 @@ int main() {
     assert(firstNewSample.value == 1);
 
     // If a loaded SampleRef owns UINT32_MAX-1, allocation wraps after the
-    // next registration. Existing asset ID 1 must be skipped rather than reused.
+    // next registration. Existing asset ID 1 and an assigned-but-unresolved
+    // layer reference to ID 2 must both be skipped rather than reused.
     mpc::MpcProjectState wrapState;
     auto& wrapProject = wrapState.project();
     mpc::domain::SampleRef sampleIdOne;
@@ -265,6 +266,7 @@ int main() {
     sampleNearMaximum.assetId.value =
             std::numeric_limits<std::uint32_t>::max() - 1;
     wrapProject.samples.push_back(sampleNearMaximum);
+    wrapProject.drumPrograms.front().pads[0].layer(0).sample.value = 2;
 
     auto reopenedWrapProject = wrapState.project();
     assert(wrapState.replaceProject(std::move(reopenedWrapProject)));
@@ -273,7 +275,7 @@ int main() {
     assert(maximumSampleId.value == std::numeric_limits<std::uint32_t>::max());
     const auto wrappedSampleId = wrapState.registerSample(
             "First free after wrap", "", 48000.0, 100);
-    assert(wrappedSampleId.value == 2);
+    assert(wrappedSampleId.value == 3);
     assert(wrapState.findSample({1})->id == "sample-existing-one");
     assert(wrapState.findSample(maximumSampleId)->name == "Last sample ID");
     assert(wrapState.findSample(wrappedSampleId)->name == "First free after wrap");
