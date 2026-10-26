@@ -229,6 +229,8 @@ int main() {
     highSample.lengthSamples = 100;
     highSample.assetId.value = std::numeric_limits<std::uint32_t>::max() - 1;
     wrapProject.samples.push_back(highSample);
+    // An unresolved layer reference still reserves its ID during wrap.
+    wrapProject.drumPrograms.front().pads[0].layer(0).sample.value = 2;
     assert(wrapSampleIdState.replaceProject(std::move(wrapProject)));
 
     const auto lastSampleId = wrapSampleIdState.registerSample(
@@ -236,7 +238,8 @@ int main() {
     assert(lastSampleId.value == std::numeric_limits<std::uint32_t>::max());
     const auto wrappedSampleId = wrapSampleIdState.registerSample(
             "First free after wrap", "", 48000.0, 100);
-    assert(wrappedSampleId.value == 2);
+    assert(wrappedSampleId.value == 3);
+    assert(wrapSampleIdState.project().drumPrograms.front().pads[0].layer(0).sample.value == 2);
     assert(wrapSampleIdState.project().samples.size() == 4);
     assert(wrapSampleIdState.findSample(mpc::domain::SampleId{1}) != nullptr);
     assert(wrapSampleIdState.findSample(lastSampleId) != nullptr);
