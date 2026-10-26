@@ -259,6 +259,32 @@ void testLcdPngSizeBoundaries() {
     check(384, 0x20, 0x01, 0x00);
 }
 
+void testHighBitDataBytesAreRejected() {
+    const auto invalidNote = mpc::studio::decodeInput(
+            std::array<std::uint8_t, 3>{0x90, 0x80, 100});
+    assert(!invalidNote.has_value());
+
+    const auto invalidVelocity = mpc::studio::decodeInput(
+            std::array<std::uint8_t, 3>{0x99, 37, 0x80});
+    assert(!invalidVelocity.has_value());
+
+    const auto invalidCc = mpc::studio::decodeInput(
+            std::array<std::uint8_t, 3>{0xB0, 100, 0xFF});
+    assert(!invalidCc.has_value());
+
+    const auto invalidChannelPressure = mpc::studio::decodeInput(
+            std::array<std::uint8_t, 2>{0xD0, 0x80});
+    assert(!invalidChannelPressure.has_value());
+
+    // A valid complete message is still accepted when transport buffers carry
+    // unrelated trailing bytes; only the fields this decoder consumes matter.
+    const auto validWithTrailingByte = mpc::studio::decodeInput(
+            std::array<std::uint8_t, 4>{0xB0, 100, 1, 0xFF});
+    assert(validWithTrailingByte.has_value());
+    assert(validWithTrailingByte->type == InputEventType::JogWheel);
+    assert(validWithTrailingByte->value == 1);
+}
+
 void testUnknownMessageIsIgnored() {
     const std::uint8_t bytes[] = {0x99, 99, 100};
 
@@ -288,6 +314,7 @@ int main() {
     testLcdChunkHeader();
     testLcdLargePngSizeFlag();
     testLcdPngSizeBoundaries();
+    testHighBitDataBytesAreRejected();
     testUnknownMessageIsIgnored();
     return 0;
 }
