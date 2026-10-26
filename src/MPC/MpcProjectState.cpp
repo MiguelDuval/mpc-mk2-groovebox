@@ -142,7 +142,9 @@ bool MpcProjectState::replaceProject(domain::Project project) {
     if (maximumId != std::numeric_limits<std::uint32_t>::max()) {
         nextSampleId_ = maximumId + 1;
     } else {
-        nextSampleId_ = findAvailableSampleId(project_, 1);
+        // Keep the zero sentinel so wrapped allocations keep checking for the
+        // next free ID instead of assuming the following ID is also available.
+        nextSampleId_ = 0;
     }
     return true;
 }
@@ -567,19 +569,24 @@ domain::SampleId MpcProjectState::registerSample(
         std::string path,
         double sampleRate,
         std::int64_t lengthSamples) {
-    // Preserve the fast monotonic path. Only after uint32 wrap do we scan
-    // existing SampleRefs and layer references once to find a free ID.
-    if (nextSampleId_ == 0) {
-        nextSampleId_ = findAvailableSampleId(project_, 1);
-    }
-    if (nextSampleId_ == 0) {
+    // Preserve the fast monotonic path until wrap. Zero is a persistent
+    // search-mode sentinel: once the counter wraps, each allocation must skip
+    // live SampleRefs and assigned layer references. The first free ID is not
+    // necessarily followed by another free ID, so do not advance past a hole
+    // and then blindly trust that next value.
+    const bool searchForFreeId = nextSampleId_ == 0;
+    const auto allocatedId = searchForFreeId
+            ? findAvailableSampleId(project_, 1)
+            : nextSampleId_;
+    if (allocatedId == 0) {
         return {};
     }
 
-    const auto allocatedId = nextSampleId_;
-    nextSampleId_ = allocatedId == std::numeric_limits<std::uint32_t>::max()
-            ? 0
-            : allocatedId + 1;
+    if (!searchForFreeId) {
+        nextSampleId_ = allocatedId == std::numeric_limits<std::uint32_t>::max()
+                ? 0
+                : allocatedId + 1;
+    }
     const auto id = domain::SampleId{allocatedId};
 
     domain::SampleRef ref;

@@ -229,8 +229,10 @@ int main() {
     highSample.lengthSamples = 100;
     highSample.assetId.value = std::numeric_limits<std::uint32_t>::max() - 1;
     wrapProject.samples.push_back(highSample);
-    // An unresolved layer reference still reserves its ID during wrap.
-    wrapProject.drumPrograms.front().pads[0].layer(0).sample.value = 2;
+    // An unresolved layer reference still reserves its ID during wrap. ID 3
+    // is the first ID after the hole at 2, so blindly advancing after allocating
+    // 2 would collide with this live reference on the very next registration.
+    wrapProject.drumPrograms.front().pads[0].layer(0).sample.value = 3;
     assert(wrapSampleIdState.replaceProject(std::move(wrapProject)));
 
     const auto lastSampleId = wrapSampleIdState.registerSample(
@@ -238,13 +240,44 @@ int main() {
     assert(lastSampleId.value == std::numeric_limits<std::uint32_t>::max());
     const auto wrappedSampleId = wrapSampleIdState.registerSample(
             "First free after wrap", "", 48000.0, 100);
-    assert(wrappedSampleId.value == 3);
-    assert(wrapSampleIdState.project().drumPrograms.front().pads[0].layer(0).sample.value == 2);
-    assert(wrapSampleIdState.project().samples.size() == 4);
+    assert(wrappedSampleId.value == 2);
+    const auto nextWrappedSampleId = wrapSampleIdState.registerSample(
+            "Next free after unresolved layer reference", "", 48000.0, 100);
+    assert(nextWrappedSampleId.value == 4);
+    assert(wrapSampleIdState.project().drumPrograms.front().pads[0].layer(0).sample.value == 3);
+    assert(wrapSampleIdState.project().samples.size() == 5);
     assert(wrapSampleIdState.findSample(mpc::domain::SampleId{1}) != nullptr);
-    assert(wrapSampleIdState.findSample(lastSampleId) != nullptr);
     assert(wrapSampleIdState.findSample(wrappedSampleId) != nullptr);
+    assert(wrapSampleIdState.findSample(mpc::domain::SampleId{3}) == nullptr);
+    assert(wrapSampleIdState.findSample(lastSampleId) != nullptr);
+    assert(wrapSampleIdState.findSample(nextWrappedSampleId) != nullptr);
     assert(lastSampleId.value != wrappedSampleId.value);
+    assert(wrappedSampleId.value != nextWrappedSampleId.value);
+
+    // Loading a project whose maximum referenced ID is already UINT32_MAX
+    // must enter the same persistent search mode, not trust the first hole's
+    // successor on a subsequent registration.
+    mpc::MpcProjectState loadedAtMaximumState;
+    auto loadedAtMaximumProject = loadedAtMaximumState.project();
+    loadedAtMaximumProject.samples.push_back(lowSample);
+    mpc::domain::SampleRef loadedMaximumSample;
+    loadedMaximumSample.id = "sample-loaded-maximum";
+    loadedMaximumSample.name = "Loaded maximum ID";
+    loadedMaximumSample.sampleRate = 48000.0;
+    loadedMaximumSample.lengthSamples = 100;
+    loadedMaximumSample.assetId.value = std::numeric_limits<std::uint32_t>::max();
+    loadedAtMaximumProject.samples.push_back(loadedMaximumSample);
+    loadedAtMaximumProject.drumPrograms.front().pads[0].layer(0).sample.value = 3;
+    assert(loadedAtMaximumState.replaceProject(std::move(loadedAtMaximumProject)));
+    const auto firstAfterMaximumLoad = loadedAtMaximumState.registerSample(
+            "First free after maximum load", "", 48000.0, 100);
+    const auto secondAfterMaximumLoad = loadedAtMaximumState.registerSample(
+            "Second free after maximum load", "", 48000.0, 100);
+    assert(firstAfterMaximumLoad.value == 2);
+    assert(secondAfterMaximumLoad.value == 4);
+    assert(loadedAtMaximumState.findSample(mpc::domain::SampleId{3}) == nullptr);
+    assert(loadedAtMaximumState.findSample(firstAfterMaximumLoad) != nullptr);
+    assert(loadedAtMaximumState.findSample(secondAfterMaximumLoad) != nullptr);
     mpc::domain::Project invalid;
     invalid.id = "invalid";
     assert(!mpc::MpcProjectState::canReplaceProject(invalid));
