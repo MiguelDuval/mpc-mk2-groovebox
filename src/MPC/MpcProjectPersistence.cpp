@@ -265,6 +265,33 @@ bool validatePatternData(const domain::Project& project, std::string* error) {
     return true;
 }
 
+bool validateSerializableCollectionSizes(
+        const domain::Project& project,
+        std::string* error) {
+    if (project.samples.size() > kMaxSamples
+            || project.drumPrograms.size() > kMaxPrograms
+            || project.sequences.size() > kMaxSequences) {
+        return setError(error, "Project collection exceeds the supported item limit");
+    }
+    for (const auto& sequence : project.sequences) {
+        if (sequence.tracks.size() > kMaxTracks) {
+            return setError(error, "Track count exceeds the supported item limit");
+        }
+        for (const auto& track : sequence.tracks) {
+            if (track.patterns.size() > kMaxPatternsPerTrack
+                    || track.placements.size() > kMaxPlacementsPerTrack) {
+                return setError(error, "Pattern/placement count exceeds the supported item limit");
+            }
+            for (const auto& pattern : track.patterns) {
+                if (pattern.notes.size() > kMaxNotesPerPattern) {
+                    return setError(error, "Pattern note count exceeds the supported item limit");
+                }
+            }
+        }
+    }
+    return true;
+}
+
 bool validateSerializableNumericFields(
         const domain::Project& project,
         std::string* error) {
@@ -370,7 +397,8 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
 
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
-    if (!validateSerializableNumericFields(project, error)
+    if (!validateSerializableCollectionSizes(project, error)
+            || !validateSerializableNumericFields(project, error)
             || !validatePatternData(project, error)
             || !validatePlacements(project, error)) {
         return {};
@@ -448,7 +476,12 @@ std::string serializeProject(const domain::Project& project, std::string* error)
     }
 
     out << "END_PROJECT\n";
-    return out.str();
+    auto bytes = out.str();
+    if (bytes.size() > kMaxProjectFileBytes) {
+        setError(error, "Serialized project exceeds the supported file-size limit");
+        return {};
+    }
+    return bytes;
 }
 
 bool deserializeProject(
