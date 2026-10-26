@@ -9552,8 +9552,6 @@ for node in nodes:
     if node.attrib.get("content-desc") != expected or node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
         continue
     row = bounds(node)
-    for ancestor in iter(lambda: None, None):
-        break
     parent = parents.get(node)
     while parent is not None and parent.attrib.get("content-desc") != "MPC Browser results list":
         parent = parents.get(parent)
