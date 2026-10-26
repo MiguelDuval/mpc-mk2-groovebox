@@ -2,6 +2,7 @@
 #include "MPC/MpcStudioMk2InputDecoder.h"
 #include "MPC/MpcStudioMk2LedProtocol.h"
 
+#include <array>
 #include <cassert>
 #include <initializer_list>
 #include <cstdint>
