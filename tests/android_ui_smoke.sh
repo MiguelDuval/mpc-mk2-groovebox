@@ -9630,10 +9630,9 @@ if expected == "AVAILABLE":
             if file_rows(forbidden):
                 raise SystemExit(
                     f"CONTENT/{category} leaked WAV outside its real folder: {forbidden!r}")
-    elif category in ("SAMPLES", "MY FILES") and path_fixtures == "1":
-        for name in fixture_names:
-            if not file_rows(name):
-                raise SystemExit(f"CONTENT/{category} omitted indexed WAV {name!r}")
+    # For SAMPLES/MY FILES, all expected fixtures are verified across the
+    # caller's fresh, viewport-aware scroll snapshots; a single UiAutomator tree
+    # intentionally contains only the rows currently materialized by the list.
     if "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" in descriptions:
         raise SystemExit(f"supported CONTENT/{category} reported unavailable")
 else:
