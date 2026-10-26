@@ -385,6 +385,14 @@ int main() {
     assert(persistence::serializeProject(invalidTrackKind, &error).empty());
     assert(!error.empty());
 
+    // The decoder imposes per-collection limits. Serialization rejects a
+    // payload above the same limit before emitting an unreadable project.
+    domain::Project tooManySamples = source;
+    tooManySamples.samples.resize(100001);
+    error.clear();
+    assert(persistence::serializeProject(tooManySamples, &error).empty());
+    assert(!error.empty());
+
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
     return 0;
