@@ -2,6 +2,7 @@
 #include "MPC/Sequencer/MpcPatternOps.h"
 
 #include <cassert>
+#include <limits>
 
 int main() {
     mpc::MpcProjectState state;
@@ -209,6 +210,38 @@ int main() {
     assert(state.activeSequence().tracks[0].patterns[0].notes[0].nudgeTicks == -5);
     const auto newSampleId = state.registerSample("New sample", "", 44100.0, 9000);
     assert(newSampleId.value == 42);
+
+    // When the next ID is UINT32_MAX, registering it must not wrap to 1 and
+    // duplicate an existing asset on the next registration.
+    mpc::MpcProjectState wrapSampleIdState;
+    auto wrapProject = wrapSampleIdState.project();
+    mpc::domain::SampleRef lowSample;
+    lowSample.id = "sample-low-id";
+    lowSample.name = "Existing low ID";
+    lowSample.sampleRate = 48000.0;
+    lowSample.lengthSamples = 100;
+    lowSample.assetId.value = 1;
+    wrapProject.samples.push_back(lowSample);
+    mpc::domain::SampleRef highSample;
+    highSample.id = "sample-high-id";
+    highSample.name = "Existing high ID";
+    highSample.sampleRate = 48000.0;
+    highSample.lengthSamples = 100;
+    highSample.assetId.value = std::numeric_limits<std::uint32_t>::max() - 1;
+    wrapProject.samples.push_back(highSample);
+    assert(wrapSampleIdState.replaceProject(std::move(wrapProject)));
+
+    const auto lastSampleId = wrapSampleIdState.registerSample(
+            "Last sample ID", "", 48000.0, 100);
+    assert(lastSampleId.value == std::numeric_limits<std::uint32_t>::max());
+    const auto wrappedSampleId = wrapSampleIdState.registerSample(
+            "First free after wrap", "", 48000.0, 100);
+    assert(wrappedSampleId.value == 2);
+    assert(wrapSampleIdState.project().samples.size() == 4);
+    assert(wrapSampleIdState.findSample(mpc::domain::SampleId{1}) != nullptr);
+    assert(wrapSampleIdState.findSample(lastSampleId) != nullptr);
+    assert(wrapSampleIdState.findSample(wrappedSampleId) != nullptr);
+    assert(lastSampleId.value != wrappedSampleId.value);
     mpc::domain::Project invalid;
     invalid.id = "invalid";
     assert(!mpc::MpcProjectState::canReplaceProject(invalid));
