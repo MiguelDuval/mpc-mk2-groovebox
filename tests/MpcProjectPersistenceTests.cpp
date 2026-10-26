@@ -315,7 +315,7 @@ int main() {
     // would reject, and a malformed payload must not replace an open Project.
     domain::Project invalidDurationProject = source;
     invalidDurationProject.sequences[0].tracks[0].patterns[0]
-            .notes[0].durationTicks = 0;
+            .notes[0].durationTicks = -1;
     error.clear();
     assert(persistence::serializeProject(invalidDurationProject, &error).empty());
     assert(!error.empty());
@@ -337,7 +337,7 @@ int main() {
     malformedNoteBytes.replace(
             noteRecordPosition,
             validNoteRecord.size(),
-            "NOTE 120 0 36 97 88 3 -11");
+            "NOTE 120 -1 36 97 88 3 -11");
     error.clear();
     assert(!persistence::deserializeProject(malformedNoteBytes, loaded, &error));
     assert(!error.empty());
