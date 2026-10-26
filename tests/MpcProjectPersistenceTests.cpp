@@ -393,6 +393,44 @@ int main() {
     assert(persistence::serializeProject(tooManySamples, &error).empty());
     assert(!error.empty());
 
+    domain::Project duplicatePatternId = source;
+    auto duplicatePattern = duplicatePatternId.sequences.front().tracks.front().patterns.front();
+    duplicatePattern.name = "Duplicate identifier must be rejected";
+    duplicatePatternId.sequences.front().tracks.front().patterns.push_back(duplicatePattern);
+    error.clear();
+    assert(persistence::serializeProject(duplicatePatternId, &error).empty());
+    assert(!error.empty());
+
+    domain::Project validTwoPatterns = source;
+    auto secondPattern = validTwoPatterns.sequences.front().tracks.front().patterns.front();
+    secondPattern.id = "pattern-distinct-02";
+    secondPattern.name = "Second unplaced Pattern";
+    validTwoPatterns.sequences.front().tracks.front().patterns.push_back(secondPattern);
+    auto malformedDuplicatePatternId = persistence::serializeProject(validTwoPatterns);
+    const std::string secondPatternTag = "PATTERN \\"pattern-distinct-02\\"";
+    const auto secondPatternPos = malformedDuplicatePatternId.find(secondPatternTag);
+    assert(secondPatternPos != std::string::npos);
+    malformedDuplicatePatternId.replace(
+            secondPatternPos,
+            secondPatternTag.size(),
+            "PATTERN \\"pattern-shared-01\\"");
+    domain::Project untouchedAfterDuplicateId = source;
+    const auto beforeDuplicateIdFailure = persistence::serializeProject(untouchedAfterDuplicateId);
+    error.clear();
+    assert(!persistence::deserializeProject(
+            malformedDuplicatePatternId, untouchedAfterDuplicateId, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(untouchedAfterDuplicateId)
+            == beforeDuplicateIdFailure);
+
+    domain::Project duplicateAssetIds = source;
+    auto secondSample = duplicateAssetIds.samples.front();
+    secondSample.id = "sample-distinct-02";
+    duplicateAssetIds.samples.push_back(secondSample);
+    error.clear();
+    assert(persistence::serializeProject(duplicateAssetIds, &error).empty());
+    assert(!error.empty());
+
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
     return 0;
