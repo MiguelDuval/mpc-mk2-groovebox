@@ -3,6 +3,7 @@
 #include "MPC/Sequencer/MpcArrangementOps.h"
 
 #include <cassert>
+#include <cstdint>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
