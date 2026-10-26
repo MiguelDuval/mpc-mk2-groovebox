@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MPC/Domain/MpcDomain.h"
+#include "MPC/Sequencer/MpcTickFrameConverter.h"
 
 #include <algorithm>
 #include <atomic>
@@ -147,9 +148,10 @@ private:
         loopStartTicks_.store(loopStart, std::memory_order_release);
         loopEndTicks_.store(loopEnd, std::memory_order_release);
         loopEnabled_.store(sequence.loopEnabled, std::memory_order_release);
+        const auto safeTempoBpm = sanitizeTempoBpm(sequence.tempoBpm);
         tempoMilliBpm_.store(
                 static_cast<std::int64_t>(
-                        std::llround(sequence.tempoBpm * 1000.0)),
+                        std::llround(safeTempoBpm * 1000.0)),
                 std::memory_order_release);
         quantizeGridTicks_.store(
                 std::clamp(sequence.quantizeGridTicks, 1, 3840),
