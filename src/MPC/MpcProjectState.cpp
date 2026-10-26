@@ -455,10 +455,13 @@ bool MpcProjectState::setSequenceLoop(
         std::int32_t startBar,
         std::int32_t endBar) noexcept {
     auto& sequence = activeSequence();
+    if (sequence.lengthTicks <= 0) {
+        return false;
+    }
+
     const auto bars = sequencer::sequenceBars(sequence);
     const auto start = sequencer::clampLoopBar(startBar, bars);
     const auto end = sequencer::clampLoopBar(endBar, bars);
-
     if (start > end) {
         return false;
     }
@@ -470,15 +473,20 @@ bool MpcProjectState::setSequenceLoop(
         return false;
     }
 
+    // Compute before mutating state and promote before bar-to-tick products.
+    // The last bar can extend a few ticks beyond INT32_MAX when a legacy
+    // Sequence was clamped to that maximum length.
+    const auto length = static_cast<std::int64_t>(sequence.lengthTicks);
+    const auto proposedStart = static_cast<std::int64_t>(start - 1) * perBar;
+    const auto proposedEnd = static_cast<std::int64_t>(end) * perBar;
+    const auto loopStart = std::clamp<std::int64_t>(
+            proposedStart, 0, length - 1);
+    const auto loopEnd = std::clamp<std::int64_t>(
+            proposedEnd, loopStart + 1, length);
+
+    sequence.loopStartTicks = static_cast<std::int32_t>(loopStart);
+    sequence.loopEndTicks = static_cast<std::int32_t>(loopEnd);
     sequence.loopEnabled = enabled;
-    sequence.loopStartTicks = (start - 1) * perBar;
-    sequence.loopEndTicks =
-            std::min(
-                    sequence.lengthTicks,
-                    end * perBar);
-    if (sequence.loopEndTicks <= sequence.loopStartTicks) {
-        return false;
-    }
     return true;
 }
 
