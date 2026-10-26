@@ -9494,27 +9494,105 @@ if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-places-section.png 10; the
 fi
 echo "BROW-001 real-touch Places → Content → Expansions → Places navigation isolation passed."
 
-if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser scan local audio files"; then exit 1; fi
-# The prior app-side UI audit can leave Browser search/filter state behind.
-# Reset both controls explicitly so the fixture visibility check starts from a
-# deterministic catalog view rather than the audit's last navigation context.
-if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then exit 1; fi
-if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter ALL"; then exit 1; fi
-# The indexed WAV rows can extend below the Browser results viewport when the
-# two pinned actions are present. Scroll the live results list before waiting
-# for a row that may be present in MediaStore but clipped from the hierarchy.
-if ! adb_bounded 10 shell input swipe 1400 930 1400 760 300; then
-  echo "ERROR: could not scroll Browser results to reveal indexed WAV rows"
-  exit 1
+# BROW-001 finishes on PLACES. Refresh that real state before using coordinates,
+# then explicitly return to CONTENT; never replay taps from a hierarchy captured
+# before the section switch.
+if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
+  echo "ERROR: could not refresh Browser hierarchy after BROW-001"; exit 1
 fi
-sleep 1
+if ! tap_ui_description "$BROWSER_SECTION_XML" "Browser CONTENT tab"; then
+  echo "ERROR: Browser CONTENT tab was not actionable after Places isolation"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_SECTION_XML" "$BROWSER_SECTION_REMOTE" \
+    "MPC Browser navigation CONTENT SAMPLES" 12; then
+  echo "ERROR: Browser did not return to its CONTENT/SAMPLES destination"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
+  echo "ERROR: could not capture fresh Browser CONTENT hierarchy"; exit 1
+fi
+if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" CONTENT; then
+  echo "ERROR: fresh Browser CONTENT state did not satisfy the section contract"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_SECTION_XML" "MPC Browser scan local audio files"; then exit 1; fi
 if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
-  echo "ERROR: could not capture Browser results after scrolling to indexed WAV rows"
-  exit 1
+  echo "ERROR: could not capture Browser state after starting local audio scan"; exit 1
 fi
-if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 20; then
-  echo "ERROR: clearing inherited Browser state did not reveal the indexed local WAV"
+# Reset search/filter using a hierarchy captured after the section change.
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then exit 1; fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not capture Browser state after clearing search"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter ALL"; then exit 1; fi
+
+# The pinned Browser actions consume viewport height. Scroll the actual results
+# ScrollView in bounded steps, recapturing after each gesture, until the exact
+# root WAV row is visibly exposed. Preserve the strict row assertion.
+local_wav_visible=0
+for scroll_attempt in 1 2 3 4 5; do
+  if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+    echo "ERROR: could not capture Browser results on scroll attempt $scroll_attempt"; exit 1
+  fi
+  if python3 - "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, name = sys.argv[1:]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+def intersection(a, b):
+    if a is None or b is None: return None
+    r = (max(a[0], b[0]), max(a[1], b[1]), min(a[2], b[2]), min(a[3], b[3]))
+    return r if r[0] < r[2] and r[1] < r[3] else None
+expected = "MPC Browser file " + name
+for node in nodes:
+    if node.attrib.get("content-desc") != expected or node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
+        continue
+    row = bounds(node)
+    for ancestor in iter(lambda: None, None):
+        break
+    parent = parents.get(node)
+    while parent is not None and parent.attrib.get("content-desc") != "MPC Browser results list":
+        parent = parents.get(parent)
+    if parent is not None and intersection(row, bounds(parent)) is not None:
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+  then
+    local_wav_visible=1
+    break
+  fi
+  # Derive the gesture from the live scroll viewport, not stale fixed bounds.
+  if ! scroll_coordinates="$(python3 - "$BROWSER_LOCAL_XML" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    if node.attrib.get("content-desc") != "MPC Browser results list": continue
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+    if not match: break
+    left, top, right, bottom = map(int, match.groups())
+    if right <= left or bottom - top < 80: break
+    print((left + right) // 2, bottom - 18, top + 18)
+    raise SystemExit(0)
+raise SystemExit("visible Browser results ScrollView is missing or has invalid bounds")
+PY
+  )"; then
+    echo "ERROR: could not derive live Browser results scroll coordinates"; exit 1
+  fi
+  read -r scroll_x scroll_from scroll_to <<< "$scroll_coordinates"
+  if ! adb_bounded 10 shell input swipe "$scroll_x" "$scroll_from" "$scroll_x" "$scroll_to" 350; then
+    echo "ERROR: could not scroll Browser results on attempt $scroll_attempt"; exit 1
+  fi
+  sleep 1
+done
+if [[ "$local_wav_visible" != "1" ]]; then
+  echo "ERROR: root WAV $LOCAL_SAMPLE_NAME was not visible after bounded Browser results scrolling"
+  cat "$BROWSER_LOCAL_XML" || true
   exit 1
 fi
 
