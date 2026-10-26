@@ -332,6 +332,22 @@ int main() {
     assert(meterResizeTrack.placements.front().id == "meter-clip-a");
     assert(meterResizeTrack.placements.front().lengthTicks == 500);
 
+    // A malformed/legacy loop whose end precedes its start must be repaired
+    // when the Sequence resize API next runs, rather than exposing an inverted
+    // half-open range to the transport.
+    mpc::MpcProjectState invalidLoopResizeState;
+    auto& invalidLoopResizeSequence = invalidLoopResizeState.activeSequence();
+    invalidLoopResizeSequence.loopEnabled = true;
+    invalidLoopResizeSequence.loopStartTicks = 7000;
+    invalidLoopResizeSequence.loopEndTicks = 4000;
+    assert(invalidLoopResizeState.setSequenceBars(4));
+    assert(invalidLoopResizeSequence.loopStartTicks == 7000);
+    assert(invalidLoopResizeSequence.loopEndTicks == 7001);
+    assert(invalidLoopResizeSequence.loopStartTicks
+            < invalidLoopResizeSequence.loopEndTicks);
+    assert(invalidLoopResizeSequence.loopEndTicks
+            <= invalidLoopResizeSequence.lengthTicks);
+
 
     // Bar-to-tick loop mapping must clamp in int64 before narrowing when a
     // legacy Sequence is at INT32_MAX and the final bar rounds above the limit.
