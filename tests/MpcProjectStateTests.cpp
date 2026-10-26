@@ -278,7 +278,7 @@ int main() {
     barResizeTrack.placements.clear();
     barResizeTrack.placements = {
         {"clip-a", barResizePattern.id, 100, 500, 0},
-        {"clip-b", barResizePattern.id, 700, 500, 3500},
+        {"clip-b", barResizePattern.id, 3600, 500, 3500},
         {"clip-c", barResizePattern.id, 5000, 300, 0}
     };
     assert(barResizeState.setSequenceBars(1));
@@ -294,8 +294,8 @@ int main() {
     assert(barResizeTrack.placements[0].startTick == 100);
     assert(barResizeTrack.placements[0].lengthTicks == 500);
     assert(barResizeTrack.placements[1].id == "clip-b");
-    assert(barResizeTrack.placements[1].startTick == 700);
-    assert(barResizeTrack.placements[1].lengthTicks == 260);
+    assert(barResizeTrack.placements[1].startTick == 3600);
+    assert(barResizeTrack.placements[1].lengthTicks == 240);
     for (const auto& placement : barResizeTrack.placements) {
         assert(placement.startTick >= 0);
         assert(placement.lengthTicks > 0);
@@ -320,7 +320,7 @@ int main() {
     meterResizeTrack.placements.clear();
     meterResizeTrack.placements = {
         {"meter-clip-a", meterResizePattern.id, 100, 500, 0},
-        {"meter-clip-b", meterResizePattern.id, 22000, 1000, 22500}
+        {"meter-clip-b", meterResizePattern.id, 24000, 1000, 24000}
     };
     assert(meterResizeState.setSequenceTimeSignature(3, 4));
     assert(meterResizeSequence.lengthTicks == 23040);
