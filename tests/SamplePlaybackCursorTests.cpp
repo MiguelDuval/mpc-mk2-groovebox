@@ -36,6 +36,11 @@ int main() {
             overshootSamplePosition, 100000.0f, 20u, 5u));
     assert(overshootSamplePosition == 5.0);
 
+    double overshootStartPosition = 0.25;
+    assert(!mpc::audio::advanceSamplePlaybackCursor(
+            overshootStartPosition, -100000.0f, 10u, 12u));
+    assert(overshootStartPosition == 0.0);
+
     // Invalid numeric inputs must not corrupt the last valid cursor.
     double preservedPosition = 1.25;
     assert(!mpc::audio::advanceSamplePlaybackCursor(
