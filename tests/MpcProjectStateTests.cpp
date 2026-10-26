@@ -262,5 +262,74 @@ int main() {
     assert(extremeSequence.loopStartTicks == maximumTicks - 1);
     assert(extremeSequence.loopEndTicks == maximumTicks);
 
+
+    // Shortening a Sequence must not leave Pattern notes or Arrangement
+    // placements beyond their newly shortened timeline/source bounds.
+    mpc::MpcProjectState barResizeState;
+    assert(barResizeState.setSequenceBars(8));
+    auto& barResizeSequence = barResizeState.activeSequence();
+    auto& barResizeTrack = barResizeSequence.tracks.front();
+    auto& barResizePattern = barResizeTrack.patterns.front();
+    barResizePattern.notes = {
+        {100, 120, 36, 100, 127, 1, 0},
+        {3600, 5000, 38, 90, 127, 1, 0},
+        {4000, 240, 42, 80, 127, 1, 0}
+    };
+    barResizeTrack.placements.clear();
+    barResizeTrack.placements = {
+        {"clip-a", barResizePattern.id, 100, 500, 0},
+        {"clip-b", barResizePattern.id, 3600, 500, 3500},
+        {"clip-c", barResizePattern.id, 5000, 300, 0}
+    };
+    assert(barResizeState.setSequenceBars(1));
+    assert(barResizeSequence.lengthTicks == 3840);
+    assert(barResizePattern.lengthTicks == 3840);
+    assert(barResizePattern.notes.size() == 2);
+    assert(barResizePattern.notes[0].tick == 100);
+    assert(barResizePattern.notes[0].durationTicks == 120);
+    assert(barResizePattern.notes[1].tick == 3600);
+    assert(barResizePattern.notes[1].durationTicks == 3840);
+    assert(barResizeTrack.placements.size() == 2);
+    assert(barResizeTrack.placements[0].id == "clip-a");
+    assert(barResizeTrack.placements[0].startTick == 100);
+    assert(barResizeTrack.placements[0].lengthTicks == 500);
+    assert(barResizeTrack.placements[1].id == "clip-b");
+    assert(barResizeTrack.placements[1].startTick == 3600);
+    assert(barResizeTrack.placements[1].lengthTicks == 240);
+    for (const auto& placement : barResizeTrack.placements) {
+        assert(placement.startTick >= 0);
+        assert(placement.lengthTicks > 0);
+        assert(static_cast<std::int64_t>(placement.startTick) + placement.lengthTicks
+                <= barResizeSequence.lengthTicks);
+        assert(placement.sourceOffsetTicks >= 0);
+        assert(static_cast<std::int64_t>(placement.sourceOffsetTicks) + placement.lengthTicks
+                <= barResizePattern.lengthTicks);
+    }
+
+    // Changing meter can also shorten the resulting Sequence; the same bounds
+    // repair must apply when the time-signature setter resizes its Patterns.
+    mpc::MpcProjectState meterResizeState;
+    assert(meterResizeState.setSequenceBars(8));
+    auto& meterResizeSequence = meterResizeState.activeSequence();
+    auto& meterResizeTrack = meterResizeSequence.tracks.front();
+    auto& meterResizePattern = meterResizeTrack.patterns.front();
+    meterResizePattern.notes = {
+        {100, 120, 36, 100, 127, 1, 0},
+        {25000, 25000, 38, 90, 127, 1, 0}
+    };
+    meterResizeTrack.placements.clear();
+    meterResizeTrack.placements = {
+        {"meter-clip-a", meterResizePattern.id, 100, 500, 0},
+        {"meter-clip-b", meterResizePattern.id, 24000, 1000, 24000}
+    };
+    assert(meterResizeState.setSequenceTimeSignature(3, 4));
+    assert(meterResizeSequence.lengthTicks == 23040);
+    assert(meterResizePattern.lengthTicks == 23040);
+    assert(meterResizePattern.notes.size() == 1);
+    assert(meterResizePattern.notes.front().tick == 100);
+    assert(meterResizeTrack.placements.size() == 1);
+    assert(meterResizeTrack.placements.front().id == "meter-clip-a");
+    assert(meterResizeTrack.placements.front().lengthTicks == 500);
+
     return 0;
 }
