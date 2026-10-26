@@ -393,6 +393,38 @@ int main() {
     assert(persistence::serializeProject(tooManySamples, &error).empty());
     assert(!error.empty());
 
+    // A large valid Arrangement must remain practical to validate. Placements
+    // are deliberately stored in reverse timeline order to exercise sorting,
+    // not a best-case already-sorted fast path.
+    domain::Project largeArrangement = source;
+    auto& largeSequence = largeArrangement.sequences.front();
+    auto& largeTrack = largeSequence.tracks.front();
+    auto& largePattern = largeTrack.patterns.front();
+    constexpr std::int32_t kPlacementCount = 12000;
+    largeSequence.lengthTicks = kPlacementCount * 2;
+    largePattern.lengthTicks = largeSequence.lengthTicks;
+    largeTrack.placements.clear();
+    largeTrack.placements.reserve(kPlacementCount);
+    for (std::int32_t index = kPlacementCount - 1; index >= 0; --index) {
+        largeTrack.placements.push_back({
+                "large-clip-" + std::to_string(index),
+                largePattern.id,
+                index * 2,
+                1,
+                0
+        });
+    }
+    error.clear();
+    const auto largeSerialized = persistence::serializeProject(largeArrangement, &error);
+    assert(!largeSerialized.empty());
+    assert(error.empty());
+
+    // Even with scrambled input order, a real overlap is still rejected.
+    largeTrack.placements.back().startTick = 1;
+    error.clear();
+    assert(persistence::serializeProject(largeArrangement, &error).empty());
+    assert(!error.empty());
+
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
     return 0;
