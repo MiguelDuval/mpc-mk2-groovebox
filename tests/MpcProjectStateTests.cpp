@@ -1,5 +1,6 @@
 #include "MPC/MpcProjectState.h"
 #include "MPC/Sequencer/MpcPatternOps.h"
+#include "MPC/Sequencer/MpcSequenceSettings.h"
 
 #include <cassert>
 #include <limits>
@@ -330,6 +331,38 @@ int main() {
     assert(meterResizeTrack.placements.size() == 1);
     assert(meterResizeTrack.placements.front().id == "meter-clip-a");
     assert(meterResizeTrack.placements.front().lengthTicks == 500);
+
+
+    // Bar-to-tick loop mapping must clamp in int64 before narrowing when a
+    // legacy Sequence is at INT32_MAX and the final bar rounds above the limit.
+    mpc::MpcProjectState extremeLoopState;
+    auto& extremeLoopSequence = extremeLoopState.activeSequence();
+    extremeLoopSequence.lengthTicks = std::numeric_limits<std::int32_t>::max();
+    extremeLoopSequence.loopStartTicks = 0;
+    extremeLoopSequence.loopEndTicks = extremeLoopSequence.lengthTicks;
+    extremeLoopSequence.tracks.front().patterns.front().lengthTicks =
+            extremeLoopSequence.lengthTicks;
+    extremeLoopSequence.tracks.front().placements.front().lengthTicks =
+            extremeLoopSequence.lengthTicks;
+    const auto extremeBars = mpc::sequencer::sequenceBars(extremeLoopSequence);
+    assert(extremeLoopState.setSequenceLoop(false, extremeBars, extremeBars));
+    assert(!extremeLoopSequence.loopEnabled);
+    assert(extremeLoopSequence.loopStartTicks >= 0);
+    assert(extremeLoopSequence.loopStartTicks < extremeLoopSequence.loopEndTicks);
+    assert(extremeLoopSequence.loopEndTicks == extremeLoopSequence.lengthTicks);
+
+    // A rejected edit is transactional: an invalid sequence length must not
+    // partially change the currently stored loop-enable/range state.
+    mpc::MpcProjectState invalidLoopState;
+    auto& invalidLoopSequence = invalidLoopState.activeSequence();
+    invalidLoopSequence.lengthTicks = 0;
+    invalidLoopSequence.loopEnabled = true;
+    invalidLoopSequence.loopStartTicks = 123;
+    invalidLoopSequence.loopEndTicks = 456;
+    assert(!invalidLoopState.setSequenceLoop(false, 1, 1));
+    assert(invalidLoopSequence.loopEnabled);
+    assert(invalidLoopSequence.loopStartTicks == 123);
+    assert(invalidLoopSequence.loopEndTicks == 456);
 
     return 0;
 }
