@@ -7238,17 +7238,54 @@ scroll_track_edit_to_layer_gain() {
   for ((attempt=1; attempt<=max_swipes; attempt++)); do
     if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
     if python3 - "$hierarchy_path" <<'PY'
+import re
 import sys
 import xml.etree.ElementTree as ET
+
 nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
-descriptions = {n.attrib.get("content-desc", "") for n in nodes}
-raise SystemExit(0 if {
-    "Track Edit region",
-    "Track Edit layer gain value",
-    "Track Edit layer gain decrease",
-    "Track Edit layer tuning value",
-    "Track Edit layer pan value",
-}.issubset(descriptions) else 1)
+
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+scrolls = []
+for node in nodes:
+    if (node.attrib.get("class") != "android.widget.ScrollView"
+            or node.attrib.get("scrollable") != "true"):
+        continue
+    box = bounds(node)
+    if box and box[2] - box[0] >= 100 and box[3] - box[1] >= 220:
+        scrolls.append(((box[2]-box[0])*(box[3]-box[1]), node, box))
+if not scrolls:
+    raise SystemExit(1)
+_, scroll, viewport = max(scrolls, key=lambda item: item[0])
+vl, vt, vr, vb = viewport
+
+def sufficiently_visible(node, minimum_height=28):
+    box = bounds(node)
+    if box is None or node.attrib.get("visible-to-user") == "false":
+        return False
+    left, top, right, bottom = box
+    width = min(vr, right) - max(vl, left)
+    height = min(vb, bottom) - max(vt, top)
+    return width >= 80 and height >= minimum_height
+
+required = {
+    "Track Edit region": 28,
+    "Track Edit layer gain value": 28,
+    "Track Edit layer gain decrease": 28,
+    "Track Edit layer tuning value": 28,
+    "Track Edit layer pan value": 28,
+}
+visible = {}
+for description, minimum_height in required.items():
+    visible[description] = any(
+        node.attrib.get("content-desc", "") == description
+        and sufficiently_visible(node, minimum_height)
+        for node in scroll.iter("node")
+    )
+raise SystemExit(0 if all(visible.values()) else 1)
 PY
     then
       echo "Track Edit REGION/GAIN/TUNE/PAN fields are visible after $((attempt - 1)) bounded scroll gesture(s)."
@@ -7261,32 +7298,53 @@ import sys
 import xml.etree.ElementTree as ET
 
 nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
-descriptions = {node.attrib.get("content-desc", "") for node in nodes}
+
+def rect(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
 scroll_views = []
 for node in nodes:
     if node.attrib.get("class") != "android.widget.ScrollView" \
             or node.attrib.get("scrollable") != "true":
         continue
-    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
-                         node.attrib.get("bounds", ""))
-    if match is None:
+    box = rect(node)
+    if box is None:
         continue
-    left, top, right, bottom = map(int, match.groups())
+    left, top, right, bottom = box
     if right - left < 100 or bottom - top < 220:
         continue
-    scroll_views.append(((right-left)*(bottom-top), left, top, right, bottom))
+    scroll_views.append(((right-left)*(bottom-top), node, box))
 if not scroll_views:
     raise SystemExit("No visible scrollable Track Edit viewport found")
-_, left, top, right, bottom = max(scroll_views)
+_, scroll, viewport = max(scroll_views, key=lambda item: item[0])
+left, top, right, bottom = viewport
 height = bottom - top
 margin = max(45, min(90, height // 5))
-# A visible waveform identifies the upper end of Samples content; a visible
-# velocity row identifies its lower end. Swipe up to reveal lower fields from
-# the top, or swipe down to return toward GAIN/TUNE/PAN from the lower end.
-at_top = "Track Edit Samples waveform" in descriptions
-at_bottom = ("Track Edit velocity" in descriptions
-             or any(value.startswith("Track Edit layer velocity ")
-                    for value in descriptions))
+
+def marker_visible(predicate, minimum_height=28):
+    for node in scroll.iter("node"):
+        if not predicate(node.attrib.get("content-desc", "")):
+            continue
+        if node.attrib.get("visible-to-user") == "false":
+            continue
+        box = rect(node)
+        if box is None:
+            continue
+        nleft, ntop, nright, nbottom = box
+        visible_width = min(right, nright) - max(left, nleft)
+        visible_height = min(bottom, nbottom) - max(top, ntop)
+        if visible_width >= 80 and visible_height >= minimum_height:
+            return True
+    return False
+
+# Ignore off-screen descendants retained in the accessibility tree. Both
+# ends can exist in one hierarchy even when only a few pixels of a row remain
+# inside the viewport; direction must follow geometry, not mere descriptions.
+at_top = marker_visible(lambda value: value == "Track Edit Samples waveform", 55)
+at_bottom = (marker_visible(lambda value: value == "Track Edit velocity", 28)
+             or marker_visible(lambda value: value.startswith("Track Edit layer velocity "), 28))
 if at_bottom and not at_top:
     start_y, end_y = top + margin, bottom - margin
     direction = "toward the upper layer controls"
