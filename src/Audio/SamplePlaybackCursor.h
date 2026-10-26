@@ -29,8 +29,12 @@ inline bool advanceSamplePlaybackCursor(
         position = playbackEnd;
         return false;
     }
-    position = std::max(0.0, nextPosition);
-    return position < playbackEnd;
+    if (nextPosition < 0.0) {
+        position = 0.0;
+        return false;
+    }
+    position = nextPosition;
+    return true;
 }
 
 } // namespace mpc::audio
