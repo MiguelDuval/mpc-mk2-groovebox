@@ -179,6 +179,39 @@ void testArmedTrackUsesItsOwnDrumProgramMapping() {
     assert(notes[1].velocity == 105);
 }
 
+
+void testMalformedEventFieldsCannotCreateInvalidNotes() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    auto& track = sequence.tracks[0];
+    track.recordArmed = true;
+    sequence.timingCorrectEnabled = false;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    // An out-of-range velocity cannot arm a held note. Its later note-off
+    // must not create a note, and a non-boolean pressed field is ignored.
+    assert(queue.tryEnqueue({100, 0, 0, 200, 1}));
+    assert(queue.tryEnqueue({200, 0, 0, 0, 0}));
+    assert(queue.tryEnqueue({250, 0, 0, 100, 2}));
+
+    // A malformed note-off must not close an otherwise valid held note.
+    assert(queue.tryEnqueue({300, 0, 1, 100, 1}));
+    assert(queue.tryEnqueue({350, 0, 1, 200, 0}));
+    assert(queue.tryEnqueue({420, 0, 1, 0, 0}));
+
+    assert(recorder.drain(state, queue) == 1);
+    assert(track.patterns.front().notes.size() == 1);
+    const auto& note = track.patterns.front().notes.front();
+    assert(note.tick == 300);
+    assert(note.durationTicks == 120);
+    assert(note.note == state.activeDrumProgram().pad(1).midiNote);
+    assert(note.velocity == 100);
+}
+
 } // namespace
 
 int main() {
@@ -188,5 +221,6 @@ int main() {
     testZeroLengthTapUsesGridDuration();
     testTimingCorrectCanBeDisabled();
     testArmedTrackUsesItsOwnDrumProgramMapping();
+    testMalformedEventFieldsCannotCreateInvalidNotes();
     return 0;
 }
