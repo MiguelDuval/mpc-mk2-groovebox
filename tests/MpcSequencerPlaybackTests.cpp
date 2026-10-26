@@ -121,6 +121,36 @@ int main() {
     assert(ratchetEvents[3].offsetFrames == 9000);
     assert(!ratchetQueue.tryDequeue(ratchetEvents[0]));
 
+    // A zero duration is a valid step-note default-duration sentinel. Ratchet
+    // playback must fall back to the Sequence quantize grid instead of dropping
+    // the note as an invalid zero-span expansion.
+    auto defaultDurationSequence = sequence;
+    defaultDurationSequence.quantizeGridTicks = 240;
+    mpc::domain::Pattern defaultDurationPattern;
+    defaultDurationPattern.lengthTicks = 3840;
+    defaultDurationPattern.notes = {
+            {0, 0, 36, 100, 127, 4}};
+    mpc::audio::AudioTriggerQueue defaultDurationQueue;
+    mpc::sequencer::MpcSequencerPlayback defaultDurationPlayback(
+            defaultDurationSequence,
+            defaultDurationPattern,
+            program,
+            defaultDurationQueue);
+    defaultDurationPlayback.start();
+    const auto defaultDurationResult =
+            defaultDurationPlayback.advance(960, 99u, 48000);
+    assert(defaultDurationResult.scheduled == 1);
+    assert(defaultDurationResult.routed == 4);
+    assert(defaultDurationResult.queued == 4);
+    assert(defaultDurationResult.invalid == 0);
+    std::array<mpc::audio::AudioTriggerEvent, 4> defaultDurationEvents{};
+    for (auto& event : defaultDurationEvents) assert(defaultDurationQueue.tryDequeue(event));
+    assert(defaultDurationEvents[0].offsetFrames == 0);
+    assert(defaultDurationEvents[1].offsetFrames == 1500);
+    assert(defaultDurationEvents[2].offsetFrames == 3000);
+    assert(defaultDurationEvents[3].offsetFrames == 4500);
+    assert(!defaultDurationQueue.tryDequeue(defaultDurationEvents[0]));
+
     // Invalid stored BPM must use the same normalized tempo for event-frame
     // offsets as the transport clock; otherwise extreme BPM collapses later
     // events onto frame zero while the transport advances at a bounded rate.
