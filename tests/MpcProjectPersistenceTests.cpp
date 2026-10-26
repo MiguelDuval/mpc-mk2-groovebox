@@ -310,6 +310,39 @@ int main() {
     assert(loaded.id == loadedIdBeforeFailure);
     assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
 
+    // Serialized Pattern timing must be valid on both sides of the contract.
+    // A malformed in-memory note must not be written into a file the decoder
+    // would reject, and a malformed payload must not replace an open Project.
+    domain::Project invalidDurationProject = source;
+    invalidDurationProject.sequences[0].tracks[0].patterns[0]
+            .notes[0].durationTicks = 0;
+    error.clear();
+    assert(persistence::serializeProject(invalidDurationProject, &error).empty());
+    assert(!error.empty());
+
+    const std::string validNoteRecord = "NOTE 120 180 36 97 88 3 -11";
+    const auto noteRecordPosition = serialized.find(validNoteRecord);
+    assert(noteRecordPosition != std::string::npos);
+    std::string malformedNoteBytes = serialized;
+    malformedNoteBytes.replace(
+            noteRecordPosition,
+            validNoteRecord.size(),
+            "NOTE -1 180 36 97 88 3 -11");
+    error.clear();
+    assert(!persistence::deserializeProject(malformedNoteBytes, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
+    malformedNoteBytes = serialized;
+    malformedNoteBytes.replace(
+            noteRecordPosition,
+            validNoteRecord.size(),
+            "NOTE 120 0 36 97 88 3 -11");
+    error.clear();
+    assert(!persistence::deserializeProject(malformedNoteBytes, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
     return 0;
