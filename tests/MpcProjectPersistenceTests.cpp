@@ -389,6 +389,12 @@ int main() {
     // payload above the same limit before emitting an unreadable project.
     domain::Project tooManySamples = source;
     tooManySamples.samples.resize(100001);
+    for (std::size_t index = 0; index < tooManySamples.samples.size(); ++index) {
+        tooManySamples.samples[index].id =
+                "oversized-sample-" + std::to_string(index);
+        tooManySamples.samples[index].assetId.value =
+                static_cast<std::uint32_t>(index + 1);
+    }
     error.clear();
     assert(persistence::serializeProject(tooManySamples, &error).empty());
     assert(!error.empty());
