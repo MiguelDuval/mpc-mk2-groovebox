@@ -2,6 +2,8 @@
 #include "MPC/Sequencer/MpcPatternOps.h"
 
 #include <cassert>
+#include <cstdint>
+#include <limits>
 
 int main() {
     mpc::MpcProjectState state;
@@ -242,5 +244,38 @@ int main() {
     const auto firstNewSample = state.registerSample(
             "First sample in new project", "", 48000.0, 1000);
     assert(firstNewSample.value == 1);
+
+    // If a loaded SampleRef owns UINT32_MAX-1, allocation wraps after the
+    // next registration. Existing asset ID 1 must be skipped rather than reused.
+    mpc::MpcProjectState wrapState;
+    auto& wrapProject = wrapState.project();
+    mpc::domain::SampleRef sampleIdOne;
+    sampleIdOne.id = "sample-existing-one";
+    sampleIdOne.name = "Existing ID 1";
+    sampleIdOne.sampleRate = 48000.0;
+    sampleIdOne.lengthSamples = 100;
+    sampleIdOne.assetId.value = 1;
+    wrapProject.samples.push_back(sampleIdOne);
+
+    mpc::domain::SampleRef sampleNearMaximum;
+    sampleNearMaximum.id = "sample-existing-near-max";
+    sampleNearMaximum.name = "Existing ID near maximum";
+    sampleNearMaximum.sampleRate = 48000.0;
+    sampleNearMaximum.lengthSamples = 100;
+    sampleNearMaximum.assetId.value =
+            std::numeric_limits<std::uint32_t>::max() - 1;
+    wrapProject.samples.push_back(sampleNearMaximum);
+
+    auto reopenedWrapProject = wrapState.project();
+    assert(wrapState.replaceProject(std::move(reopenedWrapProject)));
+    const auto maximumSampleId = wrapState.registerSample(
+            "Last sample ID", "", 48000.0, 100);
+    assert(maximumSampleId.value == std::numeric_limits<std::uint32_t>::max());
+    const auto wrappedSampleId = wrapState.registerSample(
+            "First free after wrap", "", 48000.0, 100);
+    assert(wrappedSampleId.value == 2);
+    assert(wrapState.findSample({1})->id == "sample-existing-one");
+    assert(wrapState.findSample(maximumSampleId)->name == "Last sample ID");
+    assert(wrapState.findSample(wrappedSampleId)->name == "First free after wrap");
     return 0;
 }
