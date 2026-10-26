@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iomanip>
 #include <limits>
+#include <map>
 #include <set>
 #include <sstream>
 #include <string>
@@ -356,18 +357,20 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
         for (const auto& track : sequence.tracks) {
             std::set<std::string> ids;
+            std::map<std::string, std::int32_t> patternLengths;
+            for (const auto& pattern : track.patterns) {
+                // Preserve the existing first-match semantics for legacy
+                // duplicate IDs while avoiding a linear Pattern scan per clip.
+                patternLengths.emplace(pattern.id, pattern.lengthTicks);
+            }
             std::vector<std::pair<std::int64_t, std::int64_t>> timelineRanges;
             timelineRanges.reserve(track.placements.size());
             for (const auto& placement : track.placements) {
-                const auto pattern = std::find_if(
-                        track.patterns.begin(), track.patterns.end(),
-                        [&placement](const domain::Pattern& value) {
-                            return value.id == placement.patternId;
-                        });
+                const auto pattern = patternLengths.find(placement.patternId);
                 if (placement.id.empty() || !ids.insert(placement.id).second) {
                     return setError(error, "Pattern placement id is empty or duplicated");
                 }
-                if (pattern == track.patterns.end()) {
+                if (pattern == patternLengths.end()) {
                     return setError(error, "Pattern placement references a missing Pattern");
                 }
                 const auto timelineEnd = static_cast<std::int64_t>(placement.startTick)
@@ -377,7 +380,7 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
                 if (placement.startTick < 0 || placement.lengthTicks <= 0
                         || placement.sourceOffsetTicks < 0
                         || timelineEnd > sequence.lengthTicks
-                        || sourceEnd > pattern->lengthTicks) {
+                        || sourceEnd > pattern->second) {
                     return setError(error, "Pattern placement range is invalid");
                 }
                 timelineRanges.emplace_back(placement.startTick, timelineEnd);
