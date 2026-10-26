@@ -120,9 +120,16 @@ public:
                 continue;
             }
 
+            // Step-sequencer notes may legitimately carry durationTicks == 0
+            // as the "use the default gate" sentinel. Ratchet expansion still
+            // needs a positive timing span; use the Sequence grid for that case.
+            const auto ratchetSpanTicks = scheduled.durationTicks > 0
+                    ? static_cast<std::int64_t>(scheduled.durationTicks)
+                    : static_cast<std::int64_t>(std::max<std::int32_t>(
+                            1, sequence_.quantizeGridTicks));
             const auto expanded = expandScheduledRatchets(
                     std::span<const ScheduledMidiEvent>(&scheduled, 1),
-                    scheduled.durationTicks,
+                    ratchetSpanTicks,
                     std::span<ScheduledMidiEvent>(
                             expandedScheduledEvents_.data() + expandedWritten,
                             expandedScheduledEvents_.size() - expandedWritten));
