@@ -6,6 +6,8 @@
 namespace mpc::sequencer {
 namespace {
 
+constexpr std::size_t kMaxSchedulerNoteEvaluations = 65'536;
+
 std::int64_t normalizedNoteTick(
         const domain::MidiNoteEvent& note,
         std::int64_t patternLength) noexcept {
@@ -55,7 +57,7 @@ ScheduleResult schedulePatternWindow(
         std::span<ScheduledMidiEvent> output) noexcept {
     ScheduleResult result;
 
-    if (pattern.lengthTicks <= 0) {
+    if (pattern.lengthTicks <= 0 || pattern.notes.empty()) {
         return result;
     }
 
@@ -72,9 +74,12 @@ ScheduleResult schedulePatternWindow(
     if (window.completedCycles >
         static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) /
                 static_cast<std::uint64_t>(length)) {
+        result.truncated = true;
         return result;
     }
 
+    std::size_t noteEvaluations = 0;
+    bool workBudgetExhausted = false;
     const auto emitSegment = [&](std::int64_t segmentBegin,
                                  std::int64_t segmentEnd,
                                  std::int64_t baseOffset,
@@ -88,6 +93,12 @@ ScheduleResult schedulePatternWindow(
         for (std::size_t noteIndex = 0;
              noteIndex < pattern.notes.size();
              ++noteIndex) {
+            if (noteEvaluations >= kMaxSchedulerNoteEvaluations) {
+                result.truncated = true;
+                workBudgetExhausted = true;
+                return;
+            }
+            ++noteEvaluations;
             const auto& note = pattern.notes[noteIndex];
             const auto effectiveTick =
                     normalizedNoteTick(note, length);
@@ -125,25 +136,19 @@ ScheduleResult schedulePatternWindow(
         return result;
     }
 
-    emitSegment(
-            window.begin,
-            length,
-            baseOffset,
-            0);
+    emitSegment(window.begin, length, baseOffset, 0);
+    if (workBudgetExhausted) return result;
     baseOffset += length - window.begin;
 
     for (std::uint64_t cycle = 1;
          cycle < window.completedCycles;
          ++cycle) {
         emitSegment(0, length, baseOffset, cycle);
+        if (workBudgetExhausted) return result;
         baseOffset += length;
     }
 
-    emitSegment(
-            0,
-            window.end,
-            baseOffset,
-            window.completedCycles);
+    emitSegment(0, window.end, baseOffset, window.completedCycles);
 
     return result;
 }
@@ -158,6 +163,7 @@ ScheduleResult schedulePatternWindowInRange(
     ScheduleResult result;
 
     if (pattern.lengthTicks <= 0
+            || pattern.notes.empty()
             || loopStartTicks < 0
             || loopEndTicks <= loopStartTicks
             || loopEndTicks > pattern.lengthTicks
@@ -170,6 +176,8 @@ ScheduleResult schedulePatternWindowInRange(
 
     const auto loopLength = loopEndTicks - loopStartTicks;
 
+    std::size_t noteEvaluations = 0;
+    bool workBudgetExhausted = false;
     const auto emitSegment = [&](std::int64_t segmentBegin,
                                  std::int64_t segmentEnd,
                                  std::int64_t baseOffset,
@@ -182,6 +190,12 @@ ScheduleResult schedulePatternWindowInRange(
         for (std::size_t noteIndex = 0;
              noteIndex < pattern.notes.size();
              ++noteIndex) {
+            if (noteEvaluations >= kMaxSchedulerNoteEvaluations) {
+                result.truncated = true;
+                workBudgetExhausted = true;
+                return;
+            }
+            ++noteEvaluations;
             const auto& note = pattern.notes[noteIndex];
             if (note.tick < loopStartTicks || note.tick >= loopEndTicks) {
                 continue;
@@ -226,12 +240,14 @@ ScheduleResult schedulePatternWindowInRange(
     }
 
     emitSegment(window.begin, loopEndTicks, 0, 0);
+    if (workBudgetExhausted) return result;
 
     std::int64_t baseOffset = loopEndTicks - window.begin;
     for (std::uint64_t cycle = 1;
          cycle < window.completedCycles;
          ++cycle) {
         emitSegment(loopStartTicks, loopEndTicks, baseOffset, cycle);
+        if (workBudgetExhausted) return result;
         if (baseOffset > std::numeric_limits<std::int64_t>::max() - loopLength) {
             result.truncated = true;
             return result;
