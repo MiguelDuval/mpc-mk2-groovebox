@@ -78,6 +78,9 @@ ScheduleResult schedulePatternWindow(
         return result;
     }
 
+    const std::size_t workBudget = pattern.notes.size() > kMaxSchedulerNoteEvaluations
+            ? pattern.notes.size()
+            : kMaxSchedulerNoteEvaluations;
     std::size_t noteEvaluations = 0;
     bool workBudgetExhausted = false;
     const auto emitSegment = [&](std::int64_t segmentBegin,
@@ -87,18 +90,21 @@ ScheduleResult schedulePatternWindow(
         if (segmentBegin >= segmentEnd) {
             return;
         }
+        // Finish one complete Pattern scan or skip the next segment entirely.
+        // This avoids emitting a partial segment solely because the work cap
+        // was reached and guarantees at least one full segment can be handled.
+        if (noteEvaluations > workBudget - pattern.notes.size()) {
+            result.truncated = true;
+            workBudgetExhausted = true;
+            return;
+        }
+        noteEvaluations += pattern.notes.size();
 
         const auto cycleSeed = mixCycleSeed(seed, cycleIndex);
 
         for (std::size_t noteIndex = 0;
              noteIndex < pattern.notes.size();
              ++noteIndex) {
-            if (noteEvaluations >= kMaxSchedulerNoteEvaluations) {
-                result.truncated = true;
-                workBudgetExhausted = true;
-                return;
-            }
-            ++noteEvaluations;
             const auto& note = pattern.notes[noteIndex];
             const auto effectiveTick =
                     normalizedNoteTick(note, length);
@@ -176,6 +182,9 @@ ScheduleResult schedulePatternWindowInRange(
 
     const auto loopLength = loopEndTicks - loopStartTicks;
 
+    const std::size_t workBudget = pattern.notes.size() > kMaxSchedulerNoteEvaluations
+            ? pattern.notes.size()
+            : kMaxSchedulerNoteEvaluations;
     std::size_t noteEvaluations = 0;
     bool workBudgetExhausted = false;
     const auto emitSegment = [&](std::int64_t segmentBegin,
@@ -185,17 +194,20 @@ ScheduleResult schedulePatternWindowInRange(
         if (segmentBegin >= segmentEnd) {
             return;
         }
+        // Finish one complete Pattern scan or skip the next segment entirely.
+        // This avoids emitting a partial segment solely because the work cap
+        // was reached and guarantees at least one full segment can be handled.
+        if (noteEvaluations > workBudget - pattern.notes.size()) {
+            result.truncated = true;
+            workBudgetExhausted = true;
+            return;
+        }
+        noteEvaluations += pattern.notes.size();
 
         const auto cycleSeed = mixCycleSeed(seed, cycleIndex);
         for (std::size_t noteIndex = 0;
              noteIndex < pattern.notes.size();
              ++noteIndex) {
-            if (noteEvaluations >= kMaxSchedulerNoteEvaluations) {
-                result.truncated = true;
-                workBudgetExhausted = true;
-                return;
-            }
-            ++noteEvaluations;
             const auto& note = pattern.notes[noteIndex];
             if (note.tick < loopStartTicks || note.tick >= loopEndTicks) {
                 continue;
