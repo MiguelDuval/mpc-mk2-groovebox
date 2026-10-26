@@ -9879,11 +9879,16 @@ if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
   exit 1
 fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then exit 1; fi
+# Clearing Search restores the full catalog, whose last alphabetical row may be
+# below the visible results viewport. Wait for the first visible fixture, then
+# verify all three exact files across fresh viewport-aware snapshots.
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
-  echo "ERROR: clearing Search did not restore indexed results"
+    "MPC Browser file $BROWSER_DEMOS_NAME" 10; then
+  echo "ERROR: clearing Search did not restore the indexed Browser catalog"
   exit 1
 fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
 
 # File-type filters must act on actual results too: PROJECTS yields none for
 # the WAV-only loader, while ALL and SAMPLES restore the real WAV row.
@@ -9895,16 +9900,20 @@ if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
 fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter ALL"; then exit 1; fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
+    "MPC Browser file $BROWSER_DEMOS_NAME" 10; then
   echo "ERROR: ALL filter failed to restore indexed WAV results"
   exit 1
 fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter SAMPLES"; then exit 1; fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
+    "MPC Browser file $BROWSER_DEMOS_NAME" 10; then
   echo "ERROR: SAMPLES filter failed to restore indexed WAV results"
   exit 1
 fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
 
 # The sample follows two pinned Browser actions in a short ScrollView. Scroll it
 # fully into the hit area instead of tapping a clipped row at the viewport edge.
