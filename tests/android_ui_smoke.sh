@@ -7345,21 +7345,14 @@ def marker_visible(predicate, minimum_height=28):
 # REGION and GAIN are the upper controls; if any are not sufficiently visible,
 # swipe down to reveal them. Once they fit, a reverse swipe can expose any lower
 # TUNE/PAN fields that are still clipped.
-def visible_description(description, minimum_height=28):
-    return any(
-        node.attrib.get("content-desc", "") == description
-        and sufficiently_visible(node, minimum_height)
-        for node in nodes
-    )
-
 top_controls_visible = all([
-    visible_description("Track Edit region"),
-    visible_description("Track Edit layer gain value"),
-    visible_description("Track Edit layer gain decrease"),
+    marker_visible(lambda value: value == "Track Edit region", 28),
+    marker_visible(lambda value: value == "Track Edit layer gain value", 28),
+    marker_visible(lambda value: value == "Track Edit layer gain decrease", 28),
 ])
 lower_controls_visible = all([
-    visible_description("Track Edit layer tuning value"),
-    visible_description("Track Edit layer pan value"),
+    marker_visible(lambda value: value == "Track Edit layer tuning value", 28),
+    marker_visible(lambda value: value == "Track Edit layer pan value", 28),
 ])
 if not top_controls_visible:
     start_y, end_y = top + margin, bottom - margin
