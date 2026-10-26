@@ -453,8 +453,10 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
 
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
-    if (!validateEntityIdentifiers(project, error)
-            || !validateSerializableCollectionSizes(project, error)
+    // Apply cardinality limits before building identifier sets from caller-owned
+    // vectors; oversized Projects should be rejected without large temporary allocations.
+    if (!validateSerializableCollectionSizes(project, error)
+            || !validateEntityIdentifiers(project, error)
             || !validateSerializableNumericFields(project, error)
             || !validatePatternData(project, error)
             || !validatePlacements(project, error)) {
