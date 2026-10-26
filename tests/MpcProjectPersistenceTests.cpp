@@ -343,6 +343,48 @@ int main() {
     assert(!error.empty());
     assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
 
+    // Keep serialization symmetric with the decoder: malformed numeric fields
+    // that the reader rejects must never be written into an unreadable project.
+    domain::Project invalidSampleRate = source;
+    invalidSampleRate.samples.front().sampleRate =
+            std::numeric_limits<double>::quiet_NaN();
+    error.clear();
+    assert(persistence::serializeProject(invalidSampleRate, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidPadGain = source;
+    invalidPadGain.drumPrograms.front().pads[0].level =
+            std::numeric_limits<float>::infinity();
+    error.clear();
+    assert(persistence::serializeProject(invalidPadGain, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidPadMidiNote = source;
+    invalidPadMidiNote.drumPrograms.front().pads[0].midiNote = 128;
+    error.clear();
+    assert(persistence::serializeProject(invalidPadMidiNote, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidTriggerMode = source;
+    invalidTriggerMode.drumPrograms.front().pads[0].triggerMode =
+            static_cast<domain::TriggerMode>(3);
+    error.clear();
+    assert(persistence::serializeProject(invalidTriggerMode, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidLayerVelocity = source;
+    invalidLayerVelocity.drumPrograms.front().pads[0].layer(0).velocityMaximum = 200;
+    error.clear();
+    assert(persistence::serializeProject(invalidLayerVelocity, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidTrackKind = source;
+    invalidTrackKind.sequences.front().tracks.front().kind =
+            static_cast<domain::TrackKind>(5);
+    error.clear();
+    assert(persistence::serializeProject(invalidTrackKind, &error).empty());
+    assert(!error.empty());
+
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
     return 0;
