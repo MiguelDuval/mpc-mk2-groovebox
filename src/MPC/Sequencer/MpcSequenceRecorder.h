@@ -68,7 +68,11 @@ public:
         SequenceRecordEvent event{};
 
         while (queue.tryDequeue(event)) {
-            if (event.trackIndex >= replaceCleared_.size()
+            // The record queue is a public producer boundary: malformed ticks
+            // and non-MIDI flag/velocity values must not poison live Project
+            // state that the persistence codec correctly refuses to serialize.
+            if (event.tick < 0 || event.velocity > 127 || event.pressed > 1u
+                    || event.trackIndex >= replaceCleared_.size()
                     || event.trackIndex >= state.activeSequence().tracks.size()
                     || event.padIndex >= domain::kMaxProgramPads) {
                 continue;
