@@ -11,6 +11,7 @@
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace mpc::persistence {
 namespace {
@@ -355,8 +356,9 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
         for (const auto& track : sequence.tracks) {
             std::set<std::string> ids;
-            for (std::size_t i = 0; i < track.placements.size(); ++i) {
-                const auto& placement = track.placements[i];
+            std::vector<std::pair<std::int64_t, std::int64_t>> timelineRanges;
+            timelineRanges.reserve(track.placements.size());
+            for (const auto& placement : track.placements) {
                 const auto pattern = std::find_if(
                         track.patterns.begin(), track.patterns.end(),
                         [&placement](const domain::Pattern& value) {
@@ -378,15 +380,20 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
                         || sourceEnd > pattern->lengthTicks) {
                     return setError(error, "Pattern placement range is invalid");
                 }
-                for (std::size_t j = 0; j < i; ++j) {
-                    const auto& other = track.placements[j];
-                    const auto otherEnd = static_cast<std::int64_t>(other.startTick)
-                            + static_cast<std::int64_t>(other.lengthTicks);
-                    if (static_cast<std::int64_t>(placement.startTick) < otherEnd
-                            && static_cast<std::int64_t>(other.startTick) < timelineEnd) {
-                        return setError(error, "Pattern placements overlap on one Track");
-                    }
+                timelineRanges.emplace_back(placement.startTick, timelineEnd);
+            }
+
+            // The placements can arrive in any order. Sorting timeline intervals
+            // gives an O(n log n) overlap check; comparing each interval with every
+            // earlier placement made a valid 65,536-clip Arrangement quadratic and
+            // could stall project save/open for billions of comparisons.
+            std::sort(timelineRanges.begin(), timelineRanges.end());
+            std::int64_t furthestPreviousEnd = -1;
+            for (const auto& [start, end] : timelineRanges) {
+                if (start < furthestPreviousEnd) {
+                    return setError(error, "Pattern placements overlap on one Track");
                 }
+                furthestPreviousEnd = std::max(furthestPreviousEnd, end);
             }
         }
     }
