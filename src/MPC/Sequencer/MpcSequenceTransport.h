@@ -147,9 +147,16 @@ private:
         loopStartTicks_.store(loopStart, std::memory_order_release);
         loopEndTicks_.store(loopEnd, std::memory_order_release);
         loopEnabled_.store(sequence.loopEnabled, std::memory_order_release);
+        // The editable model and older project payloads can contain a
+        // non-finite or out-of-range tempo even though the public setter
+        // normally prevents it. Keep the transport clock's integer conversion
+        // defined and within the supported musical tempo range.
+        const auto safeTempoBpm = std::isfinite(sequence.tempoBpm)
+                ? std::clamp(sequence.tempoBpm, 20.0, 300.0)
+                : 120.0;
         tempoMilliBpm_.store(
                 static_cast<std::int64_t>(
-                        std::llround(sequence.tempoBpm * 1000.0)),
+                        std::llround(safeTempoBpm * 1000.0)),
                 std::memory_order_release);
         quantizeGridTicks_.store(
                 std::clamp(sequence.quantizeGridTicks, 1, 3840),
