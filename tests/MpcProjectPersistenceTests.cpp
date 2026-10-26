@@ -420,7 +420,7 @@ int main() {
     assert(error.empty());
 
     // Even with scrambled input order, a real overlap is still rejected.
-    largeTrack.placements.back().startTick = 1;
+    largeTrack.placements.back().startTick = 2;
     error.clear();
     assert(persistence::serializeProject(largeArrangement, &error).empty());
     assert(!error.empty());
