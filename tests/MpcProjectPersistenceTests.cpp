@@ -414,13 +414,13 @@ int main() {
     secondPattern.name = "Second unplaced Pattern";
     validTwoPatterns.sequences.front().tracks.front().patterns.push_back(secondPattern);
     auto malformedDuplicatePatternId = persistence::serializeProject(validTwoPatterns);
-    const std::string secondPatternTag = "PATTERN \\"pattern-distinct-02\\"";
+    const std::string secondPatternTag = R"(PATTERN "pattern-distinct-02")";
     const auto secondPatternPos = malformedDuplicatePatternId.find(secondPatternTag);
     assert(secondPatternPos != std::string::npos);
     malformedDuplicatePatternId.replace(
             secondPatternPos,
             secondPatternTag.size(),
-            "PATTERN \\"pattern-shared-01\\"");
+            R"(PATTERN "pattern-shared-01")");
     domain::Project untouchedAfterDuplicateId = source;
     const auto beforeDuplicateIdFailure = persistence::serializeProject(untouchedAfterDuplicateId);
     error.clear();
