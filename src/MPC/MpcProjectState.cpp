@@ -545,11 +545,55 @@ domain::SampleId MpcProjectState::registerSample(
         std::string path,
         double sampleRate,
         std::int64_t lengthSamples) {
-    if (nextSampleId_ == 0) {
-        nextSampleId_ = 1;
+    const auto isUsed = [this](std::uint32_t candidate) noexcept {
+        if (candidate == 0) return true;
+        for (const auto& sample : project_.samples) {
+            if (sample.assetId.value == candidate) return true;
+        }
+        // A layer can retain an asset reference even when the SampleRef is
+        // temporarily missing. Do not recycle that identifier for new audio.
+        for (const auto& program : project_.drumPrograms) {
+            for (const auto& pad : program.pads) {
+                for (const auto& layer : pad.layers) {
+                    if (layer.sample.value == candidate) return true;
+                }
+            }
+        }
+        return false;
+    };
+
+    std::uint32_t candidate = nextSampleId_ == 0 ? 1 : nextSampleId_;
+    // There must be a free positive ID after at most (existing references + 1)
+    // attempts unless every representable ID is already reserved. Bound the
+    // scan by actual model contents rather than relying on unsigned wrap.
+    std::uint64_t attemptLimit =
+            static_cast<std::uint64_t>(project_.samples.size()) + 1;
+    for (const auto& program : project_.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) {
+                if (layer.sample.isAssigned()) ++attemptLimit;
+            }
+        }
     }
 
-    const auto id = domain::SampleId{nextSampleId_++};
+    bool foundAvailableId = false;
+    for (std::uint64_t attempt = 0; attempt < attemptLimit; ++attempt) {
+        if (!isUsed(candidate)) {
+            foundAvailableId = true;
+            break;
+        }
+        candidate = candidate == std::numeric_limits<std::uint32_t>::max()
+                ? 1
+                : candidate + 1;
+    }
+    if (!foundAvailableId) {
+        return {};
+    }
+
+    nextSampleId_ = candidate == std::numeric_limits<std::uint32_t>::max()
+            ? 1
+            : candidate + 1;
+    const auto id = domain::SampleId{candidate};
 
     domain::SampleRef ref;
     ref.id = "sample-" + std::to_string(id.value);
