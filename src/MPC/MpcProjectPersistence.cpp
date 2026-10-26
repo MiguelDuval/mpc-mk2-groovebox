@@ -251,7 +251,7 @@ bool validatePatternData(const domain::Project& project, std::string* error) {
                 }
                 for (const auto& note : pattern.notes) {
                     if (note.tick < 0 || note.tick >= pattern.lengthTicks
-                            || note.durationTicks <= 0
+                            || note.durationTicks < 0
                             || note.durationTicks > pattern.lengthTicks
                             || note.note > 127 || note.velocity > 127
                             || note.probability > 127
