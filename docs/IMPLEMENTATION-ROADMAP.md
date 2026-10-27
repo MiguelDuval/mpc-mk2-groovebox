@@ -1,34 +1,28 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-25 (live exact-SHA evidence governs)
+## CURRENT EXECUTION QUEUE — 2026-10-27 (live exact-SHA evidence governs)
 
-### Latest accepted product-code checkpoint — PR #23
+### Latest accepted primary checkpoint — PR #23
 
-- PR #23 remains OPEN: `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`.
-- **Android Build #3296 / run [40205072938](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40205072938) passed on exact SHA `3de910cc0e28b5abe82e588766b77c49262fe650`.** All 57 workflow steps passed, including the complete emulator smoke and evidence upload.
-- APK artifact `12602514729` (10,009,933 bytes; SHA-256 `6361f319c682457e34a183b089388bdbd621a7989054cee046fc9359af8bc8c9`); visual-evidence artifact `12604850216` (15,206,981 bytes; SHA-256 `665358fae296e0ceba8593d34abc728560da1193e4fbf0a404f3b6045614198e`). ZIP integrity passed; 87 PNG, 97 XML, 3 text and 2 log files were inspected.
-- SAMP-008 CROP, SAMP-009 CH4/CH8/CH16, SAMP-010 zoom/reset/audition, Browser local WAV and FAVORITE 1, Project malformed-load preservation and the existing Project persistence acceptance all passed. Physical MPC Studio MkII validation remains a separate pending hardware gate.
-- Keep `cancel-in-progress: false`; no changes to `main`, history rewrites, automatic merges or retargets.
+- PR #23 remains OPEN: feature/mpc-one-ui-fidelity → fix/ui-shell-format-width-startup. Current HEAD d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991; base SHA 5f562e54e2cf8235041590933232a3836d74a16a.
+- Product-code SHA 3de910cc0e28b5abe82e588766b77c49262fe650 passed Android Build #3296 / [run 40205072938](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40205072938), all 57 steps. The current docs-only HEAD d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991 passed Build #3301 / [run 40207854314](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40207854314), all 57 steps.
+- Current accepted artifacts: APK 12604227275 (10,009,933 bytes; SHA-256 f6786f1ede09351fe529964011f56d6fb02eef7fa6852bfa61cd21c98fe134cd); visual evidence 12605069409 (15,211,863 bytes; SHA-256 e9590c0998885a6c746c70a754303a0172f6eea1f909478505ee1d2ede4042e9).
+- SAMP-008/009/010, Browser local WAV/FAVORITE 1 and Project persistence/malformed-load preservation passed on accepted product code. Physical MPC Studio MkII validation remains a separate pending gate. Keep cancel-in-progress: false; never modify main, rewrite history, merge or retarget automatically.
 
-### Active isolated slices — do not call accepted until exact-SHA full CI finishes
+### Active isolated slices — exact-SHA full CI still governs
 
-- **PR #80 — Browser Drums/Demos local paths:** head `9e62c91c5d0437649150bbcce73b3eaefce3cbf8`; Build #3298 / run [40206997235](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40206997235) is in progress at emulator smoke step 52. The previous run failed before category assertions because the real local WAV result was not found; the final UI hierarchy dump timed out and removed the last host snapshot. The current commit preserves validated XML across failed dumps so the next run can expose the actual final state. Keep the WAV-row assertions strict.
-- **PR #81 — Browser modified date:** head `f88b5050c93455c9e60a26d697cc0dd705448fb5`; Build #3297 / run [40205769766](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40205769766) is in progress at emulator smoke step 52. Build #3295 succeeded only on predecessor SHA `72a2ea59d06115871ecc9d388062e76bcb46c721`.
-- **PR #82 — Pad Mixer accessibility labels:** head `7ae58ea9744c8b5b28608807d105398b5212d22e`; Build #3300 / run [40207666754](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40207666754) is in progress, last observed at step 7 (Android toolchain setup). The preceding #3299 failed at focused unit tests because Android View class initialization leaked into a JVM-only policy test; the follow-up extracted a pure label policy and kept the test independent of Android runtime stubs.
-
-### Previously green follow-ups with base ancestry still to reconcile
-
-- **PR #56 — Browser Show file size:** head `20e33dd7b9d2462dcd816da1281b2206948d243b`; Build #3239 / run [40144540628](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40144540628) passed on that exact SHA.
-- **PR #30 — Project provider failure phases:** head `918b195768a2e2326adb4edb73f046e0a34a1da1`; Build #3240 / run [40144775117](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40144775117) passed on that exact SHA.
-- **PR #57 — output-open vs stream-write classification, stacked on #30:** head `345872ba400cac7bd9df665e619609f1ffaa25d6`; Build #3241 / run [40144832991](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40144832991) passed on that exact SHA.
-- #30 and #56 still report the older primary base SHA `30e270c51038afdd037e9d226f20eb5cc310bc82`; verify current branch refs, merge base and live diff before considering integration. Do not automatically retarget, rebase or merge.
+- **PR #114 — Grid zoom viewport:** head 1b177ad886f87ac18e09828daa8880825ee38a3e, base d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991; Build #3399 / [run 40527004496](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40527004496) is IN PROGRESS at emulator smoke step 52. APK artifact 12743758269, 10,009,933 bytes, SHA-256 1999ad7db0d38fd24a0fa3a528c247eac0f13edbe0d5ae3b73914a17c8902f65. The previous #3397 failure was a bad oracle: the screenshot showed real vertical zoom from 16 visible Pads to 12, but the tree lacked the transient status text. The new commit exposes the Canvas Pad range as accessibility metadata and asserts reduced Pad count, Pad 01 retained, horizontal range unchanged, and event/timing/count invariance. Do not accept until #3399 and its evidence finish.
+- **PR #112 — MIDI Toolbar availability:** head 65c651388ab67195c09687e9e67952e6b91688f4, base d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991; Build #3400 / [run 40527456461](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40527456461) is IN PROGRESS at emulator smoke step 52. Run #3386 failed only in the new bounds parser: the regex was over-escaped although the IN/OUT nodes were visible and correctly unavailable. Commit 65c6513 corrects the regex; evidence artifact 12735532458 was inspected. Exact-head CI remains pending.
+- **PR #110 — Back restores subcontext/focus:** head 22d965cc4bebff6043b81c8cb5b45edba4510ee9, base d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991; Build #3401 / [run 40527990598](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40527990598) is IN PROGRESS at Test MPC project state step 38. Run #3398 failed because standard UiAutomator dump timed out on the initial DocumentsUI picker; the app's picker selection was not disproven. Commit 22d965c uses bounded scratch-preserving compressed capture and validates DocumentsUI/root-navigation semantics. APK artifact 12743361682 and evidence artifact 12742799195 from the failed run were inspected. Later Downloads and actual file-row checks remain strict.
 
 ### Next acceptance order
 
-1. Resolve exact-SHA full workflows for PRs #80, #81 and #82; inspect their precise failed steps and uploaded evidence before accepting any.
-2. If #80 still fails, use the preserved last-valid hierarchy and device/log diagnostics to fix the actual state/touch issue, not just the dump timeout.
-3. Reconcile #30/#56/#57 branch ancestry with the live primary head; integrate only after explicit review and successful acceptance on the resulting exact SHA.
-4. Perform the physical MPC Studio MkII gate separately; emulator success is not hardware certification.
+1. Resolve exact-head full CI for PRs #114, #112 and #110; inspect the actual failure step and evidence before making further changes.
+2. For Grid zoom, use the semantic Canvas Pad range and screenshots; keep native event, timing and count assertions strict.
+3. For DocumentsUI, preserve fresh-tree provenance and use the last validated XML only for diagnosis, never as current-state proof.
+4. Review branch ancestry and live diffs before any integration. Do not merge/retarget automatically.
+5. Perform the physical MPC Studio MkII gate separately; emulator success is not hardware certification.
+
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 
