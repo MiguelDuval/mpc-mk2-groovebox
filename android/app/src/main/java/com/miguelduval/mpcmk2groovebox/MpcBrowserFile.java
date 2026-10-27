@@ -1,7 +1,9 @@
 package com.miguelduval.mpcmk2groovebox;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -16,20 +18,32 @@ final class MpcBrowserFile {
     private final long sizeBytes;
     private final long durationMs;
     private final String relativePath;
+    private final long lastModifiedMs;
 
     MpcBrowserFile(String uri, String displayName, String mimeType,
             long sizeBytes, long durationMs) {
-        this(uri, displayName, mimeType, sizeBytes, durationMs, "");
+        this(uri, displayName, mimeType, sizeBytes, durationMs, "", -1L);
     }
 
     MpcBrowserFile(String uri, String displayName, String mimeType,
             long sizeBytes, long durationMs, String relativePath) {
+        this(uri, displayName, mimeType, sizeBytes, durationMs, relativePath, -1L);
+    }
+
+    MpcBrowserFile(String uri, String displayName, String mimeType,
+            long sizeBytes, long durationMs, long lastModifiedMs) {
+        this(uri, displayName, mimeType, sizeBytes, durationMs, "", lastModifiedMs);
+    }
+
+    MpcBrowserFile(String uri, String displayName, String mimeType,
+            long sizeBytes, long durationMs, String relativePath, long lastModifiedMs) {
         this.uri = uri == null ? "" : uri;
         this.displayName = displayName == null ? "" : displayName;
         this.mimeType = mimeType == null ? "" : mimeType;
         this.sizeBytes = sizeBytes;
         this.durationMs = durationMs;
         this.relativePath = relativePath == null ? "" : relativePath.trim();
+        this.lastModifiedMs = lastModifiedMs;
     }
 
     String uri() { return uri; }
@@ -38,6 +52,7 @@ final class MpcBrowserFile {
     long sizeBytes() { return sizeBytes; }
     long durationMs() { return durationMs; }
     String relativePath() { return relativePath; }
+    long lastModifiedMs() { return lastModifiedMs; }
 
     /**
      * Returns a new list in deterministic, case-insensitive display-name order.
@@ -109,15 +124,36 @@ final class MpcBrowserFile {
     }
 
     String metadataLine() {
-        return metadataLine(true);
+        return metadataLine(true, false);
     }
 
     String metadataLine(boolean showFileSize) {
-        final String duration = durationMs <= 0
-                ? "DURATION UNKNOWN" : formatDuration(durationMs);
-        if (!showFileSize) return duration + " • WAV";
-        final String size = sizeBytes < 0 ? "SIZE UNKNOWN" : formatSize(sizeBytes);
-        return size + " • " + duration + " • WAV";
+        return metadataLine(showFileSize, false);
+    }
+
+    String metadataLine(boolean showFileSize, boolean showModifiedDate) {
+        final StringBuilder line = new StringBuilder();
+        if (showFileSize) {
+            appendMetadataPart(line, sizeBytes < 0 ? "SIZE UNKNOWN" : formatSize(sizeBytes));
+        }
+        if (showModifiedDate) {
+            appendMetadataPart(line, lastModifiedMs <= 0
+                    ? "DATE UNKNOWN" : "MODIFIED " + formatModifiedDate(lastModifiedMs));
+        }
+        appendMetadataPart(line, durationMs <= 0
+                ? "DURATION UNKNOWN" : formatDuration(durationMs));
+        appendMetadataPart(line, "WAV");
+        return line.toString();
+    }
+
+    private static void appendMetadataPart(StringBuilder line, String part) {
+        if (line.length() > 0) line.append(" • ");
+        line.append(part);
+    }
+
+    static String formatModifiedDate(long epochMillis) {
+        if (epochMillis <= 0) return "DATE UNKNOWN";
+        return new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(new Date(epochMillis));
     }
 
     static String formatSize(long bytes) {
