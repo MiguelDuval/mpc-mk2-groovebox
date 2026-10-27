@@ -9810,7 +9810,7 @@ if scroll is None or bounds(scroll) is None:
     raise SystemExit("Browser results viewport missing")
 expected_desc = "MPC Browser file " + filename
 rows = [n for n in nodes
-        if n.attrib.get("content-desc") == expected_desc
+        if n.attrib.get("content-desc") in (expected_desc, expected_desc + " selected")
         and n.attrib.get("clickable") == "true"
         and n.attrib.get("enabled") == "true"
         and intersects(bounds(n), bounds(scroll))]
