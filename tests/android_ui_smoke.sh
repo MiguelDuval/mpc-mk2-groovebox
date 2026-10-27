@@ -7729,6 +7729,41 @@ capture_stable_picker_state() {
   cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   return 1
 }
+# Verify that the screenshot captured for a fresh picker hierarchy belongs to
+# a compatible viewport. A stale landscape screenshot can make otherwise-valid
+# portrait bounds look clipped (or hide that the picker rotated between captures).
+verify_documentsui_pair_geometry() {
+  local hierarchy_path="$1" screenshot_path="$2"
+  python3 - "$hierarchy_path" "$screenshot_path" <<'PY_PICKER_PAIR_GEOMETRY'
+import re
+import struct
+import sys
+import xml.etree.ElementTree as ET
+
+hierarchy_path, screenshot_path = sys.argv[1:]
+root = ET.parse(hierarchy_path).getroot()
+nodes = list(root.iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("paired hierarchy is not rooted in Android DocumentsUI")
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     nodes[0].attrib.get("bounds", ""))
+if match is None:
+    raise SystemExit(f"DocumentsUI root has invalid bounds: {nodes[0].attrib.get('bounds')!r}")
+left, top, right, bottom = map(int, match.groups())
+if right <= left or bottom <= top:
+    raise SystemExit("DocumentsUI root has a non-positive viewport")
+with open(screenshot_path, "rb") as image:
+    header = image.read(24)
+if len(header) != 24 or header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+    raise SystemExit("paired DocumentsUI screenshot is not a valid PNG header")
+width, height = struct.unpack(">II", header[16:24])
+if width <= 0 or height <= 0 or left < 0 or top < 0 or right > width or bottom > height:
+    raise SystemExit(
+        f"DocumentsUI viewport {(left, top, right, bottom)} exceeds paired screenshot {width}x{height}")
+print(f"DocumentsUI hierarchy/screenshot geometry matches: viewport={right-left}x{bottom-top}, screenshot={width}x{height}")
+PY_PICKER_PAIR_GEOMETRY
+}
+
 # Reuse one fresh DocumentsUI hierarchy only for the narrowly validated
 # ACTION_CREATE_DOCUMENT Save As form. Repeated UiAutomator tree requests can stall
 # on this Android 16 emulator even though the first tree is current and complete.
@@ -7776,10 +7811,15 @@ if len(filename) != 1 or len(save) != 1:
     raise SystemExit(
         f"Save As form did not expose unique enabled filename/SAVE controls: "
         f"filename={len(filename)} save={len(save)}")
+viewport = bounds(nodes[0])
+if viewport is None or viewport[2] <= viewport[0] or viewport[3] <= viewport[1]:
+    raise SystemExit(f"DocumentsUI root has invalid viewport bounds: {nodes[0].attrib!r}")
 for label, node in (("filename", filename[0]), ("SAVE", save[0])):
     rect = bounds(node)
-    if rect is None or rect[2] <= rect[0] or rect[3] <= rect[1]:
-        raise SystemExit(f"{label} control has invalid bounds: {node.attrib!r}")
+    if (rect is None or rect[2] <= rect[0] or rect[3] <= rect[1]
+            or rect[0] < viewport[0] or rect[1] < viewport[1]
+            or rect[2] > viewport[2] or rect[3] > viewport[3]):
+        raise SystemExit(f"{label} control is invalid or outside the DocumentsUI viewport: {node.attrib!r}")
 print("Fresh Save As hierarchy validated:", expected_filename)
 PY_SAVE_PAIR
   then
@@ -7795,6 +7835,11 @@ PY_SAVE_PAIR
   if ! test -s "$screenshot_candidate"; then
     rm -f "$screenshot_candidate"
     echo "ERROR: Save As screenshot for fresh hierarchy is empty"
+    return 1
+  fi
+  if ! verify_documentsui_pair_geometry "$hierarchy_path" "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: paired DocumentsUI screenshot does not contain its live viewport"
     return 1
   fi
   if ! mv -f -- "$screenshot_candidate" "$screenshot_path"; then
@@ -7870,6 +7915,11 @@ PY_OPEN_PAIR
   if ! test -s "$screenshot_candidate"; then
     rm -f "$screenshot_candidate"
     echo "ERROR: Open picker screenshot for fresh hierarchy is empty"
+    return 1
+  fi
+  if ! verify_documentsui_pair_geometry "$hierarchy_path" "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: paired DocumentsUI screenshot does not contain its live viewport"
     return 1
   fi
   if ! mv -f -- "$screenshot_candidate" "$screenshot_path"; then
