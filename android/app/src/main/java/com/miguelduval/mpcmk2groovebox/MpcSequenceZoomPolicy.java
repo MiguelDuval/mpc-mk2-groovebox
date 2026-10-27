@@ -91,7 +91,10 @@ final class MpcSequenceZoomPolicy {
 
     private static int zoomGridCountOut(int current, int min, int max) {
         final int clamped = clamp(current, min, max);
-        for (int level : GRID_ZOOM_LEVELS) {
+        // GRID_ZOOM_LEVELS is descending. Walk upward from the smallest rung
+        // to choose the nearest wider viewport, not the maximum rung every time.
+        for (int i = GRID_ZOOM_LEVELS.length - 1; i >= 0; i--) {
+            final int level = GRID_ZOOM_LEVELS[i];
             if (level > clamped && level >= min && level <= max) {
                 return level;
             }
