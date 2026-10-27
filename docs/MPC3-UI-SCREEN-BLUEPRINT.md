@@ -1322,3 +1322,12 @@ The runtime gesture is synthetic Android MotionEvent dispatch to the real view p
 Build #2713 passed all 57 workflow steps on `cdcfdfb2500b4c6eaebeab5018b4cdce33213462`. APK artifact `11958217657` has SHA-256 `4ca32dee06e76b69314446ab5a12b9ec8bf9a488d84c5d7487f1a4861783f960`; 23-entry visual archive `11958527786` has SHA-256 `09fa5c463ee3f7449f4cf36907b89e38fae3ddafb057d4d1e3257bd99bbd10c5`. The actual Grid image shows the seeded note at step 33 in the visible range 25–40/64, with matching accessibility range.
 
 The loop handle gesture changes the native loop endpoint and restores the original through the same handle gesture. The one-Track fixture's real lane tap verifies selection stays coherent and Arrangement data is unchanged; this does not claim a multi-Track switch. The next audit must exercise Grid BACK → Arrange with selected Track/event/tick/data preserved, then reopen the same event through the real gesture and confirm the same Grid step/window.
+
+
+## 2026-10-27 P0 Mute workspace and reserved-route recovery
+
+The canonical Main surface remains controller-first; it does not gain a permanent 4×4 pad matrix. The Function Bar's **MUTE** action opens a dedicated workspace with a true 4×4, 16-cell grid. The Pad Mute grid reads and toggles the active Drum Program's native Pad mute state; it is unavailable on unsupported Track Types. The Track Mute grid operates on real Sequence Tracks in 16-Track banks, showing empty slots as disabled rather than fabricating Track data.
+
+The five factory Shortcut identities remain unchanged. A shortcut whose backend is still RESERVED must replace the previous workspace with an explicit full-size unavailable screen, keep the reason visible, and offer Back/Menu actions. It must never change only the shortcut highlight or title while leaving the previous workspace underneath.
+
+Acceptance requires an exact-SHA emulator run that validates both 4×4 grids, toggles/restores real Pad and Track mute state, preserves the selected musical context and event data, and uploads matched current-state screenshots and UI hierarchy XML. Physical MPC Studio MkII validation remains a separate gate.

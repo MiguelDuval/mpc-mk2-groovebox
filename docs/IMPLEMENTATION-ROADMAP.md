@@ -2,7 +2,14 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-27 (live exact-SHA evidence governs)
 
-### Latest accepted primary checkpoint — PR #23
+#### P0 UI recovery — dedicated Mute workspace and truthful unavailable screens
+
+- Confirmed by source inspection on the installed-build source SHA: the Main Function Bar's MUTE action only toggled the selected Track; there was no on-screen 4×4 Pad/Track Mute workspace. Reserved shortcut/Menu destinations changed navigation state without rebuilding workspace content, leaving the previous screen visible.
+- Recovery branch: `fix/p0-mute-grid-ui-recovery-20261027`, based on exact PR #23 code SHA `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d`. Product acceptance is pending until exact-SHA Android Build, emulator interaction checks, fresh PNG/XML captures and APK artifact all complete.
+- Scope: real Pad Mute and Track Mute 4×4 grids; native state readback; 16-Track banks; full-size truthful RESERVED routing; runtime assertions for toggling/restoring real musical mute state while retaining Sequence/Track/Pad and event data. Canonical Main remains controller-first with no permanent software pad grid.
+- Physical MPC Studio MkII validation remains separate from emulator acceptance.
+
+## Latest accepted primary checkpoint — PR #23
 
 - PR #23 remains OPEN: feature/mpc-one-ui-fidelity → fix/ui-shell-format-width-startup. Current HEAD d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991; base SHA 5f562e54e2cf8235041590933232a3836d74a16a.
 - Product-code SHA 3de910cc0e28b5abe82e588766b77c49262fe650 passed Android Build #3296 / [run 40205072938](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40205072938), all 57 steps. The current docs-only HEAD d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991 passed Build #3301 / [run 40207854314](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40207854314), all 57 steps.
