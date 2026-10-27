@@ -14987,7 +14987,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
-        final String originalTrackData = nativeSequenceGetTrackArrangementData(trackIndex);
+        final String originalTrackData = String.valueOf(nativeSequenceGetTrackArrangementData(trackIndex));
         final java.io.File releaseSignal = new java.io.File(
                 getCacheDir(), "mpc-arrange-zoom-touch-capture-release");
         final java.io.File resultFile = new java.io.File(
@@ -15020,7 +15020,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         expectedViewportStart = -1;
                     }
                 }
-                final String restoredTrackData = nativeSequenceGetTrackArrangementData(trackIndex);
+                final String restoredTrackData = String.valueOf(nativeSequenceGetTrackArrangementData(trackIndex));
                 final boolean restored = expectedVisibleBars > 0
                         && expectedViewportStart > 0
                         && arrangementView != null
