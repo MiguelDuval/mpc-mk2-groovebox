@@ -679,6 +679,30 @@ for required in \
   fi
 done
 
+echo "Running Arrangement zoom acceptance source preflight..."
+if ! grep -Fq -- 'UI_ARRANGE_ZOOM_TOUCH_CAPTURE_READY:' "$MAIN_ACTIVITY_SOURCE" \
+    || ! grep -Fq -- 'awaitArrangeZoomTouchAcceptance()' "$MAIN_ACTIVITY_SOURCE" \
+    || ! grep -Fq -- 'mpc-arrange-zoom-touch-capture-release' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Arrangement zoom acceptance does not have its own bounded app-side handshake"; exit 1
+fi
+if ! grep -Fq -- 'UI_ARRANGE_ZOOM_STATE:' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MainActivity does not expose the native Arrangement zoom state oracle"; exit 1
+fi
+if ! grep -Fq -- 'Arrangement ZOOM OUT visible bars=' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MainActivity does not expose live Arrangement viewport bounds through accessibility"; exit 1
+fi
+if ! grep -Fq -- 'restorePreviousZoomWindow(boolean requestedZoomIn)' "$ARRANGE_VIEW_SOURCE"; then
+  echo "ERROR: Arrangement discrete zoom actions do not expose exact inverse-viewport restoration"; exit 1
+fi
+if ! grep -Fq -- 'zoomHistory.clear();' "$ARRANGE_VIEW_SOURCE"; then
+  echo "ERROR: Arrangement zoom history has no explicit invalidation path"; exit 1
+fi
+if ! grep -Fq -- 'timelinePanActive' "$ARRANGE_VIEW_SOURCE" || ! grep -Fq -- 'onViewportChanged(int previousStartBar, int currentStartBar)' "$ARRANGE_VIEW_SOURCE"; then
+  echo "ERROR: Arrangement ruler pan must expose a native-safe viewport change callback"; exit 1
+fi
+if ! grep -Fq -- 'UI_ARRANGE_PAN_STATE: action=PAN' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Arrangement ruler pan has no native event-data audit marker"; exit 1
+fi
 echo "Running Arrangement event → Grid gesture integration preflight..."
 for required in \
   'verifyArrangeLoopDragAndRestoreForAudit()' \
@@ -2097,6 +2121,8 @@ capture_ui_screenshot() {
     mpc-groovebox-arrange-placement-split.png|\
     mpc-groovebox-arrange-placement-flow-final.png|\
     mpc-groovebox-arrange-placement-duplicate.png|\
+    mpc-groovebox-arrange-pan-*.png|\
+    mpc-groovebox-arrange-zoom-*.png|\
     mpc-groovebox-arrange-loop-changed.png|\
     mpc-groovebox-grid-edit-after-draw.png|\
     mpc-groovebox-browser.png|\
@@ -2569,6 +2595,8 @@ arrangement_grid_reentry_capture_done=0
 track_view_mute_capture_done=0
 step_touch_capture_done=0
 step_touch_acceptance_complete=0
+arrangement_zoom_touch_capture_done=0
+arrangement_zoom_touch_acceptance_complete=0
 arrangement_loop_touch_capture_done=0
 arrangement_loop_touch_acceptance_complete=0
 audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
@@ -2576,6 +2604,366 @@ audit_poll=0
 while (( SECONDS < audit_deadline )); do
   log_snapshot="$(adb_bounded 5 logcat -d -v brief 2>/dev/null || true)"
 
+  if grep -Fq -- "UI_ARRANGE_ZOOM_TOUCH_ACCEPTANCE_COMPLETE:" <<<"$log_snapshot"; then
+    arrangement_zoom_touch_acceptance_complete=1
+  fi
+
+  if [ "$arrangement_zoom_touch_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_ARRANGE_ZOOM_TOUCH_CAPTURE_READY:" <<<"$log_snapshot"; then
+    # ARR-003: real Function Bar zoom touches must change the visible timeline
+    # scale only. Compare the current Arrangement viewport against live UI tree
+    # metadata and compare the exact native Track event projection across the
+    # reset → zoom-in → zoom-out round trip.
+    ARRANGE_ZOOM_BASELINE_PNG="/tmp/mpc-groovebox-arrange-zoom-baseline.png"
+    ARRANGE_ZOOM_BASELINE_XML="/tmp/mpc-groovebox-arrange-zoom-baseline-uiautomator.xml"
+    ARRANGE_ZOOM_BASELINE_REMOTE="/sdcard/mpc-groovebox-arrange-zoom-baseline-uiautomator.xml"
+    ARRANGE_PAN_PREP_PNG="/tmp/mpc-groovebox-arrange-pan-start.png"
+    ARRANGE_PAN_PREP_XML="/tmp/mpc-groovebox-arrange-pan-start-uiautomator.xml"
+    ARRANGE_PAN_PREP_REMOTE="/sdcard/mpc-groovebox-arrange-pan-start-uiautomator.xml"
+    ARRANGE_PAN_CHANGED_PNG="/tmp/mpc-groovebox-arrange-pan-changed.png"
+    ARRANGE_PAN_CHANGED_XML="/tmp/mpc-groovebox-arrange-pan-changed-uiautomator.xml"
+    ARRANGE_PAN_CHANGED_REMOTE="/sdcard/mpc-groovebox-arrange-pan-changed-uiautomator.xml"
+    ARRANGE_PAN_RESTORED_PNG="/tmp/mpc-groovebox-arrange-pan-restored.png"
+    ARRANGE_PAN_RESTORED_XML="/tmp/mpc-groovebox-arrange-pan-restored-uiautomator.xml"
+    ARRANGE_PAN_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-pan-restored-uiautomator.xml"
+    ARRANGE_ZOOM_IN_PNG="/tmp/mpc-groovebox-arrange-zoom-in.png"
+    ARRANGE_ZOOM_IN_XML="/tmp/mpc-groovebox-arrange-zoom-in-uiautomator.xml"
+    ARRANGE_ZOOM_IN_REMOTE="/sdcard/mpc-groovebox-arrange-zoom-in-uiautomator.xml"
+    ARRANGE_ZOOM_RESTORED_PNG="/tmp/mpc-groovebox-arrange-zoom-out-restored.png"
+    ARRANGE_ZOOM_RESTORED_XML="/tmp/mpc-groovebox-arrange-zoom-out-restored-uiautomator.xml"
+    ARRANGE_ZOOM_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-zoom-out-restored-uiautomator.xml"
+
+    arrange_zoom_viewport() {
+      python3 - "$1" <<'PY_ARRANGE_ZOOM_VIEWPORT'
+import re
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+found = []
+for node in root.iter("node"):
+    description = node.attrib.get("content-desc", "")
+    match = re.fullmatch(
+        r"Arrangement ZOOM OUT visible bars=(\d+) viewport start bar=(\d+)",
+        description)
+    if not match:
+        continue
+    bounds = re.fullmatch(
+        r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]",
+        node.attrib.get("bounds", ""))
+    if not bounds:
+        continue
+    left, top, right, bottom = map(int, bounds.groups())
+    if right > left and bottom > top:
+        found.append((int(match.group(1)), int(match.group(2))))
+if len(found) != 1:
+    raise SystemExit(
+        f"expected one visible Arrangement viewport description, found {len(found)}: {found}")
+print(found[0][0], found[0][1])
+PY_ARRANGE_ZOOM_VIEWPORT
+    }
+
+    arrange_zoom_data_from_log() {
+      python3 - "$1" <<'PY_ARRANGE_ZOOM_LOG'
+import re
+import sys
+match = re.search(r"\bdata=(.*)$", sys.argv[1])
+if not match or not match.group(1):
+    raise SystemExit("Arrangement zoom audit log has no native Track event projection")
+print(match.group(1))
+PY_ARRANGE_ZOOM_LOG
+    }
+
+    arrange_zoom_log_line() {
+      local action="$1" line=""
+      for zoom_log_attempt in {1..12}; do
+        line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+          | grep -F -- "UI_ARRANGE_ZOOM_STATE: action=$action " | tail -n 1 || true)"
+        if [[ -n "$line" ]]; then printf '%s\n' "$line"; return 0; fi
+        sleep 0.25
+      done
+      echo "ERROR: missing native Arrangement zoom marker for action=$action"
+      return 1
+    }
+
+    echo "Running ARR-003 real-touch Arrangement RESET → ZOOM+ → ZOOM− viewport round trip..."
+    if ! dump_device_ui_retry "$ARRANGE_ZOOM_BASELINE_REMOTE" "$ARRANGE_ZOOM_BASELINE_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement hierarchy before RESET"; exit 1
+    fi
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_BASELINE_XML" "RESET"; then
+      echo "ERROR: Arrangement RESET zoom action was not clickable"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_ZOOM_BASELINE_REMOTE" "$ARRANGE_ZOOM_BASELINE_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement zoom baseline hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_ZOOM_BASELINE_PNG" 10; then
+      echo "ERROR: could not capture Arrangement zoom baseline screenshot"; exit 1
+    fi
+    read -r arrange_zoom_baseline_bars arrange_zoom_baseline_start \
+      < <(arrange_zoom_viewport "$ARRANGE_ZOOM_BASELINE_XML") || {
+        echo "ERROR: baseline Arrangement viewport metadata is missing"; exit 1;
+      }
+    if (( arrange_zoom_baseline_bars <= 1 )); then
+      echo "ERROR: baseline Arrangement viewport cannot zoom in: $arrange_zoom_baseline_bars bars"; exit 1
+    fi
+    arrange_zoom_reset_line="$(arrange_zoom_log_line "RESET")" || exit 1
+    arrange_zoom_baseline_data="$(arrange_zoom_data_from_log "$arrange_zoom_reset_line")" || exit 1
+
+    # Pan should be exercised at a zoom level where not every Sequence bar is
+    # visible. Begin with a real ZOOM + touch and reset after the pan round trip.
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_BASELINE_XML" "ZOOM +"; then
+      echo "ERROR: Arrangement ZOOM + could not prepare a panning viewport"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_PAN_PREP_REMOTE" "$ARRANGE_PAN_PREP_XML" 8 4; then
+      echo "ERROR: could not capture Arrangement panning baseline hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_PAN_PREP_PNG" 10; then
+      echo "ERROR: could not capture Arrangement panning baseline screenshot"; exit 1
+    fi
+    read -r arrange_pan_original_bars arrange_pan_original_start \
+      < <(arrange_zoom_viewport "$ARRANGE_PAN_PREP_XML") || {
+        echo "ERROR: panning baseline viewport metadata is missing"; exit 1;
+      }
+    if (( arrange_pan_original_bars >= arrange_zoom_baseline_bars )); then
+      echo "ERROR: ZOOM + did not create a narrower panning window"; exit 1
+    fi
+    # ARR-003 navigation: drag the blank ruler to pan forward, then reverse the
+    # exact gesture. Only viewportStartBar may change; the native Track event
+    # projection and visible-bar range must remain unchanged. Touch points come
+    # from live Canvas bounds and device density, not hard-coded screen coordinates.
+    arrange_density="$(adb_bounded 10 shell wm density)" || {
+      echo "ERROR: could not read live density for Arrangement pan hit testing"; exit 1;
+    }
+    arrange_pan_touch_points="$(python3 - "$ARRANGE_PAN_PREP_XML" "$arrange_density" <<'PY_ARRANGE_PAN_TOUCH_POINTS'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, density_text = sys.argv[1], sys.argv[2]
+density_match = re.search(r"Physical density:\s*(\d+)", density_text)
+if not density_match:
+    raise SystemExit(f"could not parse live display density: {density_text!r}")
+density = int(density_match.group(1)) / 160.0
+nodes = [node for node in ET.parse(path).getroot().iter("node")
+         if node.attrib.get("content-desc", "") == "MPC linear arrangement editor"]
+if len(nodes) != 1:
+    raise SystemExit(f"expected one Arrangement Canvas root, found {len(nodes)}")
+match = re.fullmatch(
+    r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]",
+    nodes[0].attrib.get("bounds", ""))
+if not match:
+    raise SystemExit(f"invalid Arrangement Canvas bounds: {nodes[0].attrib.get('bounds')!r}")
+left, top, right, bottom = map(int, match.groups())
+header = round(138 * density)
+ruler_y = top + round(12 * density)
+timeline_width = right - left - header
+if timeline_width <= 0 or ruler_y >= bottom:
+    raise SystemExit(f"Arrangement ruler/timeline geometry is invalid: {nodes[0].attrib}")
+start_x = left + header + round(timeline_width * 0.85)
+finish_x = left + header + round(timeline_width * 0.25)
+if not (left + header < finish_x < start_x < right and top < ruler_y < bottom):
+    raise SystemExit(f"derived ruler pan touch is outside the Canvas: {(start_x, finish_x, ruler_y)}")
+print(start_x, ruler_y, finish_x, ruler_y)
+PY_ARRANGE_PAN_TOUCH_POINTS
+    )" || { echo "ERROR: could not derive live ruler pan touch coordinates"; exit 1; }
+    read -r arrange_pan_start_x arrange_pan_y arrange_pan_end_x arrange_pan_end_y \
+      <<< "$arrange_pan_touch_points"
+
+    arrange_pan_marker_count_before() {
+      adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+        | grep -F -c -- 'UI_ARRANGE_PAN_STATE: action=PAN' || true
+    }
+    wait_for_new_arrange_pan_marker() {
+      local before="$1" line="" count="" logs=""
+      for pan_log_attempt in {1..20}; do
+        logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+        count="$(grep -F -c -- 'UI_ARRANGE_PAN_STATE: action=PAN' <<<"$logs" || true)"
+        if [[ "$count" =~ ^[0-9]+$ ]] && (( count > before )); then
+          line="$(grep -F -- 'UI_ARRANGE_PAN_STATE: action=PAN' <<<"$logs" | tail -n 1)"
+          printf '%s\n' "$line"
+          return 0
+        fi
+        sleep 0.25
+      done
+      echo "ERROR: no fresh native Arrangement pan callback was emitted"
+      return 1
+    }
+
+    arrange_pan_markers_before="$(arrange_pan_marker_count_before)"
+    if ! adb_bounded 10 shell input swipe \
+      "$arrange_pan_start_x" "$arrange_pan_y" \
+      "$arrange_pan_end_x" "$arrange_pan_end_y" 650; then
+      echo "ERROR: real ruler swipe did not execute for Arrangement pan"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_PAN_CHANGED_REMOTE" "$ARRANGE_PAN_CHANGED_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement panned hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_PAN_CHANGED_PNG" 10; then
+      echo "ERROR: could not capture Arrangement panned screenshot"; exit 1
+    fi
+    read -r arrange_pan_changed_bars arrange_pan_changed_start \
+      < <(arrange_zoom_viewport "$ARRANGE_PAN_CHANGED_XML") || {
+        echo "ERROR: panned Arrangement viewport metadata is missing"; exit 1;
+      }
+    arrange_pan_changed_line="$(wait_for_new_arrange_pan_marker "$arrange_pan_markers_before")" || exit 1
+    arrange_pan_changed_state="$(sed -nE 's/.*from=([0-9]+) to=([0-9]+) visibleBars=([0-9]+).*/\1 \2 \3/p' <<<"$arrange_pan_changed_line")"
+    read -r arrange_pan_log_from arrange_pan_log_to arrange_pan_log_bars <<< "$arrange_pan_changed_state"
+    if [[ "$arrange_pan_log_from" != "$arrange_pan_original_start" \
+        || "$arrange_pan_log_to" != "$arrange_pan_changed_start" \
+        || "$arrange_pan_log_bars" != "$arrange_pan_original_bars" ]]; then
+      echo "ERROR: pan callback did not report the exact before/after viewport"
+      echo "$arrange_pan_changed_line"; exit 1
+    fi
+    arrange_pan_changed_data="$(arrange_zoom_data_from_log "$arrange_pan_changed_line")" || exit 1
+    if [[ "$arrange_pan_changed_bars" != "$arrange_pan_original_bars" \
+        || "$arrange_pan_changed_start" -le "$arrange_pan_original_start" ]]; then
+      echo "ERROR: ruler pan did not move viewport forward while preserving scale: baseline=$arrange_pan_original_bars/$arrange_pan_original_start panned=$arrange_pan_changed_bars/$arrange_pan_changed_start"; exit 1
+    fi
+    if [[ "$arrange_pan_changed_data" != "$arrange_zoom_baseline_data" ]]; then
+      echo "ERROR: Arrangement ruler pan changed native Track event data"
+      printf 'BASELINE: %s\nPANNED: %s\n' "$arrange_zoom_baseline_data" "$arrange_pan_changed_data"; exit 1
+    fi
+
+    arrange_pan_restore_markers_before="$(arrange_pan_marker_count_before)"
+    if ! adb_bounded 10 shell input swipe \
+      "$arrange_pan_end_x" "$arrange_pan_y" \
+      "$arrange_pan_start_x" "$arrange_pan_y" 650; then
+      echo "ERROR: reverse ruler swipe did not execute for Arrangement pan restoration"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_PAN_RESTORED_REMOTE" "$ARRANGE_PAN_RESTORED_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement pan-restored hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_PAN_RESTORED_PNG" 10; then
+      echo "ERROR: could not capture Arrangement pan-restored screenshot"; exit 1
+    fi
+    read -r arrange_pan_restored_bars arrange_pan_restored_start \
+      < <(arrange_zoom_viewport "$ARRANGE_PAN_RESTORED_XML") || {
+        echo "ERROR: restored Arrangement pan viewport metadata is missing"; exit 1;
+      }
+    arrange_pan_restored_line="$(wait_for_new_arrange_pan_marker "$arrange_pan_restore_markers_before")" || exit 1
+    arrange_pan_restored_state="$(sed -nE 's/.*from=([0-9]+) to=([0-9]+) visibleBars=([0-9]+).*/\1 \2 \3/p' <<<"$arrange_pan_restored_line")"
+    read -r arrange_pan_restore_from arrange_pan_restore_to arrange_pan_restore_bars <<< "$arrange_pan_restored_state"
+    if [[ "$arrange_pan_restore_from" != "$arrange_pan_changed_start" \
+        || "$arrange_pan_restore_to" != "$arrange_pan_original_start" \
+        || "$arrange_pan_restore_bars" != "$arrange_pan_original_bars" ]]; then
+      echo "ERROR: reverse-pan callback did not report the exact restored viewport"
+      echo "$arrange_pan_restored_line"; exit 1
+    fi
+    arrange_pan_restored_data="$(arrange_zoom_data_from_log "$arrange_pan_restored_line")" || exit 1
+    if [[ "$arrange_pan_restored_bars" != "$arrange_pan_original_bars" \
+        || "$arrange_pan_restored_start" != "$arrange_pan_original_start" ]]; then
+      echo "ERROR: reverse ruler pan did not restore the exact prior viewport: baseline=$arrange_pan_original_bars/$arrange_pan_original_start restored=$arrange_pan_restored_bars/$arrange_pan_restored_start"; exit 1
+    fi
+    if [[ "$arrange_pan_restored_data" != "$arrange_zoom_baseline_data" \
+        || "$arrange_pan_changed_data" != "$arrange_zoom_baseline_data" ]]; then
+      echo "ERROR: Arrangement pan round trip changed native Track event data"
+      printf 'BASELINE: %s\nPANNED: %s\nRESTORED: %s\n' \
+        "$arrange_zoom_baseline_data" "$arrange_pan_changed_data" "$arrange_pan_restored_data"; exit 1
+    fi
+    if ! test -s /tmp/mpc-groovebox-arrange-pan-start.png \
+        || ! test -s /tmp/mpc-groovebox-arrange-pan-changed.png \
+        || ! test -s /tmp/mpc-groovebox-arrange-pan-restored.png; then
+      echo "ERROR: required Arrangement pan screenshots are missing"; exit 1
+    fi
+    if [[ ! -s "$ARRANGE_PAN_PREP_XML" \
+        || ! -s "$ARRANGE_PAN_CHANGED_XML" \
+        || ! -s "$ARRANGE_PAN_RESTORED_XML" ]]; then
+      echo "ERROR: required Arrangement pan accessibility XML is missing"; exit 1
+    fi
+    # Reset and recapture after panning so the separate ZOOM + / ZOOM −
+    # round-trip starts from a fresh, canonical viewport.
+    if ! tap_visible_description_early "$ARRANGE_PAN_RESTORED_XML" "RESET"; then
+      echo "ERROR: Arrangement RESET did not recover the viewport after panning"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_ZOOM_BASELINE_REMOTE" "$ARRANGE_ZOOM_BASELINE_XML" 8 4; then
+      echo "ERROR: could not capture fresh reset Arrangement zoom baseline"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_ZOOM_BASELINE_PNG" 10; then
+      echo "ERROR: could not capture reset Arrangement zoom baseline screenshot"; exit 1
+    fi
+    read -r arrange_zoom_baseline_bars arrange_zoom_baseline_start \
+      < <(arrange_zoom_viewport "$ARRANGE_ZOOM_BASELINE_XML") || {
+        echo "ERROR: reset Arrangement viewport metadata is missing"; exit 1;
+      }
+    arrange_zoom_reset_line="$(arrange_zoom_log_line "RESET")" || exit 1
+    arrange_zoom_baseline_data="$(arrange_zoom_data_from_log "$arrange_zoom_reset_line")" || exit 1
+
+    echo "ARR-003 ruler pan passed: viewport start advanced and returned exactly; visible bars and native Track event data remained unchanged."
+
+
+
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_BASELINE_XML" "ZOOM +"; then
+      echo "ERROR: Arrangement ZOOM + action was not clickable"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_ZOOM_IN_REMOTE" "$ARRANGE_ZOOM_IN_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement zoom-in hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_ZOOM_IN_PNG" 10; then
+      echo "ERROR: could not capture Arrangement zoom-in screenshot"; exit 1
+    fi
+    read -r arrange_zoom_in_bars arrange_zoom_in_start \
+      < <(arrange_zoom_viewport "$ARRANGE_ZOOM_IN_XML") || {
+        echo "ERROR: zoom-in Arrangement viewport metadata is missing"; exit 1;
+      }
+    arrange_zoom_in_line="$(arrange_zoom_log_line "ZOOM_IN")" || exit 1
+    arrange_zoom_in_data="$(arrange_zoom_data_from_log "$arrange_zoom_in_line")" || exit 1
+    if (( arrange_zoom_in_bars >= arrange_zoom_baseline_bars )); then
+      echo "ERROR: real ZOOM + did not narrow Arrangement viewport: baseline=$arrange_zoom_baseline_bars zoomIn=$arrange_zoom_in_bars"; exit 1
+    fi
+    if [[ "$arrange_zoom_in_data" != "$arrange_zoom_baseline_data" ]]; then
+      echo "ERROR: Arrangement ZOOM + changed native Track event data"
+      printf 'BASELINE: %s\nZOOM IN: %s\n' "$arrange_zoom_baseline_data" "$arrange_zoom_in_data"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_IN_XML" "ZOOM −"; then
+      echo "ERROR: Arrangement ZOOM − action was not clickable"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_ZOOM_RESTORED_REMOTE" "$ARRANGE_ZOOM_RESTORED_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement zoom-restored hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_ZOOM_RESTORED_PNG" 10; then
+      echo "ERROR: could not capture Arrangement zoom-restored screenshot"; exit 1
+    fi
+    read -r arrange_zoom_restored_bars arrange_zoom_restored_start \
+      < <(arrange_zoom_viewport "$ARRANGE_ZOOM_RESTORED_XML") || {
+        echo "ERROR: restored Arrangement viewport metadata is missing"; exit 1;
+      }
+    arrange_zoom_out_line="$(arrange_zoom_log_line "ZOOM_OUT")" || exit 1
+    arrange_zoom_out_data="$(arrange_zoom_data_from_log "$arrange_zoom_out_line")" || exit 1
+    if [[ "$arrange_zoom_restored_bars" != "$arrange_zoom_baseline_bars" \
+        || "$arrange_zoom_restored_start" != "$arrange_zoom_baseline_start" ]]; then
+      echo "ERROR: ZOOM − did not restore original Arrangement viewport: baseline=$arrange_zoom_baseline_bars/$arrange_zoom_baseline_start restored=$arrange_zoom_restored_bars/$arrange_zoom_restored_start"; exit 1
+    fi
+    if [[ "$arrange_zoom_in_data" != "$arrange_zoom_out_data" \
+        || "$arrange_zoom_baseline_data" != "$arrange_zoom_out_data" ]]; then
+      echo "ERROR: Arrangement zoom round trip changed native Track event data"
+      printf 'BASELINE: %s\nZOOM IN: %s\nZOOM OUT: %s\n' \
+        "$arrange_zoom_baseline_data" "$arrange_zoom_in_data" "$arrange_zoom_out_data"; exit 1
+    fi
+    for arrange_zoom_artifact in \
+      "$ARRANGE_ZOOM_BASELINE_PNG" "$ARRANGE_ZOOM_BASELINE_XML" \
+      "$ARRANGE_ZOOM_IN_PNG" "$ARRANGE_ZOOM_IN_XML" \
+      "$ARRANGE_ZOOM_RESTORED_PNG" "$ARRANGE_ZOOM_RESTORED_XML"; do
+      if [[ ! -s "$arrange_zoom_artifact" ]]; then
+        echo "ERROR: Arrangement zoom evidence is missing: $arrange_zoom_artifact"; exit 1
+      fi
+    done
+    echo "ARR-003 passed: visible bars narrowed on ZOOM +, ZOOM − restored viewport, and native Track event data remained byte-for-byte unchanged."
+    if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'echo $arrange_zoom_baseline_bars $arrange_zoom_baseline_start > cache/mpc-arrange-zoom-touch-result'"; then
+      echo "ERROR: could not write Arrangement zoom acceptance result"; exit 1
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-arrange-zoom-touch-capture-release; then
+      echo "ERROR: could not release app-side Arrangement zoom checkpoint"; exit 1
+    fi
+    arrangement_zoom_touch_capture_done=1
+    echo "ARR-003 zoom/pan acceptance passed and app-side checkpoint released."
+  fi
   if grep -Fq -- "UI_ARRANGE_LOOP_TOUCH_ACCEPTANCE_COMPLETE:" <<<"$log_snapshot"; then
     arrangement_loop_touch_acceptance_complete=1
   fi
@@ -4411,6 +4799,9 @@ PY
     if ! capture_ui_screenshot "$ARRANGE_LOOP_RESTORED_PNG" 10; then
       echo "ERROR: Arrange loop restored-state screenshot failed"; exit 1
     fi
+
+
+
 
     if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'echo $loop_original_start $loop_original_end $loop_target_end > cache/mpc-arrange-loop-touch-result'"; then
       echo "ERROR: could not write Arrange loop acceptance result"; exit 1
@@ -6316,6 +6707,11 @@ PY
     exit 1
   fi
   if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
+    if [ "$arrangement_zoom_touch_capture_done" -ne 1 ] \
+        || [ "$arrangement_zoom_touch_acceptance_complete" -ne 1 ]; then
+      echo "ERROR: UI audit completed without verified real Arrangement zoom/pan viewport and native-data acceptance"
+      exit 1
+    fi
     if [ "$arrangement_loop_touch_capture_done" -ne 1 ] \
         || [ "$arrangement_loop_touch_acceptance_complete" -ne 1 ]; then
       echo "ERROR: UI audit completed without verified real Arrangement loop-brace touch/restore acceptance"
