@@ -7748,7 +7748,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         arrangementZoomOutButton.setContentDescription(
-                "Arrangement zoom viewport visible bars="
+                "Arrangement ZOOM OUT visible bars="
                         + arrangementView.visibleBarsForAudit()
                         + " viewport start bar=" + arrangementView.viewportStartBarForAudit());
     }
