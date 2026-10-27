@@ -1946,6 +1946,29 @@ for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStat
     exit 1
   fi
 done
+echo "Checking Grid zoom visual evidence capture and upload contract..."
+for required in \\
+  'mpc-groovebox-grid-zoom-baseline.png|\\' \\
+  'mpc-groovebox-grid-zoom-horizontal.png|\\' \\
+  'mpc-groovebox-grid-zoom-vertical.png|\\'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: Grid zoom screenshot is not retained by capture_ui_screenshot: $required"
+    exit 1
+  fi
+done
+for required in \\
+  '/tmp/mpc-groovebox-grid-zoom-baseline.png' \\
+  '/tmp/mpc-groovebox-grid-zoom-baseline-uiautomator.xml' \\
+  '/tmp/mpc-groovebox-grid-zoom-horizontal.png' \\
+  '/tmp/mpc-groovebox-grid-zoom-horizontal-uiautomator.xml' \\
+  '/tmp/mpc-groovebox-grid-zoom-vertical.png' \\
+  '/tmp/mpc-groovebox-grid-zoom-vertical-uiautomator.xml'; do
+  if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
+    echo "ERROR: Grid zoom evidence is not included in the CI artifact upload: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC Main XL strip value preflight..."
 MAIN_MIXER_STRIP_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
 require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'right.setSingleLine(true)'
