@@ -874,6 +874,20 @@ for required in \
   fi
 done
 
+echo "Running truthful MIDI readiness preflight..."
+MIDI_BRIDGE_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/AndroidMidiBridge.java"
+for required in 'public boolean isConnected()' 'if (wasConnected)' 'MPC Studio MkII disconnected'; do
+  if ! grep -Fq -- "$required" "$MIDI_BRIDGE_SOURCE"; then
+    echo "ERROR: Android MIDI connection-state contract missing: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'midiBridge != null && midiBridge.isConnected()' "$MAIN_ACTIVITY_SOURCE" \
+    || grep -Fq -- 'final boolean midiReady = midiBridge != null;' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: persistent shell must derive MIDI readiness from connected ports, not bridge allocation"
+  exit 1
+fi
+
 echo "Running MPC shortcut pictography preflight..."
 SHORTCUT_ITEM_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutRailItemView.java"
 for required in   'MpcShortcutIconDrawable'   'new MpcShortcutIconDrawable('   'dp(MPC_SHORTCUT_SELECTION_WIDTH_DP)'   'setSelectedState(boolean selected)'   'setSelected(selected)'   'case BROWSER:'   'case GRID:'   'case STEP:'   'case TRACK_VIEW:'; do
@@ -11408,6 +11422,38 @@ echo "PROJECT_NATIVE_STARTUP_READY • awaiting actual Main shell interaction"
 if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MAIN_READY_XML"; then
   echo "ERROR: native Main shell did not publish fresh Android View-tree evidence"; exit 1
 fi
+# This emulator has no physical MPC Studio MkII. Assert the rendered Toolbar
+# reports both MIDI ports unavailable even though AndroidMidiBridge is allocated.
+if ! python3 - "$PROJECT_MAIN_READY_XML" <<'PY_MIDI_TOOLBAR_STATE'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+for name in ("IN", "OUT"):
+    expected = f"MPC Toolbar MIDI {name} unavailable"
+    matches = [n for n in nodes
+               if n.attrib.get("content-desc") == expected
+               and n.attrib.get("visible-to-user") == "true"]
+    if len(matches) != 1:
+        ready = [n.attrib.get("content-desc", "") for n in nodes
+                 if n.attrib.get("content-desc", "").startswith(f"MPC Toolbar MIDI {name} ")]
+        raise SystemExit(
+            f"expected one visible disconnected MIDI {name} indicator; got {ready!r}")
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         matches[0].attrib.get("bounds", ""))
+    if not match:
+        raise SystemExit(f"MIDI {name} indicator has invalid bounds: {matches[0].attrib!r}")
+    left, top, right, bottom = map(int, match.groups())
+    if right <= left or bottom <= top:
+        raise SystemExit(f"MIDI {name} indicator has empty bounds: {matches[0].attrib!r}")
+print("MIDI Toolbar IN/OUT both report unavailable with no connected MkII.")
+PY_MIDI_TOOLBAR_STATE
+then
+  echo "ERROR: MIDI Toolbar readiness does not match the disconnected emulator"; exit 1
+fi
+
 snapshot_project_view_tree_marker_baselines
 if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Toolbar Menu"; then
   echo "ERROR: real Toolbar Menu touch failed using current Main bounds"; exit 1
