@@ -111,6 +111,7 @@ final class MpcArrangeView extends View {
         void onInsertionTargetSelected(int trackIndex, long tick);
         void onEventDoubleTapped(int trackIndex, long tick);
         void onLoopCommitted(int startBar, int endBar);
+        void onViewportChanged(int previousStartBar, int currentStartBar);
     }
 
     private static final int BG = 0xff101316;
@@ -150,6 +151,10 @@ final class MpcArrangeView extends View {
     private int visibleBars = 8;
     private int viewportStartBar = 1;
     private int loopHandle = -1;
+    private boolean timelinePanActive;
+    private boolean timelinePanMoved;
+    private float timelinePanStartX;
+    private int timelinePanStartViewportStartBar = 1;
     private float scaleBaseBars = 8f;
     private final Deque<ZoomTransition> zoomHistory = new ArrayDeque<>();
 
@@ -923,6 +928,8 @@ final class MpcArrangeView extends View {
             final float headerWidth = dp(LEFT_HEADER_DP);
             final float rulerHeight = dp(TOP_RULER_DP);
 
+            timelinePanActive = false;
+            timelinePanMoved = false;
             if (event.getY() < rulerHeight) {
                 final float timelineWidth =
                         Math.max(1f, getWidth() - headerWidth);
@@ -940,6 +947,14 @@ final class MpcArrangeView extends View {
                     loopHandle = 1;
                 } else {
                     loopHandle = -1;
+                    // A drag on the blank ruler pans the viewport. Loop handles
+                    // keep their existing higher-priority drag behavior; pad/clip
+                    // selection remains unchanged because this branch is ruler-only.
+                    if (event.getX() >= headerWidth) {
+                        timelinePanActive = true;
+                        timelinePanStartX = event.getX();
+                        timelinePanStartViewportStartBar = viewportStartBar;
+                    }
                 }
             } else {
                 loopHandle = -1;
@@ -990,6 +1005,26 @@ final class MpcArrangeView extends View {
         }
 
         if (event.getActionMasked() == MotionEvent.ACTION_MOVE
+                && timelinePanActive
+                && loopHandle < 0
+                && !scaleDetector.isInProgress()) {
+            final float deltaX = timelinePanStartX - event.getX();
+            if (!timelinePanMoved && Math.abs(deltaX) >= dp(10f)) {
+                timelinePanMoved = true;
+            }
+            if (timelinePanMoved) {
+                final float timelineWidth =
+                        Math.max(1f, getWidth() - dp(LEFT_HEADER_DP));
+                final float pxPerBar = timelineWidth / Math.max(1, visibleBars);
+                final int movedBars = Math.round(deltaX / Math.max(1f, pxPerBar));
+                viewportStartBar = clampViewportStart(
+                        timelinePanStartViewportStartBar + movedBars);
+                invalidate();
+            }
+            return true;
+        }
+
+        if (event.getActionMasked() == MotionEvent.ACTION_MOVE
                 && loopHandle >= 0
                 && !scaleDetector.isInProgress()) {
             updateLoopHandle(event.getX());
@@ -997,6 +1032,17 @@ final class MpcArrangeView extends View {
         }
 
         if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+            if (timelinePanActive) {
+                final int previousStart = timelinePanStartViewportStartBar;
+                final int currentStart = viewportStartBar;
+                final boolean moved = timelinePanMoved;
+                timelinePanActive = false;
+                timelinePanMoved = false;
+                if (moved && previousStart != currentStart && listener != null) {
+                    listener.onViewportChanged(previousStart, currentStart);
+                }
+                return true;
+            }
             if (loopHandle >= 0) {
                 updateLoopHandle(event.getX());
                 if (listener != null) {
@@ -1008,6 +1054,13 @@ final class MpcArrangeView extends View {
         }
 
         if (event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+            if (timelinePanActive && timelinePanMoved) {
+                viewportStartBar = clampViewportStart(
+                        timelinePanStartViewportStartBar);
+                invalidate();
+            }
+            timelinePanActive = false;
+            timelinePanMoved = false;
             loopHandle = -1;
         }
 
