@@ -6313,7 +6313,7 @@ PY_GRID_ZOOM_BASELINE
       echo "ERROR: Grid zoom baseline native event state is inconsistent"; cat "$GRID_ZOOM_BASELINE_XML"; exit 1
     fi
 
-    if ! tap_ui_text "$GRID_ZOOM_BASELINE_XML" "ZOOM H"; then
+    if ! tap_visible_description_early "$GRID_ZOOM_BASELINE_XML" "ZOOM H"; then
       echo "ERROR: real-touch Grid ZOOM H Function Bar action failed"; exit 1
     fi
     sleep 0.25
@@ -6387,7 +6387,7 @@ PY_GRID_ZOOM_H
       echo "ERROR: Grid ZOOM H changed event data or failed viewport acceptance"; cat "$GRID_ZOOM_H_XML"; exit 1
     fi
 
-    if ! tap_ui_text "$GRID_ZOOM_H_XML" "ZOOM V"; then
+    if ! tap_visible_description_early "$GRID_ZOOM_H_XML" "ZOOM V"; then
       echo "ERROR: real-touch Grid ZOOM V Function Bar action failed"; exit 1
     fi
     sleep 0.25
