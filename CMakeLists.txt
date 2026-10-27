@@ -24,6 +24,7 @@ add_library(mpcgroovebox SHARED
     src/MPC/Sequencer/MpcNoteRepeatScheduler.cpp
     src/MPC/Domain/MpcDomain.cpp
     src/MPC/MpcProjectState.cpp
+    src/MPC/MpcProjectPersistence.cpp
     src/MPC/MpcCore.cpp
     src/MPC/Sequencer/MpcSequencerCursor.cpp
     src/MPC/Sequencer/MpcPatternScheduler.cpp

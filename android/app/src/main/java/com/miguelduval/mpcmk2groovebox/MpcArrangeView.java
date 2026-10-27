@@ -26,10 +26,29 @@ final class MpcArrangeView extends View {
     static final class Event {
         final long tick;
         final int durationTicks;
-
-        Event(long tick, int durationTicks) {
+        final int noteNumber;
+        Event(long tick, int durationTicks) { this(tick, durationTicks, -1); }
+        Event(long tick, int durationTicks, int noteNumber) {
             this.tick = Math.max(0L, tick);
             this.durationTicks = Math.max(1, durationTicks);
+            this.noteNumber = noteNumber >= 0 && noteNumber <= 127 ? noteNumber : -1;
+        }
+    }
+
+    static final class Placement {
+        final String id;
+        final String patternId;
+        final long startTick;
+        final int lengthTicks;
+        final int sourceOffsetTicks;
+
+        Placement(String id, String patternId, long startTick,
+                int lengthTicks, int sourceOffsetTicks) {
+            this.id = id == null ? "" : id;
+            this.patternId = patternId == null ? "" : patternId;
+            this.startTick = Math.max(0L, startTick);
+            this.lengthTicks = Math.max(1, lengthTicks);
+            this.sourceOffsetTicks = Math.max(0, sourceOffsetTicks);
         }
     }
 
@@ -42,6 +61,7 @@ final class MpcArrangeView extends View {
         final boolean armed;
         final int lengthTicks;
         final List<Event> events;
+        final List<Placement> placements;
 
         Lane(
                 int trackIndex,
@@ -52,6 +72,20 @@ final class MpcArrangeView extends View {
                 boolean armed,
                 int lengthTicks,
                 List<Event> events) {
+            this(trackIndex, name, type, program, muted, armed,
+                    lengthTicks, events, Collections.emptyList());
+        }
+
+        Lane(
+                int trackIndex,
+                String name,
+                String type,
+                String program,
+                boolean muted,
+                boolean armed,
+                int lengthTicks,
+                List<Event> events,
+                List<Placement> placements) {
             this.trackIndex = trackIndex;
             this.name = name == null ? "" : name;
             this.type = type == null ? "" : type;
@@ -62,11 +96,17 @@ final class MpcArrangeView extends View {
             this.events = events == null
                     ? Collections.emptyList()
                     : Collections.unmodifiableList(new ArrayList<>(events));
+            this.placements = placements == null
+                    ? Collections.emptyList()
+                    : Collections.unmodifiableList(new ArrayList<>(placements));
         }
     }
 
     interface Listener {
         void onTrackSelected(int trackIndex);
+        void onEventSelected(int trackIndex, long tick, int noteNumber);
+        void onEventSelectionCleared();
+        void onInsertionTargetSelected(int trackIndex, long tick);
         void onEventDoubleTapped(int trackIndex, long tick);
         void onLoopCommitted(int startBar, int endBar);
     }
@@ -80,6 +120,7 @@ final class MpcArrangeView extends View {
     private static final int PLAYHEAD = 0xffffffff;
     private static final int EVENT = 0xff56646d;
     private static final int EVENT_SELECTED = 0xffffb448;
+    private static final int INSERTION_TARGET = 0xff4dd0e1;
     private static final float LEFT_HEADER_DP = 138f;
     private static final float TOP_RULER_DP = 34f;
     private static final float LANE_DP = 46f;
@@ -92,7 +133,11 @@ final class MpcArrangeView extends View {
     private final ArrayList<Lane> lanes = new ArrayList<>();
 
     private Listener listener;
+    private boolean eventDoubleTapDispatched;
     private int selectedTrack = 0;
+    private int insertionTargetTrackIndex = -1;
+    private long insertionTargetTick = -1L;
+    private long quantizeGridTicks = 240L;
     private int barCount = 1;
     private int loopStartBar = 1;
     private int loopEndBar = 1;
@@ -145,7 +190,153 @@ final class MpcArrangeView extends View {
             lanes.addAll(values);
         }
         this.selectedTrack = Math.max(0, selectedTrack);
+        if (!hasInsertionTarget(insertionTargetTrackIndex, insertionTargetTick)) {
+            insertionTargetTrackIndex = -1;
+            insertionTargetTick = -1L;
+        }
         invalidate();
+    }
+
+    void setQuantizeGridTicks(long ticks) {
+        quantizeGridTicks = Math.max(1L, ticks);
+    }
+
+    void setInsertionTarget(int trackIndex, long tick) {
+        if (!hasInsertionTarget(trackIndex, tick)) {
+            clearInsertionTarget();
+            return;
+        }
+        insertionTargetTrackIndex = trackIndex;
+        insertionTargetTick = tick;
+        invalidate();
+    }
+
+    void clearInsertionTarget() {
+        insertionTargetTrackIndex = -1;
+        insertionTargetTick = -1L;
+        invalidate();
+    }
+
+    private boolean hasInsertionTarget(int trackIndex, long tick) {
+        if (trackIndex < 0 || tick < 0L) return false;
+        for (Lane lane : lanes) {
+            if (lane.trackIndex == trackIndex) {
+                return tick < lane.lengthTicks && tick % Math.max(1L, quantizeGridTicks) == 0L;
+            }
+        }
+        return false;
+    }
+
+    float[] trackLanePointForAudit(int trackIndex) {
+        if (getWidth() <= 0 || getHeight() <= 0) {
+            return null;
+        }
+        final float headerX = Math.min(
+                dp(24f), Math.max(0f, getWidth() - dp(1f)));
+        final float rulerHeight = dp(TOP_RULER_DP);
+        final float laneHeight = dp(LANE_DP);
+        for (int laneIndex = 0; laneIndex < lanes.size(); laneIndex++) {
+            if (lanes.get(laneIndex).trackIndex != trackIndex) {
+                continue;
+            }
+            final float y = rulerHeight + laneIndex * laneHeight + laneHeight / 2f;
+            if (y < rulerHeight || y >= getHeight()) {
+                return null;
+            }
+            final Hit actual = hit(headerX, y);
+            if (actual.trackIndex != trackIndex) {
+                return null;
+            }
+            return new float[] {headerX, y};
+        }
+        return null;
+    }
+
+    int loopStartBarForAudit() {
+        return loopStartBar;
+    }
+
+    int loopEndBarForAudit() {
+        return loopEndBar;
+    }
+
+    int totalBarsForAudit() {
+        return barCount;
+    }
+
+    int visibleBarsForAudit() {
+        return visibleBars;
+    }
+
+    int viewportStartBarForAudit() {
+        return viewportStartBar;
+    }
+
+    int selectedTrackForAudit() {
+        return selectedTrack;
+    }
+
+    float[] loopEndHandlePointForAudit(int bar) {
+        if (getWidth() <= 0 || getHeight() <= 0
+                || bar < 1 || bar > barCount) {
+            return null;
+        }
+        final float headerWidth = dp(LEFT_HEADER_DP);
+        final float timelineWidth = Math.max(1f, getWidth() - headerWidth);
+        final float pxPerBar = timelineWidth / Math.max(1, visibleBars);
+        final float x = xForBar(
+                bar + 0.999f, headerWidth, timelineWidth, pxPerBar);
+        final float y = Math.max(1f, dp(4));
+        if (x < headerWidth || x >= getWidth() || y >= dp(TOP_RULER_DP)) {
+            return null;
+        }
+        return new float[] {x, y};
+    }
+
+    float[] eventCenterForAudit(int trackIndex, long eventTick) {
+        if (getWidth() <= 0 || getHeight() <= 0) return null;
+
+        int laneIndex = -1;
+        Event targetEvent = null;
+        for (int i = 0; i < lanes.size(); i++) {
+            final Lane lane = lanes.get(i);
+            if (lane.trackIndex != trackIndex) continue;
+            laneIndex = i;
+            for (Event event : lane.events) {
+                if (event.tick == eventTick) {
+                    targetEvent = event;
+                    break;
+                }
+            }
+            break;
+        }
+        if (laneIndex < 0 || targetEvent == null) return null;
+
+        final float headerWidth = dp(LEFT_HEADER_DP);
+        final float rulerHeight = dp(TOP_RULER_DP);
+        final float laneHeight = dp(LANE_DP);
+        final float timelineWidth = Math.max(1f, getWidth() - headerWidth);
+        final float pxPerBar = timelineWidth / Math.max(1, visibleBars);
+        final float startX = xForTick(
+                targetEvent.tick, headerWidth, timelineWidth, pxPerBar, 0L);
+        final float endX = xForTick(
+                targetEvent.tick + targetEvent.durationTicks,
+                headerWidth, timelineWidth, pxPerBar, 0L);
+        final float left = Math.max(headerWidth + dp(1), startX);
+        final float right = Math.min(
+                getWidth() - dp(1),
+                Math.max(startX + dp(2), endX));
+        if (right <= left) return null;
+
+        final float x = (left + right) / 2f;
+        final float y = rulerHeight + laneIndex * laneHeight + dp(21.5f);
+        final Hit actual = hit(x, y);
+        if (actual.trackIndex != trackIndex
+                || actual.eventIndex < 0
+                || actual.eventTick != eventTick) {
+            return null;
+        }
+        return new float[] {x, y};
     }
 
     void setTimeline(
@@ -237,6 +428,7 @@ final class MpcArrangeView extends View {
                         if (hit.trackIndex >= 0
                                 && hit.eventIndex >= 0
                                 && listener != null) {
+                            eventDoubleTapDispatched = true;
                             listener.onEventDoubleTapped(
                                     hit.trackIndex,
                                     hit.eventTick);
@@ -261,6 +453,7 @@ final class MpcArrangeView extends View {
 
         drawRuler(canvas, headerWidth, rulerHeight, timelineWidth, pxPerBar);
         drawLanes(canvas, headerWidth, rulerHeight, laneHeight, timelineWidth, pxPerBar);
+        drawInsertionTarget(canvas, headerWidth, rulerHeight, laneHeight, timelineWidth, pxPerBar);
         drawLoopBrace(canvas, headerWidth, rulerHeight, timelineWidth, pxPerBar);
         drawPlayhead(canvas, headerWidth, rulerHeight, timelineWidth, pxPerBar);
     }
@@ -362,55 +555,57 @@ final class MpcArrangeView extends View {
                         top + dp(28), LOOP, 8, true);
             }
 
-            // Current domain has one pattern per track with no placement
-            // position yet. Render it as the truthful full-length clip region.
-            final float clipStart = xForTick(
-                    0L, headerWidth, timelineWidth, pxPerBar, 0L);
-            final float clipEnd = xForTick(
-                    lane.lengthTicks,
-                    headerWidth, timelineWidth, pxPerBar, 0L);
-
+            // Clip rectangles come from the authoritative PatternPlacement list;
+            // note content is mapped through each placement's source offset.
+            final List<Placement> placements = lane.placements.isEmpty()
+                    ? Collections.singletonList(new Placement(
+                            lane.trackIndex + "-legacy", "", 0L, lane.lengthTicks, 0))
+                    : lane.placements;
             paint.setStyle(Paint.Style.FILL);
-            paint.setColor(i == selectedTrack
-                    ? 0xff34474f
-                    : EVENT);
-            rect.set(
-                    clipStart,
-                    top + dp(5),
-                    Math.max(clipStart + dp(4), clipEnd),
-                    top + laneHeight - dp(5));
-            canvas.drawRoundRect(rect, dp(4), dp(4), paint);
-
-            // Compact note activity inside the clip keeps the arrangement
-            // visually meaningful while the domain remains pattern-based.
-            paint.setColor(i == selectedTrack
-                    ? EVENT_SELECTED
-                    : 0xff94a2aa);
-            final int maxEvents = Math.min(96, lane.events.size());
-            for (int eventIndex = 0; eventIndex < maxEvents; eventIndex++) {
-                Event event = lane.events.get(eventIndex);
-                final float ex = xForTick(
-                        event.tick,
-                        headerWidth,
-                        timelineWidth,
-                        pxPerBar,
-                        0L);
-                final float ew = Math.max(
-                        dp(1),
-                        xForTick(
-                                event.tick + event.durationTicks,
-                                headerWidth,
-                                timelineWidth,
-                                pxPerBar,
-                                0L) - ex);
+            for (Placement placement : placements) {
+                final long placementEnd = placement.startTick + placement.lengthTicks;
+                final float clipStart = xForTick(
+                        placement.startTick, headerWidth, timelineWidth, pxPerBar, 0L);
+                final float clipEnd = xForTick(
+                        placementEnd, headerWidth, timelineWidth, pxPerBar, 0L);
+                if (clipEnd <= headerWidth || clipStart >= getWidth()) continue;
+                paint.setColor(i == selectedTrack ? 0xff34474f : EVENT);
                 rect.set(
-                        ex,
-                        top + dp(15),
-                        Math.min(
-                                getWidth() - dp(1),
-                                ex + Math.max(dp(2), ew)),
-                        top + dp(28));
-                canvas.drawRect(rect, paint);
+                        Math.max(headerWidth, clipStart),
+                        top + dp(5),
+                        Math.max(Math.max(headerWidth, clipStart) + dp(4), clipEnd),
+                        top + laneHeight - dp(5));
+                canvas.drawRoundRect(rect, dp(4), dp(4), paint);
+
+                paint.setColor(i == selectedTrack ? EVENT_SELECTED : 0xff94a2aa);
+                final long sourceStart = placement.sourceOffsetTicks;
+                final long sourceEnd = sourceStart + placement.lengthTicks;
+                for (int eventIndex = 0;
+                     eventIndex < lane.events.size() && eventIndex < 96;
+                     eventIndex++) {
+                    Event event = lane.events.get(eventIndex);
+                    final long eventSourceEnd = event.tick + event.durationTicks;
+                    if (event.tick >= sourceEnd || eventSourceEnd <= sourceStart) continue;
+                    final long visibleSourceStart = Math.max(event.tick, sourceStart);
+                    final long visibleSourceEnd = Math.min(eventSourceEnd, sourceEnd);
+                    if (visibleSourceEnd <= visibleSourceStart) continue;
+                    final long eventTimelineStart = placement.startTick
+                            + visibleSourceStart - sourceStart;
+                    final long eventTimelineEnd = placement.startTick
+                            + visibleSourceEnd - sourceStart;
+                    final float ex = xForTick(
+                            eventTimelineStart, headerWidth, timelineWidth, pxPerBar, 0L);
+                    final float endX = xForTick(
+                            eventTimelineEnd, headerWidth, timelineWidth, pxPerBar, 0L);
+                    final float ew = Math.max(dp(1), endX - ex);
+                    rect.set(
+                            Math.max(headerWidth, ex),
+                            top + dp(15),
+                            Math.min(getWidth() - dp(1),
+                                    Math.max(Math.max(headerWidth, ex) + dp(2), ex + ew)),
+                            top + dp(28));
+                    canvas.drawRect(rect, paint);
+                }
             }
 
             paint.setColor(
@@ -435,6 +630,35 @@ final class MpcArrangeView extends View {
         if (ticksPerBar <= 0) {
             return;
         }
+    }
+
+    private void drawInsertionTarget(
+            Canvas canvas,
+            float headerWidth,
+            float rulerHeight,
+            float laneHeight,
+            float timelineWidth,
+            float pxPerBar) {
+        if (!hasInsertionTarget(insertionTargetTrackIndex, insertionTargetTick)) return;
+        int laneIndex = -1;
+        for (int i = 0; i < lanes.size(); i++) {
+            if (lanes.get(i).trackIndex == insertionTargetTrackIndex) {
+                laneIndex = i;
+                break;
+            }
+        }
+        if (laneIndex < 0) return;
+        final float x = xForTick(
+                insertionTargetTick, headerWidth, timelineWidth, pxPerBar, 0L);
+        if (x < headerWidth || x >= getWidth()) return;
+        final float top = rulerHeight + laneIndex * laneHeight;
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(dp(2));
+        paint.setColor(INSERTION_TARGET);
+        canvas.drawLine(x, top + dp(3), x, top + laneHeight - dp(3), paint);
+        paint.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(x, top + dp(7), dp(4), paint);
+        canvas.drawCircle(x, top + laneHeight - dp(7), dp(2), paint);
     }
 
     private void drawLoopBrace(
@@ -483,6 +707,40 @@ final class MpcArrangeView extends View {
                 x, rulerHeight, x, getHeight(), paint);
     }
 
+    static int decodePlacementTimelineLength(String data) {
+        if (data == null || data.trim().isEmpty()) return 1;
+        final int separator = data.indexOf('|');
+        final String lengthText = separator < 0 ? data : data.substring(0, separator);
+        try {
+            return Math.max(1, Integer.parseInt(lengthText));
+        } catch (NumberFormatException ignored) {
+            return 1;
+        }
+    }
+
+    static List<Placement> decodePlacementData(String data) {
+        if (data == null || data.trim().isEmpty()) return Collections.emptyList();
+        final int separator = data.indexOf('|');
+        if (separator < 0 || separator + 1 >= data.length()) {
+            return Collections.emptyList();
+        }
+        final ArrayList<Placement> result = new ArrayList<>();
+        for (String row : data.substring(separator + 1).split(";")) {
+            final String[] fields = row.split(",", -1);
+            if (fields.length != 5) continue;
+            try {
+                result.add(new Placement(
+                        fields[0], fields[1],
+                        Long.parseLong(fields[2]),
+                        Integer.parseInt(fields[3]),
+                        Integer.parseInt(fields[4])));
+            } catch (NumberFormatException ignored) {
+                // Ignore malformed projection rows; native validation remains authoritative.
+            }
+        }
+        return result;
+    }
+
     static List<Event> decodeEventData(String data) {
         if (data == null || data.trim().isEmpty()) {
             return Collections.emptyList();
@@ -497,13 +755,22 @@ final class MpcArrangeView extends View {
             try {
                 final long tick = Long.parseLong(fields[0]);
                 final int duration = Integer.parseInt(fields[1]);
-                result.add(new Event(tick, duration));
+                final int noteNumber = fields.length >= 3
+                        ? Integer.parseInt(fields[2]) : -1;
+                result.add(new Event(tick, duration, noteNumber));
             } catch (NumberFormatException ignored) {
                 // Malformed UI projection entries are ignored rather than
                 // becoming a UI crash or feeding invalid data back to native.
             }
         }
         return result;
+    }
+
+    private Lane laneForTrack(int trackIndex) {
+        for (Lane lane : lanes) {
+            if (lane.trackIndex == trackIndex) return lane;
+        }
+        return null;
     }
 
     private Hit hit(float x, float y) {
@@ -532,13 +799,28 @@ final class MpcArrangeView extends View {
 
         int eventIndex = -1;
         long eventTick = tick;
-        for (int i = 0; i < lane.events.size(); i++) {
-            Event event = lane.events.get(i);
-            if (tick >= event.tick
-                    && tick <= event.tick + event.durationTicks) {
-                eventIndex = i;
-                eventTick = event.tick;
+        Placement hitPlacement = null;
+        for (Placement placement : lane.placements) {
+            if (tick >= placement.startTick
+                    && tick < placement.startTick + placement.lengthTicks) {
+                hitPlacement = placement;
                 break;
+            }
+        }
+        final boolean hasTimelineSource = hitPlacement != null
+                || lane.placements.isEmpty();
+        final long sourceTick = hitPlacement == null
+                ? tick
+                : hitPlacement.sourceOffsetTicks + tick - hitPlacement.startTick;
+        if (hasTimelineSource) {
+            for (int i = 0; i < lane.events.size(); i++) {
+                Event event = lane.events.get(i);
+                if (sourceTick >= event.tick
+                        && sourceTick <= event.tick + event.durationTicks) {
+                    eventIndex = i;
+                    eventTick = event.tick;
+                    break;
+                }
             }
         }
         return new Hit(lane.trackIndex, eventIndex, eventTick);
@@ -548,6 +830,15 @@ final class MpcArrangeView extends View {
     public boolean onTouchEvent(MotionEvent event) {
         scaleDetector.onTouchEvent(event);
         gestureDetector.onTouchEvent(event);
+
+        // The second ACTION_DOWN triggers GestureDetector.onDoubleTap.
+        // That callback may navigate away immediately, so do not also treat
+        // the same gesture as a fresh lane-selection tap.
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN
+                && eventDoubleTapDispatched) {
+            eventDoubleTapDispatched = false;
+            return true;
+        }
 
         if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
             final float headerWidth = dp(LEFT_HEADER_DP);
@@ -574,10 +865,45 @@ final class MpcArrangeView extends View {
             } else {
                 loopHandle = -1;
                 final Hit hit = hit(event.getX(), event.getY());
-                if (hit.trackIndex >= 0
-                        && listener != null) {
+                if (hit.trackIndex >= 0 && listener != null) {
+                    Event hitEvent = null;
+                    if (hit.eventIndex >= 0) {
+                        for (Lane lane : lanes) {
+                            if (lane.trackIndex == hit.trackIndex
+                                    && hit.eventIndex < lane.events.size()) {
+                                hitEvent = lane.events.get(hit.eventIndex);
+                                break;
+                            }
+                        }
+                    }
                     selectedTrack = hit.trackIndex;
                     listener.onTrackSelected(hit.trackIndex);
+                    if (hitEvent != null && hitEvent.noteNumber >= 0) {
+                        clearInsertionTarget();
+                        listener.onEventSelected(
+                                hit.trackIndex, hitEvent.tick, hitEvent.noteNumber);
+                    } else if (event.getX() >= headerWidth) {
+                        final Lane hitLane = laneForTrack(hit.trackIndex);
+                        listener.onEventSelectionCleared();
+                        if (hitLane != null) {
+                            final float timelineWidth = Math.max(1f, getWidth() - headerWidth);
+                            final float pxPerBar = timelineWidth / Math.max(1, visibleBars);
+                            final long rawTick = Math.max(0L, Math.round(
+                                    (viewportStartBar - 1
+                                            + (event.getX() - headerWidth)
+                                                    / Math.max(1f, pxPerBar))
+                                            * ticksPerBar()));
+                            final long grid = Math.max(1L, quantizeGridTicks);
+                            final long nearestGrid = Math.round(rawTick / (double) grid) * grid;
+                            final long lastValidGrid = ((hitLane.lengthTicks - 1L) / grid) * grid;
+                            final long targetTick = Math.max(
+                                    0L, Math.min(nearestGrid, lastValidGrid));
+                            listener.onInsertionTargetSelected(hit.trackIndex, targetTick);
+                        }
+                    } else {
+                        clearInsertionTarget();
+                        listener.onEventSelectionCleared();
+                    }
                     invalidate();
                 }
             }
@@ -680,6 +1006,8 @@ final class MpcArrangeView extends View {
                 + (float) (bars - (viewportStartBar - 1))
                 * pxPerBar;
     }
+
+    long ticksPerBarForAudit() { return ticksPerBar(); }
 
     private long ticksPerBar() {
         final long ticksPerBeat = Math.max(

@@ -38,6 +38,8 @@ The complete product mapping contract is maintained in:
 
 **[MPC Studio MkII Semantic Control Map](MPC-STUDIO-MKII-SEMANTIC-MAP.md)**
 
+The source → protocol → implementation → test → physical validation record is [MPC Studio MkII Reverse-Engineering Traceability](MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md).
+
 That document is the source of truth for the distinction between:
 
 - physical controller control;
@@ -50,8 +52,8 @@ That document is the source of truth for the distinction between:
 
 Important current interpretation:
 
-- the physical pads are the only controller inputs currently used as working musical controls;
-- the other physical controls are not “unimportant”: they are already decoded or protocol-mapped in the repository, but their semantic routing is still a planned hardware-bring-up slice;
+- physical pads remain the primary performance input, and current source also decodes/routes supported non-pad controls through the semantic adapter; end-to-end coverage varies by action;
+- multiple non-pad controls already route through the adapter and app command surface; use action-level evidence to distinguish implemented, partial and reserved behavior;
 - the hardware adapter must model Shift, Mode, Locate and other contextual combinations as stateful semantic chords rather than leaking raw MIDI values into the UI;
 - the source-level names `NudgeLeft/NudgeRight` and `SeekBack/SeekForward` are legacy names for the physical Step and Bar navigation buttons. They must not be treated as the sequencer's separate Nudge parameter;
 - the 2021 MkII has no dedicated Q-Link knob bank. Q-Link remains an application feature, but the MkII mapping must use controls that physically exist on this controller.
@@ -92,3 +94,10 @@ A persistent controller-status strip sits below the transport/application shell 
 ### Engineering rule
 
 No hardware feature is considered complete when its action works but its active state is invisible. The implementation must provide indication on every available surface before the slice is considered production-ready.
+
+
+## Research scope and source-quality rule — 2026-10-18
+
+Use the controller-first traceability document above as the authoritative bridge between sources and current code. It records official Akai FAQ/troubleshooting content, a manufacturer-authored quickstart mirror, Akai tutorial playlists and public MIDI/SysEx research while explicitly excluding MPC Desktop, plug-in, licensing and DAW workflows. The Ableton-specific repository is an optional protocol cross-check only and must never define our app navigation or product behavior.
+
+The old checkpoint paragraphs in this document are historical snapshots. They must not be interpreted as saying that only pad input is operational. Check the live semantic map and traceability table for current per-control status, then check the physical checklist and exact build before claiming hardware confirmation.

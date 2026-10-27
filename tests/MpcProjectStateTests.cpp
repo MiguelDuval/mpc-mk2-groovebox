@@ -37,6 +37,12 @@ int main() {
     assert(sequence.loopEndTicks == sequence.lengthTicks);
     assert(sequence.tracks.size() == 1);
     assert(sequence.tracks[0].kind == mpc::domain::TrackKind::Drum);
+    assert(sequence.tracks[0].patterns.size() == 1);
+    assert(sequence.tracks[0].placements.size() == 1);
+    assert(sequence.tracks[0].placements.front().patternId
+            == sequence.tracks[0].patterns.front().id);
+    assert(sequence.tracks[0].placements.front().startTick == 0);
+    assert(sequence.tracks[0].placements.front().lengthTicks == sequence.lengthTicks);
 
     auto& pattern = state.activeSequence().tracks[0].patterns.front();
     assert(mpc::sequencer::setStepNote(
@@ -62,6 +68,7 @@ int main() {
 
     assert(state.setSequenceBars(8));
     assert(state.activeSequence().lengthTicks == 30720);
+    assert(state.activeSequence().tracks[0].placements.front().lengthTicks == 30720);
     assert(state.activeSequence().loopEndTicks == 30720);
 
     assert(state.setSequenceLoop(true, 3, 6));
@@ -72,6 +79,7 @@ int main() {
 
     assert(state.setSequenceTimeSignature(3, 4));
     assert(state.activeSequence().lengthTicks == 23040);
+    assert(state.activeSequence().tracks[0].placements.front().lengthTicks == 23040);
     assert(state.activeSequence().loopStartTicks == 5760);
     assert(state.activeSequence().loopEndTicks == 17280);
 
@@ -85,6 +93,12 @@ int main() {
     assert(state.addTrack(mpc::domain::TrackKind::Audio));
     assert(state.activeSequence().tracks.size() == 2);
     assert(state.activeTrackIndex() == 1);
+    assert(state.activeSequence().tracks[1].placements.size() == 1);
+    assert(state.activeSequence().tracks[1].placements.front().patternId
+            == state.activeSequence().tracks[1].patterns.front().id);
+    assert(state.activeSequence().tracks[1].placements.front().startTick == 0);
+    assert(state.activeSequence().tracks[1].placements.front().lengthTicks
+            == state.activeSequence().lengthTicks);
     assert(state.selectTrack(0));
     assert(state.activeTrackIndex() == 0);
     assert(state.activeProgramIndexForTrack(0) == 0);
@@ -125,6 +139,13 @@ int main() {
     assert(state.activeSequence().name == "Sequence 02");
     assert(state.activeSequence().tracks.size() == 1);
     assert(state.activeSequence().tracks[0].kind == mpc::domain::TrackKind::Drum);
+    assert(state.activeSequence().tracks[0].patterns.size() == 1);
+    assert(state.activeSequence().tracks[0].placements.size() == 1);
+    assert(state.activeSequence().tracks[0].placements.front().patternId
+            == state.activeSequence().tracks[0].patterns.front().id);
+    assert(state.activeSequence().tracks[0].placements.front().startTick == 0);
+    assert(state.activeSequence().tracks[0].placements.front().lengthTicks
+            == state.activeSequence().lengthTicks);
     assert(state.activeSequence().tempoBpm == 120.0);
     assert(state.activeSequence().lengthTicks == 15360);
 
@@ -140,5 +161,86 @@ int main() {
     assert(state.activeSequenceIndex() == 0);
     assert(!state.selectSequence(99));
 
+
+    // Project replacement must reset active indices and resolve the Track-owned Program.
+    mpc::domain::Project opened;
+    opened.id = "opened-project";
+    opened.name = "Opened Project";
+    mpc::domain::DrumProgram openedProgram;
+    openedProgram.id = "opened-program";
+    openedProgram.name = "Opened Drums";
+    openedProgram.type = mpc::domain::ProgramType::Drum;
+    openedProgram.pads[0].index = 0;
+    openedProgram.pads[0].midiNote = 36;
+    openedProgram.pads[0].name = "Loaded Kick";
+    openedProgram.pads[0].level = 0.75f;
+    openedProgram.pads[0].layer(0).sample.value = 41;
+    mpc::domain::SampleRef openedSample;
+    openedSample.id = "sample-41";
+    openedSample.name = "Saved Kick";
+    openedSample.sampleRate = 48000.0;
+    openedSample.lengthSamples = 12000;
+    openedSample.assetId.value = 41;
+    opened.samples.push_back(openedSample);
+    opened.drumPrograms.push_back(openedProgram);
+    mpc::domain::Sequence openedSequence;
+    openedSequence.id = "opened-sequence";
+    openedSequence.name = "Opening";
+    openedSequence.lengthTicks = 3840;
+    mpc::domain::Track openedTrack;
+    openedTrack.id = "opened-track";
+    openedTrack.name = "DRUMS";
+    openedTrack.kind = mpc::domain::TrackKind::Drum;
+    openedTrack.type = mpc::domain::ProgramType::Drum;
+    openedTrack.programId = openedProgram.id;
+    mpc::domain::Pattern openedPattern;
+    openedPattern.id = "opened-pattern";
+    openedPattern.lengthTicks = 3840;
+    openedPattern.notes = {{240, 120, 36, 105, 100, 2, -5}};
+    openedTrack.patterns.push_back(openedPattern);
+    openedSequence.tracks.push_back(openedTrack);
+    opened.sequences.push_back(openedSequence);
+    assert(mpc::MpcProjectState::canReplaceProject(opened));
+    assert(state.replaceProject(opened));
+    assert(state.project().id == "opened-project");
+    assert(state.activeSequenceIndex() == 0);
+    assert(state.activeTrackIndex() == 0);
+    assert(state.activeDrumProgram().id == "opened-program");
+    assert(state.activeSequence().tracks[0].patterns[0].notes[0].nudgeTicks == -5);
+    const auto newSampleId = state.registerSample("New sample", "", 44100.0, 9000);
+    assert(newSampleId.value == 42);
+    mpc::domain::Project invalid;
+    invalid.id = "invalid";
+    assert(!mpc::MpcProjectState::canReplaceProject(invalid));
+    assert(!state.replaceProject(std::move(invalid)));
+    assert(state.project().id == "opened-project");
+
+    // NEW PROJECT must restore the canonical model, not only clear the UI.
+    // It also resets selection and sample-ID allocation for the new domain.
+    assert(state.resetToDefault());
+    assert(state.project().id == "project-1");
+    assert(state.project().name == "Untitled");
+    assert(state.project().samples.empty());
+    assert(state.project().drumPrograms.size() == 1);
+    assert(state.activeDrumProgram().id == "drum-program-1");
+    assert(state.activeDrumProgram().pads[0].midiNote == 36);
+    assert(state.activeSequenceIndex() == 0);
+    assert(state.activeTrackIndex() == 0);
+    assert(state.activeSequence().id == "sequence-1");
+    assert(state.activeSequence().name == "Sequence 01");
+    assert(state.activeSequence().tracks.size() == 1);
+    assert(state.activeSequence().tracks[0].kind == mpc::domain::TrackKind::Drum);
+    assert(state.activeSequence().tracks[0].patterns.size() == 1);
+    assert(state.activeSequence().tracks[0].patterns[0].notes.empty());
+    assert(state.activeSequence().tracks[0].placements.size() == 1);
+    assert(state.activeSequence().tracks[0].placements[0].patternId
+            == state.activeSequence().tracks[0].patterns[0].id);
+    assert(state.activeSequence().tracks[0].placements[0].startTick == 0);
+    assert(state.activeSequence().tracks[0].placements[0].lengthTicks
+            == state.activeSequence().lengthTicks);
+    assert(state.activeProgramIndexForTrack(0) == 0);
+    const auto firstNewSample = state.registerSample(
+            "First sample in new project", "", 48000.0, 1000);
+    assert(firstNewSample.value == 1);
     return 0;
 }
