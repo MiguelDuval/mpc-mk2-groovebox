@@ -2111,6 +2111,7 @@ capture_ui_screenshot() {
     mpc-groovebox-browser-local-results.png|\
     mpc-groovebox-picker-select-source.png|\
     mpc-groovebox-picker-root-drawer-missing.png|\
+    mpc-groovebox-browser-empty-search-baseline.png|\
     mpc-groovebox-browser-empty-search.png|\
     mpc-groovebox-browser-empty-search-cleared.png|\
     mpc-groovebox-browser-picker-assignment.png|\
@@ -10826,7 +10827,7 @@ then
   echo "CLEARED:  $browser_clear_state"
   exit 1
 fi
-if ! test -s "$BROWSER_EMPTY_BASELINE_PNG" \
+if ! test -s /tmp/mpc-groovebox-browser-empty-search-baseline.png \
     || ! test -s /tmp/mpc-groovebox-browser-empty-search.png \
     || ! test -s /tmp/mpc-groovebox-browser-empty-search-cleared.png \
     || [[ ! -s "$BROWSER_EMPTY_BASELINE_XML" || ! -s "$BROWSER_EMPTY_XML" || ! -s "$BROWSER_CLEAR_XML" ]]; then
