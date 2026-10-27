@@ -88,6 +88,15 @@ public final class AndroidMidiBridge {
         publishDeviceList();
     }
 
+    /**
+     * Returns true only when both public MkII ports are open and connected.
+     * The bridge object can exist while no hardware is present, so object
+     * construction alone must never be presented as MIDI readiness.
+     */
+    public boolean isConnected() {
+        return device != null && inputPort != null && outputPort != null;
+    }
+
     public String describeDevices() {
         if (midiManager == null) return "MIDI service unavailable";
 
