@@ -2023,8 +2023,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         showTrackViewPage();
                     });
             addTrackStepperFunction(trackCount > 0);
-            addFunction("MUTE", trackCount > 0,
-                    v -> toggleSelectedTrackMute());
+            Button muteWorkspace = addFunction(
+                    "MUTE", trackCount > 0, v -> showMutePage());
+            muteWorkspace.setContentDescription(
+                    "MPC Function Bar Open Mute workspace");
             addFunction("SOLO", false, null);
             return;
         }

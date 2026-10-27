@@ -643,6 +643,19 @@ if grep -Fq -- 'case "CLIP":' <<<"$mixer_track_type_map_block" || \
   exit 1
 fi
 
+echo "Running Track View MUTE workspace routing preflight..."
+track_view_function_start=$(grep -n -m1 'if (mode == MpcUiState.Mode.TRACK_VIEW)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+track_view_function_end=$(grep -n -m1 'if (mode == MpcUiState.Mode.MUTE)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$track_view_function_start" || -z "$track_view_function_end" || "$track_view_function_end" -le "$track_view_function_start" ]]; then
+  echo "ERROR: Track View Function Bar source boundaries are missing"; exit 1
+fi
+track_view_function_block=$(sed -n "${track_view_function_start},$((track_view_function_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if ! grep -Fq -- 'MPC Function Bar Open Mute workspace' <<<"$track_view_function_block" \
+    || ! grep -Fq -- 'v -> showMutePage()' <<<"$track_view_function_block" \
+    || grep -Fq -- 'v -> toggleSelectedTrackMute()' <<<"$track_view_function_block"; then
+  echo "ERROR: Track View MUTE must open the real 4x4 Mute workspace, not only toggle one Track"; exit 1
+fi
+
 echo "Running real 4x4 Mute workspace preflight..."
 for required in \
   'private void showMutePage()' \
