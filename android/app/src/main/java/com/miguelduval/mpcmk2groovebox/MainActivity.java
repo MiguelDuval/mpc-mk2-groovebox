@@ -12615,8 +12615,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (resultCode != RESULT_OK || data == null) {
+            final int targetPad = browserPickerTargetPad >= 0
+                    ? browserPickerTargetPad : Math.max(0, Math.min(15, selectedPad));
+            final int targetLayer = browserPickerTargetLayer >= 0
+                    ? browserPickerTargetLayer : Math.max(0, Math.min(7, selectedLayer));
             browserPickerTargetPad = -1;
             browserPickerTargetLayer = -1;
+            if (resultCode == RESULT_CANCELED) {
+                final String sampleName = nativeAudioGetPadSampleName(targetPad, targetLayer);
+                final String displaySampleName =
+                        sampleName == null || sampleName.trim().isEmpty()
+                                ? "NO NAME" : sampleName.trim();
+                if (browserView != null && "BROWSE".equals(currentPage)
+                        && selectedPad == targetPad && selectedLayer == targetLayer) {
+                    // Re-read the actual sampler identity after the external picker
+                    // returns; cancellation is not an assignment or a new selection.
+                    browserView.setCurrentSampleName(displaySampleName);
+                }
+                setBottomStatus("BROWSER LOAD CANCELLED • PAD "
+                        + String.format(Locale.ROOT, "%02d", targetPad + 1)
+                        + " / LAYER "
+                        + String.format(Locale.ROOT, "%02d", targetLayer + 1)
+                        + " UNCHANGED");
+                Log.i(TAG, "BROWSER_WAV_PICKER_CANCELLED targetPad=" + (targetPad + 1)
+                        + " targetLayer=" + (targetLayer + 1)
+                        + " sample=" + displaySampleName + " unchanged=true");
+            } else {
+                setBottomStatus("BROWSER LOAD FAILED • picker returned no file");
+                Log.i(TAG, "BROWSER_WAV_PICKER_FAILED targetPad=" + (targetPad + 1)
+                        + " targetLayer=" + (targetLayer + 1)
+                        + " resultCode=" + resultCode + " dataPresent=" + (data != null));
+            }
             return;
         }
 
