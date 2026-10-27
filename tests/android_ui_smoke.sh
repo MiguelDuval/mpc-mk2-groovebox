@@ -32,8 +32,9 @@ if [[ -z "$reserved_nav_start" || -z "$reserved_nav_end" || "$reserved_nav_end" 
   exit 1
 fi
 reserved_nav_block=$(sed -n "${reserved_nav_start},$((reserved_nav_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
-if ! grep -Fq -- 'navigationController.navigate(mode);' <<<"$reserved_nav_block"; then
-  echo "ERROR: reserved shortcut activation must preserve its semantic mode"
+if ! grep -Fq -- 'showUnavailableModePage(' <<<"$reserved_nav_block" \
+    || ! grep -Fq -- 'navigationController.navigate(mode);' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: reserved shortcut activation must render a full workspace and preserve its semantic mode"
   exit 1
 fi
 echo "Running MPC shortcut config source hygiene preflight..."
@@ -641,6 +642,26 @@ if grep -Fq -- 'case "CLIP":' <<<"$mixer_track_type_map_block" || \
   echo "ERROR: XL mixer strip must not refer to the obsolete CLIP Track Type icon"
   exit 1
 fi
+
+echo "Running real 4x4 Mute workspace preflight..."
+for required in \
+  'private void showMutePage()' \
+  'private void refreshMuteGrid()' \
+  'private boolean muteGridHasExpectedTargetsForAudit(boolean trackMode)' \
+  'MPC Mute 4x4 grid' \
+  'MPC Mute pad ' \
+  'MPC Mute track ' \
+  'nativeSequenceIsPadMuted' \
+  'nativeSequenceTogglePadMute(padIndex)' \
+  'nativeSequenceToggleTrackMute(trackIndex)' \
+  'UI_MUTE_PAD_CAPTURE_READY:' \
+  'UI_MUTE_TRACK_CAPTURE_READY:' \
+  'UI_MUTE_GRID_ROUNDTRIP_COMPLETE:'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" "$NATIVE_ENGINE_SOURCE"; then
+    echo "ERROR: real Mute workspace implementation contract missing: $required"
+    exit 1
+  fi
+done
 
 echo "Running Track View mute round-trip preflight..."
 for required in \
@@ -2085,6 +2106,8 @@ capture_ui_screenshot() {
     mpc-groovebox-step-touch-page2.png|\
     mpc-groovebox-step-touch-pad2.png|\
     mpc-groovebox-track-view-muted.png|\
+    mpc-groovebox-mute-pad.png|\
+    mpc-groovebox-mute-track.png|\
     mpc-groovebox-arrange-grid-focus.png|\
     mpc-groovebox-arrange-back.png|\
     mpc-groovebox-arrange-grid-reentry.png|\
@@ -2567,6 +2590,8 @@ arrangement_grid_focus_capture_done=0
 arrangement_back_capture_done=0
 arrangement_grid_reentry_capture_done=0
 track_view_mute_capture_done=0
+mute_pad_capture_done=0
+mute_track_capture_done=0
 step_touch_capture_done=0
 step_touch_acceptance_complete=0
 arrangement_loop_touch_capture_done=0
@@ -5645,6 +5670,107 @@ PY
     track_view_mute_capture_done=1
   fi
 
+  if [ "$mute_pad_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_MUTE_PAD_CAPTURE_READY:" <<<"$log_snapshot"; then
+    echo "Capturing live Pad Mute 4x4 state and accessibility hierarchy..."
+    MUTE_PAD_PNG="/tmp/mpc-groovebox-mute-pad.png"
+    MUTE_PAD_XML="/tmp/mpc-groovebox-mute-pad-uiautomator.xml"
+    MUTE_PAD_REMOTE="/sdcard/mpc-groovebox-mute-pad-uiautomator.xml"
+    if ! capture_ui_screenshot "$MUTE_PAD_PNG" 10; then
+      echo "ERROR: Mute Pad screenshot capture failed"; exit 1
+    fi
+    if ! dump_device_ui "$MUTE_PAD_REMOTE" "$MUTE_PAD_XML" 10; then
+      echo "ERROR: Mute Pad accessibility hierarchy capture failed"; exit 1
+    fi
+    mute_pad_state_line=$(grep -F -- "UI_MUTE_PAD_CAPTURE_READY:" <<<"$log_snapshot" | tail -n 1)
+    case "$mute_pad_state_line" in
+      *mutedAfterToggle=true*) mute_pad_target=true ;;
+      *mutedAfterToggle=false*) mute_pad_target=false ;;
+      *) echo "ERROR: Mute Pad capture marker omitted its target state"; exit 1 ;;
+    esac
+    if ! python3 - "$MUTE_PAD_XML" "$mute_pad_target" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, expected_muted = sys.argv[1], sys.argv[2]
+nodes = list(ET.parse(path).getroot().iter("node"))
+workspace = [n for n in nodes if n.attrib.get("content-desc") == "MPC Mute workspace"]
+grids = [n for n in nodes if n.attrib.get("content-desc") == "MPC Mute 4x4 grid"]
+pads = [n for n in nodes if re.fullmatch(r"MPC Mute pad [0-9]{2}", n.attrib.get("content-desc", ""))]
+if len(workspace) != 1 or len(grids) != 1:
+    raise AssertionError(f"Mute workspace/grid missing: workspace={len(workspace)} grid={len(grids)}")
+if len(pads) != 16:
+    raise AssertionError(f"expected exactly 16 real Pad mute targets, got {len(pads)}")
+by_desc = {n.attrib["content-desc"]: n for n in pads}
+if "MPC Mute pad 01" not in by_desc or "MPC Mute pad 16" not in by_desc:
+    raise AssertionError("Pad mute target range must include Pad 01 through Pad 16")
+first = by_desc["MPC Mute pad 01"]
+expected_text = "MUTE ON" if expected_muted == "true" else "MUTE OFF"
+if expected_text not in first.attrib.get("text", "") or first.attrib.get("enabled") != "true":
+    raise AssertionError(f"Pad 01 view does not display native mute state {expected_muted}: {first.attrib}")
+print(f"Pad Mute 4x4 accepted: 16 touch targets; Pad 01 {expected_text}.")
+PY
+    then
+      echo "ERROR: Mute Pad XML does not prove the real 16-target state"; exit 1
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-mute-pad-capture-release; then
+      echo "ERROR: could not release app-side Pad Mute evidence checkpoint"; exit 1
+    fi
+    mute_pad_capture_done=1
+  fi
+
+  if [ "$mute_track_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_MUTE_TRACK_CAPTURE_READY:" <<<"$log_snapshot"; then
+    echo "Capturing live Track Mute 4x4 state and accessibility hierarchy..."
+    MUTE_TRACK_PNG="/tmp/mpc-groovebox-mute-track.png"
+    MUTE_TRACK_XML="/tmp/mpc-groovebox-mute-track-uiautomator.xml"
+    MUTE_TRACK_REMOTE="/sdcard/mpc-groovebox-mute-track-uiautomator.xml"
+    if ! capture_ui_screenshot "$MUTE_TRACK_PNG" 10; then
+      echo "ERROR: Mute Track screenshot capture failed"; exit 1
+    fi
+    if ! dump_device_ui "$MUTE_TRACK_REMOTE" "$MUTE_TRACK_XML" 10; then
+      echo "ERROR: Mute Track accessibility hierarchy capture failed"; exit 1
+    fi
+    mute_track_state_line=$(grep -F -- "UI_MUTE_TRACK_CAPTURE_READY:" <<<"$log_snapshot" | tail -n 1)
+    case "$mute_track_state_line" in
+      *mutedAfterToggle=true*) mute_track_target=true ;;
+      *mutedAfterToggle=false*) mute_track_target=false ;;
+      *) echo "ERROR: Mute Track capture marker omitted its target state"; exit 1 ;;
+    esac
+    if ! python3 - "$MUTE_TRACK_XML" "$mute_track_target" "$mute_track_state_line" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, expected_muted, marker = sys.argv[1:]
+nodes = list(ET.parse(path).getroot().iter("node"))
+workspace = [n for n in nodes if n.attrib.get("content-desc") == "MPC Mute workspace"]
+grids = [n for n in nodes if n.attrib.get("content-desc") == "MPC Mute 4x4 grid"]
+cells = [n for n in nodes if (re.fullmatch(r"MPC Mute track [0-9]{2}", n.attrib.get("content-desc", ""))
+                              or re.fullmatch(r"MPC Mute track slot [0-9]{2} unavailable", n.attrib.get("content-desc", "")))]
+if len(workspace) != 1 or len(grids) != 1:
+    raise AssertionError(f"Mute workspace/grid missing: workspace={len(workspace)} grid={len(grids)}")
+if len(cells) != 16:
+    raise AssertionError(f"expected 16 Track mute grid cells, got {len(cells)}")
+m = re.search(r"trackIndex=([0-9]+)", marker)
+if not m: raise AssertionError(f"Track marker lacks target index: {marker}")
+target_desc = f"MPC Mute track {int(m.group(1)):02d}"
+selected = [n for n in cells if n.attrib.get("content-desc") == target_desc]
+if len(selected) != 1:
+    raise AssertionError(f"selected Track mute target not found: {target_desc}")
+expected_text = "MUTE ON" if expected_muted == "true" else "MUTE OFF"
+if expected_text not in selected[0].attrib.get("text", "") or selected[0].attrib.get("enabled") != "true":
+    raise AssertionError(f"Track target does not display native mute state {expected_muted}: {selected[0].attrib}")
+print(f"Track Mute 4x4 accepted: 16 slots; {target_desc} {expected_text}.")
+PY
+    then
+      echo "ERROR: Mute Track XML does not prove the real 16-slot state"; exit 1
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-mute-track-capture-release; then
+      echo "ERROR: could not release app-side Track Mute evidence checkpoint"; exit 1
+    fi
+    mute_track_capture_done=1
+  fi
+
   if [ "$arrangement_grid_focus_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY" <<<"$log_snapshot"; then
     echo "Capturing Arrangement-to-Grid focused-step screenshot and accessibility hierarchy..."
@@ -6328,8 +6454,11 @@ PY
     fi
     if [ "$arrangement_back_capture_done" -ne 1 ] \
         || [ "$arrangement_grid_reentry_capture_done" -ne 1 ] \
-        || [ "$track_view_mute_capture_done" -ne 1 ]; then
-      echo "ERROR: UI audit completed without Track View mute and Arrange navigation evidence"
+        || [ "$track_view_mute_capture_done" -ne 1 ] \
+        || [ "$mute_pad_capture_done" -ne 1 ] \
+        || [ "$mute_track_capture_done" -ne 1 ] \
+        || ! grep -Fq -- "UI_MUTE_GRID_ROUNDTRIP_COMPLETE:" <<<"$log_snapshot"; then
+      echo "ERROR: UI audit completed without real Pad/Track Mute grid acceptance and Arrange navigation evidence"
       exit 1
     fi
     ui_audit_complete=1
@@ -6369,6 +6498,17 @@ if [ "$track_view_mute_capture_done" -ne 1 ] \
     || ! test -s /tmp/mpc-groovebox-track-view-muted.png \
     || ! test -s /tmp/mpc-groovebox-track-view-muted-uiautomator.xml; then
   echo "ERROR: Track View mute acceptance lacks screenshot/hierarchy evidence"; exit 1
+fi
+
+if [ "$mute_pad_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-mute-pad.png \
+    || ! test -s /tmp/mpc-groovebox-mute-pad-uiautomator.xml; then
+  echo "ERROR: Pad Mute acceptance lacks fresh screenshot/hierarchy evidence"; exit 1
+fi
+if [ "$mute_track_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-mute-track.png \
+    || ! test -s /tmp/mpc-groovebox-mute-track-uiautomator.xml; then
+  echo "ERROR: Track Mute acceptance lacks fresh screenshot/hierarchy evidence"; exit 1
 fi
 
 if [ "$arrangement_back_capture_done" -ne 1 ] \
