@@ -4555,7 +4555,7 @@ timeline_width = right - left - header
 if timeline_width <= 0 or ruler_y >= bottom:
     raise SystemExit(f"Arrangement ruler/timeline geometry is invalid: {nodes[0].attrib}")
 start_x = left + header + round(timeline_width * 0.85)
-finish_x = left + header + round(timeline_width * 0.45)
+finish_x = left + header + round(timeline_width * 0.25)
 if not (left + header < finish_x < start_x < right and top < ruler_y < bottom):
     raise SystemExit(f"derived ruler pan touch is outside the Canvas: {(start_x, finish_x, ruler_y)}")
 print(start_x, ruler_y, finish_x, ruler_y)
@@ -4602,6 +4602,14 @@ PY_ARRANGE_PAN_TOUCH_POINTS
         echo "ERROR: panned Arrangement viewport metadata is missing"; exit 1;
       }
     arrange_pan_changed_line="$(wait_for_new_arrange_pan_marker "$arrange_pan_markers_before")" || exit 1
+    arrange_pan_changed_state="$(sed -nE 's/.*from=([0-9]+) to=([0-9]+) visibleBars=([0-9]+).*/\1 \2 \3/p' <<<"$arrange_pan_changed_line")"
+    read -r arrange_pan_log_from arrange_pan_log_to arrange_pan_log_bars <<< "$arrange_pan_changed_state"
+    if [[ "$arrange_pan_log_from" != "$arrange_zoom_baseline_start" \
+        || "$arrange_pan_log_to" != "$arrange_pan_changed_start" \
+        || "$arrange_pan_log_bars" != "$arrange_zoom_baseline_bars" ]]; then
+      echo "ERROR: pan callback did not report the exact before/after viewport"
+      echo "$arrange_pan_changed_line"; exit 1
+    fi
     arrange_pan_changed_data="$(arrange_zoom_data_from_log "$arrange_pan_changed_line")" || exit 1
     if [[ "$arrange_pan_changed_bars" != "$arrange_zoom_baseline_bars" \
         || "$arrange_pan_changed_start" -le "$arrange_zoom_baseline_start" ]]; then
@@ -4630,6 +4638,14 @@ PY_ARRANGE_PAN_TOUCH_POINTS
         echo "ERROR: restored Arrangement pan viewport metadata is missing"; exit 1;
       }
     arrange_pan_restored_line="$(wait_for_new_arrange_pan_marker "$arrange_pan_restore_markers_before")" || exit 1
+    arrange_pan_restored_state="$(sed -nE 's/.*from=([0-9]+) to=([0-9]+) visibleBars=([0-9]+).*/\1 \2 \3/p' <<<"$arrange_pan_restored_line")"
+    read -r arrange_pan_restore_from arrange_pan_restore_to arrange_pan_restore_bars <<< "$arrange_pan_restored_state"
+    if [[ "$arrange_pan_restore_from" != "$arrange_pan_changed_start" \
+        || "$arrange_pan_restore_to" != "$arrange_zoom_baseline_start" \
+        || "$arrange_pan_restore_bars" != "$arrange_zoom_baseline_bars" ]]; then
+      echo "ERROR: reverse-pan callback did not report the exact restored viewport"
+      echo "$arrange_pan_restored_line"; exit 1
+    fi
     arrange_pan_restored_data="$(arrange_zoom_data_from_log "$arrange_pan_restored_line")" || exit 1
     if [[ "$arrange_pan_restored_bars" != "$arrange_zoom_baseline_bars" \
         || "$arrange_pan_restored_start" != "$arrange_zoom_baseline_start" ]]; then
