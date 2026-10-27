@@ -5726,8 +5726,12 @@ def bounds(node):
         raise AssertionError("invalid Android accessibility bounds: " + repr(node.attrib))
     return tuple(map(int, match.groups()))
 
-def one_description(description):
-    found = [node for node in nodes if node.attrib.get("content-desc") == description]
+def one_description(description, prefix=False):
+    found = [
+        node for node in nodes
+        if (node.attrib.get("content-desc", "").startswith(description)
+            if prefix else node.attrib.get("content-desc") == description)
+    ]
     if len(found) != 1:
         raise AssertionError(f"expected one visible {description!r}, got {len(found)}")
     node = found[0]
@@ -5737,7 +5741,7 @@ def one_description(description):
     return node
 
 one_description("MPC Grid View workspace")
-one_description("MPC Grid View drum event grid")
+one_description("MPC Grid View drum event grid", prefix=True)
 
 accessible_ranges = [
     node for node in nodes
@@ -5796,7 +5800,7 @@ def bounds(node):
                          node.attrib.get("bounds", ""))
     if match is None: raise AssertionError("invalid bounds " + repr(node.attrib))
     return tuple(map(int, match.groups()))
-grid = [n for n in nodes if n.attrib.get("content-desc") == "MPC Grid View drum event grid"]
+grid = [n for n in nodes if n.attrib.get("content-desc", "").startswith("MPC Grid View drum event grid")]
 if len(grid) != 1: raise AssertionError(f"expected one Grid canvas, got {len(grid)}")
 left, top, right, bottom = bounds(grid[0])
 density_matches = re.findall(r"Override density:\s*(\d+)", density_text)
@@ -6207,7 +6211,7 @@ def bounds(node):
     if match is None:
         raise AssertionError(f"invalid bounds: {node.attrib!r}")
     return tuple(map(int, match.groups()))
-grid = [n for n in nodes if n.attrib.get("content-desc") == "MPC Grid View drum event grid"]
+grid = [n for n in nodes if n.attrib.get("content-desc", "").startswith("MPC Grid View drum event grid")]
 if len(grid) != 1:
     raise AssertionError(f"expected one live Grid canvas, got {len(grid)}")
 ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
@@ -6415,6 +6419,7 @@ def read(path):
     if rm is None:
         raise AssertionError(f"{path}: malformed Grid step range")
     first, last, total = map(int, rm.groups())
+
     prefix = f"Grid event parameters: PAD 01, STEP {step:02d}, VEL "
     states = [n.attrib.get("content-desc", "") for n in nodes
               if n.attrib.get("content-desc", "").startswith(prefix)]
@@ -6426,11 +6431,13 @@ def read(path):
     if em is None:
         raise AssertionError(f"{path}: malformed native fields: {states[0]!r}")
     event = tuple(map(int, em.groups()))
+
     selected_prefix = f"Grid selection: PAD 01, STEP {step:02d}, note present, velocity "
     selected = [n.attrib.get("content-desc", "") for n in nodes
                 if n.attrib.get("content-desc", "").startswith(selected_prefix)]
     if len(selected) != 1 or selected[0] != selected_prefix + str(event[1]):
         raise AssertionError(f"{path}: selected pad/step disagrees with native event: {selected!r}")
+
     tick_nodes = [n.attrib.get("content-desc", "") for n in nodes
                   if n.attrib.get("content-desc", "").startswith("Grid quantize resolution: ")]
     if len(tick_nodes) != 1:
@@ -6438,35 +6445,50 @@ def read(path):
     tm = re.search(r"\((\d+) ticks\)$", tick_nodes[0])
     if tm is None:
         raise AssertionError(f"{path}: malformed quantize label: {tick_nodes[0]!r}")
+
     counts = [int(m.group(1)) for n in nodes
               for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
     if counts != [1]:
         raise AssertionError(f"{path}: expected one native note, got {counts!r}")
-    status = [n.attrib.get("text", "").strip() for n in nodes
-              if "GRID ZOOM V • PADS " in n.attrib.get("text", "")]
-    if status and len(status) != 1:
-        raise AssertionError(f"{path}: duplicate vertical zoom status nodes: {status!r}")
-    return (first,last,total), event, selected[0], int(tm.group(1)), counts, status
-before_range, before_event, before_selected, before_ticks, before_counts, _ = read(before_path)
-after_range, after_event, after_selected, after_ticks, after_counts, status = read(after_path)
+
+    grid_prefix = "MPC Grid View drum event grid; Grid visible pad range: pads "
+    grid_nodes = [n for n in nodes
+                  if n.attrib.get("content-desc", "").startswith(grid_prefix)]
+    if len(grid_nodes) != 1:
+        raise AssertionError(f"{path}: expected one Grid canvas with pad viewport semantics, got {len(grid_nodes)}")
+    grid_description = grid_nodes[0].attrib.get("content-desc", "")
+    pm = re.fullmatch(
+        r"MPC Grid View drum event grid; Grid visible pad range: pads\s+(\d+) through (\d+) of 16",
+        grid_description)
+    if pm is None:
+        raise AssertionError(f"{path}: malformed visible pad range: {grid_description!r}")
+    pad_first, pad_last = map(int, pm.groups())
+    if not 1 <= pad_last <= pad_first <= 16:
+        raise AssertionError(f"{path}: invalid descending Pad viewport: {(pad_first, pad_last)!r}")
+
+    return (first, last, total), event, selected[0], int(tm.group(1)), counts, (pad_first, pad_last)
+
+before_range, before_event, before_selected, before_ticks, before_counts, before_pads = read(before_path)
+after_range, after_event, after_selected, after_ticks, after_counts, after_pads = read(after_path)
 if before_event != after_event or before_selected != after_selected or before_ticks != after_ticks:
     raise AssertionError(f"ZOOM V changed event identity/timing/fields: "
-                         f"{(before_event,before_selected,before_ticks)!r} -> "
-                         f"{(after_event,after_selected,after_ticks)!r}")
+                         f"{(before_event, before_selected, before_ticks)!r} -> "
+                         f"{(after_event, after_selected, after_ticks)!r}")
 if before_range != after_range:
     raise AssertionError(f"ZOOM V changed horizontal range: {before_range!r} -> {after_range!r}")
 if before_counts != [1] or after_counts != before_counts:
     raise AssertionError(f"ZOOM V changed event count: {before_counts!r} -> {after_counts!r}")
-if len(status) != 1:
-    raise AssertionError(f"expected one vertical zoom status node, got {status!r}")
-m = re.fullmatch(r"GRID ZOOM V • PADS\s+(\d+)[–-](\d+)", status[0])
-if m is None:
-    raise AssertionError(f"malformed vertical zoom status: {status[0]!r}")
-first_pad, last_pad = map(int, m.groups())
-visible_pads = abs(first_pad-last_pad) + 1
-if visible_pads >= 16 or visible_pads < 1 or not min(first_pad,last_pad) <= 1 <= max(first_pad,last_pad):
-    raise AssertionError(f"ZOOM V must reduce visible pad range while retaining PAD 01: {status[0]!r}")
-print(f"Grid ZOOM V changed pad viewport only: {status[0]}; event identity/timing/fields unchanged.")
+
+before_pad_count = before_pads[0] - before_pads[1] + 1
+after_pad_count = after_pads[0] - after_pads[1] + 1
+if before_pad_count != 16:
+    raise AssertionError(f"horizontal zoom unexpectedly changed visible Pad count: {before_pads!r}")
+if after_pad_count >= before_pad_count:
+    raise AssertionError(f"ZOOM V must reduce visible Pad count: {before_pads!r} -> {after_pads!r}")
+if not min(after_pads) <= 1 <= max(after_pads):
+    raise AssertionError(f"ZOOM V lost selected PAD 01 from viewport: {after_pads!r}")
+print(f"Grid ZOOM V changed Pad viewport only: {before_pads[0]}–{before_pads[1]} -> "
+      f"{after_pads[0]}–{after_pads[1]}; event identity/timing/fields unchanged.")
 PY_GRID_ZOOM_V
     then
       echo "ERROR: Grid ZOOM V changed event data or failed viewport acceptance"; cat "$GRID_ZOOM_V_XML"; exit 1
@@ -6498,8 +6520,8 @@ def bounds(n):
  m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",n.attrib.get("bounds",""))
  if m is None: raise AssertionError("invalid bounds "+repr(n.attrib))
  return tuple(map(int,m.groups()))
-def desc(value):
- found=[n for n in nodes if n.attrib.get("content-desc")==value]
+def desc(value, prefix=False):
+ found=[n for n in nodes if (n.attrib.get("content-desc","").startswith(value) if prefix else n.attrib.get("content-desc")==value)]
  if len(found)!=1: raise AssertionError(f"expected one {value!r}, got {len(found)}")
  n=found[0]; x1,y1,x2,y2=bounds(n)
  if x2<=x1 or y2<=y1 or n.attrib.get("visible-to-user")=="false": raise AssertionError(f"not visible: {value!r}")
@@ -6540,12 +6562,12 @@ def bounds(n):
  m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",n.attrib.get("bounds",""))
  if m is None: raise AssertionError("invalid bounds "+repr(n.attrib))
  return tuple(map(int,m.groups()))
-def desc(value):
- found=[n for n in nodes if n.attrib.get("content-desc")==value]
+def desc(value, prefix=False):
+ found=[n for n in nodes if (n.attrib.get("content-desc","").startswith(value) if prefix else n.attrib.get("content-desc")==value)]
  if len(found)!=1: raise AssertionError(f"expected one {value!r}, got {len(found)}")
  n=found[0]; x1,y1,x2,y2=bounds(n)
  if x2<=x1 or y2<=y1 or n.attrib.get("visible-to-user")=="false": raise AssertionError(f"not visible: {value!r}")
-desc("MPC Grid View workspace"); desc("MPC Grid View drum event grid")
+desc("MPC Grid View workspace"); desc("MPC Grid View drum event grid", prefix=True)
 if any(n.attrib.get("content-desc")=="MPC linear arrangement editor" for n in nodes): raise AssertionError("Arrangement remains visible")
 prefix=f"TRACK {track+1:02d} •"
 if not any(n.attrib.get("text","").startswith(prefix) for n in nodes): raise AssertionError(f"Track context not restored: {prefix}")
