@@ -4680,11 +4680,14 @@ PY_ARRANGE_PAN_TOUCH_POINTS
       printf 'BASELINE: %s\nPANNED: %s\nRESTORED: %s\n' \
         "$arrange_zoom_baseline_data" "$arrange_pan_changed_data" "$arrange_pan_restored_data"; exit 1
     fi
-    if ! test -s /tmp/mpc-groovebox-arrange-pan-changed.png \
+    if ! test -s /tmp/mpc-groovebox-arrange-pan-start.png \
+        || ! test -s /tmp/mpc-groovebox-arrange-pan-changed.png \
         || ! test -s /tmp/mpc-groovebox-arrange-pan-restored.png; then
       echo "ERROR: required Arrangement pan screenshots are missing"; exit 1
     fi
-    if [[ ! -s "$ARRANGE_PAN_CHANGED_XML" || ! -s "$ARRANGE_PAN_RESTORED_XML" ]]; then
+    if [[ ! -s "$ARRANGE_PAN_PREP_XML" \
+        || ! -s "$ARRANGE_PAN_CHANGED_XML" \
+        || ! -s "$ARRANGE_PAN_RESTORED_XML" ]]; then
       echo "ERROR: required Arrangement pan accessibility XML is missing"; exit 1
     fi
     # Reset and recapture after panning so the separate ZOOM + / ZOOM −
@@ -4706,13 +4709,6 @@ PY_ARRANGE_PAN_TOUCH_POINTS
     arrange_zoom_reset_line="$(arrange_zoom_log_line "RESET")" || exit 1
     arrange_zoom_baseline_data="$(arrange_zoom_data_from_log "$arrange_zoom_reset_line")" || exit 1
 
-    # Use a fresh baseline tree for the zoom test that follows.
-    if ! dump_device_ui_retry "$ARRANGE_ZOOM_BASELINE_REMOTE" "$ARRANGE_ZOOM_BASELINE_XML" 8 4; then
-      echo "ERROR: could not refresh Arrangement zoom baseline after ruler pan restoration"; exit 1
-    fi
-    if ! capture_ui_screenshot "$ARRANGE_ZOOM_BASELINE_PNG" 10; then
-      echo "ERROR: could not refresh Arrangement zoom baseline screenshot"; exit 1
-    fi
     echo "ARR-003 ruler pan passed: viewport start advanced and returned exactly; visible bars and native Track event data remained unchanged."
 
 
