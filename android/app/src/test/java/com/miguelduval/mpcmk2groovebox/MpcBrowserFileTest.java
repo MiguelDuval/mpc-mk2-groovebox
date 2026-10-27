@@ -17,7 +17,11 @@ public final class MpcBrowserFileTest {
     }
 
     private MpcBrowserFile sample(String name, String uri) {
-        return new MpcBrowserFile(uri, name, "audio/wav", 48000L, 1200L);
+        return sample(name, uri, "");
+    }
+
+    private MpcBrowserFile sample(String name, String uri, String relativePath) {
+        return new MpcBrowserFile(uri, name, "audio/wav", 48000L, 1200L, relativePath);
     }
 
     @Test
@@ -99,6 +103,40 @@ public final class MpcBrowserFileTest {
         assertTrue(kick.matchesBrowserQuery("CONTENT", "MY FILES", "ALL", "kick"));
         assertFalse(kick.matchesBrowserQuery("PLACES", "INTERNAL", "PROJECTS", ""));
         assertFalse(kick.matchesBrowserQuery("PLACES", "INTERNAL", "ALL", "snare"));
+    }
+
+    @Test
+    public void drumsAndDemosUseExactMediaStoreRelativePathSegments() {
+        MpcBrowserFile root = sample(
+                "Browser-Smoke-Local.wav", "content://media/external/audio/media/1", "Music/");
+        MpcBrowserFile drum = sample(
+                "Browser-Smoke-Drum.wav", "content://media/external/audio/media/2", "Music/Drums/");
+        MpcBrowserFile nestedDrum = sample(
+                "Snare.wav", "content://media/external/audio/media/3", "Music/Drums/OneShots/");
+        MpcBrowserFile demo = sample(
+                "Browser-Smoke-Demo.wav", "content://media/external/audio/media/4", "Music/Demos/");
+        MpcBrowserFile misleading = sample(
+                "NotADrum.wav", "content://media/external/audio/media/5", "Music/NotDrums/");
+        MpcBrowserFile similarlyNamed = sample(
+                "OldDemo.wav", "content://media/external/audio/media/6", "Music/Demos-Old/");
+
+        assertTrue(drum.matchesBrowserQuery("CONTENT", "DRUMS", "ALL", ""));
+        assertTrue(nestedDrum.matchesBrowserQuery("CONTENT", "DRUMS", "SAMPLES", "snare"));
+        assertFalse(root.matchesBrowserQuery("CONTENT", "DRUMS", "ALL", ""));
+        assertFalse(demo.matchesBrowserQuery("CONTENT", "DRUMS", "ALL", ""));
+        assertFalse(misleading.matchesBrowserQuery("CONTENT", "DRUMS", "ALL", ""));
+        assertTrue(demo.matchesBrowserQuery("CONTENT", "DEMOS", "ALL", ""));
+        assertFalse(drum.matchesBrowserQuery("CONTENT", "DEMOS", "ALL", ""));
+        assertFalse(similarlyNamed.matchesBrowserQuery("CONTENT", "DEMOS", "ALL", ""));
+        assertFalse(drum.matchesBrowserQuery("CONTENT", "INSTRUMENTS", "ALL", ""));
+        assertFalse(drum.matchesBrowserQuery("CONTENT", "DRUMS", "PROJECTS", ""));
+        assertFalse(drum.matchesBrowserQuery("CONTENT", "DRUMS", "SAMPLES", "kick"));
+
+        assertTrue(MpcBrowserFile.pathContainsFolderSegment("Music/Drums/", "drums"));
+        assertTrue(MpcBrowserFile.pathContainsFolderSegment("Music/Drums/OneShots/", "DRUMS"));
+        assertFalse(MpcBrowserFile.pathContainsFolderSegment("Music/NotDrums/", "Drums"));
+        assertFalse(MpcBrowserFile.pathContainsFolderSegment("Music/Demos-Old/", "Demos"));
+        assertFalse(MpcBrowserFile.pathContainsFolderSegment("", "Drums"));
     }
 
     @Test
