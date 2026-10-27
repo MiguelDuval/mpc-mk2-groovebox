@@ -1038,8 +1038,12 @@ final class MpcArrangeView extends View {
                 final boolean moved = timelinePanMoved;
                 timelinePanActive = false;
                 timelinePanMoved = false;
-                if (moved && previousStart != currentStart && listener != null) {
-                    listener.onViewportChanged(previousStart, currentStart);
+                if (moved && previousStart != currentStart) {
+                    // Manual panning is a new viewport state, not an inverse zoom step.
+                    zoomHistory.clear();
+                    if (listener != null) {
+                        listener.onViewportChanged(previousStart, currentStart);
+                    }
                 }
                 return true;
             }
