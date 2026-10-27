@@ -134,7 +134,7 @@ for required in \
   'PROJECT_SAVE_B_PAIR_XML="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair-uiautomator.xml"' \
   'dump_device_ui_retry "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" 8 2 compressed' \
   'capture_verified_fresh_save_picker_pair "$hierarchy_path" "$screenshot_path" "$new_name"' \
-  'Verified measured Save As filename and SAVE target for $new_name on a fresh compressed hierarchy.';
+  'Verified measured Save As filename and SAVE target for $new_name on a fresh compressed hierarchy.'\
   'Preserved immutable initial Save As hierarchy/screenshot pair.' \
   'Preserved immutable Project Open hierarchy/screenshot pair.'; do
   if ! grep -Fq -- "$required" "$0"; then
