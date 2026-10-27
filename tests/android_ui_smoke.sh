@@ -10457,16 +10457,28 @@ PICKER_CANCEL_RETURN_PNG="/tmp/mpc-groovebox-browser-picker-cancelled.png"
 read_browser_picker_cancel_state() {
   python3 - "$1" <<'PY_BROWSER_PICKER_CANCEL_STATE'
 import json
+import re
 import sys
 import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
 nodes = list(root.iter("node"))
 
+def visible(node):
+    # uiautomator dump omits visible-to-user; use measured positive bounds and
+    # honor the attribute when a provider does expose it.
+    if node.attrib.get("visible-to-user", "true").lower() in {"false", "0"}:
+        return False
+    match = re.fullmatch(r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]",
+                         node.attrib.get("bounds", ""))
+    if not match:
+        return False
+    left, top, right, bottom = map(int, match.groups())
+    return right > left and bottom > top
+
 def unique(description):
     matches = [node for node in nodes
-               if node.attrib.get("content-desc", "") == description
-               and node.attrib.get("visible-to-user") == "true"]
+               if node.attrib.get("content-desc", "") == description and visible(node)]
     if len(matches) != 1:
         raise SystemExit(
             f"expected exactly one visible Browser field {description!r}, found {len(matches)}")
@@ -10474,8 +10486,7 @@ def unique(description):
 
 locations = [node for node in nodes
              if node.attrib.get("content-desc", "").startswith(
-                 "MPC Browser current location: ")
-             and node.attrib.get("visible-to-user") == "true"]
+                 "MPC Browser current location: ") and visible(node)]
 if len(locations) != 1:
     raise SystemExit(f"expected one visible Browser location, found {len(locations)}")
 location = locations[0]
