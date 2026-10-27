@@ -1946,11 +1946,26 @@ for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStat
     exit 1
   fi
 done
+echo "Checking selected-step anchoring in horizontal Grid zoom..."
+grid_zoom_h_start="$(grep -n -m1 'private void zoomSequenceGridHorizontal(int delta)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)"
+grid_zoom_v_start="$(grep -n -m1 'private void zoomSequenceGridVertical(int delta)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)"
+if [[ -z "$grid_zoom_h_start" || -z "$grid_zoom_v_start" || "$grid_zoom_v_start" -le "$grid_zoom_h_start" ]]; then
+  echo "ERROR: horizontal/vertical Grid zoom method boundaries are missing"; exit 1
+fi
+grid_zoom_h_block="$(sed -n "${grid_zoom_h_start},$((grid_zoom_v_start - 1))p" "$MAIN_ACTIVITY_SOURCE")"
+for required in 'selectedGridEventStep >= 0' 'selectedGridEventStep < totalSteps' 'MpcSequenceZoomPolicy.gridStartForStep(' 'center - sequenceGridVisibleSteps / 2'; do
+  if ! grep -Fq -- "$required" <<<"$grid_zoom_h_block"; then
+    echo "ERROR: horizontal Grid zoom must anchor selected steps and preserve the no-selection fallback: $required"; exit 1
+  fi
+done
+
 echo "Checking Grid zoom visual evidence capture and upload contract..."
 for required in \
   'mpc-groovebox-grid-zoom-baseline.png|\' \
   'mpc-groovebox-grid-zoom-horizontal.png|\' \
-  'mpc-groovebox-grid-zoom-vertical.png|\'; do
+  'mpc-groovebox-grid-zoom-vertical.png|\' \
+  'mpc-groovebox-grid-zoom-edge-selected.png|\' \
+  'mpc-groovebox-grid-zoom-edge-retained.png|\'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: Grid zoom screenshot is not retained by capture_ui_screenshot: $required"
     exit 1
@@ -1962,7 +1977,12 @@ for required in \
   '/tmp/mpc-groovebox-grid-zoom-horizontal.png' \
   '/tmp/mpc-groovebox-grid-zoom-horizontal-uiautomator.xml' \
   '/tmp/mpc-groovebox-grid-zoom-vertical.png' \
-  '/tmp/mpc-groovebox-grid-zoom-vertical-uiautomator.xml'; do
+  '/tmp/mpc-groovebox-grid-zoom-vertical-uiautomator.xml' \
+  '/tmp/mpc-groovebox-grid-zoom-edge-selected.png' \
+  '/tmp/mpc-groovebox-grid-zoom-edge-selected-uiautomator.xml' \
+  '/tmp/mpc-groovebox-grid-zoom-edge-retained.png' \
+  '/tmp/mpc-groovebox-grid-zoom-edge-retained-uiautomator.xml' \
+  '/tmp/mpc-groovebox-grid-zoom-edge-restored-uiautomator.xml'; do
   if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
     echo "ERROR: Grid zoom evidence is not included in the CI artifact upload: $required"
     exit 1
@@ -2125,6 +2145,8 @@ capture_ui_screenshot() {
     mpc-groovebox-grid-zoom-baseline.png|\
     mpc-groovebox-grid-zoom-horizontal.png|\
     mpc-groovebox-grid-zoom-vertical.png|\
+    mpc-groovebox-grid-zoom-edge-selected.png|\
+    mpc-groovebox-grid-zoom-edge-retained.png|\
     mpc-groovebox-browser.png|\
     mpc-groovebox-browser-device.png|\
     mpc-groovebox-browser-local-results.png|\
@@ -6494,6 +6516,221 @@ PY_GRID_ZOOM_V
       echo "ERROR: Grid ZOOM V changed event data or failed viewport acceptance"; cat "$GRID_ZOOM_V_XML"; exit 1
     fi
     echo "Grid ZOOM H and ZOOM V both change only the viewport; full native event fields and quantize timing are identical."
+
+    # Edge regression: select the rightmost visible empty cell and zoom again.
+    # The selected PAD/STEP must remain in view without changing native notes.
+    GRID_ZOOM_EDGE_SELECTED_XML="/tmp/mpc-groovebox-grid-zoom-edge-selected-uiautomator.xml"
+    GRID_ZOOM_EDGE_SELECTED_REMOTE="/sdcard/mpc-groovebox-grid-zoom-edge-selected-uiautomator.xml"
+    GRID_ZOOM_EDGE_SELECTED_PNG="/tmp/mpc-groovebox-grid-zoom-edge-selected.png"
+    GRID_ZOOM_EDGE_RETAINED_XML="/tmp/mpc-groovebox-grid-zoom-edge-retained-uiautomator.xml"
+    GRID_ZOOM_EDGE_RETAINED_REMOTE="/sdcard/mpc-groovebox-grid-zoom-edge-retained-uiautomator.xml"
+    GRID_ZOOM_EDGE_RETAINED_PNG="/tmp/mpc-groovebox-grid-zoom-edge-retained.png"
+    GRID_ZOOM_EDGE_RESTORED_XML="/tmp/mpc-groovebox-grid-zoom-edge-restored-uiautomator.xml"
+    GRID_ZOOM_EDGE_RESTORED_REMOTE="/sdcard/mpc-groovebox-grid-zoom-edge-restored-uiautomator.xml"
+
+    edge_coordinates="$(python3 - "$GRID_ZOOM_V_XML" "$grid_density_info" <<'PY_GRID_ZOOM_EDGE_COORDINATES'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, density_text = sys.argv[1:]
+nodes = list(ET.parse(path).getroot().iter("node"))
+grid = [n for n in nodes if n.attrib.get("content-desc", "").startswith("MPC Grid View drum event grid")]
+ranges = [n.attrib.get("content-desc", "") for n in nodes if n.attrib.get("content-desc", "").startswith("Grid visible step range: steps ")]
+pad_status = [n.attrib.get("text", "").strip() for n in nodes if "GRID ZOOM V • PADS " in n.attrib.get("text", "")]
+if len(grid) != 1 or len(ranges) != 1 or len(pad_status) != 1:
+    raise AssertionError(f"missing unique Grid canvas/step/pad viewport: {len(grid)}/{len(ranges)}/{pad_status!r}")
+m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)", ranges[0])
+pm = re.fullmatch(r"GRID ZOOM V • PADS\s+(\d+)[–-](\d+)", pad_status[0])
+if m is None or pm is None:
+    raise AssertionError(f"malformed Grid range: {ranges[0]!r} / {pad_status[0]!r}")
+first,last,total = map(int,m.groups())
+first_pad,last_pad = map(int,pm.groups())
+if last-first+1 != 12 or not first <= last <= total:
+    raise AssertionError(f"expected 12 visible steps before edge zoom, got {first}–{last}/{total}")
+counts = [int(m.group(1)) for n in nodes for m in [re.search(r"\bevents=(\d+)\b",n.attrib.get("text",""))] if m]
+if counts != [1]:
+    raise AssertionError(f"expected one existing native note before edge selection: {counts!r}")
+density_matches = re.findall(r"Override density:\s*(\d+)",density_text) or re.findall(r"Physical density:\s*(\d+)",density_text)
+if not density_matches:
+    raise AssertionError("could not parse emulator density")
+density = int(density_matches[-1])/160.0
+bm = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",grid[0].attrib.get("bounds",""))
+if bm is None:
+    raise AssertionError("Grid canvas has invalid live bounds")
+left,top,right,bottom = map(int,bm.groups())
+pads = abs(first_pad-last_pad)+1
+li,ti,ei = 42*density,24*density,6*density
+pw,ph = max(1.0,right-left-li-ei),max(1.0,bottom-top-ti-ei)
+x = round(left+li+((last-first+1)-0.5)*pw/(last-first+1))
+y = round(top+ti+(pads-0.5)*ph/pads)
+if not left < x < right or not top < y < bottom:
+    raise AssertionError(f"edge target {(x,y)} is outside Grid bounds {(left,top,right,bottom)}")
+print(x,y,last,first_pad,last_pad)
+PY_GRID_ZOOM_EDGE_COORDINATES
+    )" || { echo "ERROR: could not calculate the live-bounds rightmost Grid cell"; exit 1; }
+    read -r edge_x edge_y edge_step edge_first_pad edge_last_pad <<< "$edge_coordinates"
+    if ! adb_bounded 10 shell input tap "$edge_x" "$edge_y"; then
+      echo "ERROR: real-touch right-edge Grid cell selection failed"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$GRID_ZOOM_EDGE_SELECTED_REMOTE" "$GRID_ZOOM_EDGE_SELECTED_XML"; then
+      echo "ERROR: fresh hierarchy failed after right-edge Grid cell selection"; exit 1
+    fi
+    if ! capture_ui_screenshot "$GRID_ZOOM_EDGE_SELECTED_PNG" 10; then
+      echo "ERROR: right-edge Grid cell screenshot failed"; exit 1
+    fi
+    if ! python3 - "$GRID_ZOOM_EDGE_SELECTED_XML" "$edge_step" "$edge_first_pad" "$edge_last_pad" <<'PY_GRID_ZOOM_EDGE_SELECTED'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, step_s, first_pad_s, last_pad_s = sys.argv[1:]
+step, first_pad, last_pad = map(int,(step_s,first_pad_s,last_pad_s))
+nodes = list(ET.parse(path).getroot().iter("node"))
+selected = [n.attrib.get("content-desc","") for n in nodes if n.attrib.get("content-desc","").startswith("Grid selection: PAD 01, STEP ")]
+expected = f"Grid selection: PAD 01, STEP {step:02d}, no note"
+if selected != [expected]:
+    raise AssertionError(f"real touch did not select the expected empty edge cell: {selected!r}")
+ranges = [n.attrib.get("content-desc","") for n in nodes if n.attrib.get("content-desc","").startswith("Grid visible step range: steps ")]
+m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",ranges[0]) if len(ranges)==1 else None
+if m is None:
+    raise AssertionError(f"missing/malformed step range after cell selection: {ranges!r}")
+first,last,total = map(int,m.groups())
+if not first <= step <= last or last-first+1 != 12:
+    raise AssertionError(f"selected edge step {step} isn't in prior viewport {first}–{last}/{total}")
+pads = [n.attrib.get("text","").strip() for n in nodes if "GRID ZOOM V • PADS " in n.attrib.get("text","")]
+if pads != [f"GRID ZOOM V • PADS {first_pad}–{last_pad}"]:
+    raise AssertionError(f"vertical viewport changed during empty-cell selection: {pads!r}")
+counts = [int(m.group(1)) for n in nodes for m in [re.search(r"\bevents=(\d+)\b",n.attrib.get("text",""))] if m]
+if counts != [1]:
+    raise AssertionError(f"empty-cell selection mutated native event count: {counts!r}")
+print(f"Grid real touch selected empty edge cell PAD 01 / STEP {step}; native event count unchanged.")
+PY_GRID_ZOOM_EDGE_SELECTED
+    then
+      echo "ERROR: edge cell selection changed Grid state or native Pattern"; cat "$GRID_ZOOM_EDGE_SELECTED_XML"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$GRID_ZOOM_EDGE_SELECTED_XML" "ZOOM H"; then
+      echo "ERROR: real-touch ZOOM H was unavailable from edge-selected Grid"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$GRID_ZOOM_EDGE_RETAINED_REMOTE" "$GRID_ZOOM_EDGE_RETAINED_XML"; then
+      echo "ERROR: fresh hierarchy failed after selected-edge zoom"; exit 1
+    fi
+    if ! capture_ui_screenshot "$GRID_ZOOM_EDGE_RETAINED_PNG" 10; then
+      echo "ERROR: selected-edge zoom screenshot failed"; exit 1
+    fi
+    if ! python3 - "$GRID_ZOOM_EDGE_SELECTED_XML" "$GRID_ZOOM_EDGE_RETAINED_XML" "$edge_step" "$edge_first_pad" "$edge_last_pad" <<'PY_GRID_ZOOM_EDGE_RETAINED'
+import re
+import sys
+import xml.etree.ElementTree as ET
+before_path,after_path,step_s,first_pad_s,last_pad_s = sys.argv[1:]
+step,first_pad,last_pad = map(int,(step_s,first_pad_s,last_pad_s))
+def read(path):
+    nodes = list(ET.parse(path).getroot().iter("node"))
+    ranges = [n.attrib.get("content-desc","") for n in nodes if n.attrib.get("content-desc","").startswith("Grid visible step range: steps ")]
+    m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",ranges[0]) if len(ranges)==1 else None
+    if m is None:
+        raise AssertionError(f"{path}: missing/malformed visible-step range: {ranges!r}")
+    first,last,total = map(int,m.groups())
+    selected = [n.attrib.get("content-desc","") for n in nodes if n.attrib.get("content-desc","").startswith("Grid selection: PAD 01, STEP ")]
+    pads = [n.attrib.get("text","").strip() for n in nodes if "GRID ZOOM V • PADS " in n.attrib.get("text","")]
+    counts = [int(m.group(1)) for n in nodes for m in [re.search(r"\bevents=(\d+)\b",n.attrib.get("text",""))] if m]
+    ticks = [n.attrib.get("content-desc","") for n in nodes if n.attrib.get("content-desc","").startswith("Grid quantize resolution: ")]
+    if len(pads)!=1 or len(ticks)!=1 or counts != [1]:
+        raise AssertionError(f"{path}: pad/quantize/event-count contract failed: pads={pads!r} ticks={ticks!r} counts={counts!r}")
+    return (first,last,total),selected,pads[0],ticks[0],counts
+before,bs, bp,bt,bc = read(before_path)
+after,as_,ap,at,ac = read(after_path)
+expected = f"Grid selection: PAD 01, STEP {step:02d}, no note"
+if bs != [expected] or as_ != [expected]:
+    raise AssertionError(f"zoom moved/lost selected edge step {step}: {bs!r} -> {as_!r}")
+pad_status = f"GRID ZOOM V • PADS {first_pad}–{last_pad}"
+if bp != pad_status or ap != pad_status:
+    raise AssertionError(f"horizontal zoom changed vertical Pad viewport: {bp!r} -> {ap!r}")
+if bt != at or bc != [1] or ac != bc:
+    raise AssertionError(f"zoom changed quantize or native event count: {bt!r}/{bc!r} -> {at!r}/{ac!r}")
+if before[2] != after[2] or after[1]-after[0]+1 >= before[1]-before[0]+1:
+    raise AssertionError(f"horizontal zoom did not reduce visible steps: {before!r} -> {after!r}")
+if not after[0] <= step <= after[1]:
+    raise AssertionError(f"ZOOM H dropped selected edge step {step} from viewport {after!r}")
+print(f"Selected edge step {step} retained through H zoom {before[0]}–{before[1]} -> {after[0]}–{after[1]}; native state unchanged.")
+PY_GRID_ZOOM_EDGE_RETAINED
+    then
+      echo "ERROR: zoom dropped selected edge step or altered native Pattern state"; cat "$GRID_ZOOM_EDGE_RETAINED_XML"; exit 1
+    fi
+
+    # Restore the seeded note selection so subsequent tests still see the known
+    # PAD 01 / STEP 33 note, without changing musical data.
+    restore_xy="$(python3 - "$GRID_ZOOM_EDGE_RETAINED_XML" "$grid_density_info" "$target_step" <<'PY_GRID_ZOOM_RESTORE'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path,density_text,step_s = sys.argv[1:]
+step = int(step_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+grid = [n for n in nodes if n.attrib.get("content-desc","").startswith("MPC Grid View drum event grid")]
+ranges = [n.attrib.get("content-desc","") for n in nodes if n.attrib.get("content-desc","").startswith("Grid visible step range: steps ")]
+if len(grid)!=1 or len(ranges)!=1:
+    raise AssertionError("missing Grid canvas/range for reselection")
+m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",ranges[0])
+if m is None:
+    raise AssertionError("malformed visible range for reselection")
+first,last,total = map(int,m.groups())
+if not first <= step <= last:
+    raise AssertionError(f"seed step {step} not visible in {first}–{last}/{total}")
+pads = [n.attrib.get("text","").strip() for n in nodes if "GRID ZOOM V • PADS " in n.attrib.get("text","")]
+pm = re.fullmatch(r"GRID ZOOM V • PADS\s+(\d+)[–-](\d+)",pads[0]) if len(pads)==1 else None
+if pm is None:
+    raise AssertionError(f"missing/malformed Pad viewport: {pads!r}")
+first_pad,last_pad = map(int,pm.groups())
+density = re.findall(r"Override density:\s*(\d+)",density_text) or re.findall(r"Physical density:\s*(\d+)",density_text)
+if not density:
+    raise AssertionError("device density unavailable for reselection coordinates")
+d = int(density[-1])/160.0
+bm = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",grid[0].attrib.get("bounds",""))
+if bm is None:
+    raise AssertionError("Grid canvas bounds unavailable for reselection")
+left,top,right,bottom = map(int,bm.groups())
+visible_pads = abs(first_pad-last_pad)+1
+li,ti,ei = 42*d,24*d,6*d
+pw,ph = max(1.0,right-left-li-ei),max(1.0,bottom-top-ti-ei)
+x = round(left+li+((step-first)+0.5)*pw/(last-first+1))
+y = round(top+ti+(visible_pads-0.5)*ph/visible_pads)
+print(x,y)
+PY_GRID_ZOOM_RESTORE
+    )" || { echo "ERROR: could not calculate a measured tap for the known seed note"; exit 1; }
+    read -r restore_x restore_y <<< "$restore_xy"
+    if ! adb_bounded 10 shell input tap "$restore_x" "$restore_y"; then
+      echo "ERROR: could not restore the known seed note selection after edge zoom"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$GRID_ZOOM_EDGE_RESTORED_REMOTE" "$GRID_ZOOM_EDGE_RESTORED_XML"; then
+      echo "ERROR: could not capture hierarchy after restoring the known seed note"; exit 1
+    fi
+    if ! python3 - "$GRID_ZOOM_EDGE_RESTORED_XML" "$target_step" <<'PY_GRID_ZOOM_EDGE_RESTORED'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path,step_s = sys.argv[1:]
+step = int(step_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+selected = [n.attrib.get("content-desc","") for n in nodes if n.attrib.get("content-desc","").startswith(f"Grid selection: PAD 01, STEP {step:02d},")]
+expected = f"Grid selection: PAD 01, STEP {step:02d}, note present, velocity 100"
+if selected != [expected]:
+    raise AssertionError(f"known seed note selection did not restore: {selected!r}")
+counts = [int(m.group(1)) for n in nodes for m in [re.search(r"\bevents=(\d+)\b",n.attrib.get("text",""))] if m]
+if counts != [1]:
+    raise AssertionError(f"reselection changed native event count: {counts!r}")
+print(f"Restored seeded note selection PAD 01 / STEP {step}; one native event remains.")
+PY_GRID_ZOOM_EDGE_RESTORED
+    then
+      echo "ERROR: known seed note selection was not restored after edge zoom"; cat "$GRID_ZOOM_EDGE_RESTORED_XML"; exit 1
+    fi
+    if ! capture_ui_screenshot "$GRID_ZOOM_EDGE_RESTORED_PNG" 10; then
+      echo "ERROR: could not capture the restored seed-note selection screenshot"; exit 1
+    fi
+    echo "Grid zoom retained an edge-selected Step and restored the original native note selection without mutation."
 
     if ! adb_bounded 10 shell run-as "$PACKAGE" \
         touch cache/mpc-arrange-grid-focus-capture-release; then
