@@ -42,7 +42,8 @@ final class MpcLocalAudioCatalog {
                         MediaStore.Audio.Media.DISPLAY_NAME,
                         MediaStore.Audio.Media.MIME_TYPE,
                         MediaStore.Audio.Media.SIZE,
-                        MediaStore.Audio.Media.DURATION
+                        MediaStore.Audio.Media.DURATION,
+                        MediaStore.MediaColumns.DATE_MODIFIED
                 };
         final List<MpcBrowserFile> files = new ArrayList<>();
         try (Cursor cursor = resolver.query(
