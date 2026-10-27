@@ -7753,7 +7753,7 @@ if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
     raise SystemExit("fresh hierarchy is not rooted in Android DocumentsUI")
 
 def bounds(node):
-    match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
                          node.attrib.get("bounds", ""))
     return tuple(map(int, match.groups())) if match else None
 
@@ -7827,7 +7827,7 @@ if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
     raise SystemExit("fresh hierarchy is not rooted in Android DocumentsUI")
 
 def rect(node):
-    match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
                          node.attrib.get("bounds", ""))
     return tuple(map(int, match.groups())) if match else None
 
