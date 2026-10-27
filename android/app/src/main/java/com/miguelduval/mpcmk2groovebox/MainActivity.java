@@ -14072,6 +14072,101 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        verifyMainMuteRouteForAudit(
+                this::continueUiAuditAfterMainMuteRoute);
+    }
+
+    private void verifyMainMuteRouteForAudit(Runnable continuation) {
+        if (destroyed || !startupComplete || navigationController == null
+                || !"MAIN".equals(currentPage)
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main MUTE route audit has no active Main workspace");
+            return;
+        }
+
+        final MpcUiState stateBefore = navigationController.state();
+        final int sequenceBefore = nativeSequenceGetIndex();
+        final int trackBefore = nativeSequenceGetSelectedTrack();
+        final int padBefore = selectedPadIndexForUi();
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final String noteSnapshotBefore =
+                captureTrackViewGridNoteSnapshotForAudit(gridTicks);
+
+        final View muteButton = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Function Bar Open Mute workspace");
+        if (muteButton == null || !muteButton.isShown()
+                || !muteButton.isEnabled() || !muteButton.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Function Bar MUTE did not open its workspace"
+                    + " | button=" + describeAuditView(muteButton));
+            return;
+        }
+
+        final View muteWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Mute workspace");
+        final View mainWorkspaceLeftBehind = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track and Arrangement workspace");
+        if (!"MUTE".equals(currentPage)
+                || navigationController.state().mode() != MpcUiState.Mode.MUTE
+                || muteWorkspace == null || !muteWorkspace.isShown()
+                || mainWorkspaceLeftBehind != null
+                || !muteGridHasExpectedTargetsForAudit(false)
+                || nativeSequenceGetIndex() != sequenceBefore
+                || nativeSequenceGetSelectedTrack() != trackBefore
+                || selectedPadIndexForUi() != padBefore) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main MUTE did not replace Main with the real 4x4/16-target workspace"
+                    + " | currentPage=" + currentPage
+                    + " | workspace=" + describeAuditView(muteWorkspace)
+                    + " | staleMainWorkspace=" + describeAuditView(mainWorkspaceLeftBehind)
+                    + " | sequence=" + nativeSequenceGetIndex()
+                    + " | track=" + nativeSequenceGetSelectedTrack()
+                    + " | pad=" + selectedPadIndexForUi());
+            return;
+        }
+
+        final View back = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Mute Back to previous workspace");
+        if (back == null || !back.isShown() || !back.isEnabled()
+                || !back.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main MUTE Back is unavailable"
+                    + " | button=" + describeAuditView(back));
+            return;
+        }
+
+        final boolean notesUnchanged = noteSnapshotBefore.equals(
+                captureTrackViewGridNoteSnapshotForAudit(
+                        Math.max(1, nativeSequenceGetQuantizeGrid())));
+        final View restoredMainSection = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode Sequence section");
+        final View restoredMainWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track and Arrangement workspace");
+        if (navigationController.state().mode() != MpcUiState.Mode.MAIN
+                || !"MAIN".equals(currentPage)
+                || nativeSequenceGetIndex() != sequenceBefore
+                || nativeSequenceGetSelectedTrack() != trackBefore
+                || selectedPadIndexForUi() != padBefore
+                || navigationController.state().selectedSequence() != stateBefore.selectedSequence()
+                || navigationController.state().selectedTrack() != stateBefore.selectedTrack()
+                || restoredMainSection == null || !restoredMainSection.isShown()
+                || restoredMainWorkspace == null || !restoredMainWorkspace.isShown()
+                || !notesUnchanged) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main MUTE Back lost Main or musical context"
+                    + " | currentPage=" + currentPage
+                    + " | sequence=" + nativeSequenceGetIndex()
+                    + " | track=" + nativeSequenceGetSelectedTrack()
+                    + " | pad=" + selectedPadIndexForUi()
+                    + " | notesUnchanged=" + notesUnchanged
+                    + " | workspace=" + describeAuditView(restoredMainWorkspace));
+            return;
+        }
+
+        Log.i(TAG, "UI_MAIN_MUTE_ROUTE_COMPLETE: grid=4x4/16 "
+                + "workspaceReplaced=true backRestoredMain=true "
+                + "selectionPreserved=true notesUnchanged=true");
+        continuation.run();
+    }
+
+    private void continueUiAuditAfterMainMuteRoute() {
+        if (destroyed) return;
         View browserShortcut = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC shortcut BROWSER");
         if (browserShortcut == null || !browserShortcut.performClick()) {
