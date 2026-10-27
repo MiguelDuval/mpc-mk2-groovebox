@@ -683,9 +683,8 @@ echo "Running Arrangement zoom acceptance source preflight..."
 if ! grep -Fq -- 'UI_ARRANGE_ZOOM_STATE:' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: MainActivity does not expose the native Arrangement zoom state oracle"; exit 1
 fi
-ARRANGE_VIEW_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcArrangeView.java"
-if ! grep -Fq -- 'MPC linear arrangement editor visible bars=' "$ARRANGE_VIEW_SOURCE"; then
-  echo "ERROR: MpcArrangeView does not expose live viewport bounds through accessibility"; exit 1
+if ! grep -Fq -- 'Arrangement zoom viewport visible bars=' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MainActivity does not expose live Arrangement viewport bounds through accessibility"; exit 1
 fi
 echo "Running Arrangement event → Grid gesture integration preflight..."
 for required in \
@@ -4445,7 +4444,7 @@ found = []
 for node in root.iter("node"):
     description = node.attrib.get("content-desc", "")
     match = re.fullmatch(
-        r"MPC linear arrangement editor visible bars=(\d+) viewport start bar=(\d+)",
+        r"Arrangement zoom viewport visible bars=(\d+) viewport start bar=(\d+)",
         description)
     if not match:
         continue
