@@ -7,31 +7,36 @@ final class MpcSequenceZoomPolicy {
     static final int MAX_GRID_VISIBLE_PADS = 16;
     static final int MIN_TIMELINE_VISIBLE_BARS = 1;
 
+    // A discrete ladder makes repeated Zoom In/Out operations true inverses.
+    // Multiplying/dividing arbitrary integer counts by 1.25 loses information
+    // (for example, 16 -> 12 -> 15), so Grid/Pad zoom uses these paired rungs.
+    private static final int[] GRID_ZOOM_LEVELS = {16, 12, 10, 8, 6, 5, 4, 3, 2, 1};
+
     private MpcSequenceZoomPolicy() {}
 
     static int zoomGridStepsIn(int visibleSteps) {
-        return zoomInCount(
+        return zoomGridCountIn(
                 visibleSteps,
                 MIN_GRID_VISIBLE_STEPS,
                 MAX_GRID_VISIBLE_STEPS);
     }
 
     static int zoomGridStepsOut(int visibleSteps) {
-        return zoomOutCount(
+        return zoomGridCountOut(
                 visibleSteps,
                 MIN_GRID_VISIBLE_STEPS,
                 MAX_GRID_VISIBLE_STEPS);
     }
 
     static int zoomGridPadsIn(int visiblePads) {
-        return zoomInCount(
+        return zoomGridCountIn(
                 visiblePads,
                 MIN_GRID_VISIBLE_PADS,
                 MAX_GRID_VISIBLE_PADS);
     }
 
     static int zoomGridPadsOut(int visiblePads) {
-        return zoomOutCount(
+        return zoomGridCountOut(
                 visiblePads,
                 MIN_GRID_VISIBLE_PADS,
                 MAX_GRID_VISIBLE_PADS);
@@ -72,6 +77,26 @@ final class MpcSequenceZoomPolicy {
         final int boundedStep = clamp(stepIndex, 0, boundedTotal - 1);
         final int desiredStart = boundedStep - boundedVisible / 2;
         return clamp(desiredStart, 0, boundedTotal - boundedVisible);
+    }
+
+    private static int zoomGridCountIn(int current, int min, int max) {
+        final int clamped = clamp(current, min, max);
+        for (int level : GRID_ZOOM_LEVELS) {
+            if (level < clamped && level >= min && level <= max) {
+                return level;
+            }
+        }
+        return min;
+    }
+
+    private static int zoomGridCountOut(int current, int min, int max) {
+        final int clamped = clamp(current, min, max);
+        for (int level : GRID_ZOOM_LEVELS) {
+            if (level > clamped && level >= min && level <= max) {
+                return level;
+            }
+        }
+        return max;
     }
 
     private static int zoomInCount(int current, int min, int max) {
