@@ -650,6 +650,8 @@ jobs:
             /tmp/mpc-groovebox-arrange-placement-duplicate-uiautomator.xml
             /tmp/mpc-groovebox-arrange-loop-changed.png
             /tmp/mpc-groovebox-arrange-loop-changed-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-pan-start.png
+            /tmp/mpc-groovebox-arrange-pan-start-uiautomator.xml
             /tmp/mpc-groovebox-arrange-pan-changed.png
             /tmp/mpc-groovebox-arrange-pan-changed-uiautomator.xml
             /tmp/mpc-groovebox-arrange-pan-restored.png
