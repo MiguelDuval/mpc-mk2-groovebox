@@ -6733,6 +6733,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 v -> {
                     arrangementView.zoomOut();
                     refreshArrangeView();
+                    logArrangementZoomStateForAudit("ZOOM_OUT");
                 });
         zoomOutButton.setTextSize(9);
         header.addView(sectionLabelView(
@@ -6744,6 +6745,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 v -> {
                     arrangementView.zoomIn();
                     refreshArrangeView();
+                    logArrangementZoomStateForAudit("ZOOM_IN");
                 });
         zoomInButton.setTextSize(9);
         header.addView(zoomInButton, new LinearLayout.LayoutParams(dp(48), dp(34)));
@@ -6752,6 +6754,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 v -> {
                     arrangementView.resetZoom();
                     refreshArrangeView();
+                    logArrangementZoomStateForAudit("RESET");
                 });
         resetZoomButton.setTextSize(9);
         header.addView(resetZoomButton, new LinearLayout.LayoutParams(dp(42), dp(34)));
@@ -7290,6 +7293,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!uiAuditSmokeMode || trackIndex < 0 || noteNumber < 0) return;
         Log.i(TAG, "UI_ARRANGE_EVENT_STATE: action=" + action
                 + " track=" + trackIndex + " tick=" + tick + " note=" + noteNumber
+                + " data=" + nativeSequenceGetTrackArrangementData(trackIndex));
+    }
+    private void logArrangementZoomStateForAudit(String action) {
+        if (!uiAuditSmokeMode || arrangementView == null) return;
+        final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
+        Log.i(TAG, "UI_ARRANGE_ZOOM_STATE: action=" + action
+                + " track=" + trackIndex
+                + " visibleBars=" + arrangementView.visibleBarsForAudit()
+                + " viewportStart=" + arrangementView.viewportStartBarForAudit()
                 + " data=" + nativeSequenceGetTrackArrangementData(trackIndex));
     }
 
