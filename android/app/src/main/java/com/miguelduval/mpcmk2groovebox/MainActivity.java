@@ -8233,6 +8233,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceGridPage() {
+        // A new Grid context must not inherit inverse-zoom history from a prior visit.
+        sequenceGridHorizontalZoomHistory.clear();
+        sequenceGridVerticalZoomHistory.clear();
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
