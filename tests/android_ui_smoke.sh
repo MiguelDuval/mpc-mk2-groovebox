@@ -874,6 +874,20 @@ for required in \
   fi
 done
 
+echo "Running truthful MIDI readiness preflight..."
+MIDI_BRIDGE_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/AndroidMidiBridge.java"
+for required in 'public boolean isConnected()' 'if (wasConnected)' 'MPC Studio MkII disconnected'; do
+  if ! grep -Fq -- "$required" "$MIDI_BRIDGE_SOURCE"; then
+    echo "ERROR: Android MIDI connection-state contract missing: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'midiBridge != null && midiBridge.isConnected()' "$MAIN_ACTIVITY_SOURCE" \
+    || grep -Fq -- 'final boolean midiReady = midiBridge != null;' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: persistent shell must derive MIDI readiness from connected ports, not bridge allocation"
+  exit 1
+fi
+
 echo "Running MPC shortcut pictography preflight..."
 SHORTCUT_ITEM_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutRailItemView.java"
 for required in   'MpcShortcutIconDrawable'   'new MpcShortcutIconDrawable('   'dp(MPC_SHORTCUT_SELECTION_WIDTH_DP)'   'setSelectedState(boolean selected)'   'setSelected(selected)'   'case BROWSER:'   'case GRID:'   'case STEP:'   'case TRACK_VIEW:'; do
