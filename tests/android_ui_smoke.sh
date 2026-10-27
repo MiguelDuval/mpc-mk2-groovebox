@@ -1946,7 +1946,7 @@ echo "Checking Browser WAV-picker cancellation evidence is retained by CI..."
 for required in \
   'mpc-groovebox-browser-load-cancel-picker.png' \
   'mpc-groovebox-browser-load-cancel-return.png'; do
-  if ! grep -Fq -- "$required" "$0"; then
+  if ! sed -n '/^capture_ui_screenshot() {/,/^}/p' "$0" | grep -Fq -- "$required"; then
     echo "ERROR: Browser cancellation screenshot is absent from capture_ui_screenshot allowlist: $required"; exit 1
   fi
 done
