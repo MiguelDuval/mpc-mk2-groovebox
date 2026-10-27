@@ -679,6 +679,14 @@ for required in \
   fi
 done
 
+echo "Running Arrangement zoom acceptance source preflight..."
+if ! grep -Fq -- 'UI_ARRANGE_ZOOM_STATE:' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: MainActivity does not expose the native Arrangement zoom state oracle"; exit 1
+fi
+ARRANGE_VIEW_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcArrangeView.java"
+if ! grep -Fq -- 'MPC linear arrangement editor visible bars=' "$ARRANGE_VIEW_SOURCE"; then
+  echo "ERROR: MpcArrangeView does not expose live viewport bounds through accessibility"; exit 1
+fi
 echo "Running Arrangement event → Grid gesture integration preflight..."
 for required in \
   'verifyArrangeLoopDragAndRestoreForAudit()' \
@@ -692,8 +700,6 @@ for required in \
   'restoreArrangeTrackSelectionAfterAudit(' \
   'UI_ARRANGE_TRACK_SELECTION_COMPLETE:' \
   'UI_ARRANGE_TRACK_SELECTION_SINGLE_TRACK_COMPLETE:' \
-  'UI_ARRANGE_ZOOM_STATE:' \
-  'MPC linear arrangement editor visible bars=' \
   'alternateTrackChangeUnavailable=true' \
   'arrangementDataUnchanged=true' \
   'prepareArrangementEventGestureAudit()' \
