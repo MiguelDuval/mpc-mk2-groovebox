@@ -686,6 +686,12 @@ fi
 if ! grep -Fq -- 'Arrangement ZOOM OUT visible bars=' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: MainActivity does not expose live Arrangement viewport bounds through accessibility"; exit 1
 fi
+if ! grep -Fq -- 'restorePreviousZoomWindow(boolean requestedZoomIn)' "$ARRANGE_VIEW_SOURCE"; then
+  echo "ERROR: Arrangement discrete zoom actions do not expose exact inverse-viewport restoration"; exit 1
+fi
+if ! grep -Fq -- 'zoomHistory.clear();' "$ARRANGE_VIEW_SOURCE"; then
+  echo "ERROR: Arrangement zoom history has no explicit invalidation path"; exit 1
+fi
 echo "Running Arrangement event → Grid gesture integration preflight..."
 for required in \
   'verifyArrangeLoopDragAndRestoreForAudit()' \
