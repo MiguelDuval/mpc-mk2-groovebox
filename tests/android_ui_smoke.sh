@@ -10797,7 +10797,9 @@ if ! tap_ui_description "$BROWSER_EMPTY_XML" "MPC Browser clear search"; then
   echo "ERROR: Browser CLEAR is unavailable in the real no-match state"; exit 1
 fi
 sleep 0.4
-if ! hide_browser_search_ime_if_shown; then exit 1; fi
+# CLEAR does not open the IME. Do not send Back here: a stale input-method visibility flag can
+# turn Back into Browser navigation and leave the app, invalidating the retry assertion.
+
 if ! dump_device_ui_retry "$BROWSER_CLEAR_REMOTE" "$BROWSER_CLEAR_XML" 8 4; then
   echo "ERROR: could not capture fresh Browser hierarchy after clearing Search"; exit 1
 fi
