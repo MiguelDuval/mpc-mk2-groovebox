@@ -4440,6 +4440,9 @@ PY
     ARRANGE_ZOOM_BASELINE_PNG="/tmp/mpc-groovebox-arrange-zoom-baseline.png"
     ARRANGE_ZOOM_BASELINE_XML="/tmp/mpc-groovebox-arrange-zoom-baseline-uiautomator.xml"
     ARRANGE_ZOOM_BASELINE_REMOTE="/sdcard/mpc-groovebox-arrange-zoom-baseline-uiautomator.xml"
+    ARRANGE_PAN_PREP_PNG="/tmp/mpc-groovebox-arrange-pan-start.png"
+    ARRANGE_PAN_PREP_XML="/tmp/mpc-groovebox-arrange-pan-start-uiautomator.xml"
+    ARRANGE_PAN_PREP_REMOTE="/sdcard/mpc-groovebox-arrange-pan-start-uiautomator.xml"
     ARRANGE_PAN_CHANGED_PNG="/tmp/mpc-groovebox-arrange-pan-changed.png"
     ARRANGE_PAN_CHANGED_XML="/tmp/mpc-groovebox-arrange-pan-changed-uiautomator.xml"
     ARRANGE_PAN_CHANGED_REMOTE="/sdcard/mpc-groovebox-arrange-pan-changed-uiautomator.xml"
@@ -4525,11 +4528,31 @@ PY_ARRANGE_ZOOM_LOG
     fi
     arrange_zoom_reset_line="$(arrange_zoom_log_line "RESET")" || exit 1
     arrange_zoom_baseline_data="$(arrange_zoom_data_from_log "$arrange_zoom_reset_line")" || exit 1
+
+    # Pan should be exercised at a zoom level where not every Sequence bar is
+    # visible. Begin with a real ZOOM + touch and reset after the pan round trip.
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_BASELINE_XML" "ZOOM +"; then
+      echo "ERROR: Arrangement ZOOM + could not prepare a panning viewport"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_PAN_PREP_REMOTE" "$ARRANGE_PAN_PREP_XML" 8 4; then
+      echo "ERROR: could not capture Arrangement panning baseline hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_PAN_PREP_PNG" 10; then
+      echo "ERROR: could not capture Arrangement panning baseline screenshot"; exit 1
+    fi
+    read -r arrange_pan_original_bars arrange_pan_original_start \
+      < <(arrange_zoom_viewport "$ARRANGE_PAN_PREP_XML") || {
+        echo "ERROR: panning baseline viewport metadata is missing"; exit 1;
+      }
+    if (( arrange_pan_original_bars >= arrange_zoom_baseline_bars )); then
+      echo "ERROR: ZOOM + did not create a narrower panning window"; exit 1
+    fi
     # ARR-003 navigation: drag the blank ruler to pan forward, then reverse the
     # exact gesture. Only viewportStartBar may change; the native Track event
     # projection and visible-bar range must remain unchanged. Touch points come
     # from live Canvas bounds and device density, not hard-coded screen coordinates.
-    arrange_pan_touch_points="$(python3 - "$ARRANGE_ZOOM_BASELINE_XML" "$arrange_density" <<'PY_ARRANGE_PAN_TOUCH_POINTS'
+    arrange_pan_touch_points="$(python3 - "$ARRANGE_PAN_PREP_XML" "$arrange_density" <<'PY_ARRANGE_PAN_TOUCH_POINTS'
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -4604,16 +4627,16 @@ PY_ARRANGE_PAN_TOUCH_POINTS
     arrange_pan_changed_line="$(wait_for_new_arrange_pan_marker "$arrange_pan_markers_before")" || exit 1
     arrange_pan_changed_state="$(sed -nE 's/.*from=([0-9]+) to=([0-9]+) visibleBars=([0-9]+).*/\1 \2 \3/p' <<<"$arrange_pan_changed_line")"
     read -r arrange_pan_log_from arrange_pan_log_to arrange_pan_log_bars <<< "$arrange_pan_changed_state"
-    if [[ "$arrange_pan_log_from" != "$arrange_zoom_baseline_start" \
+    if [[ "$arrange_pan_log_from" != "$arrange_pan_original_start" \
         || "$arrange_pan_log_to" != "$arrange_pan_changed_start" \
-        || "$arrange_pan_log_bars" != "$arrange_zoom_baseline_bars" ]]; then
+        || "$arrange_pan_log_bars" != "$arrange_pan_original_bars" ]]; then
       echo "ERROR: pan callback did not report the exact before/after viewport"
       echo "$arrange_pan_changed_line"; exit 1
     fi
     arrange_pan_changed_data="$(arrange_zoom_data_from_log "$arrange_pan_changed_line")" || exit 1
-    if [[ "$arrange_pan_changed_bars" != "$arrange_zoom_baseline_bars" \
-        || "$arrange_pan_changed_start" -le "$arrange_zoom_baseline_start" ]]; then
-      echo "ERROR: ruler pan did not move viewport forward while preserving scale: baseline=$arrange_zoom_baseline_bars/$arrange_zoom_baseline_start panned=$arrange_pan_changed_bars/$arrange_pan_changed_start"; exit 1
+    if [[ "$arrange_pan_changed_bars" != "$arrange_pan_original_bars" \
+        || "$arrange_pan_changed_start" -le "$arrange_pan_original_start" ]]; then
+      echo "ERROR: ruler pan did not move viewport forward while preserving scale: baseline=$arrange_pan_original_bars/$arrange_pan_original_start panned=$arrange_pan_changed_bars/$arrange_pan_changed_start"; exit 1
     fi
     if [[ "$arrange_pan_changed_data" != "$arrange_zoom_baseline_data" ]]; then
       echo "ERROR: Arrangement ruler pan changed native Track event data"
@@ -4641,15 +4664,15 @@ PY_ARRANGE_PAN_TOUCH_POINTS
     arrange_pan_restored_state="$(sed -nE 's/.*from=([0-9]+) to=([0-9]+) visibleBars=([0-9]+).*/\1 \2 \3/p' <<<"$arrange_pan_restored_line")"
     read -r arrange_pan_restore_from arrange_pan_restore_to arrange_pan_restore_bars <<< "$arrange_pan_restored_state"
     if [[ "$arrange_pan_restore_from" != "$arrange_pan_changed_start" \
-        || "$arrange_pan_restore_to" != "$arrange_zoom_baseline_start" \
-        || "$arrange_pan_restore_bars" != "$arrange_zoom_baseline_bars" ]]; then
+        || "$arrange_pan_restore_to" != "$arrange_pan_original_start" \
+        || "$arrange_pan_restore_bars" != "$arrange_pan_original_bars" ]]; then
       echo "ERROR: reverse-pan callback did not report the exact restored viewport"
       echo "$arrange_pan_restored_line"; exit 1
     fi
     arrange_pan_restored_data="$(arrange_zoom_data_from_log "$arrange_pan_restored_line")" || exit 1
-    if [[ "$arrange_pan_restored_bars" != "$arrange_zoom_baseline_bars" \
-        || "$arrange_pan_restored_start" != "$arrange_zoom_baseline_start" ]]; then
-      echo "ERROR: reverse ruler pan did not restore the exact prior viewport: baseline=$arrange_zoom_baseline_bars/$arrange_zoom_baseline_start restored=$arrange_pan_restored_bars/$arrange_pan_restored_start"; exit 1
+    if [[ "$arrange_pan_restored_bars" != "$arrange_pan_original_bars" \
+        || "$arrange_pan_restored_start" != "$arrange_pan_original_start" ]]; then
+      echo "ERROR: reverse ruler pan did not restore the exact prior viewport: baseline=$arrange_pan_original_bars/$arrange_pan_original_start restored=$arrange_pan_restored_bars/$arrange_pan_restored_start"; exit 1
     fi
     if [[ "$arrange_pan_restored_data" != "$arrange_zoom_baseline_data" \
         || "$arrange_pan_changed_data" != "$arrange_zoom_baseline_data" ]]; then
@@ -4664,6 +4687,25 @@ PY_ARRANGE_PAN_TOUCH_POINTS
     if [[ ! -s "$ARRANGE_PAN_CHANGED_XML" || ! -s "$ARRANGE_PAN_RESTORED_XML" ]]; then
       echo "ERROR: required Arrangement pan accessibility XML is missing"; exit 1
     fi
+    # Reset and recapture after panning so the separate ZOOM + / ZOOM −
+    # round-trip starts from a fresh, canonical viewport.
+    if ! tap_visible_description_early "$ARRANGE_PAN_RESTORED_XML" "RESET"; then
+      echo "ERROR: Arrangement RESET did not recover the viewport after panning"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_ZOOM_BASELINE_REMOTE" "$ARRANGE_ZOOM_BASELINE_XML" 8 4; then
+      echo "ERROR: could not capture fresh reset Arrangement zoom baseline"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_ZOOM_BASELINE_PNG" 10; then
+      echo "ERROR: could not capture reset Arrangement zoom baseline screenshot"; exit 1
+    fi
+    read -r arrange_zoom_baseline_bars arrange_zoom_baseline_start \
+      < <(arrange_zoom_viewport "$ARRANGE_ZOOM_BASELINE_XML") || {
+        echo "ERROR: reset Arrangement viewport metadata is missing"; exit 1;
+      }
+    arrange_zoom_reset_line="$(arrange_zoom_log_line "RESET")" || exit 1
+    arrange_zoom_baseline_data="$(arrange_zoom_data_from_log "$arrange_zoom_reset_line")" || exit 1
+
     # Use a fresh baseline tree for the zoom test that follows.
     if ! dump_device_ui_retry "$ARRANGE_ZOOM_BASELINE_REMOTE" "$ARRANGE_ZOOM_BASELINE_XML" 8 4; then
       echo "ERROR: could not refresh Arrangement zoom baseline after ruler pan restoration"; exit 1
