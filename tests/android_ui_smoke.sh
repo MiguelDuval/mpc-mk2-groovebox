@@ -10788,9 +10788,9 @@ if [[ "$browser_clear_state" != "$browser_empty_baseline" ]]; then
   echo "CLEARED:  $browser_clear_state"
   exit 1
 fi
-if [[ ! -s /tmp/mpc-groovebox-browser-empty-search.png \
-    || ! -s /tmp/mpc-groovebox-browser-empty-search-cleared.png \
-    || ! -s "$BROWSER_EMPTY_XML" || ! -s "$BROWSER_CLEAR_XML" ]]; then
+if ! test -s /tmp/mpc-groovebox-browser-empty-search.png \
+    || ! test -s /tmp/mpc-groovebox-browser-empty-search-cleared.png \
+    || [[ ! -s "$BROWSER_EMPTY_XML" || ! -s "$BROWSER_CLEAR_XML" ]]; then
   echo "ERROR: mandatory Browser empty-results/clear PNG/XML evidence is missing"; exit 1
 fi
 echo "BROW-016 empty search → explicit NO MATCHING WAV FILES → CLEAR retry passed: restored $browser_empty_baseline_files original file rows; native sample and Pad/Layer remained unchanged."
