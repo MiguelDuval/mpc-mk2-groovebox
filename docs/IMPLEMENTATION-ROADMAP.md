@@ -2,27 +2,28 @@
 
 ## CURRENT EXECUTION QUEUE — 2026-10-27 (live exact-SHA evidence governs)
 
-### Latest accepted primary checkpoint — PR #23
+### Latest verified primary checkpoint — PR #23
 
-- PR #23 remains OPEN: feature/mpc-one-ui-fidelity → fix/ui-shell-format-width-startup. Current HEAD d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991; base SHA 5f562e54e2cf8235041590933232a3836d74a16a.
-- Product-code SHA 3de910cc0e28b5abe82e588766b77c49262fe650 passed Android Build #3296 / [run 40205072938](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40205072938), all 57 steps. The current docs-only HEAD d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991 passed Build #3301 / [run 40207854314](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40207854314), all 57 steps.
-- Current accepted artifacts: APK 12604227275 (10,009,933 bytes; SHA-256 f6786f1ede09351fe529964011f56d6fb02eef7fa6852bfa61cd21c98fe134cd); visual evidence 12605069409 (15,211,863 bytes; SHA-256 e9590c0998885a6c746c70a754303a0172f6eea1f909478505ee1d2ede4042e9).
-- SAMP-008/009/010, Browser local WAV/FAVORITE 1 and Project persistence/malformed-load preservation passed on accepted product code. Physical MPC Studio MkII validation remains a separate pending gate. Keep cancel-in-progress: false; never modify main, rewrite history, merge or retarget automatically.
+- PR #23 remains OPEN: `feature/mpc-one-ui-fidelity` → `fix/ui-shell-format-width-startup`. Live HEAD `ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d`; base SHA `5f562e54e2cf8235041590933232a3836d74a16a`.
+- Android Build #3402 / [run 40528666946](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40528666946) completed SUCCESS on this exact HEAD: all 57 steps, including emulator smoke and evidence upload. APK artifact `12746190315`; visual evidence `12746712856`.
+- Physical MPC Studio MkII validation remains PENDING. Keep workflow concurrency `cancel-in-progress: false`; do not modify `main`, merge/retarget automatically, rebase, force-push or rewrite history.
 
-### Active isolated slices — exact-SHA full CI still governs
+### Current exact-SHA acceptance status
 
-- **PR #114 — Grid zoom viewport:** head 1b177ad886f87ac18e09828daa8880825ee38a3e, base d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991; Build #3399 / [run 40527004496](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40527004496) is IN PROGRESS at emulator smoke step 52. APK artifact 12743758269, 10,009,933 bytes, SHA-256 1999ad7db0d38fd24a0fa3a528c247eac0f13edbe0d5ae3b73914a17c8902f65. The previous #3397 failure was a bad oracle: the screenshot showed real vertical zoom from 16 visible Pads to 12, but the tree lacked the transient status text. The new commit exposes the Canvas Pad range as accessibility metadata and asserts reduced Pad count, Pad 01 retained, horizontal range unchanged, and event/timing/count invariance. Do not accept until #3399 and its evidence finish.
-- **PR #112 — MIDI Toolbar availability:** head 65c651388ab67195c09687e9e67952e6b91688f4, base d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991; Build #3400 / [run 40527456461](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40527456461) is IN PROGRESS at emulator smoke step 52. Run #3386 failed only in the new bounds parser: the regex was over-escaped although the IN/OUT nodes were visible and correctly unavailable. Commit 65c6513 corrects the regex; evidence artifact 12735532458 was inspected. Exact-head CI remains pending.
-- **PR #110 — Back restores subcontext/focus:** head 22d965cc4bebff6043b81c8cb5b45edba4510ee9, base d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991; Build #3401 / [run 40527990598](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40527990598) is IN PROGRESS at Test MPC project state step 38. Run #3398 failed because standard UiAutomator dump timed out on the initial DocumentsUI picker; the app's picker selection was not disproven. Commit 22d965c uses bounded scratch-preserving compressed capture and validates DocumentsUI/root-navigation semantics. APK artifact 12743361682 and evidence artifact 12742799195 from the failed run were inspected. Later Downloads and actual file-row checks remain strict.
+- **PR #114 — Grid zoom viewport:** Build #3399 / [run 40527004496](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40527004496) SUCCESS on exact HEAD `1b177ad886f87ac18e09828daa8880825ee38a3e`. Artifact `12745464018` was inspected; H/V viewport zoom preserved the native event state. Physical controller behavior remains pending.
+- **PR #112 — MIDI Toolbar availability:** Build #3400 / [run 40527456461](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40527456461) SUCCESS on exact HEAD `65c651388ab67195c09687e9e67952e6b91688f4`. IN/OUT report unavailable without physical hardware, correctly.
+- **PR #110 — Project Save As/Open:** Build #3412 / [run 40547076817](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40547076817) SUCCESS on exact HEAD `68a83fc7f9541efc14531854d1060e5969f5429f`, all 57 steps. Artifact `12754733235` was inspected: actual Save As/Open and A/B state isolation passed.
+- **PR #111 — Browser categories/modified-date:** Builds #3394 / [run 40518877443](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40518877443) and #3395 / [run 40518880896](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40518880896) SUCCESS on exact HEAD `935e59374b5ac682ec6ccca16b66b43db28f16d7`.
+- **PR #115 — stacked Save As capture:** Build #3403 / [run 40535592616](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40535592616) SUCCESS on its HEAD, but its base SHA remains older (`22d965cc4bebff6043b81c8cb5b45edba4510ee9`). Do not auto-rebase/retarget it; PR #110 independently passes the newer full Save As/Open acceptance.
+- **PR #119 — BROW-010 picker cancellation:** Build #3414 / [run 40555139093](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40555139093) SUCCESS on code/test HEAD `6cc60f134b4849a498d63e36319bd216648455a5`. Inspected artifact `12758636875` confirms the real picker Back path returned to Browser and preserved native sample, Pad/Layer, location and search. The newer docs-only HEAD `e707ffd026210cef3a022d743741f5f1f631b749` is being retested in Build #3424 / [run 40562838515](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40562838515).
+- **PR #120 — ARR-003 Arrangement zoom:** current HEAD `32e2e4930959dfd850ea760deeafbff274da229a`; Build #3425 / [run 40563050574](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40563050574) IN PROGRESS. The earlier runtime failure traced to altering the Arrangement Canvas root contentDescription and breaking MainActivity's exact lookup; current source restores that stable identity and exposes zoom-state metadata on a dedicated control. The test requires a narrowed viewport on ZOOM +, restored viewport on ZOOM − and byte-for-byte unchanged native event data. Exact-head acceptance remains pending.
+- **PR #122 — BROW-016 empty results and retry:** current HEAD `9a26724314d8fe9e09faee00e4abd0af1d8324b4`; Build #3426 / [run 40563628868](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40563628868) IN PROGRESS. Real Search query must show an explicit empty-results status with zero file rows while preserving native sampler/target/location; real CLEAR must restore the same file list and state. Permission-denial and removed-volume/provider failures remain uncovered by this slice.
 
 ### Next acceptance order
 
-1. Resolve exact-head full CI for PRs #114, #112 and #110; inspect the actual failure step and evidence before making further changes.
-2. For Grid zoom, use the semantic Canvas Pad range and screenshots; keep native event, timing and count assertions strict.
-3. For DocumentsUI, preserve fresh-tree provenance and use the last validated XML only for diagnosis, never as current-state proof.
-4. Review branch ancestry and live diffs before any integration. Do not merge/retarget automatically.
-5. Perform the physical MPC Studio MkII gate separately; emulator success is not hardware certification.
-
+1. Inspect exact-head results/evidence for Builds #3424, #3425 and #3426 when complete; identify failure step before modifying code.
+2. Keep assertions strict and distinguish test-oracle defects from product behavior.
+3. Keep emulator acceptance separate from physical MPC Studio MkII validation. Do not automatically integrate or retarget stacked PRs.
 
 ## HISTORICAL EXECUTION QUEUE — 2026-10-17 (superseded by the current 2026-10-23 status above)
 
