@@ -56,6 +56,66 @@ public final class MpcSequenceZoomPolicyTest {
     }
 
     @Test
+    public void gridZoomHistoryRestoresExactNonReciprocalHorizontalWindow() {
+        MpcGridZoomHistory history = new MpcGridZoomHistory();
+        MpcGridZoomHistory.Window before = new MpcGridZoomHistory.Window(16, 32, 64);
+        MpcGridZoomHistory.Window after = new MpcGridZoomHistory.Window(12, 34, 64);
+        history.record(true, before, after);
+
+        MpcGridZoomHistory.Window restored = history.restoreOpposite(false, after);
+        assertTrue("opposite zoom must restore the exact prior window", restored != null);
+        assertEquals(before.visibleCount, restored.visibleCount);
+        assertEquals(before.start, restored.start);
+        assertEquals(before.totalCount, restored.totalCount);
+        assertEquals(0, history.depthForTest());
+    }
+
+    @Test
+    public void consecutiveGridZoomsUnwindOneExactWindowAtATime() {
+        MpcGridZoomHistory history = new MpcGridZoomHistory();
+        MpcGridZoomHistory.Window first = new MpcGridZoomHistory.Window(16, 24, 64);
+        MpcGridZoomHistory.Window second = new MpcGridZoomHistory.Window(12, 26, 64);
+        MpcGridZoomHistory.Window third = new MpcGridZoomHistory.Window(9, 27, 64);
+        history.record(true, first, second);
+        history.record(true, second, third);
+
+        MpcGridZoomHistory.Window restoredSecond = history.restoreOpposite(false, third);
+        assertTrue(restoredSecond != null);
+        assertEquals(second.visibleCount, restoredSecond.visibleCount);
+        assertEquals(second.start, restoredSecond.start);
+
+        MpcGridZoomHistory.Window restoredFirst = history.restoreOpposite(false, restoredSecond);
+        assertTrue(restoredFirst != null);
+        assertEquals(first.visibleCount, restoredFirst.visibleCount);
+        assertEquals(first.start, restoredFirst.start);
+        assertEquals(first.totalCount, restoredFirst.totalCount);
+        assertEquals(0, history.depthForTest());
+    }
+
+    @Test
+    public void externalGridViewportChangeInvalidatesInverseZoomHistory() {
+        MpcGridZoomHistory history = new MpcGridZoomHistory();
+        MpcGridZoomHistory.Window before = new MpcGridZoomHistory.Window(16, 24, 64);
+        MpcGridZoomHistory.Window after = new MpcGridZoomHistory.Window(12, 26, 64);
+        history.record(true, before, after);
+
+        MpcGridZoomHistory.Window changedExternally =
+                new MpcGridZoomHistory.Window(12, 25, 64);
+        assertTrue(history.restoreOpposite(false, changedExternally) == null);
+        assertEquals(0, history.depthForTest());
+    }
+
+    @Test
+    public void sameDirectionGridZoomKeepsHistoryForTheNextInverseAction() {
+        MpcGridZoomHistory history = new MpcGridZoomHistory();
+        MpcGridZoomHistory.Window before = new MpcGridZoomHistory.Window(16, 24, 64);
+        MpcGridZoomHistory.Window after = new MpcGridZoomHistory.Window(12, 26, 64);
+        history.record(true, before, after);
+
+        assertTrue(history.restoreOpposite(true, after) == null);
+        assertEquals(1, history.depthForTest());
+    }
+    @Test
     public void timelineZoomRespectsSequenceLength() {
         int visible = 16;
         visible = MpcSequenceZoomPolicy.zoomTimelineBarsIn(visible, 16);
