@@ -177,12 +177,7 @@ final class MpcArrangeView extends View {
     private void init() {
         setFocusable(true);
         setClickable(true);
-        updateViewportAccessibilityDescription();
-    }
-
-    private void updateViewportAccessibilityDescription() {
-        setContentDescription("MPC linear arrangement editor visible bars=" + visibleBars
-                + " viewport start bar=" + viewportStartBar);
+        setContentDescription("MPC linear arrangement editor");
     }
 
     void setListener(Listener listener) {
@@ -367,7 +362,6 @@ final class MpcArrangeView extends View {
                 Math.min(barCount, visibleBars));
         viewportStartBar = clampViewportStart(viewportStartBar);
         ensurePlayheadVisible();
-        updateViewportAccessibilityDescription();
         invalidate();
     }
 
@@ -393,7 +387,6 @@ final class MpcArrangeView extends View {
         visibleBars = Math.min(8, barCount);
         viewportStartBar = 1;
         ensurePlayheadVisible();
-        updateViewportAccessibilityDescription();
         invalidate();
     }
 
@@ -977,7 +970,6 @@ final class MpcArrangeView extends View {
         final int desiredStart =
                 centerBar - (visibleBars - 1) / 2;
         viewportStartBar = clampViewportStart(desiredStart);
-        updateViewportAccessibilityDescription();
         invalidate();
     }
 
