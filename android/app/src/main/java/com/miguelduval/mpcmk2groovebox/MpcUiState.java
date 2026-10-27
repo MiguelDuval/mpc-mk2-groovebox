@@ -10,8 +10,8 @@ final class MpcUiState {
     enum Mode {
         MAIN("MAIN"),
         TRACK_VIEW("TRACK VIEW"),
-        BROWSER("BROWSER"),
-        GRID("GRID"),
+        MUTE("MUTE"),
+        BROWSER("BROWSER"),        GRID("GRID"),
         STEP("STEP"),
         TRACK_EDIT("TRACK EDIT"),
         SAMPLE_EDIT("SAMPLE EDIT"),
