@@ -713,6 +713,7 @@ jobs:
             /tmp/mpc-groovebox-project*-uiautomator.xml
             /tmp/mpc-groovebox-project*-view-hierarchy.xml
             /tmp/mpc-groovebox-*-cancel*.png
+            /tmp/mpc-groovebox-browser-picker-cancel*-uiautomator.xml
             /tmp/mpc-groovebox-ui.xml
             /tmp/mpc-groovebox-browser-hierarchy.txt
             /tmp/mpc-groovebox-storage-picker-activity.txt
