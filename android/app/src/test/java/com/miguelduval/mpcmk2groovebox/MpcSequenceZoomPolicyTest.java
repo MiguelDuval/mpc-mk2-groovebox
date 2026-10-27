@@ -81,6 +81,34 @@ public final class MpcSequenceZoomPolicyTest {
     }
 
     @Test
+    public void zoomingFromTheRightEdgeKeepsTheSelectedStepInsideTheNewViewport() {
+        final int totalSteps = 64;
+        final int selectedStep = 37; // UI Step 38, the right edge of UI Steps 27–38.
+        final int previousVisible = 12;
+        final int previousStart = 26;
+
+        assertEquals(selectedStep, previousStart + previousVisible - 1);
+
+        final int zoomedVisible =
+                MpcSequenceZoomPolicy.zoomGridStepsIn(previousVisible);
+        assertEquals(10, zoomedVisible);
+
+        final int zoomedStart = MpcSequenceZoomPolicy.gridStartForStep(
+                selectedStep, zoomedVisible, totalSteps);
+        assertEquals(32, zoomedStart);
+        assertTrue(selectedStep >= zoomedStart
+                && selectedStep < zoomedStart + zoomedVisible);
+
+        final int restoredVisible =
+                MpcSequenceZoomPolicy.zoomGridStepsOut(zoomedVisible);
+        assertEquals(previousVisible, restoredVisible);
+        final int restoredStart = MpcSequenceZoomPolicy.gridStartForStep(
+                selectedStep, restoredVisible, totalSteps);
+        assertTrue(selectedStep >= restoredStart
+                && selectedStep < restoredStart + restoredVisible);
+    }
+
+    @Test
     public void arrangementTickMapsToTheCorrectBoundedGridStep() {
         assertEquals(0, MpcSequenceZoomPolicy.stepIndexForTick(0, 120, 64));
         assertEquals(40, MpcSequenceZoomPolicy.stepIndexForTick(4_800, 120, 64));
