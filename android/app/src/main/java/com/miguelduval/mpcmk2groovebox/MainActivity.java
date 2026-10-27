@@ -14970,10 +14970,89 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void runUiAuditAfterArrangement() {
         if (destroyed) return;
         if (uiAuditSmokeMode) {
-            awaitArrangeLoopTouchAcceptance();
+            // Keep long real-touch zoom/pan evidence in its own bounded
+            // handshake before beginning the independent loop-brace handshake.
+            awaitArrangeZoomTouchAcceptance();
             return;
         }
         runUiAuditAfterArrangementChecks();
+    }
+
+    private void awaitArrangeZoomTouchAcceptance() {
+        if (destroyed) return;
+        if (arrangementView == null || arrangementView.getWidth() <= 0
+                || arrangementView.getHeight() <= 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement zoom capture has no measured view");
+            return;
+        }
+
+        final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
+        final String originalTrackData = nativeSequenceGetTrackArrangementData(trackIndex);
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-arrange-zoom-touch-capture-release");
+        final java.io.File resultFile = new java.io.File(
+                getCacheDir(), "mpc-arrange-zoom-touch-result");
+        releaseSignal.delete();
+        resultFile.delete();
+        Log.i(TAG, "UI_ARRANGE_ZOOM_TOUCH_CAPTURE_READY: track=" + trackIndex
+                + " visibleBars=" + arrangementView.visibleBarsForAudit()
+                + " viewportStart=" + arrangementView.viewportStartBarForAudit()
+                + " data=" + originalTrackData);
+
+        // Zoom/pan evidence requires fresh external hierarchies and screenshots;
+        // keep its budget bounded and separate from the loop-touch handshake.
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                final String reported = readArrangeLoopTouchResult(resultFile);
+                final String[] values = reported.isEmpty() ? new String[0] : reported.split("\\s+");
+                int expectedVisibleBars = -1;
+                int expectedViewportStart = -1;
+                if (values.length == 2) {
+                    try {
+                        expectedVisibleBars = Integer.parseInt(values[0]);
+                        expectedViewportStart = Integer.parseInt(values[1]);
+                    } catch (NumberFormatException ignored) {
+                        expectedVisibleBars = -1;
+                        expectedViewportStart = -1;
+                    }
+                }
+                final String restoredTrackData = nativeSequenceGetTrackArrangementData(trackIndex);
+                final boolean restored = expectedVisibleBars > 0
+                        && expectedViewportStart > 0
+                        && arrangementView != null
+                        && "ARRANGE".equals(currentPage)
+                        && arrangementView.visibleBarsForAudit() == expectedVisibleBars
+                        && arrangementView.viewportStartBarForAudit() == expectedViewportStart
+                        && originalTrackData.equals(restoredTrackData);
+                if (!restored) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: external Arrangement zoom restore rejected"
+                            + " | report=" + reported
+                            + " | expectedViewport=" + expectedVisibleBars + "/" + expectedViewportStart
+                            + " | actualViewport=" + (arrangementView == null ? "missing"
+                                    : arrangementView.visibleBarsForAudit() + "/"
+                                            + arrangementView.viewportStartBarForAudit())
+                            + " | nativeDataUnchanged=" + originalTrackData.equals(restoredTrackData)
+                            + " | page=" + currentPage);
+                    return;
+                }
+                resultFile.delete();
+                Log.i(TAG, "UI_ARRANGE_ZOOM_TOUCH_ACCEPTANCE_COMPLETE: visibleBars="
+                        + expectedVisibleBars + " viewportStart=" + expectedViewportStart
+                        + " nativeTrackDataUnchanged=true");
+                awaitArrangeLoopTouchAcceptance();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: external Arrangement zoom touch handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
     }
 
     private void awaitArrangeLoopTouchAcceptance() {
