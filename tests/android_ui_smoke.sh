@@ -1937,6 +1937,9 @@ require_source_contains "$BROWSER_SOURCE" 'void auditionSelectedFile()'
 require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("Browser " + section + " tab")'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'up.setContentDescription("Browser UP from " + browserLocation)'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser LOAD source file with Android Document Picker'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'BROWSER_WAV_PICKER_CANCELLED targetPad='
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'BROWSER LOAD CANCELLED • PAD '
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeAudioGetPadSampleName(targetPad, targetLayer)'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser BACK to previous workspace'
 
 echo "Checking BROW-010 WAV-picker cancellation acceptance contract..."
@@ -1945,7 +1948,9 @@ for required in \
   'PICKER_CANCEL_RETURN_XML="/tmp/mpc-groovebox-browser-picker-cancel-return-uiautomator.xml"' \
   'Fresh DocumentsUI foreground hierarchy verified for Browser picker cancellation.' \
   'BROW-010 real WAV picker cancellation preserved the existing sample and PAD 01 / LAYER 01 assignment.' \
-  'verify_documentsui_pair_geometry "$PICKER_CANCEL_BEFORE_XML" "$PICKER_CANCEL_BEFORE_PNG"'; do
+  'verify_documentsui_pair_geometry "$PICKER_CANCEL_BEFORE_XML" "$PICKER_CANCEL_BEFORE_PNG"' \
+  'verify_documentsui_pair_geometry() {' \
+  'DocumentsUI root has a non-positive viewport'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: Browser picker-cancellation smoke contract missing: $required"; exit 1
   fi
@@ -7716,6 +7721,41 @@ PY
 # DocumentsUI can change its scroll/focus layout between a screencap and an
 # accessibility dump. Require two identical hierarchy snapshots, capture the
 # screenshot, then require a third matching snapshot before using any bounds.
+# Validate that a fresh DocumentsUI hierarchy and its screenshot have compatible
+# viewport geometry. The status/navigation bars may extend beyond the app viewport,
+# but the root viewport must fit inside the actual captured PNG.
+verify_documentsui_pair_geometry() {
+  local hierarchy_path="$1" screenshot_path="$2"
+  python3 - "$hierarchy_path" "$screenshot_path" <<'PY_PICKER_PAIR_GEOMETRY'
+import re
+import struct
+import sys
+import xml.etree.ElementTree as ET
+
+hierarchy_path, screenshot_path = sys.argv[1:]
+root = ET.parse(hierarchy_path).getroot()
+nodes = list(root.iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("paired hierarchy is not rooted in Android DocumentsUI")
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     nodes[0].attrib.get("bounds", ""))
+if match is None:
+    raise SystemExit(f"DocumentsUI root has invalid bounds: {nodes[0].attrib.get('bounds')!r}")
+left, top, right, bottom = map(int, match.groups())
+if right <= left or bottom <= top:
+    raise SystemExit("DocumentsUI root has a non-positive viewport")
+with open(screenshot_path, "rb") as image:
+    header = image.read(24)
+if len(header) != 24 or header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+    raise SystemExit("paired DocumentsUI screenshot is not a valid PNG header")
+width, height = struct.unpack(">II", header[16:24])
+if width <= 0 or height <= 0 or left < 0 or top < 0 or right > width or bottom > height:
+    raise SystemExit(
+        f"DocumentsUI viewport {(left, top, right, bottom)} exceeds paired screenshot {width}x{height}")
+print(f"DocumentsUI hierarchy/screenshot geometry matches: viewport={right-left}x{bottom-top}, screenshot={width}x{height}")
+PY_PICKER_PAIR_GEOMETRY
+}
+
 capture_stable_picker_state() {
   local remote_path="$1" hierarchy_path="$2" screenshot_path="$3"
   local timeout_seconds="${4:-6}" stable_folder_label="${5:-}" deadline=$((SECONDS + ${4:-6}))
@@ -10470,6 +10510,11 @@ picker_sample_before_cancel="$(read_browser_current_sample "$PICKER_RETURN_XML")
 if [[ "$picker_sample_before_cancel" != "CURRENT SAMPLE • $PICKER_SAMPLE_NAME" ]]; then
   echo "ERROR: cancellation baseline is not the expected assigned WAV: $picker_sample_before_cancel"; exit 1
 fi
+picker_cancel_marker_before="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+  | grep -F -c -- "BROWSER_WAV_PICKER_CANCELLED" || true)"
+if [[ ! "$picker_cancel_marker_before" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: could not establish Browser WAV-cancel marker baseline"; exit 1
+fi
 if ! tap_ui_description "$PICKER_RETURN_XML" "MPC Browser LOAD source file with Android Document Picker"; then
   echo "ERROR: Browser LOAD action was unavailable before picker-cancel acceptance"; exit 1
 fi
@@ -10536,9 +10581,9 @@ if ! wait_for_ui_node_text_desc "$PICKER_CANCEL_RETURN_XML" "$PICKER_CANCEL_RETU
     "CURRENT SAMPLE • $PICKER_SAMPLE_NAME" "MPC Browser current sample" 30; then
   echo "ERROR: Browser did not restore its current sample field after cancelling the WAV picker"; exit 1
 fi
-if ! wait_for_ui_text_pair "$PICKER_CANCEL_RETURN_XML" "$PICKER_CANCEL_RETURN_REMOTE" \
-    "ASSIGNED • $PICKER_SAMPLE_NAME" "PAD 01 / LAYER 01" 20; then
-  echo "ERROR: picker cancellation changed or lost the existing Pad 01 / Layer 01 assignment status"; exit 1
+if ! wait_for_ui_text "$PICKER_CANCEL_RETURN_XML" "$PICKER_CANCEL_RETURN_REMOTE" \
+    "BROWSER LOAD CANCELLED • PAD 01 / LAYER 01 UNCHANGED" 20; then
+  echo "ERROR: Browser cancellation did not expose its explicit unchanged Pad/Layer status"; exit 1
 fi
 picker_sample_after_cancel="$(read_browser_current_sample "$PICKER_CANCEL_RETURN_XML")" || {
   echo "ERROR: could not read the Browser current sample after picker cancellation"; exit 1;
@@ -10546,6 +10591,23 @@ picker_sample_after_cancel="$(read_browser_current_sample "$PICKER_CANCEL_RETURN
 if [[ "$picker_sample_after_cancel" != "$picker_sample_before_cancel" ]]; then
   echo "ERROR: cancelling the WAV picker changed Pad/Layer sample: before=$picker_sample_before_cancel after=$picker_sample_after_cancel"
   exit 1
+fi
+picker_cancel_marker=""
+for marker_attempt in {1..10}; do
+  picker_cancel_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  picker_cancel_marker="$(grep -F -- "BROWSER_WAV_PICKER_CANCELLED" <<<"$picker_cancel_logs" | tail -n 1 || true)"
+  picker_cancel_marker_count="$(grep -F -c -- "BROWSER_WAV_PICKER_CANCELLED" <<<"$picker_cancel_logs" || true)"
+  if [[ "$picker_cancel_marker_count" =~ ^[0-9]+$ ]] \
+      && (( picker_cancel_marker_count > picker_cancel_marker_before )) \
+      && grep -Fq -- "targetPad=1 targetLayer=1 sample=$PICKER_SAMPLE_NAME unchanged=true" <<<"$picker_cancel_marker"; then
+    break
+  fi
+  sleep 1
+done
+if [[ -z "$picker_cancel_marker" ]] \
+    || ! grep -Fq -- "targetPad=1 targetLayer=1 sample=$PICKER_SAMPLE_NAME unchanged=true" <<<"$picker_cancel_marker"; then
+  echo "ERROR: native log did not prove WAV cancellation preserved Pad 01 / Layer 01 sample identity"
+  printf '%s\\n' "$picker_cancel_marker"; exit 1
 fi
 if ! capture_ui_screenshot "$PICKER_CANCEL_RETURN_PNG" 10; then
   echo "ERROR: could not capture Browser after cancelling the WAV picker"; exit 1
