@@ -343,6 +343,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_STEPS;
     private int sequenceGridStartPad = 0;
     private int sequenceGridVisiblePads = MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_PADS;
+    private final MpcGridZoomHistory sequenceGridHorizontalZoomHistory =
+            new MpcGridZoomHistory();
+    private final MpcGridZoomHistory sequenceGridVerticalZoomHistory =
+            new MpcGridZoomHistory();
     private int sequenceStepPage = 0;
     private int launcherBank = 0;
     private String lastLauncherLedSignature = "";
@@ -9753,15 +9757,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void zoomSequenceGridHorizontal(int delta) {
-        if (sequenceGridView == null) return;
+        if (sequenceGridView == null || delta == 0) return;
+        final int totalSteps = Math.max(1, sequenceGridTotalSteps());
+        final MpcGridZoomHistory.Window before = new MpcGridZoomHistory.Window(
+                sequenceGridVisibleSteps, sequenceGridStartStep, totalSteps);
+        final boolean zoomIn = delta > 0;
+        final MpcGridZoomHistory.Window restored =
+                sequenceGridHorizontalZoomHistory.restoreOpposite(zoomIn, before);
+        if (restored != null) {
+            sequenceGridVisibleSteps = restored.visibleCount;
+            sequenceGridStartStep = restored.start;
+            refreshSequenceGrid();
+            setGridHorizontalZoomStatus();
+            return;
+        }
+
         final int oldVisible = sequenceGridVisibleSteps;
-        final int nextVisible = delta > 0
+        final int nextVisible = zoomIn
                 ? MpcSequenceZoomPolicy.zoomGridStepsIn(oldVisible)
                 : MpcSequenceZoomPolicy.zoomGridStepsOut(oldVisible);
-        final int totalSteps = sequenceGridTotalSteps();
-        final int clampedVisible = Math.max(
-                1,
-                Math.min(nextVisible, Math.max(1, totalSteps)));
+        final int clampedVisible = Math.max(1, Math.min(nextVisible, totalSteps));
         if (clampedVisible == oldVisible) return;
 
         final int center = sequenceGridStartStep + oldVisible / 2;
@@ -9769,12 +9784,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceGridStartStep = Math.max(
                 0,
                 Math.min(
-                        sequenceGridTotalSteps() - sequenceGridVisibleSteps,
+                        totalSteps - sequenceGridVisibleSteps,
                         center - sequenceGridVisibleSteps / 2));
+        final MpcGridZoomHistory.Window after = new MpcGridZoomHistory.Window(
+                sequenceGridVisibleSteps, sequenceGridStartStep, totalSteps);
+        sequenceGridHorizontalZoomHistory.record(zoomIn, before, after);
         refreshSequenceGrid();
+        setGridHorizontalZoomStatus();
+    }
+
+    private void setGridHorizontalZoomStatus() {
         setBottomStatus(
                 "GRID ZOOM H • "
-                        + sequenceGridStartStep + 1
+                        + (sequenceGridStartStep + 1)
                         + "–"
                         + Math.min(
                                 sequenceGridTotalSteps(),
@@ -9782,23 +9804,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void zoomSequenceGridVertical(int delta) {
-        if (sequenceGridView == null) return;
+        if (sequenceGridView == null || delta == 0) return;
+        final int totalPads = MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_PADS;
+        final MpcGridZoomHistory.Window before = new MpcGridZoomHistory.Window(
+                sequenceGridVisiblePads, sequenceGridStartPad, totalPads);
+        final boolean zoomIn = delta > 0;
+        final MpcGridZoomHistory.Window restored =
+                sequenceGridVerticalZoomHistory.restoreOpposite(zoomIn, before);
+        if (restored != null) {
+            sequenceGridVisiblePads = restored.visibleCount;
+            sequenceGridStartPad = restored.start;
+            refreshSequenceGrid();
+            setGridVerticalZoomStatus();
+            return;
+        }
+
         final int oldVisible = sequenceGridVisiblePads;
-        final int nextVisible = delta > 0
+        final int nextVisible = zoomIn
                 ? MpcSequenceZoomPolicy.zoomGridPadsIn(oldVisible)
                 : MpcSequenceZoomPolicy.zoomGridPadsOut(oldVisible);
         if (nextVisible == oldVisible) return;
 
-        final int selectedRow = Math.max(
-                0,
-                Math.min(15, 15 - selectedPad));
+        final int selectedRow = Math.max(0, Math.min(15, 15 - selectedPad));
         sequenceGridVisiblePads = nextVisible;
         sequenceGridStartPad = Math.max(
                 0,
                 Math.min(
                         sequenceGridMaxStartPad(),
                         selectedRow - sequenceGridVisiblePads / 2));
+        final MpcGridZoomHistory.Window after = new MpcGridZoomHistory.Window(
+                sequenceGridVisiblePads, sequenceGridStartPad, totalPads);
+        sequenceGridVerticalZoomHistory.record(zoomIn, before, after);
         refreshSequenceGrid();
+        setGridVerticalZoomStatus();
+    }
+
+    private void setGridVerticalZoomStatus() {
         setBottomStatus(
                 "GRID ZOOM V • PADS "
                         + (16 - sequenceGridStartPad)
