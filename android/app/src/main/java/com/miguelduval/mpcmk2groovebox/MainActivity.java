@@ -270,6 +270,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceTimelineView sequenceTimeline;
     private SequenceTimelineView mainArrangementPreview;
     private MpcArrangeView arrangementView;
+    private TextView arrangementZoomOutButton;
     private TextView arrangementEventSelectionView;
     private Button arrangementMoveEarlierButton;
     private Button arrangementMoveLaterButton;
@@ -6735,6 +6736,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     refreshArrangeView();
                     logArrangementZoomStateForAudit("ZOOM_OUT");
                 });
+        arrangementZoomOutButton = zoomOutButton;
         zoomOutButton.setTextSize(9);
         header.addView(sectionLabelView(
                 "ARRANGEMENT",
@@ -7738,6 +7740,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeSequenceGetDenominator(),
                 nativeSequencePositionTicks(),
                 nativeSequenceIsPlaying());
+        updateArrangementZoomAccessibilityDescription();
+    }
+
+    private void updateArrangementZoomAccessibilityDescription() {
+        if (arrangementZoomOutButton == null || arrangementView == null) {
+            return;
+        }
+        arrangementZoomOutButton.setContentDescription(
+                "Arrangement zoom viewport visible bars="
+                        + arrangementView.visibleBarsForAudit()
+                        + " viewport start bar=" + arrangementView.viewportStartBarForAudit());
     }
 
     private void showTrackViewPage() {
