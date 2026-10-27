@@ -9783,6 +9783,86 @@ PY
   return 1
 }
 
+assert_browser_modified_date_state() {
+  local hierarchy="$1" filename="$2" expected_show="$3"
+  python3 - "$hierarchy" "$filename" "$expected_show" <<'PY_BROWSER_DATE_ROW'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, filename, expected_show = sys.argv[1:]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+def intersects(a, b):
+    return a is not None and b is not None and max(a[0], b[0]) < min(a[2], b[2]) \
+        and max(a[1], b[1]) < min(a[3], b[3])
+
+scroll = next((n for n in nodes
+               if n.attrib.get("content-desc") == "MPC Browser results list"), None)
+if scroll is None or bounds(scroll) is None:
+    raise SystemExit("Browser results viewport missing")
+expected_desc = "MPC Browser file " + filename
+rows = [n for n in nodes
+        if n.attrib.get("content-desc") == expected_desc
+        and n.attrib.get("clickable") == "true"
+        and n.attrib.get("enabled") == "true"
+        and intersects(bounds(n), bounds(scroll))]
+if len(rows) != 1:
+    raise SystemExit(f"expected one visible, actionable Browser row {filename!r}; found {len(rows)}")
+row = rows[0]
+texts = []
+for node in nodes:
+    parent = node
+    while parent is not None and parent is not row:
+        parent = parents.get(parent)
+    if parent is row:
+        text = node.attrib.get("text", "").strip()
+        if text:
+            texts.append(text)
+has_date = any("MODIFIED " in text or "DATE UNKNOWN" in text for text in texts)
+expected = expected_show == "1"
+if has_date != expected:
+    raise SystemExit(
+        f"modified-date presentation mismatch for {filename!r}: "
+        f"expected show={expected}, row texts={texts!r}")
+if not any("WAV" in text for text in texts):
+    raise SystemExit(f"Browser metadata line is missing from row {filename!r}: {texts!r}")
+print(f"Browser modified-date row verified: {filename}, show={expected}, metadata={texts!r}")
+PY_BROWSER_DATE_ROW
+}
+
+read_browser_modified_date_checked() {
+  python3 - "$1" <<'PY_BROWSER_DATE_CHECKBOX'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+matches = [n for n in root.iter("node")
+           if n.attrib.get("content-desc") == "MPC Browser Option Show modified date"]
+if len(matches) != 1:
+    raise SystemExit(f"expected one modified-date checkbox, found {len(matches)}")
+node = matches[0]
+if node.attrib.get("enabled") != "true" or node.attrib.get("clickable") != "true":
+    raise SystemExit(f"modified-date checkbox is not actionable: {node.attrib!r}")
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     node.attrib.get("bounds", ""))
+if not match:
+    raise SystemExit(f"modified-date checkbox has invalid bounds: {node.attrib!r}")
+left, top, right, bottom = map(int, match.groups())
+if right <= left or bottom <= top:
+    raise SystemExit(f"modified-date checkbox has empty bounds: {node.attrib!r}")
+print("1" if node.attrib.get("checked") == "true" else "0")
+PY_BROWSER_DATE_CHECKBOX
+}
+
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "Browser CONTENT tab"; then
   echo "ERROR: Browser CONTENT section was not actionable for category acceptance"; exit 1
 fi
@@ -9914,6 +9994,79 @@ if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
 fi
 if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
     "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
+
+echo "Running BROW-013 real modified-date option → metadata → restore acceptance..."
+if ! dump_device_ui_retry "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML" 8 3; then
+  echo "ERROR: could not refresh Browser before modified-date option acceptance"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options"; then
+  echo "ERROR: Browser Options button was not actionable for modified-date acceptance"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser Option Show modified date" 10; then
+  echo "ERROR: modified-date checkbox did not appear in Browser Options"; exit 1
+fi
+initial_modified_date="$(read_browser_modified_date_checked "$BROWSER_LOCAL_XML")"
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Option Show modified date"; then
+  echo "ERROR: modified-date checkbox could not be toggled"; exit 1
+fi
+if ! dump_device_ui_retry "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML" 8 3; then
+  echo "ERROR: could not verify changed modified-date checkbox"; exit 1
+fi
+toggled_modified_date="$(read_browser_modified_date_checked "$BROWSER_LOCAL_XML")"
+if [[ "$toggled_modified_date" == "$initial_modified_date" ]]; then
+  echo "ERROR: modified-date checkbox did not change checked state"; exit 1
+fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-browser-modified-date-options-changed.png" 10; then
+  echo "ERROR: modified-date changed-state screenshot failed"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options close"; then
+  echo "ERROR: could not close Browser Options after modified-date toggle"; exit 1
+fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
+if ! assert_browser_modified_date_state "$BROWSER_LOCAL_XML" "$BROWSER_DEMOS_NAME" "$toggled_modified_date"; then
+  echo "ERROR: modified-date toggle did not update real Browser metadata"; exit 1
+fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-browser-modified-date-metadata-changed.png" 10; then
+  echo "ERROR: modified-date result metadata screenshot failed"; exit 1
+fi
+
+# Reopen the real dialog to confirm the selected preference is persisted, then
+# restore the original value so subsequent Browser/sample tests remain isolated.
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options"; then
+  echo "ERROR: Browser Options did not reopen for preference-persistence check"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser Option Show modified date" 10; then
+  echo "ERROR: modified-date checkbox did not return after reopening options"; exit 1
+fi
+reopened_modified_date="$(read_browser_modified_date_checked "$BROWSER_LOCAL_XML")"
+if [[ "$reopened_modified_date" != "$toggled_modified_date" ]]; then
+  echo "ERROR: modified-date preference did not persist when Browser Options reopened"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Option Show modified date"; then
+  echo "ERROR: modified-date checkbox could not restore its original state"; exit 1
+fi
+if ! dump_device_ui_retry "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML" 8 3; then
+  echo "ERROR: could not verify restored modified-date checkbox"; exit 1
+fi
+restored_modified_date="$(read_browser_modified_date_checked "$BROWSER_LOCAL_XML")"
+if [[ "$restored_modified_date" != "$initial_modified_date" ]]; then
+  echo "ERROR: modified-date checkbox failed to restore original state"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options close"; then
+  echo "ERROR: could not close Browser Options after restoring modified-date preference"; exit 1
+fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
+if ! assert_browser_modified_date_state "$BROWSER_LOCAL_XML" "$BROWSER_DEMOS_NAME" "$initial_modified_date"; then
+  echo "ERROR: modified-date metadata failed to restore its original presentation"; exit 1
+fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-browser-modified-date-metadata-restored.png" 10; then
+  echo "ERROR: modified-date restore screenshot failed"; exit 1
+fi
+echo "BROW-013 modified-date checkbox, real metadata rendering, persistence and inverse restore passed."
 
 # The sample follows two pinned Browser actions in a short ScrollView. Scroll it
 # fully into the hit area instead of tapping a clipped row at the viewport edge.
