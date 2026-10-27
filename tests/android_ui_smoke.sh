@@ -1944,8 +1944,8 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser BACK to previous wo
 
 echo "Checking Browser WAV-picker cancellation evidence is retained by CI..."
 for required in \
-  'mpc-groovebox-browser-load-cancel-picker.png|\\' \
-  'mpc-groovebox-browser-load-cancel-return.png|\\'; do
+  'mpc-groovebox-browser-load-cancel-picker.png' \
+  'mpc-groovebox-browser-load-cancel-return.png'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: Browser cancellation screenshot is absent from capture_ui_screenshot allowlist: $required"; exit 1
   fi
