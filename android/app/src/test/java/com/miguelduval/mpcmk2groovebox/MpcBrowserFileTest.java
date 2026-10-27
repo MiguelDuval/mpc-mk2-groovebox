@@ -24,6 +24,10 @@ public final class MpcBrowserFileTest {
         return new MpcBrowserFile(uri, name, "audio/wav", 48000L, 1200L, relativePath);
     }
 
+    private MpcBrowserFile sampleWithDate(String name, String uri, String relativePath, long modifiedMs) {
+        return new MpcBrowserFile(uri, name, "audio/wav", 48000L, 1200L, relativePath, modifiedMs);
+    }
+
     @Test
     public void resultsUseDeterministicCaseInsensitiveDisplayNameOrder() {
         MpcBrowserFile lowerKick = sample(
@@ -79,6 +83,32 @@ public final class MpcBrowserFileTest {
                 "Unknown.wav", "audio/wav", -1L, 0L);
         assertEquals("SIZE UNKNOWN • DURATION UNKNOWN • WAV", unknown.metadataLine(true));
         assertEquals("DURATION UNKNOWN • WAV", unknown.metadataLine(false));
+    }
+
+    @Test
+    public void modifiedDateOptionAddsAvailableDateWithoutLosingOtherMetadata() {
+        MpcBrowserFile file = sampleWithDate(
+                "Kick.wav", "content://media/external/audio/media/12",
+                "Music/Drums/", 1_735_689_600_000L);
+
+        String withSizeAndDate = file.metadataLine(true, true);
+        assertTrue(withSizeAndDate.startsWith("46.9 KB • MODIFIED "));
+        assertTrue(withSizeAndDate.matches(
+                "46\\.9 KB • MODIFIED \\d{4}-\\d{2}-\\d{2} • 0:01 • WAV"));
+        assertEquals("46.9 KB • 0:01 • WAV", file.metadataLine(true, false));
+        assertEquals("MODIFIED " + MpcBrowserFile.formatModifiedDate(file.lastModifiedMs())
+                + " • 0:01 • WAV", file.metadataLine(false, true));
+        assertEquals("Music/Drums/", file.relativePath());
+    }
+
+    @Test
+    public void unknownModifiedDateRemainsExplicitWhenOtherMetadataIsHidden() {
+        MpcBrowserFile unknownDate = new MpcBrowserFile(
+                "content://media/external/audio/media/13",
+                "Unknown.wav", "audio/wav", -1L, 0L);
+        assertEquals("DATE UNKNOWN • DURATION UNKNOWN • WAV",
+                unknownDate.metadataLine(false, true));
+        assertEquals("DURATION UNKNOWN • WAV", unknownDate.metadataLine(false));
     }
 
     @Test
