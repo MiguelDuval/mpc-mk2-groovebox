@@ -10672,6 +10672,9 @@ def unique(description):
 sample = unique("MPC Browser current sample").attrib.get("text", "")
 target = unique("MPC Browser target Pad and Layer").attrib.get("text", "")
 search = unique("MPC Browser search files").attrib.get("text", "")
+# UIAutomator exposes the EditText hint as text when empty; normalize that to the real empty query.
+if search == "Search files":
+    search = ""
 # UIAutomator exposes an EditText hint as its text when the field is empty.
 # Normalize that presentation-only hint to the real empty-query state.
 if search == "Search files":
