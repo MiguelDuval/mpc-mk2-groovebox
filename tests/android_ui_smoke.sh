@@ -6541,15 +6541,15 @@ path, density_text = sys.argv[1:]
 nodes = list(ET.parse(path).getroot().iter("node"))
 grid = [n for n in nodes if n.attrib.get("content-desc", "").startswith("MPC Grid View drum event grid")]
 ranges = [n.attrib.get("content-desc", "") for n in nodes if n.attrib.get("content-desc", "").startswith("Grid visible step range: steps ")]
-pad_status = [n.attrib.get("text", "").strip() for n in nodes if "GRID ZOOM V • PADS " in n.attrib.get("text", "")]
-if len(grid) != 1 or len(ranges) != 1 or len(pad_status) != 1:
-    raise AssertionError(f"missing unique Grid canvas/step/pad viewport: {len(grid)}/{len(ranges)}/{pad_status!r}")
+if len(grid) != 1 or len(ranges) != 1:
+    raise AssertionError(f"missing unique Grid canvas/step range: {len(grid)}/{len(ranges)}")
 m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)", ranges[0])
-pm = re.fullmatch(r"GRID ZOOM V • PADS\s+(\d+)[–-](\d+)", pad_status[0])
-if m is None or pm is None:
-    raise AssertionError(f"malformed Grid range: {ranges[0]!r} / {pad_status[0]!r}")
+pad_match = re.search(r"Grid visible pad range: pads\s+(\d+) through (\d+) of 16",
+                      grid[0].attrib.get("content-desc", ""))
+if m is None or pad_match is None:
+    raise AssertionError(f"malformed live Grid range: {ranges[0]!r} / {grid[0].attrib.get('content-desc')!r}")
 first,last,total = map(int,m.groups())
-first_pad,last_pad = map(int,pm.groups())
+first_pad,last_pad = map(int,pad_match.groups())
 if last-first+1 != 12 or not first <= last <= total:
     raise AssertionError(f"expected 12 visible steps before edge zoom, got {first}–{last}/{total}")
 counts = [int(m.group(1)) for n in nodes for m in [re.search(r"\bevents=(\d+)\b",n.attrib.get("text",""))] if m]
@@ -6602,9 +6602,11 @@ if m is None:
 first,last,total = map(int,m.groups())
 if not first <= step <= last or last-first+1 != 12:
     raise AssertionError(f"selected edge step {step} isn't in prior viewport {first}–{last}/{total}")
-pads = [n.attrib.get("text","").strip() for n in nodes if "GRID ZOOM V • PADS " in n.attrib.get("text","")]
-if pads != [f"GRID ZOOM V • PADS {first_pad}–{last_pad}"]:
-    raise AssertionError(f"vertical viewport changed during empty-cell selection: {pads!r}")
+grids = [n for n in nodes if n.attrib.get("content-desc","").startswith("MPC Grid View drum event grid")]
+pad_match = re.search(r"Grid visible pad range: pads\s+(\d+) through (\d+) of 16",
+                      grids[0].attrib.get("content-desc","")) if len(grids)==1 else None
+if pad_match is None or tuple(map(int,pad_match.groups())) != (first_pad,last_pad):
+    raise AssertionError(f"live Grid Pad viewport changed during selection: {[g.attrib.get('content-desc') for g in grids]!r}")
 counts = [int(m.group(1)) for n in nodes for m in [re.search(r"\bevents=(\d+)\b",n.attrib.get("text",""))] if m]
 if counts != [1]:
     raise AssertionError(f"empty-cell selection mutated native event count: {counts!r}")
@@ -6638,19 +6640,22 @@ def read(path):
         raise AssertionError(f"{path}: missing/malformed visible-step range: {ranges!r}")
     first,last,total = map(int,m.groups())
     selected = [n.attrib.get("content-desc","") for n in nodes if n.attrib.get("content-desc","").startswith("Grid selection: PAD 01, STEP ")]
-    pads = [n.attrib.get("text","").strip() for n in nodes if "GRID ZOOM V • PADS " in n.attrib.get("text","")]
+    grids = [n for n in nodes if n.attrib.get("content-desc","").startswith("MPC Grid View drum event grid")]
+    pad_match = re.search(r"Grid visible pad range: pads\s+(\d+) through (\d+) of 16",
+                          grids[0].attrib.get("content-desc","")) if len(grids)==1 else None
+    pad_range = tuple(map(int,pad_match.groups())) if pad_match is not None else None
     counts = [int(m.group(1)) for n in nodes for m in [re.search(r"\bevents=(\d+)\b",n.attrib.get("text",""))] if m]
     ticks = [n.attrib.get("content-desc","") for n in nodes if n.attrib.get("content-desc","").startswith("Grid quantize resolution: ")]
-    if len(pads)!=1 or len(ticks)!=1 or counts != [1]:
-        raise AssertionError(f"{path}: pad/quantize/event-count contract failed: pads={pads!r} ticks={ticks!r} counts={counts!r}")
-    return (first,last,total),selected,pads[0],ticks[0],counts
+    if pad_range is None or len(ticks)!=1 or counts != [1]:
+        raise AssertionError(f"{path}: Pad viewport/quantize/event-count contract failed: pad_range={pad_range!r} ticks={ticks!r} counts={counts!r}")
+    return (first,last,total),selected,pad_range,ticks[0],counts
 before,bs, bp,bt,bc = read(before_path)
 after,as_,ap,at,ac = read(after_path)
 expected = f"Grid selection: PAD 01, STEP {step:02d}, no note"
 if bs != [expected] or as_ != [expected]:
     raise AssertionError(f"zoom moved/lost selected edge step {step}: {bs!r} -> {as_!r}")
-pad_status = f"GRID ZOOM V • PADS {first_pad}–{last_pad}"
-if bp != pad_status or ap != pad_status:
+expected_pad_range = (first_pad,last_pad)
+if bp != expected_pad_range or ap != expected_pad_range:
     raise AssertionError(f"horizontal zoom changed vertical Pad viewport: {bp!r} -> {ap!r}")
 if bt != at or bc != [1] or ac != bc:
     raise AssertionError(f"zoom changed quantize or native event count: {bt!r}/{bc!r} -> {at!r}/{ac!r}")
@@ -6683,11 +6688,11 @@ if m is None:
 first,last,total = map(int,m.groups())
 if not first <= step <= last:
     raise AssertionError(f"seed step {step} not visible in {first}–{last}/{total}")
-pads = [n.attrib.get("text","").strip() for n in nodes if "GRID ZOOM V • PADS " in n.attrib.get("text","")]
-pm = re.fullmatch(r"GRID ZOOM V • PADS\s+(\d+)[–-](\d+)",pads[0]) if len(pads)==1 else None
-if pm is None:
-    raise AssertionError(f"missing/malformed Pad viewport: {pads!r}")
-first_pad,last_pad = map(int,pm.groups())
+pad_match = re.search(r"Grid visible pad range: pads\s+(\d+) through (\d+) of 16",
+                     grid[0].attrib.get("content-desc",""))
+if pad_match is None:
+    raise AssertionError("live Grid accessibility projection has no Pad viewport before reselection")
+first_pad,last_pad = map(int,pad_match.groups())
 density = re.findall(r"Override density:\s*(\d+)",density_text) or re.findall(r"Physical density:\s*(\d+)",density_text)
 if not density:
     raise AssertionError("device density unavailable for reselection coordinates")
