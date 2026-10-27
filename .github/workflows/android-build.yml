@@ -655,6 +655,7 @@ jobs:
             /tmp/mpc-groovebox-browser.png
             /tmp/mpc-groovebox-browser-local-results.png
             /tmp/mpc-groovebox-browser-local-results-uiautomator.xml
+            /tmp/mpc-groovebox-browser-empty-search-baseline.png
             /tmp/mpc-groovebox-browser-empty-search.png
             /tmp/mpc-groovebox-browser-empty-search-uiautomator.xml
             /tmp/mpc-groovebox-browser-empty-search-cleared.png
