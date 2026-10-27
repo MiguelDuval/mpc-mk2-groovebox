@@ -127,6 +127,24 @@ for required in \
   fi
 done
 
+echo "Checking immutable DocumentsUI evidence pairs and CI artifact retention..."
+for required in \
+  'PROJECT_SAVE_PAIR_XML="/tmp/mpc-groovebox-project-save-picker-fresh-pair-uiautomator.xml"' \
+  'PROJECT_OPEN_PAIR_XML="/tmp/mpc-groovebox-project-open-picker-fresh-pair-uiautomator.xml"' \
+  'Preserved immutable initial Save As hierarchy/screenshot pair.' \
+  'Preserved immutable Project Open hierarchy/screenshot pair.'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: immutable DocumentsUI evidence-pair contract missing: $required"; exit 1
+  fi
+done
+for required in \
+  '/tmp/mpc-groovebox-project-*.png' \
+  '/tmp/mpc-groovebox-project*-uiautomator.xml'; do
+  if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
+    echo "ERROR: immutable DocumentsUI evidence is not uploaded by CI: $required"; exit 1
+  fi
+done
+
 echo "Checking atomic publication of Android View-tree evidence..."
 for required in \
   'fileName + ".", ".tmp", getCacheDir()' \
@@ -11311,6 +11329,8 @@ PROJECT_ROUTE_PNG="/tmp/mpc-groovebox-project-route.png"
 PROJECT_SAVE_XML="/tmp/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_REMOTE="/sdcard/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_PNG="/tmp/mpc-groovebox-project-save-picker.png"
+PROJECT_SAVE_PAIR_XML="/tmp/mpc-groovebox-project-save-picker-fresh-pair-uiautomator.xml"
+PROJECT_SAVE_PAIR_PNG="/tmp/mpc-groovebox-project-save-picker-fresh-pair.png"
 PROJECT_SAVED_XML="/tmp/mpc-groovebox-project-saved-view-hierarchy.xml"
 PROJECT_SAVED_PNG="/tmp/mpc-groovebox-project-saved.png"
 PROJECT_MUTATED_XML="/tmp/mpc-groovebox-project-mutated-view-hierarchy.xml"
@@ -11318,6 +11338,8 @@ PROJECT_MUTATED_PNG="/tmp/mpc-groovebox-project-mutated.png"
 PROJECT_OPEN_XML="/tmp/mpc-groovebox-project-open-picker-uiautomator.xml"
 PROJECT_OPEN_REMOTE="/sdcard/mpc-groovebox-project-open-picker-uiautomator.xml"
 PROJECT_OPEN_PNG="/tmp/mpc-groovebox-project-open-picker.png"
+PROJECT_OPEN_PAIR_XML="/tmp/mpc-groovebox-project-open-picker-fresh-pair-uiautomator.xml"
+PROJECT_OPEN_PAIR_PNG="/tmp/mpc-groovebox-project-open-picker-fresh-pair.png"
 PROJECT_REOPENED_XML="/tmp/mpc-groovebox-project-reopened-view-hierarchy.xml"
 PROJECT_REOPENED_PNG="/tmp/mpc-groovebox-project-reopened.png"
 PROJECT_MENU_TREE_MARKER_BEFORE=0 PROJECT_MAIN_TREE_MARKER_BEFORE=0 PROJECT_PROJECT_TREE_MARKER_BEFORE=0
@@ -11653,6 +11675,17 @@ fi
 if ! capture_verified_fresh_save_picker_pair "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"; then
   echo "ERROR: could not capture stable DocumentsUI state for Project Save As"; exit 1
 fi
+# Preserve the exact just-validated hierarchy/screenshot pair before the live
+# hierarchy and screenshot paths are reused by polling and later Save As cases.
+if ! cp -f -- "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PAIR_XML" \
+    || ! cp -f -- "$PROJECT_SAVE_PNG" "$PROJECT_SAVE_PAIR_PNG"; then
+  echo "ERROR: could not preserve immutable initial Save As evidence pair"; exit 1
+fi
+if ! verify_documentsui_pair_geometry "$PROJECT_SAVE_PAIR_XML" "$PROJECT_SAVE_PAIR_PNG" \
+    || ! grep -Fq -- 'text="Untitled.mpcproj"' "$PROJECT_SAVE_PAIR_XML"; then
+  echo "ERROR: immutable Save As evidence pair failed its geometry/filename contract"; exit 1
+fi
+echo "Preserved immutable initial Save As hierarchy/screenshot pair."
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
   echo "ERROR: Save As did not prefill the project filename"; exit 1
 fi
@@ -11710,6 +11743,17 @@ fi
 if ! capture_verified_fresh_open_picker_pair "$PROJECT_OPEN_XML" "$PROJECT_OPEN_PNG" "Untitled.mpcproj"; then
   echo "ERROR: could not capture validated fresh DocumentsUI state for Project Open"; exit 1
 fi
+# Keep this exact actionable row and its paired screenshot immutable as later
+# picker navigations reuse the working paths.
+if ! cp -f -- "$PROJECT_OPEN_XML" "$PROJECT_OPEN_PAIR_XML" \
+    || ! cp -f -- "$PROJECT_OPEN_PNG" "$PROJECT_OPEN_PAIR_PNG"; then
+  echo "ERROR: could not preserve immutable Project Open evidence pair"; exit 1
+fi
+if ! verify_documentsui_pair_geometry "$PROJECT_OPEN_PAIR_XML" "$PROJECT_OPEN_PAIR_PNG" \
+    || ! grep -Fq -- 'text="Untitled.mpcproj"' "$PROJECT_OPEN_PAIR_XML"; then
+  echo "ERROR: immutable Project Open evidence pair failed its geometry/filename contract"; exit 1
+fi
+echo "Preserved immutable Project Open hierarchy/screenshot pair."
 if ! tap_ui_picker_result_row "$PROJECT_OPEN_XML" "Untitled.mpcproj" auto label; then
   echo "ERROR: could not select the previously saved Project file"; exit 1
 fi
