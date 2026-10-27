@@ -39,7 +39,11 @@ public final class AndroidMidiBridge {
 
         @Override public void onDeviceRemoved(MidiDeviceInfo info) {
             if (device != null && device.getInfo().getId() == info.getId()) {
+                final boolean wasConnected = isConnected();
                 disconnect();
+                if (wasConnected) {
+                    listener.onConnection("MPC Studio MkII disconnected");
+                }
             }
             publishDeviceList();
         }
