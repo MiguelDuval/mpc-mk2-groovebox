@@ -1923,6 +1923,9 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'public void onChooseFolder()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'openBrowserDocumentTreePicker();'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Button load = addFunction("LOAD", true, v -> openWavPicker());'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser LOAD source file with Android Document Picker'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'BROWSER_WAV_PICKER_CANCELLED targetPad='
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'BROWSER LOAD CANCELLED • PAD '
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeAudioGetPadSampleName(targetPad, targetLayer)'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'restoreUserDocumentTree(browserView)'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'PREF_USER_TREE_URI'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Button audition = addFunction("AUDITION", browserHasSelectedFile,'
@@ -2106,6 +2109,8 @@ capture_ui_screenshot() {
     mpc-groovebox-picker-select-source.png|\
     mpc-groovebox-picker-root-drawer-missing.png|\
     mpc-groovebox-browser-picker-assignment.png|\
+    mpc-groovebox-browser-load-cancel-picker.png|\
+    mpc-groovebox-browser-load-cancel-return.png|\
     mpc-groovebox-browser-tree-picker.png|\
     mpc-groovebox-browser-tree-root.png|\
     mpc-groovebox-browser-tree-restored.png|\
@@ -10170,6 +10175,12 @@ PICKER_UI_REMOTE="/sdcard/mpc-groovebox-picker-select-source-uiautomator.xml"
 PICKER_ROOT_DRAWER_FAILURE_PNG="/tmp/mpc-groovebox-picker-root-drawer-missing.png"
 PICKER_RETURN_XML="/tmp/mpc-groovebox-browser-picker-assignment-uiautomator.xml"
 PICKER_RETURN_REMOTE="/sdcard/mpc-groovebox-browser-picker-assignment-uiautomator.xml"
+PICKER_CANCEL_PNG="/tmp/mpc-groovebox-browser-load-cancel-picker.png"
+PICKER_CANCEL_XML="/tmp/mpc-groovebox-browser-load-cancel-picker-uiautomator.xml"
+PICKER_CANCEL_REMOTE="/sdcard/mpc-groovebox-browser-load-cancel-picker-uiautomator.xml"
+PICKER_CANCEL_RETURN_PNG="/tmp/mpc-groovebox-browser-load-cancel-return.png"
+PICKER_CANCEL_RETURN_XML="/tmp/mpc-groovebox-browser-load-cancel-return-uiautomator.xml"
+PICKER_CANCEL_RETURN_REMOTE="/sdcard/mpc-groovebox-browser-load-cancel-return-uiautomator.xml"
 
 if ! cp "$LOCAL_SAMPLE_HOST" "$PICKER_SAMPLE_HOST"; then
   echo "ERROR: could not prepare distinct SAF picker WAV fixture"
@@ -10441,6 +10452,125 @@ if ! dump_device_ui "$PICKER_RETURN_REMOTE" "$PICKER_RETURN_XML"; then
   exit 1
 fi
 echo "Android Document Picker select → return → Pad/Layer assignment passed."
+
+# BROW-010 cancellation path: opening LOAD and backing out must preserve the
+# actual sampler assignment and the snapshotted Pad/Layer destination.
+echo "Running Browser WAV-picker cancellation → native Pad/Layer preservation test..."
+PICKER_SAMPLE_BEFORE_CANCEL="$(read_browser_current_sample "$PICKER_RETURN_XML")" || {
+  echo "ERROR: could not read Browser's native-backed current sample before cancellation"; exit 1;
+}
+if [[ "$PICKER_SAMPLE_BEFORE_CANCEL" != "$PICKER_SAMPLE_NAME" ]]; then
+  echo "ERROR: cancellation fixture isn't the expected preassigned native sample: $PICKER_SAMPLE_BEFORE_CANCEL"; exit 1
+fi
+PICKER_CANCEL_MARKER_BEFORE="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+  | grep -F -c -- "BROWSER_WAV_PICKER_CANCELLED" || true)"
+if [[ ! "$PICKER_CANCEL_MARKER_BEFORE" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: could not establish Browser picker-cancellation marker baseline"; exit 1
+fi
+if ! tap_ui_description "$PICKER_RETURN_XML" "MPC Browser LOAD source file with Android Document Picker"; then
+  echo "ERROR: could not reopen the real Browser LOAD picker for cancellation acceptance"; exit 1
+fi
+picker_cancel_activity=""
+for cancel_launch_attempt in {1..20}; do
+  picker_cancel_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if grep -Fq -- "com.android.documentsui" <<<"$picker_cancel_activity"; then break; fi
+  if [[ -n "$picker_cancel_activity" ]] && grep -Fq -- "$PACKAGE" <<<"$picker_cancel_activity"; then
+    sleep 0.5
+    continue
+  fi
+  if [[ -n "$picker_cancel_activity" ]]; then
+    echo "ERROR: unexpected Activity while launching Browser cancellation picker"
+    printf '%s\n' "$picker_cancel_activity"; exit 1
+  fi
+  sleep 0.5
+done
+if ! grep -Fq -- "com.android.documentsui" <<<"$picker_cancel_activity"; then
+  echo "ERROR: Browser LOAD cancellation test did not reach Android DocumentsUI"; exit 1
+fi
+if ! dump_device_ui_retry "$PICKER_CANCEL_REMOTE" "$PICKER_CANCEL_XML" 8 2 compressed; then
+  echo "ERROR: could not capture a fresh compressed hierarchy for Browser LOAD cancellation"; exit 1
+fi
+if ! python3 - "$PICKER_CANCEL_XML" <<'PY_BROWSER_CANCEL_ROOT'
+import sys
+import xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("fresh Browser cancellation hierarchy is not Android DocumentsUI")
+if not any(n.attrib.get("content-desc") in {"Show roots", "Show navigation drawer"}
+           for n in nodes):
+    raise SystemExit("DocumentsUI cancellation hierarchy lacks live root navigation")
+PY_BROWSER_CANCEL_ROOT
+then
+  echo "ERROR: Browser LOAD cancellation picker failed fresh-root accessibility acceptance"; exit 1
+fi
+if ! capture_ui_screenshot "$PICKER_CANCEL_PNG" 10; then
+  echo "ERROR: could not capture the actual Browser LOAD cancellation picker"; exit 1
+fi
+if ! verify_documentsui_pair_geometry "$PICKER_CANCEL_XML" "$PICKER_CANCEL_PNG"; then
+  echo "ERROR: Browser cancellation screenshot does not match the live DocumentsUI viewport"; exit 1
+fi
+
+picker_cancel_returned=0
+for cancel_back_attempt in {1..5}; do
+  picker_cancel_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if grep -Fq -- "$PACKAGE" <<<"$picker_cancel_activity"; then
+    picker_cancel_returned=1
+    break
+  fi
+  if ! grep -Fq -- "com.android.documentsui" <<<"$picker_cancel_activity"; then
+    echo "ERROR: unexpected Activity during Browser LOAD cancellation"
+    printf '%s\n' "$picker_cancel_activity"; exit 1
+  fi
+  if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
+    echo "ERROR: Android Back failed while cancelling Browser LOAD picker"; exit 1
+  fi
+  sleep 0.5
+done
+if [[ "$picker_cancel_returned" != "1" ]]; then
+  echo "ERROR: Browser LOAD cancellation did not return to the groovebox after bounded Back actions"
+  printf '%s\n' "$picker_cancel_activity"; exit 1
+fi
+if ! wait_for_ui_node_text_desc "$PICKER_CANCEL_RETURN_XML" "$PICKER_CANCEL_RETURN_REMOTE" \
+    "CURRENT SAMPLE • $PICKER_SAMPLE_NAME" "MPC Browser current sample" 30; then
+  echo "ERROR: Browser current-sample identity was lost when cancelling the LOAD picker"; exit 1
+fi
+if ! wait_for_ui_text "$PICKER_CANCEL_RETURN_XML" "$PICKER_CANCEL_RETURN_REMOTE" \
+    "BROWSER LOAD CANCELLED • PAD 01 / LAYER 01 UNCHANGED" 20; then
+  echo "ERROR: Browser cancellation did not expose an explicit unchanged-target status"; exit 1
+fi
+PICKER_SAMPLE_AFTER_CANCEL="$(read_browser_current_sample "$PICKER_CANCEL_RETURN_XML")" || {
+  echo "ERROR: could not read the Browser current-sample field after cancellation"; exit 1;
+}
+if [[ "$PICKER_SAMPLE_AFTER_CANCEL" != "$PICKER_SAMPLE_BEFORE_CANCEL" ]]; then
+  echo "ERROR: Browser cancellation changed current sample '$PICKER_SAMPLE_BEFORE_CANCEL' -> '$PICKER_SAMPLE_AFTER_CANCEL'"; exit 1
+fi
+picker_cancel_marker=""
+for marker_attempt in {1..10}; do
+  picker_cancel_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  picker_cancel_marker="$(grep -F -- "BROWSER_WAV_PICKER_CANCELLED" <<<"$picker_cancel_logs" | tail -n 1 || true)"
+  picker_cancel_marker_count="$(grep -F -c -- "BROWSER_WAV_PICKER_CANCELLED" <<<"$picker_cancel_logs" || true)"
+  if [[ "$picker_cancel_marker_count" =~ ^[0-9]+$ ]] \
+      && (( picker_cancel_marker_count > PICKER_CANCEL_MARKER_BEFORE )) \
+      && grep -Fq -- "targetPad=1 targetLayer=1 sample=$PICKER_SAMPLE_NAME unchanged=true" <<<"$picker_cancel_marker"; then
+    break
+  fi
+  sleep 1
+done
+if [[ -z "$picker_cancel_marker" ]] \
+    || ! grep -Fq -- "targetPad=1 targetLayer=1 sample=$PICKER_SAMPLE_NAME unchanged=true" <<<"$picker_cancel_marker"; then
+  echo "ERROR: native sampler log did not prove the cancelled load preserved Pad 01 / Layer 01 sample identity"
+  printf '%s\n' "$picker_cancel_marker"; exit 1
+fi
+if ! capture_ui_screenshot "$PICKER_CANCEL_RETURN_PNG" 10; then
+  echo "ERROR: could not capture the Browser state after LOAD cancellation"; exit 1
+fi
+if ! test -s "$PICKER_CANCEL_RETURN_XML"; then
+  echo "ERROR: Browser cancellation return hierarchy is empty"; exit 1
+fi
+echo "Browser LOAD cancellation preserved native sample $PICKER_SAMPLE_NAME on Pad 01 / Layer 01; no assignment was performed."
+
 
 # SAMP-008: exercise the destructive Sample Edit crop through real UI touches.
 # The picker-return fixture is assigned to PAD 01 / LAYER 01 and remains in
