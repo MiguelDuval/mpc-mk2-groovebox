@@ -33,6 +33,35 @@ public final class MpcSequenceZoomPolicyTest {
     }
 
     @Test
+    public void everyGridZoomInRungIsExactlyReversibleForStepsAndPads() {
+        int[] levels = {16, 12, 10, 8, 6, 5, 4, 3, 2, 1};
+        for (int i = 0; i < levels.length; i++) {
+            int current = levels[i];
+            if (i == levels.length - 1) {
+                assertEquals(1, MpcSequenceZoomPolicy.zoomGridStepsIn(current));
+                assertEquals(1, MpcSequenceZoomPolicy.zoomGridPadsIn(current));
+                continue;
+            }
+
+            int next = levels[i + 1];
+            assertEquals(next, MpcSequenceZoomPolicy.zoomGridStepsIn(current));
+            assertEquals(current, MpcSequenceZoomPolicy.zoomGridStepsOut(next));
+            assertEquals(next, MpcSequenceZoomPolicy.zoomGridPadsIn(current));
+            assertEquals(current, MpcSequenceZoomPolicy.zoomGridPadsOut(next));
+        }
+    }
+
+    @Test
+    public void gridZoomRemainsBoundedForNonLadderViewportSizes() {
+        assertEquals(12, MpcSequenceZoomPolicy.zoomGridStepsIn(15));
+        assertEquals(16, MpcSequenceZoomPolicy.zoomGridStepsOut(15));
+        assertEquals(1, MpcSequenceZoomPolicy.zoomGridStepsIn(0));
+        assertEquals(16, MpcSequenceZoomPolicy.zoomGridStepsOut(99));
+        assertEquals(1, MpcSequenceZoomPolicy.zoomGridPadsIn(-3));
+        assertEquals(16, MpcSequenceZoomPolicy.zoomGridPadsOut(32));
+    }
+
+    @Test
     public void arrangementTickMapsToTheCorrectBoundedGridStep() {
         assertEquals(0, MpcSequenceZoomPolicy.stepIndexForTick(0, 120, 64));
         assertEquals(40, MpcSequenceZoomPolicy.stepIndexForTick(4_800, 120, 64));
