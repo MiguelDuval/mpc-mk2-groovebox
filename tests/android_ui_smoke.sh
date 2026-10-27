@@ -7233,86 +7233,195 @@ PY
 # so the scroll gesture must be derived from the ScrollView itself, not from an
 # off-screen TUNE row.
 scroll_track_edit_to_layer_gain() {
-  local hierarchy_path="$1" remote_path="$2" max_swipes="${3:-8}"
-  local coordinates swipe_x swipe_from swipe_to gesture_direction
+  local hierarchy_path="$1" remote_path="$2" max_swipes="${3:-8}" target="${4:-gain}"
+  local coordinates swipe_x swipe_from swipe_to gesture_direction last_scroll_mode=""
+  if [[ "$target" != "gain" && "$target" != "region" ]]; then
+    echo "ERROR: unsupported Track Edit scroll target: $target"
+    return 2
+  fi
   for ((attempt=1; attempt<=max_swipes; attempt++)); do
     if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
-    if python3 - "$hierarchy_path" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
-nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
-descriptions = {n.attrib.get("content-desc", "") for n in nodes}
-raise SystemExit(0 if {
-    "Track Edit region",
-    "Track Edit layer gain value",
-    "Track Edit layer gain decrease",
-    "Track Edit layer tuning value",
-    "Track Edit layer pan value",
-}.issubset(descriptions) else 1)
-PY
-    then
-      echo "Track Edit REGION/GAIN/TUNE/PAN fields are visible after $((attempt - 1)) bounded scroll gesture(s)."
-      return 0
-    fi
-
-    if ! coordinates="$(python3 - "$hierarchy_path" <<'PY'
+    if python3 - "$hierarchy_path" "$target" <<'PY_TRACK_EDIT_TARGET'
 import re
 import sys
 import xml.etree.ElementTree as ET
 
-nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
-descriptions = {node.attrib.get("content-desc", "") for node in nodes}
-scroll_views = []
-for node in nodes:
-    if node.attrib.get("class") != "android.widget.ScrollView" \
-            or node.attrib.get("scrollable") != "true":
-        continue
+path, target = sys.argv[1], sys.argv[2]
+nodes = list(ET.parse(path).getroot().iter("node"))
+
+def rect(node):
     match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
                          node.attrib.get("bounds", ""))
-    if match is None:
+    return tuple(map(int, match.groups())) if match else None
+
+candidates = []
+for node in nodes:
+    if node.attrib.get("class") != "android.widget.ScrollView" or node.attrib.get("scrollable") != "true":
         continue
-    left, top, right, bottom = map(int, match.groups())
-    if right - left < 100 or bottom - top < 220:
+    box = rect(node)
+    if box and box[2] - box[0] >= 100 and box[3] - box[1] >= 220:
+        candidates.append(((box[2]-box[0])*(box[3]-box[1]), node, box))
+if not candidates:
+    raise SystemExit(1)
+_, scroll, viewport = max(candidates, key=lambda item: item[0])
+left, top, right, bottom = viewport
+
+def visible(description, minimum=28):
+    for node in scroll.iter("node"):
+        if node.attrib.get("content-desc", "") != description:
+            continue
+        if node.attrib.get("visible-to-user") == "false":
+            continue
+        box = rect(node)
+        if box is None:
+            continue
+        x1, y1, x2, y2 = box
+        if min(right, x2) - max(left, x1) >= 80 and min(bottom, y2) - max(top, y1) >= minimum:
+            return True
+    return False
+
+if target == "region":
+    required = [
+        "Track Edit region",
+        "Track Edit layer region start decrease",
+        "Track Edit layer region start increase",
+        "Track Edit layer region end decrease",
+        "Track Edit layer region end increase",
+    ]
+else:
+    required = [
+        "Track Edit layer gain value",
+        "Track Edit layer gain decrease",
+        "Track Edit layer tuning value",
+        "Track Edit layer pan value",
+    ]
+raise SystemExit(0 if all(visible(value) for value in required) else 1)
+PY_TRACK_EDIT_TARGET
+    then
+      echo "Track Edit $target target controls are visible after $((attempt - 1)) bounded scroll gesture(s)."
+      return 0
+    fi
+
+    if ! coordinates="$(python3 - "$hierarchy_path" "$target" "$last_scroll_mode" <<'PY_TRACK_EDIT_SCROLL'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, target, last_scroll_mode = sys.argv[1], sys.argv[2], sys.argv[3]
+nodes = list(ET.parse(path).getroot().iter("node"))
+
+def rect(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+candidates = []
+for node in nodes:
+    if node.attrib.get("class") != "android.widget.ScrollView" or node.attrib.get("scrollable") != "true":
         continue
-    scroll_views.append(((right-left)*(bottom-top), left, top, right, bottom))
-if not scroll_views:
+    box = rect(node)
+    if box and box[2] - box[0] >= 100 and box[3] - box[1] >= 220:
+        candidates.append(((box[2]-box[0])*(box[3]-box[1]), node, box))
+if not candidates:
     raise SystemExit("No visible scrollable Track Edit viewport found")
-_, left, top, right, bottom = max(scroll_views)
+_, scroll, viewport = max(candidates, key=lambda item: item[0])
+left, top, right, bottom = viewport
+
+def visible(predicate, minimum=28):
+    for node in scroll.iter("node"):
+        if not predicate(node.attrib.get("content-desc", "")):
+            continue
+        box = rect(node)
+        if box is None or node.attrib.get("visible-to-user") == "false":
+            continue
+        x1, y1, x2, y2 = box
+        if min(right, x2) - max(left, x1) >= 80 and min(bottom, y2) - max(top, y1) >= minimum:
+            return True
+    return False
+
+waveform = visible(lambda value: value == "Track Edit Samples waveform", 55)
+# Even a clipped velocity marker means the viewport is at the lower
+# end; use its smallest visible intersection to reverse out of that endpoint.
+velocity = visible(lambda value: value == "Track Edit velocity"
+                   or value.startswith("Track Edit layer velocity "), 1)
+gain = visible(lambda value: value == "Track Edit layer gain value", 28)
+tuning = visible(lambda value: value == "Track Edit layer tuning value", 28)
+pan = visible(lambda value: value == "Track Edit layer pan value", 28)
+region = visible(lambda value: value == "Track Edit region", 28)
+
+# Finger-up scrolls forward from the waveform/sample preamble to the REGION
+# and GAIN/TUNE/PAN rows. Finger-down returns toward earlier rows. These are
+# separate acceptance targets: the full REGION row and all three parameter
+# rows cannot always fit in the same viewport, so do not oscillate chasing both.
+if target == "region":
+    scroll_forward = waveform or (not region and not (gain or tuning or pan))
+else:
+    # Once the viewport leaves the lower velocity endpoint, intermediate
+    # frames may expose neither endpoint anchor. Keep the established direction
+    # rather than oscillating back toward velocity before GAIN enters view.
+    if velocity and not (gain and tuning and pan):
+        scroll_forward = False
+    elif waveform or region:
+        scroll_forward = True
+    elif not gain and (tuning or pan):
+        scroll_forward = False
+    elif last_scroll_mode == "reverse":
+        scroll_forward = False
+    elif last_scroll_mode == "forward":
+        scroll_forward = True
+    elif not (gain and tuning and pan):
+        scroll_forward = True
+    else:
+        raise SystemExit("Track Edit parameter controls are visible but failed the shared target contract")
+
 height = bottom - top
 margin = max(45, min(90, height // 5))
-# A visible waveform identifies the upper end of Samples content; a visible
-# velocity row identifies its lower end. Swipe up to reveal lower fields from
-# the top, or swipe down to return toward GAIN/TUNE/PAN from the lower end.
-at_top = "Track Edit Samples waveform" in descriptions
-at_bottom = ("Track Edit velocity" in descriptions
-             or any(value.startswith("Track Edit layer velocity ")
-                    for value in descriptions))
-if at_bottom and not at_top:
-    start_y, end_y = top + margin, bottom - margin
-    direction = "toward the upper layer controls"
+if target == "region":
+    # REGION sits directly after the waveform and before GAIN/TUNE/PAN. A
+    # full-height swipe jumps between the ScrollView endpoints and can never
+    # make the REGION text and its buttons simultaneously visible. Use bounded
+    # incremental steps to stop at the intermediate region viewport.
+    distance = max(100, min(180, height // 4))
+    if scroll_forward:
+        start_y = bottom - margin
+        end_y = max(top + margin, start_y - distance)
+        direction = "toward REGION controls"
+    else:
+        start_y = top + margin
+        end_y = min(bottom - margin, start_y + distance)
+        direction = "back toward REGION controls"
 else:
-    start_y, end_y = bottom - margin, top + margin
-    direction = "toward REGION/GAIN/TUNE/PAN"
-if abs(start_y - end_y) < 100:
+    if scroll_forward:
+        start_y, end_y = bottom - margin, top + margin
+        direction = "toward GAIN/TUNE/PAN"
+    else:
+        start_y, end_y = top + margin, bottom - margin
+        direction = "toward earlier layer controls"
+if abs(start_y - end_y) < 85:
     raise SystemExit("Track Edit scroll gesture is too short")
-print((left+right)//2, start_y, end_y, direction)
-PY
+print((left + right) // 2, start_y, end_y, direction)
+PY_TRACK_EDIT_SCROLL
 )"; then
-      echo "ERROR: could not derive a safe gesture from the live Track Edit ScrollView"
+      echo "ERROR: could not derive a bounded Track Edit scroll toward $target"
       cat "$hierarchy_path" || true
       return 1
     fi
     read -r swipe_x swipe_from swipe_to gesture_direction <<< "$coordinates"
-    echo "Scrolling Track Edit $gesture_direction: x=$swipe_x y=$swipe_from->$swipe_to"
+    if [[ "$gesture_direction" == *"earlier"* || "$gesture_direction" == "back toward REGION controls" ]]; then
+      last_scroll_mode="reverse"
+    else
+      last_scroll_mode="forward"
+    fi
+    echo "Scrolling Track Edit $gesture_direction for $target: x=$swipe_x y=$swipe_from->$swipe_to"
     if ! adb_bounded 10 shell input swipe "$swipe_x" "$swipe_from" "$swipe_x" "$swipe_to" 350; then
-      echo "ERROR: Track Edit layer viewport scroll gesture failed"
+      echo "ERROR: Track Edit $target viewport scroll gesture failed"
       return 1
     fi
     sleep 0.35
   done
 
   if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
-  echo "ERROR: Track Edit REGION/GAIN/TUNE/PAN fields did not become visible after $max_swipes bounded scroll gestures"
+  echo "ERROR: Track Edit $target controls did not become visible after $max_swipes bounded scroll gestures"
   cat "$hierarchy_path" || true
   return 1
 }
@@ -8378,7 +8487,7 @@ TRACK_EDIT_REGION_END_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-region-e
 TRACK_EDIT_REGION_CHECK_XML="/tmp/mpc-groovebox-track-edit-region-check-uiautomator.xml"
 TRACK_EDIT_REGION_CHECK_REMOTE="/sdcard/mpc-groovebox-track-edit-region-check-uiautomator.xml"
 
-if ! scroll_track_edit_to_layer_gain "$TRACK_EDIT_REGION_BEFORE_XML" "$TRACK_EDIT_REGION_BEFORE_REMOTE" 8; then
+if ! scroll_track_edit_to_layer_gain "$TRACK_EDIT_REGION_BEFORE_XML" "$TRACK_EDIT_REGION_BEFORE_REMOTE" 8 region; then
   echo "ERROR: Track Edit REGION/GAIN/TUNE/PAN fields did not return to the visible upper-layer viewport"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_REGION_BEFORE_REMOTE" "$TRACK_EDIT_REGION_BEFORE_XML"; then
