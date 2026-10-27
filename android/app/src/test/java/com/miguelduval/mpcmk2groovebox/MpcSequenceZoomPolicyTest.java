@@ -62,6 +62,25 @@ public final class MpcSequenceZoomPolicyTest {
     }
 
     @Test
+    public void gridZoomInOutRestoresEverySequenceLengthClampedWindow() {
+        for (int totalSteps = 1; totalSteps <= 64; totalSteps++) {
+            int originalVisible = Math.min(
+                    MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_STEPS,
+                    totalSteps);
+            int zoomedIn = Math.min(
+                    MpcSequenceZoomPolicy.zoomGridStepsIn(originalVisible),
+                    totalSteps);
+            int zoomedOut = Math.min(
+                    MpcSequenceZoomPolicy.zoomGridStepsOut(zoomedIn),
+                    totalSteps);
+            assertEquals(
+                    "round-trip must restore sequence length " + totalSteps,
+                    originalVisible,
+                    zoomedOut);
+        }
+    }
+
+    @Test
     public void arrangementTickMapsToTheCorrectBoundedGridStep() {
         assertEquals(0, MpcSequenceZoomPolicy.stepIndexForTick(0, 120, 64));
         assertEquals(40, MpcSequenceZoomPolicy.stepIndexForTick(4_800, 120, 64));
