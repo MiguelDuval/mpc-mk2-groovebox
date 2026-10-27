@@ -10485,7 +10485,7 @@ state = {
     "location": location.attrib.get("content-desc", ""),
     "search": unique("MPC Browser search files"),
 }
-print(json.dumps(state, sort_keys=True, separators=(",", ":")))
+print(json.dumps(state, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
 PY_BROWSER_PICKER_CANCEL_STATE
 }
 
