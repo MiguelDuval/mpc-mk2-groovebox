@@ -11441,7 +11441,7 @@ for name in ("IN", "OUT"):
                  if n.attrib.get("content-desc", "").startswith(f"MPC Toolbar MIDI {name} ")]
         raise SystemExit(
             f"expected one visible disconnected MIDI {name} indicator; got {ready!r}")
-    match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
                          matches[0].attrib.get("bounds", ""))
     if not match:
         raise SystemExit(f"MIDI {name} indicator has invalid bounds: {matches[0].attrib!r}")
