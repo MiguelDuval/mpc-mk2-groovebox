@@ -1965,7 +1965,8 @@ for required in \
   'mpc-groovebox-grid-zoom-horizontal.png|\' \
   'mpc-groovebox-grid-zoom-vertical.png|\' \
   'mpc-groovebox-grid-zoom-edge-selected.png|\' \
-  'mpc-groovebox-grid-zoom-edge-retained.png|\'; do
+  'mpc-groovebox-grid-zoom-edge-retained.png|\' \
+  'mpc-groovebox-grid-zoom-edge-restored.png|\'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: Grid zoom screenshot is not retained by capture_ui_screenshot: $required"
     exit 1
@@ -1982,7 +1983,8 @@ for required in \
   '/tmp/mpc-groovebox-grid-zoom-edge-selected-uiautomator.xml' \
   '/tmp/mpc-groovebox-grid-zoom-edge-retained.png' \
   '/tmp/mpc-groovebox-grid-zoom-edge-retained-uiautomator.xml' \
-  '/tmp/mpc-groovebox-grid-zoom-edge-restored-uiautomator.xml'; do
+  '/tmp/mpc-groovebox-grid-zoom-edge-restored-uiautomator.xml' \
+  '/tmp/mpc-groovebox-grid-zoom-edge-restored.png'; do
   if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
     echo "ERROR: Grid zoom evidence is not included in the CI artifact upload: $required"
     exit 1
@@ -2147,6 +2149,7 @@ capture_ui_screenshot() {
     mpc-groovebox-grid-zoom-vertical.png|\
     mpc-groovebox-grid-zoom-edge-selected.png|\
     mpc-groovebox-grid-zoom-edge-retained.png|\
+    mpc-groovebox-grid-zoom-edge-restored.png|\
     mpc-groovebox-browser.png|\
     mpc-groovebox-browser-device.png|\
     mpc-groovebox-browser-local-results.png|\
@@ -6527,6 +6530,7 @@ PY_GRID_ZOOM_V
     GRID_ZOOM_EDGE_RETAINED_PNG="/tmp/mpc-groovebox-grid-zoom-edge-retained.png"
     GRID_ZOOM_EDGE_RESTORED_XML="/tmp/mpc-groovebox-grid-zoom-edge-restored-uiautomator.xml"
     GRID_ZOOM_EDGE_RESTORED_REMOTE="/sdcard/mpc-groovebox-grid-zoom-edge-restored-uiautomator.xml"
+    GRID_ZOOM_EDGE_RESTORED_PNG="/tmp/mpc-groovebox-grid-zoom-edge-restored.png"
 
     edge_coordinates="$(python3 - "$GRID_ZOOM_V_XML" "$grid_density_info" <<'PY_GRID_ZOOM_EDGE_COORDINATES'
 import re
