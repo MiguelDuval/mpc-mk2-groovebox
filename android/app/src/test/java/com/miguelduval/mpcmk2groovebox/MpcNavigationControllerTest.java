@@ -34,6 +34,73 @@ public class MpcNavigationControllerTest {
     }
 
     @Test
+    public void backRestoresPriorSubcontextAndFocusWithoutRevertingLiveMusicalState() {
+        MpcNavigationController navigation = new MpcNavigationController();
+        navigation.setSelectedSequence(2);
+        navigation.setSelectedTrack(1);
+        navigation.setSelectedPad(4);
+        navigation.setSelectedLayer(3);
+        navigation.setTransportState(true, true, true, false, false);
+        navigation.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
+        navigation.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
+        navigation.setZoomFocus(MpcUiState.ZoomFocus.NONE);
+        navigation.setActionAvailable(true);
+
+        navigation.navigate(MpcUiState.Mode.BROWSER);
+        navigation.setSubcontext(MpcUiState.Subcontext.BROWSER);
+        navigation.setDataDialFocus(MpcUiState.DataDialFocus.BROWSER_ITEM);
+        navigation.setSelectedTrack(2);
+        navigation.setSelectedPad(5);
+        navigation.setSelectedLayer(6);
+        navigation.setTransportState(true, false, true, true, false);
+
+        assertTrue(navigation.back());
+        assertEquals(MpcUiState.Mode.MAIN, navigation.state().mode());
+        assertEquals(MpcUiState.Subcontext.TRACK_SELECT, navigation.state().subcontext());
+        assertEquals(MpcUiState.DataDialFocus.TRACK, navigation.state().dataDialFocus());
+        assertEquals(MpcUiState.ZoomFocus.NONE, navigation.state().zoomFocus());
+
+        // Navigation return restores presentation context but must not roll back
+        // musical selection or transport changes that occurred while away.
+        assertEquals(2, navigation.state().selectedSequence());
+        assertEquals(2, navigation.state().selectedTrack());
+        assertEquals(5, navigation.state().selectedPad());
+        assertEquals(6, navigation.state().selectedLayer());
+        assertTrue(navigation.state().playing());
+        assertFalse(navigation.state().loopEnabled());
+        assertTrue(navigation.state().timingCorrect());
+        assertTrue(navigation.state().metronome());
+        assertTrue(navigation.state().actionAvailable());
+    }
+
+    @Test
+    public void nestedBackRestoresEachModeSpecificFocusFrame() {
+        MpcNavigationController navigation = new MpcNavigationController();
+        navigation.setSubcontext(MpcUiState.Subcontext.TRACK_SELECT);
+        navigation.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
+
+        navigation.navigate(MpcUiState.Mode.BROWSER);
+        navigation.setSubcontext(MpcUiState.Subcontext.BROWSER);
+        navigation.setDataDialFocus(MpcUiState.DataDialFocus.BROWSER_ITEM);
+
+        navigation.navigate(MpcUiState.Mode.GRID);
+        navigation.setSubcontext(MpcUiState.Subcontext.STEP_EDIT);
+        navigation.setDataDialFocus(MpcUiState.DataDialFocus.STEP_DURATION);
+
+        assertTrue(navigation.back());
+        assertEquals(MpcUiState.Mode.BROWSER, navigation.state().mode());
+        assertEquals(MpcUiState.Subcontext.BROWSER, navigation.state().subcontext());
+        assertEquals(
+                MpcUiState.DataDialFocus.BROWSER_ITEM,
+                navigation.state().dataDialFocus());
+
+        assertTrue(navigation.back());
+        assertEquals(MpcUiState.Mode.MAIN, navigation.state().mode());
+        assertEquals(MpcUiState.Subcontext.TRACK_SELECT, navigation.state().subcontext());
+        assertEquals(MpcUiState.DataDialFocus.TRACK, navigation.state().dataDialFocus());
+    }
+
+    @Test
     public void contextAndDialFocusAreIndependent() {
         MpcNavigationController navigation = new MpcNavigationController();
         navigation.navigate(MpcUiState.Mode.STEP);

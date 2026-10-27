@@ -127,6 +127,28 @@ for required in \
   fi
 done
 
+echo "Checking immutable DocumentsUI evidence pairs and CI artifact retention..."
+for required in \
+  'PROJECT_SAVE_PAIR_XML="/tmp/mpc-groovebox-project-save-picker-fresh-pair-uiautomator.xml"' \
+  'PROJECT_OPEN_PAIR_XML="/tmp/mpc-groovebox-project-open-picker-fresh-pair-uiautomator.xml"' \
+  'PROJECT_SAVE_B_PAIR_XML="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair-uiautomator.xml"' \
+  'dump_device_ui_retry "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" 8 2 compressed' \
+  'capture_verified_fresh_save_picker_pair "$hierarchy_path" "$screenshot_path" "$new_name"' \
+  'Verified measured Save As filename and SAVE target for $new_name on a fresh compressed hierarchy.'\
+  'Preserved immutable initial Save As hierarchy/screenshot pair.' \
+  'Preserved immutable Project Open hierarchy/screenshot pair.'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: immutable DocumentsUI evidence-pair contract missing: $required"; exit 1
+  fi
+done
+for required in \
+  '/tmp/mpc-groovebox-project-*.png' \
+  '/tmp/mpc-groovebox-project*-uiautomator.xml'; do
+  if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
+    echo "ERROR: immutable DocumentsUI evidence is not uploaded by CI: $required"; exit 1
+  fi
+done
+
 echo "Checking atomic publication of Android View-tree evidence..."
 for required in \
   'fileName + ".", ".tmp", getCacheDir()' \
@@ -2032,8 +2054,9 @@ done
 for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
     'open_project_document()' 'PROJECT_OPEN_REJECTED)' \
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
-    'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..4}; do' \
-    'initial DocumentsUI hierarchy is not ready' 'after 4 fresh, bounded attempts' \
+    'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..2}; do' \
+    'dump_device_ui_retry "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8 2 compressed' \
+    'initial DocumentsUI hierarchy is not ready' 'after 2 fresh, bounded compressed captures' \
     'expected Project Open outcome $expected_marker'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
@@ -2134,6 +2157,8 @@ capture_ui_screenshot() {
     mpc-groovebox-sample-browser-return.png|\
     mpc-groovebox-sample-crop-*.png|\
     mpc-groovebox-sample-chop-*.png|\
+    mpc-groovebox-project-save-b-initial.png|\
+    mpc-groovebox-project-save-b-picker-fresh-pair.png|\
     mpc-groovebox-project-*.png|\
     mpc-groovebox-*-cancel*.png)
       adb_bounded "$timeout_seconds" exec-out screencap -p > "$screenshot_path"
@@ -7729,6 +7754,207 @@ capture_stable_picker_state() {
   cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   return 1
 }
+# Verify that the screenshot captured for a fresh picker hierarchy belongs to
+# a compatible viewport. A stale landscape screenshot can make otherwise-valid
+# portrait bounds look clipped (or hide that the picker rotated between captures).
+verify_documentsui_pair_geometry() {
+  local hierarchy_path="$1" screenshot_path="$2"
+  python3 - "$hierarchy_path" "$screenshot_path" <<'PY_PICKER_PAIR_GEOMETRY'
+import re
+import struct
+import sys
+import xml.etree.ElementTree as ET
+
+hierarchy_path, screenshot_path = sys.argv[1:]
+root = ET.parse(hierarchy_path).getroot()
+nodes = list(root.iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("paired hierarchy is not rooted in Android DocumentsUI")
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     nodes[0].attrib.get("bounds", ""))
+if match is None:
+    raise SystemExit(f"DocumentsUI root has invalid bounds: {nodes[0].attrib.get('bounds')!r}")
+left, top, right, bottom = map(int, match.groups())
+if right <= left or bottom <= top:
+    raise SystemExit("DocumentsUI root has a non-positive viewport")
+with open(screenshot_path, "rb") as image:
+    header = image.read(24)
+if len(header) != 24 or header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+    raise SystemExit("paired DocumentsUI screenshot is not a valid PNG header")
+width, height = struct.unpack(">II", header[16:24])
+if width <= 0 or height <= 0 or left < 0 or top < 0 or right > width or bottom > height:
+    raise SystemExit(
+        f"DocumentsUI viewport {(left, top, right, bottom)} exceeds paired screenshot {width}x{height}")
+print(f"DocumentsUI hierarchy/screenshot geometry matches: viewport={right-left}x{bottom-top}, screenshot={width}x{height}")
+PY_PICKER_PAIR_GEOMETRY
+}
+
+# Reuse one fresh DocumentsUI hierarchy only for the narrowly validated
+# ACTION_CREATE_DOCUMENT Save As form. Repeated UiAutomator tree requests can stall
+# on this Android 16 emulator even though the first tree is current and complete.
+# Capture its screenshot immediately, before any interaction, and require the
+# exact filename field plus an enabled SAVE action; do not relax file/result checks.
+capture_verified_fresh_save_picker_pair() {
+  local hierarchy_path="$1" screenshot_path="$2" expected_filename="$3"
+  local screenshot_candidate="${screenshot_path%.png}-fresh-pair-candidate.png"
+  if ! test -s "$hierarchy_path"; then
+    echo "ERROR: fresh Save As hierarchy is missing: $hierarchy_path"
+    return 1
+  fi
+  if ! python3 - "$hierarchy_path" "$expected_filename" <<'PY_SAVE_PAIR'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected_filename = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("fresh hierarchy is not rooted in Android DocumentsUI")
+
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+filename = [
+    node for node in nodes
+    if node.attrib.get("resource-id") == "android:id/title"
+    and node.attrib.get("class") == "android.widget.EditText"
+    and node.attrib.get("text", "").strip() == expected_filename
+    and node.attrib.get("enabled") == "true"
+]
+save = [
+    node for node in nodes
+    if node.attrib.get("resource-id") == "android:id/button1"
+    and node.attrib.get("text", "").strip().upper() == "SAVE"
+    and node.attrib.get("class") == "android.widget.Button"
+    and node.attrib.get("enabled") == "true"
+    and node.attrib.get("clickable") == "true"
+]
+if len(filename) != 1 or len(save) != 1:
+    raise SystemExit(
+        f"Save As form did not expose unique enabled filename/SAVE controls: "
+        f"filename={len(filename)} save={len(save)}")
+viewport = bounds(nodes[0])
+if viewport is None or viewport[2] <= viewport[0] or viewport[3] <= viewport[1]:
+    raise SystemExit(f"DocumentsUI root has invalid viewport bounds: {nodes[0].attrib!r}")
+for label, node in (("filename", filename[0]), ("SAVE", save[0])):
+    rect = bounds(node)
+    if (rect is None or rect[2] <= rect[0] or rect[3] <= rect[1]
+            or rect[0] < viewport[0] or rect[1] < viewport[1]
+            or rect[2] > viewport[2] or rect[3] > viewport[3]):
+        raise SystemExit(f"{label} control is invalid or outside the DocumentsUI viewport: {node.attrib!r}")
+print("Fresh Save As hierarchy validated:", expected_filename)
+PY_SAVE_PAIR
+  then
+    echo "ERROR: fresh Save As hierarchy failed the strict filename/SAVE contract"
+    return 1
+  fi
+  rm -f "$screenshot_candidate"
+  if ! capture_ui_screenshot "$screenshot_candidate" 10; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not capture screenshot for validated fresh Save As hierarchy"
+    return 1
+  fi
+  if ! test -s "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: Save As screenshot for fresh hierarchy is empty"
+    return 1
+  fi
+  if ! verify_documentsui_pair_geometry "$hierarchy_path" "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: paired DocumentsUI screenshot does not contain its live viewport"
+    return 1
+  fi
+  if ! mv -f -- "$screenshot_candidate" "$screenshot_path"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not publish paired Save As screenshot: $screenshot_path"
+    return 1
+  fi
+  echo "Accepted fresh paired Save As hierarchy/screenshot without a second UiAutomator dump."
+}
+
+# The Open picker uses the same strict fresh-pair strategy as Save As once
+# the requested file has appeared. Avoid redundant stabilizing dumps after a
+# real, actionable file row is already present in a newly captured hierarchy.
+capture_verified_fresh_open_picker_pair() {
+  local hierarchy_path="$1" screenshot_path="$2" expected_filename="$3"
+  local screenshot_candidate="${screenshot_path%.png}-fresh-pair-candidate.png"
+  if ! test -s "$hierarchy_path"; then
+    echo "ERROR: fresh Open picker hierarchy is missing: $hierarchy_path"
+    return 1
+  fi
+  if ! python3 - "$hierarchy_path" "$expected_filename" <<'PY_OPEN_PAIR'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected_filename = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("fresh hierarchy is not rooted in Android DocumentsUI")
+
+def rect(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+directory = next((n for n in nodes
+                  if n.attrib.get("resource-id") == "com.android.documentsui:id/dir_list"), None)
+labels = [n for n in nodes
+          if n.attrib.get("resource-id") == "android:id/title"
+          and n.attrib.get("text", "").strip() == expected_filename]
+parents = {child: parent for parent in nodes for child in list(parent)}
+rows = []
+for label in labels:
+    current = label
+    while current is not None and current.attrib.get("resource-id") != "com.android.documentsui:id/item_root":
+        current = parents.get(current)
+    row_rect = rect(current) if current is not None else None
+    directory_rect = rect(directory) if directory is not None else None
+    if current is None or row_rect is None or directory_rect is None:
+        continue
+    if current.attrib.get("clickable") != "true" or current.attrib.get("enabled") != "true":
+        continue
+    left, top, right, bottom = row_rect
+    dl, dt, dr, db = directory_rect
+    if right > left and bottom > top and left < dr and dl < right and top < db and dt < bottom:
+        rows.append((label, current))
+if len(rows) != 1:
+    raise SystemExit(
+        f"expected one visible, actionable document row for {expected_filename!r}; found {len(rows)}")
+print("Fresh Open picker hierarchy validated:", expected_filename)
+PY_OPEN_PAIR
+  then
+    echo "ERROR: fresh Open picker hierarchy failed the strict file-row contract"
+    return 1
+  fi
+  rm -f "$screenshot_candidate"
+  if ! capture_ui_screenshot "$screenshot_candidate" 10; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not capture screenshot for validated fresh Open picker hierarchy"
+    return 1
+  fi
+  if ! test -s "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: Open picker screenshot for fresh hierarchy is empty"
+    return 1
+  fi
+  if ! verify_documentsui_pair_geometry "$hierarchy_path" "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: paired DocumentsUI screenshot does not contain its live viewport"
+    return 1
+  fi
+  if ! mv -f -- "$screenshot_candidate" "$screenshot_path"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not publish paired Open picker screenshot: $screenshot_path"
+    return 1
+  fi
+  echo "Accepted fresh paired Open picker hierarchy/screenshot without a redundant stabilizing dump."
+}
+
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
   local evidence_prefix="${5:-document-tree}" root_stability_timeout="${6:-6}"
@@ -9734,18 +9960,30 @@ printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-picker-select-source-activ
 # remote file and host file each attempt, then rejects empty/malformed XML, so
 # this can never fall back to a stale tree from the previous activity.
 picker_hierarchy_ready=0
-for picker_hierarchy_attempt in {1..4}; do
-  if dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8; then
+for picker_hierarchy_attempt in {1..2}; do
+  if dump_device_ui_retry "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8 2 compressed \
+      && python3 - "$PICKER_UI_XML" <<'PY_DOCUMENTSUI_ROOT'
+import sys
+import xml.etree.ElementTree as ET
+
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("fresh compressed hierarchy is not rooted in Android DocumentsUI")
+if not any(n.attrib.get("content-desc") in {"Show roots", "Show navigation drawer"}
+           for n in nodes):
+    raise SystemExit("fresh compressed DocumentsUI tree lacks its real root-navigation action")
+PY_DOCUMENTSUI_ROOT
+  then
     picker_hierarchy_ready=1
     break
   fi
-  if (( picker_hierarchy_attempt < 4 )); then
-    echo "WARN: initial DocumentsUI hierarchy is not ready (attempt $picker_hierarchy_attempt/4); retrying a fresh bounded capture"
+  if (( picker_hierarchy_attempt < 2 )); then
+    echo "WARN: initial DocumentsUI hierarchy is not ready (compressed attempt $picker_hierarchy_attempt/2); retrying a fresh bounded capture"
     sleep 1
   fi
 done
 if [[ "$picker_hierarchy_ready" != "1" ]]; then
-  echo "ERROR: could not capture initial Android Document Picker hierarchy after 4 fresh, bounded attempts"
+  echo "ERROR: could not capture initial Android Document Picker hierarchy after 2 fresh, bounded compressed captures"
   adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
     | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 \
     > /tmp/mpc-groovebox-picker-select-source-activity-final.txt || true
@@ -11110,6 +11348,12 @@ PROJECT_ROUTE_PNG="/tmp/mpc-groovebox-project-route.png"
 PROJECT_SAVE_XML="/tmp/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_REMOTE="/sdcard/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_PNG="/tmp/mpc-groovebox-project-save-picker.png"
+PROJECT_SAVE_B_INITIAL_XML="/tmp/mpc-groovebox-project-save-b-initial-uiautomator.xml"
+PROJECT_SAVE_B_INITIAL_PNG="/tmp/mpc-groovebox-project-save-b-initial.png"
+PROJECT_SAVE_B_PAIR_XML="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair-uiautomator.xml"
+PROJECT_SAVE_B_PAIR_PNG="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair.png"
+PROJECT_SAVE_PAIR_XML="/tmp/mpc-groovebox-project-save-picker-fresh-pair-uiautomator.xml"
+PROJECT_SAVE_PAIR_PNG="/tmp/mpc-groovebox-project-save-picker-fresh-pair.png"
 PROJECT_SAVED_XML="/tmp/mpc-groovebox-project-saved-view-hierarchy.xml"
 PROJECT_SAVED_PNG="/tmp/mpc-groovebox-project-saved.png"
 PROJECT_MUTATED_XML="/tmp/mpc-groovebox-project-mutated-view-hierarchy.xml"
@@ -11117,6 +11361,8 @@ PROJECT_MUTATED_PNG="/tmp/mpc-groovebox-project-mutated.png"
 PROJECT_OPEN_XML="/tmp/mpc-groovebox-project-open-picker-uiautomator.xml"
 PROJECT_OPEN_REMOTE="/sdcard/mpc-groovebox-project-open-picker-uiautomator.xml"
 PROJECT_OPEN_PNG="/tmp/mpc-groovebox-project-open-picker.png"
+PROJECT_OPEN_PAIR_XML="/tmp/mpc-groovebox-project-open-picker-fresh-pair-uiautomator.xml"
+PROJECT_OPEN_PAIR_PNG="/tmp/mpc-groovebox-project-open-picker-fresh-pair.png"
 PROJECT_REOPENED_XML="/tmp/mpc-groovebox-project-reopened-view-hierarchy.xml"
 PROJECT_REOPENED_PNG="/tmp/mpc-groovebox-project-reopened.png"
 PROJECT_MENU_TREE_MARKER_BEFORE=0 PROJECT_MAIN_TREE_MARKER_BEFORE=0 PROJECT_PROJECT_TREE_MARKER_BEFORE=0
@@ -11344,6 +11590,10 @@ show_project_route_extended() {
 PROJECT_SAVE_XML="/tmp/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_REMOTE="/sdcard/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_PNG="/tmp/mpc-groovebox-project-save-picker.png"
+PROJECT_SAVE_B_INITIAL_XML="/tmp/mpc-groovebox-project-save-b-initial-uiautomator.xml"
+PROJECT_SAVE_B_INITIAL_PNG="/tmp/mpc-groovebox-project-save-b-initial.png"
+PROJECT_SAVE_B_PAIR_XML="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair-uiautomator.xml"
+PROJECT_SAVE_B_PAIR_PNG="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair.png"
 PROJECT_SAVED_XML="/tmp/mpc-groovebox-project-saved-view-hierarchy.xml"
 PROJECT_SAVED_PNG="/tmp/mpc-groovebox-project-saved.png"
 PROJECT_MUTATED_XML="/tmp/mpc-groovebox-project-mutated-view-hierarchy.xml"
@@ -11449,9 +11699,20 @@ done
 if [ "$project_save_picker_ready" -ne 1 ]; then
   echo "ERROR: Android DocumentsUI did not appear for Project Save As"; exit 1
 fi
-if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
+if ! capture_verified_fresh_save_picker_pair "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"; then
   echo "ERROR: could not capture stable DocumentsUI state for Project Save As"; exit 1
 fi
+# Preserve the exact just-validated hierarchy/screenshot pair before the live
+# hierarchy and screenshot paths are reused by polling and later Save As cases.
+if ! cp -f -- "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PAIR_XML" \
+    || ! cp -f -- "$PROJECT_SAVE_PNG" "$PROJECT_SAVE_PAIR_PNG"; then
+  echo "ERROR: could not preserve immutable initial Save As evidence pair"; exit 1
+fi
+if ! verify_documentsui_pair_geometry "$PROJECT_SAVE_PAIR_XML" "$PROJECT_SAVE_PAIR_PNG" \
+    || ! grep -Fq -- 'text="Untitled.mpcproj"' "$PROJECT_SAVE_PAIR_XML"; then
+  echo "ERROR: immutable Save As evidence pair failed its geometry/filename contract"; exit 1
+fi
+echo "Preserved immutable initial Save As hierarchy/screenshot pair."
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
   echo "ERROR: Save As did not prefill the project filename"; exit 1
 fi
@@ -11503,12 +11764,23 @@ done
 if [ "$project_open_picker_ready" -ne 1 ]; then
   echo "ERROR: Android DocumentsUI did not appear for Project Open"; exit 1
 fi
-if ! capture_stable_picker_state "$PROJECT_OPEN_REMOTE" "$PROJECT_OPEN_XML" "$PROJECT_OPEN_PNG" 8; then
-  echo "ERROR: could not capture stable DocumentsUI state for Project Open"; exit 1
-fi
 if ! wait_for_ui_text "$PROJECT_OPEN_XML" "$PROJECT_OPEN_REMOTE" "Untitled.mpcproj" 30; then
   echo "ERROR: saved Project file is not discoverable in Android DocumentsUI"; exit 1
 fi
+if ! capture_verified_fresh_open_picker_pair "$PROJECT_OPEN_XML" "$PROJECT_OPEN_PNG" "Untitled.mpcproj"; then
+  echo "ERROR: could not capture validated fresh DocumentsUI state for Project Open"; exit 1
+fi
+# Keep this exact actionable row and its paired screenshot immutable as later
+# picker navigations reuse the working paths.
+if ! cp -f -- "$PROJECT_OPEN_XML" "$PROJECT_OPEN_PAIR_XML" \
+    || ! cp -f -- "$PROJECT_OPEN_PNG" "$PROJECT_OPEN_PAIR_PNG"; then
+  echo "ERROR: could not preserve immutable Project Open evidence pair"; exit 1
+fi
+if ! verify_documentsui_pair_geometry "$PROJECT_OPEN_PAIR_XML" "$PROJECT_OPEN_PAIR_PNG" \
+    || ! grep -Fq -- 'text="Untitled.mpcproj"' "$PROJECT_OPEN_PAIR_XML"; then
+  echo "ERROR: immutable Project Open evidence pair failed its geometry/filename contract"; exit 1
+fi
+echo "Preserved immutable Project Open hierarchy/screenshot pair."
 if ! tap_ui_picker_result_row "$PROJECT_OPEN_XML" "Untitled.mpcproj" auto label; then
   echo "ERROR: could not select the previously saved Project file"; exit 1
 fi
@@ -11588,7 +11860,7 @@ wait_for_project_picker_item() {
 
 # Rename the real ACTION_CREATE_DOCUMENT filename field using live bounds.
 replace_project_save_as_filename() {
-  local hierarchy_path="$1" remote_path="$2" new_name="$3"
+  local hierarchy_path="$1" remote_path="$2" new_name="$3" screenshot_path="$4"
   local coordinates tap_x tap_y old_length index
   if ! coordinates="$(python3 - "$hierarchy_path" <<'PY_PROJECT_FILENAME_FIELD'
 import sys
@@ -11624,11 +11896,16 @@ PY_PROJECT_FILENAME_FIELD
     if ! adb_bounded 5 shell input keyevent KEYCODE_DEL; then return 1; fi
   done
   if ! adb_bounded 10 shell input text "$new_name"; then return 1; fi
-  if ! dump_device_ui "$remote_path" "$hierarchy_path" 15; then return 1; fi
-  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$new_name" 15; then
-    echo "ERROR: DocumentsUI did not expose the intended second-document name $new_name"; return 1
+  # Android 16 can stall the standard tree dump in a resumed DocumentsUI picker.
+  # Use the existing bounded compressed-tree retry path, then validate the exact
+  # filename EditText, enabled/clickable SAVE action, bounds and paired screenshot.
+  if ! dump_device_ui_retry "$remote_path" "$hierarchy_path" 8 2 compressed; then
+    echo "ERROR: no fresh compressed hierarchy after entering Save As filename $new_name"; return 1
   fi
-  echo "Verified measured Save As filename field contains $new_name"
+  if ! capture_verified_fresh_save_picker_pair "$hierarchy_path" "$screenshot_path" "$new_name"; then
+    echo "ERROR: second-document Save As failed strict filename/SAVE/viewport acceptance for $new_name"; return 1
+  fi
+  echo "Verified measured Save As filename and SAVE target for $new_name on a fresh compressed hierarchy."
 }
 
 # Android Back may navigate up or dismiss an input method without cancelling
@@ -11783,25 +12060,29 @@ PROJECT_DOC_B_NAME="mpc-isolation-${BASHPID}.mpcproj"
 echo "Running real two-document Save As/Open isolation: A=Untitled.mpcproj, B=$PROJECT_DOC_B_NAME"
 project_save_b_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
 if ! tap_project_function_bar 1; then exit 1; fi
-project_save_b_picker_ready=0
-for ((attempt=1; attempt<=25; attempt++)); do
-  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
-      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
-    project_save_b_picker_ready=1
-    break
-  fi
-  sleep 1
-done
-if [ "$project_save_b_picker_ready" -ne 1 ]; then
-  echo "ERROR: Android DocumentsUI did not appear for second-document Save As"; exit 1
+# Reuse the proven bounded compressed-tree path for this second large DocumentsUI
+# surface. There is no cached-tree fallback and the form acceptance stays strict.
+if ! dump_device_ui_retry "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" 8 2 compressed; then
+  echo "ERROR: no fresh compressed DocumentsUI hierarchy for second-document Save As"; exit 1
 fi
-if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
-  echo "ERROR: could not capture the second-document Save As picker"; exit 1
+if ! capture_verified_fresh_save_picker_pair "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"; then
+  echo "ERROR: second-document Save As form failed strict filename/SAVE/viewport acceptance"; exit 1
 fi
-if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
-  echo "ERROR: second Save As did not show the current filename"; exit 1
+if ! cp -f -- "$PROJECT_SAVE_XML" "$PROJECT_SAVE_B_INITIAL_XML" \
+    || ! cp -f -- "$PROJECT_SAVE_PNG" "$PROJECT_SAVE_B_INITIAL_PNG"; then
+  echo "ERROR: could not preserve immutable second-document Save As initial form evidence"; exit 1
 fi
-if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_B_NAME"; then exit 1; fi
+if ! verify_documentsui_pair_geometry "$PROJECT_SAVE_B_INITIAL_XML" "$PROJECT_SAVE_B_INITIAL_PNG"; then
+  echo "ERROR: second-document Save As initial screenshot/hierarchy geometry mismatch"; exit 1
+fi
+if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_B_NAME" "$PROJECT_SAVE_B_PAIR_PNG"; then exit 1; fi
+if ! cp -f -- "$PROJECT_SAVE_XML" "$PROJECT_SAVE_B_PAIR_XML"; then
+  echo "ERROR: could not preserve immutable named second-document Save As hierarchy"; exit 1
+fi
+if ! verify_documentsui_pair_geometry "$PROJECT_SAVE_B_PAIR_XML" "$PROJECT_SAVE_B_PAIR_PNG" \
+    || ! grep -Fq -- "text=\"$PROJECT_DOC_B_NAME\"" "$PROJECT_SAVE_B_PAIR_XML"; then
+  echo "ERROR: named second-document Save As evidence pair did not match the intended filename"; exit 1
+fi
 if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then
   echo "ERROR: DocumentsUI Save action was not available for second-document Save As"; exit 1
 fi
