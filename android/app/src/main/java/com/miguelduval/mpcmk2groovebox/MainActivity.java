@@ -15228,7 +15228,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void continueUiAuditAfterTrackViewMuteToArrange() {
-    private void continueUiAuditAfterTrackViewMute() {
         if (destroyed) return;
         if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU before ARRANGE");
