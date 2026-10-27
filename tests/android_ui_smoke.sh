@@ -7234,7 +7234,7 @@ PY
 # off-screen TUNE row.
 scroll_track_edit_to_layer_gain() {
   local hierarchy_path="$1" remote_path="$2" max_swipes="${3:-8}" target="${4:-gain}"
-  local coordinates swipe_x swipe_from swipe_to gesture_direction
+  local coordinates swipe_x swipe_from swipe_to gesture_direction last_scroll_mode=""
   if [[ "$target" != "gain" && "$target" != "region" ]]; then
     echo "ERROR: unsupported Track Edit scroll target: $target"
     return 2
@@ -7302,12 +7302,12 @@ PY_TRACK_EDIT_TARGET
       return 0
     fi
 
-    if ! coordinates="$(python3 - "$hierarchy_path" "$target" <<'PY_TRACK_EDIT_SCROLL'
+    if ! coordinates="$(python3 - "$hierarchy_path" "$target" "$last_scroll_mode" <<'PY_TRACK_EDIT_SCROLL'
 import re
 import sys
 import xml.etree.ElementTree as ET
 
-path, target = sys.argv[1], sys.argv[2]
+path, target, last_scroll_mode = sys.argv[1], sys.argv[2], sys.argv[3]
 nodes = list(ET.parse(path).getroot().iter("node"))
 
 def rect(node):
@@ -7356,9 +7356,20 @@ region = visible(lambda value: value == "Track Edit region", 28)
 if target == "region":
     scroll_forward = waveform or (not region and not (gain or tuning or pan))
 else:
+    # Once the viewport leaves the lower velocity endpoint, intermediate
+    # frames may expose neither endpoint anchor. Keep the established direction
+    # rather than oscillating back toward velocity before GAIN enters view.
     if velocity and not (gain and tuning and pan):
         scroll_forward = False
-    elif waveform or region or not (gain and tuning and pan):
+    elif waveform or region:
+        scroll_forward = True
+    elif not gain and (tuning or pan):
+        scroll_forward = False
+    elif last_scroll_mode == "reverse":
+        scroll_forward = False
+    elif last_scroll_mode == "forward":
+        scroll_forward = True
+    elif not (gain and tuning and pan):
         scroll_forward = True
     else:
         raise SystemExit("Track Edit parameter controls are visible but failed the shared target contract")
@@ -7396,6 +7407,11 @@ PY_TRACK_EDIT_SCROLL
       return 1
     fi
     read -r swipe_x swipe_from swipe_to gesture_direction <<< "$coordinates"
+    if [[ "$gesture_direction" == *"earlier"* || "$gesture_direction" == "back toward REGION controls" ]]; then
+      last_scroll_mode="reverse"
+    else
+      last_scroll_mode="forward"
+    fi
     echo "Scrolling Track Edit $gesture_direction for $target: x=$swipe_x y=$swipe_from->$swipe_to"
     if ! adb_bounded 10 shell input swipe "$swipe_x" "$swipe_from" "$swipe_x" "$swipe_to" 350; then
       echo "ERROR: Track Edit $target viewport scroll gesture failed"
