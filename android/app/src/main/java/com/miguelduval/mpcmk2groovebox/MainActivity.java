@@ -9772,13 +9772,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 Math.min(nextVisible, Math.max(1, totalSteps)));
         if (clampedVisible == oldVisible) return;
 
+        // A selected cell is the focal point for zoom, even if it currently
+        // has no note. Zooming around only the previous viewport center can hide
+        // a selected edge step (for example, step 38 at the right edge of 27–38).
+        // Keep the old center as the fallback when no Grid cell is selected.
         final int center = sequenceGridStartStep + oldVisible / 2;
         sequenceGridVisibleSteps = clampedVisible;
+        final int desiredStart = selectedGridEventStep >= 0
+                && selectedGridEventStep < totalSteps
+                ? MpcSequenceZoomPolicy.gridStartForStep(
+                        selectedGridEventStep,
+                        sequenceGridVisibleSteps,
+                        totalSteps)
+                : center - sequenceGridVisibleSteps / 2;
         sequenceGridStartStep = Math.max(
                 0,
                 Math.min(
-                        sequenceGridTotalSteps() - sequenceGridVisibleSteps,
-                        center - sequenceGridVisibleSteps / 2));
+                        totalSteps - sequenceGridVisibleSteps,
+                        desiredStart));
         refreshSequenceGrid();
         setBottomStatus(
                 "GRID ZOOM H • "
