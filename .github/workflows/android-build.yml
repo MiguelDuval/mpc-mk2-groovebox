@@ -659,6 +659,10 @@ jobs:
             /tmp/mpc-groovebox-picker-select-source-uiautomator.xml
             /tmp/mpc-groovebox-browser-picker-assignment.png
             /tmp/mpc-groovebox-browser-picker-assignment-uiautomator.xml
+            /tmp/mpc-groovebox-browser-picker-cancel-before.png
+            /tmp/mpc-groovebox-browser-picker-cancel-before-uiautomator.xml
+            /tmp/mpc-groovebox-browser-picker-cancel-return.png
+            /tmp/mpc-groovebox-browser-picker-cancel-return-uiautomator.xml
             /tmp/mpc-groovebox-browser-tree-picker.png
             /tmp/mpc-groovebox-browser-tree-picker-uiautomator.xml
             /tmp/mpc-groovebox-browser-tree-root.png
