@@ -1942,6 +1942,24 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'up.setContentDescription("Brows
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser LOAD source file with Android Document Picker'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser BACK to previous workspace'
 
+echo "Checking Browser WAV-picker cancellation evidence is retained by CI..."
+for required in \
+  'mpc-groovebox-browser-load-cancel-picker.png|\\' \
+  'mpc-groovebox-browser-load-cancel-return.png|\\'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: Browser cancellation screenshot is absent from capture_ui_screenshot allowlist: $required"; exit 1
+  fi
+done
+for required in \
+  '/tmp/mpc-groovebox-browser-load-cancel-picker.png' \
+  '/tmp/mpc-groovebox-browser-load-cancel-picker-uiautomator.xml' \
+  '/tmp/mpc-groovebox-browser-load-cancel-return.png' \
+  '/tmp/mpc-groovebox-browser-load-cancel-return-uiautomator.xml'; do
+  if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
+    echo "ERROR: Browser cancellation PNG/XML isn't uploaded as CI evidence: $required"; exit 1
+  fi
+done
+
 echo "Running clean visual-evidence audit preflight..."
 for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStatus.setVisibility(View.GONE);'   'truthful Main screenshot'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
