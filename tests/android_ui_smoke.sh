@@ -680,6 +680,11 @@ for required in \
 done
 
 echo "Running Arrangement zoom acceptance source preflight..."
+if ! grep -Fq -- 'UI_ARRANGE_ZOOM_TOUCH_CAPTURE_READY:' "$MAIN_ACTIVITY_SOURCE" \
+    || ! grep -Fq -- 'awaitArrangeZoomTouchAcceptance()' "$MAIN_ACTIVITY_SOURCE" \
+    || ! grep -Fq -- 'mpc-arrange-zoom-touch-capture-release' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Arrangement zoom acceptance does not have its own bounded app-side handshake"; exit 1
+fi
 if ! grep -Fq -- 'UI_ARRANGE_ZOOM_STATE:' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: MainActivity does not expose the native Arrangement zoom state oracle"; exit 1
 fi
@@ -6702,6 +6707,11 @@ PY
     exit 1
   fi
   if grep -Fq -- "UI_INTERACTION_COMPLETE" <<<"$log_snapshot"; then
+    if [ "$arrangement_zoom_touch_capture_done" -ne 1 ] \
+        || [ "$arrangement_zoom_touch_acceptance_complete" -ne 1 ]; then
+      echo "ERROR: UI audit completed without verified real Arrangement zoom/pan viewport and native-data acceptance"
+      exit 1
+    fi
     if [ "$arrangement_loop_touch_capture_done" -ne 1 ] \
         || [ "$arrangement_loop_touch_acceptance_complete" -ne 1 ]; then
       echo "ERROR: UI audit completed without verified real Arrangement loop-brace touch/restore acceptance"
