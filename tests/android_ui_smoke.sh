@@ -131,6 +131,10 @@ echo "Checking immutable DocumentsUI evidence pairs and CI artifact retention...
 for required in \
   'PROJECT_SAVE_PAIR_XML="/tmp/mpc-groovebox-project-save-picker-fresh-pair-uiautomator.xml"' \
   'PROJECT_OPEN_PAIR_XML="/tmp/mpc-groovebox-project-open-picker-fresh-pair-uiautomator.xml"' \
+  'PROJECT_SAVE_B_PAIR_XML="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair-uiautomator.xml"' \
+  'dump_device_ui_retry "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" 8 2 compressed' \
+  'capture_verified_fresh_save_picker_pair "$hierarchy_path" "$screenshot_path" "$new_name"' \
+  'Verified measured Save As filename and SAVE target for $new_name on a fresh compressed hierarchy.';
   'Preserved immutable initial Save As hierarchy/screenshot pair.' \
   'Preserved immutable Project Open hierarchy/screenshot pair.'; do
   if ! grep -Fq -- "$required" "$0"; then
@@ -2153,6 +2157,8 @@ capture_ui_screenshot() {
     mpc-groovebox-sample-browser-return.png|\
     mpc-groovebox-sample-crop-*.png|\
     mpc-groovebox-sample-chop-*.png|\
+    mpc-groovebox-project-save-b-initial.png|\
+    mpc-groovebox-project-save-b-picker-fresh-pair.png|\
     mpc-groovebox-project-*.png|\
     mpc-groovebox-*-cancel*.png)
       adb_bounded "$timeout_seconds" exec-out screencap -p > "$screenshot_path"
@@ -11342,6 +11348,10 @@ PROJECT_ROUTE_PNG="/tmp/mpc-groovebox-project-route.png"
 PROJECT_SAVE_XML="/tmp/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_REMOTE="/sdcard/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_PNG="/tmp/mpc-groovebox-project-save-picker.png"
+PROJECT_SAVE_B_INITIAL_XML="/tmp/mpc-groovebox-project-save-b-initial-uiautomator.xml"
+PROJECT_SAVE_B_INITIAL_PNG="/tmp/mpc-groovebox-project-save-b-initial.png"
+PROJECT_SAVE_B_PAIR_XML="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair-uiautomator.xml"
+PROJECT_SAVE_B_PAIR_PNG="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair.png"
 PROJECT_SAVE_PAIR_XML="/tmp/mpc-groovebox-project-save-picker-fresh-pair-uiautomator.xml"
 PROJECT_SAVE_PAIR_PNG="/tmp/mpc-groovebox-project-save-picker-fresh-pair.png"
 PROJECT_SAVED_XML="/tmp/mpc-groovebox-project-saved-view-hierarchy.xml"
@@ -11580,6 +11590,10 @@ show_project_route_extended() {
 PROJECT_SAVE_XML="/tmp/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_REMOTE="/sdcard/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_PNG="/tmp/mpc-groovebox-project-save-picker.png"
+PROJECT_SAVE_B_INITIAL_XML="/tmp/mpc-groovebox-project-save-b-initial-uiautomator.xml"
+PROJECT_SAVE_B_INITIAL_PNG="/tmp/mpc-groovebox-project-save-b-initial.png"
+PROJECT_SAVE_B_PAIR_XML="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair-uiautomator.xml"
+PROJECT_SAVE_B_PAIR_PNG="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair.png"
 PROJECT_SAVED_XML="/tmp/mpc-groovebox-project-saved-view-hierarchy.xml"
 PROJECT_SAVED_PNG="/tmp/mpc-groovebox-project-saved.png"
 PROJECT_MUTATED_XML="/tmp/mpc-groovebox-project-mutated-view-hierarchy.xml"
@@ -11846,7 +11860,7 @@ wait_for_project_picker_item() {
 
 # Rename the real ACTION_CREATE_DOCUMENT filename field using live bounds.
 replace_project_save_as_filename() {
-  local hierarchy_path="$1" remote_path="$2" new_name="$3"
+  local hierarchy_path="$1" remote_path="$2" new_name="$3" screenshot_path="$4"
   local coordinates tap_x tap_y old_length index
   if ! coordinates="$(python3 - "$hierarchy_path" <<'PY_PROJECT_FILENAME_FIELD'
 import sys
@@ -11882,11 +11896,16 @@ PY_PROJECT_FILENAME_FIELD
     if ! adb_bounded 5 shell input keyevent KEYCODE_DEL; then return 1; fi
   done
   if ! adb_bounded 10 shell input text "$new_name"; then return 1; fi
-  if ! dump_device_ui "$remote_path" "$hierarchy_path" 15; then return 1; fi
-  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$new_name" 15; then
-    echo "ERROR: DocumentsUI did not expose the intended second-document name $new_name"; return 1
+  # Android 16 can stall the standard tree dump in a resumed DocumentsUI picker.
+  # Use the existing bounded compressed-tree retry path, then validate the exact
+  # filename EditText, enabled/clickable SAVE action, bounds and paired screenshot.
+  if ! dump_device_ui_retry "$remote_path" "$hierarchy_path" 8 2 compressed; then
+    echo "ERROR: no fresh compressed hierarchy after entering Save As filename $new_name"; return 1
   fi
-  echo "Verified measured Save As filename field contains $new_name"
+  if ! capture_verified_fresh_save_picker_pair "$hierarchy_path" "$screenshot_path" "$new_name"; then
+    echo "ERROR: second-document Save As failed strict filename/SAVE/viewport acceptance for $new_name"; return 1
+  fi
+  echo "Verified measured Save As filename and SAVE target for $new_name on a fresh compressed hierarchy."
 }
 
 # Android Back may navigate up or dismiss an input method without cancelling
@@ -12041,25 +12060,29 @@ PROJECT_DOC_B_NAME="mpc-isolation-${BASHPID}.mpcproj"
 echo "Running real two-document Save As/Open isolation: A=Untitled.mpcproj, B=$PROJECT_DOC_B_NAME"
 project_save_b_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
 if ! tap_project_function_bar 1; then exit 1; fi
-project_save_b_picker_ready=0
-for ((attempt=1; attempt<=25; attempt++)); do
-  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
-      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
-    project_save_b_picker_ready=1
-    break
-  fi
-  sleep 1
-done
-if [ "$project_save_b_picker_ready" -ne 1 ]; then
-  echo "ERROR: Android DocumentsUI did not appear for second-document Save As"; exit 1
+# Reuse the proven bounded compressed-tree path for this second large DocumentsUI
+# surface. There is no cached-tree fallback and the form acceptance stays strict.
+if ! dump_device_ui_retry "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" 8 2 compressed; then
+  echo "ERROR: no fresh compressed DocumentsUI hierarchy for second-document Save As"; exit 1
 fi
-if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
-  echo "ERROR: could not capture the second-document Save As picker"; exit 1
+if ! capture_verified_fresh_save_picker_pair "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"; then
+  echo "ERROR: second-document Save As form failed strict filename/SAVE/viewport acceptance"; exit 1
 fi
-if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
-  echo "ERROR: second Save As did not show the current filename"; exit 1
+if ! cp -f -- "$PROJECT_SAVE_XML" "$PROJECT_SAVE_B_INITIAL_XML" \
+    || ! cp -f -- "$PROJECT_SAVE_PNG" "$PROJECT_SAVE_B_INITIAL_PNG"; then
+  echo "ERROR: could not preserve immutable second-document Save As initial form evidence"; exit 1
 fi
-if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_B_NAME"; then exit 1; fi
+if ! verify_documentsui_pair_geometry "$PROJECT_SAVE_B_INITIAL_XML" "$PROJECT_SAVE_B_INITIAL_PNG"; then
+  echo "ERROR: second-document Save As initial screenshot/hierarchy geometry mismatch"; exit 1
+fi
+if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_B_NAME" "$PROJECT_SAVE_B_PAIR_PNG"; then exit 1; fi
+if ! cp -f -- "$PROJECT_SAVE_XML" "$PROJECT_SAVE_B_PAIR_XML"; then
+  echo "ERROR: could not preserve immutable named second-document Save As hierarchy"; exit 1
+fi
+if ! verify_documentsui_pair_geometry "$PROJECT_SAVE_B_PAIR_XML" "$PROJECT_SAVE_B_PAIR_PNG" \
+    || ! grep -Fq -- "text=\"$PROJECT_DOC_B_NAME\"" "$PROJECT_SAVE_B_PAIR_XML"; then
+  echo "ERROR: named second-document Save As evidence pair did not match the intended filename"; exit 1
+fi
 if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then
   echo "ERROR: DocumentsUI Save action was not available for second-document Save As"; exit 1
 fi
