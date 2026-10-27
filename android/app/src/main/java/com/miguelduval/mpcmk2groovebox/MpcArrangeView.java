@@ -10,8 +10,10 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 
@@ -149,6 +151,29 @@ final class MpcArrangeView extends View {
     private int viewportStartBar = 1;
     private int loopHandle = -1;
     private float scaleBaseBars = 8f;
+    private final Deque<ZoomTransition> zoomHistory = new ArrayDeque<>();
+
+    private static final class ZoomSnapshot {
+        final int visibleBars;
+        final int viewportStartBar;
+
+        ZoomSnapshot(int visibleBars, int viewportStartBar) {
+            this.visibleBars = visibleBars;
+            this.viewportStartBar = viewportStartBar;
+        }
+    }
+
+    private static final class ZoomTransition {
+        final boolean zoomIn;
+        final ZoomSnapshot before;
+        final ZoomSnapshot after;
+
+        ZoomTransition(boolean zoomIn, ZoomSnapshot before, ZoomSnapshot after) {
+            this.zoomIn = zoomIn;
+            this.before = before;
+            this.after = after;
+        }
+    }
 
     MpcArrangeView(Context context) {
         super(context);
@@ -347,6 +372,9 @@ final class MpcArrangeView extends View {
             int denominator,
             long positionTicks,
             boolean playing) {
+        final int previousBarCount = barCount;
+        final int previousVisibleBars = visibleBars;
+        final int previousViewportStartBar = viewportStartBar;
         barCount = Math.max(1, bars);
         loopStartBar = clampBar(startBar);
         loopEndBar = clampBar(endBar);
@@ -362,32 +390,80 @@ final class MpcArrangeView extends View {
                 Math.min(barCount, visibleBars));
         viewportStartBar = clampViewportStart(viewportStartBar);
         ensurePlayheadVisible();
+        // Invalidate inverse-zoom history only when the actual timeline geometry
+        // changes externally (sequence length, visible range or viewport start).
+        // A normal refresh after our own zoom click leaves this tuple unchanged.
+        if (previousBarCount != barCount
+                || previousVisibleBars != visibleBars
+                || previousViewportStartBar != viewportStartBar) {
+            zoomHistory.clear();
+        }
         invalidate();
     }
 
     void zoomIn() {
+        if (restorePreviousZoomWindow(true)) {
+            return;
+        }
+        final ZoomSnapshot before = snapshotZoomWindow();
         final int next = MpcSequenceZoomPolicy.zoomTimelineBarsIn(
                 visibleBars, barCount);
         if (next == visibleBars) {
             return;
         }
         zoomAroundPlayhead(next);
+        zoomHistory.push(new ZoomTransition(true, before, snapshotZoomWindow()));
     }
 
     void zoomOut() {
+        if (restorePreviousZoomWindow(false)) {
+            return;
+        }
+        final ZoomSnapshot before = snapshotZoomWindow();
         final int next = MpcSequenceZoomPolicy.zoomTimelineBarsOut(
                 visibleBars, barCount);
         if (next == visibleBars) {
             return;
         }
         zoomAroundPlayhead(next);
+        zoomHistory.push(new ZoomTransition(false, before, snapshotZoomWindow()));
     }
 
     void resetZoom() {
+        zoomHistory.clear();
         visibleBars = Math.min(8, barCount);
         viewportStartBar = 1;
         ensurePlayheadVisible();
         invalidate();
+    }
+
+    private ZoomSnapshot snapshotZoomWindow() {
+        return new ZoomSnapshot(visibleBars, viewportStartBar);
+    }
+
+    /**
+     * Reverses the last opposite zoom action exactly when the current viewport
+     * still matches that transition. This keeps ZOOM + / ZOOM − symmetric even
+     * when zooming centers on a playhead away from bar one.
+     */
+    private boolean restorePreviousZoomWindow(boolean requestedZoomIn) {
+        final ZoomTransition last = zoomHistory.peek();
+        if (last == null) {
+            return false;
+        }
+        if (last.after.visibleBars != visibleBars
+                || last.after.viewportStartBar != viewportStartBar) {
+            zoomHistory.clear();
+            return false;
+        }
+        if (last.zoomIn == requestedZoomIn) {
+            return false;
+        }
+        zoomHistory.pop();
+        visibleBars = Math.max(1, Math.min(barCount, last.before.visibleBars));
+        viewportStartBar = clampViewportStart(last.before.viewportStartBar);
+        invalidate();
+        return true;
     }
 
     private ScaleGestureDetector createScaleDetector(Context context) {
@@ -402,6 +478,9 @@ final class MpcArrangeView extends View {
 
                     @Override
                     public boolean onScale(ScaleGestureDetector detector) {
+                        // A pinch is a fresh viewport gesture, not the inverse
+                        // of the previous discrete ZOOM + / ZOOM − button press.
+                        zoomHistory.clear();
                         final float factor = detector.getScaleFactor();
                         final int next = clamp(
                                 Math.round(scaleBaseBars / Math.max(0.25f, factor)),
