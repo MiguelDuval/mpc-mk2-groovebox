@@ -56,6 +56,25 @@ public final class MpcSequenceZoomPolicyTest {
     }
 
     @Test
+    public void arrangementZoomInThenOutRestoresResetWindowForLongSequences() {
+        // Arrangement RESET shows at most eight bars. A single in/out step
+        // must return to that exact visible-bar count for every longer Sequence.
+        for (int totalBars = 8; totalBars <= 64; totalBars++) {
+            final int resetVisibleBars = Math.min(8, totalBars);
+            final int zoomedInBars = MpcSequenceZoomPolicy.zoomTimelineBarsIn(
+                    resetVisibleBars, totalBars);
+            assertTrue(
+                    "zoom-in must narrow a " + totalBars + "-bar sequence",
+                    zoomedInBars < resetVisibleBars);
+            final int zoomedOutBars = MpcSequenceZoomPolicy.zoomTimelineBarsOut(
+                    zoomedInBars, totalBars);
+            assertEquals(
+                    "reset-window round trip for totalBars=" + totalBars,
+                    resetVisibleBars,
+                    zoomedOutBars);
+        }
+    }
+    @Test
     public void timelineZoomRespectsSequenceLength() {
         int visible = 16;
         visible = MpcSequenceZoomPolicy.zoomTimelineBarsIn(visible, 16);
