@@ -6723,6 +6723,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             + " viewportStart=" + arrangementView.viewportStartBarForAudit());
                 }
             }
+
+            @Override
+            public void onViewportChanged(int previousStartBar, int currentStartBar) {
+                updateArrangementZoomAccessibilityDescription();
+                if (uiAuditSmokeMode) {
+                    final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
+                    Log.i(TAG, "UI_ARRANGE_PAN_STATE: action=PAN"
+                            + " from=" + previousStartBar
+                            + " to=" + currentStartBar
+                            + " visibleBars=" + arrangementView.visibleBarsForAudit()
+                            + " data=" + nativeSequenceGetTrackArrangementData(trackIndex));
+                }
+            }
         });
 
         LinearLayout page = page();
