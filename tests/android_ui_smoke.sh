@@ -7805,6 +7805,81 @@ PY_SAVE_PAIR
   echo "Accepted fresh paired Save As hierarchy/screenshot without a second UiAutomator dump."
 }
 
+# The Open picker uses the same strict fresh-pair strategy as Save As once
+# the requested file has appeared. Avoid redundant stabilizing dumps after a
+# real, actionable file row is already present in a newly captured hierarchy.
+capture_verified_fresh_open_picker_pair() {
+  local hierarchy_path="$1" screenshot_path="$2" expected_filename="$3"
+  local screenshot_candidate="${screenshot_path%.png}-fresh-pair-candidate.png"
+  if ! test -s "$hierarchy_path"; then
+    echo "ERROR: fresh Open picker hierarchy is missing: $hierarchy_path"
+    return 1
+  fi
+  if ! python3 - "$hierarchy_path" "$expected_filename" <<'PY_OPEN_PAIR'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected_filename = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("fresh hierarchy is not rooted in Android DocumentsUI")
+
+def rect(node):
+    match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+directory = next((n for n in nodes
+                  if n.attrib.get("resource-id") == "com.android.documentsui:id/dir_list"), None)
+labels = [n for n in nodes
+          if n.attrib.get("resource-id") == "android:id/title"
+          and n.attrib.get("text", "").strip() == expected_filename]
+parents = {child: parent for parent in nodes for child in list(parent)}
+rows = []
+for label in labels:
+    current = label
+    while current is not None and current.attrib.get("resource-id") != "com.android.documentsui:id/item_root":
+        current = parents.get(current)
+    row_rect = rect(current) if current is not None else None
+    directory_rect = rect(directory) if directory is not None else None
+    if current is None or row_rect is None or directory_rect is None:
+        continue
+    if current.attrib.get("clickable") != "true" or current.attrib.get("enabled") != "true":
+        continue
+    left, top, right, bottom = row_rect
+    dl, dt, dr, db = directory_rect
+    if right > left and bottom > top and left < dr and dl < right and top < db and dt < bottom:
+        rows.append((label, current))
+if len(rows) != 1:
+    raise SystemExit(
+        f"expected one visible, actionable document row for {expected_filename!r}; found {len(rows)}")
+print("Fresh Open picker hierarchy validated:", expected_filename)
+PY_OPEN_PAIR
+  then
+    echo "ERROR: fresh Open picker hierarchy failed the strict file-row contract"
+    return 1
+  fi
+  rm -f "$screenshot_candidate"
+  if ! capture_ui_screenshot "$screenshot_candidate" 10; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not capture screenshot for validated fresh Open picker hierarchy"
+    return 1
+  fi
+  if ! test -s "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: Open picker screenshot for fresh hierarchy is empty"
+    return 1
+  fi
+  if ! mv -f -- "$screenshot_candidate" "$screenshot_path"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not publish paired Open picker screenshot: $screenshot_path"
+    return 1
+  fi
+  echo "Accepted fresh paired Open picker hierarchy/screenshot without a redundant stabilizing dump."
+}
+
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
   local evidence_prefix="${5:-document-tree}" root_stability_timeout="${6:-6}"
@@ -11579,11 +11654,11 @@ done
 if [ "$project_open_picker_ready" -ne 1 ]; then
   echo "ERROR: Android DocumentsUI did not appear for Project Open"; exit 1
 fi
-if ! capture_stable_picker_state "$PROJECT_OPEN_REMOTE" "$PROJECT_OPEN_XML" "$PROJECT_OPEN_PNG" 8; then
-  echo "ERROR: could not capture stable DocumentsUI state for Project Open"; exit 1
-fi
 if ! wait_for_ui_text "$PROJECT_OPEN_XML" "$PROJECT_OPEN_REMOTE" "Untitled.mpcproj" 30; then
   echo "ERROR: saved Project file is not discoverable in Android DocumentsUI"; exit 1
+fi
+if ! capture_verified_fresh_open_picker_pair "$PROJECT_OPEN_XML" "$PROJECT_OPEN_PNG" "Untitled.mpcproj"; then
+  echo "ERROR: could not capture validated fresh DocumentsUI state for Project Open"; exit 1
 fi
 if ! tap_ui_picker_result_row "$PROJECT_OPEN_XML" "Untitled.mpcproj" auto label; then
   echo "ERROR: could not select the previously saved Project file"; exit 1
