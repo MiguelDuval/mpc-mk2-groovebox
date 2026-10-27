@@ -10633,6 +10633,9 @@ echo "BROW-010 cancellation passed: Back returned to Browser; target Pad/Layer, 
 # BROW-016 empty search results: show a real no-match status, preserve the native
 # sample/target and retry safely by clearing Search to restore the same WAV rows.
 BROWSER_EMPTY_QUERY="nomatchmpc987"
+BROWSER_EMPTY_BASELINE_PNG="/tmp/mpc-groovebox-browser-empty-search-baseline.png"
+BROWSER_EMPTY_BASELINE_XML="/tmp/mpc-groovebox-browser-empty-search-baseline-uiautomator.xml"
+BROWSER_EMPTY_BASELINE_REMOTE="/sdcard/mpc-groovebox-browser-empty-search-baseline-uiautomator.xml"
 BROWSER_EMPTY_PNG="/tmp/mpc-groovebox-browser-empty-search.png"
 BROWSER_EMPTY_XML="/tmp/mpc-groovebox-browser-empty-search-uiautomator.xml"
 BROWSER_EMPTY_REMOTE="/sdcard/mpc-groovebox-browser-empty-search-uiautomator.xml"
@@ -10672,11 +10675,7 @@ def unique(description):
 sample = unique("MPC Browser current sample").attrib.get("text", "")
 target = unique("MPC Browser target Pad and Layer").attrib.get("text", "")
 search = unique("MPC Browser search files").attrib.get("text", "")
-# UIAutomator exposes the EditText hint as text when empty; normalize that to the real empty query.
-if search == "Search files":
-    search = ""
-# UIAutomator exposes an EditText hint as its text when the field is empty.
-# Normalize that presentation-only hint to the real empty-query state.
+# UIAutomator exposes the EditText hint as text when empty; normalize it to the real empty query.
 if search == "Search files":
     search = ""
 locations = [node for node in nodes
@@ -10685,10 +10684,14 @@ locations = [node for node in nodes
 if len(locations) != 1:
     raise SystemExit(f"expected one visible Browser location, found {len(locations)}")
 location = locations[0].attrib.get("content-desc", "")
-files = sorted(node.attrib.get("content-desc", "")
-               for node in nodes
-               if node.attrib.get("content-desc", "").startswith("MPC Browser file ")
-               and visible(node))
+file_descriptions = [node.attrib.get("content-desc", "")
+                    for node in nodes
+                    if node.attrib.get("content-desc", "").startswith("MPC Browser file ")
+                    and visible(node)]
+selected_files = sorted(description for description in file_descriptions
+                        if description.endswith(" selected"))
+files = sorted(description.removesuffix(" selected")
+               for description in file_descriptions)
 empty_states = sorted(node.attrib.get("content-desc", "")
                       for node in nodes
                       if node.attrib.get("content-desc", "").startswith(
@@ -10699,6 +10702,7 @@ print(json.dumps({
     "location": location,
     "search": search,
     "files": files,
+    "selectedFiles": selected_files,
     "emptyStates": empty_states,
 }, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
 PY_BROWSER_EMPTY_SEARCH_STATE
@@ -10715,14 +10719,25 @@ hide_browser_search_ime_if_shown() {
   fi
 }
 
-echo "Running BROW-016 real search → empty results → clear/retry state preservation..."
-browser_empty_baseline="$(read_browser_empty_search_state "$PICKER_CANCEL_RETURN_XML")" || {
-  echo "ERROR: pre-search Browser state snapshot is invalid"; exit 1;
+echo "Running BROW-016 real selected WAV → no-match query → clear/retry state preservation..."
+if ! tap_ui_description "$PICKER_CANCEL_RETURN_XML" "MPC Browser file Browser-Smoke-Local.wav"; then
+  echo "ERROR: could not select a real Browser WAV before the no-match query"; exit 1
+fi
+sleep 0.25
+if ! dump_device_ui_retry "$BROWSER_EMPTY_BASELINE_REMOTE" "$BROWSER_EMPTY_BASELINE_XML" 8 4; then
+  echo "ERROR: could not capture a fresh selected-file Browser baseline"; exit 1
+fi
+if ! capture_ui_screenshot "$BROWSER_EMPTY_BASELINE_PNG" 10; then
+  echo "ERROR: could not capture the selected-file Browser baseline screenshot"; exit 1
+fi
+browser_empty_baseline="$(read_browser_empty_search_state "$BROWSER_EMPTY_BASELINE_XML")" || {
+  echo "ERROR: selected-file Browser baseline hierarchy is invalid"; exit 1;
 }
 if ! grep -Fq -- '"sample":"CURRENT SAMPLE • Browser-Picker-Return.wav"' <<<"$browser_empty_baseline" \
     || ! grep -Fq -- '"target":"TARGET • PAD 01 / LAYER 01"' <<<"$browser_empty_baseline" \
-    || ! grep -Fq -- '"search":""' <<<"$browser_empty_baseline"; then
-  echo "ERROR: BROW-016 baseline did not preserve assigned WAV, Pad/Layer target and empty Search"
+    || ! grep -Fq -- '"search":""' <<<"$browser_empty_baseline" \
+    || ! grep -Fq -- '"selectedFiles":["MPC Browser file Browser-Smoke-Local.wav selected"]' <<<"$browser_empty_baseline"; then
+  echo "ERROR: BROW-016 baseline must preserve the assigned sample/target and contain a real selected WAV"
   echo "$browser_empty_baseline"; exit 1
 fi
 browser_empty_baseline_files="$(python3 - "$browser_empty_baseline" <<'PY_BROWSER_BASELINE_FILES'
@@ -10737,7 +10752,7 @@ print(len(state["files"]))
 PY_BROWSER_BASELINE_FILES
 )" || { echo "ERROR: baseline Browser results are not valid"; exit 1; }
 
-if ! tap_ui_description "$PICKER_CANCEL_RETURN_XML" "MPC Browser search files"; then
+if ! tap_ui_description "$BROWSER_EMPTY_BASELINE_XML" "MPC Browser search files"; then
   echo "ERROR: Browser Search is not actionable for empty-results acceptance"; exit 1
 fi
 if ! adb_bounded 10 shell input text "$BROWSER_EMPTY_QUERY"; then
@@ -10767,6 +10782,8 @@ if empty["search"] != expected_query:
     raise SystemExit(f"Search query was not retained: {empty['search']!r}")
 if empty["files"]:
     raise SystemExit(f"no-match query still exposes file rows: {empty['files']!r}")
+if empty["selectedFiles"]:
+    raise SystemExit(f"no-match state retained stale selected files: {empty['selectedFiles']!r}")
 if empty["emptyStates"] != ["MPC Browser status NO MATCHING WAV FILES"]:
     raise SystemExit(f"expected explicit NO MATCHING WAV FILES status, got {empty['emptyStates']!r}")
 print("Verified explicit no-match state; native sample, Pad/Layer and Browser location are unchanged.")
@@ -10789,15 +10806,30 @@ fi
 browser_clear_state="$(read_browser_empty_search_state "$BROWSER_CLEAR_XML")" || {
   echo "ERROR: cleared Browser hierarchy failed state parsing"; exit 1;
 }
-if [[ "$browser_clear_state" != "$browser_empty_baseline" ]]; then
-  echo "ERROR: clearing Search did not restore the exact Browser state and file list"
+if ! python3 - "$browser_empty_baseline" "$browser_clear_state" <<'PY_BROWSER_CLEAR_ASSERT'
+import json
+import sys
+baseline = json.loads(sys.argv[1])
+cleared = json.loads(sys.argv[2])
+for key in ("sample", "target", "location", "search", "files"):
+    if cleared[key] != baseline[key]:
+        raise SystemExit(f"{key} was not restored after CLEAR: {baseline[key]!r} -> {cleared[key]!r}")
+if cleared["selectedFiles"]:
+    raise SystemExit(f"CLEAR resurrected a stale source selection: {cleared['selectedFiles']!r}")
+if cleared["emptyStates"]:
+    raise SystemExit(f"empty-result state persisted after CLEAR: {cleared['emptyStates']!r}")
+print("CLEAR restored all WAV rows without resurrecting a stale source selection.")
+PY_BROWSER_CLEAR_ASSERT
+then
+  echo "ERROR: clearing Search did not restore the prior file list and a clean selection state"
   echo "BASELINE: $browser_empty_baseline"
   echo "CLEARED:  $browser_clear_state"
   exit 1
 fi
-if ! test -s /tmp/mpc-groovebox-browser-empty-search.png \
+if ! test -s "$BROWSER_EMPTY_BASELINE_PNG" \
+    || ! test -s /tmp/mpc-groovebox-browser-empty-search.png \
     || ! test -s /tmp/mpc-groovebox-browser-empty-search-cleared.png \
-    || [[ ! -s "$BROWSER_EMPTY_XML" || ! -s "$BROWSER_CLEAR_XML" ]]; then
+    || [[ ! -s "$BROWSER_EMPTY_BASELINE_XML" || ! -s "$BROWSER_EMPTY_XML" || ! -s "$BROWSER_CLEAR_XML" ]]; then
   echo "ERROR: mandatory Browser empty-results/clear PNG/XML evidence is missing"; exit 1
 fi
 echo "BROW-016 empty search → explicit NO MATCHING WAV FILES → CLEAR retry passed: restored $browser_empty_baseline_files original file rows; native sample and Pad/Layer remained unchanged."
