@@ -34,14 +34,16 @@ final class MpcLocalAudioCatalog {
                         MediaStore.Audio.Media.MIME_TYPE,
                         MediaStore.Audio.Media.SIZE,
                         MediaStore.Audio.Media.DURATION,
-                        MediaStore.MediaColumns.RELATIVE_PATH
+                        MediaStore.MediaColumns.RELATIVE_PATH,
+                        MediaStore.MediaColumns.DATE_MODIFIED
                 }
                 : new String[]{
                         MediaStore.Audio.Media._ID,
                         MediaStore.Audio.Media.DISPLAY_NAME,
                         MediaStore.Audio.Media.MIME_TYPE,
                         MediaStore.Audio.Media.SIZE,
-                        MediaStore.Audio.Media.DURATION
+                        MediaStore.Audio.Media.DURATION,
+                        MediaStore.MediaColumns.DATE_MODIFIED
                 };
         final List<MpcBrowserFile> files = new ArrayList<>();
         try (Cursor cursor = resolver.query(
@@ -71,9 +73,16 @@ final class MpcLocalAudioCatalog {
                 final String relativePath = relativePathColumn < 0
                         || cursor.isNull(relativePathColumn)
                         ? "" : cursor.getString(relativePathColumn);
+                final int modifiedColumn =
+                        cursor.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED);
+                final long modifiedSeconds = modifiedColumn < 0 || cursor.isNull(modifiedColumn)
+                        ? -1L : cursor.getLong(modifiedColumn);
+                final long modifiedMs = modifiedSeconds < 0 ? -1L
+                        : modifiedSeconds > Long.MAX_VALUE / 1000L
+                                ? Long.MAX_VALUE : modifiedSeconds * 1000L;
                 final Uri itemUri = ContentUris.withAppendedId(collection, id);
                 files.add(new MpcBrowserFile(
-                        itemUri.toString(), name, mime, size, duration, relativePath));
+                        itemUri.toString(), name, mime, size, duration, relativePath, modifiedMs));
             }
         }
         return files;

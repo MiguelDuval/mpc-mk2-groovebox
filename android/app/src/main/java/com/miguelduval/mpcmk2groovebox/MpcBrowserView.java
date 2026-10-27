@@ -74,6 +74,7 @@ final class MpcBrowserView extends LinearLayout {
     private boolean userFolderScanComplete;
     private boolean userFolderScanFailed;
     private boolean showFileSize = true;
+    private boolean showModifiedDate;
 
     MpcBrowserView(Context context) {
         super(context);
@@ -269,6 +270,16 @@ final class MpcBrowserView extends LinearLayout {
 
     boolean isShowFileSize() {
         return showFileSize;
+    }
+
+    void setShowModifiedDate(boolean show) {
+        if (showModifiedDate == show) return;
+        showModifiedDate = show;
+        renderResults();
+    }
+
+    boolean isShowModifiedDate() {
+        return showModifiedDate;
     }
 
     void setProviderStatus(String status) {
@@ -779,7 +790,7 @@ final class MpcBrowserView extends LinearLayout {
         main.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(main, new LayoutParams(0, dp(getContext(), 34), 1));
 
-        final TextView sub = info(getContext(), file.metadataLine(showFileSize));
+        final TextView sub = info(getContext(), file.metadataLine(showFileSize, showModifiedDate));
         sub.setTextSize(8);
         sub.setSingleLine(true);
         sub.setEllipsize(TextUtils.TruncateAt.END);
