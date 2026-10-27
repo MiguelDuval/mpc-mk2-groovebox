@@ -1993,7 +1993,7 @@ echo "Running MPC Browser Options preflight..."
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'continueUiAuditAfterBrowserOptionsLayout()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'OnPreDrawListener'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'removeOnPreDrawListener(this)'
-for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'PREF_BROWSER_SHOW_FILE_SIZE'   'BROWSER_OPTIONS_SHOW_FILE_SIZE_VERIFIED'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
+for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'PREF_BROWSER_SHOW_FILE_SIZE'   'BROWSER_OPTIONS_SHOW_FILE_SIZE_VERIFIED'   'PREF_BROWSER_SHOW_MODIFIED_DATE'   'BROWSER_OPTIONS_SHOW_MODIFIED_DATE_VERIFIED'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "$BROWSER_SOURCE"; then
     echo "ERROR: MPC Browser Options contract missing: $required"
     exit 1
