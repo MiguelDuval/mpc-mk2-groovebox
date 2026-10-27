@@ -15240,6 +15240,57 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int sequenceBefore = nativeSequenceGetIndex();
         final int trackBefore = nativeSequenceGetSelectedTrack();
         final int padBefore = selectedPadIndexForUi();
+
+        View padMixerShortcut = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC shortcut PAD MIXER");
+        if (padMixerShortcut == null || !padMixerShortcut.isShown()
+                || !padMixerShortcut.isEnabled() || !padMixerShortcut.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pad Mixer Shortcut is not actionable"
+                    + " | shortcut=" + describeAuditView(padMixerShortcut));
+            return;
+        }
+        final View padMixerWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Pad Mixer");
+        final View padMixerLevel = findViewWithContentDescription(
+                getWindow().getDecorView(), "PAD 1 vertical fader");
+        final View staleTrackViewBeforeBack = findViewWithContentDescription(
+                getWindow().getDecorView(), "Track View track 1");
+        if (navigationController.state().mode() != MpcUiState.Mode.PAD_MIXER
+                || !"PAD_MIXER".equals(currentPage)
+                || padMixerWorkspace == null || !padMixerWorkspace.isShown()
+                || padMixerLevel == null || !padMixerLevel.isShown()
+                || !padMixerLevel.isEnabled()
+                || staleTrackViewBeforeBack != null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pad Mixer Shortcut did not open its real control workspace"
+                    + " | mode=" + navigationController.state().mode()
+                    + " | currentPage=" + currentPage
+                    + " | workspace=" + describeAuditView(padMixerWorkspace)
+                    + " | pad1Fader=" + describeAuditView(padMixerLevel)
+                    + " | staleTrackView=" + describeAuditView(staleTrackViewBeforeBack));
+            return;
+        }
+        final View padMixerBack = findViewWithExactText(
+                getWindow().getDecorView(), "BACK");
+        if (padMixerBack == null || !padMixerBack.isShown()
+                || !padMixerBack.isEnabled() || !padMixerBack.performClick()
+                || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
+                || !"TRACK_VIEW".equals(currentPage)
+                || nativeSequenceGetIndex() != sequenceBefore
+                || nativeSequenceGetSelectedTrack() != trackBefore
+                || selectedPadIndexForUi() != padBefore
+                || navigationController.state().selectedSequence() != baseline.selectedSequence()
+                || navigationController.state().selectedTrack() != baseline.selectedTrack()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Track View track 1") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pad Mixer BACK did not restore Track View context"
+                    + " | currentPage=" + currentPage
+                    + " | sequence=" + nativeSequenceGetIndex()
+                    + " | track=" + nativeSequenceGetSelectedTrack()
+                    + " | pad=" + selectedPadIndexForUi()
+                    + " | back=" + describeAuditView(padMixerBack));
+            return;
+        }
+
         final MpcUiState.Mode[] modes = {
                 MpcUiState.Mode.CHANNEL_MIXER,
                 MpcUiState.Mode.SOUNDS,
@@ -15311,6 +15362,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         Log.i(TAG, "UI_RESERVED_SHORTCUT_ROUTE_COMPLETE: "
+                + "padMixerScreen=true padMixerBack=true "
                 + "channelMixerScreen=true soundsScreen=true xyScreen=true "
                 + "priorWorkspaceNotVisible=true selectionPreserved=true");
         continueUiAuditAfterTrackViewMuteToArrange();
