@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -391,6 +392,48 @@ int main() {
     tooManySamples.samples.resize(100001);
     error.clear();
     assert(persistence::serializeProject(tooManySamples, &error).empty());
+    assert(!error.empty());
+
+    // A large valid Arrangement must remain practical to validate. Placements
+    // are deliberately stored in reverse timeline order to exercise sorting,
+    // not a best-case already-sorted fast path.
+    domain::Project largeArrangement = source;
+    auto& largeSequence = largeArrangement.sequences.front();
+    auto& largeTrack = largeSequence.tracks.front();
+    constexpr std::int32_t kPlacementCount = 12000;
+    constexpr std::int32_t kPatternCount = 4096;
+    largeSequence.lengthTicks = kPlacementCount * 2;
+    largeTrack.patterns.clear();
+    largeTrack.patterns.reserve(kPatternCount);
+    for (std::int32_t index = 0; index < kPatternCount; ++index) {
+        mpc::domain::Pattern pattern;
+        pattern.id = "large-pattern-" + std::to_string(index);
+        pattern.name = pattern.id;
+        pattern.lengthTicks = largeSequence.lengthTicks;
+        largeTrack.patterns.push_back(std::move(pattern));
+    }
+    largeTrack.placements.clear();
+    largeTrack.placements.reserve(kPlacementCount);
+    for (std::int32_t index = kPlacementCount - 1; index >= 0; --index) {
+        const auto& pattern = largeTrack.patterns[
+                static_cast<std::size_t>(index % kPatternCount)];
+        largeTrack.placements.push_back({
+                "large-clip-" + std::to_string(index),
+                pattern.id,
+                index * 2,
+                1,
+                0
+        });
+    }
+    error.clear();
+    const auto largeSerialized = persistence::serializeProject(largeArrangement, &error);
+    assert(!largeSerialized.empty());
+    assert(error.empty());
+
+    // Even with scrambled input order, a real overlap is still rejected.
+    largeTrack.placements.back().startTick = 2;
+    error.clear();
+    assert(persistence::serializeProject(largeArrangement, &error).empty());
     assert(!error.empty());
 
     std::remove(filePath.c_str());
