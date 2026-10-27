@@ -2099,6 +2099,9 @@ capture_ui_screenshot() {
     mpc-groovebox-arrange-placement-duplicate.png|\
     mpc-groovebox-arrange-loop-changed.png|\
     mpc-groovebox-grid-edit-after-draw.png|\
+    mpc-groovebox-grid-zoom-baseline.png|\
+    mpc-groovebox-grid-zoom-horizontal.png|\
+    mpc-groovebox-grid-zoom-vertical.png|\
     mpc-groovebox-browser.png|\
     mpc-groovebox-browser-device.png|\
     mpc-groovebox-browser-local-results.png|\
