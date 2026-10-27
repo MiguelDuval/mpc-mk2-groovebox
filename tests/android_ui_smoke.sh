@@ -4493,7 +4493,7 @@ PY_ARRANGE_ZOOM_LOG
     }
 
     echo "Running ARR-003 real-touch Arrangement RESET → ZOOM+ → ZOOM− viewport round trip..."
-    if ! tap_ui_text "$ARRANGE_LOOP_RESTORED_XML" "RESET"; then
+    if ! tap_visible_description_early "$ARRANGE_LOOP_RESTORED_XML" "RESET"; then
       echo "ERROR: Arrangement RESET zoom action was not clickable"; exit 1
     fi
     sleep 0.3
@@ -4513,7 +4513,7 @@ PY_ARRANGE_ZOOM_LOG
     arrange_zoom_reset_line="$(arrange_zoom_log_line "RESET")" || exit 1
     arrange_zoom_baseline_data="$(arrange_zoom_data_from_log "$arrange_zoom_reset_line")" || exit 1
 
-    if ! tap_ui_text "$ARRANGE_ZOOM_BASELINE_XML" "ZOOM +"; then
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_BASELINE_XML" "ZOOM +"; then
       echo "ERROR: Arrangement ZOOM + action was not clickable"; exit 1
     fi
     sleep 0.3
@@ -4537,7 +4537,7 @@ PY_ARRANGE_ZOOM_LOG
       printf 'BASELINE: %s\nZOOM IN: %s\n' "$arrange_zoom_baseline_data" "$arrange_zoom_in_data"; exit 1
     fi
 
-    if ! tap_ui_text "$ARRANGE_ZOOM_IN_XML" "ZOOM −"; then
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_IN_XML" "ZOOM −"; then
       echo "ERROR: Arrangement ZOOM − action was not clickable"; exit 1
     fi
     sleep 0.3
