@@ -2608,7 +2608,7 @@ while (( SECONDS < audit_deadline )); do
     arrangement_zoom_touch_acceptance_complete=1
   fi
 
-  if [ "$arrangement_zoom_touch_capture_done" -eq 0 ] \\
+  if [ "$arrangement_zoom_touch_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_ARRANGE_ZOOM_TOUCH_CAPTURE_READY:" <<<"$log_snapshot"; then
     # ARR-003: real Function Bar zoom touches must change the visible timeline
     # scale only. Compare the current Arrangement viewport against live UI tree
