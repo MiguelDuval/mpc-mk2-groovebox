@@ -683,7 +683,7 @@ echo "Running Arrangement zoom acceptance source preflight..."
 if ! grep -Fq -- 'UI_ARRANGE_ZOOM_STATE:' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: MainActivity does not expose the native Arrangement zoom state oracle"; exit 1
 fi
-if ! grep -Fq -- 'Arrangement zoom viewport visible bars=' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'Arrangement ZOOM OUT visible bars=' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: MainActivity does not expose live Arrangement viewport bounds through accessibility"; exit 1
 fi
 echo "Running Arrangement event → Grid gesture integration preflight..."
@@ -4444,7 +4444,7 @@ found = []
 for node in root.iter("node"):
     description = node.attrib.get("content-desc", "")
     match = re.fullmatch(
-        r"Arrangement zoom viewport visible bars=(\d+) viewport start bar=(\d+)",
+        r"Arrangement ZOOM OUT visible bars=(\d+) viewport start bar=(\d+)",
         description)
     if not match:
         continue
