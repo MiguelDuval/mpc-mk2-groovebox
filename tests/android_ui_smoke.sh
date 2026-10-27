@@ -7729,6 +7729,82 @@ capture_stable_picker_state() {
   cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   return 1
 }
+# Reuse one fresh DocumentsUI hierarchy only for the narrowly validated
+# ACTION_CREATE_DOCUMENT Save As form. Repeated UiAutomator tree requests can stall
+# on this Android 16 emulator even though the first tree is current and complete.
+# Capture its screenshot immediately, before any interaction, and require the
+# exact filename field plus an enabled SAVE action; do not relax file/result checks.
+capture_verified_fresh_save_picker_pair() {
+  local hierarchy_path="$1" screenshot_path="$2" expected_filename="$3"
+  local screenshot_candidate="${screenshot_path%.png}-fresh-pair-candidate.png"
+  if ! test -s "$hierarchy_path"; then
+    echo "ERROR: fresh Save As hierarchy is missing: $hierarchy_path"
+    return 1
+  fi
+  if ! python3 - "$hierarchy_path" "$expected_filename" <<'PY_SAVE_PAIR'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected_filename = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("fresh hierarchy is not rooted in Android DocumentsUI")
+
+def bounds(node):
+    match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+filename = [
+    node for node in nodes
+    if node.attrib.get("resource-id") == "android:id/title"
+    and node.attrib.get("class") == "android.widget.EditText"
+    and node.attrib.get("text", "").strip() == expected_filename
+    and node.attrib.get("enabled") == "true"
+]
+save = [
+    node for node in nodes
+    if node.attrib.get("resource-id") == "android:id/button1"
+    and node.attrib.get("text", "").strip().upper() == "SAVE"
+    and node.attrib.get("class") == "android.widget.Button"
+    and node.attrib.get("enabled") == "true"
+    and node.attrib.get("clickable") == "true"
+]
+if len(filename) != 1 or len(save) != 1:
+    raise SystemExit(
+        f"Save As form did not expose unique enabled filename/SAVE controls: "
+        f"filename={len(filename)} save={len(save)}")
+for label, node in (("filename", filename[0]), ("SAVE", save[0])):
+    rect = bounds(node)
+    if rect is None or rect[2] <= rect[0] or rect[3] <= rect[1]:
+        raise SystemExit(f"{label} control has invalid bounds: {node.attrib!r}")
+print("Fresh Save As hierarchy validated:", expected_filename)
+PY_SAVE_PAIR
+  then
+    echo "ERROR: fresh Save As hierarchy failed the strict filename/SAVE contract"
+    return 1
+  fi
+  rm -f "$screenshot_candidate"
+  if ! capture_ui_screenshot "$screenshot_candidate" 10; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not capture screenshot for validated fresh Save As hierarchy"
+    return 1
+  fi
+  if ! test -s "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: Save As screenshot for fresh hierarchy is empty"
+    return 1
+  fi
+  if ! mv -f -- "$screenshot_candidate" "$screenshot_path"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not publish paired Save As screenshot: $screenshot_path"
+    return 1
+  fi
+  echo "Accepted fresh paired Save As hierarchy/screenshot without a second UiAutomator dump."
+}
+
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
   local evidence_prefix="${5:-document-tree}" root_stability_timeout="${6:-6}"
@@ -11449,7 +11525,7 @@ done
 if [ "$project_save_picker_ready" -ne 1 ]; then
   echo "ERROR: Android DocumentsUI did not appear for Project Save As"; exit 1
 fi
-if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
+if ! capture_verified_fresh_save_picker_pair "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"; then
   echo "ERROR: could not capture stable DocumentsUI state for Project Save As"; exit 1
 fi
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
