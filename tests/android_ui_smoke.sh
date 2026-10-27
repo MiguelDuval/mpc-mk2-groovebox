@@ -10477,8 +10477,8 @@ echo "Running Browser WAV-picker cancellation → native Pad/Layer preservation 
 PICKER_SAMPLE_BEFORE_CANCEL="$(read_browser_current_sample "$PICKER_RETURN_XML")" || {
   echo "ERROR: could not read Browser's native-backed current sample before cancellation"; exit 1;
 }
-if [[ "$PICKER_SAMPLE_BEFORE_CANCEL" != "$PICKER_SAMPLE_NAME" ]]; then
-  echo "ERROR: cancellation fixture isn't the expected preassigned native sample: $PICKER_SAMPLE_BEFORE_CANCEL"; exit 1
+if [[ "$PICKER_SAMPLE_BEFORE_CANCEL" != "CURRENT SAMPLE • $PICKER_SAMPLE_NAME" ]]; then
+  echo "ERROR: cancellation fixture isn't the expected native-backed current-sample field: $PICKER_SAMPLE_BEFORE_CANCEL"; exit 1
 fi
 PICKER_CANCEL_MARKER_BEFORE="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
   | grep -F -c -- "BROWSER_WAV_PICKER_CANCELLED" || true)"
