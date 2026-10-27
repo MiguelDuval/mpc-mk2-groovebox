@@ -3,6 +3,7 @@
 #include "MPC/Sequencer/MpcArrangementOps.h"
 
 #include <cassert>
+#include <cstdint>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -389,8 +390,52 @@ int main() {
     // payload above the same limit before emitting an unreadable project.
     domain::Project tooManySamples = source;
     tooManySamples.samples.resize(100001);
+    for (std::size_t index = 0; index < tooManySamples.samples.size(); ++index) {
+        tooManySamples.samples[index].id =
+                "oversized-sample-" + std::to_string(index);
+        tooManySamples.samples[index].assetId.value =
+                static_cast<std::uint32_t>(index + 1);
+    }
     error.clear();
     assert(persistence::serializeProject(tooManySamples, &error).empty());
+    assert(!error.empty());
+
+    domain::Project duplicatePatternId = source;
+    auto duplicatePattern = duplicatePatternId.sequences.front().tracks.front().patterns.front();
+    duplicatePattern.name = "Duplicate identifier must be rejected";
+    duplicatePatternId.sequences.front().tracks.front().patterns.push_back(duplicatePattern);
+    error.clear();
+    assert(persistence::serializeProject(duplicatePatternId, &error).empty());
+    assert(!error.empty());
+
+    domain::Project validTwoPatterns = source;
+    auto secondPattern = validTwoPatterns.sequences.front().tracks.front().patterns.front();
+    secondPattern.id = "pattern-distinct-02";
+    secondPattern.name = "Second unplaced Pattern";
+    validTwoPatterns.sequences.front().tracks.front().patterns.push_back(secondPattern);
+    auto malformedDuplicatePatternId = persistence::serializeProject(validTwoPatterns);
+    const std::string secondPatternTag = R"(PATTERN "pattern-distinct-02")";
+    const auto secondPatternPos = malformedDuplicatePatternId.find(secondPatternTag);
+    assert(secondPatternPos != std::string::npos);
+    malformedDuplicatePatternId.replace(
+            secondPatternPos,
+            secondPatternTag.size(),
+            R"(PATTERN "pattern-shared-01")");
+    domain::Project untouchedAfterDuplicateId = source;
+    const auto beforeDuplicateIdFailure = persistence::serializeProject(untouchedAfterDuplicateId);
+    error.clear();
+    assert(!persistence::deserializeProject(
+            malformedDuplicatePatternId, untouchedAfterDuplicateId, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(untouchedAfterDuplicateId)
+            == beforeDuplicateIdFailure);
+
+    domain::Project duplicateAssetIds = source;
+    auto secondSample = duplicateAssetIds.samples.front();
+    secondSample.id = "sample-distinct-02";
+    duplicateAssetIds.samples.push_back(secondSample);
+    error.clear();
+    assert(persistence::serializeProject(duplicateAssetIds, &error).empty());
     assert(!error.empty());
 
     std::remove(filePath.c_str());
