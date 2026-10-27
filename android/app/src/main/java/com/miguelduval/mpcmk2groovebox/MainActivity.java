@@ -96,6 +96,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             "TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation";
     private static final String BROWSER_STORAGE_PREFERENCES = "mpc_browser_storage";
     private static final String PREF_BROWSER_SHOW_FILE_SIZE = "show_file_size";
+    private static final String PREF_BROWSER_SHOW_MODIFIED_DATE = "show_modified_date";
     private static final String MPC_UI_PREFERENCES = "mpc_ui_preferences";
     private static final String PREF_SHORTCUT_MODES = "shortcut_modes_v1";
     private static final String PREF_USER_TREE_URI = "user_tree_uri";
@@ -5837,6 +5838,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         browserView.setShowFileSize(getSharedPreferences(
                 BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
                 .getBoolean(PREF_BROWSER_SHOW_FILE_SIZE, true));
+        browserView.setShowModifiedDate(getSharedPreferences(
+                BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
+                .getBoolean(PREF_BROWSER_SHOW_MODIFIED_DATE, false));
         browserView.setListener(new MpcBrowserView.Listener() {
             @Override
             public void onSectionSelected(String section) {
@@ -6583,8 +6587,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         body.setContentDescription("MPC Browser Options");
 
         TextView notice = label(
-                "FILE PROVIDER: PARTIAL • file size visibility is active; date, subfolder, "
-                        + "system-folder and cleanup options remain RESERVED / UNAVAILABLE.",
+                "FILE PROVIDER: PARTIAL • file size and modified-date visibility are active; "
+                        + "created date, subfolder, system-folder and cleanup options remain RESERVED / UNAVAILABLE.",
                 10, MUTED);
         notice.setPadding(0, 0, 0, dp(10));
         body.addView(notice);
@@ -6609,6 +6613,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     final MpcBrowserView activeBrowser = browserView;
                     if (activeBrowser != null) activeBrowser.setShowFileSize(checked);
                     setBottomStatus("BROWSER • FILE SIZE " + (checked ? "SHOWN" : "HIDDEN"));
+                });
+            } else if ("Show modified date".equals(labelText)) {
+                check.setEnabled(true);
+                check.setAlpha(1.0f);
+                check.setChecked(browserOptionsPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_MODIFIED_DATE, false));
+                check.setOnCheckedChangeListener((button, checked) -> {
+                    browserOptionsPreferences.edit()
+                            .putBoolean(PREF_BROWSER_SHOW_MODIFIED_DATE, checked)
+                            .apply();
+                    final MpcBrowserView activeBrowser = browserView;
+                    if (activeBrowser != null) activeBrowser.setShowModifiedDate(checked);
+                    setBottomStatus("BROWSER • MODIFIED DATE " + (checked ? "SHOWN" : "HIDDEN"));
                 });
             } else {
                 check.setEnabled(false);
@@ -14001,6 +14018,28 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        View modifiedDateOption = findViewWithContentDescription(
+                optionsDialogRoot, "MPC Browser Option Show modified date");
+        final boolean initialShowModifiedDate = browserView.isShowModifiedDate();
+        if (!(modifiedDateOption instanceof android.widget.CheckBox)
+                || !modifiedDateOption.isEnabled()
+                || ((android.widget.CheckBox) modifiedDateOption).isChecked() != initialShowModifiedDate
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_MODIFIED_DATE, false) != initialShowModifiedDate) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser modified-date option did not restore saved state");
+            return;
+        }
+        modifiedDateOption.performClick();
+        final boolean toggledShowModifiedDate = !initialShowModifiedDate;
+        if (((android.widget.CheckBox) modifiedDateOption).isChecked() != toggledShowModifiedDate
+                || browserView.isShowModifiedDate() != toggledShowModifiedDate
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_MODIFIED_DATE, initialShowModifiedDate)
+                        != toggledShowModifiedDate) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser modified-date option did not change presentation and preference");
+            return;
+        }
+
         View browserOptionsClose = findViewWithContentDescription(
                 optionsDialogRoot, "MPC Browser Options close");
         if (browserOptionsClose == null || !browserOptionsClose.performClick()) {
@@ -14015,6 +14054,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         final View reopenedOptionsRoot = reopenedOptionsDialog.getWindow().getDecorView();
+        final View reopenedModifiedDateOption = findViewWithContentDescription(
+                reopenedOptionsRoot, "MPC Browser Option Show modified date");
+        if (!(reopenedModifiedDateOption instanceof android.widget.CheckBox)
+                || !reopenedModifiedDateOption.isEnabled()
+                || ((android.widget.CheckBox) reopenedModifiedDateOption).isChecked()
+                        != toggledShowModifiedDate) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser modified-date preference was not restored on dialog reopen");
+            return;
+        }
         final View reopenedFileSizeOption = findViewWithContentDescription(
                 reopenedOptionsRoot, "MPC Browser Option Show file size");
         if (!(reopenedFileSizeOption instanceof android.widget.CheckBox)
@@ -14032,6 +14080,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option could not restore baseline");
             return;
         }
+        reopenedModifiedDateOption.performClick();
+        if (((android.widget.CheckBox) reopenedModifiedDateOption).isChecked() != initialShowModifiedDate
+                || browserView.isShowModifiedDate() != initialShowModifiedDate
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_MODIFIED_DATE, !initialShowModifiedDate)
+                        != initialShowModifiedDate) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser modified-date option could not restore baseline");
+            return;
+        }
         final View reopenedClose = findViewWithContentDescription(
                 reopenedOptionsRoot, "MPC Browser Options close");
         if (reopenedClose == null || !reopenedClose.performClick()) {
@@ -14040,8 +14097,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         Log.i(TAG, "BROWSER_OPTIONS_SHOW_FILE_SIZE_VERIFIED before=" + initialShowFileSize
                 + " toggled=" + toggledShowFileSize + " restored=" + browserView.isShowFileSize());
+        Log.i(TAG, "BROWSER_OPTIONS_SHOW_MODIFIED_DATE_VERIFIED before=" + initialShowModifiedDate
+                + " toggled=" + toggledShowModifiedDate
+                + " restored=" + browserView.isShowModifiedDate());
 
-        // The file-size toggle refreshes the Browser result list. That refresh
+        // Metadata toggles refresh the Browser result list. That refresh
         // legitimately replaces the storage-action row; do not inspect or tap its
         // bounds until the new row has passed a real Android pre-draw/layout pass.
         continueUiAuditAfterBrowserOptionsLayout();
