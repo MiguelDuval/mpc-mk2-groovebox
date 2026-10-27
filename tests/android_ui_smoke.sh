@@ -6139,6 +6139,163 @@ PY
     fi
     echo "Grid DRAW → native note state → ERASE → empty-state round-trip passed."
 
+    # Exercise both real Function Bar zoom actions using measured accessibility
+    # targets. They may change only the visible viewport, never native note data.
+    echo "Running real-touch Grid horizontal/vertical zoom viewport-isolation acceptance..."
+    GRID_ZOOM_BASELINE_XML="/tmp/mpc-groovebox-grid-zoom-baseline-uiautomator.xml"
+    GRID_ZOOM_BASELINE_REMOTE="/sdcard/mpc-groovebox-grid-zoom-baseline-uiautomator.xml"
+    GRID_ZOOM_BASELINE_PNG="/tmp/mpc-groovebox-grid-zoom-baseline.png"
+    GRID_ZOOM_H_XML="/tmp/mpc-groovebox-grid-zoom-horizontal-uiautomator.xml"
+    GRID_ZOOM_H_REMOTE="/sdcard/mpc-groovebox-grid-zoom-horizontal-uiautomator.xml"
+    GRID_ZOOM_H_PNG="/tmp/mpc-groovebox-grid-zoom-horizontal.png"
+    GRID_ZOOM_V_XML="/tmp/mpc-groovebox-grid-zoom-vertical-uiautomator.xml"
+    GRID_ZOOM_V_REMOTE="/sdcard/mpc-groovebox-grid-zoom-vertical-uiautomator.xml"
+    GRID_ZOOM_V_PNG="/tmp/mpc-groovebox-grid-zoom-vertical.png"
+
+    if ! dump_device_ui "$GRID_ZOOM_BASELINE_REMOTE" "$GRID_ZOOM_BASELINE_XML"; then
+      echo "ERROR: Grid zoom baseline hierarchy failed"; exit 1
+    fi
+    if ! capture_ui_screenshot "$GRID_ZOOM_BASELINE_PNG" 10; then
+      echo "ERROR: Grid zoom baseline screenshot failed"; exit 1
+    fi
+    if ! python3 - "$GRID_ZOOM_BASELINE_XML" "$grid_edit_step" <<'PY_GRID_ZOOM_BASELINE'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, step_s = sys.argv[1:]
+step = int(step_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
+    "Grid visible step range: steps ")]
+if len(ranges) != 1:
+    raise AssertionError(f"expected one Grid step-range accessibility node, got {len(ranges)}")
+match = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                     ranges[0].attrib.get("content-desc", ""))
+if match is None:
+    raise AssertionError(f"malformed Grid step range: {ranges[0].attrib!r}")
+first, last, total = map(int, match.groups())
+if last - first + 1 != 16 or not first <= step <= last <= total:
+    raise AssertionError(f"Grid baseline must show 16 steps including selected step {step}: {first}–{last}/{total}")
+event_counts = [int(m.group(1)) for n in nodes
+                for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
+if event_counts != [1]:
+    raise AssertionError(f"Grid baseline fixture must contain exactly one native note: {event_counts!r}")
+selected = f"Grid selection: PAD 01, STEP {step:02d}, no note"
+if len([n for n in nodes if n.attrib.get("content-desc") == selected]) != 1:
+    raise AssertionError(f"Grid baseline selection is not the expected empty cell: {selected!r}")
+print(f"Grid zoom baseline verified: 16 steps, PAD 01 / STEP {step}, native events={event_counts[0]}")
+PY_GRID_ZOOM_BASELINE
+    then
+      echo "ERROR: Grid zoom baseline state is inconsistent"; cat "$GRID_ZOOM_BASELINE_XML"; exit 1
+    fi
+
+    if ! tap_ui_text "$GRID_ZOOM_BASELINE_XML" "ZOOM H"; then
+      echo "ERROR: real-touch Grid ZOOM H Function Bar action failed"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$GRID_ZOOM_H_REMOTE" "$GRID_ZOOM_H_XML"; then
+      echo "ERROR: Grid ZOOM H hierarchy failed"; exit 1
+    fi
+    if ! capture_ui_screenshot "$GRID_ZOOM_H_PNG" 10; then
+      echo "ERROR: Grid ZOOM H screenshot failed"; exit 1
+    fi
+    if ! python3 - "$GRID_ZOOM_BASELINE_XML" "$GRID_ZOOM_H_XML" "$grid_edit_step" <<'PY_GRID_ZOOM_H'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+before_path, after_path, step_s = sys.argv[1:]
+step = int(step_s)
+def read(path):
+    nodes = list(ET.parse(path).getroot().iter("node"))
+    ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
+        "Grid visible step range: steps ")]
+    if len(ranges) != 1:
+        raise AssertionError(f"{path}: expected one accessible Grid step range")
+    m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                     ranges[0].attrib.get("content-desc", ""))
+    if m is None:
+        raise AssertionError(f"{path}: malformed Grid range")
+    first, last, total = map(int, m.groups())
+    counts = [int(m.group(1)) for n in nodes
+              for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
+    selected = f"Grid selection: PAD 01, STEP {step:02d}, no note"
+    if len([n for n in nodes if n.attrib.get("content-desc") == selected]) != 1:
+        raise AssertionError(f"{path}: selected Grid cell changed: {selected!r}")
+    return (first, last, total), counts
+before, before_counts = read(before_path)
+after, after_counts = read(after_path)
+if before_counts != [1] or after_counts != before_counts:
+    raise AssertionError(f"horizontal zoom changed native event count: {before_counts!r} -> {after_counts!r}")
+if after[2] != before[2] or after[1] - after[0] + 1 >= before[1] - before[0] + 1:
+    raise AssertionError(f"ZOOM H must shrink only the visible step window: {before!r} -> {after!r}")
+if not after[0] <= step <= after[1]:
+    raise AssertionError(f"ZOOM H lost selected step {step} from visible window {after!r}")
+print(f"Grid ZOOM H changed viewport only: {before[0]}–{before[1]} -> {after[0]}–{after[1]} of {after[2]}; events remain {after_counts[0]}")
+PY_GRID_ZOOM_H
+    then
+      echo "ERROR: Grid ZOOM H failed viewport-only acceptance"; cat "$GRID_ZOOM_H_XML"; exit 1
+    fi
+
+    if ! tap_ui_text "$GRID_ZOOM_H_XML" "ZOOM V"; then
+      echo "ERROR: real-touch Grid ZOOM V Function Bar action failed"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$GRID_ZOOM_V_REMOTE" "$GRID_ZOOM_V_XML"; then
+      echo "ERROR: Grid ZOOM V hierarchy failed"; exit 1
+    fi
+    if ! capture_ui_screenshot "$GRID_ZOOM_V_PNG" 10; then
+      echo "ERROR: Grid ZOOM V screenshot failed"; exit 1
+    fi
+    if ! python3 - "$GRID_ZOOM_H_XML" "$GRID_ZOOM_V_XML" "$grid_edit_step" <<'PY_GRID_ZOOM_V'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+before_path, after_path, step_s = sys.argv[1:]
+step = int(step_s)
+def read(path):
+    nodes = list(ET.parse(path).getroot().iter("node"))
+    ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
+        "Grid visible step range: steps ")]
+    if len(ranges) != 1:
+        raise AssertionError(f"{path}: expected one accessible Grid step range")
+    m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                     ranges[0].attrib.get("content-desc", ""))
+    if m is None:
+        raise AssertionError(f"{path}: malformed Grid range")
+    steps = tuple(map(int, m.groups()))
+    counts = [int(m.group(1)) for n in nodes
+              for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
+    selected = f"Grid selection: PAD 01, STEP {step:02d}, no note"
+    if len([n for n in nodes if n.attrib.get("content-desc") == selected]) != 1:
+        raise AssertionError(f"{path}: selected Grid cell changed: {selected!r}")
+    return nodes, steps, counts
+before_nodes, before_steps, before_counts = read(before_path)
+after_nodes, after_steps, after_counts = read(after_path)
+if before_steps != after_steps:
+    raise AssertionError(f"ZOOM V unexpectedly changed horizontal range: {before_steps!r} -> {after_steps!r}")
+if before_counts != [1] or after_counts != before_counts:
+    raise AssertionError(f"vertical zoom changed native event count: {before_counts!r} -> {after_counts!r}")
+status = [n.attrib.get("text", "").strip() for n in after_nodes
+          if "GRID ZOOM V • PADS " in n.attrib.get("text", "")]
+if len(status) != 1:
+    raise AssertionError(f"expected one visible vertical-zoom status, got {status!r}")
+m = re.fullmatch(r"GRID ZOOM V • PADS\s+(\d+)[–-](\d+)", status[0])
+if m is None:
+    raise AssertionError(f"malformed vertical zoom status: {status[0]!r}")
+first_pad, last_pad = map(int, m.groups())
+visible_pads = abs(last_pad - first_pad) + 1
+if visible_pads >= 16 or visible_pads < 1 or not min(first_pad, last_pad) <= 1 <= max(first_pad, last_pad):
+    raise AssertionError(f"ZOOM V must reduce visible pad range while retaining PAD 01: {status[0]!r}")
+print(f"Grid ZOOM V changed pad viewport only: {status[0]}; horizontal range {after_steps[0]}–{after_steps[1]} and events={after_counts[0]} unchanged")
+PY_GRID_ZOOM_V
+    then
+      echo "ERROR: Grid ZOOM V failed viewport-only acceptance"; cat "$GRID_ZOOM_V_XML"; exit 1
+    fi
+    echo "Grid horizontal/vertical ZOOM function actions preserve native Pattern and selected PAD/STEP state."
+
     if ! adb_bounded 10 shell run-as "$PACKAGE" \
         touch cache/mpc-arrange-grid-focus-capture-release; then
       echo "ERROR: could not release app-side Arrangement-to-Grid capture checkpoint"
