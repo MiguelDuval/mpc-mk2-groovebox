@@ -6178,13 +6178,87 @@ PY
     GRID_ZOOM_V_REMOTE="/sdcard/mpc-groovebox-grid-zoom-vertical-uiautomator.xml"
     GRID_ZOOM_V_PNG="/tmp/mpc-groovebox-grid-zoom-vertical.png"
 
+    # Select the seeded native note (not an empty cell) before zooming. This lets
+    # both viewport changes prove that pad/step identity, quantize timing and
+    # all event fields remain byte-for-byte equivalent in the accessible model.
+    GRID_ZOOM_PRESELECT_XML="/tmp/mpc-groovebox-grid-zoom-preselect-uiautomator.xml"
+    GRID_ZOOM_PRESELECT_REMOTE="/sdcard/mpc-groovebox-grid-zoom-preselect-uiautomator.xml"
+    if ! dump_device_ui "$GRID_ZOOM_PRESELECT_REMOTE" "$GRID_ZOOM_PRESELECT_XML"; then
+      echo "ERROR: Grid zoom preselection hierarchy failed"; exit 1
+    fi
+    if ! tap_visible_description_early "$GRID_ZOOM_PRESELECT_XML" "Grid Select tool"; then
+      echo "ERROR: could not switch Grid to SELECT before preserving the seeded event"; exit 1
+    fi
+    sleep 0.2
+    if ! dump_device_ui "$GRID_ZOOM_PRESELECT_REMOTE" "$GRID_ZOOM_PRESELECT_XML"; then
+      echo "ERROR: fresh Grid SELECT hierarchy failed"; exit 1
+    fi
+    grid_seed_coordinates="$(python3 - "$GRID_ZOOM_PRESELECT_XML" "$grid_density_info" "$target_step" <<'PY_GRID_ZOOM_SEED_COORDINATES'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, density_text, step_s = sys.argv[1:]
+step = int(step_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    if match is None:
+        raise AssertionError(f"invalid bounds: {node.attrib!r}")
+    return tuple(map(int, match.groups()))
+grid = [n for n in nodes if n.attrib.get("content-desc") == "MPC Grid View drum event grid"]
+if len(grid) != 1:
+    raise AssertionError(f"expected one live Grid canvas, got {len(grid)}")
+ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
+    "Grid visible step range: steps ")]
+if len(ranges) != 1:
+    raise AssertionError(f"expected one step range, got {len(ranges)}")
+m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                 ranges[0].attrib.get("content-desc", ""))
+if m is None:
+    raise AssertionError("malformed Grid visible step range")
+first, last, total = map(int, m.groups())
+if last - first + 1 != 16 or not first <= step <= last <= total:
+    raise AssertionError(f"seeded event step {step} is outside 16-column Grid window {first}–{last}/{total}")
+counts = [int(m.group(1)) for n in nodes
+          for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
+if counts != [1]:
+    raise AssertionError(f"fixture must have one existing native note before zoom: {counts!r}")
+density_matches = re.findall(r"Override density:\s*(\d+)", density_text)
+if not density_matches:
+    density_matches = re.findall(r"Physical density:\s*(\d+)", density_text)
+if not density_matches:
+    raise AssertionError(f"could not parse device density: {density_text!r}")
+density = int(density_matches[-1]) / 160.0
+left, top, right, bottom = bounds(grid[0])
+visible_steps = last - first + 1
+visible_pads = 16
+column, row = step - first, visible_pads - 1
+left_inset, top_inset, end_inset = 42*density, 24*density, 6*density
+plot_width = max(1.0, right-left-left_inset-end_inset)
+plot_height = max(1.0, bottom-top-top_inset-end_inset)
+x = round(left + left_inset + (column+0.5)*plot_width/visible_steps)
+y = round(top + top_inset + (row+0.5)*plot_height/visible_pads)
+if not (left < x < right and top < y < bottom):
+    raise AssertionError(f"seeded note tap {(x,y)} escaped live Grid bounds {(left,top,right,bottom)}")
+print(x, y)
+PY_GRID_ZOOM_SEED_COORDINATES
+    )" || {
+      echo "ERROR: could not derive a live-bounds tap for the existing seeded Grid note"; exit 1;
+    }
+    read -r grid_seed_x grid_seed_y <<< "$grid_seed_coordinates"
+    if ! adb_bounded 10 shell input tap "$grid_seed_x" "$grid_seed_y"; then
+      echo "ERROR: could not select the seeded native note for zoom invariance"; exit 1
+    fi
+    sleep 0.3
     if ! dump_device_ui "$GRID_ZOOM_BASELINE_REMOTE" "$GRID_ZOOM_BASELINE_XML"; then
       echo "ERROR: Grid zoom baseline hierarchy failed"; exit 1
     fi
     if ! capture_ui_screenshot "$GRID_ZOOM_BASELINE_PNG" 10; then
       echo "ERROR: Grid zoom baseline screenshot failed"; exit 1
     fi
-    if ! python3 - "$GRID_ZOOM_BASELINE_XML" "$grid_edit_step" <<'PY_GRID_ZOOM_BASELINE'
+    if ! python3 - "$GRID_ZOOM_BASELINE_XML" "$target_step" <<'PY_GRID_ZOOM_BASELINE'
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -6195,25 +6269,48 @@ nodes = list(ET.parse(path).getroot().iter("node"))
 ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
     "Grid visible step range: steps ")]
 if len(ranges) != 1:
-    raise AssertionError(f"expected one Grid step-range accessibility node, got {len(ranges)}")
-match = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
-                     ranges[0].attrib.get("content-desc", ""))
-if match is None:
-    raise AssertionError(f"malformed Grid step range: {ranges[0].attrib!r}")
-first, last, total = map(int, match.groups())
-if last - first + 1 != 16 or not first <= step <= last <= total:
-    raise AssertionError(f"Grid baseline must show 16 steps including selected step {step}: {first}–{last}/{total}")
+    raise AssertionError(f"expected one Grid step-range node, got {len(ranges)}")
+m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                 ranges[0].attrib.get("content-desc", ""))
+if m is None:
+    raise AssertionError("malformed Grid step range")
+first, last, total = map(int, m.groups())
+if last-first+1 != 16 or not first <= step <= last <= total:
+    raise AssertionError(f"Grid baseline does not include seeded step {step}: {first}–{last}/{total}")
+prefix = f"Grid event parameters: PAD 01, STEP {step:02d}, VEL "
+states = [n.attrib.get("content-desc", "") for n in nodes
+          if n.attrib.get("content-desc", "").startswith(prefix)]
+if len(states) != 1:
+    raise AssertionError(f"expected one selected native event, got {states!r}")
+event_match = re.fullmatch(
+    r"Grid event parameters: PAD 01, STEP 0*(\d+), VEL (\d+), PROB (\d+), "
+    r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)", states[0])
+if event_match is None:
+    raise AssertionError(f"malformed native event fields: {states[0]!r}")
+event = tuple(map(int, event_match.groups()))
+if event[0] != step or not 1 <= event[1] <= 127 or not 0 <= event[2] <= 127 \
+        or not 1 <= event[3] <= 8 or not -960 <= event[4] <= 960 or event[5] <= 0:
+    raise AssertionError(f"native fields outside supported range: {event!r}")
+selected_prefix = f"Grid selection: PAD 01, STEP {step:02d}, note present, velocity "
+selected = [n.attrib.get("content-desc", "") for n in nodes
+            if n.attrib.get("content-desc", "").startswith(selected_prefix)]
+if len(selected) != 1 or selected[0] != selected_prefix + str(event[1]):
+    raise AssertionError(f"selected note identity/velocity disagrees with native fields: {selected!r}, {event!r}")
+resolution = [n.attrib.get("content-desc", "") for n in nodes
+              if n.attrib.get("content-desc", "").startswith("Grid quantize resolution: ")]
+if len(resolution) != 1:
+    raise AssertionError(f"quantize resolution missing: {resolution!r}")
+tick_match = re.search(r"\((\d+) ticks\)$", resolution[0])
+if tick_match is None:
+    raise AssertionError(f"malformed quantize resolution: {resolution[0]!r}")
 event_counts = [int(m.group(1)) for n in nodes
                 for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
 if event_counts != [1]:
-    raise AssertionError(f"Grid baseline fixture must contain exactly one native note: {event_counts!r}")
-selected = f"Grid selection: PAD 01, STEP {step:02d}, no note"
-if len([n for n in nodes if n.attrib.get("content-desc") == selected]) != 1:
-    raise AssertionError(f"Grid baseline selection is not the expected empty cell: {selected!r}")
-print(f"Grid zoom baseline verified: 16 steps, PAD 01 / STEP {step}, native events={event_counts[0]}")
+    raise AssertionError(f"zoom fixture must contain exactly one event: {event_counts!r}")
+print(f"Grid zoom baseline: PAD 01 / STEP {step}, fields={event[1:]}, quantize={tick_match.group(1)} ticks; events={event_counts[0]}")
 PY_GRID_ZOOM_BASELINE
     then
-      echo "ERROR: Grid zoom baseline state is inconsistent"; cat "$GRID_ZOOM_BASELINE_XML"; exit 1
+      echo "ERROR: Grid zoom baseline native event state is inconsistent"; cat "$GRID_ZOOM_BASELINE_XML"; exit 1
     fi
 
     if ! tap_ui_text "$GRID_ZOOM_BASELINE_XML" "ZOOM H"; then
@@ -6226,7 +6323,7 @@ PY_GRID_ZOOM_BASELINE
     if ! capture_ui_screenshot "$GRID_ZOOM_H_PNG" 10; then
       echo "ERROR: Grid ZOOM H screenshot failed"; exit 1
     fi
-    if ! python3 - "$GRID_ZOOM_BASELINE_XML" "$GRID_ZOOM_H_XML" "$grid_edit_step" <<'PY_GRID_ZOOM_H'
+    if ! python3 - "$GRID_ZOOM_BASELINE_XML" "$GRID_ZOOM_H_XML" "$target_step" <<'PY_GRID_ZOOM_H'
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -6238,30 +6335,56 @@ def read(path):
     ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
         "Grid visible step range: steps ")]
     if len(ranges) != 1:
-        raise AssertionError(f"{path}: expected one accessible Grid step range")
-    m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
-                     ranges[0].attrib.get("content-desc", ""))
-    if m is None:
-        raise AssertionError(f"{path}: malformed Grid range")
-    first, last, total = map(int, m.groups())
+        raise AssertionError(f"{path}: expected one Grid step range")
+    rm = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                      ranges[0].attrib.get("content-desc", ""))
+    if rm is None:
+        raise AssertionError(f"{path}: malformed Grid step range")
+    first, last, total = map(int, rm.groups())
+    prefix = f"Grid event parameters: PAD 01, STEP {step:02d}, VEL "
+    states = [n.attrib.get("content-desc", "") for n in nodes
+              if n.attrib.get("content-desc", "").startswith(prefix)]
+    if len(states) != 1:
+        raise AssertionError(f"{path}: expected one selected event, got {states!r}")
+    em = re.fullmatch(
+        r"Grid event parameters: PAD 01, STEP 0*(\d+), VEL (\d+), PROB (\d+), "
+        r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)", states[0])
+    if em is None:
+        raise AssertionError(f"{path}: malformed native fields: {states[0]!r}")
+    event = tuple(map(int, em.groups()))
+    selected_prefix = f"Grid selection: PAD 01, STEP {step:02d}, note present, velocity "
+    selected = [n.attrib.get("content-desc", "") for n in nodes
+                if n.attrib.get("content-desc", "").startswith(selected_prefix)]
+    if len(selected) != 1 or selected[0] != selected_prefix + str(event[1]):
+        raise AssertionError(f"{path}: selected pad/step disagrees with native event: {selected!r}")
+    tick_nodes = [n.attrib.get("content-desc", "") for n in nodes
+                  if n.attrib.get("content-desc", "").startswith("Grid quantize resolution: ")]
+    if len(tick_nodes) != 1:
+        raise AssertionError(f"{path}: missing quantize resolution")
+    tm = re.search(r"\((\d+) ticks\)$", tick_nodes[0])
+    if tm is None:
+        raise AssertionError(f"{path}: malformed quantize label: {tick_nodes[0]!r}")
     counts = [int(m.group(1)) for n in nodes
               for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
-    selected = f"Grid selection: PAD 01, STEP {step:02d}, no note"
-    if len([n for n in nodes if n.attrib.get("content-desc") == selected]) != 1:
-        raise AssertionError(f"{path}: selected Grid cell changed: {selected!r}")
-    return (first, last, total), counts
-before, before_counts = read(before_path)
-after, after_counts = read(after_path)
+    if counts != [1]:
+        raise AssertionError(f"{path}: expected one native note, got {counts!r}")
+    return (first,last,total), event, selected[0], int(tm.group(1)), counts
+before_range, before_event, before_selected, before_ticks, before_counts = read(before_path)
+after_range, after_event, after_selected, after_ticks, after_counts = read(after_path)
+if before_event != after_event or before_selected != after_selected or before_ticks != after_ticks:
+    raise AssertionError(f"ZOOM H changed event identity/timing/fields: "
+                         f"{(before_event,before_selected,before_ticks)!r} -> "
+                         f"{(after_event,after_selected,after_ticks)!r}")
 if before_counts != [1] or after_counts != before_counts:
-    raise AssertionError(f"horizontal zoom changed native event count: {before_counts!r} -> {after_counts!r}")
-if after[2] != before[2] or after[1] - after[0] + 1 >= before[1] - before[0] + 1:
-    raise AssertionError(f"ZOOM H must shrink only the visible step window: {before!r} -> {after!r}")
-if not after[0] <= step <= after[1]:
-    raise AssertionError(f"ZOOM H lost selected step {step} from visible window {after!r}")
-print(f"Grid ZOOM H changed viewport only: {before[0]}–{before[1]} -> {after[0]}–{after[1]} of {after[2]}; events remain {after_counts[0]}")
+    raise AssertionError(f"ZOOM H changed event count: {before_counts!r} -> {after_counts!r}")
+if after_range[2] != before_range[2] or after_range[1]-after_range[0]+1 >= before_range[1]-before_range[0]+1:
+    raise AssertionError(f"ZOOM H must shrink only visible steps: {before_range!r} -> {after_range!r}")
+if not after_range[0] <= step <= after_range[1]:
+    raise AssertionError(f"ZOOM H lost selected event step {step} from viewport {after_range!r}")
+print(f"Grid ZOOM H changed visible steps {before_range[0]}–{before_range[1]} -> {after_range[0]}–{after_range[1]}; event fields/timing unchanged.")
 PY_GRID_ZOOM_H
     then
-      echo "ERROR: Grid ZOOM H failed viewport-only acceptance"; cat "$GRID_ZOOM_H_XML"; exit 1
+      echo "ERROR: Grid ZOOM H changed event data or failed viewport acceptance"; cat "$GRID_ZOOM_H_XML"; exit 1
     fi
 
     if ! tap_ui_text "$GRID_ZOOM_H_XML" "ZOOM V"; then
@@ -6274,7 +6397,7 @@ PY_GRID_ZOOM_H
     if ! capture_ui_screenshot "$GRID_ZOOM_V_PNG" 10; then
       echo "ERROR: Grid ZOOM V screenshot failed"; exit 1
     fi
-    if ! python3 - "$GRID_ZOOM_H_XML" "$GRID_ZOOM_V_XML" "$grid_edit_step" <<'PY_GRID_ZOOM_V'
+    if ! python3 - "$GRID_ZOOM_H_XML" "$GRID_ZOOM_V_XML" "$target_step" <<'PY_GRID_ZOOM_V'
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -6286,41 +6409,69 @@ def read(path):
     ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
         "Grid visible step range: steps ")]
     if len(ranges) != 1:
-        raise AssertionError(f"{path}: expected one accessible Grid step range")
-    m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
-                     ranges[0].attrib.get("content-desc", ""))
-    if m is None:
-        raise AssertionError(f"{path}: malformed Grid range")
-    steps = tuple(map(int, m.groups()))
+        raise AssertionError(f"{path}: expected one Grid step range")
+    rm = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                      ranges[0].attrib.get("content-desc", ""))
+    if rm is None:
+        raise AssertionError(f"{path}: malformed Grid step range")
+    first, last, total = map(int, rm.groups())
+    prefix = f"Grid event parameters: PAD 01, STEP {step:02d}, VEL "
+    states = [n.attrib.get("content-desc", "") for n in nodes
+              if n.attrib.get("content-desc", "").startswith(prefix)]
+    if len(states) != 1:
+        raise AssertionError(f"{path}: expected one selected event, got {states!r}")
+    em = re.fullmatch(
+        r"Grid event parameters: PAD 01, STEP 0*(\d+), VEL (\d+), PROB (\d+), "
+        r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)", states[0])
+    if em is None:
+        raise AssertionError(f"{path}: malformed native fields: {states[0]!r}")
+    event = tuple(map(int, em.groups()))
+    selected_prefix = f"Grid selection: PAD 01, STEP {step:02d}, note present, velocity "
+    selected = [n.attrib.get("content-desc", "") for n in nodes
+                if n.attrib.get("content-desc", "").startswith(selected_prefix)]
+    if len(selected) != 1 or selected[0] != selected_prefix + str(event[1]):
+        raise AssertionError(f"{path}: selected pad/step disagrees with native event: {selected!r}")
+    tick_nodes = [n.attrib.get("content-desc", "") for n in nodes
+                  if n.attrib.get("content-desc", "").startswith("Grid quantize resolution: ")]
+    if len(tick_nodes) != 1:
+        raise AssertionError(f"{path}: missing quantize resolution")
+    tm = re.search(r"\((\d+) ticks\)$", tick_nodes[0])
+    if tm is None:
+        raise AssertionError(f"{path}: malformed quantize label: {tick_nodes[0]!r}")
     counts = [int(m.group(1)) for n in nodes
               for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
-    selected = f"Grid selection: PAD 01, STEP {step:02d}, no note"
-    if len([n for n in nodes if n.attrib.get("content-desc") == selected]) != 1:
-        raise AssertionError(f"{path}: selected Grid cell changed: {selected!r}")
-    return nodes, steps, counts
-before_nodes, before_steps, before_counts = read(before_path)
-after_nodes, after_steps, after_counts = read(after_path)
-if before_steps != after_steps:
-    raise AssertionError(f"ZOOM V unexpectedly changed horizontal range: {before_steps!r} -> {after_steps!r}")
+    if counts != [1]:
+        raise AssertionError(f"{path}: expected one native note, got {counts!r}")
+    status = [n.attrib.get("text", "").strip() for n in nodes
+              if "GRID ZOOM V • PADS " in n.attrib.get("text", "")]
+    if status and len(status) != 1:
+        raise AssertionError(f"{path}: duplicate vertical zoom status nodes: {status!r}")
+    return (first,last,total), event, selected[0], int(tm.group(1)), counts, status
+before_range, before_event, before_selected, before_ticks, before_counts, _ = read(before_path)
+after_range, after_event, after_selected, after_ticks, after_counts, status = read(after_path)
+if before_event != after_event or before_selected != after_selected or before_ticks != after_ticks:
+    raise AssertionError(f"ZOOM V changed event identity/timing/fields: "
+                         f"{(before_event,before_selected,before_ticks)!r} -> "
+                         f"{(after_event,after_selected,after_ticks)!r}")
+if before_range != after_range:
+    raise AssertionError(f"ZOOM V changed horizontal range: {before_range!r} -> {after_range!r}")
 if before_counts != [1] or after_counts != before_counts:
-    raise AssertionError(f"vertical zoom changed native event count: {before_counts!r} -> {after_counts!r}")
-status = [n.attrib.get("text", "").strip() for n in after_nodes
-          if "GRID ZOOM V • PADS " in n.attrib.get("text", "")]
+    raise AssertionError(f"ZOOM V changed event count: {before_counts!r} -> {after_counts!r}")
 if len(status) != 1:
-    raise AssertionError(f"expected one visible vertical-zoom status, got {status!r}")
+    raise AssertionError(f"expected one vertical zoom status node, got {status!r}")
 m = re.fullmatch(r"GRID ZOOM V • PADS\s+(\d+)[–-](\d+)", status[0])
 if m is None:
     raise AssertionError(f"malformed vertical zoom status: {status[0]!r}")
 first_pad, last_pad = map(int, m.groups())
-visible_pads = abs(last_pad - first_pad) + 1
-if visible_pads >= 16 or visible_pads < 1 or not min(first_pad, last_pad) <= 1 <= max(first_pad, last_pad):
+visible_pads = abs(first_pad-last_pad) + 1
+if visible_pads >= 16 or visible_pads < 1 or not min(first_pad,last_pad) <= 1 <= max(first_pad,last_pad):
     raise AssertionError(f"ZOOM V must reduce visible pad range while retaining PAD 01: {status[0]!r}")
-print(f"Grid ZOOM V changed pad viewport only: {status[0]}; horizontal range {after_steps[0]}–{after_steps[1]} and events={after_counts[0]} unchanged")
+print(f"Grid ZOOM V changed pad viewport only: {status[0]}; event identity/timing/fields unchanged.")
 PY_GRID_ZOOM_V
     then
-      echo "ERROR: Grid ZOOM V failed viewport-only acceptance"; cat "$GRID_ZOOM_V_XML"; exit 1
+      echo "ERROR: Grid ZOOM V changed event data or failed viewport acceptance"; cat "$GRID_ZOOM_V_XML"; exit 1
     fi
-    echo "Grid horizontal/vertical ZOOM function actions preserve native Pattern and selected PAD/STEP state."
+    echo "Grid ZOOM H and ZOOM V both change only the viewport; full native event fields and quantize timing are identical."
 
     if ! adb_bounded 10 shell run-as "$PACKAGE" \
         touch cache/mpc-arrange-grid-focus-capture-release; then
