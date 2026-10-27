@@ -9711,6 +9711,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 totalSteps,
                 sequenceGridStartPad,
                 sequenceGridVisiblePads);
+        // Expose the custom Canvas viewport to accessibility. Its cells are
+        // drawn pixels rather than child Views, so UIAutomator cannot otherwise
+        // verify that vertical zoom changed the visible Pad range.
+        sequenceGridView.setContentDescription(String.format(
+                Locale.ROOT,
+                "MPC Grid View drum event grid; Grid visible pad range: pads %02d through %02d of 16",
+                16 - sequenceGridStartPad,
+                17 - sequenceGridStartPad - sequenceGridVisiblePads));
         sequenceGridView.setState(
                 nativeSequenceGetGridVelocities(firstStep, gridTicks),
                 localPlayhead);
@@ -15126,7 +15134,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 + " lastVisibleStep=" + lastVisibleStep
                 + " totalSteps=" + totalSteps);
 
-        final View gridView = findViewWithContentDescription(
+        final View gridView = findViewWithContentDescriptionPrefix(
                 getWindow().getDecorView(), "MPC Grid View drum event grid");
         if (gridView == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: sequence grid editor");
@@ -16114,6 +16122,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             for (int i = 0; i < group.getChildCount(); i++) {
                 View match = findViewWithContentDescription(
                         group.getChildAt(i), expectedDescription);
+                if (match != null) return match;
+            }
+        }
+        return null;
+    }
+
+    private View findViewWithContentDescriptionPrefix(
+            View view, String expectedPrefix) {
+        if (view == null || expectedPrefix == null) return null;
+
+        final CharSequence actual = view.getContentDescription();
+        if (actual != null && actual.toString().startsWith(expectedPrefix)) {
+            return view;
+        }
+
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View match = findViewWithContentDescriptionPrefix(
+                        group.getChildAt(i), expectedPrefix);
                 if (match != null) return match;
             }
         }
