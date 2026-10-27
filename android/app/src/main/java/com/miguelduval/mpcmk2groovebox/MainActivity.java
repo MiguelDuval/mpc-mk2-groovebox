@@ -15224,7 +15224,96 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void continueUiAuditAfterTrackViewMute() {
         if (destroyed) return;
         verifyMuteWorkspaceAndRestoreForAudit(
-                this::continueUiAuditAfterTrackViewMuteToArrange);
+                this::verifyReservedShortcutScreensAndRestoreForAudit);
+    }
+
+    private void verifyReservedShortcutScreensAndRestoreForAudit() {
+        if (destroyed) return;
+        if (!startupComplete || navigationController == null
+                || !"TRACK_VIEW".equals(currentPage)
+                || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: reserved Shortcut audit has no Track View baseline");
+            return;
+        }
+
+        final MpcUiState baseline = navigationController.state();
+        final int sequenceBefore = nativeSequenceGetIndex();
+        final int trackBefore = nativeSequenceGetSelectedTrack();
+        final int padBefore = selectedPadIndexForUi();
+        final MpcUiState.Mode[] modes = {
+                MpcUiState.Mode.CHANNEL_MIXER,
+                MpcUiState.Mode.SOUNDS,
+                MpcUiState.Mode.XYFX
+        };
+        final String[] shortcutDescriptions = {
+                "MPC shortcut CHANNEL MIXER",
+                "MPC shortcut SOUNDS",
+                "MPC shortcut XY"
+        };
+
+        for (int i = 0; i < modes.length; i++) {
+            final MpcUiState.Mode expectedMode = modes[i];
+            final String title = expectedMode.label();
+            View shortcut = findViewWithContentDescription(
+                    getWindow().getDecorView(), shortcutDescriptions[i]);
+            if (shortcut == null || !shortcut.isShown() || !shortcut.isEnabled()
+                    || !shortcut.performClick()) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: reserved Shortcut is not actionable"
+                        + " | mode=" + expectedMode
+                        + " | shortcut=" + describeAuditView(shortcut));
+                return;
+            }
+
+            final View unavailableWorkspace = findViewWithContentDescription(
+                    getWindow().getDecorView(),
+                    "MPC Unavailable workspace " + title);
+            final View unavailableStatus = findViewWithContentDescription(
+                    getWindow().getDecorView(),
+                    "MPC unavailable status " + title);
+            final View back = findViewWithContentDescription(
+                    getWindow().getDecorView(), "MPC unavailable mode Back");
+            final View staleTrackView = findViewWithContentDescription(
+                    getWindow().getDecorView(), "Track View track 1");
+            if (navigationController.state().mode() != expectedMode
+                    || !("UNAVAILABLE_" + expectedMode.name()).equals(currentPage)
+                    || unavailableWorkspace == null || !unavailableWorkspace.isShown()
+                    || unavailableStatus == null || !unavailableStatus.isShown()
+                    || back == null || !back.isShown() || !back.isEnabled()
+                    || staleTrackView != null) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: reserved Shortcut did not replace stale workspace"
+                        + " | expectedMode=" + expectedMode
+                        + " | currentPage=" + currentPage
+                        + " | workspace=" + describeAuditView(unavailableWorkspace)
+                        + " | status=" + describeAuditView(unavailableStatus)
+                        + " | back=" + describeAuditView(back)
+                        + " | staleTrackView=" + describeAuditView(staleTrackView));
+                return;
+            }
+
+            if (!back.performClick()
+                    || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
+                    || !"TRACK_VIEW".equals(currentPage)
+                    || nativeSequenceGetIndex() != sequenceBefore
+                    || nativeSequenceGetSelectedTrack() != trackBefore
+                    || selectedPadIndexForUi() != padBefore
+                    || navigationController.state().selectedSequence() != baseline.selectedSequence()
+                    || navigationController.state().selectedTrack() != baseline.selectedTrack()
+                    || findViewWithContentDescription(
+                            getWindow().getDecorView(), "Track View track 1") == null) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: reserved Shortcut Back lost previous workspace context"
+                        + " | fromMode=" + expectedMode
+                        + " | currentPage=" + currentPage
+                        + " | sequence=" + nativeSequenceGetIndex()
+                        + " | track=" + nativeSequenceGetSelectedTrack()
+                        + " | pad=" + selectedPadIndexForUi());
+                return;
+            }
+        }
+
+        Log.i(TAG, "UI_RESERVED_SHORTCUT_ROUTE_COMPLETE: "
+                + "channelMixerScreen=true soundsScreen=true xyScreen=true "
+                + "priorWorkspaceNotVisible=true selectionPreserved=true");
+        continueUiAuditAfterTrackViewMuteToArrange();
     }
 
     private void continueUiAuditAfterTrackViewMuteToArrange() {

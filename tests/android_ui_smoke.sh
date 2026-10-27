@@ -656,7 +656,8 @@ for required in \
   'nativeSequenceToggleTrackMute(trackIndex)' \
   'UI_MUTE_PAD_CAPTURE_READY:' \
   'UI_MUTE_TRACK_CAPTURE_READY:' \
-  'UI_MUTE_GRID_ROUNDTRIP_COMPLETE:'; do
+  'UI_MUTE_GRID_ROUNDTRIP_COMPLETE:' \
+  'UI_RESERVED_SHORTCUT_ROUTE_COMPLETE:'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" "$NATIVE_ENGINE_SOURCE"; then
     echo "ERROR: real Mute workspace implementation contract missing: $required"
     exit 1
@@ -6457,7 +6458,8 @@ PY
         || [ "$track_view_mute_capture_done" -ne 1 ] \
         || [ "$mute_pad_capture_done" -ne 1 ] \
         || [ "$mute_track_capture_done" -ne 1 ] \
-        || ! grep -Fq -- "UI_MUTE_GRID_ROUNDTRIP_COMPLETE:" <<<"$log_snapshot"; then
+        || ! grep -Fq -- "UI_MUTE_GRID_ROUNDTRIP_COMPLETE:" <<<"$log_snapshot" \
+        || ! grep -Fq -- "UI_RESERVED_SHORTCUT_ROUTE_COMPLETE:" <<<"$log_snapshot"; then
       echo "ERROR: UI audit completed without real Pad/Track Mute grid acceptance and Arrange navigation evidence"
       exit 1
     fi
