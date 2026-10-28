@@ -194,9 +194,14 @@ jobs:
           set -euo pipefail
           mkdir -p build/native-tests
           g++ -std=c++20 -Wall -Wextra -Werror \
-            -Isrc \
+            -Ithird_party/oboe/include -Isrc \
             tests/WavSampleTests.cpp \
             src/Audio/WavSample.cpp \
+            src/Audio/AudioEngine.cpp \
+            src/MPC/MpcCore.cpp \
+            src/MPC/MpcProjectState.cpp \
+            $(find third_party/oboe -name '*.cpp' -not -path '*/test/*' | sort | tr '
+' ' ') \
             -o build/native-tests/wav_sample_tests
           build/native-tests/wav_sample_tests
 
