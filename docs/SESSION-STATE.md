@@ -83,7 +83,8 @@ Changes:
 - `src/MPC/Sequencer/MpcSequencerPlayback.h` — added `trackSoloed_` and `anyTrackSoloed_` pointers; `advance()` suppresses event routing when `anyTrackSoloed_` is true and this track is not soloed; mute takes precedence over solo.
 - `src/MPC/Sequencer/MpcSequencePlaybackSession.h` — computes `anyTrackSoloed` across all tracks and passes `&track.soloed` and `&anyTrackSoloed` to each `MpcSequencerPlayback`.
 - `src/NativeEngine.cpp` — added `nativeSequenceIsTrackSolo`, `nativeSequenceToggleTrackSolo`, `nativeSequenceIsPadSolo`, `nativeSequenceTogglePadSolo` JNI methods.
-- `android/app/.../MainActivity.java` — enabled SOLO button in Function Bar (MAIN and TRACK_VIEW modes), added `toggleSelectedTrackSolo()`, added native method declarations.
+- `android/app/.../MainActivity.java` — enabled SOLO button in Function Bar (MAIN and TRACK_VIEW modes), added `toggleSelectedTrackSolo()`, wired mixer strip SOLO button via `toggleTrackSolo()` listener, added native method declarations.
+- `android/app/.../MpcMainMixerStripView.java` — SOLO button enabled, shows active state when soloed, disabled when not ready.
 - `tests/MpcSequencerPlaybackTests.cpp` — added 4 solo behaviour test cases (soloed track routes, non-soloed suppressed when any soloed, mute takes precedence).
 - `docs/MPC3-USER-ACTION-CATALOG.md` — MAIN-019 changed from RESERVED to IMPLEMENTED — reverify at acceptance boundary.
 
