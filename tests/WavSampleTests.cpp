@@ -230,13 +230,17 @@ void testDecode32BitFloat() {
 
 void testDecodeExtensiblePcm() {
     std::vector<std::uint8_t> bytes;
-    const std::int16_t pcm = 16384;
-    const std::uint32_t dataSize = sizeof(pcm);
-    const std::uint32_t riffSize = 62u;
+
+    const std::vector<std::int16_t> pcm{-100, 0, 100};
+    const std::uint32_t dataSize =
+            static_cast<std::uint32_t>(pcm.size() * sizeof(std::int16_t));
+    const std::uint32_t riffSize = 36u + dataSize + 24;
 
     appendTag(bytes, "RIFF");
     appendU32(bytes, riffSize);
     appendTag(bytes, "WAVE");
+
+    // fmt chunk (extensible, 40 bytes)
     appendTag(bytes, "fmt ");
     appendU32(bytes, 40);
     appendU16(bytes, 0xFFFE);
@@ -248,29 +252,29 @@ void testDecodeExtensiblePcm() {
     appendU16(bytes, 22);
     appendU16(bytes, 16);
     appendU32(bytes, 0);
-    appendU16(bytes, 1);
-    appendU16(bytes, 0);
-    appendU16(bytes, 0);
-    appendU16(bytes, 0x0010);
-    bytes.push_back(0x80);
-    bytes.push_back(0x00);
-    bytes.push_back(0x00);
-    bytes.push_back(0xAA);
-    bytes.push_back(0x00);
-    bytes.push_back(0x38);
-    bytes.push_back(0x9B);
-    bytes.push_back(0x71);
+    // Subformat GUID: 01000000-0000-0010-8000-00AA00389B71 (PCM)
+    const std::uint8_t subformat[16] = {
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
+        0x80, 0x00, 0x00, 0xAA, 0x00, 0x38, 0x9B, 0x71};
+    bytes.insert(bytes.end(), subformat, subformat + 16);
+
     appendTag(bytes, "data");
     appendU32(bytes, dataSize);
-    appendU16(bytes, static_cast<std::uint16_t>(pcm));
+    for (const auto sample : pcm) {
+        appendU16(bytes, static_cast<std::uint16_t>(sample));
+    }
 
     const auto sample = mpc::audio::decodeWav(bytes);
 
     assert(sample.has_value());
     assert(sample->sampleRate == 16000);
     assert(sample->channelCount == 1);
-    assert(sample->frameCount() == 1);
-    assert(sample->sampleAt(0, 0) > 0.49f);
+    assert(sample->frameCount() == 3);
+    assert(sample->sampleAt(0, 0) > -0.01f);
+    assert(sample->sampleAt(0, 0) < 0.0f);
+    assert(sample->sampleAt(1, 0) == 0.0f);
+    assert(sample->sampleAt(2, 0) > 0.0f);
+    assert(sample->sampleAt(2, 0) < 0.01f);
 }
 
 void testInvalidHeader() {
