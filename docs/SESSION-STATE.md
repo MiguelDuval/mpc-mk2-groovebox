@@ -86,7 +86,7 @@ Changes:
 - `android/app/.../MainActivity.java` — enabled SOLO button in Function Bar (MAIN and TRACK_VIEW modes) with visual active-state indication (shows "SOLO" green when active, "S" muted when off); added `toggleSelectedTrackSolo()` with Function Bar refresh; wired mixer strip SOLO button via `toggleTrackSolo()` listener; added native method declarations; wired Track View per-track SOLO button.
 - `android/app/.../MpcMainMixerStripView.java` — SOLO button enabled, shows active state when soloed, disabled when not ready.
 - `tests/MpcSequencerPlaybackTests.cpp` — added 4 solo behaviour test cases (soloed track routes, non-soloed suppressed when any soloed, mute takes precedence).
-- `tests/android_ui_smoke.sh` — updated Track View strip control contract: replaced `'Track View track solo unavailable'` with `'Track View track solo'` and added `'nativeSequenceToggleTrackSolo(trackIndex)'`.
+- `tests/android_ui_smoke.sh` — fixed Track View strip control preflight: replaced literal `'Track View track solo'` check (impossible match against dynamic `"Track View track " + (i + 1) + " solo"` in `MainActivity.java`) with three checks: `soloButton` exists, `setContentDescription(` is called, and `"Track View track "` dynamic accessibility description pattern is present. Kept `nativeSequenceToggleTrackSolo(trackIndex)` in the required list.
 - `docs/MPC3-USER-ACTION-CATALOG.md` — MAIN-019 changed from RESERVED to IMPLEMENTED — reverify at acceptance boundary.
 
 ### 11. Browser favorite location gating fix — FIXED
@@ -177,6 +177,30 @@ All code changes pass `git diff --check` clean. Native C++ tests (steps 8-13) pa
 Next step: Need direct access to step 14 Gradle output to identify the specific compilation or test failure. This is a pre-existing infrastructure/configuration issue affecting all runs on this branch, not a regression from current changes.
 
 The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
+
+### 19. CI failure investigation — RUN #3494/#3495/#3496 (SHA 557fcc4/7e0cab0/3c42b418)
+
+CI run #3494 (SHA `557fcc4`) FAILED at step 52 "Run Android emulator smoke test" with error "Track View strip control contract missing: Track View track solo".
+
+Root cause: `tests/android_ui_smoke.sh` contained a literal string check `'Track View track solo'` in the `for required in` list for `showTrackViewPage()` source block. But `MainActivity.java` generates the solo button accessibility description dynamically as `"Track View track " + (i + 1) + " solo"`, so no literal `"Track View track solo"` (without track number) exists in the source.
+
+Fix applied in commit `7e0cab0` (HEAD `3c42b418`):
+- Removed `'Track View track solo'` from the literal `required` list.
+- Added three checks: `soloButton` exists in `track_view_block`, `setContentDescription(` is called, and `"Track View track "` dynamic accessibility description pattern is present.
+- Kept `nativeSequenceToggleTrackSolo(trackIndex)` in the required list.
+
+CI run #3495 (SHA `7e0cab0`) FAILED at step 52 again (exit code 1, ~5m 3s).
+CI run #3496 (SHA `3c42b418`, empty re-trigger) FAILED at step 52 again (exit code 1, ~6m 52s).
+
+Steps 1-51 pass in all runs (including WAV tests, native tests, APK assemble, APK upload, smoke syntax validation). Steps 49-50 (APK build/upload) pass. Step 51 (smoke syntax validation) passes. Only step 52 (emulator smoke test) fails.
+
+Check-run annotations confirm:
+- Failure (line ~247): The process '/usr/bin/sh' failed with exit code 1
+- Warning (line ~150): No files were found with the provided path: /tmp/mpc-groovebox-startup.png ... (from step 53 artifact upload after step 52 failure)
+
+Step-level logs are not accessible via GitHub API (403 Forbidden). Web UI requires sign-in to view logs. The exact step 52 error message is not visible from available tooling.
+
+Next step: Need direct access to step 52 emulator logs to identify the specific failure. The preflight fix is verified correct against `MainActivity.java` source: `soloButton` exists (line 8285), `setContentDescription(` exists (line 8294), `"Track View track "` dynamic pattern exists (line 8295), `nativeSequenceToggleTrackSolo(trackIndex)` is called (line 8289), `showTrackViewPage()` is called after toggle (line 8290).
 
 ## Mandatory operating rules
 
