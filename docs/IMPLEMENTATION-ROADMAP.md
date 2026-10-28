@@ -9,6 +9,16 @@
 - Scope: real Pad Mute and Track Mute 4×4 grids; native state readback; 16-Track banks; full-size truthful RESERVED routing; runtime assertions for toggling/restoring real musical mute state while retaining Sequence/Track/Pad and event data. Canonical Main remains controller-first with no permanent software pad grid.
 - Physical MPC Studio MkII validation remains separate from emulator acceptance.
 
+#### Track Solo (MAIN-019) — IMPLEMENTED, pending CI verification
+
+- Branch `feature/mpc-overnight-20261028`, based on verified P0 recovery SHA `f734930c`.
+- Domain already had `Track.soloed` and `Pad.soloed` fields; MpcUiState already tracked `soloed`; NavigationController already had `setTrackState(muted, soloed, recordArmed)`.
+- Added native JNI: `nativeSequenceIsTrackSolo`, `nativeSequenceToggleTrackSolo`, `nativeSequenceIsPadSolo`, `nativeSequenceTogglePadSolo`.
+- Added playback gating in `MpcSequencerPlayback`: when `anyTrackSoloed` is true, only soloed tracks route events; mute takes precedence over solo.
+- Enabled SOLO button in Main Function Bar (MAIN and TRACK_VIEW modes) with `toggleSelectedTrackSolo()`.
+- Added 4 solo behaviour test cases to `MpcSequencerPlaybackTests.cpp`.
+- Action Catalog MAIN-019 changed from RESERVED to IMPLEMENTED — reverify at acceptance boundary.
+
 ## Latest accepted primary checkpoint — PR #23
 
 - PR #23 remains OPEN: feature/mpc-one-ui-fidelity → fix/ui-shell-format-width-startup. Current HEAD d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991; base SHA 5f562e54e2cf8235041590933232a3836d74a16a.

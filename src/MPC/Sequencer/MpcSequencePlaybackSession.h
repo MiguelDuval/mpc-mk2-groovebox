@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <ranges>
 #include <utility>
 #include <vector>
 
@@ -44,6 +45,11 @@ public:
         // one stable sequence-length Pattern assembled from the track's clips.
         arrangementPatterns_.reserve(sequence.tracks.size());
 
+        const bool anyTrackSoloed =
+                std::ranges::any_of(
+                        sequence.tracks,
+                        [](const domain::Track& t) { return t.soloed; });
+
         for (const auto& track : sequence.tracks) {
             if (track.patterns.empty()) {
                 continue;
@@ -69,7 +75,9 @@ public:
                     arrangementPatterns_.back(),
                     *program,
                     audio_.triggerQueue(),
-                    &track.muted));
+                    &track.muted,
+                    &track.soloed,
+                    &anyTrackSoloed));
         }
 
         if (playbacks_.empty()) {

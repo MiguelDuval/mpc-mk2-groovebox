@@ -88,6 +88,89 @@ int main() {
     assert(stoppedAgain.queued == 0);
     assert(playback.positionTicks() == 960);
 
+    // --- Solo behaviour tests ---
+    mpc::domain::Pattern soloPattern;
+    soloPattern.lengthTicks = 3840;
+    soloPattern.notes = {
+            {0, 120, 36, 100, 127, 1},
+            {960, 120, 37, 110, 127, 1}};
+
+    mpc::audio::AudioTriggerQueue soloQueue;
+
+    bool trackMuted = false;
+    bool trackSoloed = true;
+    bool anyTrackSoloed = true;
+    mpc::sequencer::MpcSequencerPlayback soloedPlayback(
+            sequence,
+            soloPattern,
+            program,
+            soloQueue,
+            &trackMuted,
+            &trackSoloed,
+            &anyTrackSoloed);
+
+    soloedPlayback.start();
+    const auto soloedResult = soloedPlayback.advance(1920, 99u, 48000);
+    assert(soloedResult.scheduled == 2);
+    assert(soloedResult.routed == 2);
+    assert(soloedResult.queued == 2);
+
+    // Same track, but solo disabled globally: should still route (no other soloed tracks)
+    bool anyTrackSoloedOff = false;
+    mpc::sequencer::MpcSequencerPlayback notSoloedGlobally(
+            sequence,
+            soloPattern,
+            program,
+            soloQueue,
+            &trackMuted,
+            &trackSoloed,
+            &anyTrackSoloedOff);
+
+    notSoloedGlobally.start();
+    const auto notSoloedResult =
+            notSoloedGlobally.advance(1920, 99u, 48000);
+    assert(notSoloedResult.scheduled == 2);
+    assert(notSoloedResult.routed == 2);
+    assert(notSoloedResult.queued == 2);
+
+    // Track not soloed while another track is soloed: events suppressed
+    bool otherTrackSoloed = false;
+    bool anyOtherSoloed = true;
+    mpc::sequencer::MpcSequencerPlayback unsoloedPlayback(
+            sequence,
+            soloPattern,
+            program,
+            soloQueue,
+            &trackMuted,
+            &otherTrackSoloed,
+            &anyOtherSoloed);
+
+    unsoloedPlayback.start();
+    const auto unsoloedResult = unsoloedPlayback.advance(1920, 99u, 48000);
+    assert(unsoloedResult.scheduled == 2);
+    assert(unsoloedResult.routed == 0);
+    assert(unsoloedResult.queued == 0);
+
+    // Mute takes precedence over solo: muted track produces nothing even if soloed
+    bool mutedTrack = true;
+    bool soloedTrack = true;
+    bool anySoloed = true;
+    mpc::sequencer::MpcSequencerPlayback mutedAndSoloed(
+            sequence,
+            soloPattern,
+            program,
+            soloQueue,
+            &mutedTrack,
+            &soloedTrack,
+            &anySoloed);
+
+    mutedAndSoloed.start();
+    const auto mutedSoloedResult =
+            mutedAndSoloed.advance(1920, 99u, 48000);
+    assert(mutedSoloedResult.scheduled == 2);
+    assert(mutedSoloedResult.routed == 0);
+    assert(mutedSoloedResult.queued == 0);
+
     mpc::domain::Pattern ratchetPattern;
     ratchetPattern.lengthTicks = 3840;
     ratchetPattern.notes = {

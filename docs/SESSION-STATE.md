@@ -1,6 +1,6 @@
 # Session State — MPC MkII Groovebox
 
-**Checkpoint date:** 2026-10-27  
+**Checkpoint date:** 2026-10-28  
 **Purpose:** live handoff. Exact branch HEAD, exact-SHA CI and inspected artifacts govern; this document is not a substitute for live GitHub state.
 
 ## Latest verified primary acceptance — PR #23
@@ -75,7 +75,19 @@ Created [MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md](MPC-STUDIO-MKII-RE
 
 The official playlists could not be fully transcript-audited through the available source view, so the document labels them indexed but not fully reviewed. It does not invent video findings. Hardware doc/semantic-map status summaries were reconciled; agent instructions and the operating protocol now require traceability before controller work. No app/runtime code was changed in this documentation slice. The current exact-HEAD workflow result still requires a live check.
 
-## Superseded execution note — 2026-10-21
+### 10. Track Solo (MAIN-019) — IMPLEMENTED, pending CI verification
+
+Implemented real Track Solo on branch `feature/mpc-overnight-20261028`, based on verified P0 recovery SHA `f734930c`.
+
+Changes:
+- `src/MPC/Sequencer/MpcSequencerPlayback.h` — added `trackSoloed_` and `anyTrackSoloed_` pointers; `advance()` suppresses event routing when `anyTrackSoloed_` is true and this track is not soloed; mute takes precedence over solo.
+- `src/MPC/Sequencer/MpcSequencePlaybackSession.h` — computes `anyTrackSoloed` across all tracks and passes `&track.soloed` and `&anyTrackSoloed` to each `MpcSequencerPlayback`.
+- `src/NativeEngine.cpp` — added `nativeSequenceIsTrackSolo`, `nativeSequenceToggleTrackSolo`, `nativeSequenceIsPadSolo`, `nativeSequenceTogglePadSolo` JNI methods.
+- `android/app/.../MainActivity.java` — enabled SOLO button in Function Bar (MAIN and TRACK_VIEW modes), added `toggleSelectedTrackSolo()`, added native method declarations.
+- `tests/MpcSequencerPlaybackTests.cpp` — added 4 solo behaviour test cases (soloed track routes, non-soloed suppressed when any soloed, mute takes precedence).
+- `docs/MPC3-USER-ACTION-CATALOG.md` — MAIN-019 changed from RESERVED to IMPLEMENTED — reverify at acceptance boundary.
+
+Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
 
 The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
 

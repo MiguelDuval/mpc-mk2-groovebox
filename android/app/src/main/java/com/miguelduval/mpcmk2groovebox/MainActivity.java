@@ -617,6 +617,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native boolean nativeSequenceIsPadMuted(int padIndex);
     private static native String nativeSequenceTogglePadMute(int padIndex);
     private static native String nativeSequenceToggleTrackMute(int trackIndex);
+    private static native boolean nativeSequenceIsPadSolo(int padIndex);
+    private static native String nativeSequenceTogglePadSolo(int padIndex);
+    private static native boolean nativeSequenceIsTrackSolo(int trackIndex);
+    private static native String nativeSequenceToggleTrackSolo(int trackIndex);
     private static native String nativeSequenceStart();
     private static native String nativeSequenceStop();
     private static native String nativeSequenceReset();
@@ -2008,7 +2012,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "MUTE", trackCount > 0, v -> showMutePage());
             muteWorkspace.setContentDescription(
                     "MPC Function Bar Open Mute workspace");
-            addFunction("SOLO", false, null);
+            Button soloWorkspace = addFunction(
+                    "SOLO", trackCount > 0, v -> toggleSelectedTrackSolo());
+            soloWorkspace.setContentDescription(
+                    "MPC Function Bar Toggle Solo selected Track");
             return;
         }
 
@@ -2027,7 +2034,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "MUTE", trackCount > 0, v -> showMutePage());
             muteWorkspace.setContentDescription(
                     "MPC Function Bar Open Mute workspace");
-            addFunction("SOLO", false, null);
+            Button soloWorkspace = addFunction(
+                    "SOLO", trackCount > 0, v -> toggleSelectedTrackSolo());
+            soloWorkspace.setContentDescription(
+                    "MPC Function Bar Toggle Solo selected Track");
             return;
         }
 
@@ -2549,6 +2559,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void toggleSelectedTrackMute() {
         final int track = nativeSequenceGetSelectedTrack();
         setBottomStatus(nativeSequenceToggleTrackMute(track));
+
+        if ("ARRANGE".equals(currentPage)) {
+            loadArrangementLanes();
+            refreshArrangeView();
+            refreshMpcCompactContext();
+            return;
+        }
+
+        if ("TRACK_VIEW".equals(currentPage)) {
+            showTrackViewPage();
+            return;
+        }
+
+        refreshSequenceControls();
+        refreshMpcCompactContext();
+        if ("MAIN".equals(currentPage)) {
+            refreshMainArrangementPreview();
+        }
+    }
+
+    private void toggleSelectedTrackSolo() {
+        final int track = nativeSequenceGetSelectedTrack();
+        setBottomStatus(nativeSequenceToggleTrackSolo(track));
 
         if ("ARRANGE".equals(currentPage)) {
             loadArrangementLanes();
