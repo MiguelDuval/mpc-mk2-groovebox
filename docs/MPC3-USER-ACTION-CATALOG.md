@@ -161,7 +161,7 @@ Manual anchor: S-01 Main p.15 and Tracks p.45; S-02; S-07. Firmware clues: F-01 
 | MAIN-015 | Main Function Bar: New Track | Add a genuine Sequence Track and refresh selection/list. | Native add-track operation is recorded as available. | Add a Track and verify count, identity and selected Track. |
 | MAIN-016 | Main Function Bar: Rec Arm | Toggle real recording-arm state on selected Track. | Implemented for the current Track state. | Toggle, navigate and verify state; physical LED feedback separately. |
 | MAIN-017 | Main Function Bar: Track - / Track + | Select adjacent Track using the shared selected Track context. | Implemented for current Track-selection semantic. | Exercise lower/upper boundaries and confirm no invalid index. |
-| MAIN-018 | Main Function Bar: Mute | Toggle selected Track mute in real Sequence state. | Implemented in Main/Track View. | Toggle and inspect the shared state; audio behavior must be tested if claimed. |
+| MAIN-018 | Main Function Bar: Mute | Open the dedicated Mute workspace without losing selected Sequence/Track/Pad context. | Implemented in Main/Track View; exposes real 4×4 Pad Mute and Track Mute grids. | Runtime acceptance toggles a real Pad mute bit and a real Track mute bit, captures both visible states and restores both original states plus musical context. |
 | MAIN-019 | Main Function Bar: Solo | Solo selected Track. | RESERVED: no established semantic solo backend. | Keep unavailable until the domain/audio route exists; never simulate it with Mute. |
 | MAIN-020 | Edit TRANSPOSE | Change musical transposition using a real sequence/program semantic. | RESERVED / visibly unavailable in current contract. | Implement only after identifying the correct scope and native setter. |
 
@@ -218,6 +218,18 @@ Manual anchor: S-01 Tracks p.45 and Track View descriptions; S-02. Current seman
 | TRK-006 | Move Track selection with Track +/- or Data Dial | Select a valid adjacent Track and update shared context. | Implemented for selection subset. | Check first/last Track bounds and active focus. |
 | TRK-007 | Duplicate/Delete Track | Mutate Sequence Track list and reconcile dependent Program/sample state. | Not established by current action evidence; treat as GAP until source and test confirm. | Require native operation, index normalization, Undo/Redo as designed and no stale references. |
 | TRK-008 | Open Track Settings / I/O / routing | Expose only actual Track settings and supported routing values. | PARTIAL / RESERVED for unsupported I/O and broader routing. | Validate every displayed editable field against a real setter/provider. |
+
+### Mute workspace actions
+
+| ID | User action | Expected state contract | Current app mapping / status | Acceptance path |
+|---|---|---|---|---|
+| MUTE-001 | Open Mute from Main or Track View | Replace the active workspace with a 4×4 interactive grid and retain selected Sequence/Track/Pad state. | Implemented; the shell Function Bar routes to a dedicated Mute workspace. | Exact-SHA emulator audit captures fresh PNG + UI hierarchy and verifies 16 children, four rows and four columns. |
+| MUTE-002 | Toggle Pad Mute | Flip the active Drum Program's real Pad mute bit; show the current ON/OFF state per Pad. | Uses the existing native Pad mute command plus a read-only native state query; targets are disabled for unsupported Track Types. | Tap Pad 01, assert native state changed, inspect its visible state in screenshot/XML, restore and assert the initial state. |
+| MUTE-003 | Toggle Track Mute | Flip the real Sequence Track mute bit from a 4×4 Track target grid; support additional 16-Track banks when needed. | Uses the existing native Track mute command and native Track count/state. Empty slots are disabled, not fabricated Tracks. | Tap the selected Track target, assert native state changed, capture fresh PNG/XML, restore and verify selection/event data are unchanged. |
+
+### Mute workspace acceptance evidence — 2026-10-27
+
+The Mute actions above passed Android Build #3465 on code SHA `f734930cae403d0794e3d4b504e4bf8f5f7c6e84` ([run 40591850947](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40591850947), all 57 steps). Exact-run APK artifact `12775051524` SHA-256 `3b1ea246a0a5e1f069d6fc99eea82952b7ea5624a77712b20c08a063be909e71`; visual artifact `12775747260` SHA-256 `96bf4e0e085ffb7ee86fe0a7600358473f6c4a6df71148e46dbe2b21d1dd345b`. The artifact was downloaded and inspected: Pad Mute PNG/XML show 16 Pad targets and real ON/OFF state; Track Mute PNG/XML show 16 Track slots, real state, and empty disabled slots. The smoke toggled/restored actual native Pad/Track mute values and verified selected context/note invariance. Main MUTE Back and Reserved route/back behavior have runtime assertions; no separate Reserved screenshot is claimed. Physical MPC Studio MkII acceptance remains pending.
 
 ## 11. Arrangement actions
 
