@@ -89,6 +89,10 @@ Changes:
 - `tests/android_ui_smoke.sh` — updated Track View strip control contract: replaced `'Track View track solo unavailable'` with `'Track View track solo'` and added `'nativeSequenceToggleTrackSolo(trackIndex)'`.
 - `docs/MPC3-USER-ACTION-CATALOG.md` — MAIN-019 changed from RESERVED to IMPLEMENTED — reverify at acceptance boundary.
 
+### 11. Browser favorite location gating fix — FIXED
+
+Fixed `MpcBrowserView.isCatalogLocationSupported()` which incorrectly gated FAVORITE 1-5 locations behind `userFolderConfigured && userFolderAccessReady`. Favorites now check `isDocumentLocation()` only, independent of user folder state. Also simplified `unavailableLocationTitle()` and `unavailableLocationDetail()` for favorites to not reference user folder state.
+
 Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
 
 The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
