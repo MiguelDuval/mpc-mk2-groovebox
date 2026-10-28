@@ -81,11 +81,12 @@ Implemented real Track Solo on branch `feature/mpc-overnight-20261028`, based on
 
 Changes:
 - `src/MPC/Sequencer/MpcSequencerPlayback.h` — added `trackSoloed_` and `anyTrackSoloed_` pointers; `advance()` suppresses event routing when `anyTrackSoloed_` is true and this track is not soloed; mute takes precedence over solo.
-- `src/MPC/Sequencer/MpcSequencePlaybackSession.h` — computes `anyTrackSoloed` across all tracks and passes `&track.soloed` and `&anyTrackSoloed` to each `MpcSequencerPlayback`.
-- `src/NativeEngine.cpp` — added `nativeSequenceIsTrackSolo`, `nativeSequenceToggleTrackSolo`, `nativeSequenceIsPadSolo`, `nativeSequenceTogglePadSolo` JNI methods.
-- `android/app/.../MainActivity.java` — enabled SOLO button in Function Bar (MAIN and TRACK_VIEW modes), added `toggleSelectedTrackSolo()`, wired mixer strip SOLO button via `toggleTrackSolo()` listener, added native method declarations.
+- `src/MPC/Sequencer/MpcSequencePlaybackSession.h` — computes `anyTrackSoloed` across all tracks and passes `&track.soloed` and `&anyTrackSoloed` to each `MpcSequencerPlayback`; added `updateSoloState()` to recompute when solo changes during playback.
+- `src/NativeEngine.cpp` — added `nativeSequenceIsTrackSolo`, `nativeSequenceToggleTrackSolo`, `nativeSequenceIsPadSolo`, `nativeSequenceTogglePadSolo` JNI methods; calls `updateSoloState()` after toggling track solo.
+- `android/app/.../MainActivity.java` — enabled SOLO button in Function Bar (MAIN and TRACK_VIEW modes) with visual active-state indication (shows "SOLO" green when active, "S" muted when off); added `toggleSelectedTrackSolo()` with Function Bar refresh; wired mixer strip SOLO button via `toggleTrackSolo()` listener; added native method declarations; wired Track View per-track SOLO button.
 - `android/app/.../MpcMainMixerStripView.java` — SOLO button enabled, shows active state when soloed, disabled when not ready.
 - `tests/MpcSequencerPlaybackTests.cpp` — added 4 solo behaviour test cases (soloed track routes, non-soloed suppressed when any soloed, mute takes precedence).
+- `tests/android_ui_smoke.sh` — updated Track View strip control contract: replaced `'Track View track solo unavailable'` with `'Track View track solo'` and added `'nativeSequenceToggleTrackSolo(trackIndex)'`.
 - `docs/MPC3-USER-ACTION-CATALOG.md` — MAIN-019 changed from RESERVED to IMPLEMENTED — reverify at acceptance boundary.
 
 Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
