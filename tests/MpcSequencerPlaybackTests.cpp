@@ -211,8 +211,8 @@ int main() {
             &sequenceOneSolo, &sequenceOneOther};
     const std::array<const mpc::domain::Track*, 1> sequenceTwoPlaybacks{
             &sequenceTwoTrack};
-    assert(mpc::sequencer::hasSoloedPlayableTrack(sequenceOnePlaybacks));
-    assert(!mpc::sequencer::hasSoloedPlayableTrack(sequenceTwoPlaybacks));
+    assert(mpc::sequencer::hasSoloedPlaybackTrack(sequenceOnePlaybacks));
+    assert(!mpc::sequencer::hasSoloedPlaybackTrack(sequenceTwoPlaybacks));
     assert(mpc::sequencer::shouldRouteTrackForSolo(false, false, false));
     assert(!mpc::sequencer::shouldRouteTrackForSolo(false, false, true));
     assert(mpc::sequencer::shouldRouteTrackForSolo(false, true, true));
