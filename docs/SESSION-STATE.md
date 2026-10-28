@@ -95,6 +95,18 @@ Fixed `MpcBrowserView.isCatalogLocationSupported()` which incorrectly gated FAVO
 
 Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
 
+### 12. Sample WAV persistence across project save/reopen — IMPLEMENTED
+
+Fixed the critical gap where imported sample WAV data was lost on project save/reopen. `nativeProjectLoad` acknowledged "sample PCM is not embedded; assigned WAVs may need reload" — samples would not play after project reopen.
+
+Changes:
+- `src/Audio/AudioEngine.h` — `loadSampleForPadLayer` accepts optional `sourcePath` parameter; `loadSampleForPad` delegates with default empty path.
+- `src/Audio/AudioEngine.cpp` — passes `sourcePath` to `projectState_.registerSample()` instead of hardcoded `""`.
+- `src/NativeEngine.cpp` — JNI `nativeAudioLoadSampleForPadLayer` accepts `jstring sourcePath` and converts to UTF-8; `nativeProjectLoad` now iterates all Drum Program pad layers, reads WAV files from stored `SampleRef.path` paths, and reloads them into the AudioEngine after project replacement. Removed the "sample PCM is not embedded" disclaimer from the load result.
+- `android/app/.../MainActivity.java` — JNI declaration updated with `String sourcePath` parameter; `assignSelectedBrowserFile()` saves imported WAV bytes to `getFilesDir()/samples/` and passes the internal path; WAV picker result handler (`REQUEST_OPEN_WAV`) does the same; `loadBundledSample()` passes `null` for path (bundled asset has no file path).
+
+Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
+
 The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
 
 ## Mandatory operating rules
