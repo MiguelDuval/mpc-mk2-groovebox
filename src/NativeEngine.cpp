@@ -4168,6 +4168,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackSolo(
             state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)];
     track.soloed = !track.soloed;
 
+    sequenceSession().updateSoloState();
+
     return toJString(
             env,
             "TRACK " + std::to_string(trackIndex + 1)

@@ -45,10 +45,9 @@ public:
         // one stable sequence-length Pattern assembled from the track's clips.
         arrangementPatterns_.reserve(sequence.tracks.size());
 
-        const bool anyTrackSoloed =
-                std::ranges::any_of(
-                        sequence.tracks,
-                        [](const domain::Track& t) { return t.soloed; });
+        anyTrackSoloed_ = std::ranges::any_of(
+                sequence.tracks,
+                [](const domain::Track& t) { return t.soloed; });
 
         for (const auto& track : sequence.tracks) {
             if (track.patterns.empty()) {
@@ -77,7 +76,7 @@ public:
                     audio_.triggerQueue(),
                     &track.muted,
                     &track.soloed,
-                    &anyTrackSoloed));
+                    &anyTrackSoloed_));
         }
 
         if (playbacks_.empty()) {
@@ -98,6 +97,13 @@ public:
         }
         playbacks_.clear();
         arrangementPatterns_.clear();
+    }
+
+    void updateSoloState() noexcept {
+        const auto& sequence = projectState_.activeSequence();
+        anyTrackSoloed_ = std::ranges::any_of(
+                sequence.tracks,
+                [](const domain::Track& t) { return t.soloed; });
     }
 
     void reset() noexcept {
@@ -150,6 +156,7 @@ public:
 private:
     MpcProjectState& projectState_;
     audio::AudioEngine& audio_;
+    bool anyTrackSoloed_ = false;
     std::vector<domain::Pattern> arrangementPatterns_;
     std::vector<std::unique_ptr<MpcSequencerPlayback>> playbacks_;
 };
