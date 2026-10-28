@@ -3447,7 +3447,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     if (MpcTrackProgramPolicy.supportsProgramSelect(trackType)) {
                         showProgramSelectPage();
                     } else {
-                        showTrackTypeSelectPage();
+                        setBottomStatus(TRACK_TYPE_CHANGE_RESERVED_STATUS);
                     }
                 });
         programField.setContentDescription("Main Mode selected program");
@@ -5978,79 +5978,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     setBottomStatus(
                             "PROGRAM EDIT • RESERVED until per-program editor");
                 }), weight());
-        page.addView(footer, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
-
-        content.addView(page);
-        refreshMpcCompactContext();
-        refreshMpcFunctionBar();
-        updateModeRailSelection();
-    }
-
-    private void showTrackTypeSelectPage() {
-        clearStepEditPadLeds();
-        nativeSequenceSetStepEditContext(false, 0);
-        nativeSequenceSetLauncherContext(false, 0);
-
-        currentPage = "MAIN";
-        navigationController.navigate(MpcUiState.Mode.MAIN);
-        navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_TYPE_SELECT);
-        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK_TYPE);
-        pageTitle.setText("TRACK TYPE");
-        content.removeAllViews();
-
-        LinearLayout page = page();
-        page.setPadding(dp(8), dp(6), dp(8), dp(2));
-
-        final int selectedTrack = Math.max(0, nativeSequenceGetSelectedTrack());
-        final String currentType = nativeSequenceGetTrackType(selectedTrack);
-
-        TextView heading = label(
-                String.format(
-                        Locale.ROOT,
-                        "TRACK TYPE • TRACK %02d",
-                        selectedTrack + 1),
-                13, TEXT);
-        heading.setTypeface(Typeface.DEFAULT_BOLD);
-        page.addView(heading, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
-
-        final String[] trackTypes = {"DRUM", "KEYGROUP", "PLUGIN", "MIDI", "AUDIO"};
-
-        ScrollView scroll = new ScrollView(this);
-        LinearLayout list = column();
-        list.setContentDescription("Track Type select list");
-
-        for (int i = 0; i < trackTypes.length; i++) {
-            final int kind = i;
-            final boolean isCurrent = trackTypes[i].equals(currentType);
-            Button b = actionButton(
-                    String.format(
-                            Locale.ROOT,
-                            "%s%s",
-                            trackTypes[i],
-                            isCurrent ? "  • CURRENT" : ""),
-                    v -> {
-                        setBottomStatus(nativeSequenceSetTrackKind(selectedTrack, kind));
-                        showTrackTypeSelectPage();
-                    });
-            b.setGravity(Gravity.CENTER_VERTICAL);
-            b.setPadding(dp(10), 0, dp(10), 0);
-            b.setBackground(strokeBackground(
-                    isCurrent ? Color.rgb(42, 66, 76) : SURFACE_2,
-                    isCurrent ? ACCENT : LINE,
-                    7));
-            list.addView(b, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
-        }
-        scroll.addView(list);
-        page.addView(scroll, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
-
-        LinearLayout footer = row();
-        footer.addView(actionButton(
-                "BACK MAIN",
-                v -> showMainPage()), weight());
         page.addView(footer, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
