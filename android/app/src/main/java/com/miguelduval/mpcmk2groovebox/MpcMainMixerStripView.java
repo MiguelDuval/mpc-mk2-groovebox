@@ -31,6 +31,7 @@ final class MpcMainMixerStripView extends LinearLayout {
         boolean isStartupReady();
         boolean mixerStripVisible();
         void toggleTrackMute();
+        void toggleTrackSolo();
         void onMixerStripVisibilityChanged(boolean visible);
     }
 
@@ -104,7 +105,8 @@ final class MpcMainMixerStripView extends LinearLayout {
             float padPan,
             float padTuning,
             String padSampleName,
-            boolean trackMuted) {
+            boolean trackMuted,
+            boolean trackSoloed) {
         setVisibility(View.VISIBLE);
         strips.setVisibility(visible ? View.VISIBLE : View.GONE);
 
@@ -146,6 +148,7 @@ final class MpcMainMixerStripView extends LinearLayout {
                             trackName,
                             programName,
                             trackMuted,
+                            trackSoloed,
                             listener != null && listener.isStartupReady()),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
         } else {
@@ -158,6 +161,7 @@ final class MpcMainMixerStripView extends LinearLayout {
                             trackName,
                             programName,
                             trackMuted,
+                            trackSoloed,
                             listener != null && listener.isStartupReady()),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
             strips.addView(
@@ -173,6 +177,7 @@ final class MpcMainMixerStripView extends LinearLayout {
             String trackName,
             String programName,
             boolean muted,
+            boolean soloed,
             boolean ready) {
         LinearLayout strip = baseStrip(context);
         addIdentityHeader(
@@ -229,8 +234,17 @@ final class MpcMainMixerStripView extends LinearLayout {
         });
         controls.addView(muteButton, new LayoutParams(0, dp(context, 30), 1));
 
-        Button solo = controlButton(context, "SOLO", false);
-        solo.setContentDescription("MPC Main selected track solo reserved");
+        Button solo = controlButton(context, "SOLO", ready);
+        solo.setContentDescription("MPC Main selected track solo");
+        solo.setEnabled(ready);
+        solo.setAlpha(ready ? 1.0f : 0.55f);
+        solo.setBackground(stroke(
+                soloed ? ACTIVE : PANEL_DARK,
+                soloed ? ACTIVE : LINE));
+        solo.setTextColor(soloed ? BG : TEXT);
+        solo.setOnClickListener(v -> {
+            if (listener != null) listener.toggleTrackSolo();
+        });
         controls.addView(solo, new LayoutParams(0, dp(context, 30), 1));
 
         /*

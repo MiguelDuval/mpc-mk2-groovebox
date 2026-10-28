@@ -1414,6 +1414,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     }
 
                     @Override
+                    public void toggleTrackSolo() {
+                        toggleSelectedTrackSolo();
+                    }
+
+                    @Override
                     public void onMixerStripVisibilityChanged(boolean visible) {
                         final boolean padMode =
                                 navigationController != null
@@ -1969,6 +1974,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? nativeAudioGetPadSampleName(pad, selectedLayer)
                 : "NO SAMPLE";
         final boolean muted = ready && nativeSequenceIsTrackMuted(track);
+        final boolean soloed = ready && nativeSequenceIsTrackSolo(track);
 
         mainMixerStripView.setState(
                 navigationController.state().compactMixerVisible(),
@@ -1984,7 +1990,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 pan,
                 tuning,
                 sample,
-                muted);
+                muted,
+                soloed);
     }
 
     private void refreshMpcFunctionBar() {
