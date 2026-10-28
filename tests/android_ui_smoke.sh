@@ -2543,7 +2543,7 @@ BROW013_PROJECT_DIR_NAME="BROW-013-Test-Project"
 BROW013_PROJECT_FILE_NAME="test-project.mpcproj"
 BROW013_PROJECT_DIR="/data/data/${PACKAGE}/files/${BROW013_PROJECT_DIR_NAME}"
 BROW013_PROJECT_FILE="${BROW013_PROJECT_DIR}/${BROW013_PROJECT_FILE_NAME}"
-if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'mkdir -p \"$BROW013_PROJECT_DIR\" && : > \"$BROW013_PROJECT_FILE\"'"; then
+if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'mkdir -p \"$BROW013_PROJECT_DIR\" && touch \"$BROW013_PROJECT_FILE\"'"; then
   echo "ERROR: could not create BROW-013 project-data test fixture"; exit 1
 fi
 
