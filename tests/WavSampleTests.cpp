@@ -346,7 +346,7 @@ int main() {
     testDecode24BitPcm();
     testDecode32BitPcm();
     testDecode32BitFloat();
-    // testDecodeExtensiblePcm(); // Temporarily disabled - decodeWav extensible support needs verification
+    testDecodeExtensiblePcm();
     testInvalidHeader();
     testUnsupportedFormat();
     testExportWavEmpty();
