@@ -3447,8 +3447,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     if (MpcTrackProgramPolicy.supportsProgramSelect(trackType)) {
                         showProgramSelectPage();
                     } else {
-                        setBottomStatus(
-                                "PROGRAM SELECT • TRACK TYPE IS NOT DRUM");
+                        showTrackTypeSelectPage();
                     }
                 });
         programField.setContentDescription("Main Mode selected program");
@@ -5986,6 +5985,83 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMpcCompactContext();
         refreshMpcFunctionBar();
         updateModeRailSelection();
+    }
+
+    private void showTrackTypeSelectPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+
+        currentPage = "MAIN";
+        navigationController.navigate(MpcUiState.Mode.MAIN);
+        navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_TYPE_SELECT);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK_TYPE);
+        pageTitle.setText("TRACK TYPE");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.setPadding(dp(8), dp(6), dp(8), dp(2));
+
+        TextView heading = label(
+                "TRACK TYPE • TRACK %02d",
+                13, TEXT,
+                Math.max(0, nativeSequenceGetSelectedTrack()) + 1);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        page.addView(heading, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        final int selectedTrack = Math.max(0, nativeSequenceGetSelectedTrack());
+        final String currentType = nativeSequenceGetTrackType(selectedTrack);
+
+        final String[] trackTypes = {"DRUM", "KEYGROUP", "PLUGIN", "MIDI", "AUDIO"};
+        final String[] trackTypeLabels = {"DRUM", "KEYGROUP", "PLUGIN", "MIDI", "AUDIO"};
+
+        LinearLayout list = column();
+        list.setContentDescription("Track Type select list");
+
+        for (int i = 0; i < trackTypes.length; i++) {
+            final int kind = i;
+            final boolean isCurrent = trackTypes[i].equals(currentType);
+            Button b = actionButton(
+                    String.format(
+                            Locale.ROOT,
+                            "%s%s",
+                            trackTypes[i],
+                            isCurrent ? "  • CURRENT" : ""),
+                    v -> {
+                        setBottomStatus(nativeSequenceSetTrackKind(selectedTrack, kind));
+                        navigationController.setSelectedTrackType(
+                                nativeSequenceGetTrackType(selectedTrack));
+                        showTrackTypeSelectPage();
+                    });
+            b.setGravity(Gravity.CENTER_VERTICAL);
+            b.setPadding(dp(10), 0, dp(10), 0);
+            b.setBackground(strokeBackground(
+                    isCurrent ? Color.rgb(42, 66, 76) : SURFACE_2,
+                    isCurrent ? ACCENT : LINE,
+                    7));
+            list.addView(b, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(52)));
+        }
+        scroll.addView(list);
+        page.addView(scroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        LinearLayout footer = row();
+        footer.addView(actionButton(
+                "BACK MAIN",
+                v -> showMainPage()), weight());
+        page.addView(footer, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+        content.addView(page);
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+    }
+
+    private String[] trackTypeLabels() {
+        return new String[]{"DRUM", "KEYGROUP", "PLUGIN", "MIDI", "AUDIO"};
     }
 
     private void showBrowserPage() {
