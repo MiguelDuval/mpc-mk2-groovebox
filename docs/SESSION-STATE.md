@@ -131,6 +131,17 @@ Fixed a gap where a missing or unreadable WAV file during project reopen would l
 Changes:
 - `src/NativeEngine.cpp` — `nativeProjectLoad()` sample reload loop now checks `loadSampleForPadLayer()` return value; on failure, clears `layer.sample` to `domain::SampleId{}`. Uses non-const references to allow mutation of project state during reload.
 
+### 15. Track Type change (MAIN-008) backend — IMPLEMENTED
+
+Added `setTrackKind` to `MpcProjectState` allowing safe Track Type changes on existing tracks. Changing kind on a track with patterns/events is rejected (data protection). Changing to Drum assigns the first available Drum Program; changing from Drum clears programId. The UI checks `MpcTrackProgramPolicy.supportsProgramSelect()` before accessing program state, so a stale `activeDrumProgramIndex_` for non-Drum tracks is harmless.
+
+Changes:
+- `src/MPC/MpcProjectState.h` — added `setTrackKind(trackIndex, kind)` declaration.
+- `src/MPC/MpcProjectState.cpp` — implementation with safety checks: rejects invalid track index, rejects change on track with non-empty patterns, updates `type` and `programId` according to new kind.
+- `src/NativeEngine.cpp` — added `nativeSequenceSetTrackKind(trackIndex, kind)` JNI method; returns updated track status string.
+- `android/app/.../MainActivity.java` — added JNI declaration `nativeSequenceSetTrackKind(int trackIndex, int kind)`.
+- `tests/MpcProjectStateTests.cpp` — added test cases: kind change without patterns, change back to Drum assigns program, same-kind no-op, invalid index rejected, pattern-protected rejection.
+
 Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
 
 The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
