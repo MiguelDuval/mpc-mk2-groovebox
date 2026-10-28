@@ -96,6 +96,15 @@ public:
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
 
+    // Exports the sample assigned to the given pad/layer as a WAV byte
+    // buffer (32-bit float PCM, RIFF header). Returns an empty vector if no
+    // sample is assigned or the pad/layer index is invalid. The caller is
+    // responsible for writing the bytes to a file via the Android document
+    // picker or file system.
+    std::vector<std::uint8_t> exportSampleToWav(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex);
+
     // Control-thread snapshot for future sequencer, browser and project-state code.
     mpc::domain::DrumProgram drumProgramSnapshot() const;
 

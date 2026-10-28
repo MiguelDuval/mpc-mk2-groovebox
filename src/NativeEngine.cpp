@@ -474,6 +474,37 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioLoadSampleForPadLay
     return toJString(env, result);
 }
 
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioExportWav(
+        JNIEnv* env, jobject /* thiz */, jint pad, jint layer)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) {
+        return nullptr;
+    }
+
+    auto wavBytes =
+            mpc::audio::AudioEngine::instance().exportSampleToWav(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer));
+
+    if (wavBytes.empty()) {
+        return nullptr;
+    }
+
+    jbyteArray result = env->NewByteArray(static_cast<jsize>(wavBytes.size()));
+    if (result == nullptr) {
+        return nullptr;
+    }
+    env->SetByteArrayRegion(
+            result, 0, static_cast<jsize>(wavBytes.size()),
+            reinterpret_cast<const jbyte*>(wavBytes.data()));
+    return result;
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadSampleRegion(
         JNIEnv* env, jobject /* thiz */, jint pad, jint layer,
