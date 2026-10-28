@@ -105,6 +105,15 @@ Changes:
 - `src/NativeEngine.cpp` — JNI `nativeAudioLoadSampleForPadLayer` accepts `jstring sourcePath` and converts to UTF-8; `nativeProjectLoad` now iterates all Drum Program pad layers, reads WAV files from stored `SampleRef.path` paths, and reloads them into the AudioEngine after project replacement. Removed the "sample PCM is not embedded" disclaimer from the load result.
 - `android/app/.../MainActivity.java` — JNI declaration updated with `String sourcePath` parameter; `assignSelectedBrowserFile()` saves imported WAV bytes to `getFilesDir()/samples/` and passes the internal path; WAV picker result handler (`REQUEST_OPEN_WAV`) does the same; `loadBundledSample()` passes `null` for path (bundled asset has no file path).
 
+Sample lifecycle end-to-end is now complete:
+- Browser → real WAV file selection (already existed)
+- Import/load → WAV bytes saved to app-private storage, path stored in SampleRef (NEW)
+- Assignment → Pad/Layer via `nativeAudioLoadSampleForPadLayer` (already existed)
+- Audition → `selectAndTriggerPad()` / MediaPlayer preview (already existed)
+- Real playback → sequencer → triggerQueue → AudioEngine plays `padSamples_` (already existed, now survives reopen)
+- Project save → SampleRef metadata + path serialized (already existed)
+- Project reopen → WAV data reloaded from stored paths into AudioEngine (NEW)
+
 Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
 
 The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
