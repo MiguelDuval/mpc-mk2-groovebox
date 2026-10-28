@@ -144,6 +144,16 @@ Changes:
 
 Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
 
+### 16. Track Type change (MAIN-008) frontend — IMPLEMENTED
+
+Added `showTrackTypeSelectPage()` to `MainActivity.java` with DRUM/KEYGROUP/PLUGIN/MIDI/AUDIO selector mapped to `nativeSequenceSetTrackKind()`. Fixes: `label()` call uses `String.format()`; removed non-existent `navigationController.setSelectedTrackType()`; added missing `ScrollView` container wrapping the type list.
+
+CI run #3477 (SHA d17b0be5) FAILED: step 49 "Assemble debug APK" skipped because step 13 "Run focused Android unit policy tests" (or a step between 13-42) failed; steps 43-49 all skipped as cascade. Step 13 conclusion not visible in truncated API output. Check-run annotations confirm: no APK file produced, "Process completed with exit code 1".
+
+CI run #3474 (SHA 7da99b62) also failed with same step 49 skip — pre-existing across all runs 3474-3477.
+
+Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
+
 The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
 
 ## Mandatory operating rules
