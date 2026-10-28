@@ -1331,3 +1331,12 @@ The canonical Main surface remains controller-first; it does not gain a permanen
 The five factory Shortcut identities remain unchanged. A shortcut whose backend is still RESERVED must replace the previous workspace with an explicit full-size unavailable screen, keep the reason visible, and offer Back/Menu actions. It must never change only the shortcut highlight or title while leaving the previous workspace underneath.
 
 Acceptance requires an exact-SHA emulator run that validates both 4×4 grids, toggles/restores real Pad and Track mute state, preserves the selected musical context and event data, and uploads matched current-state screenshots and UI hierarchy XML. Physical MPC Studio MkII validation remains a separate gate.
+
+### Exact-SHA emulator acceptance — Android Build #3465
+
+- Verified on product-code SHA `f734930cae403d0794e3d4b504e4bf8f5f7c6e84`, [run 40591850947](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40591850947); all 57 workflow steps passed.
+- Pad evidence: `mpc-groovebox-mute-pad.png` + `mpc-groovebox-mute-pad-uiautomator.xml`; real 16-target grid, Pad 01 captured as MUTE ON after toggling, other 15 Pads MUTE OFF.
+- Track evidence: `mpc-groovebox-mute-track.png` + `mpc-groovebox-mute-track-uiautomator.xml`; 16 cells, Track 01 captured as MUTE ON after toggling, empty slots disabled as NO TRACK.
+- Exact run artifacts: APK ID `12775051524`, SHA-256 `3b1ea246a0a5e1f069d6fc99eea82952b7ea5624a77712b20c08a063be909e71`; evidence ID `12775747260`, SHA-256 `96bf4e0e085ffb7ee86fe0a7600358473f6c4a6df71148e46dbe2b21d1dd345b`. GitHub metadata and the downloaded archive digest match; screenshots and XML were inspected.
+- Runtime smoke toggled and restored the real native Pad and Track mute values and asserted Sequence/Track/Pad selection plus note data stayed unchanged through Back. Main MUTE replacement/return and truthful Reserved destinations are also runtime-asserted. The archive contains dedicated PNG/XML for the two Mute grids, not separate screenshots for each Reserved route.
+- Physical MPC Studio MkII remains PENDING; emulator acceptance is not a hardware certification.
