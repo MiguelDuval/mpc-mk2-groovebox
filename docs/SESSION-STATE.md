@@ -116,6 +116,16 @@ Sample lifecycle end-to-end is now complete:
 
 Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
 
+### 13. Browser Options Show file size toggle (BROW-012) — IMPLEMENTED
+
+Only "Show file size" checkbox enabled in Browser Options dialog; toggles file size visibility in Browser result metadata rows. Other options remain disabled until real backend behavior exists.
+
+Changes:
+- `android/app/.../MpcBrowserView.java` — added `showFileSize` field (default true); `addFileResult()` conditionally excludes size from metadata subtitle when off.
+- `android/app/.../MainActivity.java` — `showBrowserOptionsDialog()` enables "Show file size" checkbox, binds it to `browserView.showFileSize`, calls `renderResults()` on change. Notice updated to reflect BROW-012 status.
+
+Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
+
 The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
 
 ## Mandatory operating rules
