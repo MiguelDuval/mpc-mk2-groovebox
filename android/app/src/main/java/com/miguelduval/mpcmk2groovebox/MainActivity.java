@@ -608,6 +608,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int trackIndex, long sourceTick, int noteNumber);
     private static native String nativeSequencePasteArrangementEvent(int trackIndex, long targetTick);
     private static native boolean nativeSequenceIsTrackMuted(int trackIndex);
+    private static native boolean nativeSequenceCanSoloTrack(int trackIndex);
+    private static native boolean nativeSequenceIsTrackSoloed(int trackIndex);
+    private static native String nativeSequenceToggleTrackSolo(int trackIndex);
     private static native String nativeSequenceGetTrackProgram(int trackIndex);
     private static native String nativeSequenceSelectTrack(int trackIndex);
     private static native String nativeSequenceAddTrack(int kind);
