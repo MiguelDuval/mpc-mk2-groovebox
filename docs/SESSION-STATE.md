@@ -148,11 +148,33 @@ Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow resu
 
 Added `showTrackTypeSelectPage()` to `MainActivity.java` with DRUM/KEYGROUP/PLUGIN/MIDI/AUDIO selector mapped to `nativeSequenceSetTrackKind()`. Fixes: `label()` call uses `String.format()`; removed non-existent `navigationController.setSelectedTrackType()`; added missing `ScrollView` container wrapping the type list.
 
-CI run #3477 (SHA d17b0be5) FAILED: step 49 "Assemble debug APK" skipped because step 13 "Run focused Android unit policy tests" (or a step between 13-42) failed; steps 43-49 all skipped as cascade. Step 13 conclusion not visible in truncated API output. Check-run annotations confirm: no APK file produced, "Process completed with exit code 1".
+### 17. BROW-013 Browser Options show project-data folders — IMPLEMENTED (partial)
 
-CI run #3474 (SHA 7da99b62) also failed with same step 49 skip — pre-existing across all runs 3474-3477.
+Added `showProjectDataFolders` toggle to Browser Options dialog. When enabled, shows "PROJECT DATA FOLDERS" info row with app-private samples path. Toggle persists during dialog session but NOT persisted via SharedPreferences yet. Does NOT implement real folder navigation or visibility filtering of project-data folders in Browser results.
 
-Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
+Changes:
+- `MpcBrowserView.java` — added `import java.io.File`, `boolean showProjectDataFolders = false` field, BROW-013 info row in `renderResults()` when enabled
+- `MainActivity.java` — added "Show project-data folders" to labels array, checkbox handler bound to `browserView.showProjectDataFolders`, updated notice text
+
+### 18. CI failure investigation — RUN #3478/#3481 (SHA 2d19f4cb/a5c7b8b4)
+
+CI run #3478 (SHA 2d19f4cb) and #3481 (SHA a5c7b8b4) both FAILED at step 14 "Run focused Android unit policy tests". Steps 1-13 (all native C++ tests) pass. Steps 41-49 skipped as cascade. Step 50 "Upload debug APK" fails because no APK was built.
+
+Root cause: Step 14 is the first Gradle/Android Java compilation step. It fails before producing an APK. Step-level logs are not accessible via GitHub API (403/404). Web UI requires sign-in to view logs.
+
+Evidence this is NOT caused by current code changes:
+- Run #3472 (SHA 150ccda7, docs-only commit "docs: record Track Type change") also FAILED at step 14
+- Run #3473 (SHA 22b436d3, BROW-012 compilation fix only) also FAILED at step 14
+- All runs #3472-#3481 fail with identical pattern: steps 1-13 pass, step 14 fails, steps 41-49 skipped, step 50 fails
+
+Check-run annotations confirm:
+- Warning (line 149): No smoke test screenshot files found
+- Failure (line 21): No APK at android/app/build/outputs/apk/debug/app-debug.apk
+- Failure (line 27): Process completed with exit code 1
+
+All code changes pass `git diff --check` clean. Native C++ tests (steps 8-13) pass. Java source changes are syntactically valid.
+
+Next step: Need direct access to step 14 Gradle output to identify the specific compilation or test failure. This is a pre-existing infrastructure/configuration issue affecting all runs on this branch, not a regression from current changes.
 
 The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
 
