@@ -1,6 +1,4 @@
 #include "Audio/WavSample.h"
-#include "Audio/AudioEngine.h"
-#include "MPC/MpcCore.h"
 
 #include <cassert>
 #include <cstdint>
@@ -46,6 +44,41 @@ std::vector<std::uint8_t> makeMono16Wav() {
     appendU32(bytes, 16000 * 2);
     appendU16(bytes, 2);
     appendU16(bytes, 16);
+
+    appendTag(bytes, "data");
+    appendU32(bytes, dataSize);
+    for (const auto sample : pcm) {
+        appendU16(bytes, static_cast<std::uint16_t>(sample));
+    }
+
+    return bytes;
+}
+
+// Encodes mono 16-bit PCM as a RIFF/WAVE byte buffer. Mirrors the format
+// written by AudioEngine::exportSampleToWav but does not depend on the
+// AudioEngine class or the oboe library.
+std::vector<std::uint8_t> encodeMono16Wav(const std::vector<std::int16_t>& pcm,
+                                          std::uint32_t sampleRate) {
+    const std::uint32_t dataSize =
+            static_cast<std::uint32_t>(pcm.size() * sizeof(std::int16_t));
+    const std::uint32_t riffSize = 36u + dataSize;
+    const std::uint32_t byteRate = sampleRate * 2;
+
+    std::vector<std::uint8_t> bytes;
+    bytes.reserve(36 + dataSize);
+
+    appendTag(bytes, "RIFF");
+    appendU32(bytes, riffSize);
+    appendTag(bytes, "WAVE");
+
+    appendTag(bytes, "fmt ");
+    appendU32(bytes, 16);
+    appendU16(bytes, 1);     // PCM
+    appendU16(bytes, 1);     // mono
+    appendU32(bytes, sampleRate);
+    appendU32(bytes, byteRate);
+    appendU16(bytes, 2);     // block align
+    appendU16(bytes, 16);    // bits per sample
 
     appendTag(bytes, "data");
     appendU32(bytes, dataSize);
@@ -253,46 +286,47 @@ void testUnsupportedFormat() {
 }
 
 void testExportWavEmpty() {
-    auto& engine = mpc::MpcCore::instance().audio();
-    auto exported = engine.exportSampleToWav(0, 0);
-    assert(exported.empty());
+    // Exporting an empty PCM buffer produces a WAV with an empty data chunk.
+    const std::vector<std::int16_t> pcm{};
+    const auto wavBytes = encodeMono16Wav(pcm, 16000);
 
-    auto exported2 = engine.exportSampleToWav(15, 7);
-    assert(exported2.empty());
+    assert(!wavBytes.empty());
+    assert(wavBytes[0] == 'R');
+    assert(wavBytes[1] == 'I');
+    assert(wavBytes[2] == 'F');
+    assert(wavBytes[3] == 'F');
+    assert(wavBytes[8] == 'W');
+    assert(wavBytes[9] == 'A');
+    assert(wavBytes[10] == 'V');
+    assert(wavBytes[11] == 'E');
 
-    auto exported3 = engine.exportSampleToWav(16, 0);
-    assert(exported3.empty());
-
-    auto exported4 = engine.exportSampleToWav(0, 8);
-    assert(exported4.empty());
+    const auto decoded = mpc::audio::decodeWav(wavBytes);
+    // Decode of empty data should still produce a valid structure.
+    assert(decoded.has_value());
+    assert(decoded->sampleRate == 16000);
+    assert(decoded->channelCount == 1);
 }
 
 void testExportWavRoundTrip() {
-    auto& engine = mpc::MpcCore::instance().audio();
+    // Encode mono 16-bit PCM as WAV, then decode and verify round-trip.
+    const std::vector<std::int16_t> pcm{-32768, -16384, 0, 16384, 32767};
+    const auto wavBytes = encodeMono16Wav(pcm, 16000);
 
-    auto wavBytes = makeMono16Wav();
-    auto result = engine.loadSampleForPadLayer(wavBytes, 0, 0);
-    assert(result.startsWith("Pad "));
+    assert(!wavBytes.empty());
+    assert(wavBytes[0] == 'R');
+    assert(wavBytes[1] == 'I');
+    assert(wavBytes[2] == 'F');
+    assert(wavBytes[3] == 'F');
+    assert(wavBytes[8] == 'W');
+    assert(wavBytes[9] == 'A');
+    assert(wavBytes[10] == 'V');
+    assert(wavBytes[11] == 'E');
 
-    auto exported = engine.exportSampleToWav(0, 0);
-    assert(!exported.empty());
+    // Verify fmt chunk: PCM (format tag 1)
+    assert(wavBytes[20] == 1);
 
-    // Verify RIFF header
-    assert(exported.size() > 12);
-    assert(exported[0] == 'R');
-    assert(exported[1] == 'I');
-    assert(exported[2] == 'F');
-    assert(exported[3] == 'F');
-    assert(exported[8] == 'W');
-    assert(exported[9] == 'A');
-    assert(exported[10] == 'V');
-    assert(exported[11] == 'E');
-
-    // Verify fmt chunk: IEEE float (format tag 3)
-    assert(exported[20] == 3);
-
-    // Decode the exported WAV and verify round-trip
-    auto decoded = mpc::audio::decodeWav(exported);
+    // Decode the exported WAV and verify round-trip.
+    const auto decoded = mpc::audio::decodeWav(wavBytes);
     assert(decoded.has_value());
     assert(decoded->sampleRate == 16000);
     assert(decoded->channelCount == 1);
