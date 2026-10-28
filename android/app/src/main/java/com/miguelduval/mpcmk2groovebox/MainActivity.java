@@ -8097,10 +8097,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 controls.addView(muteButton, new LinearLayout.LayoutParams(
                         0, dp(30), 0.78f));
 
-                TextView solo = trackViewReservedControl(
-                        "SOLO",
-                        "Track View track solo unavailable");
-                controls.addView(solo, new LinearLayout.LayoutParams(
+                final boolean soloed = nativeSequenceIsTrackSolo(trackIndex);
+                Button soloButton = actionButton(
+                        soloed ? "SOLO" : "S",
+                        v -> {
+                            setBottomStatus(
+                                    nativeSequenceToggleTrackSolo(trackIndex));
+                            showTrackViewPage();
+                        });
+                soloButton.setTextSize(8);
+                soloButton.setTypeface(Typeface.DEFAULT_BOLD);
+                soloButton.setContentDescription(
+                        "Track View track " + (i + 1) + " solo");
+                soloButton.setTextColor(soloed ? ACTIVE : MUTED);
+                soloButton.setBackground(strokeBackground(
+                        soloed ? Color.rgb(74, 124, 88) : Color.TRANSPARENT,
+                        soloed ? ACTIVE : LINE,
+                        MPC_FLAT_RADIUS_DP));
+                controls.addView(soloButton, new LinearLayout.LayoutParams(
                         0, dp(30), 0.82f));
 
                 TextView midiFilter = trackViewReservedControl(
