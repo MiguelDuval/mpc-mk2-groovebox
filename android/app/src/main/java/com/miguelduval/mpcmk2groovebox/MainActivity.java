@@ -18621,11 +18621,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final View optionsDialogRoot = optionsDialog.getWindow().getDecorView();
         final View projectDataToggle = findViewWithContentDescription(
                 optionsDialogRoot, "MPC Browser Option Show project-data folders");
-        if (!(projectDataToggle instanceof CheckBox)) {
+        if (!(projectDataToggle instanceof android.widget.CheckBox)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: BROW-013 project-data toggle missing");
             return;
         }
-        final CheckBox projectDataCheck = (CheckBox) projectDataToggle;
+        final android.widget.CheckBox projectDataCheck = (android.widget.CheckBox) projectDataToggle;
         final boolean previousState = projectDataCheck.isChecked();
         final boolean nextState = !previousState;
         projectDataCheck.performClick();
