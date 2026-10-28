@@ -9,6 +9,8 @@
 #include <cstddef>
 #include <span>
 #include <limits>
+#include <fstream>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <string>
@@ -306,6 +308,37 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
     if (!core.projectState().replaceProject(std::move(candidate))) {
         return toJString(env, "PROJECT_LOAD_FAILED • project state rejected replacement");
     }
+
+    // Reload assigned WAV samples from their stored paths so that sample
+    // data survives project save/reopen. Each Drum Program pad layer holds
+    // a SampleId whose SampleRef carries the source path.
+    auto& audio = core.audio();
+    const auto& state = core.projectState();
+    const auto& project = state.project();
+    for (const auto& program : project.drumPrograms) {
+        for (std::size_t padIndex = 0; padIndex < program.pads.size(); ++padIndex) {
+            const auto& pad = program.pads[padIndex];
+            for (std::size_t layerIndex = 0; layerIndex < pad.layers.size(); ++layerIndex) {
+                const auto& layer = pad.layers[layerIndex];
+                if (!layer.sample.isAssigned()) continue;
+                const auto* ref = state.findSample(layer.sample);
+                if (ref == nullptr || ref->path.empty()) continue;
+                // Read the stored WAV file and load it back into the engine.
+                std::ifstream file(ref->path, std::ios::binary);
+                if (!file) continue;
+                std::vector<std::uint8_t> wavBytes(
+                        (std::istreambuf_iterator<char>(file)),
+                        std::istreambuf_iterator<char>());
+                if (wavBytes.empty()) continue;
+                audio.loadSampleForPadLayer(
+                        std::span<const std::uint8_t>(wavBytes),
+                        static_cast<std::uint8_t>(padIndex),
+                        static_cast<std::uint8_t>(layerIndex),
+                        ref->path);
+            }
+        }
+    }
+
     core.audio().refreshActiveProgramRuntimeProjection();
     core.editHistory().clear();
     arrangementEventClipboard.reset();
@@ -313,8 +346,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
     core.sequenceTransportClock().clearQueuedSequence();
     return toJString(env,
             "PROJECT_LOADED • "
-            + projectSummary(core.projectState().project())
-            + " • sample PCM is not embedded; assigned WAVs may need reload");
+            + projectSummary(core.projectState().project()));
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -385,7 +417,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioLoadSampleForPad(
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioLoadSampleForPadLayer(
-        JNIEnv* env, jobject /* thiz */, jbyteArray data, jint pad, jint layer)
+        JNIEnv* env, jobject /* thiz */, jbyteArray data, jint pad, jint layer, jstring sourcePath)
 {
     if (env == nullptr || data == nullptr) {
         return toJString(env, "Sample load failed: empty byte array");
@@ -406,13 +438,24 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioLoadSampleForPadLay
     }
 
     const auto* raw = reinterpret_cast<const std::uint8_t*>(bytes);
+
+    std::string path;
+    if (sourcePath != nullptr) {
+        const char* pathChars = env->GetStringUTFChars(sourcePath, nullptr);
+        if (pathChars != nullptr) {
+            path = pathChars;
+            env->ReleaseStringUTFChars(sourcePath, pathChars);
+        }
+    }
+
     const auto result =
             mpc::audio::AudioEngine::instance().loadSampleForPadLayer(
                     std::span<const std::uint8_t>(
                             raw,
                             static_cast<std::size_t>(length)),
                     static_cast<std::uint8_t>(pad),
-                    static_cast<std::uint8_t>(layer));
+                    static_cast<std::uint8_t>(layer),
+                    std::move(path));
 
     env->ReleaseByteArrayElements(data, bytes, JNI_ABORT);
     return toJString(env, result);

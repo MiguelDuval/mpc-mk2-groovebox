@@ -39,7 +39,8 @@ public:
     std::string loadSampleForPadLayer(
             std::span<const std::uint8_t> bytes,
             std::uint8_t padIndex,
-            std::uint8_t layerIndex);
+            std::uint8_t layerIndex,
+            std::string sourcePath = {});
     std::string setPadSampleRegion(
             std::uint8_t padIndex,
             std::uint8_t layerIndex,

@@ -451,7 +451,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeProjectNew();
     private static native String nativeProjectPreparePersistenceAcceptanceFixture();
     private static native String nativeAudioLoadSample(byte[] data);
-    private static native String nativeAudioLoadSampleForPadLayer(byte[] data, int pad, int layer);
+    private static native String nativeAudioLoadSampleForPadLayer(byte[] data, int pad, int layer, String sourcePath);
     private static native String nativeAudioSetPadSampleName(
             int pad, int layer, String name);
     private static native void nativeAudioTriggerPad(int pad, int velocity);
@@ -6577,8 +6577,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         try {
             startupExecutor.execute(() -> {
                 final byte[] bytes;
+                final String internalPath;
                 try {
                     bytes = readSampleBytes(Uri.parse(file.uri()));
+                    // Persist imported WAV to app-private storage so samples
+                    // survive project save/reopen. The internal path is stored
+                    // in SampleRef and used to reload PCM on project load.
+                    final File samplesDir = new File(getFilesDir(), "samples");
+                    if (!samplesDir.exists() && !samplesDir.mkdirs()) {
+                        throw new IOException("could not create samples directory");
+                    }
+                    final File dest = new File(samplesDir,
+                            file.displayName() == null || file.displayName().isEmpty()
+                                    ? "imported.wav"
+                                    : file.displayName());
+                    try (OutputStream out = new FileOutputStream(dest)) {
+                        out.write(bytes);
+                    }
+                    internalPath = dest.getAbsolutePath();
                 } catch (Exception e) {
                     runOnUiThread(() -> {
                         if (!destroyed) {
@@ -6598,7 +6614,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     if (destroyed) return;
                     nativeAudioStop();
                     final String loaded = nativeAudioLoadSampleForPadLayer(
-                            bytes, targetPad, targetLayer);
+                            bytes, targetPad, targetLayer, internalPath);
                     final boolean loadSucceeded = loaded != null
                             && loaded.startsWith("Pad ")
                             && loaded.contains(" sample loaded");
@@ -13247,10 +13263,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             setBottomStatus("Loading WAV…");
             byte[] bytes = readSampleBytes(uri);
+            // Persist imported WAV to app-private storage so samples survive
+            // project save/reopen. The internal path is stored in SampleRef
+            // and used to reload PCM on project load.
+            final String internalPath;
+            try {
+                final File samplesDir = new File(getFilesDir(), "samples");
+                if (!samplesDir.exists() && !samplesDir.mkdirs()) {
+                    throw new IOException("could not create samples directory");
+                }
+                final String sampleName = sampleDisplayName(uri);
+                final File dest = new File(samplesDir,
+                        sampleName == null || sampleName.isEmpty()
+                                ? "imported.wav"
+                                : sampleName);
+                try (OutputStream out = new FileOutputStream(dest)) {
+                    out.write(bytes);
+                }
+                internalPath = dest.getAbsolutePath();
+            } catch (IOException e) {
+                internalPath = null;
+            }
 
             nativeAudioStop();
             final String loaded = nativeAudioLoadSampleForPadLayer(
-                    bytes, targetPad, targetLayer);
+                    bytes, targetPad, targetLayer, internalPath);
             final String sampleName = sampleDisplayName(uri);
             if (loaded != null
                     && loaded.startsWith("Pad ")
@@ -13390,7 +13427,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     android.util.Base64.DEFAULT);
             String fallback = nativeAudioLoadSample(wavBytes);
             String padLayer = nativeAudioLoadSampleForPadLayer(
-                    wavBytes, selectedPad, selectedLayer);
+                    wavBytes, selectedPad, selectedLayer, null);
             return fallback + " | " + padLayer;
         } catch (IOException | IllegalArgumentException e) {
             return "Sample asset load failed: " + e.getMessage();

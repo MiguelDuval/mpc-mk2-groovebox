@@ -1618,7 +1618,8 @@ std::string AudioEngine::loadSampleForPad(
 std::string AudioEngine::loadSampleForPadLayer(
         std::span<const std::uint8_t> bytes,
         std::uint8_t padIndex,
-        std::uint8_t layerIndex) {
+        std::uint8_t layerIndex,
+        std::string sourcePath) {
     if (stream_ != nullptr) {
         return "Stop audio before loading a sample";
     }
@@ -1636,7 +1637,7 @@ std::string AudioEngine::loadSampleForPadLayer(
     auto& layerState = projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex);
     layerState.sample = projectState_.registerSample(
             "Imported sample",
-            "",
+            std::move(sourcePath),
             static_cast<double>(padSamples_[padIndex][layerIndex]->sampleRate),
             static_cast<std::int64_t>(padSamples_[padIndex][layerIndex]->frameCount()));
     layerState.region =
