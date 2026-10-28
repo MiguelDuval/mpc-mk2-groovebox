@@ -1,4 +1,5 @@
 #include "AudioEngine.h"
+#include "Audio/SampleExportPolicy.h"
 #include "AudioOutputPolicy.h"
 #include "MPC/MpcCore.h"
 #include "MPC/MpcPadAftertouchPolicy.h"
@@ -1657,64 +1658,17 @@ std::string AudioEngine::loadSampleForPadLayer(
 std::vector<std::uint8_t> AudioEngine::exportSampleToWav(
         std::uint8_t padIndex,
         std::uint8_t layerIndex) {
-    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+    if (!isValidSampleExportAddress(
+            padIndex, layerIndex, kPadCount, kSampleLayerCount)) {
         return {};
     }
+
     const auto& sample = padSamples_[padIndex][layerIndex];
-    if (sample == nullptr || sample->frameCount() == 0) {
+    if (!hasExportableSample(sample.get())) {
         return {};
     }
 
-    const std::uint32_t sampleRate = static_cast<std::uint32_t>(sample->sampleRate);
-    const std::uint16_t channelCount = static_cast<std::uint16_t>(sample->channelCount);
-    const std::uint32_t frameCount = sample->frameCount();
-    const std::uint32_t byteRate = sampleRate * channelCount * sizeof(float);
-    const std::uint32_t dataSize = frameCount * channelCount * sizeof(float);
-    const std::uint32_t fileSize = 36 + dataSize;
-
-    std::vector<std::uint8_t> wav;
-    wav.reserve(fileSize);
-
-    auto writeLE16 = [&wav](std::uint16_t v) {
-        wav.push_back(static_cast<std::uint8_t>(v & 0xFF));
-        wav.push_back(static_cast<std::uint8_t>((v >> 8) & 0xFF));
-    };
-    auto writeLE32 = [&wav](std::uint32_t v) {
-        wav.push_back(static_cast<std::uint8_t>(v & 0xFF));
-        wav.push_back(static_cast<std::uint8_t>((v >> 8) & 0xFF));
-        wav.push_back(static_cast<std::uint8_t>((v >> 16) & 0xFF));
-        wav.push_back(static_cast<std::uint8_t>((v >> 24) & 0xFF));
-    };
-
-    // RIFF header
-    wav.insert(wav.end(), {'R', 'I', 'F', 'F'});
-    writeLE32(fileSize);
-    wav.insert(wav.end(), {'W', 'A', 'V', 'E'});
-
-    // fmt chunk
-    wav.insert(wav.end(), {'f', 'm', 't', ' '});
-    writeLE32(16);            // chunk size
-    writeLE16(3);             // format: IEEE float
-    writeLE16(channelCount);
-    writeLE32(sampleRate);
-    writeLE32(byteRate);
-    writeLE16(static_cast<std::uint16_t>(channelCount * sizeof(float)));
-    writeLE16(32);            // bits per sample
-
-    // data chunk
-    wav.insert(wav.end(), {'d', 'a', 't', 'a'});
-    writeLE32(dataSize);
-
-    // Sample data (32-bit float PCM)
-    for (std::uint32_t frame = 0; frame < frameCount; ++frame) {
-        for (std::uint16_t ch = 0; ch < channelCount; ++ch) {
-            float s = sample->sampleAt(frame, ch);
-            const std::uint8_t* bytes = reinterpret_cast<const std::uint8_t*>(&s);
-            wav.insert(wav.end(), bytes, bytes + sizeof(float));
-        }
-    }
-
-    return wav;
+    return encodeWav(*sample);
 }
 
 std::string AudioEngine::setPadSampleRegion(
