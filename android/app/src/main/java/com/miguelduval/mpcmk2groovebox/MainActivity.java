@@ -8131,7 +8131,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 solo.setContentDescription(soloAvailable
                         ? "Track View track " + (i + 1)
                                 + " solo state " + (soloed ? "ON" : "OFF")
-                        : "Track View track " + (i + 1) + " solo unavailable");
+                        : "Track View track solo unavailable • Track " + (i + 1));
                 solo.setBackground(strokeBackground(
                         soloed ? Color.rgb(74, 124, 88) : Color.TRANSPARENT,
                         soloed ? ACTIVE : LINE,
