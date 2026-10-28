@@ -311,30 +311,43 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
 
     // Reload assigned WAV samples from their stored paths so that sample
     // data survives project save/reopen. Each Drum Program pad layer holds
-    // a SampleId whose SampleRef carries the source path.
+    // a SampleId whose SampleRef carries the source path. If the stored WAV
+    // is missing or unreadable, clear the layer's sample assignment so the UI
+    // does not show a ghost sample that cannot play.
     auto& audio = core.audio();
-    const auto& state = core.projectState();
-    const auto& project = state.project();
-    for (const auto& program : project.drumPrograms) {
+    auto& state = core.projectState();
+    auto& project = state.project();
+    for (auto& program : project.drumPrograms) {
         for (std::size_t padIndex = 0; padIndex < program.pads.size(); ++padIndex) {
-            const auto& pad = program.pads[padIndex];
+            auto& pad = program.pads[padIndex];
             for (std::size_t layerIndex = 0; layerIndex < pad.layers.size(); ++layerIndex) {
-                const auto& layer = pad.layers[layerIndex];
+                auto& layer = pad.layers[layerIndex];
                 if (!layer.sample.isAssigned()) continue;
                 const auto* ref = state.findSample(layer.sample);
                 if (ref == nullptr || ref->path.empty()) continue;
                 // Read the stored WAV file and load it back into the engine.
                 std::ifstream file(ref->path, std::ios::binary);
-                if (!file) continue;
+                if (!file) {
+                    layer.sample = domain::SampleId{};
+                    continue;
+                }
                 std::vector<std::uint8_t> wavBytes(
                         (std::istreambuf_iterator<char>(file)),
                         std::istreambuf_iterator<char>());
-                if (wavBytes.empty()) continue;
-                audio.loadSampleForPadLayer(
+                if (wavBytes.empty()) {
+                    layer.sample = domain::SampleId{};
+                    continue;
+                }
+                const auto loadResult = audio.loadSampleForPadLayer(
                         std::span<const std::uint8_t>(wavBytes),
                         static_cast<std::uint8_t>(padIndex),
                         static_cast<std::uint8_t>(layerIndex),
                         ref->path);
+                if (loadResult.rfind("Pad ", 0) != 0) {
+                    // Load failed: clear the sample assignment so the UI
+                    // does not show a sample that cannot play.
+                    layer.sample = domain::SampleId{};
+                }
             }
         }
     }
