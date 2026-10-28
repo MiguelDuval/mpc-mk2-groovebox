@@ -206,7 +206,6 @@ bool MpcProjectState::setTrackKind(
         return false;
     }
 
-    const auto oldKind = track.kind;
     track.kind = kind;
 
     switch (kind) {
