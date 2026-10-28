@@ -3350,6 +3350,29 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTrackProgram(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTrackKind(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jint kind)
+{
+    if (trackIndex < 0 || kind < 0 || kind > 4) {
+        return toJString(env, "Track type change failed: invalid target");
+    }
+
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (!state.setTrackKind(
+            static_cast<std::size_t>(trackIndex),
+            static_cast<mpc::domain::TrackKind>(kind))) {
+        return toJString(
+                env,
+                "Track type change failed: track has events or invalid index");
+    }
+
+    return toJString(
+            env,
+            mpc::MpcCore::instance().projectState().trackStatus(
+                    static_cast<std::size_t>(trackIndex)));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelectTrack(
         JNIEnv* env, jobject /* thiz */, jint trackIndex)
 {

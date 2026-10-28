@@ -188,6 +188,67 @@ bool MpcProjectState::setTrackProgram(
     return true;
 }
 
+bool MpcProjectState::setTrackKind(
+        std::size_t trackIndex,
+        domain::TrackKind kind) {
+    if (trackIndex >= activeSequence().tracks.size()) {
+        return false;
+    }
+
+    auto& track = activeSequence().tracks[trackIndex];
+    if (track.kind == kind) {
+        return true;
+    }
+
+    // A track that already carries patterns/events cannot change kind safely:
+    // the pattern/event data is tied to the track's kind and would be lost.
+    if (!track.patterns.empty()) {
+        return false;
+    }
+
+    const auto oldKind = track.kind;
+    track.kind = kind;
+
+    switch (kind) {
+        case domain::TrackKind::Drum:
+            track.type = domain::ProgramType::Drum;
+            // Assign the first available Drum Program if none is set.
+            if (track.programId.empty()
+                    && !project_.drumPrograms.empty()) {
+                track.programId = project_.drumPrograms.front().id;
+                if (trackIndex == activeTrackIndex_) {
+                    activeDrumProgramIndex_ = 0;
+                }
+            }
+            break;
+        case domain::TrackKind::Keygroup:
+            track.type = domain::ProgramType::Keygroup;
+            track.programId.clear();
+            break;
+        case domain::TrackKind::Plugin:
+            track.type = domain::ProgramType::Plugin;
+            track.programId.clear();
+            break;
+        case domain::TrackKind::Midi:
+            track.type = domain::ProgramType::Audio;
+            track.programId.clear();
+            break;
+        case domain::TrackKind::Audio:
+            track.type = domain::ProgramType::Audio;
+            track.programId.clear();
+            break;
+    }
+
+    // If the active track changed kind away from Drum, clear the active
+    // Drum Program index so the UI doesn't show a stale selection.
+    if (trackIndex == activeTrackIndex_ && oldKind == domain::TrackKind::Drum
+            && kind != domain::TrackKind::Drum) {
+        activeDrumProgramIndex_ = project_.drumPrograms.size();
+    }
+
+    return true;
+}
+
 domain::DrumProgram* MpcProjectState::findDrumProgram(
         const std::string& programId) noexcept {
     for (auto& program : project_.drumPrograms) {

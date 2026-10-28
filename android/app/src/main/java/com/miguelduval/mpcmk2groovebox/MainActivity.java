@@ -584,6 +584,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native int nativeSequenceGetTrackProgramIndex(int trackIndex);
     private static native String nativeSequenceSetTrackProgram(
             int trackIndex, int programIndex);
+    private static native String nativeSequenceSetTrackKind(
+            int trackIndex, int kind);
     private static native String nativeSequenceGetTrackType(int trackIndex);
     private static native String nativeSequenceGetTrackArrangementData(int trackIndex);
     private static native String nativeSequenceGetTrackArrangementPlacements(int trackIndex);

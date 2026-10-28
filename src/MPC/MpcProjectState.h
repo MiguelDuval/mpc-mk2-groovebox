@@ -68,6 +68,10 @@ public:
             std::size_t trackIndex,
             std::string programId);
 
+    bool setTrackKind(
+            std::size_t trackIndex,
+            domain::TrackKind kind);
+
     domain::DrumProgram* findDrumProgram(
             const std::string& programId) noexcept;
     const domain::DrumProgram* findDrumProgram(

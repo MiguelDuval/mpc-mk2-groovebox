@@ -242,5 +242,37 @@ int main() {
     const auto firstNewSample = state.registerSample(
             "First sample in new project", "", 48000.0, 1000);
     assert(firstNewSample.value == 1);
+
+    // Track Type change (MAIN-008): setTrackKind on a track without patterns
+    // succeeds and updates type/programId accordingly.
+    assert(state.setTrackKind(0, mpc::domain::TrackKind::Keygroup));
+    assert(state.activeSequence().tracks[0].kind
+            == mpc::domain::TrackKind::Keygroup);
+    assert(state.activeSequence().tracks[0].type
+            == mpc::domain::ProgramType::Keygroup);
+    assert(state.activeSequence().tracks[0].programId.empty());
+
+    // Changing back to Drum assigns the first available Drum Program.
+    assert(state.setTrackKind(0, mpc::domain::TrackKind::Drum));
+    assert(state.activeSequence().tracks[0].kind
+            == mpc::domain::TrackKind::Drum);
+    assert(state.activeSequence().tracks[0].type
+            == mpc::domain::ProgramType::Drum);
+    assert(!state.activeSequence().tracks[0].programId.empty());
+
+    // Changing to same kind is a no-op success.
+    assert(state.setTrackKind(0, mpc::domain::TrackKind::Drum));
+
+    // Invalid track index fails.
+    assert(!state.setTrackKind(999, mpc::domain::TrackKind::Keygroup));
+
+    // A track with patterns/events cannot change kind (data protection).
+    state.activeSequence().tracks[0].patterns.clear();
+    state.activeSequence().tracks[0].patterns.push_back(
+            mpc::domain::Pattern{"pattern-1", "Pattern 01", 3840, {}});
+    assert(!state.setTrackKind(0, mpc::domain::TrackKind::Keygroup));
+    assert(state.activeSequence().tracks[0].kind
+            == mpc::domain::TrackKind::Drum);
+
     return 0;
 }
