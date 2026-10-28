@@ -73,6 +73,12 @@ final class MpcBrowserView extends LinearLayout {
     private boolean userFolderScanComplete;
     private boolean userFolderScanFailed;
 
+    // Browser Option: whether file size is shown in result metadata rows.
+    // Toggled from the Browser Options dialog (BROW-012). Defaults to on
+    // because size is already part of metadataLine(); the option makes it
+    // user-controllable rather than always-on decoration.
+    boolean showFileSize = true;
+
     MpcBrowserView(Context context) {
         super(context);
         setOrientation(VERTICAL);
@@ -737,7 +743,13 @@ final class MpcBrowserView extends LinearLayout {
         main.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(main, new LayoutParams(0, dp(getContext(), 34), 1));
 
-        final TextView sub = info(getContext(), file.metadataLine());
+        final String subtitle = showFileSize
+                ? file.metadataLine()
+                : (file.durationMs() <= 0
+                        ? "DURATION UNKNOWN • WAV"
+                        : file.metadataLine().replaceFirst(
+                                "^[^•]*•", "").trim());
+        final TextView sub = info(getContext(), subtitle);
         sub.setTextSize(8);
         sub.setSingleLine(true);
         sub.setEllipsize(TextUtils.TruncateAt.END);

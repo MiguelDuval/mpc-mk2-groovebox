@@ -6747,20 +6747,36 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         body.setContentDescription("MPC Browser Options");
 
         TextView notice = label(
-                "FILE PROVIDER: PARTIAL • options are exposed as MPC taxonomy only; "
-                        + "unsupported provider behaviors remain inactive.",
+                "BROW-012: “Show file size” toggles file size in Browser result rows. "
+                        + "Other options await real backend behavior.",
                 10, MUTED);
         notice.setPadding(0, 0, 0, dp(10));
         body.addView(notice);
 
-        for (String labelText : labels) {
+        for (int i = 0; i < labels.length; i++) {
+            final String labelText = labels[i];
             android.widget.CheckBox check = new android.widget.CheckBox(this);
             check.setText(labelText);
             check.setTextColor(TEXT);
             check.setTextSize(11);
             check.setContentDescription("MPC Browser Option " + labelText);
-            check.setEnabled(false);
-            check.setAlpha(0.55f);
+            // Only "Show file size" is implemented (BROW-012). It toggles the
+            // file-size portion of Browser result metadata rows. Every other
+            // option remains disabled until a real backend behavior exists.
+            if ("Show file size".equals(labelText)) {
+                check.setEnabled(true);
+                check.setAlpha(1.0f);
+                check.setChecked(browserView != null && browserView.showFileSize);
+                check.setOnCheckedChanged((buttonView, isChecked) -> {
+                    if (browserView != null) {
+                        browserView.showFileSize = isChecked;
+                        browserView.renderResults();
+                    }
+                });
+            } else {
+                check.setEnabled(false);
+                check.setAlpha(0.55f);
+            }
             body.addView(check, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
         }
