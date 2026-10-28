@@ -239,13 +239,9 @@ bool MpcProjectState::setTrackKind(
             break;
     }
 
-    // If the active track changed kind away from Drum, clear the active
-    // Drum Program index so the UI doesn't show a stale selection.
-    if (trackIndex == activeTrackIndex_ && oldKind == domain::TrackKind::Drum
-            && kind != domain::TrackKind::Drum) {
-        activeDrumProgramIndex_ = project_.drumPrograms.size();
-    }
-
+    // If the active track changed kind away from Drum, the active Drum Program
+    // index is left unchanged: the UI checks MpcTrackProgramPolicy before
+    // accessing the program, so a stale index for a non-Drum track is harmless.
     return true;
 }
 
