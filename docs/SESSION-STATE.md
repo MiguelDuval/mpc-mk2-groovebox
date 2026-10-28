@@ -211,6 +211,7 @@ Full CI log for #3499 was obtained via GitHub web UI. The error was:
 Root cause: `refreshMpcFunctionBar()` creates 6 Browser Function Bar buttons (SAMPLE ASSIGN, AUDITION, LOAD, EXPORT WAV, UP, BACK) but `runUiAuditAfterBrowserFunctionBarLayout()` checked only 5 labels.
 
 CI run #3501 (SHA `37e626fa`, fix for CharSequence type mismatch in description check) PASSED all 53 steps in 27m 25s — full green CI including emulator smoke test and visual evidence upload.
+CI run #3502 (SHA `9cfff93`, feat: complete BROW-013 persistent project-data folders toggle) PASSED all steps in 26m 29s — full green CI including emulator smoke test and visual evidence upload. BROW-013 implementation verified at exact-SHA acceptance boundary.
 
 ## Mandatory operating rules
 
