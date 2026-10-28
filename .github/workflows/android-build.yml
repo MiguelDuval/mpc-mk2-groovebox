@@ -200,8 +200,7 @@ jobs:
             src/Audio/AudioEngine.cpp \
             src/MPC/MpcCore.cpp \
             src/MPC/MpcProjectState.cpp \
-            $(find third_party/oboe -name '*.cpp' -not -path '*/test/*' | sort | tr '
-' ' ') \
+            $(find third_party/oboe -name '*.cpp' -not -path '*/test/*' | sort | tr '\n' ' ') \
             -o build/native-tests/wav_sample_tests
           build/native-tests/wav_sample_tests
 
@@ -734,3 +733,4 @@ jobs:
             /tmp/mpc-groovebox-track-edit-bounded-uiautomator.log
           if-no-files-found: warn
           archive: true
+
