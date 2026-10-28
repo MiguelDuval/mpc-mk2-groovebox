@@ -1822,6 +1822,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             final boolean armed = nativeSequenceIsSelectedTrackArmed();
             final boolean muted = nativeSequenceIsTrackMuted(trackIndex);
+            final boolean soloAvailable = nativeSequenceCanSoloTrack(trackIndex);
+            final boolean soloed = soloAvailable
+                    && nativeSequenceIsTrackSoloed(trackIndex);
             compactTrackContext.setText(String.format(
                     Locale.ROOT,
                     "TRACK %02d • %s\nREC %s • MUTE %s",
@@ -1834,7 +1837,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 compactTrackStateLabel.setText(
                         "REC " + (armed ? "ON" : "OFF")
                                 + " • MUTE " + (muted ? "ON" : "OFF")
-                                + " • SOLO —");
+                                + " • SOLO " + (soloAvailable
+                                        ? (soloed ? "ON" : "OFF") : "—"));
             }
 
             if (compactProgramContext != null) {
@@ -2011,7 +2015,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "MUTE", trackCount > 0, v -> showMutePage());
             muteWorkspace.setContentDescription(
                     "MPC Function Bar Open Mute workspace");
-            addFunction("SOLO", false, null);
+            addTrackSoloFunction(trackCount > 0);
             return;
         }
 
@@ -2030,7 +2034,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "MUTE", trackCount > 0, v -> showMutePage());
             muteWorkspace.setContentDescription(
                     "MPC Function Bar Open Mute workspace");
-            addFunction("SOLO", false, null);
+            addTrackSoloFunction(trackCount > 0);
             return;
         }
 
@@ -2443,6 +2447,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
     }
 
+    private Button addTrackSoloFunction(boolean tracksAvailable) {
+        final int selectedTrack = startupComplete
+                && NATIVE_LIBRARY_LOADED
+                && tracksAvailable
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : -1;
+        final boolean canSolo = selectedTrack >= 0
+                && nativeSequenceCanSoloTrack(selectedTrack);
+        final boolean soloed = canSolo
+                && nativeSequenceIsTrackSoloed(selectedTrack);
+        Button solo = addFunction(
+                "SOLO",
+                canSolo,
+                canSolo ? v -> toggleSelectedTrackSolo() : null);
+        solo.setSelected(soloed);
+        solo.setContentDescription(canSolo
+                ? "MPC Function Bar Track Solo " + (soloed ? "ON" : "OFF")
+                : "MPC Function Bar Track Solo unavailable: selected Track has no active Drum playback route");
+        if (soloed) {
+            solo.setBackground(strokeBackground(
+                    Color.rgb(74, 124, 88),
+                    ACTIVE,
+                    MPC_FLAT_RADIUS_DP));
+        }
+        return solo;
+    }
+
     private Button addFunction(String text, boolean enabled, View.OnClickListener listener) {
         Button b = actionButton(text, listener);
         b.setEnabled(enabled);
@@ -2547,6 +2577,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         } else {
             showMainPage();
         }
+    }
+
+    private void toggleSelectedTrackSolo() {
+        if (!startupComplete || !NATIVE_LIBRARY_LOADED) {
+            return;
+        }
+
+        final int track = Math.max(0, nativeSequenceGetSelectedTrack());
+        if (!nativeSequenceCanSoloTrack(track)) {
+            setBottomStatus(
+                    "Track Solo unavailable: selected Track has no active Drum playback route");
+            refreshMpcFunctionBar();
+            return;
+        }
+
+        setBottomStatus(nativeSequenceToggleTrackSolo(track));
+        if ("TRACK_VIEW".equals(currentPage)) {
+            showTrackViewPage();
+            return;
+        }
+        if ("MAIN".equals(currentPage)) {
+            showMainPage();
+            return;
+        }
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
     }
 
     private void toggleSelectedTrackMute() {
@@ -8060,9 +8116,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 controls.addView(muteButton, new LinearLayout.LayoutParams(
                         0, dp(30), 0.78f));
 
-                TextView solo = trackViewReservedControl(
-                        "SOLO",
-                        "Track View track solo unavailable");
+                final boolean soloAvailable =
+                        nativeSequenceCanSoloTrack(trackIndex);
+                final boolean soloed = soloAvailable
+                        && nativeSequenceIsTrackSoloed(trackIndex);
+                TextView solo = label(
+                        soloAvailable
+                                ? (soloed ? "SOLO ON" : "SOLO OFF")
+                                : "SOLO —",
+                        8,
+                        soloed ? TEXT : MUTED);
+                solo.setGravity(Gravity.CENTER);
+                solo.setTypeface(Typeface.DEFAULT_BOLD);
+                solo.setContentDescription(soloAvailable
+                        ? "Track View track " + (i + 1)
+                                + " solo state " + (soloed ? "ON" : "OFF")
+                        : "Track View track " + (i + 1) + " solo unavailable");
+                solo.setBackground(strokeBackground(
+                        soloed ? Color.rgb(74, 124, 88) : Color.TRANSPARENT,
+                        soloed ? ACTIVE : LINE,
+                        MPC_FLAT_RADIUS_DP));
                 controls.addView(solo, new LinearLayout.LayoutParams(
                         0, dp(30), 0.82f));
 
@@ -14165,6 +14238,103 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         Log.i(TAG, "UI_MAIN_MUTE_ROUTE_COMPLETE: grid=4x4/16 "
                 + "workspaceReplaced=true backRestoredMain=true "
                 + "selectionPreserved=true notesUnchanged=true");
+        verifyTrackSoloToggleAndRestoreForAudit(continuation);
+    }
+
+    private void verifyTrackSoloToggleAndRestoreForAudit(Runnable continuation) {
+        if (destroyed || !startupComplete || navigationController == null
+                || !"MAIN".equals(currentPage)
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo audit has no active Main workspace");
+            return;
+        }
+
+        final int sequenceBefore = nativeSequenceGetIndex();
+        final int trackBefore = nativeSequenceGetSelectedTrack();
+        final int padBefore = selectedPadIndexForUi();
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final String noteSnapshotBefore =
+                captureTrackViewGridNoteSnapshotForAudit(gridTicks);
+        if (!nativeSequenceCanSoloTrack(trackBefore)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo audit fixture has no playable Drum Track"
+                    + " | track=" + trackBefore
+                    + " | type=" + nativeSequenceGetTrackType(trackBefore));
+            return;
+        }
+
+        final boolean soloBefore = nativeSequenceIsTrackSoloed(trackBefore);
+        final String beforeDescription = "MPC Function Bar Track Solo "
+                + (soloBefore ? "ON" : "OFF");
+        final View beforeButton = findViewWithContentDescription(
+                getWindow().getDecorView(), beforeDescription);
+        if (beforeButton == null || !beforeButton.isShown()
+                || !beforeButton.isEnabled() || !beforeButton.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Function Bar Track Solo is not actionable"
+                    + " | expected=" + beforeDescription
+                    + " | button=" + describeAuditView(beforeButton));
+            return;
+        }
+
+        final boolean soloAfterToggle = nativeSequenceIsTrackSoloed(trackBefore);
+        final String toggledDescription = "MPC Function Bar Track Solo "
+                + (soloAfterToggle ? "ON" : "OFF");
+        final View toggledButton = findViewWithContentDescription(
+                getWindow().getDecorView(), toggledDescription);
+        final boolean notesUnchangedAfterToggle = noteSnapshotBefore.equals(
+                captureTrackViewGridNoteSnapshotForAudit(
+                        Math.max(1, nativeSequenceGetQuantizeGrid())));
+        if (soloAfterToggle == soloBefore
+                || toggledButton == null || !toggledButton.isShown()
+                || toggledButton.isSelected() != soloAfterToggle
+                || nativeSequenceGetIndex() != sequenceBefore
+                || nativeSequenceGetSelectedTrack() != trackBefore
+                || selectedPadIndexForUi() != padBefore
+                || !notesUnchangedAfterToggle) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo did not change real state or preserve context"
+                    + " | before=" + soloBefore
+                    + " | after=" + soloAfterToggle
+                    + " | button=" + describeAuditView(toggledButton)
+                    + " | sequence=" + nativeSequenceGetIndex()
+                    + " | track=" + nativeSequenceGetSelectedTrack()
+                    + " | pad=" + selectedPadIndexForUi()
+                    + " | notesUnchanged=" + notesUnchangedAfterToggle);
+            return;
+        }
+
+        if (!toggledButton.isEnabled() || !toggledButton.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo state could not be restored"
+                    + " | button=" + describeAuditView(toggledButton));
+            return;
+        }
+
+        final boolean soloRestored = nativeSequenceIsTrackSoloed(trackBefore);
+        final View restoredButton = findViewWithContentDescription(
+                getWindow().getDecorView(), beforeDescription);
+        final boolean notesUnchangedAfterRestore = noteSnapshotBefore.equals(
+                captureTrackViewGridNoteSnapshotForAudit(
+                        Math.max(1, nativeSequenceGetQuantizeGrid())));
+        if (soloRestored != soloBefore
+                || restoredButton == null || !restoredButton.isShown()
+                || restoredButton.isSelected() != soloBefore
+                || nativeSequenceGetIndex() != sequenceBefore
+                || nativeSequenceGetSelectedTrack() != trackBefore
+                || selectedPadIndexForUi() != padBefore
+                || !notesUnchangedAfterRestore
+                || !"MAIN".equals(currentPage)
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo restore changed native state or musical context"
+                    + " | before=" + soloBefore
+                    + " | restored=" + soloRestored
+                    + " | button=" + describeAuditView(restoredButton)
+                    + " | sequence=" + nativeSequenceGetIndex()
+                    + " | track=" + nativeSequenceGetSelectedTrack()
+                    + " | pad=" + selectedPadIndexForUi()
+                    + " | notesUnchanged=" + notesUnchangedAfterRestore);
+            return;
+        }
+
+        Log.i(TAG, "UI_TRACK_SOLO_ROUNDTRIP_COMPLETE: toggled=true restored=true "
+                + "nativeState=true selectionPreserved=true notesUnchanged=true");
         continuation.run();
     }
 
