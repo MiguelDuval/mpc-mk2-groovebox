@@ -6,6 +6,7 @@ on:
       - main
       - "foundation/**"
       - "work/**"
+      - "agent/**"
   pull_request:
 
 concurrency:
