@@ -1072,12 +1072,24 @@ if ! grep -Fq -- 'MPC_FLAT_RADIUS_DP' <<<"$track_view_block"; then
   echo "ERROR: Track View channel-strip flat chrome contract is missing"
   exit 1
 fi
-for required in   'MPC Track View focused Track field'   'Track View track I/O unavailable'   'Track View track key range unavailable'   'Track View track monitor unavailable'   'Track View track level unavailable'   'Track View track pan unavailable'   'Track View track solo'   'Track View track MIDI filter unavailable'   'nativeSequenceToggleTrackMute(trackIndex)'   'nativeSequenceToggleTrackSolo(trackIndex)'; do
+for required in   'MPC Track View focused Track field'   'Track View track I/O unavailable'   'Track View track key range unavailable'   'Track View track monitor unavailable'   'Track View track level unavailable'   'Track View track pan unavailable'   'Track View track MIDI filter unavailable'   'nativeSequenceToggleTrackMute(trackIndex)'   'nativeSequenceToggleTrackSolo(trackIndex)'; do
   if ! grep -Fq -- "$required" <<<"$track_view_block"; then
     echo "ERROR: Track View strip control contract missing: $required"
     exit 1
   fi
 done
+if ! grep -Fq -- 'soloButton' <<<"$track_view_block"; then
+  echo "ERROR: Track View strip control missing solo button"
+  exit 1
+fi
+if ! grep -Fq -- 'setContentDescription(' <<<"$track_view_block"; then
+  echo "ERROR: Track View strip control missing content description"
+  exit 1
+fi
+if ! grep -Fq -- '"Track View track "' <<<"$track_view_block"; then
+  echo "ERROR: Track View strip control missing dynamic accessibility description with track number"
+  exit 1
+fi
 for required in 'strip.setOnClickListener(v -> {' 'String trackIdentityStatus ='; do
   if ! grep -Fq -- "$required" <<<"$track_view_block"; then
     echo "ERROR: Track View selection/identity contract missing: $required"
