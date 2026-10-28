@@ -14881,8 +14881,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // BROW-013 acceptance: exercise the Show project-data folders toggle
         // through the real Browser Options dialog and log markers so the
         // emulator smoke test can verify the navigation hierarchy changes.
-        // Disabled pending CI investigation.
-        // runBrowserProjectDataFoldersAudit();
+        runBrowserProjectDataFoldersAudit();
 
         final View browserStorageAction = findViewWithContentDescription(
                 getWindow().getDecorView(),

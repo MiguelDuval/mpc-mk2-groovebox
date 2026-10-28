@@ -2174,6 +2174,7 @@ capture_ui_screenshot() {
     mpc-groovebox-browser-favorite-tree-results.png|\
     mpc-groovebox-browser-favorite-tree-restored.png|\
     mpc-groovebox-storage-picker.png|\
+    mpc-groovebox-brow013-device.png|\
     mpc-groovebox-track-edit-tuning-before.png|\
     mpc-groovebox-track-edit-tuning-changed.png|\
     mpc-groovebox-track-edit-tuning-reopened.png|\

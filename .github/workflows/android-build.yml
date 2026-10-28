@@ -679,6 +679,8 @@ jobs:
             /tmp/mpc-groovebox-browser-favorite-tree-restored-uiautomator.xml
             /tmp/mpc-groovebox-storage-picker.png
             /tmp/mpc-groovebox-storage-picker-uiautomator.xml
+            /tmp/mpc-groovebox-brow013-device.png
+            /tmp/mpc-groovebox-brow013-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-tuning-before.png
             /tmp/mpc-groovebox-track-edit-tuning-before-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-tuning-changed.png
