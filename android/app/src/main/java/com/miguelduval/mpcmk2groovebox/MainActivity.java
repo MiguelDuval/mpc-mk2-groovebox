@@ -6002,20 +6002,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout page = page();
         page.setPadding(dp(8), dp(6), dp(8), dp(2));
 
+        final int selectedTrack = Math.max(0, nativeSequenceGetSelectedTrack());
+        final String currentType = nativeSequenceGetTrackType(selectedTrack);
+
         TextView heading = label(
-                "TRACK TYPE • TRACK %02d",
-                13, TEXT,
-                Math.max(0, nativeSequenceGetSelectedTrack()) + 1);
+                String.format(
+                        Locale.ROOT,
+                        "TRACK TYPE • TRACK %02d",
+                        selectedTrack + 1),
+                13, TEXT);
         heading.setTypeface(Typeface.DEFAULT_BOLD);
         page.addView(heading, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
-        final int selectedTrack = Math.max(0, nativeSequenceGetSelectedTrack());
-        final String currentType = nativeSequenceGetTrackType(selectedTrack);
-
         final String[] trackTypes = {"DRUM", "KEYGROUP", "PLUGIN", "MIDI", "AUDIO"};
-        final String[] trackTypeLabels = {"DRUM", "KEYGROUP", "PLUGIN", "MIDI", "AUDIO"};
 
+        ScrollView scroll = new ScrollView(this);
         LinearLayout list = column();
         list.setContentDescription("Track Type select list");
 
@@ -6030,8 +6032,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             isCurrent ? "  • CURRENT" : ""),
                     v -> {
                         setBottomStatus(nativeSequenceSetTrackKind(selectedTrack, kind));
-                        navigationController.setSelectedTrackType(
-                                nativeSequenceGetTrackType(selectedTrack));
                         showTrackTypeSelectPage();
                     });
             b.setGravity(Gravity.CENTER_VERTICAL);
@@ -6058,10 +6058,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMpcCompactContext();
         refreshMpcFunctionBar();
         updateModeRailSelection();
-    }
-
-    private String[] trackTypeLabels() {
-        return new String[]{"DRUM", "KEYGROUP", "PLUGIN", "MIDI", "AUDIO"};
     }
 
     private void showBrowserPage() {

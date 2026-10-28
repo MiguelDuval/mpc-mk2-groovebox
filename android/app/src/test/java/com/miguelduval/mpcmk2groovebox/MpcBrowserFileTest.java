@@ -104,7 +104,7 @@ public final class MpcBrowserFileTest {
     public void metadataLineIncludesFileSizeForBrowserResults() {
         MpcBrowserFile kick = sample("Kick_Main.wav", "content://media/external/audio/media/7");
         String line = kick.metadataLine();
-        assertTrue(line.startsWith("48000 B"));
+        assertTrue(line.startsWith("46.9 KB"));
         assertTrue(line.contains("• 0:01 • WAV"));
     }
 
@@ -113,6 +113,6 @@ public final class MpcBrowserFileTest {
         MpcBrowserFile kick = new MpcBrowserFile(
                 "content://media/external/audio/media/7", "Kick.wav", "audio/wav",
                 48000L, 0L);
-        assertEquals("SIZE 48000 B • DURATION UNKNOWN • WAV", kick.metadataLine());
+        assertEquals("46.9 KB • DURATION UNKNOWN • WAV", kick.metadataLine());
     }
 }
