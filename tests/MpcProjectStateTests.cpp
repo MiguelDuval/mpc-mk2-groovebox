@@ -245,6 +245,7 @@ int main() {
 
     // Track Type change (MAIN-008): setTrackKind on a track without patterns
     // succeeds and updates type/programId accordingly.
+    state.activeSequence().tracks[0].patterns.clear();
     assert(state.setTrackKind(0, mpc::domain::TrackKind::Keygroup));
     assert(state.activeSequence().tracks[0].kind
             == mpc::domain::TrackKind::Keygroup);
