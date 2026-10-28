@@ -417,6 +417,29 @@ final class MpcBrowserView extends LinearLayout {
         return false;
     }
 
+    /**
+     * Synchronously updates the Show project-data folders setting: toggles the
+     * PROJECT DATA entry in the side navigation, leaves the PROJECT DATA
+     * location if the setting is disabled while it is active, and re-renders
+     * results so the change is immediately visible without switching sections.
+     */
+    void setShowProjectDataFolders(boolean enabled) {
+        if (showProjectDataFolders == enabled) return;
+        showProjectDataFolders = enabled;
+        if (!enabled && isProjectDataLocation()) {
+            // The setting was disabled while inside PROJECT DATA: leave the
+            // location so the Browser is not left in an unavailable or
+            // contradictory state.
+            openProjectFolderName = null;
+            selectedProjectFileName = null;
+            activeLocationItem = "INTERNAL";
+            updateLocationLabel();
+            setActiveNavigationItem("INTERNAL");
+        }
+        rebuildSideNavigation();
+        renderResults();
+    }
+
     private String defaultItemForSection(String section) {
         if ("CONTENT".equals(section)) return "SAMPLES";
         if ("EXPANSIONS".equals(section)) return "EXPANSIONS";

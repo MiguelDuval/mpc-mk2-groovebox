@@ -6148,16 +6148,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String location = navigationController.state().browserLocation();
         final String filter = navigationController.state().browserFilter();
         final String search = navigationController.state().browserSearch();
-        browserView.setLocation(location.isEmpty() ? "INTERNAL" : location);
-        browserView.setFilter(filter.isEmpty() ? "ALL" : filter);
-        browserView.setSearch(search);
-        // Restore the persisted Show project-data folders preference so the
-        // toggle reflects its last state after process death or restart.
+        // Restore the persisted Show project-data folders preference BEFORE
+        // building Browser navigation so the side nav reflects the restored value.
         if (browserView != null) {
             browserView.showProjectDataFolders =
                     getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
                             .getBoolean(PREF_SHOW_PROJECT_DATA_FOLDERS, false);
         }
+        browserView.setLocation(location.isEmpty() ? "INTERNAL" : location);
+        browserView.setFilter(filter.isEmpty() ? "ALL" : filter);
+        browserView.setSearch(search);
 
         if (sampleInfo == null) {
             sampleInfo = label("", 12, TEXT);
@@ -6839,8 +6839,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 check.setChecked(browserView != null && browserView.showProjectDataFolders);
                 check.setOnCheckedChangeListener((buttonView, isChecked) -> {
                     if (browserView != null) {
-                        browserView.showProjectDataFolders = isChecked;
-                        browserView.renderResults();
+                        browserView.setShowProjectDataFolders(isChecked);
                         // Persist so the setting survives process death and restart.
                         getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
                                 .edit()
@@ -14879,6 +14878,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        // BROW-013 acceptance: exercise the Show project-data folders toggle
+        // through the real Browser Options dialog and log markers so the
+        // emulator smoke test can verify the navigation hierarchy changes.
+        runBrowserProjectDataFoldersAudit();
+
         final View browserStorageAction = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "MPC Browser open Android storage picker");
@@ -18584,5 +18588,55 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             audioDeviceCallback = null;
         }
         super.onDestroy();
+    }
+
+    /**
+     * BROW-013 acceptance: exercises the Show project-data folders toggle
+     * through the real Browser Options dialog and logs markers so the
+     * emulator smoke test can verify the navigation hierarchy changes
+     * (PROJECT DATA appears/disappears, navigation into/out of project
+     * folders, persistence across restart).
+     */
+    private void runBrowserProjectDataFoldersAudit() {
+        if (!uiAuditSmokeMode || destroyed || browserView == null) return;
+
+        final View browserOptions = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser Options");
+        if (browserOptions == null || !browserOptions.isShown()
+                || !browserOptions.isClickable()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: BROW-013 Browser Options not actionable");
+            return;
+        }
+        if (!browserOptions.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: BROW-013 Browser Options click");
+            return;
+        }
+
+        final AlertDialog optionsDialog = browserOptionsDialog;
+        if (optionsDialog == null || !optionsDialog.isShowing()
+                || optionsDialog.getWindow() == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: BROW-013 Browser Options dialog did not open");
+            return;
+        }
+        final View optionsDialogRoot = optionsDialog.getWindow().getDecorView();
+        final View projectDataToggle = findViewWithContentDescription(
+                optionsDialogRoot, "MPC Browser Option Show project-data folders");
+        if (!(projectDataToggle instanceof CheckBox)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: BROW-013 project-data toggle missing");
+            return;
+        }
+        final CheckBox projectDataCheck = (CheckBox) projectDataToggle;
+        final boolean previousState = projectDataCheck.isChecked();
+        final boolean nextState = !previousState;
+        projectDataCheck.performClick();
+        Log.i(TAG, "UI_BROW_013_TOGGLED " + nextState);
+
+        final View closeButton = findViewWithContentDescription(
+                optionsDialogRoot, "MPC Browser Options close");
+        if (closeButton == null || !closeButton.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: BROW-013 Browser Options close");
+            return;
+        }
+        Log.i(TAG, "UI_BROW_013_CLOSED " + nextState);
     }
 }

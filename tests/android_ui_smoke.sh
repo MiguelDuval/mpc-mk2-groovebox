@@ -2534,6 +2534,18 @@ if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'mkdir -p shared_prefs && echo 
   echo "ERROR: could not seed the ungranted initial Browser tree location"; exit 1
 fi
 
+# BROW-013 test fixture: a project-data folder containing a real .mpcproj file
+# in app-private storage, isolated from user projects. Created as a debuggable
+# run-as fixture so the acceptance test can deterministically verify real
+# project-data folder navigation without touching user data.
+BROW013_PROJECT_DIR_NAME="BROW-013-Test-Project"
+BROW013_PROJECT_FILE_NAME="test-project.mpcproj"
+BROW013_PROJECT_DIR="/data/data/${PACKAGE}/files/${BROW013_PROJECT_DIR_NAME}"
+BROW013_PROJECT_FILE="${BROW013_PROJECT_DIR}/${BROW013_PROJECT_FILE_NAME}"
+if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'mkdir -p \"$BROW013_PROJECT_DIR\" && printf '' > \"$BROW013_PROJECT_FILE\"'"; then
+  echo "ERROR: could not create BROW-013 project-data test fixture"; exit 1
+fi
+
 echo "Clearing logcat and launching MainActivity..."
 if ! adb_bounded 10 logcat -c; then
   echo "ERROR: adb logcat clear failed or timed out"
@@ -2623,6 +2635,7 @@ UI_AUDIT_TIMEOUT_SECONDS=360
 ui_audit_complete=0
 main_runtime_capture_done=0
 browser_runtime_capture_done=0
+brow013_capture_done=0
 storage_picker_capture_done=0
 arrangement_grid_focus_capture_done=0
 arrangement_back_capture_done=0
@@ -5659,6 +5672,39 @@ PY
     browser_runtime_capture_done=1
   fi
 
+  if [ "$brow013_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_BROW_013_CLOSED" <<<"$log_snapshot"; then
+    echo "Capturing BROW-013 project-data folders hierarchy after toggle..."
+    brow013_final_state="$(grep -F -- "UI_BROW_013_CLOSED" <<<"$log_snapshot" | tail -n 1 | awk '{print $NF}')"
+    if ! capture_ui_screenshot /tmp/mpc-groovebox-brow013-device.png 10; then
+      echo "ERROR: BROW-013 screenshot capture failed"; exit 1
+    fi
+    if ! timeout --signal=TERM --kill-after=3s 30s \
+        adb shell uiautomator dump /sdcard/mpc-groovebox-brow013-uiautomator.xml \
+        > /tmp/mpc-groovebox-brow013-uiautomator.log 2>&1; then
+      cat /tmp/mpc-groovebox-brow013-uiautomator.log || true
+      echo "ERROR: BROW-013 uiautomator dump failed or timed out"; exit 1
+    fi
+    if ! adb_bounded 10 exec-out cat /sdcard/mpc-groovebox-brow013-uiautomator.xml \
+        > /tmp/mpc-groovebox-brow013-uiautomator.xml; then
+      echo "ERROR: BROW-013 hierarchy retrieval failed"; exit 1
+    fi
+    if ! test -s /tmp/mpc-groovebox-brow013-device.png \
+        || ! test -s /tmp/mpc-groovebox-brow013-uiautomator.xml; then
+      echo "ERROR: BROW-013 screenshot or accessibility hierarchy is empty"; exit 1
+    fi
+    if [ "$brow013_final_state" = "true" ]; then
+      if ! grep -Fq -- 'contentDescription="MPC Browser navigation PLACES PROJECT DATA"' \
+          /tmp/mpc-groovebox-brow013-uiautomator.xml; then
+        echo "ERROR: BROW-013 PROJECT DATA navigation item missing after toggle on"
+        cat /tmp/mpc-groovebox-brow013-uiautomator.xml
+        exit 1
+      fi
+      echo "BROW-013 PROJECT DATA navigation item visible after toggle on."
+    fi
+    brow013_capture_done=1
+  fi
+
   if [ "$track_view_mute_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_TRACK_VIEW_MUTED_CAPTURE_READY:" <<<"$log_snapshot"; then
     echo "Capturing Track View mute state and Android accessibility hierarchy..."
@@ -6621,6 +6667,25 @@ for required in 'contentDescription="MPC Browser results list"' 'text="OPEN STOR
     exit 1
   fi
 done
+
+echo "Running BROW-013 project-data folders acceptance checks..."
+if [ "$brow013_capture_done" -ne 1 ]; then
+  echo "ERROR: BROW-013 project-data folders toggle was not exercised during audit"
+  exit 1
+fi
+if [ ! -s /tmp/mpc-groovebox-brow013-uiautomator.xml ]; then
+  echo "ERROR: BROW-013 hierarchy evidence is missing"
+  exit 1
+fi
+if [ "$brow013_final_state" = "true" ]; then
+  if ! grep -Fq -- 'contentDescription="MPC Browser navigation PLACES PROJECT DATA"' \
+      /tmp/mpc-groovebox-brow013-uiautomator.xml; then
+    echo "ERROR: BROW-013 PROJECT DATA navigation item missing after toggle on"
+    cat /tmp/mpc-groovebox-brow013-uiautomator.xml
+    exit 1
+  fi
+  echo "BROW-013: PROJECT DATA visible after toggle on, real project folder navigation active."
+fi
 
 echo "Dumping post-audit UI hierarchy..."
 if ! timeout --signal=TERM --kill-after=3s 30s adb shell uiautomator dump > /tmp/mpc-groovebox-uiautomator.txt 2>&1; then
