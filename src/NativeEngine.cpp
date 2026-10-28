@@ -328,14 +328,14 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
                 // Read the stored WAV file and load it back into the engine.
                 std::ifstream file(ref->path, std::ios::binary);
                 if (!file) {
-                    layer.sample = domain::SampleId{};
+                    layer.sample = mpc::domain::SampleId{};
                     continue;
                 }
                 std::vector<std::uint8_t> wavBytes(
                         (std::istreambuf_iterator<char>(file)),
                         std::istreambuf_iterator<char>());
                 if (wavBytes.empty()) {
-                    layer.sample = domain::SampleId{};
+                    layer.sample = mpc::domain::SampleId{};
                     continue;
                 }
                 const auto loadResult = audio.loadSampleForPadLayer(
@@ -346,7 +346,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
                 if (loadResult.rfind("Pad ", 0) != 0) {
                     // Load failed: clear the sample assignment so the UI
                     // does not show a sample that cannot play.
-                    layer.sample = domain::SampleId{};
+                    layer.sample = mpc::domain::SampleId{};
                 }
             }
         }
