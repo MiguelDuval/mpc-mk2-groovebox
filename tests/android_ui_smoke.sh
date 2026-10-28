@@ -14,6 +14,7 @@ BROWSER_FILTER_ICON_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groo
 UI_STATE_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"
 NAVIGATION_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcNavigationController.java"
 NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
+SOLO_POLICY_SOURCE="src/MPC/Sequencer/MpcSequenceSoloPolicy.h"
 TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackEditView.java"
 SHELL_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"
 
@@ -676,6 +677,33 @@ for required in \
     exit 1
   fi
 done
+
+echo "Running real Track Solo playback-routing preflight..."
+for required in \
+  'nativeSequenceCanSoloTrack' \
+  'nativeSequenceIsTrackSoloed' \
+  'nativeSequenceToggleTrackSolo' \
+  'shouldRouteTrackForSolo(' \
+  'hasSoloedPlaybackTrack(' \
+  'trackSoloed_' \
+  'anyTrackSoloed_'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" "$NATIVE_ENGINE_SOURCE" "$SOLO_POLICY_SOURCE" \
+      "src/MPC/Sequencer/MpcSequencePlaybackSession.h" \
+      "src/MPC/Sequencer/MpcSequencerPlayback.h"; then
+    echo "ERROR: real Track Solo playback-routing contract missing: $required"; exit 1
+  fi
+done
+for required in \
+  'verifyTrackSoloToggleAndRestoreForAudit(' \
+  'UI_TRACK_SOLO_ROUNDTRIP_COMPLETE:' \
+  'MPC Function Bar Track Solo '; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Track Solo UI round-trip acceptance contract missing: $required"; exit 1
+  fi
+done
+if ! grep -Fq -- 'tests/MpcSequencerPlaybackTests.cpp' ".github/workflows/android-build.yml"; then
+  echo "ERROR: native playback Solo test is not part of the Android Build workflow"; exit 1
+fi
 
 echo "Running Track View mute round-trip preflight..."
 for required in \
@@ -6473,6 +6501,7 @@ PY
         || [ "$mute_track_capture_done" -ne 1 ] \
         || ! grep -Fq -- "UI_MUTE_GRID_ROUNDTRIP_COMPLETE:" <<<"$log_snapshot" \
         || ! grep -Fq -- "UI_MAIN_MUTE_ROUTE_COMPLETE:" <<<"$log_snapshot" \
+        || ! grep -Fq -- "UI_TRACK_SOLO_ROUNDTRIP_COMPLETE:" <<<"$log_snapshot" \
         || ! grep -Fq -- "UI_RESERVED_SHORTCUT_ROUTE_COMPLETE:" <<<"$log_snapshot"; then
       echo "ERROR: UI audit completed without real Pad/Track Mute grid acceptance and Arrange navigation evidence"
       exit 1
