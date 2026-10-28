@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -25,5 +26,9 @@ struct SampleBuffer final {
 };
 
 std::optional<SampleBuffer> decodeWav(std::span<const std::uint8_t> bytes);
+
+// Encode a non-empty mono/stereo SampleBuffer as RIFF IEEE-float 32-bit PCM.
+// Returns an empty vector when the sample cannot be represented by RIFF/WAV.
+std::vector<std::uint8_t> encodeWav(const SampleBuffer& sample);
 
 } // namespace mpc::audio

@@ -230,4 +230,86 @@ std::optional<SampleBuffer> decodeWav(std::span<const std::uint8_t> bytes) {
     return result;
 }
 
+
+std::vector<std::uint8_t> encodeWav(const SampleBuffer& sample) {
+    static_assert(sizeof(float) == sizeof(std::uint32_t));
+
+    const std::uint16_t channels = sample.channelCount;
+    if (sample.sampleRate == 0
+            || (channels != 1u && channels != 2u)
+            || sample.interleaved.empty()
+            || sample.interleaved.size() % channels != 0) {
+        return {};
+    }
+
+    const std::size_t frames = sample.frameCount();
+    if (frames == 0) {
+        return {};
+    }
+
+    constexpr std::uint64_t kRiffHeaderSize = 36u;
+    constexpr std::uint64_t kFileHeaderSize = 44u;
+    const std::uint64_t bytesPerFrame =
+            static_cast<std::uint64_t>(channels) * sizeof(float);
+    const std::uint64_t maxDataSize =
+            std::numeric_limits<std::uint32_t>::max() - kRiffHeaderSize;
+    if (static_cast<std::uint64_t>(frames) > maxDataSize / bytesPerFrame) {
+        return {};
+    }
+
+    const std::uint64_t dataSize64 =
+            static_cast<std::uint64_t>(frames) * bytesPerFrame;
+    const std::uint64_t byteRate64 =
+            static_cast<std::uint64_t>(sample.sampleRate) * bytesPerFrame;
+    if (byteRate64 > std::numeric_limits<std::uint32_t>::max()
+            || dataSize64
+                    > static_cast<std::uint64_t>(
+                            std::numeric_limits<std::size_t>::max())
+                            - kFileHeaderSize) {
+        return {};
+    }
+
+    const auto dataSize = static_cast<std::uint32_t>(dataSize64);
+    const auto riffChunkSize =
+            static_cast<std::uint32_t>(kRiffHeaderSize + dataSize64);
+    const auto byteRate = static_cast<std::uint32_t>(byteRate64);
+    const auto blockAlign = static_cast<std::uint16_t>(bytesPerFrame);
+
+    std::vector<std::uint8_t> wav;
+    wav.reserve(static_cast<std::size_t>(dataSize64 + kFileHeaderSize));
+
+    auto writeLE16 = [&wav](std::uint16_t value) {
+        wav.push_back(static_cast<std::uint8_t>(value & 0xFFu));
+        wav.push_back(static_cast<std::uint8_t>((value >> 8) & 0xFFu));
+    };
+    auto writeLE32 = [&wav](std::uint32_t value) {
+        wav.push_back(static_cast<std::uint8_t>(value & 0xFFu));
+        wav.push_back(static_cast<std::uint8_t>((value >> 8) & 0xFFu));
+        wav.push_back(static_cast<std::uint8_t>((value >> 16) & 0xFFu));
+        wav.push_back(static_cast<std::uint8_t>((value >> 24) & 0xFFu));
+    };
+
+    wav.insert(wav.end(), {'R', 'I', 'F', 'F'});
+    writeLE32(riffChunkSize);
+    wav.insert(wav.end(), {'W', 'A', 'V', 'E'});
+
+    wav.insert(wav.end(), {'f', 'm', 't', ' '});
+    writeLE32(16u);
+    writeLE16(3u); // IEEE float
+    writeLE16(channels);
+    writeLE32(sample.sampleRate);
+    writeLE32(byteRate);
+    writeLE16(blockAlign);
+    writeLE16(32u);
+
+    wav.insert(wav.end(), {'d', 'a', 't', 'a'});
+    writeLE32(dataSize);
+
+    for (const float value : sample.interleaved) {
+        writeLE32(std::bit_cast<std::uint32_t>(value));
+    }
+
+    return wav;
+}
+
 } // namespace mpc::audio

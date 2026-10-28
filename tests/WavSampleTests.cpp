@@ -1,6 +1,5 @@
 #include "Audio/WavSample.h"
-#include "Audio/AudioEngine.h"
-#include "MPC/MpcCore.h"
+#include "Audio/SampleExportPolicy.h"
 
 #include <cassert>
 #include <cstdint>
@@ -252,33 +251,55 @@ void testUnsupportedFormat() {
     assert(!mpc::audio::decodeWav(bytes).has_value());
 }
 
-void testExportWavEmpty() {
-    auto& engine = mpc::MpcCore::instance().audio();
-    auto exported = engine.exportSampleToWav(0, 0);
-    assert(exported.empty());
 
-    auto exported2 = engine.exportSampleToWav(15, 7);
-    assert(exported2.empty());
+void testSampleExportPolicy() {
+    assert(mpc::audio::isValidSampleExportAddress(0, 0, 16, 8));
+    assert(mpc::audio::isValidSampleExportAddress(15, 7, 16, 8));
+    assert(!mpc::audio::isValidSampleExportAddress(16, 0, 16, 8));
+    assert(!mpc::audio::isValidSampleExportAddress(0, 8, 16, 8));
+    assert(!mpc::audio::isValidSampleExportAddress(16, 8, 16, 8));
 
-    auto exported3 = engine.exportSampleToWav(16, 0);
-    assert(exported3.empty());
+    assert(!mpc::audio::hasExportableSample(nullptr));
+    mpc::audio::SampleBuffer empty;
+    assert(!mpc::audio::hasExportableSample(&empty));
 
-    auto exported4 = engine.exportSampleToWav(0, 8);
-    assert(exported4.empty());
+    mpc::audio::SampleBuffer loaded;
+    loaded.sampleRate = 16000;
+    loaded.channelCount = 1;
+    loaded.interleaved = {0.0f};
+    assert(mpc::audio::hasExportableSample(&loaded));
 }
 
-void testExportWavRoundTrip() {
-    auto& engine = mpc::MpcCore::instance().audio();
+void testEncodeWavRejectsInvalidBuffers() {
+    mpc::audio::SampleBuffer empty;
+    assert(mpc::audio::encodeWav(empty).empty());
 
-    auto wavBytes = makeMono16Wav();
-    auto result = engine.loadSampleForPadLayer(wavBytes, 0, 0);
-    assert(result.startsWith("Pad "));
+    mpc::audio::SampleBuffer invalidChannels;
+    invalidChannels.sampleRate = 16000;
+    invalidChannels.channelCount = 3;
+    invalidChannels.interleaved = {0.0f};
+    assert(mpc::audio::encodeWav(invalidChannels).empty());
 
-    auto exported = engine.exportSampleToWav(0, 0);
-    assert(!exported.empty());
+    mpc::audio::SampleBuffer invalidRate;
+    invalidRate.channelCount = 1;
+    invalidRate.interleaved = {0.0f};
+    assert(mpc::audio::encodeWav(invalidRate).empty());
 
-    // Verify RIFF header
-    assert(exported.size() > 12);
+    mpc::audio::SampleBuffer incompleteFrame;
+    incompleteFrame.sampleRate = 16000;
+    incompleteFrame.channelCount = 2;
+    incompleteFrame.interleaved = {0.0f};
+    assert(mpc::audio::encodeWav(incompleteFrame).empty());
+}
+
+void testEncodeWavRoundTrip() {
+    const auto source = mpc::audio::decodeWav(makeMono16Wav());
+    assert(source.has_value());
+
+    const auto exported = mpc::audio::encodeWav(*source);
+    assert(exported.size() == 44 + 5 * sizeof(float));
+
+    // Verify RIFF/WAVE and the IEEE-float fmt chunk.
     assert(exported[0] == 'R');
     assert(exported[1] == 'I');
     assert(exported[2] == 'F');
@@ -287,12 +308,18 @@ void testExportWavRoundTrip() {
     assert(exported[9] == 'A');
     assert(exported[10] == 'V');
     assert(exported[11] == 'E');
-
-    // Verify fmt chunk: IEEE float (format tag 3)
     assert(exported[20] == 3);
+    assert(exported[21] == 0);
+    assert(exported[22] == 1);
+    assert(exported[23] == 0);
 
-    // Decode the exported WAV and verify round-trip
-    auto decoded = mpc::audio::decodeWav(exported);
+    // The first sample is -1.0f and must be serialized little-endian.
+    assert(exported[44] == 0x00);
+    assert(exported[45] == 0x00);
+    assert(exported[46] == 0x80);
+    assert(exported[47] == 0xBF);
+
+    const auto decoded = mpc::audio::decodeWav(exported);
     assert(decoded.has_value());
     assert(decoded->sampleRate == 16000);
     assert(decoded->channelCount == 1);
@@ -312,7 +339,8 @@ int main() {
     testDecodeExtensiblePcm();
     testInvalidHeader();
     testUnsupportedFormat();
-    testExportWavEmpty();
-    testExportWavRoundTrip();
+    testSampleExportPolicy();
+    testEncodeWavRejectsInvalidBuffers();
+    testEncodeWavRoundTrip();
     return 0;
 }
