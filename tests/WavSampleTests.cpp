@@ -149,7 +149,7 @@ void testDecode24BitPcm() {
 void testDecode32BitPcm() {
     std::vector<std::uint8_t> bytes;
 
-    const std::vector<std::int32_t> pcm{-2147483648, 0, 2147483647};
+    const std::vector<std::int32_t> pcm{(-2147483647 - 1), 0, 2147483647};
     const std::uint32_t dataSize =
             static_cast<std::uint32_t>(pcm.size() * sizeof(std::int32_t));
     const std::uint32_t riffSize = 36u + dataSize;
