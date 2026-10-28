@@ -14633,7 +14633,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         };
         for (int i = 0; i < expectedBrowserActionDescriptions.length; i++) {
             final View action = functionBar.getChildAt(i);
-            final String actualDescription = action.getContentDescription();
+            final CharSequence actualDescription = action.getContentDescription();
             boolean descriptionMatches;
             if (i == 3) {
                 // EXPORT WAV description depends on sample state
