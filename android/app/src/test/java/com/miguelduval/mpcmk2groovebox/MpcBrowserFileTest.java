@@ -99,4 +99,20 @@ public final class MpcBrowserFileTest {
         assertFalse(kick.matchesBrowserQuery("CONTENT", "DEMOS", "ALL", ""));
         assertFalse(kick.matchesBrowserQuery("EXPANSIONS", "USER CONTENT", "ALL", ""));
     }
+
+    @Test
+    public void metadataLineIncludesFileSizeForBrowserResults() {
+        MpcBrowserFile kick = sample("Kick_Main.wav", "content://media/external/audio/media/7");
+        String line = kick.metadataLine();
+        assertTrue(line.startsWith("48000 B"));
+        assertTrue(line.contains("• 0:01 • WAV"));
+    }
+
+    @Test
+    public void metadataLineReportsUnknownDurationWhenDurationIsZero() {
+        MpcBrowserFile kick = new MpcBrowserFile(
+                "content://media/external/audio/media/7", "Kick.wav", "audio/wav",
+                48000L, 0L);
+        assertEquals("SIZE 48000 B • DURATION UNKNOWN • WAV", kick.metadataLine());
+    }
 }

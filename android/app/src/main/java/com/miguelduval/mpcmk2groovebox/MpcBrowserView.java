@@ -549,7 +549,7 @@ final class MpcBrowserView extends LinearLayout {
         return "No real local provider is available for " + activeLocationItem + " yet.";
     }
 
-    private void renderResults() {
+    void renderResults() {
         results.removeAllViews();
         providerState.setText(isDocumentTreeLocation() ? userFolderStatus : localScanMessage);
         final List<MpcBrowserFile> sourceFiles =

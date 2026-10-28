@@ -6769,7 +6769,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 check.setEnabled(true);
                 check.setAlpha(1.0f);
                 check.setChecked(browserView != null && browserView.showFileSize);
-                check.setOnCheckedChanged((buttonView, isChecked) -> {
+                check.setOnCheckedChangeListener((buttonView, isChecked) -> {
                     if (browserView != null) {
                         browserView.showFileSize = isChecked;
                         browserView.renderResults();
