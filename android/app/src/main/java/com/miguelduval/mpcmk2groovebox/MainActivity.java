@@ -2019,10 +2019,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "MUTE", trackCount > 0, v -> showMutePage());
             muteWorkspace.setContentDescription(
                     "MPC Function Bar Open Mute workspace");
+            final boolean selectedTrackSolo = startupComplete
+                    && nativeSequenceIsTrackSolo(nativeSequenceGetSelectedTrack());
+            final String soloLabel = selectedTrackSolo ? "SOLO" : "S";
             Button soloWorkspace = addFunction(
-                    "SOLO", trackCount > 0, v -> toggleSelectedTrackSolo());
+                    soloLabel, trackCount > 0, v -> toggleSelectedTrackSolo());
             soloWorkspace.setContentDescription(
                     "MPC Function Bar Toggle Solo selected Track");
+            soloWorkspace.setTextSize(9);
+            soloWorkspace.setTypeface(Typeface.DEFAULT_BOLD);
+            soloWorkspace.setTextColor(selectedTrackSolo
+                    ? Color.rgb(255, 255, 255) : MUTED);
+            soloWorkspace.setBackground(strokeBackground(
+                    selectedTrackSolo ? Color.rgb(74, 124, 88) : Color.TRANSPARENT,
+                    selectedTrackSolo ? ACTIVE : LINE,
+                    MPC_FLAT_RADIUS_DP));
             return;
         }
 
@@ -2041,10 +2052,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "MUTE", trackCount > 0, v -> showMutePage());
             muteWorkspace.setContentDescription(
                     "MPC Function Bar Open Mute workspace");
+            final boolean selectedTrackSolo = startupComplete
+                    && nativeSequenceIsTrackSolo(nativeSequenceGetSelectedTrack());
+            final String soloLabel = selectedTrackSolo ? "SOLO" : "S";
             Button soloWorkspace = addFunction(
-                    "SOLO", trackCount > 0, v -> toggleSelectedTrackSolo());
+                    soloLabel, trackCount > 0, v -> toggleSelectedTrackSolo());
             soloWorkspace.setContentDescription(
                     "MPC Function Bar Toggle Solo selected Track");
+            soloWorkspace.setTextSize(9);
+            soloWorkspace.setTypeface(Typeface.DEFAULT_BOLD);
+            soloWorkspace.setTextColor(selectedTrackSolo
+                    ? Color.rgb(255, 255, 255) : MUTED);
+            soloWorkspace.setBackground(strokeBackground(
+                    selectedTrackSolo ? Color.rgb(74, 124, 88) : Color.TRANSPARENT,
+                    selectedTrackSolo ? ACTIVE : LINE,
+                    MPC_FLAT_RADIUS_DP));
             return;
         }
 
@@ -2594,6 +2616,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             loadArrangementLanes();
             refreshArrangeView();
             refreshMpcCompactContext();
+            refreshMpcFunctionBar();
             return;
         }
 
@@ -2604,6 +2627,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         refreshSequenceControls();
         refreshMpcCompactContext();
+        refreshMpcFunctionBar();
         if ("MAIN".equals(currentPage)) {
             refreshMainArrangementPreview();
         }
