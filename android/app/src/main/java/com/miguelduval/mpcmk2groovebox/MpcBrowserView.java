@@ -503,6 +503,7 @@ final class MpcBrowserView extends LinearLayout {
     private boolean isCatalogLocationSupported() {
         if ("PLACES".equals(activeSection)) {
             if ("INTERNAL".equalsIgnoreCase(activeLocationItem)) return true;
+            if (isFavoriteLocation()) return isDocumentTreeLocation();
             return isDocumentTreeLocation() && userFolderConfigured && userFolderAccessReady;
         }
         if ("CONTENT".equals(activeSection)) {
@@ -518,9 +519,7 @@ final class MpcBrowserView extends LinearLayout {
             if (isUserFolderLocation()) return userFolderConfigured
                     ? "USER FOLDER ACCESS NEEDS RENEWAL" : "USER FOLDER NOT CONFIGURED";
             if (isFavoriteLocation()) {
-                return userFolderConfigured
-                        ? activeLocationItem + " ACCESS NEEDS RENEWAL"
-                        : activeLocationItem + " NOT CONFIGURED";
+                return activeLocationItem + " NOT CONFIGURED";
             }
             return "PLACE PROVIDER UNAVAILABLE";
         }
@@ -536,11 +535,8 @@ final class MpcBrowserView extends LinearLayout {
                 return "Choose a local folder to browse real documents. Android file import remains available from LOAD.";
             }
             if (isFavoriteLocation()) {
-                return userFolderConfigured
-                        ? "Saved access to " + activeLocationItem
-                                + " needs renewal. Use CHANGE FOLDER to select it again."
-                        : "Use CHOOSE FOLDER to assign a persistent local folder to "
-                                + activeLocationItem + ".";
+                return "Use CHOOSE FOLDER to assign a persistent local folder to "
+                        + activeLocationItem + ".";
             }
             return "This place is not backed by the local WAV catalog.";
         }
