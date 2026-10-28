@@ -1986,6 +1986,18 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'up.setContentDescription("Brows
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser LOAD source file with Android Document Picker'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser BACK to previous workspace'
 
+echo "Running MPC Browser project-data folders contract preflight (BROW-013)..."
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'PREF_SHOW_PROJECT_DATA_FOLDERS'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'getBoolean(PREF_SHOW_PROJECT_DATA_FOLDERS'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'putBoolean(PREF_SHOW_PROJECT_DATA_FOLDERS'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'browserView.navigateUp()'
+require_source_contains "$BROWSER_SOURCE" 'renderProjectDataResults'
+require_source_contains "$BROWSER_SOURCE" 'renderProjectFoldersList'
+require_source_contains "$BROWSER_SOURCE" 'renderProjectFolderContents'
+require_source_contains "$BROWSER_SOURCE" 'openProjectFolderName'
+require_source_contains "$BROWSER_SOURCE" 'boolean navigateUp'
+require_source_contains "$BROWSER_SOURCE" '"PROJECT DATA"'
+
 echo "Running clean visual-evidence audit preflight..."
 for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStatus.setVisibility(View.GONE);'   'truthful Main screenshot'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then

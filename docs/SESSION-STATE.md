@@ -150,7 +150,7 @@ Added `showTrackTypeSelectPage()` to `MainActivity.java` with DRUM/KEYGROUP/PLUG
 
 ### 17. BROW-013 Browser Options show project-data folders — IMPLEMENTED (partial)
 
-Added `showProjectDataFolders` toggle to Browser Options dialog. When enabled, shows "PROJECT DATA FOLDERS" info row with app-private samples path. Toggle persists during dialog session but NOT persisted via SharedPreferences yet. Does NOT implement real folder navigation or visibility filtering of project-data folders in Browser results.
+Added `showProjectDataFolders` toggle to Browser Options dialog. When enabled, real project-data folders (subdirectories of app storage containing `.mpcproj` files) are listed in the Browser under a "PLACES/PROJECT DATA" location, navigable into and back out of. The setting is persisted via SharedPreferences (`PREF_SHOW_PROJECT_DATA_FOLDERS` in `mpc_browser_storage`) and restored on Browser recreation and after process death/restart. Project files are selectable but not loadable as samples, preserving the selection/load/assign distinction. Toggle is enabled (not a reserved decoration). Acceptance contract added to `tests/android_ui_smoke.sh`.
 
 Changes:
 - `MpcBrowserView.java` — added `import java.io.File`, `boolean showProjectDataFolders = false` field, BROW-013 info row in `renderResults()` when enabled
@@ -210,7 +210,7 @@ Full CI log for #3499 was obtained via GitHub web UI. The error was:
 `UI_INTERACTION_FAILED: Browser Function Bar structure | bar=w=1117,h=105,vis=0,a=1.0`
 Root cause: `refreshMpcFunctionBar()` creates 6 Browser Function Bar buttons (SAMPLE ASSIGN, AUDITION, LOAD, EXPORT WAV, UP, BACK) but `runUiAuditAfterBrowserFunctionBarLayout()` checked only 5 labels.
 
-Next step: CI run triggered by current commit — verify all 53 steps pass including emulator smoke test and visual evidence upload.
+CI run #3501 (SHA `37e626fa`, fix for CharSequence type mismatch in description check) PASSED all 53 steps in 27m 25s — full green CI including emulator smoke test and visual evidence upload.
 
 ## Mandatory operating rules
 

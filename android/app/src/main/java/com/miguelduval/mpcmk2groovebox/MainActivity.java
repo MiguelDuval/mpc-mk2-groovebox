@@ -96,6 +96,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final String TRACK_TYPE_CHANGE_RESERVED_STATUS =
             "TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation";
     private static final String BROWSER_STORAGE_PREFERENCES = "mpc_browser_storage";
+    private static final String PREF_SHOW_PROJECT_DATA_FOLDERS = "show_project_data_folders";
     private static final String MPC_UI_PREFERENCES = "mpc_ui_preferences";
     private static final String PREF_SHORTCUT_MODES = "shortcut_modes_v1";
     private static final String PREF_USER_TREE_URI = "user_tree_uri";
@@ -6049,6 +6050,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             @Override
             public void onNavigateUp() {
+                // Back out of an opened project-data folder before navigating up
+                // through the regular location hierarchy.
+                if (browserView != null && browserView.navigateUp()) {
+                    setBottomStatus("BROWSER • PROJECT DATA");
+                    refreshMpcFunctionBar();
+                    return;
+                }
                 final String currentLocation =
                         navigationController.state().browserLocation();
                 final int separator = currentLocation.lastIndexOf('/');
@@ -6143,6 +6151,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         browserView.setLocation(location.isEmpty() ? "INTERNAL" : location);
         browserView.setFilter(filter.isEmpty() ? "ALL" : filter);
         browserView.setSearch(search);
+        // Restore the persisted Show project-data folders preference so the
+        // toggle reflects its last state after process death or restart.
+        if (browserView != null) {
+            browserView.showProjectDataFolders =
+                    getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
+                            .getBoolean(PREF_SHOW_PROJECT_DATA_FOLDERS, false);
+        }
 
         if (sampleInfo == null) {
             sampleInfo = label("", 12, TEXT);
@@ -6826,6 +6841,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     if (browserView != null) {
                         browserView.showProjectDataFolders = isChecked;
                         browserView.renderResults();
+                        // Persist so the setting survives process death and restart.
+                        getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
+                                .edit()
+                                .putBoolean(PREF_SHOW_PROJECT_DATA_FOLDERS, isChecked)
+                                .apply();
                     }
                 });
             } else {

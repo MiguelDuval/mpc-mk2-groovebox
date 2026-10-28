@@ -86,6 +86,17 @@ final class MpcBrowserView extends LinearLayout {
     // can navigate to project storage locations. Defaults to off.
     boolean showProjectDataFolders = false;
 
+    // Name of the project-data folder currently opened inside the
+    // "PLACES/PROJECT DATA" location. Null means the folder list is shown;
+    // non-null means the contents of that folder are shown. Kept in memory
+    // only; the persisted user preference is showProjectDataFolders.
+    String openProjectFolderName = null;
+
+    // Name of the project file currently selected inside an opened
+    // project-data folder. Visual selection only; project files are not
+    // loadable as samples, so this never triggers sample assignment.
+    String selectedProjectFileName = null;
+
     MpcBrowserView(Context context) {
         super(context);
         setOrientation(VERTICAL);
@@ -346,6 +357,11 @@ final class MpcBrowserView extends LinearLayout {
     void setSection(String section) {
         activeSection = isKnownSection(section) ? section : "PLACES";
         activeLocationItem = defaultItemForSection(activeSection);
+        // Leaving the PROJECT DATA location closes any opened project folder.
+        if (!"PROJECT DATA".equalsIgnoreCase(activeLocationItem)) {
+            openProjectFolderName = null;
+            selectedProjectFileName = null;
+        }
         setActiveButton(sections, activeSection);
         rebuildSideNavigation();
         setActiveNavigationItem(activeLocationItem);
@@ -362,6 +378,10 @@ final class MpcBrowserView extends LinearLayout {
             if (isKnownSection(section)) {
                 activeSection = section;
                 activeLocationItem = item;
+                if (!isProjectDataLocation()) {
+                    openProjectFolderName = null;
+                    selectedProjectFileName = null;
+                }
                 setActiveButton(sections, activeSection);
                 rebuildSideNavigation();
                 updateLocationLabel();
@@ -376,11 +396,25 @@ final class MpcBrowserView extends LinearLayout {
         }
         activeSection = "PLACES";
         activeLocationItem = raw.isEmpty() ? "INTERNAL" : raw;
+        if (!isProjectDataLocation()) {
+            openProjectFolderName = null;
+            selectedProjectFileName = null;
+        }
         setActiveButton(sections, activeSection);
         rebuildSideNavigation();
         updateLocationLabel();
         setActiveNavigationItem(activeLocationItem);
         renderResults();
+    }
+
+    boolean navigateUp() {
+        if (isProjectDataLocation() && openProjectFolderName != null) {
+            openProjectFolderName = null;
+            selectedProjectFileName = null;
+            renderResults();
+            return true;
+        }
+        return false;
     }
 
     private String defaultItemForSection(String section) {
@@ -425,6 +459,9 @@ final class MpcBrowserView extends LinearLayout {
             final List<String> placesItems = new ArrayList<>();
             Collections.addAll(placesItems, "INTERNAL", "MPC DOCUMENTS", "CONNECTED STORAGE");
             placesItems.add("USER FOLDER");
+            if (showProjectDataFolders) {
+                placesItems.add("PROJECT DATA");
+            }
             Collections.addAll(placesItems,
                     "FAVORITE 1", "FAVORITE 2", "FAVORITE 3", "FAVORITE 4", "FAVORITE 5");
             items = placesItems.toArray(new String[0]);
@@ -513,9 +550,15 @@ final class MpcBrowserView extends LinearLayout {
         return isUserFolderLocation() || isFavoriteLocation();
     }
 
+    private boolean isProjectDataLocation() {
+        return "PLACES".equals(activeSection)
+                && "PROJECT DATA".equalsIgnoreCase(activeLocationItem);
+    }
+
     private boolean isCatalogLocationSupported() {
         if ("PLACES".equals(activeSection)) {
             if ("INTERNAL".equalsIgnoreCase(activeLocationItem)) return true;
+            if ("PROJECT DATA".equalsIgnoreCase(activeLocationItem)) return true;
             if (isFavoriteLocation()) return isDocumentTreeLocation();
             return isDocumentTreeLocation() && userFolderConfigured && userFolderAccessReady;
         }
@@ -558,6 +601,10 @@ final class MpcBrowserView extends LinearLayout {
 
     void renderResults() {
         results.removeAllViews();
+        if (isProjectDataLocation()) {
+            renderProjectDataResults();
+            return;
+        }
         providerState.setText(isDocumentTreeLocation() ? userFolderStatus : localScanMessage);
         final List<MpcBrowserFile> sourceFiles =
                 isDocumentTreeLocation() ? userFolderFiles : localFiles;
@@ -657,6 +704,102 @@ final class MpcBrowserView extends LinearLayout {
                     "App-private samples: " + getContext().getFilesDir()
                             + File.separator + "samples");
         }
+    }
+
+    void renderProjectDataResults() {
+        providerState.setText("PROJECT DATA • "
+                + (openProjectFolderName == null ? "FOLDERS" : openProjectFolderName));
+        if (openProjectFolderName != null) {
+            renderProjectFolderContents(openProjectFolderName);
+        } else {
+            renderProjectFoldersList();
+        }
+    }
+
+    private void renderProjectFoldersList() {
+        final File filesDir = getContext().getFilesDir();
+        final File[] subdirs = filesDir.listFiles(File::isDirectory);
+        int count = 0;
+        if (subdirs != null) {
+            for (File subdir : subdirs) {
+                if (hasProjectFile(subdir)) {
+                    final String name = subdir.getName();
+                    final int projectCount = projectFiles(subdir).length;
+                    addSelectableRow(
+                            name,
+                            "PROJECT DATA FOLDER • " + projectCount + " project(s)",
+                            "MPC Browser project-data folder " + name,
+                            v -> {
+                                openProjectFolderName = name;
+                                selectedProjectFileName = null;
+                                renderResults();
+                            });
+                    count++;
+                }
+            }
+        }
+        if (count == 0) {
+            addInfoRow("NO PROJECT FOLDERS",
+                    "No project-data folders found in app storage. Create or import a project to see it here.");
+        }
+    }
+
+    private void renderProjectFolderContents(String folderName) {
+        final File folder = new File(getContext().getFilesDir(), folderName);
+        final File[] projFiles = projectFiles(folder);
+        int count = 0;
+        if (projFiles != null) {
+            for (File file : projFiles) {
+                final String name = file.getName();
+                addSelectableRow(
+                        name,
+                        "PROJECT FILE • " + folderName,
+                        "MPC Browser project file " + name,
+                        v -> {
+                            selectedProjectFileName = name.equals(selectedProjectFileName)
+                                    ? null : name;
+                            renderResults();
+                        });
+                count++;
+            }
+        }
+        if (count == 0) {
+            addInfoRow("NO PROJECT FILES",
+                    "No .mpcproj project files in " + folderName + ".");
+        }
+    }
+
+    private boolean hasProjectFile(File folder) {
+        return projectFiles(folder).length > 0;
+    }
+
+    private File[] projectFiles(File folder) {
+        return folder.listFiles(
+                (dir, name) -> name != null
+                        && name.toLowerCase(Locale.ROOT).endsWith(".mpcproj"));
+    }
+
+    private void addSelectableRow(String title, String subtitle, String contentDescription,
+            View.OnClickListener onClick) {
+        final LinearLayout row = row(getContext());
+        row.setPadding(dp(getContext(), 6), dp(getContext(), 2),
+                dp(getContext(), 6), dp(getContext(), 2));
+        row.setContentDescription(contentDescription);
+        row.setClickable(true);
+        row.setFocusable(true);
+        row.setBackground(stroke(SURFACE_2, LINE));
+        row.setOnClickListener(onClick);
+        final TextView main = info(getContext(), title);
+        main.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        main.setSingleLine(true);
+        main.setEllipsize(TextUtils.TruncateAt.END);
+        row.addView(main, new LayoutParams(0, dp(getContext(), 34), 1));
+        final TextView sub = info(getContext(), subtitle);
+        sub.setTextSize(8);
+        sub.setSingleLine(true);
+        sub.setEllipsize(TextUtils.TruncateAt.END);
+        row.addView(sub, new LayoutParams(0, dp(getContext(), 34), 1.7f));
+        results.addView(row, paramsMatch(getContext(), 40));
     }
 
     private String activeFilter() {
