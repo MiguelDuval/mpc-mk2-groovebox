@@ -1,15 +1,28 @@
 # Implementation Roadmap
 
-## CURRENT EXECUTION QUEUE — 2026-10-27 (live exact-SHA evidence governs)
+## CURRENT EXECUTION QUEUE — 2026-10-28 (live GitHub state and exact-SHA evidence govern)
 
-#### P0 UI recovery — dedicated Mute workspace and truthful unavailable screens
+### P0 recovery — dedicated Mute workspace and truthful unavailable screens: EMULATOR ACCEPTANCE VERIFIED
 
-- Confirmed by source inspection on the installed-build source SHA: the Main Function Bar's MUTE action only toggled the selected Track; there was no on-screen 4×4 Pad/Track Mute workspace. Reserved shortcut/Menu destinations changed navigation state without rebuilding workspace content, leaving the previous screen visible.
-- Recovery branch: `fix/p0-mute-grid-ui-recovery-20261027`, based on exact PR #23 code SHA `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d`. Product acceptance is pending until exact-SHA Android Build, emulator interaction checks, fresh PNG/XML captures and APK artifact all complete.
-- Scope: real Pad Mute and Track Mute 4×4 grids; native state readback; 16-Track banks; full-size truthful RESERVED routing; runtime assertions for toggling/restoring real musical mute state while retaining Sequence/Track/Pad and event data. Canonical Main remains controller-first with no permanent software pad grid.
-- Physical MPC Studio MkII validation remains separate from emulator acceptance.
+- Product PR #23 remains OPEN on `feature/mpc-one-ui-fidelity`, live HEAD at the start of this checkpoint `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d`, base `fix/ui-shell-format-width-startup` at `5f562e54e2cf8235041590933232a3836d74a16a`.
+- Recovery PR #124 remains OPEN as Draft on `fix/p0-mute-grid-ui-recovery-20261027`, based directly on that PR #23 product SHA. Product-code SHA `f734930cae403d0794e3d4b504e4bf8f5f7c6e84` passed Android Build #3465 / [run 40591850947](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40591850947); the Android job completed all 57 steps, including native tests, APK assembly, emulator smoke and visual-evidence upload.
+- Exact-run APK artifact: `app-debug.apk`, ID `12775051524`, 10,010,205 bytes, SHA-256 `3b1ea246a0a5e1f069d6fc99eea82952b7ea5624a77712b20c08a063be909e71`.
+- Exact-run visual evidence artifact: `mpc-ui-visual-evidence`, ID `12775747260`, 15,558,199 bytes, SHA-256 `96bf4e0e085ffb7ee86fe0a7600358473f6c4a6df71148e46dbe2b21d1dd345b`. The archive was downloaded, its digest checked against GitHub Actions metadata, and the Pad/Track screenshots plus matching UIAutomator XML were inspected.
+- Inspected Pad evidence: `mpc-groovebox-mute-pad.png` and `mpc-groovebox-mute-pad-uiautomator.xml`. The screenshot shows the dedicated Pad Mute workspace; its fresh hierarchy exposes exactly 16 targets, Pad 01 visibly `MUTE ON` in the captured post-toggle state, and Pads 02–16 `MUTE OFF`.
+- Inspected Track evidence: `mpc-groovebox-mute-track.png` and `mpc-groovebox-mute-track-uiautomator.xml`. The screenshot shows the separate Track Mute workspace; its fresh hierarchy has 16 cells, Track 01 visibly `MUTE ON`, and unused Track slots honestly disabled as `NO TRACK`. Track target banks use actual Sequence Track count.
+- Runtime assertions toggle and restore the actual native Pad/Track mute values; verify the live UI reflects those values; preserve Sequence, Track and Pad selection plus the captured note snapshot; and exercise Back from Mute. The Main Function Bar route separately verifies that MUTE replaces Main, then Back restores Main and musical context. The successful smoke also asserts Reserved Channel Mixer/Sounds/XY/Menu destinations replace the former workspace with explicit RESERVED/UNAVAILABLE content and return through Back without losing selection. The artifact contains dedicated Mute PNG/XML evidence; Reserved-route success is supported by runtime assertions/log marker, not by a separate reserved-route screenshot.
+- **Status:** P0 is verified by exact-SHA Android emulator acceptance and inspected artifacts. Physical Akai MPC Studio MkII validation remains a separate **PENDING** hardware gate. This does not claim physical-controller acceptance or that the PR has been merged.
 
-## Latest accepted primary checkpoint — PR #23
+### Next isolated vertical slice — real Track Solo playback
+
+- The current Function Bar Solo action is disabled/reserved. The domain model already stores `Track::soloed` and `Pad::soloed`, and project serialization already encodes these flags; stored fields alone are not functional playback.
+- Source trace on the P0 code SHA: `src/MPC/Sequencer/MpcSequencePlaybackSession.h` creates one playback per eligible Drum Track and passes `&track.muted`; `src/MPC/Sequencer/MpcSequencerPlayback.h` gates scheduled events on Track Mute before the audio-trigger queue, but does not consult `Track::soloed`. This scheduler path is upstream of the realtime audio callback and is the appropriate candidate boundary; do not move Solo logic into the audio callback.
+- Implement a complete, bounded vertical slice: truthful UI state and semantic native commands; no-solo normal playback; one or multiple Solo Tracks playing exclusively; Mute winning over Solo on the same Track; toggling Solo while playback advances; Sequence changes using that Sequence's Solo state; save/load preservation where the existing codec already supports it; and tests that prove the scheduler/audio-trigger queue outcome, not just a UI label. Keep unsupported Track Types explicitly unavailable if they cannot produce sound in the existing engine.
+- Start a separate child branch from the actual live P0 branch HEAD and target the P0 branch as its Draft PR base so the dependency on PR #124 stays explicit. Do not add Solo work to PR #124, duplicate its diff, or change its base. If the vertical path cannot be proved safely, leave Solo RESERVED and choose the next small fully testable roadmap gap.
+- No local checkout was available to this session; local status/unpushed changes could not be inspected. Live GitHub refs, Actions metadata, job logs and the downloaded evidence archive were used instead. Re-fetch current refs before the next edit; do not treat this checkpoint as a substitute for live status.
+
+## Historical primary checkpoint — 2026-10-27 (superseded by the live queue above)
+
 
 - PR #23 remains OPEN: feature/mpc-one-ui-fidelity → fix/ui-shell-format-width-startup. Current HEAD d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991; base SHA 5f562e54e2cf8235041590933232a3836d74a16a.
 - Product-code SHA 3de910cc0e28b5abe82e588766b77c49262fe650 passed Android Build #3296 / [run 40205072938](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40205072938), all 57 steps. The current docs-only HEAD d827a40e4bb5cafdcda5dc5bb37f2b581b6e7991 passed Build #3301 / [run 40207854314](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40207854314), all 57 steps.
