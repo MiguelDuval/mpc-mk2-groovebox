@@ -1,4 +1,6 @@
 #include "Audio/WavSample.h"
+#include "Audio/AudioEngine.h"
+#include "MPC/MpcCore.h"
 
 #include <cassert>
 #include <cstdint>
@@ -250,6 +252,56 @@ void testUnsupportedFormat() {
     assert(!mpc::audio::decodeWav(bytes).has_value());
 }
 
+void testExportWavEmpty() {
+    auto& engine = mpc::MpcCore::instance().audio();
+    auto exported = engine.exportSampleToWav(0, 0);
+    assert(exported.empty());
+
+    auto exported2 = engine.exportSampleToWav(15, 7);
+    assert(exported2.empty());
+
+    auto exported3 = engine.exportSampleToWav(16, 0);
+    assert(exported3.empty());
+
+    auto exported4 = engine.exportSampleToWav(0, 8);
+    assert(exported4.empty());
+}
+
+void testExportWavRoundTrip() {
+    auto& engine = mpc::MpcCore::instance().audio();
+
+    auto wavBytes = makeMono16Wav();
+    auto result = engine.loadSampleForPadLayer(wavBytes, 0, 0);
+    assert(result.startsWith("Pad "));
+
+    auto exported = engine.exportSampleToWav(0, 0);
+    assert(!exported.empty());
+
+    // Verify RIFF header
+    assert(exported.size() > 12);
+    assert(exported[0] == 'R');
+    assert(exported[1] == 'I');
+    assert(exported[2] == 'F');
+    assert(exported[3] == 'F');
+    assert(exported[8] == 'W');
+    assert(exported[9] == 'A');
+    assert(exported[10] == 'V');
+    assert(exported[11] == 'E');
+
+    // Verify fmt chunk: IEEE float (format tag 3)
+    assert(exported[20] == 3);
+
+    // Decode the exported WAV and verify round-trip
+    auto decoded = mpc::audio::decodeWav(exported);
+    assert(decoded.has_value());
+    assert(decoded->sampleRate == 16000);
+    assert(decoded->channelCount == 1);
+    assert(decoded->frameCount() == 5);
+    assert(decoded->sampleAt(0, 0) < -0.99f);
+    assert(decoded->sampleAt(2, 0) == 0.0f);
+    assert(decoded->sampleAt(4, 0) > 0.99f);
+}
+
 } // namespace
 
 int main() {
@@ -260,5 +312,7 @@ int main() {
     testDecodeExtensiblePcm();
     testInvalidHeader();
     testUnsupportedFormat();
+    testExportWavEmpty();
+    testExportWavRoundTrip();
     return 0;
 }

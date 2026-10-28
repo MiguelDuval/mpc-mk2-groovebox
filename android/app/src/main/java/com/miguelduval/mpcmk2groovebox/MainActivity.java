@@ -88,7 +88,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int REQUEST_OPEN_DOCUMENT_TREE = 1005;
     private static final int REQUEST_OPEN_PROJECT = 1006;
     private static final int REQUEST_SAVE_PROJECT_AS = 1007;
-    private static final int REQUEST_EXPORT_WAV = 1008;
+    private static final int REQUEST_EXPORT_WAV = 1009;
     private static final int REQUEST_EXPORT_PROJECT_RECOVERY = 1008;
     private static final String PROJECT_RECOVERY_PREFERENCES = "mpc_project_recovery";
     private static final String PREF_PENDING_RECOVERY_EXPORT = "pending_recovery_export";
@@ -13369,7 +13369,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             // Persist imported WAV to app-private storage so samples survive
             // project save/reopen. The internal path is stored in SampleRef
             // and used to reload PCM on project load.
-            final String internalPath;
+            String internalPath;
             try {
                 final File samplesDir = new File(getFilesDir(), "samples");
                 if (!samplesDir.exists() && !samplesDir.mkdirs()) {
