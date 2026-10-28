@@ -253,50 +253,50 @@ void testUnsupportedFormat() {
 
 
 void testSampleExportPolicy() {
-    assert(isValidSampleExportAddress(0, 0, 16, 8));
-    assert(isValidSampleExportAddress(15, 7, 16, 8));
-    assert(!isValidSampleExportAddress(16, 0, 16, 8));
-    assert(!isValidSampleExportAddress(0, 8, 16, 8));
-    assert(!isValidSampleExportAddress(16, 8, 16, 8));
+    assert(mpc::audio::isValidSampleExportAddress(0, 0, 16, 8));
+    assert(mpc::audio::isValidSampleExportAddress(15, 7, 16, 8));
+    assert(!mpc::audio::isValidSampleExportAddress(16, 0, 16, 8));
+    assert(!mpc::audio::isValidSampleExportAddress(0, 8, 16, 8));
+    assert(!mpc::audio::isValidSampleExportAddress(16, 8, 16, 8));
 
-    assert(!hasExportableSample(nullptr));
-    SampleBuffer empty;
-    assert(!hasExportableSample(&empty));
+    assert(!mpc::audio::hasExportableSample(nullptr));
+    mpc::audio::SampleBuffer empty;
+    assert(!mpc::audio::hasExportableSample(&empty));
 
-    SampleBuffer loaded;
+    mpc::audio::SampleBuffer loaded;
     loaded.sampleRate = 16000;
     loaded.channelCount = 1;
     loaded.interleaved = {0.0f};
-    assert(hasExportableSample(&loaded));
+    assert(mpc::audio::hasExportableSample(&loaded));
 }
 
 void testEncodeWavRejectsInvalidBuffers() {
-    SampleBuffer empty;
-    assert(encodeWav(empty).empty());
+    mpc::audio::SampleBuffer empty;
+    assert(mpc::audio::encodeWav(empty).empty());
 
-    SampleBuffer invalidChannels;
+    mpc::audio::SampleBuffer invalidChannels;
     invalidChannels.sampleRate = 16000;
     invalidChannels.channelCount = 3;
     invalidChannels.interleaved = {0.0f};
-    assert(encodeWav(invalidChannels).empty());
+    assert(mpc::audio::encodeWav(invalidChannels).empty());
 
-    SampleBuffer invalidRate;
+    mpc::audio::SampleBuffer invalidRate;
     invalidRate.channelCount = 1;
     invalidRate.interleaved = {0.0f};
-    assert(encodeWav(invalidRate).empty());
+    assert(mpc::audio::encodeWav(invalidRate).empty());
 
-    SampleBuffer incompleteFrame;
+    mpc::audio::SampleBuffer incompleteFrame;
     incompleteFrame.sampleRate = 16000;
     incompleteFrame.channelCount = 2;
     incompleteFrame.interleaved = {0.0f};
-    assert(encodeWav(incompleteFrame).empty());
+    assert(mpc::audio::encodeWav(incompleteFrame).empty());
 }
 
 void testEncodeWavRoundTrip() {
-    const auto source = decodeWav(makeMono16Wav());
+    const auto source = mpc::audio::decodeWav(makeMono16Wav());
     assert(source.has_value());
 
-    const auto exported = encodeWav(*source);
+    const auto exported = mpc::audio::encodeWav(*source);
     assert(exported.size() == 44 + 5 * sizeof(float));
 
     // Verify RIFF/WAVE and the IEEE-float fmt chunk.
@@ -319,7 +319,7 @@ void testEncodeWavRoundTrip() {
     assert(exported[46] == 0x80);
     assert(exported[47] == 0xBF);
 
-    const auto decoded = decodeWav(exported);
+    const auto decoded = mpc::audio::decodeWav(exported);
     assert(decoded.has_value());
     assert(decoded->sampleRate == 16000);
     assert(decoded->channelCount == 1);
