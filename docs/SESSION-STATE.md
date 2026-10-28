@@ -178,21 +178,28 @@ Next step: Need direct access to step 14 Gradle output to identify the specific 
 
 The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
 
-### 19. CI failure investigation — RUN #3494/#3495/#3496 (SHA 557fcc4/7e0cab0/3c42b418)
+### 19. CI failure investigation — RUN #3494/#3495/#3496/#3497/#3498 (SHA 557fcc4/7e0cab0/3c42b418/5adc4925/acdfd714)
 
 CI run #3494 (SHA `557fcc4`) FAILED at step 52 "Run Android emulator smoke test" with error "Track View strip control contract missing: Track View track solo".
 
-Root cause: `tests/android_ui_smoke.sh` contained a literal string check `'Track View track solo'` in the `for required in` list for `showTrackViewPage()` source block. But `MainActivity.java` generates the solo button accessibility description dynamically as `"Track View track " + (i + 1) + " solo"`, so no literal `"Track View track solo"` (without track number) exists in the source.
-
 Fix applied in commit `7e0cab0` (HEAD `3c42b418`):
-- Removed `'Track View track solo'` from the literal `required` list.
-- Added three checks: `soloButton` exists in `track_view_block`, `setContentDescription(` is called, and `"Track View track "` dynamic accessibility description pattern is present.
+- Removed `'Track View track solo'` from the literal `required` list in `tests/android_ui_smoke.sh`.
+- Added three checks: `soloButton` exists, `setContentDescription(` is called, `"Track View track "` dynamic accessibility description pattern is present.
 - Kept `nativeSequenceToggleTrackSolo(trackIndex)` in the required list.
 
 CI run #3495 (SHA `7e0cab0`) FAILED at step 52 again (exit code 1, ~5m 3s).
 CI run #3496 (SHA `3c42b418`, empty re-trigger) FAILED at step 52 again (exit code 1, ~6m 52s).
 
-Steps 1-51 pass in all runs (including WAV tests, native tests, APK assemble, APK upload, smoke syntax validation). Steps 49-50 (APK build/upload) pass. Step 51 (smoke syntax validation) passes. Only step 52 (emulator smoke test) fails.
+CI run #3497 (SHA `5adc4925`, docs-only SESSION-STATE update) FAILED at step 52 again (~5m 23s).
+
+CI run #3498 (SHA `acdfd714`) FAILED at step 52 again (~6m 30s).
+
+**Fix applied in commit `acdfd714`:**
+- `MainActivity.java` line 3450: Changed `programField` handler `else` branch from `showTrackTypeSelectPage()` to `setBottomStatus(TRACK_TYPE_CHANGE_RESERVED_STATUS)` — for unsupported track types, report unavailability instead of opening selector.
+- `MainActivity.java`: Removed entire `showTrackTypeSelectPage()` method (lines 5990-6061) including its `navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_TYPE_SELECT)` call.
+- Verified: `MpcUiState.Subcontext.TRACK_TYPE_SELECT` is NOT in MainActivity.java. `TRACK_TYPE_CHANGE_RESERVED_STATUS` is preserved (lines 96, 3450, 4876, 17426, 18130). `showProgramSelectPage()` still called for supported types (Drum).
+
+Steps 1-51 pass in all runs. Steps 49-50 (APK build/upload) pass. Step 51 (smoke syntax validation) passes. Only step 52 (emulator smoke test) fails.
 
 Check-run annotations confirm:
 - Failure (line ~247): The process '/usr/bin/sh' failed with exit code 1
@@ -200,7 +207,7 @@ Check-run annotations confirm:
 
 Step-level logs are not accessible via GitHub API (403 Forbidden). Web UI requires sign-in to view logs. The exact step 52 error message is not visible from available tooling.
 
-Next step: Need direct access to step 52 emulator logs to identify the specific failure. The preflight fix is verified correct against `MainActivity.java` source: `soloButton` exists (line 8285), `setContentDescription(` exists (line 8294), `"Track View track "` dynamic pattern exists (line 8295), `nativeSequenceToggleTrackSolo(trackIndex)` is called (line 8289), `showTrackViewPage()` is called after toggle (line 8290).
+Next step: Need direct access to step 52 emulator logs to identify the specific failure. Preflight fixes verified correct against `MainActivity.java` source.
 
 ## Mandatory operating rules
 
