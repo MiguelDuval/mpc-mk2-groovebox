@@ -14584,7 +14584,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         final String[] browserFunctionLabels = {
-                "SAMPLE ASSIGN", "AUDITION", "LOAD", "UP", "BACK"
+                "SAMPLE ASSIGN", "AUDITION", "LOAD", "EXPORT WAV", "UP", "BACK"
         };
         if (functionBar == null
                 || functionBar.getChildCount() != browserFunctionLabels.length) {
@@ -14594,12 +14594,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         final boolean expectedAuditionEnabled =
                 browserView != null && browserView.selectedFile() != null;
+        final boolean hasSample = startupComplete
+                && nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer) > 0;
         int minBrowserActionWidth = Integer.MAX_VALUE;
         int maxBrowserActionWidth = 0;
         for (int i = 0; i < browserFunctionLabels.length; i++) {
             final View action = functionBar.getChildAt(i);
             final boolean shouldBeEnabled = i == 0 ? false
-                    : i == 1 ? expectedAuditionEnabled : true;
+                    : i == 1 ? expectedAuditionEnabled : i == 3 ? hasSample : true;
             if (!(action instanceof TextView)
                     || !browserFunctionLabels[i].contentEquals(((TextView) action).getText())
                     || !action.isShown()
@@ -14625,13 +14627,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 "MPC Browser Sample Assign unavailable: no source item selected",
                 "MPC Browser audition unavailable: no source item selected",
                 "MPC Browser LOAD source file with Android Document Picker",
+                "MPC Browser export WAV unavailable: no sample assigned",
                 "Browser UP from CONTENT",
                 "MPC Browser BACK to previous workspace"
         };
         for (int i = 0; i < expectedBrowserActionDescriptions.length; i++) {
             final View action = functionBar.getChildAt(i);
-            if (!expectedBrowserActionDescriptions[i].contentEquals(
-                    action.getContentDescription())) {
+            final String actualDescription = action.getContentDescription();
+            boolean descriptionMatches;
+            if (i == 3) {
+                // EXPORT WAV description depends on sample state
+                descriptionMatches = "MPC Browser export selected Pad/Layer sample to WAV".contentEquals(actualDescription)
+                        || "MPC Browser export WAV unavailable: no sample assigned".contentEquals(actualDescription);
+            } else {
+                descriptionMatches = expectedBrowserActionDescriptions[i].contentEquals(actualDescription);
+            }
+            if (!descriptionMatches) {
                 Log.e(TAG, "UI_INTERACTION_FAILED: Browser Function Bar accessibility "
                         + browserFunctionLabels[i]
                         + " | expectedDescription=" + expectedBrowserActionDescriptions[i]

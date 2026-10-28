@@ -192,22 +192,25 @@ CI run #3496 (SHA `3c42b418`, empty re-trigger) FAILED at step 52 again (exit co
 
 CI run #3497 (SHA `5adc4925`, docs-only SESSION-STATE update) FAILED at step 52 again (~5m 23s).
 
-CI run #3498 (SHA `acdfd714`) FAILED at step 52 again (~6m 30s).
+CI run #3498 (SHA `acdfd714`) FAILED at step 52 (~6m 30s) — new failure: Browser Function Bar structure mismatch.
+CI run #3499 (SHA `ea2c9354`, docs-only update) FAILED at step 52 (~6m 30s) — same Browser Function Bar error.
 
-**Fix applied in commit `acdfd714`:**
-- `MainActivity.java` line 3450: Changed `programField` handler `else` branch from `showTrackTypeSelectPage()` to `setBottomStatus(TRACK_TYPE_CHANGE_RESERVED_STATUS)` — for unsupported track types, report unavailability instead of opening selector.
-- `MainActivity.java`: Removed entire `showTrackTypeSelectPage()` method (lines 5990-6061) including its `navigationController.setSubcontext(MpcUiState.Subcontext.TRACK_TYPE_SELECT)` call.
-- Verified: `MpcUiState.Subcontext.TRACK_TYPE_SELECT` is NOT in MainActivity.java. `TRACK_TYPE_CHANGE_RESERVED_STATUS` is preserved (lines 96, 3450, 4876, 17426, 18130). `showProgramSelectPage()` still called for supported types (Drum).
+**Fix applied in current commit:**
+- `MainActivity.java` `runUiAuditAfterBrowserFunctionBarLayout()`:
+  - Expanded `browserFunctionLabels` from 5 to 6 items: added `"EXPORT WAV"` at index 3.
+  - Added `hasSample` computation (`startupComplete && nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer) > 0`) for EXPORT WAV enabled state.
+  - Updated `shouldBeEnabled` logic: index 3 (EXPORT WAV) uses `hasSample`.
+  - Expanded `expectedBrowserActionDescriptions` from 5 to 6 items: added EXPORT WAV description at index 3.
+  - EXPORT WAV description check accepts both valid states: `"MPC Browser export selected Pad/Layer sample to WAV"` or `"MPC Browser export WAV unavailable: no sample assigned"`.
+- `tests/android_ui_smoke.sh`:
+  - Added `'text="EXPORT WAV"'` to required Browser Function Bar controls check.
+  - Added EXPORT WAV accessibility description check (both possible states) with hit bounds included in width comparison.
 
-Steps 1-51 pass in all runs. Steps 49-50 (APK build/upload) pass. Step 51 (smoke syntax validation) passes. Only step 52 (emulator smoke test) fails.
+Full CI log for #3499 was obtained via GitHub web UI. The error was:
+`UI_INTERACTION_FAILED: Browser Function Bar structure | bar=w=1117,h=105,vis=0,a=1.0`
+Root cause: `refreshMpcFunctionBar()` creates 6 Browser Function Bar buttons (SAMPLE ASSIGN, AUDITION, LOAD, EXPORT WAV, UP, BACK) but `runUiAuditAfterBrowserFunctionBarLayout()` checked only 5 labels.
 
-Check-run annotations confirm:
-- Failure (line ~247): The process '/usr/bin/sh' failed with exit code 1
-- Warning (line ~150): No files were found with the provided path: /tmp/mpc-groovebox-startup.png ... (from step 53 artifact upload after step 52 failure)
-
-Step-level logs are not accessible via GitHub API (403 Forbidden). Web UI requires sign-in to view logs. The exact step 52 error message is not visible from available tooling.
-
-Next step: Need direct access to step 52 emulator logs to identify the specific failure. Preflight fixes verified correct against `MainActivity.java` source.
+Next step: CI run triggered by current commit — verify all 53 steps pass including emulator smoke test and visual evidence upload.
 
 ## Mandatory operating rules
 
@@ -222,3 +225,5 @@ Next step: Need direct access to step 52 emulator logs to identify the specific 
 ## Historical notes
 
 The prior long-form checkpoint has been preserved in `docs/SESSION-HISTORY-ARCHIVE.md`. Read it only for a specific regression/history investigation, and verify any claim against live evidence.
+
+

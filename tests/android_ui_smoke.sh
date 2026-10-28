@@ -5554,7 +5554,7 @@ PY
     fi
     for required in 'content-desc="MPC Browser filter SAMPLES"' \
         'content-desc="MPC Browser scan local audio files"' \
-        'text="SAMPLE ASSIGN"' 'text="LOAD"' 'text="UP"'; do
+        'text="SAMPLE ASSIGN"' 'text="LOAD"' 'text="EXPORT WAV"' 'text="UP"'; do
       if ! grep -Fq -- "$required" /tmp/mpc-groovebox-browser-uiautomator.xml; then
         echo "ERROR: Browser platform hierarchy is missing expected visible control: $required"
         cat /tmp/mpc-groovebox-browser-uiautomator.xml
@@ -5604,6 +5604,23 @@ descriptions = [
     "MPC Browser BACK to previous workspace",
 ]
 widths = []
+export_descriptions = [
+    "MPC Browser export selected Pad/Layer sample to WAV",
+    "MPC Browser export WAV unavailable: no sample assigned",
+]
+export_node = None
+for desc in export_descriptions:
+    found = [node for node in nodes if node.attrib.get("content-desc") == desc]
+    if len(found) == 1:
+        export_node = found[0]
+        break
+if export_node is None:
+    raise AssertionError("expected exactly one Export WAV accessibility node")
+left, top, right, bottom = bounds(export_node)
+if right <= left or bottom <= top:
+    raise AssertionError(f"empty hit bounds for Export WAV: {export_node.attrib.get('bounds')}")
+widths.append(right - left)
+
 for description in descriptions:
     node = one(description)
     left, top, right, bottom = bounds(node)
