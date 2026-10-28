@@ -6850,6 +6850,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void showBrowserOptionsDialog() {
         final String[] labels = {
                 "Show file size",
+                "Show project-data folders",
                 "Show modified date",
                 "Show created date",
                 "Search includes subfolders",
@@ -6863,6 +6864,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         TextView notice = label(
                 "BROW-012: “Show file size” toggles file size in Browser result rows. "
+                        + "BROW-013: “Show project-data folders” toggles visibility of "
+                        + "project-data folder entries in Browser results. "
                         + "Other options await real backend behavior.",
                 10, MUTED);
         notice.setPadding(0, 0, 0, dp(10));
@@ -6885,6 +6888,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 check.setOnCheckedChangeListener((buttonView, isChecked) -> {
                     if (browserView != null) {
                         browserView.showFileSize = isChecked;
+                        browserView.renderResults();
+                    }
+                });
+            } else if ("Show project-data folders".equals(labelText)) {
+                check.setEnabled(true);
+                check.setAlpha(1.0f);
+                check.setChecked(browserView != null && browserView.showProjectDataFolders);
+                check.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    if (browserView != null) {
+                        browserView.showProjectDataFolders = isChecked;
                         browserView.renderResults();
                     }
                 });

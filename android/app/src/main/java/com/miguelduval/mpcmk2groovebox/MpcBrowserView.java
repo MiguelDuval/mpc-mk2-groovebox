@@ -13,6 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -78,6 +79,12 @@ final class MpcBrowserView extends LinearLayout {
     // because size is already part of metadataLine(); the option makes it
     // user-controllable rather than always-on decoration.
     boolean showFileSize = true;
+
+    // Browser Option: whether project-data folders are shown in Browser
+    // results (BROW-013). When enabled, project-data folders (folders
+    // containing MPC project files) are listed alongside WAV files so users
+    // can navigate to project storage locations. Defaults to off.
+    boolean showProjectDataFolders = false;
 
     MpcBrowserView(Context context) {
         super(context);
@@ -643,6 +650,12 @@ final class MpcBrowserView extends LinearLayout {
         for (MpcBrowserFile file : visibleFiles) {
             addFileResult(file, selectedFile != null
                     && selectedFile.uri().equals(file.uri()));
+        }
+        if (showProjectDataFolders) {
+            addInfoRow(
+                    "PROJECT DATA FOLDERS",
+                    "App-private samples: " + getContext().getFilesDir()
+                            + File.separator + "samples");
         }
     }
 
