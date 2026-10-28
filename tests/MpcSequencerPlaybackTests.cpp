@@ -120,5 +120,132 @@ int main() {
     assert(ratchetEvents[3].offsetFrames == 9000);
     assert(!ratchetQueue.tryDequeue(ratchetEvents[0]));
 
+    // Track Solo must gate the actual audio-trigger queue, not just a UI label.
+    mpc::domain::Pattern soloPattern;
+    soloPattern.lengthTicks = 3840;
+    soloPattern.notes = {
+            {0, 240, 36, 100, 127, 1},
+            {960, 240, 37, 110, 127, 1},
+            {1920, 240, 38, 90, 127, 1},
+            {2880, 240, 36, 105, 127, 1}};
+    auto soloSequence = sequence;
+    soloSequence.loopEnabled = true;
+    soloSequence.loopStartTicks = 0;
+    soloSequence.loopEndTicks = 3840;
+
+    bool mutedTrack = false;
+    bool selectedTrackSoloed = false;
+    bool anyTrackSoloed = false;
+    mpc::audio::AudioTriggerQueue soloQueue;
+    mpc::sequencer::MpcSequencerPlayback soloPlayback(
+            soloSequence, soloPattern, program, soloQueue,
+            &mutedTrack, &selectedTrackSoloed, &anyTrackSoloed);
+    soloPlayback.start();
+
+    const auto noSolo = soloPlayback.advance(960, 99u, 48000);
+    assert(noSolo.scheduled == 1);
+    assert(noSolo.routed == 1);
+    assert(noSolo.queued == 1);
+    mpc::audio::AudioTriggerEvent soloEvent{};
+    assert(soloQueue.tryDequeue(soloEvent));
+    assert(soloEvent.padIndex == 0);
+    assert(!soloQueue.tryDequeue(soloEvent));
+
+    // A different Track is Soloed: this non-soloed Track must advance in time
+    // but must not enqueue audio events.
+    anyTrackSoloed = true;
+    const auto excluded = soloPlayback.advance(960, 99u, 48000);
+    assert(excluded.scheduled == 1);
+    assert(excluded.routed == 0);
+    assert(excluded.queued == 0);
+    assert(!soloQueue.tryDequeue(soloEvent));
+
+    // Soloing this Track live immediately allows its events again.
+    selectedTrackSoloed = true;
+    const auto included = soloPlayback.advance(960, 99u, 48000);
+    assert(included.scheduled == 1);
+    assert(included.routed == 1);
+    assert(included.queued == 1);
+    assert(soloQueue.tryDequeue(soloEvent));
+    assert(soloEvent.padIndex == 2);
+    assert(!soloQueue.tryDequeue(soloEvent));
+
+    // Mute has precedence even when the Track is Soloed.
+    mutedTrack = true;
+    const auto mutedSolo = soloPlayback.advance(960, 99u, 48000);
+    assert(mutedSolo.scheduled == 1);
+    assert(mutedSolo.routed == 0);
+    assert(mutedSolo.queued == 0);
+    assert(!soloQueue.tryDequeue(soloEvent));
+
+    // Turning this Solo off while another Solo remains suppresses this Track.
+    mutedTrack = false;
+    selectedTrackSoloed = false;
+    const auto liveSoloOff = soloPlayback.advance(960, 99u, 48000);
+    assert(liveSoloOff.scheduled == 1);
+    assert(liveSoloOff.routed == 0);
+    assert(liveSoloOff.queued == 0);
+    assert(!soloQueue.tryDequeue(soloEvent));
+
+    // Removing the last Solo restores ordinary playback without rebuilding
+    // the sequencer; positions continue and the next scheduled note is audible.
+    anyTrackSoloed = false;
+    const auto ordinaryPlaybackRestored =
+            soloPlayback.advance(960, 99u, 48000);
+    assert(ordinaryPlaybackRestored.scheduled == 1);
+    assert(ordinaryPlaybackRestored.routed == 1);
+    assert(ordinaryPlaybackRestored.queued == 1);
+    assert(soloQueue.tryDequeue(soloEvent));
+    assert(soloEvent.padIndex == 1);
+    assert(!soloQueue.tryDequeue(soloEvent));
+
+    // The session's eligible-playback list defines Solo scope per Sequence.
+    // Switching that list must recompute the "any Solo" gate from new state.
+    mpc::domain::Track sequenceOneSolo{};
+    mpc::domain::Track sequenceOneOther{};
+    mpc::domain::Track sequenceTwoTrack{};
+    sequenceOneSolo.soloed = true;
+    sequenceOneOther.soloed = false;
+    sequenceTwoTrack.soloed = false;
+    const std::array<const mpc::domain::Track*, 2> sequenceOnePlaybacks{
+            &sequenceOneSolo, &sequenceOneOther};
+    const std::array<const mpc::domain::Track*, 1> sequenceTwoPlaybacks{
+            &sequenceTwoTrack};
+    assert(mpc::sequencer::hasSoloedPlaybackTrack(sequenceOnePlaybacks));
+    assert(!mpc::sequencer::hasSoloedPlaybackTrack(sequenceTwoPlaybacks));
+    assert(mpc::sequencer::shouldRouteTrackForSolo(false, false, false));
+    assert(!mpc::sequencer::shouldRouteTrackForSolo(false, false, true));
+    assert(mpc::sequencer::shouldRouteTrackForSolo(false, true, true));
+    assert(!mpc::sequencer::shouldRouteTrackForSolo(true, true, true));
+
+    // Multiple simultaneous Solos remain audible; only non-soloed Tracks are
+    // excluded. Each playback consumes the same live Sequence-wide Solo flag.
+    bool firstTrackMuted = false;
+    bool secondTrackMuted = false;
+    bool firstTrackSoloed = true;
+    bool secondTrackSoloed = true;
+    bool sharedSoloMode = true;
+    mpc::audio::AudioTriggerQueue firstSoloQueue;
+    mpc::audio::AudioTriggerQueue secondSoloQueue;
+    mpc::audio::AudioTriggerQueue nonSoloQueue;
+    mpc::sequencer::MpcSequencerPlayback firstSoloPlayback(
+            soloSequence, soloPattern, program, firstSoloQueue,
+            &firstTrackMuted, &firstTrackSoloed, &sharedSoloMode);
+    mpc::sequencer::MpcSequencerPlayback secondSoloPlayback(
+            soloSequence, soloPattern, program, secondSoloQueue,
+            &secondTrackMuted, &secondTrackSoloed, &sharedSoloMode);
+    mpc::sequencer::MpcSequencerPlayback nonSoloPlayback(
+            soloSequence, soloPattern, program, nonSoloQueue,
+            &mutedTrack, &selectedTrackSoloed, &sharedSoloMode);
+    firstSoloPlayback.start();
+    secondSoloPlayback.start();
+    nonSoloPlayback.start();
+    assert(firstSoloPlayback.advance(960, 99u, 48000).queued == 1);
+    assert(secondSoloPlayback.advance(960, 99u, 48000).queued == 1);
+    assert(nonSoloPlayback.advance(960, 99u, 48000).queued == 0);
+    assert(firstSoloQueue.tryDequeue(soloEvent));
+    assert(secondSoloQueue.tryDequeue(soloEvent));
+    assert(!nonSoloQueue.tryDequeue(soloEvent));
+
     return 0;
 }

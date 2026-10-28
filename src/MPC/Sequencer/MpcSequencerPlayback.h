@@ -3,6 +3,7 @@
 #include "Audio/AudioTriggerQueue.h"
 #include "MPC/Domain/MpcDomain.h"
 #include "MPC/Sequencer/MpcSequencerAudioBridge.h"
+#include "MPC/Sequencer/MpcSequenceSoloPolicy.h"
 #include "MPC/Sequencer/MpcSequencerPadRouter.h"
 #include "MPC/Sequencer/MpcSequencerRuntime.h"
 
@@ -31,12 +32,16 @@ public:
             const domain::Pattern& pattern,
             const domain::DrumProgram& program,
             audio::AudioTriggerQueue& audioQueue,
-            const bool* trackMuted = nullptr) noexcept
+            const bool* trackMuted = nullptr,
+            const bool* trackSoloed = nullptr,
+            const bool* anyTrackSoloed = nullptr) noexcept
             : sequence_(sequence),
               program_(program),
               runtime_(sequence, pattern),
               audioQueue_(audioQueue),
-              trackMuted_(trackMuted) {
+              trackMuted_(trackMuted),
+              trackSoloed_(trackSoloed),
+              anyTrackSoloed_(anyTrackSoloed) {
     }
 
     MpcSequencerPlayback(const MpcSequencerPlayback&) = delete;
@@ -132,7 +137,14 @@ public:
             expandedWritten += expanded.written;
         }
 
-        if (trackMuted_ != nullptr && *trackMuted_) {
+        const bool trackMuted =
+                trackMuted_ != nullptr && *trackMuted_;
+        const bool trackSoloed =
+                trackSoloed_ != nullptr && *trackSoloed_;
+        const bool anyTrackSoloed =
+                anyTrackSoloed_ != nullptr && *anyTrackSoloed_;
+        if (!shouldRouteTrackForSolo(
+                    trackMuted, trackSoloed, anyTrackSoloed)) {
             return result;
         }
 
@@ -168,6 +180,8 @@ private:
     MpcSequencerRuntime runtime_;
     audio::AudioTriggerQueue& audioQueue_;
     const bool* trackMuted_ = nullptr;
+    const bool* trackSoloed_ = nullptr;
+    const bool* anyTrackSoloed_ = nullptr;
     std::array<ScheduledMidiEvent, kMaxPlaybackEvents> scheduledEvents_{};
     std::array<ScheduledMidiEvent, kMaxPlaybackEvents> expandedScheduledEvents_{};
     std::array<ScheduledPadEvent, kMaxPlaybackEvents> routedEvents_{};
