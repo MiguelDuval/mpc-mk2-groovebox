@@ -124,6 +124,13 @@ Changes:
 - `android/app/.../MpcBrowserView.java` — added `showFileSize` field (default true); `addFileResult()` conditionally excludes size from metadata subtitle when off.
 - `android/app/.../MainActivity.java` — `showBrowserOptionsDialog()` enables "Show file size" checkbox, binds it to `browserView.showFileSize`, calls `renderResults()` on change. Notice updated to reflect BROW-012 status.
 
+### 14. Sample WAV reload failure handling — FIXED
+
+Fixed a gap where a missing or unreadable WAV file during project reopen would leave a ghost sample assignment (SampleRef present but no PCM data in AudioEngine). On reload failure, the layer's sample assignment is now cleared so the UI does not show a sample that cannot play.
+
+Changes:
+- `src/NativeEngine.cpp` — `nativeProjectLoad()` sample reload loop now checks `loadSampleForPadLayer()` return value; on failure, clears `layer.sample` to `domain::SampleId{}`. Uses non-const references to allow mutation of project state during reload.
+
 Not yet verified: CI build, Android emulator acceptance, exact-SHA workflow result.
 
 The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 superseded that pending state on exact SHA `e8ba129b7773decfd26d9c0d6f16521fca7d4e9d`: the full Android workflow passed, including Project persistence acceptance. Use the current queue at the top of this file for next steps.
