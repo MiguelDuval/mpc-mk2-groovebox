@@ -350,6 +350,39 @@ For several contexts, the official MPC Standalone User Guide includes a screensh
 
 These PDF links are included because the screenshots are inside the manual; they are not a claim that those page images are duplicated inline in this Markdown document.
 
+
+## 8.17 Browser photographed directly on MPC One
+
+**Evidence B, actual MPC One hardware photo.** This is useful as a full-hardware context shot for the Browser screen dimensions and the Places/Content/Expansions search surface. It is an older firmware visual and must not override the MPC 3.9 layout or product decisions.
+
+![MPC One Browser shown on the physical hardware](https://cdn.mos.cms.futurecdn.net/pFYHKeyGe33zd8ypBvFKoi.jpg)
+
+Source: [MusicRadar — 10 ways to get more out of your MPC hardware](https://www.musicradar.com/how-to/10-ways-to-get-more-out-of-your-MPC).
+
+## 8.18 Sample Edit — Trim on physical MPC One
+
+**Evidence B, actual MPC One photographed during a tutorial.** This reference shows the waveform and Trim context on the real hardware. It is an older MPC OS appearance; current labels and available operations must be checked against v3.9.
+
+![MPC One Sample Edit Trim screen photographed on the hardware](https://cdn-ak.f.st-hatena.com/images/fotolife/M/Marronfieldsproduction/20221028/20221028035306.jpg)
+
+Source: [Marronfieldsproduction — MPC One Sample Edit / Trim walkthrough](https://marronfieldsproduction.hatenablog.com/entry/2022/10/28/063000).
+
+## 8.19 Sample Assign — sample pool and pad grid on MPC One
+
+**Evidence B, actual MPC One screen photo.** This reference captures a sample pool list to the left and pad assignment cells on the right. It distinguishes Sample Assign from ordinary Browser file selection.
+
+![MPC One Sample Assign with sample pool and 4x4 pad assignment](https://assets.st-note.com/img/1714572254880-afLUx6An8g.jpg)
+
+Source: [Note — MPC One sample/pad assignment workflow](https://note.com/suitebossa/n/nde0f912fe4ce).
+
+## 8.20 Legacy sample waveform / automation detail
+
+**Evidence C, legacy UI.** This image is a real standalone MPC waveform editor displaying an automation lane and bottom region-edit actions. It is relevant to waveform/region editing, but the old red-and-grey skin is not the target MPC 3.9 Main or Sample Edit design.
+
+![Legacy MPC waveform editor with automation lane and bottom actions](https://ragtime.online/media/catalog/product/6/b/6bc500-crop-af798e-mpcone.jpg.auto.jpg)
+
+Source: [Ragtime — Akai MPC One standalone sampler and sequencer](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html).
+
 # 9. Full screen/context coverage index
 
 This index covers 82 screen and sub-screen contexts from the MPC Standalone user-guide taxonomy and our repository contract. “Inline” means a remote screenshot image is embedded above; “official PDF figure link” means the guide's screenshot remains inside the linked PDF because no stable direct image URL was exposed; “guide link” is still a visual research task. The evidence column never says a screen is implemented merely because its original reference exists.
