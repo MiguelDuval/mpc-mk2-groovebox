@@ -12,6 +12,8 @@
 4. **Do not silently mark an unillustrated screen as implemented.** The cross-reference below records every context listed in the repository's screen contract and indicates whether this catalog has a directly embedded screenshot or a manual/source reference only.
 5. These are references to the **original MPC**, not screenshots of our Android app. Use them to build our own implementation; do not include these proprietary screenshots or extracted firmware artwork in the app binary.
 
+**Additional source with page anchors:** the [MPC hardware user guide v2.11.7 (legacy UI, with individual screen captures)](https://device.report/m/99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0.pdf) is linked per context in Section 9. It includes screenshots for older standalone MPC X/Live/One screens such as Main, Grid, Track View, Step Sequencer, Sample Edit, Program Edit, Browser, Sampler, Looper, Pad/Channel Mixer, 16 Levels, Pad Perform, Next Sequence, Song Mode, Q-Link, Project, Pad Color and MIDI Control. Treat these as supplementary visual evidence only, not as MPC 3.9 layout authority.
+
 ### Evidence labels
 
 - **A — Official:** Akai/inMusic documentation or official support image.
@@ -386,8 +388,14 @@ Source: [Ragtime — Akai MPC One standalone sampler and sequencer](https://ragt
 This index covers 82 screen and sub-screen contexts from the MPC Standalone user-guide taxonomy and our repository contract. “Inline” means a remote screenshot image is embedded above; “official PDF figure link” means the guide's screenshot remains inside the linked PDF because no stable direct image URL was exposed; “guide link” is still a visual research task. The evidence column never says a screen is implemented merely because its original reference exists.
 
 **Page-linked screenshot sources:** the v3.9 guide below is the target reference for MPC 3.9 labels and composition. The additional **MPC 2.11.7 User Guide** links are an extensive visual reference source with screenshots of many older standalone MPC contexts; they are explicitly labelled as legacy, not pixel-perfect MPC 3.9. These two guides make it possible to inspect every context in the table even where a direct standalone image URL was not found.
+# 9. Full screen/context coverage index
+
+This index covers 82 screen and sub-screen contexts from the MPC Standalone user-guide taxonomy and our repository contract. “Inline” means a remote screenshot image is embedded above; “official PDF figure link” means the guide's screenshot remains inside the linked PDF because no stable direct image URL was exposed; “guide link” is still a visual research task. The evidence column never says a screen is implemented merely because its original reference exists.
+
+**Page-linked screenshot source:** the [MPC hardware user guide v2.11.7](https://device.report/m/99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0.pdf) contains screenshot figures for most older standalone MPC One/Live/X contexts. The new page-reference column links each of the 82 rows to its corresponding legacy visual page where one exists. These are explicitly **legacy references**, not pixel-perfect MPC 3.9. Use the official [MPC Standalone OS v3.9 guide](https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf) for current terminology and composition. Where a screen is new to MPC 3.x, use the current guide and official Akai support images above.
+
 | ID | Screen / sub-screen | Available visual reference | Target/version and acceptance note | Manual screenshot references (page anchors) |
-|---|---|---|---|
+|---|---|---|---|---|
 | VIS-001 | Main overview: Sequence + Track/Arrangement | Inline A/B images | Official v3.9 guide, Main Mode. Sequence and Track context must share the workspace.  | [MPC 3.9 guide p.15](https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf#page=15); [MPC 2.11.7 screenshots/section p.127](https://device.report/m/99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0.pdf#page=127) |
 | VIS-002 | Toolbar / project / counter / transport | Inline Main images A/B | Official v3.9 guide, Toolbar; keep transport state persistent through navigation.  | [MPC 2.11.7 screenshots/section p.98](https://device.report/m/99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0.pdf#page=98) |
 | VIS-003 | Pull-Down Menu / status controls | Official guide reference | Official v3.9 guide, Pull-Down Menu. Exact current panel image still not separately embedded.  | [MPC 2.11.7 screenshots/section p.86](https://device.report/m/99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0.pdf#page=86) |
