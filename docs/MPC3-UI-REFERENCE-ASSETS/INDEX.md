@@ -9,14 +9,14 @@ Repository-local visual reference gallery. Every VIS entry is mapped to current 
 - manifest.json: source URLs, local paths, file hashes/sizes, extraction status and failures.
 - These are documentation/research references and are not packaged into Android app assets or APK.
 
-Materialized inventory: 250 source-image records; 239 downloaded; 11 failed; 97 PDF page captures; 126 embedded-figure crops.
+Materialized inventory: 290 source-image records; 269 downloaded; 21 failed; 91 PDF page captures; 116 embedded-figure crops.
 
 ## Screen and sub-screen gallery
 
 <a id="vis-001"></a>
 ### VIS-001 — Main overview: Sequence + Track/Arrangement
 
-Catalog evidence label: Inline A/B images
+Catalog evidence label: Inline A/B images  [mpc-v39 p.15](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-015.jpg); [mpc-v39 p.109](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-109.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 15. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -33,7 +33,7 @@ Catalog evidence label: Inline A/B images
 <a id="vis-002"></a>
 ### VIS-002 — Toolbar / project / counter / transport
 
-Catalog evidence label: Inline Main images A/B
+Catalog evidence label: Inline Main images A/B  [mpc-v39 p.57](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-057.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 57. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -44,7 +44,7 @@ Catalog evidence label: Inline Main images A/B
 <a id="vis-003"></a>
 ### VIS-003 — Pull-Down Menu / status controls
 
-Catalog evidence label: Official guide reference
+Catalog evidence label: Official guide reference  [mpc-v39 p.56](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-056.jpg); [mpc-v39 p.59](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-059.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 56. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -65,7 +65,7 @@ Catalog evidence label: Official guide reference
 <a id="vis-004"></a>
 ### VIS-004 — Five shortcut rail
 
-Catalog evidence label: Inline Main/XL images A
+Catalog evidence label: Inline Main/XL images A  [mpc-v39 p.15](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-015.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 15. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -76,7 +76,7 @@ Catalog evidence label: Inline Main/XL images A
 <a id="vis-005"></a>
 ### VIS-005 — XL Channel Strip, Main context
 
-Catalog evidence label: Inline A
+Catalog evidence label: Inline A  [mpc-v39 p.133](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-133.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 133. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -89,7 +89,7 @@ Catalog evidence label: Inline A
 <a id="vis-006"></a>
 ### VIS-006 — XL Channel Strip — I/O / output chooser
 
-Catalog evidence label: Inline A
+Catalog evidence label: Inline A  [mpc-v39 p.133](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-133.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 133. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -102,7 +102,7 @@ Catalog evidence label: Inline A
 <a id="vis-007"></a>
 ### VIS-007 — Menu / mode launcher
 
-Catalog evidence label: Inline B; additional mode-tile overview
+Catalog evidence label: Inline B; additional mode-tile overview  [mpc-v39 p.56](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-056.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 56. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -115,7 +115,7 @@ Catalog evidence label: Inline B; additional mode-tile overview
 <a id="vis-008"></a>
 ### VIS-008 — Browser — Places
 
-Catalog evidence label: Inline A
+Catalog evidence label: Inline A  [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 136. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -128,7 +128,7 @@ Catalog evidence label: Inline A
 <a id="vis-009"></a>
 ### VIS-009 — Browser — Content
 
-Catalog evidence label: Inline A
+Catalog evidence label: Inline A  [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 136. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -141,7 +141,7 @@ Catalog evidence label: Inline A
 <a id="vis-010"></a>
 ### VIS-010 — Browser — Expansions
 
-Catalog evidence label: Inline A
+Catalog evidence label: Inline A  [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 136. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -154,7 +154,7 @@ Catalog evidence label: Inline A
 <a id="vis-011"></a>
 ### VIS-011 — Browser — Sample Assign / Sample Pool
 
-Catalog evidence label: Inline A
+Catalog evidence label: Inline A  [mpc-v39 p.139](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-139.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 139. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -165,7 +165,7 @@ Catalog evidence label: Inline A
 <a id="vis-012"></a>
 ### VIS-012 — Browser — Options / filters / favourites / audition
 
-Catalog evidence label: Inline Options; current audition/filter/favourites details in §8.26
+Catalog evidence label: Inline Options; current audition/filter/favourites details in §8.26  [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 136. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -178,7 +178,7 @@ Catalog evidence label: Inline Options; current audition/filter/favourites detai
 <a id="vis-013"></a>
 ### VIS-013 — Main Sequence Select / sequence fields
 
-Catalog evidence label: Inline Main A/B
+Catalog evidence label: Inline Main A/B  [mpc-v39 p.112](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-112.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 112. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -189,7 +189,7 @@ Catalog evidence label: Inline Main A/B
 <a id="vis-014"></a>
 ### VIS-014 — Main Track fields / Program Select
 
-Catalog evidence label: Inline Main + official Program article
+Catalog evidence label: Inline Main + official Program article  [mpc-v39 p.117](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-117.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 117. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -202,7 +202,7 @@ Catalog evidence label: Inline Main + official Program article
 <a id="vis-015"></a>
 ### VIS-015 — Main Track sample / waveform / layer context
 
-Catalog evidence label: Inline Main A
+Catalog evidence label: Inline Main A  [mpc-v39 p.109](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-109.jpg); [mpc-v39 p.197](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-197.jpg); [mpc-v39 p.203](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-203.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 109. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -225,7 +225,7 @@ Catalog evidence label: Inline Main A
 <a id="vis-016"></a>
 ### VIS-016 — Main Arrangement preview / switch
 
-Catalog evidence label: Inline Main A and MPC 3-family B
+Catalog evidence label: Inline Main A and MPC 3-family B  [mpc-v39 p.129](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-129.jpg); [mpc-v39 p.154](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-154.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 129. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -242,7 +242,7 @@ Catalog evidence label: Inline Main A and MPC 3-family B
 <a id="vis-017"></a>
 ### VIS-017 — Track View overview / I/O / Monitor
 
-Catalog evidence label: Inline official A (older appearance)
+Catalog evidence label: Inline official A (older appearance)  [mpc-v39 p.266](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-266.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 266. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -253,7 +253,7 @@ Catalog evidence label: Inline official A (older appearance)
 <a id="vis-018"></a>
 ### VIS-018 — Track View — group / track states
 
-Catalog evidence label: Official manual link
+Catalog evidence label: Official manual link  [mpc-v39 p.261](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-261.jpg); [mpc-v39 p.266](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-266.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 261. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -270,7 +270,7 @@ Catalog evidence label: Official manual link
 <a id="vis-019"></a>
 ### VIS-019 — Arrangement — timeline / loop / playhead
 
-Catalog evidence label: Inline Main A and sibling MPC 3 B
+Catalog evidence label: Inline Main A and sibling MPC 3 B  [mpc-v39 p.129](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-129.jpg); [mpc-v39 p.154](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-154.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 129. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -287,7 +287,7 @@ Catalog evidence label: Inline Main A and sibling MPC 3 B
 <a id="vis-020"></a>
 ### VIS-020 — Arrangement — editing placements / event menu
 
-Catalog evidence label: Official guide link + Main preview
+Catalog evidence label: Official guide link + Main preview  [mpc-v39 p.129](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-129.jpg); [mpc-v39 p.154](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-154.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 129. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -304,7 +304,7 @@ Catalog evidence label: Official guide link + Main preview
 <a id="vis-021"></a>
 ### VIS-021 — Grid View — Drum track / note editing
 
-Catalog evidence label: Legacy inline C; current v3.9 figures in §8.25
+Catalog evidence label: Legacy inline C; current v3.9 figures in §8.25  [mpc-v39 p.167](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-167.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 167. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -319,7 +319,7 @@ Catalog evidence label: Legacy inline C; current v3.9 figures in §8.25
 <a id="vis-022"></a>
 ### VIS-022 — Grid View — Audio track
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.167](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-167.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 167. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -334,7 +334,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-023"></a>
 ### VIS-023 — Grid View — velocity / automation lanes
 
-Catalog evidence label: Legacy inline C / Chop visual as related context
+Catalog evidence label: Legacy inline C / Chop visual as related context  [mpc-v39 p.167](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-167.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 167. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -349,7 +349,7 @@ Catalog evidence label: Legacy inline C / Chop visual as related context
 <a id="vis-024"></a>
 ### VIS-024 — Step Sequencer — 16 steps / velocity
 
-Catalog evidence label: Inline B, actual One photo (legacy); current v3.9 screenshot figure in §8.25
+Catalog evidence label: Inline B, actual One photo (legacy); current v3.9 screenshot figure in §8.25  [mpc-v39 p.179](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-179.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 179. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -360,7 +360,7 @@ Catalog evidence label: Inline B, actual One photo (legacy); current v3.9 screen
 <a id="vis-025"></a>
 ### VIS-025 — Step Sequencer — step automation
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.179](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-179.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 179. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -371,7 +371,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-026"></a>
 ### VIS-026 — List Edit — Events table
 
-Catalog evidence label: Current v3.9 figure in §8.25; v3.7 is historical fallback
+Catalog evidence label: Current v3.9 figure in §8.25; v3.7 is historical fallback  [mpc-v39 p.184](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-184.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 184. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -382,7 +382,7 @@ Catalog evidence label: Current v3.9 figure in §8.25; v3.7 is historical fallba
 <a id="vis-027"></a>
 ### VIS-027 — List Edit — Tempo events
 
-Catalog evidence label: Official manual link
+Catalog evidence label: Official manual link  [mpc-v39 p.184](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-184.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 184. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -393,7 +393,7 @@ Catalog evidence label: Official manual link
 <a id="vis-028"></a>
 ### VIS-028 — Track Edit — Drum / Global
 
-Catalog evidence label: Official guide + legacy Program Edit example
+Catalog evidence label: Official guide + legacy Program Edit example  [mpc-v39 p.190](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-190.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 190. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -404,7 +404,7 @@ Catalog evidence label: Official guide + legacy Program Edit example
 <a id="vis-029"></a>
 ### VIS-029 — Track Edit — Drum / Samples / Layers
 
-Catalog evidence label: Inline official A + legacy inline C
+Catalog evidence label: Inline official A + legacy inline C  [mpc-v39 p.197](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-197.jpg); [mpc-v39 p.203](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-203.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 197. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -421,7 +421,7 @@ Catalog evidence label: Inline official A + legacy inline C
 <a id="vis-030"></a>
 ### VIS-030 — Track Edit — Drum / Envelopes
 
-Catalog evidence label: Official guide + related legacy Program Edit visual
+Catalog evidence label: Official guide + related legacy Program Edit visual  [mpc-v39 p.257](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-257.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 257. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -436,7 +436,7 @@ Catalog evidence label: Official guide + related legacy Program Edit visual
 <a id="vis-031"></a>
 ### VIS-031 — Track Edit — LFO / Modulations / Effects / Mod Matrix / Utilities
 
-Catalog evidence label: Current v3.9 LFO figure on p.212; other tabs remain separate contexts
+Catalog evidence label: Current v3.9 LFO figure on p.212; other tabs remain separate contexts  [mpc-v39 p.212](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-212.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 212. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -447,7 +447,7 @@ Catalog evidence label: Current v3.9 LFO figure on p.212; other tabs remain sepa
 <a id="vis-032"></a>
 ### VIS-032 — Track Edit — Keygroup
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.215](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-215.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 215. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -458,7 +458,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-033"></a>
 ### VIS-033 — Track Edit — Plugin
 
-Catalog evidence label: Official Program article / v3.9 guide
+Catalog evidence label: Official Program article / v3.9 guide  [mpc-v39 p.254](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-254.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 254. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -469,7 +469,7 @@ Catalog evidence label: Official Program article / v3.9 guide
 <a id="vis-034"></a>
 ### VIS-034 — Track Edit — MIDI
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.255](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-255.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 255. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -482,7 +482,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-035"></a>
 ### VIS-035 — Track Edit — CV
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.256](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-256.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 256. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -493,7 +493,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-036"></a>
 ### VIS-036 — Sample Edit — Trim / region / loop
 
-Catalog evidence label: Inline B/C
+Catalog evidence label: Inline B/C  [mpc-v39 p.269](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-269.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 269. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -504,7 +504,7 @@ Catalog evidence label: Inline B/C
 <a id="vis-037"></a>
 ### VIS-037 — Sample Edit — Chop / slice / threshold
 
-Catalog evidence label: Inline C
+Catalog evidence label: Inline C  [mpc-v39 p.269](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-269.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 269. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -515,7 +515,7 @@ Catalog evidence label: Inline C
 <a id="vis-038"></a>
 ### VIS-038 — Sample Edit — Pad mode / assignments
 
-Catalog evidence label: Official manual link + actual One trim photo
+Catalog evidence label: Official manual link + actual One trim photo  [mpc-v39 p.269](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-269.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 269. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -526,7 +526,7 @@ Catalog evidence label: Official manual link + actual One trim photo
 <a id="vis-039"></a>
 ### VIS-039 — Sampler — record / waiting for signal
 
-Catalog evidence label: Inline C
+Catalog evidence label: Inline C  [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 296. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -547,7 +547,7 @@ Catalog evidence label: Inline C
 <a id="vis-040"></a>
 ### VIS-040 — Sampler — Slice
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 296. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -568,7 +568,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-041"></a>
 ### VIS-041 — Sampler — Pad Tap
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 296. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -589,7 +589,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-042"></a>
 ### VIS-042 — Sampler — Pad Hold
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 296. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -610,7 +610,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-043"></a>
 ### VIS-043 — Sampler — Auto Sampler
 
-Catalog evidence label: Current v3.9 control-detail figures p.304–305 in §8.25
+Catalog evidence label: Current v3.9 control-detail figures p.304–305 in §8.25  [mpc-v39 p.304](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-304.jpg); [mpc-v39 p.305](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-305.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 304. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -627,7 +627,7 @@ Catalog evidence label: Current v3.9 control-detail figures p.304–305 in §8.2
 <a id="vis-044"></a>
 ### VIS-044 — Channel Mixer — Volume / Pan & Volume
 
-Catalog evidence label: Inline official MPC 3 A
+Catalog evidence label: Inline official MPC 3 A  [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 140. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -664,7 +664,7 @@ Catalog evidence label: Inline official MPC 3 A
 <a id="vis-045"></a>
 ### VIS-045 — Channel Mixer — Sends
 
-Catalog evidence label: Inline official MPC 3 A
+Catalog evidence label: Inline official MPC 3 A  [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 140. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -701,7 +701,7 @@ Catalog evidence label: Inline official MPC 3 A
 <a id="vis-046"></a>
 ### VIS-046 — Channel Mixer — Effects
 
-Catalog evidence label: Inline official MPC 3 A
+Catalog evidence label: Inline official MPC 3 A  [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 140. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -738,7 +738,7 @@ Catalog evidence label: Inline official MPC 3 A
 <a id="vis-047"></a>
 ### VIS-047 — Channel Mixer — I/O / Monitoring / Route
 
-Catalog evidence label: Inline official MPC 3 A
+Catalog evidence label: Inline official MPC 3 A  [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 140. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -775,7 +775,7 @@ Catalog evidence label: Inline official MPC 3 A
 <a id="vis-048"></a>
 ### VIS-048 — Pad Mixer — Volume / Pan & Volume
 
-Catalog evidence label: Inline legacy routing image; current v3.9 full-screen and tabs in §8.25
+Catalog evidence label: Inline legacy routing image; current v3.9 full-screen and tabs in §8.25  [mpc-v39 p.145](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-145.jpg); [mpc-v39 p.146](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-146.jpg); [mpc-v39 p.147](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-147.jpg); [mpc-v39 p.148](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-148.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 145. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -808,7 +808,7 @@ Catalog evidence label: Inline legacy routing image; current v3.9 full-screen an
 <a id="vis-049"></a>
 ### VIS-049 — Pad Mixer — Sends / Effects / I/O
 
-Catalog evidence label: Inline C (older routing)
+Catalog evidence label: Inline C (older routing)  [mpc-v39 p.145](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-145.jpg); [mpc-v39 p.146](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-146.jpg); [mpc-v39 p.147](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-147.jpg); [mpc-v39 p.148](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-148.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 145. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -841,7 +841,7 @@ Catalog evidence label: Inline C (older routing)
 <a id="vis-050"></a>
 ### VIS-050 — 16 Levels — Velocity / Tune / Filter / Layer / etc.
 
-Catalog evidence label: Current v3.9 dialog figures in §8.25
+Catalog evidence label: Current v3.9 dialog figures in §8.25  [mpc-v39 p.80](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-080.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 80. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -854,7 +854,7 @@ Catalog evidence label: Current v3.9 dialog figures in §8.25
 <a id="vis-051"></a>
 ### VIS-051 — Pad Perform — Notes / Chords / Chromatic Chords / Progressions / Custom
 
-Catalog evidence label: Inline official A + inline legacy C
+Catalog evidence label: Inline official A + inline legacy C  [mpc-v39 p.81](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-081.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 81. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -865,7 +865,7 @@ Catalog evidence label: Inline official A + inline legacy C
 <a id="vis-052"></a>
 ### VIS-052 — Arpeggiator
 
-Catalog evidence label: Current v3.9 dialog figure in §8.25; supplemental official support image above
+Catalog evidence label: Current v3.9 dialog figure in §8.25; supplemental official support image above  [mpc-v39 p.84](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-084.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 84. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -878,7 +878,7 @@ Catalog evidence label: Current v3.9 dialog figure in §8.25; supplemental offic
 <a id="vis-053"></a>
 ### VIS-053 — Erase context/dialog
 
-Catalog evidence label: Current v3.9 Erase dialog figure in §8.25 plus official Sequence Edit screenshots in §8.22
+Catalog evidence label: Current v3.9 Erase dialog figure in §8.25 plus official Sequence Edit screenshots in §8.22  [mpc-v39 p.87](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-087.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 87. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -891,7 +891,7 @@ Catalog evidence label: Current v3.9 Erase dialog figure in §8.25 plus official
 <a id="vis-054"></a>
 ### VIS-054 — Next Sequence — sequence pad map / Next Bar / Sudden / Hold
 
-Catalog evidence label: Inline B actual One photo with overlay + official guide link
+Catalog evidence label: Inline B actual One photo with overlay + official guide link  [mpc-v39 p.318](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-318.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 318. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -904,7 +904,7 @@ Catalog evidence label: Inline B actual One photo with overlay + official guide 
 <a id="vis-055"></a>
 ### VIS-055 — Song Mode — playlist and sequence pads
 
-Catalog evidence label: Inline C
+Catalog evidence label: Inline C  [mpc-v39 p.328](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-328.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 328. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -915,7 +915,7 @@ Catalog evidence label: Inline C
 <a id="vis-056"></a>
 ### VIS-056 — Looper — waveform / Play / Overdub / Replace / Export
 
-Catalog evidence label: Current v3.9 Looper figure in §8.25; v3.7 reference historical fallback
+Catalog evidence label: Current v3.9 Looper figure in §8.25; v3.7 reference historical fallback  [mpc-v39 p.340](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-340.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 340. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -926,7 +926,7 @@ Catalog evidence label: Current v3.9 Looper figure in §8.25; v3.7 reference his
 <a id="vis-057"></a>
 ### VIS-057 — XYFX — XY plane / destination / latch
 
-Catalog evidence label: Inline B, MPC Live
+Catalog evidence label: Inline B, MPC Live  [mpc-v39 p.151](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-151.jpg); [mpc-v39 p.152](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-152.jpg); [mpc-v39 p.153](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-153.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 151. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -949,7 +949,7 @@ Catalog evidence label: Inline B, MPC Live
 <a id="vis-058"></a>
 ### VIS-058 — Q-Link Edit — learn / edit assignment
 
-Catalog evidence label: Inline legacy Q-Link overview + official guide link
+Catalog evidence label: Inline legacy Q-Link overview + official guide link  [mpc-v39 p.306](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-306.jpg); [mpc-v39 p.314](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-314.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 306. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -974,7 +974,7 @@ Catalog evidence label: Inline legacy Q-Link overview + official guide link
 <a id="vis-059"></a>
 ### VIS-059 — XY Pad / Crossfader
 
-Catalog evidence label: Inline XYFX visual as related context; official guide link
+Catalog evidence label: Inline XYFX visual as related context; official guide link  [mpc-v39 p.316](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-316.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 316. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -987,7 +987,7 @@ Catalog evidence label: Inline XYFX visual as related context; official guide li
 <a id="vis-060"></a>
 ### VIS-060 — MIDI Control Mode — pads
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.333](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-333.jpg); [mpc-v39 p.334](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-334.jpg); [mpc-v39 p.335](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-335.jpg); [mpc-v39 p.336](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-336.jpg); [mpc-v39 p.337](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-337.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 333. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1024,7 +1024,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-061"></a>
 ### VIS-061 — MIDI Control Mode — buttons
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.333](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-333.jpg); [mpc-v39 p.334](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-334.jpg); [mpc-v39 p.335](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-335.jpg); [mpc-v39 p.336](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-336.jpg); [mpc-v39 p.337](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-337.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 333. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1061,7 +1061,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-062"></a>
 ### VIS-062 — MIDI Control Mode — Q-Link knobs / XY Pad
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.333](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-333.jpg); [mpc-v39 p.334](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-334.jpg); [mpc-v39 p.335](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-335.jpg); [mpc-v39 p.336](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-336.jpg); [mpc-v39 p.337](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-337.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 333. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1098,7 +1098,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-063"></a>
 ### VIS-063 — Pad Color / pad mapping
 
-Catalog evidence label: Inline B actual One photo + legacy pad-map table
+Catalog evidence label: Inline B actual One photo + legacy pad-map table  [mpc-v39 p.338](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-338.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 338. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1109,7 +1109,7 @@ Catalog evidence label: Inline B actual One photo + legacy pad-map table
 <a id="vis-064"></a>
 ### VIS-064 — Sounds Mode — Favourites / Setlists
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.149](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-149.jpg); [mpc-v39 p.150](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-150.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 149. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1132,7 +1132,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-065"></a>
 ### VIS-065 — Project — New Project / Open / Save / Save As
 
-Catalog evidence label: Inline legacy Save modal and Project Load/Save preferences
+Catalog evidence label: Inline legacy Save modal and Project Load/Save preferences  [mpc-v39 p.60](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-060.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 60. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1143,7 +1143,7 @@ Catalog evidence label: Inline legacy Save modal and Project Load/Save preferenc
 <a id="vis-066"></a>
 ### VIS-066 — Save Window — project / project as / export formats
 
-Catalog evidence label: Inline C legacy image; current guide Save Window figure on p.69 in §8.25
+Catalog evidence label: Inline C legacy image; current guide Save Window figure on p.69 in §8.25  [mpc-v39 p.69](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-069.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 69. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1154,7 +1154,7 @@ Catalog evidence label: Inline C legacy image; current guide Save Window figure 
 <a id="vis-067"></a>
 ### VIS-067 — Preferences — Audio Device
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.62](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-062.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 62. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1163,7 +1163,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-068"></a>
 ### VIS-068 — Preferences — Audio / Export
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.63](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-063.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 63. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1172,7 +1172,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-069"></a>
 ### VIS-069 — Preferences — MIDI / Sync
 
-Catalog evidence label: Actual One photo plus current-generation official Akai image in §8.26
+Catalog evidence label: Actual One photo plus current-generation official Akai image in §8.26  [mpc-v39 p.63](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-063.jpg); [mpc-v39 p.64](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-064.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 63. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1185,7 +1185,7 @@ Catalog evidence label: Actual One photo plus current-generation official Akai i
 <a id="vis-070"></a>
 ### VIS-070 — Preferences — Hardware
 
-Catalog evidence label: Official Akai Hardware Preferences image in §8.23; current guide p.64 text
+Catalog evidence label: Official Akai Hardware Preferences image in §8.23; current guide p.64 text  [mpc-v39 p.64](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-064.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 64. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1194,7 +1194,7 @@ Catalog evidence label: Official Akai Hardware Preferences image in §8.23; curr
 <a id="vis-071"></a>
 ### VIS-071 — Preferences — Sequencer
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.65](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-065.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 65. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1203,7 +1203,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-072"></a>
 ### VIS-072 — Preferences — Project Defaults
 
-Catalog evidence label: Supplementary screenshot in §8.26; current guide p.66 text
+Catalog evidence label: Supplementary screenshot in §8.26; current guide p.66 text  [mpc-v39 p.66](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-066.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 66. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1212,7 +1212,7 @@ Catalog evidence label: Supplementary screenshot in §8.26; current guide p.66 t
 <a id="vis-073"></a>
 ### VIS-073 — Preferences — Project Load/Save
 
-Catalog evidence label: Official current-generation support images in §8.23 and §8.26; v3.9 guide p.67 text
+Catalog evidence label: Official current-generation support images in §8.23 and §8.26; v3.9 guide p.67 text  [mpc-v39 p.67](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-067.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 67. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1221,7 +1221,7 @@ Catalog evidence label: Official current-generation support images in §8.23 and
 <a id="vis-074"></a>
 ### VIS-074 — Preferences — General / network / account-related entries
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.68](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-068.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 68. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1230,7 +1230,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-075"></a>
 ### VIS-075 — Timing Correct dialog
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.75](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-075.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 75. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1245,7 +1245,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-076"></a>
 ### VIS-076 — Metronome / Click dialog
 
-Catalog evidence label: Inline official MPC 3 A
+Catalog evidence label: Inline official MPC 3 A  [mpc-v39 p.77](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-077.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 77. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1256,7 +1256,7 @@ Catalog evidence label: Inline official MPC 3 A
 <a id="vis-077"></a>
 ### VIS-077 — Automation — Global / Track / Program
 
-Catalog evidence label: Official guide + inline legacy Q-Link/XY related visual
+Catalog evidence label: Official guide + inline legacy Q-Link/XY related visual  [mpc-v39 p.78](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-078.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 78. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1265,7 +1265,7 @@ Catalog evidence label: Official guide + inline legacy Q-Link/XY related visual
 <a id="vis-078"></a>
 ### VIS-078 — Audio Mixdown / export
 
-Catalog evidence label: Current guide figure on p.100 in §8.25
+Catalog evidence label: Current guide figure on p.100 in §8.25  [mpc-v39 p.100](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-100.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 100. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1276,7 +1276,7 @@ Catalog evidence label: Current guide figure on p.100 in §8.25
 <a id="vis-079"></a>
 ### VIS-079 — Keyboard Control / Touch Strip
 
-Catalog evidence label: Official v3.9 guide link
+Catalog evidence label: Official v3.9 guide link  [mpc-v39 p.339](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-339.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 339. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1285,7 +1285,7 @@ Catalog evidence label: Official v3.9 guide link
 <a id="vis-080"></a>
 ### VIS-080 — Project import dialog / Keep-or-Discard / destructive confirmations
 
-Catalog evidence label: Official v3.9 guide and support links
+Catalog evidence label: Official v3.9 guide and support links  [mpc-v39 p.60](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-060.jpg); [mpc-v39 p.69](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-069.jpg); [mpc-v39 p.87](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-087.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 60. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1310,7 +1310,7 @@ Catalog evidence label: Official v3.9 guide and support links
 <a id="vis-081"></a>
 ### VIS-081 — Track Type selector / Program-specific Main sections
 
-Catalog evidence label: Inline Main and Program references
+Catalog evidence label: Inline Main and Program references  [mpc-v39 p.117](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-117.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 117. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1323,7 +1323,7 @@ Catalog evidence label: Inline Main and Program references
 <a id="vis-082"></a>
 ### VIS-082 — Dialogs: selectors, numeric entry, routing, effects, picker errors
 
-Catalog evidence label: Related screenshots above; no single image represents this set
+Catalog evidence label: Related screenshots above; no single image represents this set  [mpc-v39 p.56](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-056.jpg); [mpc-v39 p.69](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-069.jpg); [mpc-v39 p.87](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-087.jpg); [mpc-v39 p.100](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-100.jpg)
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 56. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
@@ -1424,13 +1424,6 @@ Download failed: failed after retries: 400 Client Error: Bad Request for url: ht
 
 Source image/page: https://support.akaipro.com/en/support/solutions/articles/69000874731/
 
-### Home
-
-![Home](images/home-903e0bab8794.png)
-
-Source page: https://www.soundonsound.com/reviews/akai-mpc-live-iii
-Original image URL: https://www.soundonsound.com/sites/all/themes/sound_on_sound/images/logo-mobile.png
-
 ### Akai MPC Live III
 
 ![Akai MPC Live III](images/akai-mpc-live-iii-78d0649df73d.jpg)
@@ -1465,20 +1458,6 @@ Original image URL: https://dt7v1i9vyp3mf.cloudfront.net/styles/header/s3/imagel
 
 Source page: https://www.soundonsound.com/reviews/akai-mpc-live-iii
 Original image URL: https://dt7v1i9vyp3mf.cloudfront.net/styles/header/s3/imagelibrary/A/AkaiMPCLiveIII_02-LLciSxodnQdNIk0WDTn8hH6JY0drfUAw.jpg
-
-### Sweetwater Affiliate logo 14px
-
-![Sweetwater Affiliate logo 14px](images/sweetwater-affiliate-logo-14px-c324200b5b65.jpg)
-
-Source page: https://www.soundonsound.com/reviews/akai-mpc-live-iii
-Original image URL: https://dt7v1i9vyp3mf.cloudfront.net/styles/sos_original/s3/imagelibrary/s/sweetwater-affiliate-logo-bin14px-2G2FWZFhOPBFCjMP26oh4F8zSehELano.jpg
-
-### G4M logo
-
-![G4M logo](images/g4m-logo-3415eb2a398c.jpg)
-
-Source page: https://www.soundonsound.com/reviews/akai-mpc-live-iii
-Original image URL: https://dt7v1i9vyp3mf.cloudfront.net/styles/sos_original/s3/imagelibrary/g/g4m_logo_110x54-fqTOe1qRN47cL5wmxxowzfD.J8.T7M0T.jpg
 
 ### Reference image from Akai MPC Live III
 
@@ -2205,13 +2184,6 @@ Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/att
 Source page: https://support.akaipro.com/en/support/solutions/articles/69000857890-akai-pro-mpc-series-editing-the-count-in-and-metronome
 Original image URL: https://support.akaipro.com/en/support/solutions/articles/69000857890-akai-pro-mpc-series-editing-the-count-in-and-metronome/hit
 
-### heikkisiltala.net
-
-![heikkisiltala.net](images/heikkisiltala-net-168660b8e2b7.png)
-
-Source page: https://heikkisiltala.net/wiki/en/music/akai_mpc_live_effects
-Original image URL: https://heikkisiltala.net/wiki/_media/wiki/logo.png
-
 ### Reference image from A quick dive into the effects of Akai MPC Live - heikkisiltala.net
 
 ![Reference image from A quick dive into the effects of Akai MPC Live - heikkisiltala.net](images/reference-image-from-a-quick-dive-into-the-effects-of-akai-m-bb966d2ed93e.jpg)
@@ -2288,6 +2260,13 @@ Original image URL: https://heikkisiltala.net/wiki/_media/images/akai_mpc_live/e
 
 Source page: https://heikkisiltala.net/wiki/en/music/akai_mpc_live_effects
 Original image URL: https://heikkisiltala.net/wiki/_media/images/akai_mpc_live/effectscrash.jpg?w=800&tok=9988ba
+
+### Reference image from A quick dive into the effects of Akai MPC Live - heikkisiltala.net
+
+![Reference image from A quick dive into the effects of Akai MPC Live - heikkisiltala.net](images/reference-image-from-a-quick-dive-into-the-effects-of-akai-m-b9b3d8fe1c7c.jpg)
+
+Source page: https://heikkisiltala.net/wiki/en/music/akai_mpc_live_effects
+Original image URL: https://heikkisiltala.net/wiki/_media/images/akai_mpc_live/effectsxypad02.jpg?w=800&tok=792f2b
 
 ### Reference image from 10 ways to get more out of your MPC hardware | MusicRadar
 
@@ -2562,13 +2541,6 @@ Original image URL: https://assets.st-note.com/production/uploads/images/1345647
 Source page: https://note.com/suitebossa/n/nde0f912fe4ce
 Original image URL: https://assets.st-note.com/production/uploads/images/139231419/rectangle_large_type_2_f2f3b59b86d795e0ba226c81891ee30c.jpeg?fit=bounds&quality=85&width=1280
 
-### Ragtime logo
-
-![Ragtime logo](images/ragtime-logo-9173441997f4.png)
-
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
-Original image URL: https://ik.imagekit.io/n5sapb3cshf/ASSETS/ragtime_bqZjUoX50.png
-
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-c74e8a62f6d0.png)
@@ -2645,6 +2617,13 @@ Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/headphones-com
 
 Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/FORCE_1_jmMwH-2OQ.png?updatedAt=1628533400140
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-fce0d77c4bfd.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/cubase_1_ZPoUecmj7.png?updatedAt=1628533398700
 
 ### Reference image from Akai Pro MPC Series | Creating and Loading Custom Arp Patterns : Akai Professional
 
@@ -3093,4 +3072,295 @@ Original image URL: https://support.akaipro.com/en/support/solutions/articles/69
 
 Source page: https://support.akaipro.com/en/support/solutions/articles/69000822965-akai-pro-mpc-series-adjusting-project-defaults
 Original image URL: https://support.akaipro.com/en/support/solutions/articles/69000822965-akai-pro-mpc-series-adjusting-project-defaults/hit
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-f1ef03407081.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/dsp_1_6O7THqw62B.png?updatedAt=1628533399598
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-30f0d050ff3b.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/amp2_1_JBRjny5jw.png?updatedAt=1628533399612
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-c997546a45df.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/warm-compressor_fQVc6MIGa.png?updatedAt=1628533399135
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-096282178b36.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/preamp-min_76G1cxneI.png?updatedAt=1628533398305
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-bfd8b9b277e7.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/code_1_cRZ_zEVFyv_meGE8DnSz.webp
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-1ea68c4abaf6.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/stands_dWCqyqLVd.webp
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-9cb8d51c7da7.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/code_1_cRZ_zEVFyv.png
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-23ac2d7da4de.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/ispressor_SvLWmAgHQ.png?updatedAt=1628533398995
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-47a1432d9443.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/solution_1_uhmfUIET3.png
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-73ab78b4ba0f.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/computers_2_uE62GbIG3.png?updatedAt=1628533399034
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-000e23e39856.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/ed466kvsaa/BUNDLE-1_FQ3xewnFsk.webp
+
+### Thumbnail Image
+
+![Thumbnail Image](images/thumbnail-image-840f5265172e.png)
+
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/cla_0bS98IZfN.png
+
+### Article views count
+
+![Article views count](images/article-views-count-cc132b7b8ab2.gif)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000857771-mpc3-faq
+Original image URL: https://support.akaipro.com/en/support/solutions/articles/69000857771-mpc3-faq/hit
+
+### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-7153486b8830.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169450663/original/WW3G5zNXMiLOcRBnKNpCjBfLSguzcqnnlg.png?1758037366
+
+### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-e70bc142c754.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451017/original/KpggymAm0m0NtrzLqpV8iqc3XBn2wtOtCg.png?1758037500
+
+### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-ffabddf80d7b.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451259/original/I39i5fyZ9zYIUKtujLbmUjUivDOYoXVgDQ.png?1758037588
+
+### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-e80a6f544ecf.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69177744398/original/R6fDSHLgtE4UVwxzJ4a_959gXIugZFEYaQ.png?1764773423
+
+### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-740dbbc827f4.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69177744645/original/cwe8GrtmLxpgo6xIHlrpMK65eu7ujKv9Ig.png?1764773498
+
+### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-2ffd2d8036e0.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451636/original/Sw--UACB1ghPEOXFz4riHAEixm53bct-Ww.png?1758037703
+
+### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-fda8befaaca0.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451634/original/w5Cnr0Q9y5eAG0FTFzEbsVAjP0qwQQmOag.png?1758037703
+
+### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-e6660bf04e84.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169455151/original/wvOUFEjEUrBvJItqOJhsBUz_EXlYS4SlnQ.png?1758038820
+
+### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-92edea1f2475.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169455183/original/nb5qBEsarsiJyCJtNlnxqibPzKjeAadUqw.png?1758038836
+
+### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-df82be8c0e16.jpg)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169455500/original/PYGbNOWiEmqbzL42lX0uqbnHs_RAySoccw.jpeg?1758038937
+
+### Article views count
+
+![Article views count](images/article-views-count-238a69d06b46.gif)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
+Original image URL: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3/hit
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+![Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional](images/reference-image-from-akai-pro-mpc-series-understanding-and-l-77c8f3b3aa16.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881210/original/B8gDpMcHPKV_Sk5lPk2ZjTgdS_YwmiVxVQ.png?1732016678
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+Download failed: failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0031-1024x796.jpg
+
+Source image/page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+Download failed: failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0053_CU.jpg
+
+Source image/page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+Download failed: failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0054_CU.jpg
+
+Source image/page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+Download failed: failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0055_CU.jpg
+
+Source image/page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+Download failed: failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0058-1024x796.jpg
+
+Source image/page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+Download failed: failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0061_CU.jpg
+
+Source image/page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+Download failed: failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0071_PP_CU.jpg
+
+Source image/page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+Download failed: failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0067-1024x796.jpg
+
+Source image/page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+![Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional](images/reference-image-from-akai-pro-mpc-series-understanding-and-l-e6d1628cd981.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881533/original/Gpm2HcY9ynQCsjxFsSc7T8t0VoLS4_Ldng.png?1732016882
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+Download failed: failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0030-1024x796.jpg
+
+Source image/page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+
+### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
+
+Download failed: failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0074_CU.jpg
+
+Source image/page: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて
+
+### Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-9995af3c4474.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170999168/original/yZ9nvkqCZYR5XM0h40teQu5sZ5CCtUlezQ.png?1759244741
+
+### Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-7ef1c0851add.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170383718/original/pYoXsdWLXS_jok5Yd9p_JnoAYmeS2LDTkg.png?1758722166
+
+### Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-8442dab2ca88.jpg)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170851373/original/0rh6VPWdWzuS_mNN2Wk82TmxNqhD4C-KzA.jpg?1759156351
+
+### Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-bade6e8eb533.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170999127/original/aTR1N8dQMhVcjx--qyr1x75WsC6NamWORQ.png?1759244725
+
+### Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-f92d37196266.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171131263/original/buwTDarsHDQ6nAP8Fb-jHBCSmIZ1Ab44bA.png?1759329115
+
+### Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-37d5b60d8a26.png)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions
+Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170859418/original/b2RsDcCldWH1E52lbkizBDMwcUghiGTUmg.png?1759159251
+
+### Article views count
+
+![Article views count](images/article-views-count-c689e99d3fbc.gif)
+
+Source page: https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions
+Original image URL: https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions/hit
 

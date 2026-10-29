@@ -696,15 +696,9 @@ The primary layout authority remains the current [MPC Standalone OS v3.9 User Gu
 
 This section contains local image files discovered by scanning the support/tutorial/manual webpages already cited in the catalog, MPC3-9-OS-KNOWLEDGE-BASE.md and MPC3-REFERENCE-INDEX.md. The screenshots remain in docs/MPC3-UI-REFERENCE-ASSETS/images/ and are indexed individually. Source article links are retained so the context/version can be checked.
 
-**Extraction result:** 239 additional images saved from 30 cited source pages; 11 image-download failures. The same URL is stored only once even when it is used in multiple documents.
+**Extraction result:** 269 additional images saved from 35 cited source pages; 21 image-download failures. The same URL is stored only once even when it is used in multiple documents.
 
 ### Source page: [https://heikkisiltala.net/wiki/en/music/akai_mpc_live_effects](https://heikkisiltala.net/wiki/en/music/akai_mpc_live_effects)
-
-**heikkisiltala.net**
-
-![heikkisiltala.net](MPC3-UI-REFERENCE-ASSETS/images/heikkisiltala-net-168660b8e2b7.png)
-
-Original image: https://heikkisiltala.net/wiki/_media/wiki/logo.png
 
 **Reference image from A quick dive into the effects of Akai MPC Live - heikkisiltala.net**
 
@@ -771,6 +765,12 @@ Original image: https://heikkisiltala.net/wiki/_media/images/akai_mpc_live/effec
 ![Reference image from A quick dive into the effects of Akai MPC Live - heikkisiltala.net](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-a-quick-dive-into-the-effects-of-akai-m-2facec04a44d.jpg)
 
 Original image: https://heikkisiltala.net/wiki/_media/images/akai_mpc_live/effectscrash.jpg?w=800&tok=9988ba
+
+**Reference image from A quick dive into the effects of Akai MPC Live - heikkisiltala.net**
+
+![Reference image from A quick dive into the effects of Akai MPC Live - heikkisiltala.net](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-a-quick-dive-into-the-effects-of-akai-m-b9b3d8fe1c7c.jpg)
+
+Original image: https://heikkisiltala.net/wiki/_media/images/akai_mpc_live/effectsxypad02.jpg?w=800&tok=792f2b
 
 ### Source page: [https://marronfieldsproduction.hatenablog.com/entry/2022/10/25/063000](https://marronfieldsproduction.hatenablog.com/entry/2022/10/25/063000)
 
@@ -960,12 +960,6 @@ Original image: https://assets.st-note.com/production/uploads/images/139231419/r
 
 ### Source page: [https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html)
 
-**Ragtime logo**
-
-![Ragtime logo](MPC3-UI-REFERENCE-ASSETS/images/ragtime-logo-9173441997f4.png)
-
-Original image: https://ik.imagekit.io/n5sapb3cshf/ASSETS/ragtime_bqZjUoX50.png
-
 **Thumbnail Image**
 
 ![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-c74e8a62f6d0.png)
@@ -1031,6 +1025,100 @@ Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/headphones-compres
 ![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-5ce02f8967ff.png)
 
 Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/FORCE_1_jmMwH-2OQ.png?updatedAt=1628533400140
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-fce0d77c4bfd.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/cubase_1_ZPoUecmj7.png?updatedAt=1628533398700
+
+### Source page: [https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html)
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-f1ef03407081.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/dsp_1_6O7THqw62B.png?updatedAt=1628533399598
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-30f0d050ff3b.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/amp2_1_JBRjny5jw.png?updatedAt=1628533399612
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-c997546a45df.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/warm-compressor_fQVc6MIGa.png?updatedAt=1628533399135
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-096282178b36.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/preamp-min_76G1cxneI.png?updatedAt=1628533398305
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-bfd8b9b277e7.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/code_1_cRZ_zEVFyv_meGE8DnSz.webp
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-1ea68c4abaf6.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/stands_dWCqyqLVd.webp
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-9cb8d51c7da7.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/code_1_cRZ_zEVFyv.png
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-23ac2d7da4de.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/ispressor_SvLWmAgHQ.png?updatedAt=1628533398995
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-47a1432d9443.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/solution_1_uhmfUIET3.png
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-73ab78b4ba0f.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/computers_2_uE62GbIG3.png?updatedAt=1628533399034
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-000e23e39856.png)
+
+Original image: https://ik.imagekit.io/ed466kvsaa/BUNDLE-1_FQ3xewnFsk.webp
+
+**Thumbnail Image**
+
+![Thumbnail Image](MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-840f5265172e.png)
+
+Original image: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/cla_0bS98IZfN.png
+
+### Source page: [https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて](https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて)
+
+**Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional**
+
+![Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-series-understanding-and-l-77c8f3b3aa16.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881210/original/B8gDpMcHPKV_Sk5lPk2ZjTgdS_YwmiVxVQ.png?1732016678
+
+**Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional**
+
+![Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-series-understanding-and-l-e6d1628cd981.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881533/original/Gpm2HcY9ynQCsjxFsSc7T8t0VoLS4_Ldng.png?1732016882
 
 ### Source page: [https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs](https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs)
 
@@ -1165,6 +1253,14 @@ Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachm
 ![Article views count](MPC3-UI-REFERENCE-ASSETS/images/article-views-count-b8ada76d27c3.gif)
 
 Original image: https://support.akaipro.com/en/support/solutions/articles/69000856004-akai-pro-mpc-series-creating-and-loading-custom-arp-patterns/hit
+
+### Source page: [https://support.akaipro.com/en/support/solutions/articles/69000857771-mpc3-faq](https://support.akaipro.com/en/support/solutions/articles/69000857771-mpc3-faq)
+
+**Article views count**
+
+![Article views count](MPC3-UI-REFERENCE-ASSETS/images/article-views-count-cc132b7b8ab2.gif)
+
+Original image: https://support.akaipro.com/en/support/solutions/articles/69000857771-mpc3-faq/hit
 
 ### Source page: [https://support.akaipro.com/en/support/solutions/articles/69000857890-akai-pro-mpc-series-editing-the-count-in-and-metronome](https://support.akaipro.com/en/support/solutions/articles/69000857890-akai-pro-mpc-series-editing-the-count-in-and-metronome)
 
@@ -1668,6 +1764,50 @@ Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachm
 
 Original image: https://support.akaipro.com/en/support/solutions/articles/69000868280-akai-pro-mpc-series-output-routing-basics/hit
 
+### Source page: [https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions](https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions)
+
+**Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional**
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-9995af3c4474.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170999168/original/yZ9nvkqCZYR5XM0h40teQu5sZ5CCtUlezQ.png?1759244741
+
+**Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional**
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-7ef1c0851add.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170383718/original/pYoXsdWLXS_jok5Yd9p_JnoAYmeS2LDTkg.png?1758722166
+
+**Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional**
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-8442dab2ca88.jpg)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170851373/original/0rh6VPWdWzuS_mNN2Wk82TmxNqhD4C-KzA.jpg?1759156351
+
+**Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional**
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-bade6e8eb533.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170999127/original/aTR1N8dQMhVcjx--qyr1x75WsC6NamWORQ.png?1759244725
+
+**Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional**
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-f92d37196266.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171131263/original/buwTDarsHDQ6nAP8Fb-jHBCSmIZ1Ab44bA.png?1759329115
+
+**Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional**
+
+![Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-37d5b60d8a26.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170859418/original/b2RsDcCldWH1E52lbkizBDMwcUghiGTUmg.png?1759159251
+
+**Article views count**
+
+![Article views count](MPC3-UI-REFERENCE-ASSETS/images/article-views-count-c689e99d3fbc.gif)
+
+Original image: https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions/hit
+
 ### Source page: [https://support.akaipro.com/en/support/solutions/articles/69000870813-mpc-3-standalone-how-do-i-turn-off-the-tap-tempo-light-](https://support.akaipro.com/en/support/solutions/articles/69000870813-mpc-3-standalone-how-do-i-turn-off-the-tap-tempo-light-)
 
 **Reference image from MPC 3 Standalone | How Do I Turn Off The Tap Tempo Light? : Akai Professional**
@@ -1823,6 +1963,74 @@ Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachm
 ![Article views count](MPC3-UI-REFERENCE-ASSETS/images/article-views-count-45896ffec2ff.gif)
 
 Original image: https://support.akaipro.com/en/support/solutions/articles/69000871930-akai-pro-mpc-series-understanding-the-mpc-s-browser/hit
+
+### Source page: [https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3](https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3)
+
+**Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional**
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-7153486b8830.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169450663/original/WW3G5zNXMiLOcRBnKNpCjBfLSguzcqnnlg.png?1758037366
+
+**Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional**
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-e70bc142c754.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451017/original/KpggymAm0m0NtrzLqpV8iqc3XBn2wtOtCg.png?1758037500
+
+**Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional**
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-ffabddf80d7b.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451259/original/I39i5fyZ9zYIUKtujLbmUjUivDOYoXVgDQ.png?1758037588
+
+**Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional**
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-e80a6f544ecf.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69177744398/original/R6fDSHLgtE4UVwxzJ4a_959gXIugZFEYaQ.png?1764773423
+
+**Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional**
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-740dbbc827f4.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69177744645/original/cwe8GrtmLxpgo6xIHlrpMK65eu7ujKv9Ig.png?1764773498
+
+**Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional**
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-2ffd2d8036e0.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451636/original/Sw--UACB1ghPEOXFz4riHAEixm53bct-Ww.png?1758037703
+
+**Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional**
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-fda8befaaca0.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451634/original/w5Cnr0Q9y5eAG0FTFzEbsVAjP0qwQQmOag.png?1758037703
+
+**Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional**
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-e6660bf04e84.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169455151/original/wvOUFEjEUrBvJItqOJhsBUz_EXlYS4SlnQ.png?1758038820
+
+**Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional**
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-92edea1f2475.png)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169455183/original/nb5qBEsarsiJyCJtNlnxqibPzKjeAadUqw.png?1758038836
+
+**Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional**
+
+![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-df82be8c0e16.jpg)
+
+Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169455500/original/PYGbNOWiEmqbzL42lX0uqbnHs_RAySoccw.jpeg?1758038937
+
+**Article views count**
+
+![Article views count](MPC3-UI-REFERENCE-ASSETS/images/article-views-count-238a69d06b46.gif)
+
+Original image: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3/hit
 
 ### Source page: [https://support.akaipro.com/en/support/solutions/articles/69000874731/](https://support.akaipro.com/en/support/solutions/articles/69000874731/)
 
@@ -2018,12 +2226,6 @@ Original image: https://cdn.mos.cms.futurecdn.net/SYiUWYzjb9HKYvNkhUZuNi.jpg
 
 ### Source page: [https://www.soundonsound.com/reviews/akai-mpc-live-iii](https://www.soundonsound.com/reviews/akai-mpc-live-iii)
 
-**Home**
-
-![Home](MPC3-UI-REFERENCE-ASSETS/images/home-903e0bab8794.png)
-
-Original image: https://www.soundonsound.com/sites/all/themes/sound_on_sound/images/logo-mobile.png
-
 **Akai MPC Live III**
 
 ![Akai MPC Live III](MPC3-UI-REFERENCE-ASSETS/images/akai-mpc-live-iii-78d0649df73d.jpg)
@@ -2053,18 +2255,6 @@ Original image: https://dt7v1i9vyp3mf.cloudfront.net/styles/header/s3/imagelibra
 ![Akai MPC Live III](MPC3-UI-REFERENCE-ASSETS/images/akai-mpc-live-iii-11db9808b25d.jpg)
 
 Original image: https://dt7v1i9vyp3mf.cloudfront.net/styles/header/s3/imagelibrary/A/AkaiMPCLiveIII_02-LLciSxodnQdNIk0WDTn8hH6JY0drfUAw.jpg
-
-**Sweetwater Affiliate logo 14px**
-
-![Sweetwater Affiliate logo 14px](MPC3-UI-REFERENCE-ASSETS/images/sweetwater-affiliate-logo-14px-c324200b5b65.jpg)
-
-Original image: https://dt7v1i9vyp3mf.cloudfront.net/styles/sos_original/s3/imagelibrary/s/sweetwater-affiliate-logo-bin14px-2G2FWZFhOPBFCjMP26oh4F8zSehELano.jpg
-
-**G4M logo**
-
-![G4M logo](MPC3-UI-REFERENCE-ASSETS/images/g4m-logo-3415eb2a398c.jpg)
-
-Original image: https://dt7v1i9vyp3mf.cloudfront.net/styles/sos_original/s3/imagelibrary/g/g4m_logo_110x54-fqTOe1qRN47cL5wmxxowzfD.J8.T7M0T.jpg
 
 **Reference image from Akai MPC Live III**
 
@@ -2216,6 +2406,26 @@ Original image: https://dt7v1i9vyp3mf.cloudfront.net/styles/header/s3/imagelibra
 
 - Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0051_CU.jpg — failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0051_CU.jpg
 
+- Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0031-1024x796.jpg — failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0031-1024x796.jpg
+
+- Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0053_CU.jpg — failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0053_CU.jpg
+
+- Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0054_CU.jpg — failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0054_CU.jpg
+
+- Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0055_CU.jpg — failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0055_CU.jpg
+
+- Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0058-1024x796.jpg — failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0058-1024x796.jpg
+
+- Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0061_CU.jpg — failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0061_CU.jpg
+
+- Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0071_PP_CU.jpg — failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0071_PP_CU.jpg
+
+- Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0067-1024x796.jpg — failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0067-1024x796.jpg
+
+- Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0030-1024x796.jpg — failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0030-1024x796.jpg
+
+- Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0074_CU.jpg — failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0074_CU.jpg
+
 # 9. Full screen/context coverage index
 
 This index covers 82 screen and sub-screen contexts from the MPC Standalone user-guide taxonomy and our repository contract. “Inline” means a remote screenshot image is embedded above; “official PDF figure link” means the guide's screenshot remains inside the linked PDF because no stable direct image URL was exposed; “guide link” is still a visual research task. The evidence column never says a screen is implemented merely because its original reference exists.
@@ -2224,88 +2434,88 @@ This index covers 82 screen and sub-screen contexts from the MPC Standalone user
 
 | ID | Screen / sub-screen | Available visual reference | Target/version and acceptance note | Manual/source reference (page anchors; legacy anchors need spot-check)  | Stored screenshot asset(s) |
 |---|---|---|---|--- |---|
-| VIS-001 | Main overview: Sequence + Track/Arrangement | Inline A/B images | Official v3.9 guide, Main Mode. Sequence and Track context must share the workspace.   [mpc-v39 p.15](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-015.jpg); [mpc-v39 p.109](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-109.jpg) |
-| VIS-002 | Toolbar / project / counter / transport | Inline Main images A/B | Official v3.9 guide, Toolbar; keep transport state persistent through navigation.   [mpc-v39 p.57](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-057.jpg) |
-| VIS-003 | Pull-Down Menu / status controls | Official guide reference | Official v3.9 guide, Pull-Down Menu. Exact current panel image still not separately embedded.   [mpc-v39 p.56](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-056.jpg); [mpc-v39 p.59](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-059.jpg) |
-| VIS-004 | Five shortcut rail | Inline Main/XL images A | Exactly five configurable destinations; no retired persistent seven-page rail.   [mpc-v39 p.15](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-015.jpg) |
-| VIS-005 | XL Channel Strip, Main context | Inline A | Main and XL strip must remain one coherent shell.   [mpc-v39 p.133](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-133.jpg) |
-| VIS-006 | XL Channel Strip — I/O / output chooser | Inline A | Do not imply the full mixer/routing implementation is complete solely from this visual.   [mpc-v39 p.133](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-133.jpg) |
-| VIS-007 | Menu / mode launcher | Inline B; additional mode-tile overview | Use current v3.9 guide for exact inventory, not legacy tile appearance.   [mpc-v39 p.56](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-056.jpg) |
-| VIS-008 | Browser — Places | Inline A | Current local storage and provider states must be truthful.   [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg) |
-| VIS-009 | Browser — Content | Inline A | Current categories and empty/error states need separate acceptance.   [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg) |
-| VIS-010 | Browser — Expansions | Inline A | Product decision excludes subscription upsells/cloud service integration.   [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg) |
-| VIS-011 | Browser — Sample Assign / Sample Pool | Inline A | Assignment is distinct from browsing and must update real Pad/Layer state.   [mpc-v39 p.139](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-139.jpg) |
-| VIS-012 | Browser — Options / filters / favourites / audition | Inline Options; current audition/filter/favourites details in §8.26 | Dialog, popover, six filter icons and five favourite shortcuts are referenced; some state variants remain absent.   [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg) |
-| VIS-013 | Main Sequence Select / sequence fields | Inline Main A/B | Official v3.9 Main; Sequence changes must preserve selected Track and transport.   [mpc-v39 p.112](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-112.jpg) |
-| VIS-014 | Main Track fields / Program Select | Inline Main + official Program article | Selected Track is authoritative; Program must belong to that Track.   [mpc-v39 p.117](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-117.jpg) |
-| VIS-015 | Main Track sample / waveform / layer context | Inline Main A | No permanent Android 4×4 performance pad grid in canonical Main.   [mpc-v39 p.109](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-109.jpg); [mpc-v39 p.197](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-197.jpg); [mpc-v39 p.203](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-203.jpg) |
-| VIS-016 | Main Arrangement preview / switch | Inline Main A and MPC 3-family B | Sibling view of same Sequence/Track, not a separate state machine.   [mpc-v39 p.129](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-129.jpg); [mpc-v39 p.154](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-154.jpg) |
-| VIS-017 | Track View overview / I/O / Monitor | Inline official A (older appearance) | Shift+Main; Monitor/REC/selection/Back need functional verification.   [mpc-v39 p.266](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-266.jpg) |
-| VIS-018 | Track View — group / track states | Official manual link | Exact current screenshot not separately hosted; use Track View chapter.   [mpc-v39 p.261](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-261.jpg); [mpc-v39 p.266](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-266.jpg) |
-| VIS-019 | Arrangement — timeline / loop / playhead | Inline Main A and sibling MPC 3 B | Distinguish screen geometry for Gen 1 One from wider models.   [mpc-v39 p.129](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-129.jpg); [mpc-v39 p.154](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-154.jpg) |
-| VIS-020 | Arrangement — editing placements / event menu | Official guide link + Main preview | Current project implements a subset; don't equate pattern-event editing with complete Linear Arranger coverage.   [mpc-v39 p.129](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-129.jpg); [mpc-v39 p.154](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-154.jpg) |
-| VIS-021 | Grid View — Drum track / note editing | Legacy inline C; current v3.9 figures in §8.25 | The v3.9 guide p.167 includes Drum and other Grid layouts.   [mpc-v39 p.167](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-167.jpg) |
-| VIS-022 | Grid View — Audio track | Official v3.9 guide link | Different visual/data contract from Drum grid.   [mpc-v39 p.167](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-167.jpg) |
-| VIS-023 | Grid View — velocity / automation lanes | Legacy inline C / Chop visual as related context | Note editing and automation are separate lane states and require separate acceptance.   [mpc-v39 p.167](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-167.jpg) |
-| VIS-024 | Step Sequencer — 16 steps / velocity | Inline B, actual One photo (legacy); current v3.9 screenshot figure in §8.25 | Use the direct page reference for the current 16-step workspace and velocity states.   [mpc-v39 p.179](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-179.jpg) |
-| VIS-025 | Step Sequencer — step automation | Official v3.9 guide link | Must expose actual parameter selection and step values.   [mpc-v39 p.179](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-179.jpg) |
-| VIS-026 | List Edit — Events table | Current v3.9 figure in §8.25; v3.7 is historical fallback | The current guide's event table is visible on p.184.   [mpc-v39 p.184](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-184.jpg) |
-| VIS-027 | List Edit — Tempo events | Official manual link | Separate Tempo view and mutation semantics.   [mpc-v39 p.184](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-184.jpg) |
-| VIS-028 | Track Edit — Drum / Global | Official guide + legacy Program Edit example | Verify current terminology and supported domain controls.   [mpc-v39 p.190](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-190.jpg) |
-| VIS-029 | Track Edit — Drum / Samples / Layers | Inline official A + legacy inline C | Eight layer indicators, sample region and actual selected Layer state.   [mpc-v39 p.197](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-197.jpg); [mpc-v39 p.203](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-203.jpg) |
-| VIS-030 | Track Edit — Drum / Envelopes | Official guide + related legacy Program Edit visual | ADSR changes must hit actual sampler state.   [mpc-v39 p.257](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-257.jpg) |
-| VIS-031 | Track Edit — LFO / Modulations / Effects / Mod Matrix / Utilities | Current v3.9 LFO figure on p.212; other tabs remain separate contexts | The LFO image does not imply that all tabs or modulation backends are implemented.   [mpc-v39 p.212](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-212.jpg) |
-| VIS-032 | Track Edit — Keygroup | Official v3.9 guide link | Keygroup has a different parameter layout from Drum Track.   [mpc-v39 p.215](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-215.jpg) |
-| VIS-033 | Track Edit — Plugin | Official Program article / v3.9 guide | Only display real instrument parameters where supported.   [mpc-v39 p.254](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-254.jpg) |
-| VIS-034 | Track Edit — MIDI | Official v3.9 guide link | Expose truthful port/channel data, not fake instrument controls.   [mpc-v39 p.255](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-255.jpg) |
-| VIS-035 | Track Edit — CV | Official v3.9 guide link | Reference behavior; native implementation capability must be stated separately.   [mpc-v39 p.256](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-256.jpg) |
-| VIS-036 | Sample Edit — Trim / region / loop | Inline B/C | Current v3.9 labels and boundaries override old visuals.   [mpc-v39 p.269](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-269.jpg) |
-| VIS-037 | Sample Edit — Chop / slice / threshold | Inline C | Markers, slice assignment, threshold/manual and conversion are separate operations.   [mpc-v39 p.269](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-269.jpg) |
-| VIS-038 | Sample Edit — Pad mode / assignments | Official manual link + actual One trim photo | Assignment must preserve true sample and pad identity.   [mpc-v39 p.269](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-269.jpg) |
-| VIS-039 | Sampler — record / waiting for signal | Inline C | Record, Stop, Monitor, Threshold and destination are actual state, not decorative.   [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg) |
-| VIS-040 | Sampler — Slice | Official v3.9 guide link | Distinct sampler workflow; verify its own controls.   [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg) |
-| VIS-041 | Sampler — Pad Tap | Official v3.9 guide link | Separate record-trigger mode.   [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg) |
-| VIS-042 | Sampler — Pad Hold | Official v3.9 guide link | Separate record-trigger mode.   [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg) |
-| VIS-043 | Sampler — Auto Sampler | Current v3.9 control-detail figures p.304–305 in §8.25 | Fields are shown for source, note range, velocity layers, sample duration/tail, loop settings and completion; a full-screen capture remains unavailable.   [mpc-v39 p.304](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-304.jpg); [mpc-v39 p.305](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-305.jpg) |
-| VIS-044 | Channel Mixer — Volume / Pan & Volume | Inline official MPC 3 A | Exact channel categories and current selected strip matter.   [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg) |
-| VIS-045 | Channel Mixer — Sends | Inline official MPC 3 A | Routing/effects capability remains limited by the project's actual backend.   [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg) |
-| VIS-046 | Channel Mixer — Effects | Inline official MPC 3 A | Effects insert/return semantics must be genuine or clearly unavailable.   [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg) |
-| VIS-047 | Channel Mixer — I/O / Monitoring / Route | Inline official MPC 3 A | Official screenshot includes Monitor, MIDI In, Send To and Audio Out fields.   [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg) |
-| VIS-048 | Pad Mixer — Volume / Pan & Volume | Inline legacy routing image; current v3.9 full-screen and tabs in §8.25 | Current guide p.145–146 includes the Pad Mixer and Volume/Pan views.   [mpc-v39 p.145](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-145.jpg); [mpc-v39 p.146](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-146.jpg); [mpc-v39 p.147](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-147.jpg); [mpc-v39 p.148](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-148.jpg) |
-| VIS-049 | Pad Mixer — Sends / Effects / I/O | Inline C (older routing) | Do not imply complete per-pad FX/routing support from a routing-only screenshot.   [mpc-v39 p.145](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-145.jpg); [mpc-v39 p.146](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-146.jpg); [mpc-v39 p.147](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-147.jpg); [mpc-v39 p.148](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-148.jpg) |
-| VIS-050 | 16 Levels — Velocity / Tune / Filter / Layer / etc. | Current v3.9 dialog figures in §8.25 | The current guide shows Velocity/Tune variants on p.80; additional parameter mappings are described separately.   [mpc-v39 p.80](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-080.jpg) |
-| VIS-051 | Pad Perform — Notes / Chords / Chromatic Chords / Progressions / Custom | Inline official A + inline legacy C | A separate performance context, not part of Main. Current mapping must show how physical pads are interpreted.   [mpc-v39 p.81](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-081.jpg) |
-| VIS-052 | Arpeggiator | Current v3.9 dialog figure in §8.25; supplemental official support image above | The current guide shows the dialog on p.84.   [mpc-v39 p.84](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-084.jpg) |
-| VIS-053 | Erase context/dialog | Current v3.9 Erase dialog figure in §8.25 plus official Sequence Edit screenshots in §8.22 | Preserve target scope, time range, event mask and confirmation as separate states.   [mpc-v39 p.87](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-087.jpg) |
-| VIS-054 | Next Sequence — sequence pad map / Next Bar / Sudden / Hold | Inline B actual One photo with overlay + official guide link | Screenshot quality is limited; current guide defines current state feedback.   [mpc-v39 p.318](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-318.jpg) |
-| VIS-055 | Song Mode — playlist and sequence pads | Inline C | Separate from Next Sequence queueing.   [mpc-v39 p.328](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-328.jpg) |
-| VIS-056 | Looper — waveform / Play / Overdub / Replace / Export | Current v3.9 Looper figure in §8.25; v3.7 reference historical fallback | The current guide screen is on p.340.   [mpc-v39 p.340](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-340.jpg) |
-| VIS-057 | XYFX — XY plane / destination / latch | Inline B, MPC Live | Cross-device/older UI; current v3.9 controls remain authoritative.   [mpc-v39 p.151](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-151.jpg); [mpc-v39 p.152](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-152.jpg); [mpc-v39 p.153](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-153.jpg) |
-| VIS-058 | Q-Link Edit — learn / edit assignment | Inline legacy Q-Link overview + official guide link | A macro overview does not replace the per-assignment editor reference.   [mpc-v39 p.306](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-306.jpg); [mpc-v39 p.314](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-314.jpg) |
-| VIS-059 | XY Pad / Crossfader | Inline XYFX visual as related context; official guide link | Distinguish XY macro pad from standalone XYFX mode.   [mpc-v39 p.316](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-316.jpg) |
-| VIS-060 | MIDI Control Mode — pads | Official v3.9 guide link | Controller-mapping context, not a DAW UI.   [mpc-v39 p.333](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-333.jpg); [mpc-v39 p.334](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-334.jpg); [mpc-v39 p.335](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-335.jpg); [mpc-v39 p.336](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-336.jpg); [mpc-v39 p.337](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-337.jpg) |
-| VIS-061 | MIDI Control Mode — buttons | Official v3.9 guide link | Button mappings and feedback require separate validation.   [mpc-v39 p.333](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-333.jpg); [mpc-v39 p.334](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-334.jpg); [mpc-v39 p.335](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-335.jpg); [mpc-v39 p.336](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-336.jpg); [mpc-v39 p.337](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-337.jpg) |
-| VIS-062 | MIDI Control Mode — Q-Link knobs / XY Pad | Official v3.9 guide link | Current assignments and feedback must reflect live state.   [mpc-v39 p.333](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-333.jpg); [mpc-v39 p.334](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-334.jpg); [mpc-v39 p.335](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-335.jpg); [mpc-v39 p.336](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-336.jpg); [mpc-v39 p.337](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-337.jpg) |
-| VIS-063 | Pad Color / pad mapping | Inline B actual One photo + legacy pad-map table | Pad configuration view is distinct from Main's selected-pad waveform.   [mpc-v39 p.338](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-338.jpg) |
-| VIS-064 | Sounds Mode — Favourites / Setlists | Official v3.9 guide link | Product scope excludes branded cloud/subscription upsell destinations.   [mpc-v39 p.149](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-149.jpg); [mpc-v39 p.150](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-150.jpg) |
-| VIS-065 | Project — New Project / Open / Save / Save As | Inline legacy Save modal and Project Load/Save preferences | Current OS 3.9 file picker, cancellation and restore behavior must be independently accepted.   [mpc-v39 p.60](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-060.jpg) |
-| VIS-066 | Save Window — project / project as / export formats | Inline C legacy image; current guide Save Window figure on p.69 in §8.25 | The current Save-window tile layout is visible; downstream file picker and overwrite states remain distinct.   [mpc-v39 p.69](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-069.jpg) |
-| VIS-067 | Preferences — Audio Device | Official v3.9 guide link | Current settings and audio routing must be truthful to Android backend.   [mpc-v39 p.62](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-062.jpg) |
-| VIS-068 | Preferences — Audio / Export | Official v3.9 guide link | Separate category; no direct image found.   [mpc-v39 p.63](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-063.jpg) |
-| VIS-069 | Preferences — MIDI / Sync | Actual One photo plus current-generation official Akai image in §8.26 | The guide p.63 defines the category; use the newer official image for visual details but do not claim Gen 1 provenance for that image.   [mpc-v39 p.63](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-063.jpg); [mpc-v39 p.64](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-064.jpg) |
-| VIS-070 | Preferences — Hardware | Official Akai Hardware Preferences image in §8.23; current guide p.64 text | Current support image shows MPC 3 Hardware preferences; per-control OS/version provenance remains limited.   [mpc-v39 p.64](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-064.jpg) |
-| VIS-071 | Preferences — Sequencer | Official v3.9 guide link | No clean direct screenshot found.   [mpc-v39 p.65](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-065.jpg) |
-| VIS-072 | Preferences — Project Defaults | Supplementary screenshot in §8.26; current guide p.66 text | Screenshot helps inventory fields, but exact hardware/firmware appearance is not verified.   [mpc-v39 p.66](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-066.jpg) |
-| VIS-073 | Preferences — Project Load/Save | Official current-generation support images in §8.23 and §8.26; v3.9 guide p.67 text | Autosave settings, timeout selector and Temporary File Location are visible; some sub-states remain unpictured.   [mpc-v39 p.67](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-067.jpg) |
-| VIS-074 | Preferences — General / network / account-related entries | Official v3.9 guide link | Exclude subscription upsells as specified by product policy.   [mpc-v39 p.68](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-068.jpg) |
-| VIS-075 | Timing Correct dialog | Official v3.9 guide link | Quantization dialog and global enable state must be separately represented.   [mpc-v39 p.75](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-075.jpg) |
-| VIS-076 | Metronome / Click dialog | Inline official MPC 3 A | Count-In, Enable, Rate, Sound, Level and Output.   [mpc-v39 p.77](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-077.jpg) |
-| VIS-077 | Automation — Global / Track / Program | Official guide + inline legacy Q-Link/XY related visual | Read/Write/off state is not the same as the parameter editor.   [mpc-v39 p.78](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-078.jpg) |
-| VIS-078 | Audio Mixdown / export | Current guide figure on p.100 in §8.25 | The Audio Mixdown screen is shown; destination chooser, export progress and error/cancel paths remain separate states.   [mpc-v39 p.100](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-100.jpg) |
-| VIS-079 | Keyboard Control / Touch Strip | Official v3.9 guide link | Hardware-specific contexts; don't imply controller equivalence without evidence.   [mpc-v39 p.339](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-339.jpg) |
-| VIS-080 | Project import dialog / Keep-or-Discard / destructive confirmations | Official v3.9 guide and support links | All modal exits must preserve the expected project/selection state.   [mpc-v39 p.60](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-060.jpg); [mpc-v39 p.69](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-069.jpg); [mpc-v39 p.87](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-087.jpg) |
-| VIS-081 | Track Type selector / Program-specific Main sections | Inline Main and Program references | Current target track types must match official MPC 3.9 vocabulary.   [mpc-v39 p.117](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-117.jpg) |
-| VIS-082 | Dialogs: selectors, numeric entry, routing, effects, picker errors | Related screenshots above; no single image represents this set | Treat as context-specific dialog inventory, not one generic modal.   [mpc-v39 p.56](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-056.jpg); [mpc-v39 p.69](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-069.jpg); [mpc-v39 p.87](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-087.jpg); [mpc-v39 p.100](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-100.jpg) |
+| VIS-001 | Main overview: Sequence + Track/Arrangement | Inline A/B images  [mpc-v39 p.15](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-015.jpg); [mpc-v39 p.109](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-109.jpg) |
+| VIS-002 | Toolbar / project / counter / transport | Inline Main images A/B  [mpc-v39 p.57](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-057.jpg) |
+| VIS-003 | Pull-Down Menu / status controls | Official guide reference  [mpc-v39 p.56](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-056.jpg); [mpc-v39 p.59](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-059.jpg) |
+| VIS-004 | Five shortcut rail | Inline Main/XL images A  [mpc-v39 p.15](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-015.jpg) |
+| VIS-005 | XL Channel Strip, Main context | Inline A  [mpc-v39 p.133](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-133.jpg) |
+| VIS-006 | XL Channel Strip — I/O / output chooser | Inline A  [mpc-v39 p.133](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-133.jpg) |
+| VIS-007 | Menu / mode launcher | Inline B; additional mode-tile overview  [mpc-v39 p.56](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-056.jpg) |
+| VIS-008 | Browser — Places | Inline A  [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg) |
+| VIS-009 | Browser — Content | Inline A  [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg) |
+| VIS-010 | Browser — Expansions | Inline A  [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg) |
+| VIS-011 | Browser — Sample Assign / Sample Pool | Inline A  [mpc-v39 p.139](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-139.jpg) |
+| VIS-012 | Browser — Options / filters / favourites / audition | Inline Options; current audition/filter/favourites details in §8.26  [mpc-v39 p.136](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg) |
+| VIS-013 | Main Sequence Select / sequence fields | Inline Main A/B  [mpc-v39 p.112](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-112.jpg) |
+| VIS-014 | Main Track fields / Program Select | Inline Main + official Program article  [mpc-v39 p.117](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-117.jpg) |
+| VIS-015 | Main Track sample / waveform / layer context | Inline Main A  [mpc-v39 p.109](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-109.jpg); [mpc-v39 p.197](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-197.jpg); [mpc-v39 p.203](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-203.jpg) |
+| VIS-016 | Main Arrangement preview / switch | Inline Main A and MPC 3-family B  [mpc-v39 p.129](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-129.jpg); [mpc-v39 p.154](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-154.jpg) |
+| VIS-017 | Track View overview / I/O / Monitor | Inline official A (older appearance)  [mpc-v39 p.266](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-266.jpg) |
+| VIS-018 | Track View — group / track states | Official manual link  [mpc-v39 p.261](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-261.jpg); [mpc-v39 p.266](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-266.jpg) |
+| VIS-019 | Arrangement — timeline / loop / playhead | Inline Main A and sibling MPC 3 B  [mpc-v39 p.129](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-129.jpg); [mpc-v39 p.154](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-154.jpg) |
+| VIS-020 | Arrangement — editing placements / event menu | Official guide link + Main preview  [mpc-v39 p.129](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-129.jpg); [mpc-v39 p.154](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-154.jpg) |
+| VIS-021 | Grid View — Drum track / note editing | Legacy inline C; current v3.9 figures in §8.25  [mpc-v39 p.167](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-167.jpg) |
+| VIS-022 | Grid View — Audio track | Official v3.9 guide link  [mpc-v39 p.167](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-167.jpg) |
+| VIS-023 | Grid View — velocity / automation lanes | Legacy inline C / Chop visual as related context  [mpc-v39 p.167](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-167.jpg) |
+| VIS-024 | Step Sequencer — 16 steps / velocity | Inline B, actual One photo (legacy); current v3.9 screenshot figure in §8.25  [mpc-v39 p.179](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-179.jpg) |
+| VIS-025 | Step Sequencer — step automation | Official v3.9 guide link  [mpc-v39 p.179](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-179.jpg) |
+| VIS-026 | List Edit — Events table | Current v3.9 figure in §8.25; v3.7 is historical fallback  [mpc-v39 p.184](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-184.jpg) |
+| VIS-027 | List Edit — Tempo events | Official manual link  [mpc-v39 p.184](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-184.jpg) |
+| VIS-028 | Track Edit — Drum / Global | Official guide + legacy Program Edit example  [mpc-v39 p.190](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-190.jpg) |
+| VIS-029 | Track Edit — Drum / Samples / Layers | Inline official A + legacy inline C  [mpc-v39 p.197](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-197.jpg); [mpc-v39 p.203](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-203.jpg) |
+| VIS-030 | Track Edit — Drum / Envelopes | Official guide + related legacy Program Edit visual  [mpc-v39 p.257](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-257.jpg) |
+| VIS-031 | Track Edit — LFO / Modulations / Effects / Mod Matrix / Utilities | Current v3.9 LFO figure on p.212; other tabs remain separate contexts  [mpc-v39 p.212](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-212.jpg) |
+| VIS-032 | Track Edit — Keygroup | Official v3.9 guide link  [mpc-v39 p.215](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-215.jpg) |
+| VIS-033 | Track Edit — Plugin | Official Program article / v3.9 guide  [mpc-v39 p.254](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-254.jpg) |
+| VIS-034 | Track Edit — MIDI | Official v3.9 guide link  [mpc-v39 p.255](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-255.jpg) |
+| VIS-035 | Track Edit — CV | Official v3.9 guide link  [mpc-v39 p.256](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-256.jpg) |
+| VIS-036 | Sample Edit — Trim / region / loop | Inline B/C  [mpc-v39 p.269](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-269.jpg) |
+| VIS-037 | Sample Edit — Chop / slice / threshold | Inline C  [mpc-v39 p.269](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-269.jpg) |
+| VIS-038 | Sample Edit — Pad mode / assignments | Official manual link + actual One trim photo  [mpc-v39 p.269](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-269.jpg) |
+| VIS-039 | Sampler — record / waiting for signal | Inline C  [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg) |
+| VIS-040 | Sampler — Slice | Official v3.9 guide link  [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg) |
+| VIS-041 | Sampler — Pad Tap | Official v3.9 guide link  [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg) |
+| VIS-042 | Sampler — Pad Hold | Official v3.9 guide link  [mpc-v39 p.296](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg); [mpc-v39 p.297](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg); [mpc-v39 p.298](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg) |
+| VIS-043 | Sampler — Auto Sampler | Current v3.9 control-detail figures p.304–305 in §8.25  [mpc-v39 p.304](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-304.jpg); [mpc-v39 p.305](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-305.jpg) |
+| VIS-044 | Channel Mixer — Volume / Pan & Volume | Inline official MPC 3 A  [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg) |
+| VIS-045 | Channel Mixer — Sends | Inline official MPC 3 A  [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg) |
+| VIS-046 | Channel Mixer — Effects | Inline official MPC 3 A  [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg) |
+| VIS-047 | Channel Mixer — I/O / Monitoring / Route | Inline official MPC 3 A  [mpc-v39 p.140](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg); [mpc-v39 p.141](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg); [mpc-v39 p.142](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg); [mpc-v39 p.143](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg); [mpc-v39 p.144](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg) |
+| VIS-048 | Pad Mixer — Volume / Pan & Volume | Inline legacy routing image; current v3.9 full-screen and tabs in §8.25  [mpc-v39 p.145](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-145.jpg); [mpc-v39 p.146](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-146.jpg); [mpc-v39 p.147](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-147.jpg); [mpc-v39 p.148](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-148.jpg) |
+| VIS-049 | Pad Mixer — Sends / Effects / I/O | Inline C (older routing)  [mpc-v39 p.145](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-145.jpg); [mpc-v39 p.146](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-146.jpg); [mpc-v39 p.147](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-147.jpg); [mpc-v39 p.148](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-148.jpg) |
+| VIS-050 | 16 Levels — Velocity / Tune / Filter / Layer / etc. | Current v3.9 dialog figures in §8.25  [mpc-v39 p.80](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-080.jpg) |
+| VIS-051 | Pad Perform — Notes / Chords / Chromatic Chords / Progressions / Custom | Inline official A + inline legacy C  [mpc-v39 p.81](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-081.jpg) |
+| VIS-052 | Arpeggiator | Current v3.9 dialog figure in §8.25; supplemental official support image above  [mpc-v39 p.84](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-084.jpg) |
+| VIS-053 | Erase context/dialog | Current v3.9 Erase dialog figure in §8.25 plus official Sequence Edit screenshots in §8.22  [mpc-v39 p.87](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-087.jpg) |
+| VIS-054 | Next Sequence — sequence pad map / Next Bar / Sudden / Hold | Inline B actual One photo with overlay + official guide link  [mpc-v39 p.318](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-318.jpg) |
+| VIS-055 | Song Mode — playlist and sequence pads | Inline C  [mpc-v39 p.328](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-328.jpg) |
+| VIS-056 | Looper — waveform / Play / Overdub / Replace / Export | Current v3.9 Looper figure in §8.25; v3.7 reference historical fallback  [mpc-v39 p.340](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-340.jpg) |
+| VIS-057 | XYFX — XY plane / destination / latch | Inline B, MPC Live  [mpc-v39 p.151](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-151.jpg); [mpc-v39 p.152](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-152.jpg); [mpc-v39 p.153](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-153.jpg) |
+| VIS-058 | Q-Link Edit — learn / edit assignment | Inline legacy Q-Link overview + official guide link  [mpc-v39 p.306](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-306.jpg); [mpc-v39 p.314](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-314.jpg) |
+| VIS-059 | XY Pad / Crossfader | Inline XYFX visual as related context; official guide link  [mpc-v39 p.316](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-316.jpg) |
+| VIS-060 | MIDI Control Mode — pads | Official v3.9 guide link  [mpc-v39 p.333](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-333.jpg); [mpc-v39 p.334](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-334.jpg); [mpc-v39 p.335](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-335.jpg); [mpc-v39 p.336](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-336.jpg); [mpc-v39 p.337](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-337.jpg) |
+| VIS-061 | MIDI Control Mode — buttons | Official v3.9 guide link  [mpc-v39 p.333](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-333.jpg); [mpc-v39 p.334](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-334.jpg); [mpc-v39 p.335](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-335.jpg); [mpc-v39 p.336](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-336.jpg); [mpc-v39 p.337](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-337.jpg) |
+| VIS-062 | MIDI Control Mode — Q-Link knobs / XY Pad | Official v3.9 guide link  [mpc-v39 p.333](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-333.jpg); [mpc-v39 p.334](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-334.jpg); [mpc-v39 p.335](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-335.jpg); [mpc-v39 p.336](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-336.jpg); [mpc-v39 p.337](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-337.jpg) |
+| VIS-063 | Pad Color / pad mapping | Inline B actual One photo + legacy pad-map table  [mpc-v39 p.338](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-338.jpg) |
+| VIS-064 | Sounds Mode — Favourites / Setlists | Official v3.9 guide link  [mpc-v39 p.149](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-149.jpg); [mpc-v39 p.150](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-150.jpg) |
+| VIS-065 | Project — New Project / Open / Save / Save As | Inline legacy Save modal and Project Load/Save preferences  [mpc-v39 p.60](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-060.jpg) |
+| VIS-066 | Save Window — project / project as / export formats | Inline C legacy image; current guide Save Window figure on p.69 in §8.25  [mpc-v39 p.69](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-069.jpg) |
+| VIS-067 | Preferences — Audio Device | Official v3.9 guide link  [mpc-v39 p.62](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-062.jpg) |
+| VIS-068 | Preferences — Audio / Export | Official v3.9 guide link  [mpc-v39 p.63](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-063.jpg) |
+| VIS-069 | Preferences — MIDI / Sync | Actual One photo plus current-generation official Akai image in §8.26  [mpc-v39 p.63](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-063.jpg); [mpc-v39 p.64](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-064.jpg) |
+| VIS-070 | Preferences — Hardware | Official Akai Hardware Preferences image in §8.23; current guide p.64 text  [mpc-v39 p.64](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-064.jpg) |
+| VIS-071 | Preferences — Sequencer | Official v3.9 guide link  [mpc-v39 p.65](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-065.jpg) |
+| VIS-072 | Preferences — Project Defaults | Supplementary screenshot in §8.26; current guide p.66 text  [mpc-v39 p.66](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-066.jpg) |
+| VIS-073 | Preferences — Project Load/Save | Official current-generation support images in §8.23 and §8.26; v3.9 guide p.67 text  [mpc-v39 p.67](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-067.jpg) |
+| VIS-074 | Preferences — General / network / account-related entries | Official v3.9 guide link  [mpc-v39 p.68](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-068.jpg) |
+| VIS-075 | Timing Correct dialog | Official v3.9 guide link  [mpc-v39 p.75](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-075.jpg) |
+| VIS-076 | Metronome / Click dialog | Inline official MPC 3 A  [mpc-v39 p.77](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-077.jpg) |
+| VIS-077 | Automation — Global / Track / Program | Official guide + inline legacy Q-Link/XY related visual  [mpc-v39 p.78](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-078.jpg) |
+| VIS-078 | Audio Mixdown / export | Current guide figure on p.100 in §8.25  [mpc-v39 p.100](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-100.jpg) |
+| VIS-079 | Keyboard Control / Touch Strip | Official v3.9 guide link  [mpc-v39 p.339](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-339.jpg) |
+| VIS-080 | Project import dialog / Keep-or-Discard / destructive confirmations | Official v3.9 guide and support links  [mpc-v39 p.60](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-060.jpg); [mpc-v39 p.69](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-069.jpg); [mpc-v39 p.87](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-087.jpg) |
+| VIS-081 | Track Type selector / Program-specific Main sections | Inline Main and Program references  [mpc-v39 p.117](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-117.jpg) |
+| VIS-082 | Dialogs: selectors, numeric entry, routing, effects, picker errors | Related screenshots above; no single image represents this set  [mpc-v39 p.56](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-056.jpg); [mpc-v39 p.69](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-069.jpg); [mpc-v39 p.87](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-087.jpg); [mpc-v39 p.100](MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-100.jpg) |
 
 ---
 
