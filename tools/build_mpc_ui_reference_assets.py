@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import urldefrag, urlparse
 import fitz
 import requests
+from bs4 import BeautifulSoup
 from PIL import Image
 
 DOCS = [
@@ -18,6 +19,9 @@ ASSET_REL = Path("docs/MPC3-UI-REFERENCE-ASSETS")
 IMG_RE = re.compile(r'!\[([^\]]*)\]\((https?://[^)\s]+)\)')
 PDF_LINK_RE = re.compile(r'https?://[^\s<>"\)]+?\.pdf(?:\?[^#\s<>"\)]+)?(?:#page=\d+)?', re.I)
 PAGE_RE = re.compile(r'#page=(\d+)', re.I)
+MD_LINK_RE = re.compile(r'\[[^\]]*\]\((https?://[^)\s]+)\)')
+SOURCE_PAGE_LIMIT = 120
+SOURCE_PAGE_IMAGE_LIMIT = 300
 PDF_SOURCES = {
     "mpc-v39": [
         "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
@@ -233,29 +237,180 @@ def collect_images(docs):
         for match in IMG_RE.finditer(text):
             alt, url = match.group(1).strip(), match.group(2).strip()
             if url not in seen:
-                seen.add(url); entries.append({"doc":doc,"alt":alt,"url":url})
+                seen.add(url)
+                entries.append({"doc":doc,"alt":alt,"url":url,"kind":"inline-image"})
     return entries
 
-def download_images(root, docs):
-    outdir = root / ASSET_REL / "images"; outdir.mkdir(parents=True, exist_ok=True)
-    mapping, manifest = {}, []
-    entries = collect_images(docs)
-    for n, entry in enumerate(entries, 1):
-        url = entry["url"]; name = f"{slug(entry['alt'])}-{digest(url)[:12]}"
+def collect_source_page_urls(docs):
+    allow_hosts = {
+        "support.akaipro.com", "akaipro.com", "www.akaipro.com",
+        "mpc-tutor.com", "www.mpc-tutor.com",
+        "soundonsound.com", "www.soundonsound.com",
+        "musicradar.com", "www.musicradar.com",
+        "elektronauts.com", "www.elektronauts.com",
+        "ragtime.online", "heikkisiltala.net",
+        "marronfieldsproduction.hatenablog.com", "note.com", "www.note.com",
+        "manuals.plus", "www.manuals.plus",
+        "manuals.co.uk", "www.manuals.co.uk", "manuals.ca", "www.manua.ls",
+        "manualpdf.in", "www.manualpdf.in", "manual.nz", "www.manual.nz",
+        "usermanuals.au", "www.usermanuals.au", "pdfmanualer.dk", "www.pdfmanualer.dk",
+    }
+    found, seen = [], set()
+    for text in docs.values():
+        for match in MD_LINK_RE.finditer(text):
+            url=match.group(1).strip().rstrip(".,;")
+            clean,_=urldefrag(url)
+            parts=urlparse(clean)
+            host=parts.netloc.lower().split(":")[0]
+            if host not in allow_hosts:
+                continue
+            if classify_pdf_url(clean) or parts.path.lower().endswith(".pdf"):
+                continue
+            if parts.path.lower().endswith((".png",".jpg",".jpeg",".webp",".gif",".svg",".ico")):
+                continue
+            if clean in seen:
+                continue
+            seen.add(clean)
+            found.append(clean)
+    return found[:SOURCE_PAGE_LIMIT]
+
+def largest_srcset(srcset):
+    candidates=[]
+    for item in (srcset or "").split(","):
+        bits=item.strip().split()
+        if not bits:
+            continue
+        width=0
+        if len(bits)>1:
+            try:
+                width=int(re.sub(r"[^0-9]","",bits[1]) or 0)
+            except ValueError:
+                width=0
+        candidates.append((width,bits[0]))
+    return max(candidates,default=(0,""),key=lambda x:x[0])[1]
+
+def is_probable_screenshot(url,alt="",width=0,height=0):
+    parsed=urlparse(url)
+    path=parsed.path.lower()
+    text=(alt+" "+path).lower()
+    if path.endswith((".svg",".ico")) and "screenshot" not in text:
+        return False
+    if any(word in text for word in ("favicon","avatar","social-icon","twitter-icon","facebook-icon","linkedin-icon","author-photo","logo-small","play-button")):
+        if "attachments/production/" not in path:
+            return False
+    is_attachment=("attachments/production/" in path or "helpdesk/attachments/" in path)
+    has_image_suffix=path.endswith((".png",".jpg",".jpeg",".webp",".gif",".bmp",".tif",".tiff"))
+    dimension_ok=(width>=240 and height>=120)
+    alt_suggests_visual=any(word in text for word in ("screen","screenshot","mpc","sampler","browser","mixer","sequencer","waveform","pad perform","track edit","preferences"))
+    return is_attachment or has_image_suffix or dimension_ok or alt_suggests_visual
+
+def extract_source_page_images(docs):
+    entries=[]
+    pages=collect_source_page_urls(docs)
+    seen=set()
+    for page_no,page_url in enumerate(pages,1):
         try:
-            data, ctype = fetch_bytes(url); ext = ext_from_bytes(data, ctype, url)
-            dest = outdir / f"{name}{ext}"
-            if not dest.exists() or dest.stat().st_size != len(data): dest.write_bytes(data)
-            mapping[url] = (ASSET_REL / "images" / dest.name).as_posix()
-            manifest.append({"kind":"inline-image","alt":entry["alt"],"source_url":url,
+            response=SESSION.get(page_url,timeout=(8,22),allow_redirects=True)
+            response.raise_for_status()
+            ctype=response.headers.get("content-type","").lower()
+            if "html" not in ctype and "xhtml" not in ctype:
+                continue
+            soup=BeautifulSoup(response.text,"html.parser")
+            page_title=(soup.title.get_text(" ",strip=True) if soup.title else urlparse(page_url).netloc)
+            candidates=[]
+            for img in soup.find_all("img"):
+                raw=(img.get("data-original") or img.get("data-src") or img.get("data-lazy-src")
+                    or img.get("data-image") or img.get("src") or largest_srcset(img.get("srcset") or img.get("data-srcset")))
+                if not raw:
+                    continue
+                image_url=requests.compat.urljoin(response.url,raw.strip())
+                if image_url.startswith("data:"):
+                    continue
+                alt=(img.get("alt") or img.get("title") or "").strip()
+                try: width=int(re.sub(r"[^0-9]","",str(img.get("width",""))) or 0)
+                except ValueError: width=0
+                try: height=int(re.sub(r"[^0-9]","",str(img.get("height",""))) or 0)
+                except ValueError: height=0
+                if not is_probable_screenshot(image_url,alt,width,height):
+                    continue
+                candidates.append((image_url,alt or f"Reference image from {page_title}"))
+            for meta in soup.find_all("meta"):
+                prop=(meta.get("property") or meta.get("name") or "").lower()
+                if prop in ("og:image","twitter:image","twitter:image:src"):
+                    raw=meta.get("content")
+                    if raw:
+                        image_url=requests.compat.urljoin(response.url,raw.strip())
+                        if is_probable_screenshot(image_url,page_title,0,0):
+                            candidates.append((image_url,f"Article image: {page_title}"))
+            page_count=0
+            for image_url,alt in candidates:
+                if image_url in seen:
+                    continue
+                seen.add(image_url)
+                entries.append({"doc":"source-page-extraction","alt":alt,"url":image_url,
+                    "kind":"extracted-source-image","parent_url":page_url})
+                page_count+=1
+                if page_count>=12 or len(entries)>=SOURCE_PAGE_IMAGE_LIMIT:
+                    break
+            print(f"[source page {page_no}/{len(pages)}] scanned {page_url}; candidate screenshots/images: {page_count}")
+            if len(entries)>=SOURCE_PAGE_IMAGE_LIMIT:
+                print("[source page scan] reached screenshot image safety limit")
+                break
+        except Exception as exc:
+            item={"kind":"source-page-scan","source_url":page_url,"status":"failed","error":str(exc)}
+            FAILURES.append(item)
+            print(f"[source page {page_no}/{len(pages)}] FAILED {page_url}: {exc}",file=sys.stderr)
+    return entries
+
+def is_image_payload(data,ctype):
+    if data.startswith((b"\x89PNG\r\n\x1a\n",b"\xff\xd8\xff",b"GIF87a",b"GIF89a")):
+        return True
+    if data[:4]==b"RIFF" and data[8:12]==b"WEBP":
+        return True
+    if b"<svg" in data[:2048].lower():
+        return True
+    return (ctype or "").lower().startswith("image/")
+
+def download_images(root, docs):
+    outdir = root / ASSET_REL / "images"
+    outdir.mkdir(parents=True, exist_ok=True)
+    mapping, manifest = {}, []
+    entries=collect_images(docs)
+    seen={item["url"] for item in entries}
+    for item in extract_source_page_images(docs):
+        if item["url"] not in seen:
+            entries.append(item)
+            seen.add(item["url"])
+    for n, entry in enumerate(entries, 1):
+        url=entry["url"]
+        name=f"{slug(entry['alt'])}-{digest(url)[:12]}"
+        try:
+            data,ctype=fetch_bytes(url)
+            if not is_image_payload(data,ctype):
+                raise RuntimeError(f"response does not look like an image (content-type={ctype})")
+            ext=ext_from_bytes(data,ctype,url)
+            if ext==".bin":
+                raise RuntimeError(f"unknown image format (content-type={ctype})")
+            dest=outdir/f"{name}{ext}"
+            if not dest.exists() or dest.stat().st_size!=len(data):
+                dest.write_bytes(data)
+            mapping[url]=(ASSET_REL/"images"/dest.name).as_posix()
+            record={"kind":entry.get("kind","inline-image"),"alt":entry["alt"],"source_url":url,
                 "local_path":dest.relative_to(root).as_posix(),"bytes":len(data),
-                "sha256":hashlib.sha256(data).hexdigest(),"status":"downloaded"})
+                "sha256":hashlib.sha256(data).hexdigest(),"status":"downloaded"}
+            if entry.get("parent_url"): record["parent_url"]=entry["parent_url"]
+            if entry.get("doc"): record["referenced_from"]=entry["doc"]
+            manifest.append(record)
             print(f"[image {n}/{len(entries)}] saved {dest.name}, {len(data)} bytes")
         except Exception as exc:
-            item={"kind":"inline-image","alt":entry["alt"],"source_url":url,"status":"failed","error":str(exc)}
+            item={"kind":entry.get("kind","inline-image"),"alt":entry["alt"],"source_url":url,
+                "status":"failed","error":str(exc)}
+            if entry.get("parent_url"): item["parent_url"]=entry["parent_url"]
             manifest.append(item); FAILURES.append(item)
-            print(f"[image {n}/{len(entries)}] FAILED {url}: {exc}", file=sys.stderr)
-    return mapping, manifest
+            print(f"[image {n}/{len(entries)}] FAILED {url}: {exc}",file=sys.stderr)
+    url_to_local={url:path for url,path in mapping.items()
+        if any(i["url"]==url and i.get("kind")=="inline-image" for i in entries)}
+    return url_to_local, manifest
 
 def collect_pdf_pages(docs):
     pages={k:set() for k in PDF_SOURCES}
