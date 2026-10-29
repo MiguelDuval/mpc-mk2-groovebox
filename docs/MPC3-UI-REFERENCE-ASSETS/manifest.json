@@ -27,10 +27,12 @@
       "pages_requested": 2
     },
     "mpc-v213-legacy": {
-      "status": "failed",
+      "status": "downloaded",
       "source_urls": [
+        "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
         "https://manuals.plus/m/98138a9e32b84f6146aee38f6d2efd1ad8996d06f7ec4c5bf91ecb369b27a3c4.pdf"
       ],
+      "used_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
       "pages_requested": 76
     },
     "mpc-v2117-legacy": {
@@ -2717,6 +2719,240 @@
     },
     {
       "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/dsp_1_6O7THqw62B.png?updatedAt=1628533399598",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-f1ef03407081.png",
+      "bytes": 8295,
+      "sha256": "5e73d52104a645b56ab1ae4804b7856518c0c0b574adc5518fd84f32bc51e425",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/amp2_1_JBRjny5jw.png?updatedAt=1628533399612",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-30f0d050ff3b.png",
+      "bytes": 10316,
+      "sha256": "d17b4e5703c5dba1fa0584e2de5276bfcea900c8c8ae80441547a7b13ac89e54",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/warm-compressor_fQVc6MIGa.png?updatedAt=1628533399135",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-c997546a45df.png",
+      "bytes": 4751,
+      "sha256": "18d1db3b4dd4920423b8cc8e54babad73d48bb265cb547db6c90f458c2f825be",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/preamp-min_76G1cxneI.png?updatedAt=1628533398305",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-096282178b36.png",
+      "bytes": 7054,
+      "sha256": "99c1d3977e39679254395010e4081cd8d28c18153581cdef6927f00662156bc1",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/code_1_cRZ_zEVFyv_meGE8DnSz.webp",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-bfd8b9b277e7.png",
+      "bytes": 24051,
+      "sha256": "c4d17424ec84a37b9aa1b68daed2db3d0924f4158b1f4261d29e5ae44e6ea3eb",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/stands_dWCqyqLVd.webp",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-1ea68c4abaf6.png",
+      "bytes": 13597,
+      "sha256": "912a8ffb4ca013d643f1e23dd23731197d34004b37893f9117b99068162e7019",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/code_1_cRZ_zEVFyv.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-9cb8d51c7da7.png",
+      "bytes": 10972,
+      "sha256": "f1934e5e281256fa0ac20cbd6562a1fe9371e0eeac58f5fb791243d5ee2ac17a",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/ispressor_SvLWmAgHQ.png?updatedAt=1628533398995",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-23ac2d7da4de.png",
+      "bytes": 9614,
+      "sha256": "4b1faf4c3142bb291d1e2df767f0f64c3164e36c66ea7c24112eb9ba79b0c3f1",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/solution_1_uhmfUIET3.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-47a1432d9443.png",
+      "bytes": 4944,
+      "sha256": "c71f1fd44a7956dd935408b75246b88780ee2ad74159d9850560cca1da0818c8",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/computers_2_uE62GbIG3.png?updatedAt=1628533399034",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-73ab78b4ba0f.png",
+      "bytes": 5083,
+      "sha256": "12deffbc83e25c820921e5088b7c22ce9738d40d1a79ef1d1fbf236c083d3df5",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/ed466kvsaa/BUNDLE-1_FQ3xewnFsk.webp",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-000e23e39856.png",
+      "bytes": 5909,
+      "sha256": "9c176932cbde57661a68d346c64a7df0ceec05d6c9a83ae5268669bc6c0169c3",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Thumbnail Image",
+      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/cla_0bS98IZfN.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-840f5265172e.png",
+      "bytes": 8879,
+      "sha256": "fc9e2b912e4dcdd47c89096d75abf595e75828f692015f39d66cdea49e0f7f07",
+      "status": "downloaded",
+      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881210/original/B8gDpMcHPKV_Sk5lPk2ZjTgdS_YwmiVxVQ.png?1732016678",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-series-understanding-and-l-77c8f3b3aa16.png",
+      "bytes": 42485,
+      "sha256": "8775be1c5e7dd2ddb3412d153c493a89a48b95b6be00bc4a97b889d3dd8c05a2",
+      "status": "downloaded",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0031-1024x796.jpg",
+      "status": "failed",
+      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0031-1024x796.jpg",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0053_CU.jpg",
+      "status": "failed",
+      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0053_CU.jpg",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0054_CU.jpg",
+      "status": "failed",
+      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0054_CU.jpg",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0055_CU.jpg",
+      "status": "failed",
+      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0055_CU.jpg",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0058-1024x796.jpg",
+      "status": "failed",
+      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0058-1024x796.jpg",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0061_CU.jpg",
+      "status": "failed",
+      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0061_CU.jpg",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0071_PP_CU.jpg",
+      "status": "failed",
+      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0071_PP_CU.jpg",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0067-1024x796.jpg",
+      "status": "failed",
+      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0067-1024x796.jpg",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881533/original/Gpm2HcY9ynQCsjxFsSc7T8t0VoLS4_Ldng.png?1732016882",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-series-understanding-and-l-e6d1628cd981.png",
+      "bytes": 24367,
+      "sha256": "c999accbec253abfca7bab355aa4b7352cac5fe57740ef4287660da997d21add",
+      "status": "downloaded",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0030-1024x796.jpg",
+      "status": "failed",
+      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0030-1024x796.jpg",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
+      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0074_CU.jpg",
+      "status": "failed",
+      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0074_CU.jpg",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+    },
+    {
+      "kind": "extracted-source-image",
       "alt": "Article views count",
       "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000822965-akai-pro-mpc-series-adjusting-project-defaults/hit",
       "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/article-views-count-dde85bc91c52.gif",
@@ -2728,138 +2964,6 @@
     },
     {
       "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/dsp_1_6O7THqw62B.png?updatedAt=1628533399598",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-f1ef03407081.png",
-      "bytes": 8295,
-      "sha256": "5e73d52104a645b56ab1ae4804b7856518c0c0b574adc5518fd84f32bc51e425",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/amp2_1_JBRjny5jw.png?updatedAt=1628533399612",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-30f0d050ff3b.png",
-      "bytes": 10316,
-      "sha256": "d17b4e5703c5dba1fa0584e2de5276bfcea900c8c8ae80441547a7b13ac89e54",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/warm-compressor_fQVc6MIGa.png?updatedAt=1628533399135",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-c997546a45df.png",
-      "bytes": 4751,
-      "sha256": "18d1db3b4dd4920423b8cc8e54babad73d48bb265cb547db6c90f458c2f825be",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/preamp-min_76G1cxneI.png?updatedAt=1628533398305",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-096282178b36.png",
-      "bytes": 7054,
-      "sha256": "99c1d3977e39679254395010e4081cd8d28c18153581cdef6927f00662156bc1",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/code_1_cRZ_zEVFyv_meGE8DnSz.webp",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-bfd8b9b277e7.png",
-      "bytes": 24051,
-      "sha256": "c4d17424ec84a37b9aa1b68daed2db3d0924f4158b1f4261d29e5ae44e6ea3eb",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/stands_dWCqyqLVd.webp",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-1ea68c4abaf6.png",
-      "bytes": 13597,
-      "sha256": "912a8ffb4ca013d643f1e23dd23731197d34004b37893f9117b99068162e7019",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/code_1_cRZ_zEVFyv.png",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-9cb8d51c7da7.png",
-      "bytes": 10972,
-      "sha256": "f1934e5e281256fa0ac20cbd6562a1fe9371e0eeac58f5fb791243d5ee2ac17a",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/ispressor_SvLWmAgHQ.png?updatedAt=1628533398995",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-23ac2d7da4de.png",
-      "bytes": 9614,
-      "sha256": "4b1faf4c3142bb291d1e2df767f0f64c3164e36c66ea7c24112eb9ba79b0c3f1",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/solution_1_uhmfUIET3.png",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-47a1432d9443.png",
-      "bytes": 4944,
-      "sha256": "c71f1fd44a7956dd935408b75246b88780ee2ad74159d9850560cca1da0818c8",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/computers_2_uE62GbIG3.png?updatedAt=1628533399034",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-73ab78b4ba0f.png",
-      "bytes": 5083,
-      "sha256": "12deffbc83e25c820921e5088b7c22ce9738d40d1a79ef1d1fbf236c083d3df5",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/ed466kvsaa/BUNDLE-1_FQ3xewnFsk.webp",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-000e23e39856.png",
-      "bytes": 5909,
-      "sha256": "9c176932cbde57661a68d346c64a7df0ceec05d6c9a83ae5268669bc6c0169c3",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Thumbnail Image",
-      "source_url": "https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/cla_0bS98IZfN.png",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/thumbnail-image-840f5265172e.png",
-      "bytes": 8879,
-      "sha256": "fc9e2b912e4dcdd47c89096d75abf595e75828f692015f39d66cdea49e0f7f07",
-      "status": "downloaded",
-      "parent_url": "https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html",
-      "referenced_from": "source-page-extraction"
-    },
-    {
-      "kind": "extracted-source-image",
       "alt": "Article views count",
       "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000857771-mpc3-faq/hit",
       "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/article-views-count-cc132b7b8ab2.gif",
@@ -2867,6 +2971,83 @@
       "sha256": "b1442e85b03bdcaf66dc58c7abb98745dd2687d86350be9a298a1d9382ac849b",
       "status": "downloaded",
       "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000857771-mpc3-faq",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170999168/original/yZ9nvkqCZYR5XM0h40teQu5sZ5CCtUlezQ.png?1759244741",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-9995af3c4474.png",
+      "bytes": 5188374,
+      "sha256": "38bbff08b627a9cac0819487c45b3ef2e1f6d8366a36616e3c99a45b0ece1896",
+      "status": "downloaded",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170383718/original/pYoXsdWLXS_jok5Yd9p_JnoAYmeS2LDTkg.png?1758722166",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-7ef1c0851add.png",
+      "bytes": 64872,
+      "sha256": "3cbfb44e43da86d5c54b0e716c6bf7c58f3c8864e5ca56beda9cf5e142cbf9d4",
+      "status": "downloaded",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170851373/original/0rh6VPWdWzuS_mNN2Wk82TmxNqhD4C-KzA.jpg?1759156351",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-8442dab2ca88.jpg",
+      "bytes": 434168,
+      "sha256": "5a626e6aaf13f8a73e2668ae44892e68798118172c462b022dffee10c840cf34",
+      "status": "downloaded",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170999127/original/aTR1N8dQMhVcjx--qyr1x75WsC6NamWORQ.png?1759244725",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-bade6e8eb533.png",
+      "bytes": 5188374,
+      "sha256": "38bbff08b627a9cac0819487c45b3ef2e1f6d8366a36616e3c99a45b0ece1896",
+      "status": "downloaded",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171131263/original/buwTDarsHDQ6nAP8Fb-jHBCSmIZ1Ab44bA.png?1759329115",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-f92d37196266.png",
+      "bytes": 7165,
+      "sha256": "cd5e4a595dc6f664336383500c5680e236a9bb744a8e4ffa61f973032fa3b347",
+      "status": "downloaded",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170859418/original/b2RsDcCldWH1E52lbkizBDMwcUghiGTUmg.png?1759159251",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-37d5b60d8a26.png",
+      "bytes": 6443,
+      "sha256": "603c71e169931f7366a417079ef90c360d364e1c41bdb36feb39b0f402bc5f67",
+      "status": "downloaded",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
+      "referenced_from": "source-page-extraction"
+    },
+    {
+      "kind": "extracted-source-image",
+      "alt": "Article views count",
+      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions/hit",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/article-views-count-c689e99d3fbc.gif",
+      "bytes": 43,
+      "sha256": "b1442e85b03bdcaf66dc58c7abb98745dd2687d86350be9a298a1d9382ac849b",
+      "status": "downloaded",
+      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
       "referenced_from": "source-page-extraction"
     },
     {
@@ -2991,183 +3172,564 @@
       "referenced_from": "source-page-extraction"
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881210/original/B8gDpMcHPKV_Sk5lPk2ZjTgdS_YwmiVxVQ.png?1732016678",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-series-understanding-and-l-77c8f3b3aa16.png",
-      "bytes": 42485,
-      "sha256": "8775be1c5e7dd2ddb3412d153c493a89a48b95b6be00bc4a97b889d3dd8c05a2",
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Main — sequence, track, arrangement preview and function bar",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69176903713/original/tG8Q7SJWSKww5E-BtgLHjff7Z1Y0EL7Jkw.png?1764065208=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-main-sequence-track-arrangement-preview-and-function-b-f147ffbaae13.png",
+      "bytes": 177665,
+      "sha256": "9797660fdcbf481fcc42c9ccb927711c430feffedef2fc40ea5ef86495e61da2",
       "status": "downloaded",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて",
-      "referenced_from": "source-page-extraction"
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0031-1024x796.jpg",
-      "status": "failed",
-      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0031-1024x796.jpg",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3-family Main arrangement example on MPC Live III",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/A/AkaiMPCLiveIII_04-ajv0NghfxDb0Qn7EjFNP6tIDITCeULIC.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-family-main-arrangement-example-on-mpc-live-iii-08350244657b.jpg",
+      "bytes": 219107,
+      "sha256": "2016da268a0121e6fb8978714af8b906b23971a8fc9df0a7c679a4743d69a26f",
+      "status": "downloaded",
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0053_CU.jpg",
-      "status": "failed",
-      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0053_CU.jpg",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 XL Channel Strip and I-O routing",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69154227724/original/W4p-2vkRxIavIh5ZOK9e8ZvP0fZ0iVPVxA.png?1745834845=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-xl-channel-strip-and-i-o-routing-e97042beaa09.png",
+      "bytes": 290457,
+      "sha256": "b9703645873d15294bf7f2609c60079fcac02956e765d59a5f951131fe4442cf",
+      "status": "downloaded",
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0054_CU.jpg",
-      "status": "failed",
-      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0054_CU.jpg",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 mode menu",
+      "source_url": "https://www.mpc-tutor.com/assets/mpc-menu-1024x639.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-mode-menu-c6cc42242737.png",
+      "bytes": 125457,
+      "sha256": "04868414d0a5a766a1dc9361507772ac127f2c58d38d76d2a2869ad46f932eac",
+      "status": "downloaded",
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0055_CU.jpg",
-      "status": "failed",
-      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0055_CU.jpg",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+      "kind": "catalog-inline-image",
+      "alt": "Legacy MPC Main screen — comparison only, not MPC 3.9 target",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/M/MPCBasics_02-1eS.kAqGJkEsbEBcA_yfgeJUvXCMWXIi.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/legacy-mpc-main-screen-comparison-only-not-mpc-3-9-target-8ff5381cc7f4.jpg",
+      "bytes": 219344,
+      "sha256": "4f40dfccbf429e3ff7df0faa0394e5ea7cc9d04cba343dd3b13735fa4fa280ec",
+      "status": "downloaded",
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0058-1024x796.jpg",
-      "status": "failed",
-      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0058-1024x796.jpg",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+      "kind": "catalog-inline-image",
+      "alt": "Official MPC Standalone Track View — track rows, monitor, level, mute/solo and Function Bar",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69128760784/original/ZxmnIeI0mSiXFQy513lN30sfQ0ai0ObVWg.png?1726736736=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/official-mpc-standalone-track-view-track-rows-monitor-level-44e1b1d212c5.png",
+      "bytes": 392044,
+      "sha256": "4b7b90a3457d5f92f94a65a25bcdd2580f8c883d8bf89741cb0905772511a7d8",
+      "status": "downloaded",
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0061_CU.jpg",
-      "status": "failed",
-      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0061_CU.jpg",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+      "kind": "catalog-inline-image",
+      "alt": "MPC Browser — Places tab and local storage locations",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69177984964/original/iLqdSWSEhgtkBJkc5rRpi5_3L-xx41uWXg.png?1764935456=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-places-tab-and-local-storage-locations-9a871e38dc98.png",
+      "bytes": 116563,
+      "sha256": "6323d7dab518d588d08b3b391304616c43235899cd75b989fe37ff3f8d92fc54",
+      "status": "downloaded",
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0071_PP_CU.jpg",
-      "status": "failed",
-      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0071_PP_CU.jpg",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+      "kind": "catalog-inline-image",
+      "alt": "MPC Browser — Content categories",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165719905/original/-BBHK1y9CkqUgmPuiShYZjuXKQpaFT1gFw.png?1754995552=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-content-categories-58ff6709c4c7.png",
+      "bytes": 155458,
+      "sha256": "c09baed5bfc539f4fb99427a4e975cdda1ae2f8ae2c7792171f3519848b21f42",
+      "status": "downloaded",
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0067-1024x796.jpg",
-      "status": "failed",
-      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0067-1024x796.jpg",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
+      "kind": "catalog-inline-image",
+      "alt": "MPC Browser — Expansions tab",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165719916/original/LpsBnLwwLU5Antxb5wdSSQK_9pafduji-Q.png?1754995559=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-expansions-tab-2c49d5c06e47.png",
+      "bytes": 522197,
+      "sha256": "e7500387a7042b971b06082782c959a7c91d1af466e4128a16477c7d95323a06",
+      "status": "downloaded",
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881533/original/Gpm2HcY9ynQCsjxFsSc7T8t0VoLS4_Ldng.png?1732016882",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-series-understanding-and-l-e6d1628cd981.png",
+      "kind": "catalog-inline-image",
+      "alt": "MPC Browser — Sample Assign and sample pool",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165722181/original/w67qMx9X5NaS3yf3_Efh5FUtSujKqosltQ.png?1754997241=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-sample-assign-and-sample-pool-cdd94eae8477.png",
+      "bytes": 210838,
+      "sha256": "b65cc6125b91390bd8c2907de22a30875263b2d69e710f59bd27bf81b3c544e0",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC Browser Options dialog",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165716730/original/_c1kISWJxQzR99bZd8JmlBS0S0gVwNyBOg.png?1754993450=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-options-dialog-df0c8fcf44f3.png",
+      "bytes": 99539,
+      "sha256": "099319dbec3d7c49c8eca156bd5535fa3d22e689c4a6a5d13b684c8fec67e405",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "Pad Perform — custom note map and 4×4 pad interpretation",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69166324277/original/6NjC6-cRea38vgWsZYANVNmmRnv9QbtgLw.png?1755523845=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/pad-perform-custom-note-map-and-4-4-pad-interpretation-c523ff4e337b.png",
+      "bytes": 90347,
+      "sha256": "a0c34010d64520114c1eacc60f5cefb3b98d396b5dbffb652ffc1cf0f70defca",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "Track Edit — sample layers and waveform",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69176903727/original/-0xrv1nhFLQ1XfkWCRFkoCgZQe0zfjr4LA.png?1764065223=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/track-edit-sample-layers-and-waveform-259bac67e5a1.png",
+      "bytes": 98306,
+      "sha256": "940692c8775d9655c1a63f198e9402ea0ab70467a42f272102d94a634a9b38cc",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Sample Edit — waveform, slice and process controls",
+      "source_url": "https://www.mpc-tutor.com/assets/slicemotion/slice05.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-sample-edit-waveform-slice-and-process-controls-10ef314bb22a.png",
+      "bytes": 40894,
+      "sha256": "601fe474d5e95df13e5a1aa21e9dfb664fc1f1abfc9600b7cf8329a07b0af03d",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 envelope automation and performance status",
+      "source_url": "https://www.mpc-tutor.com/assets/slicemotion/slice24.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-envelope-automation-and-performance-status-dec6f11c0f82.png",
+      "bytes": 32682,
+      "sha256": "d97cdd1799c544943522a429041e567d602093a2c84cd35cee63e42984b6e6ed",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "Legacy Grid View — note grid with velocity lane; visual structure only",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69137425072/original/UbA7URmBzaEGtijRhATbUeKqQJQobByonw.png?1733155392=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/legacy-grid-view-note-grid-with-velocity-lane-visual-structu-d909300d6d41.png",
+      "bytes": 333348,
+      "sha256": "c13463f4a95ee14e5de0f37c0fe903175ba71c49712113ea54cbffbb703abf44",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "Legacy standalone MPC Sampler recording screen — interaction reference only",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/S/SampleSlicing_02-on3yRqdzNYbySPlbD3x43Dr_yKlI1RKX.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/legacy-standalone-mpc-sampler-recording-screen-interaction-r-09b6ee494081.jpg",
+      "bytes": 172566,
+      "sha256": "c9a75b67db574f5aed3ba613e6668dd300cbcfb1af0fbbfe799994c696b6a317",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "Preferences — project load/save and autosave",
+      "source_url": "https://www.mpc-tutor.com/assets/autosave.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/preferences-project-load-save-and-autosave-61d56b95926b.jpg",
+      "bytes": 67171,
+      "sha256": "8fa97e9ce1a7236942285d3e85d84a8b4e338fde9ad0c5233e2633f1228867a5",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC One Step Sequencer photographed on the hardware",
+      "source_url": "https://img.youtube.com/vi/uuNyLLg-cXs/maxresdefault.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-one-step-sequencer-photographed-on-the-hardware-c2831dc25a58.jpg",
+      "bytes": 234638,
+      "sha256": "f502cc9204a03e78e7a4c61c54a65e72306e6a94756cff6d82e6e87fa8f0e528",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC waveform Chop mode and slice markers",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/M/MPCBasics_07-NswMBI0X4nQgTah8CIBrwSGbQ5xLHYQO.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-waveform-chop-mode-and-slice-markers-4f464ebf5b5c.jpg",
+      "bytes": 294373,
+      "sha256": "fb90eb46be3085d2d0e87422b0fbc72a078d7af8400c683f333f25ab1a4f5f11",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC Song Mode — sequence playlist and sequence tiles",
+      "source_url": "https://www.mpc-tutor.com/assets/song-mode-playlist-1024x640.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-song-mode-sequence-playlist-and-sequence-tiles-55a35ec6a52c.png",
+      "bytes": 36083,
+      "sha256": "46a78bfa601525d47f32fb06886d70e76496c213a246067fedc25bfe5214a3c3",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Channel Mixer I/O, monitoring, sends and outputs",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69192726532/original/_w6tJ-s7R-DyxGc1avFs6s8caU_uAq9B7Q.png?1780034221=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-channel-mixer-i-o-monitoring-sends-and-outputs-0d37b279b37e.png",
+      "bytes": 251993,
+      "sha256": "e09f25a5f2c930893e39c3a8d1785086cb3ddad8a5e8c32baa0fe82c3eb26ffc",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC pad mixer routing matrix — older visual, not MPC 3.9 geometry",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69136157082/original/dgGihnRKJXr_dvqLa512k-gmoref-QAe_Q.JPG?1732159501=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-pad-mixer-routing-matrix-older-visual-not-mpc-3-9-geomet-d095d6c025c0.jpg",
+      "bytes": 2347547,
+      "sha256": "214f62b3c5c4b88885c5ca6bca14dd1e47b08965a95fb932b4bc6cae1edd9133",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC One Preferences — MIDI / Sync ports",
+      "source_url": "https://eu5.dh-cdn.net/uploads/db8181/original/3X/7/3/739f6d1d05b21c98e4cf4c2e8e8a9b23304aaad3.jpeg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-one-preferences-midi-sync-ports-539cacc26b3a.jpg",
+      "bytes": 2186420,
+      "sha256": "b30afba51cbcacbc3199cb50c7e9d1fbf6c66d8f586119347be6d008d6076c3e",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Click/Metro dialog",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69183338703/original/C9jY-JC1NZ48_45iDBSAU8uYXQh9eRCcMA.png?1770305858=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-click-metro-dialog-b9112d55a543.png",
+      "bytes": 121785,
+      "sha256": "a016131d19175c3a251e60b4c96e02a97f3b7ffb5b333781669b0f673964aa13",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC standalone XYFX touch grid",
+      "source_url": "https://heikkisiltala.net/wiki/_media/images/akai_mpc_live/effectsxypad02.jpg?tok=792f2b&w=800",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-standalone-xyfx-touch-grid-d943bc106424.jpg",
+      "bytes": 340596,
+      "sha256": "1453578a62ca16d3645e968b50d5f85879bbb22289a1f439f41c545a8603c85f",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC Program Edit Samples page — layer list",
+      "source_url": "https://www.mpc-tutor.com/assets/prog5.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-program-edit-samples-page-layer-list-f88c7df9c650.png",
+      "bytes": 31726,
+      "sha256": "1816001fbb6e2855e2934ab462b896da03968357baca639643456e6431c4a169",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC Program Edit — per-pad sample-layer parameters",
+      "source_url": "https://www.mpc-tutor.com/assets/offset2.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-program-edit-per-pad-sample-layer-parameters-0570d70052d8.png",
+      "bytes": 30204,
+      "sha256": "4dd27e2431c1fd022e30343f0ae2feb2c2f6d02dc06fdf370469952df93ceda6",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC Q-Link parameter overview",
+      "source_url": "https://www.mpc-tutor.com/assets/qlink-2.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-q-link-parameter-overview-ba262bc8ab91.png",
+      "bytes": 37609,
+      "sha256": "5186cc71b53daec19b843f3a76ee0d8dd68f808d018320bd624ccfed5abc087b",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC Save window — project, project as and other save formats",
+      "source_url": "https://www.mpc-tutor.com/assets/save.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-save-window-project-project-as-and-other-save-formats-44af233c0765.png",
+      "bytes": 46710,
+      "sha256": "27299109807dd0de905cf8448ddb81871f235f66df9e765d45b7047a58afee29",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC One Sample Edit Trim screen photographed on the hardware",
+      "source_url": "https://cdn-ak.f.st-hatena.com/images/fotolife/M/Marronfieldsproduction/20221028/20221028035306.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-one-sample-edit-trim-screen-photographed-on-the-hardware-4f5d9b339bab.jpg",
+      "bytes": 54100,
+      "sha256": "f96d3a1172ba9bf72ee1d44328062b895fc98ef4032a37023a1f086ce4f1175e",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC One Sample Assign with sample pool and 4x4 pad assignment",
+      "source_url": "https://assets.st-note.com/img/1714572254880-afLUx6An8g.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-one-sample-assign-with-sample-pool-and-4x4-pad-assignmen-dd8a4b575ad3.jpg",
+      "bytes": 446622,
+      "sha256": "0bdb995df0b962594f5be997bf13047f9e2b468b9930d19e9ffb0e6170c29670",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "Legacy MPC waveform editor with automation lane and bottom actions",
+      "source_url": "https://ragtime.online/media/catalog/product/6/b/6bc500-crop-af798e-mpcone.jpg.auto.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/legacy-mpc-waveform-editor-with-automation-lane-and-bottom-a-4874dacff8fb.jpg",
+      "bytes": 76877,
+      "sha256": "7a64e30479097c94e9ad97525a8ce35b2994d90eb1616d62830bc473d73482bc",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC Grid with piano-roll events, velocity lane and bottom edit functions",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69194801033/original/NcJsWEGW4E8GKzQShSO1Ex2Ek7wkMdv6Cg.png?1782213213=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-grid-with-piano-roll-events-velocity-lane-and-bottom-edi-cc323c849b57.png",
+      "bytes": 52501,
+      "sha256": "7824e14c243bc1ce9bc038b784ddb271be4e01d1804b4dbaa9b0d694ac6f5174",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC Arpeggiator dialog with timing, action, pattern and latch settings",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69117558608/original/9s1MRfk1vI0K_6ubpYauxjR2bCN_UBPCSQ.png?1718116566=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-arpeggiator-dialog-with-timing-action-pattern-and-latch-ffbb8f3d1d49.png",
+      "bytes": 114502,
+      "sha256": "dcc191712da38f2b314373d0dab001ceb201869579ba6e2b77c62f22b713fe77",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC standalone MIDI Sync preferences with input and output ports",
+      "source_url": "https://www.mpc-tutor.com/assets/preferences-midi-incoming-1024x640.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-standalone-midi-sync-preferences-with-input-and-output-p-86295292ded6.png",
+      "bytes": 101089,
+      "sha256": "b493c3c6128d6401f713740b05025fa324e134c92c90900e8dbcdc0396ffc2d8",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Sequence Edit menu with Erase, Clear All, Clear Events, Trim and other sequence operations",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171567821/original/Gn_oosMLkpAb2-Jd4S9CQs8fcCCtzKUJ0g.jpeg?1759738112=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-sequence-edit-menu-with-erase-clear-all-clear-events-t-b8feae20d5c0.jpg",
+      "bytes": 80726,
+      "sha256": "0c58c175077a990c73a0d4c0d0f6872dc38d8ba4c60d32b4e0c8d67b6716a2f6",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Erase dialog with sequence, track, time range and event-type options",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568345/original/y9ooBl_93rautQ01WZCrR0X81Z86U1iGwg.png?1759738577=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-erase-dialog-with-sequence-track-time-range-and-event-2c9917019641.png",
+      "bytes": 38478,
+      "sha256": "56f4d8f20d8d80d86ee3c0c8224e39a22c750a8378a910057989687bcdef6913",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Erase Note mode with the eight-bank pad selection mask",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568606/original/TKMwaGq0Sqgh2kqcKpJd-Nzu3qgFJw4qaA.png?1759738674=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-erase-note-mode-with-the-eight-bank-pad-selection-mask-519b44b92828.png",
+      "bytes": 58249,
+      "sha256": "542898e2a340e78dc89654fe204b67976f57acc31f567201761147aa51a3bb5c",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Clear Sequence destructive confirmation dialog",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568002/original/p4XyPOCyXsuXuyqyDqTpVf9cmkKEgnK2jg.png?1759738294=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-clear-sequence-destructive-confirmation-dialog-c38dc8416680.png",
+      "bytes": 53603,
+      "sha256": "48f0e369fdf93c5abaa0404a7b1aa5353323e147d77708906558e91b681bf858",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Preferences — Hardware tab with Tap Tempo, Bank Button and Q-Link settings",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69161763950/original/pWP6-5PdcH9pY2cA4pGmjd4H5xZz47NkEw.png?1751856629=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-preferences-hardware-tab-with-tap-tempo-bank-button-an-5c75684d6f80.png",
+      "bytes": 118950,
+      "sha256": "55138debc199e17ea48cb302b6ddefede59bfb2511cf9b435e85d5851db7959b",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Preferences — Project Load/Save tab",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497633/original/losLbj-hGvLzhujOiTJoGEADHmkCLyMwlw.png?1757329912=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-preferences-project-load-save-tab-d4eb28c2459b.png",
+      "bytes": 82522,
+      "sha256": "5910b3e171b02b607e39feb9c730ecc17ebf1dd0900f0f0f307981f9996eed1f",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 New Project Behaviour selector",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497555/original/1B5Ebe8l-fxKf8RUdYXAAru39U1WG5118Q.png?1757329862=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-new-project-behaviour-selector-2c470b0aab21.png",
+      "bytes": 88830,
+      "sha256": "0e313417874a40deca31e0b471105272a774426e1b1e7697e03d71ecdf1b1781",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 New Project Dialog selector",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497526/original/Go4z7ExFaEGKbgu1F2FPTXPQrara8DcZuQ.png?1757329832=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-new-project-dialog-selector-e4d1be9a8cc1.png",
+      "bytes": 87301,
+      "sha256": "71aca72fef60be04f2849d633e1fa13423f053ace4fff69046f6e5e7ebaea0c1",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Main Track Type selector affordance",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881223/original/OBU4OIPLsVppo0XE-rgOgxdwLUu5JvMD3Q.png?1732016692=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-main-track-type-selector-affordance-cd86da325d66.png",
+      "bytes": 26894,
+      "sha256": "8837c29ce7480fb88f42feb0f56451ad15b18335549879050d879268a4592f04",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Main Program context and Pad Perform entry",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881533/original/Gpm2HcY9ynQCsjxFsSc7T8t0VoLS4_Ldng.png?1732016882=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-main-program-context-and-pad-perform-entry-15b124a1caee.png",
       "bytes": 24367,
       "sha256": "c999accbec253abfca7bab355aa4b7352cac5fe57740ef4287660da997d21add",
       "status": "downloaded",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて",
-      "referenced_from": "source-page-extraction"
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0030-1024x796.jpg",
-      "status": "failed",
-      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0030-1024x796.jpg",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional",
-      "source_url": "https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0074_CU.jpg",
-      "status": "failed",
-      "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0074_CU.jpg",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
-    },
-    {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
-      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170999168/original/yZ9nvkqCZYR5XM0h40teQu5sZ5CCtUlezQ.png?1759244741",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-9995af3c4474.png",
-      "bytes": 5188374,
-      "sha256": "38bbff08b627a9cac0819487c45b3ef2e1f6d8366a36616e3c99a45b0ece1896",
+      "kind": "catalog-inline-image",
+      "alt": "MPC Browser with the Audition Auto Sync Warp level popover open",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165715554/original/NWURoLiusABAG6rrubXbuxf-pmUkMGliKw.png?1754992557=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-with-the-audition-auto-sync-warp-level-popover-o-20bbc5cef83e.png",
+      "bytes": 598407,
+      "sha256": "8270f192ca2bec3cdd541f83b51aa16798db8d589be03a1f7b7ce0bb092a4182",
       "status": "downloaded",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
-      "referenced_from": "source-page-extraction"
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
-      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170383718/original/pYoXsdWLXS_jok5Yd9p_JnoAYmeS2LDTkg.png?1758722166",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-7ef1c0851add.png",
-      "bytes": 64872,
-      "sha256": "3cbfb44e43da86d5c54b0e716c6bf7c58f3c8864e5ca56beda9cf5e142cbf9d4",
+      "kind": "catalog-inline-image",
+      "alt": "MPC Browser search and six file-type filter icons",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165715626/original/ZgepHM1fsT3jM9N1rop6oSpx8F81swSJgQ.png?1754992624=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-search-and-six-file-type-filter-icons-7bf79c7b2e9e.png",
+      "bytes": 8347,
+      "sha256": "d2b89e1ae638fae3c5df7774a9383b625da3b9b6966b81b030af893a3247adae",
       "status": "downloaded",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
-      "referenced_from": "source-page-extraction"
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
-      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170851373/original/0rh6VPWdWzuS_mNN2Wk82TmxNqhD4C-KzA.jpg?1759156351",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-8442dab2ca88.jpg",
-      "bytes": 434168,
-      "sha256": "5a626e6aaf13f8a73e2668ae44892e68798118172c462b022dffee10c840cf34",
+      "kind": "catalog-inline-image",
+      "alt": "MPC Browser favourite folder buttons 1 to 5",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165717538/original/03TYqionEXfsV6ARKxTlp1yoNQCUSEZXXQ.png?1754993997=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-favourite-folder-buttons-1-to-5-76fac09c8950.png",
+      "bytes": 7808,
+      "sha256": "9fb53677e15132b5aebcdcfa11468ce2670c5f6fc1e936ae3b79e8d0154c4256",
       "status": "downloaded",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
-      "referenced_from": "source-page-extraction"
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
-      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170999127/original/aTR1N8dQMhVcjx--qyr1x75WsC6NamWORQ.png?1759244725",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-bade6e8eb533.png",
-      "bytes": 5188374,
-      "sha256": "38bbff08b627a9cac0819487c45b3ef2e1f6d8366a36616e3c99a45b0ece1896",
+      "kind": "catalog-inline-image",
+      "alt": "MPC 3 Preferences MIDI Sync port routing controls",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69151187913/original/qUWciG6cOb30KJXSUof5XWV_BAkPclk0yA.png?1743505244=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-preferences-midi-sync-port-routing-controls-39f024016216.png",
+      "bytes": 107600,
+      "sha256": "51a0255849926e1caf229ea3a2db09127a01d9b183a73101966de9353b3482a3",
       "status": "downloaded",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
-      "referenced_from": "source-page-extraction"
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
-      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171131263/original/buwTDarsHDQ6nAP8Fb-jHBCSmIZ1Ab44bA.png?1759329115",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-f92d37196266.png",
-      "bytes": 7165,
-      "sha256": "cd5e4a595dc6f664336383500c5680e236a9bb744a8e4ffa61f973032fa3b347",
+      "kind": "catalog-inline-image",
+      "alt": "MPC Standalone Sampler screen with input source, Arm, sample counter and Sample Slice Pad Tap Pad Hold tabs",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69075163375/original/tP8Gznhoc4AujoPV18pa0M4lGw_Fi4F1pQ.png?1683839460=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-standalone-sampler-screen-with-input-source-arm-sample-c-f05873886bbf.png",
+      "bytes": 147844,
+      "sha256": "f7999fb01cdcb276b0be4d109b2d6bfa8c11ba55e555452460a793afa55bd26b",
       "status": "downloaded",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
-      "referenced_from": "source-page-extraction"
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Reference image from Akai Pro MPC Live III | Frequently Asked Questions : Akai Professional",
-      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69170859418/original/b2RsDcCldWH1E52lbkizBDMwcUghiGTUmg.png?1759159251",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/reference-image-from-akai-pro-mpc-live-iii-frequently-asked-37d5b60d8a26.png",
-      "bytes": 6443,
-      "sha256": "603c71e169931f7366a417079ef90c360d364e1c41bdb36feb39b0f402bc5f67",
+      "kind": "catalog-inline-image",
+      "alt": "Akai MPC Sampler input-source and Monitor On Off controls",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69075165589/original/YFSMdgWyQKiv9I98J_Jl4nbGEHYgQBj7LA.png?1683841018=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/akai-mpc-sampler-input-source-and-monitor-on-off-controls-7f4281c61ce5.png",
+      "bytes": 130415,
+      "sha256": "562a3b6b9b1abc6fde79240c2ec3b15330eeedf7893685e13e7231044b604529",
       "status": "downloaded",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
-      "referenced_from": "source-page-extraction"
+      "referenced_from": null
     },
     {
-      "kind": "extracted-source-image",
-      "alt": "Article views count",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions/hit",
-      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/article-views-count-c689e99d3fbc.gif",
-      "bytes": 43,
-      "sha256": "b1442e85b03bdcaf66dc58c7abb98745dd2687d86350be9a298a1d9382ac849b",
+      "kind": "catalog-inline-image",
+      "alt": "MPC Project Defaults settings including tempo, sequence bars, time signature and new-project dialog",
+      "source_url": "https://www.mpc-tutor.com/assets/mpcs-prefs2.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-project-defaults-settings-including-tempo-sequence-bars-f1aad95c6ba7.png",
+      "bytes": 244082,
+      "sha256": "2dac910015f5f6bc0d5e1744898b681b8722dca1f28273b9a556c2e8684a13c7",
       "status": "downloaded",
-      "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions",
-      "referenced_from": "source-page-extraction"
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC Preferences Project Load Save Auto Save and timeout selector",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69155310481/original/UHQkJ3Q7dOCU3OYKqq7-M1tT736gXs-XMg.png?1746635795=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-preferences-project-load-save-auto-save-and-timeout-sele-48ed794ec671.png",
+      "bytes": 163581,
+      "sha256": "c03b0a39d50a0753d7f96ccc53faddbed366bfc6eb87f01b90c9cac74071e143",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC Project Load Save Temporary File Location row",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69155310100/original/Eje2-0LPl4-jsEQVNg9NQ3UiBxhAMjIW3A.png?1746635653=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-project-load-save-temporary-file-location-row-92d4b4620bb0.png",
+      "bytes": 24200,
+      "sha256": "4c6ea6b613602055114b2dae1dba08ff81b40d6ca33d7f12046ea8f3a0ba7403",
+      "status": "downloaded",
+      "referenced_from": null
+    },
+    {
+      "kind": "catalog-inline-image",
+      "alt": "MPC project auto-save progress modal",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69141762232/original/FtmdsIpb1y5Th0qupBLf7AvPPW5lb_td2A.png?1736425797=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-project-auto-save-progress-modal-1b777b813aac.png",
+      "bytes": 87532,
+      "sha256": "78fa16e780ed545c29a55e4309594df6791f21eb62998c9aa1f9b8463a2752a8",
+      "status": "downloaded",
+      "referenced_from": null
     }
   ],
   "pdf_pages_and_crops": [
@@ -5205,9 +5767,1995 @@
       "figures": [
         "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v36/figures/page-329-figure-01.jpg"
       ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 91,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-091-figure-01.jpg",
+      "bytes": 38476,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 91,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-091.jpg",
+      "bytes": 127271,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-091-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 92,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-092.jpg",
+      "bytes": 173853,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 95,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-095.jpg",
+      "bytes": 199644,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 96,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-096.jpg",
+      "bytes": 243593,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 97,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-097.jpg",
+      "bytes": 246002,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 98,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-098.jpg",
+      "bytes": 241816,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 99,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-099.jpg",
+      "bytes": 233257,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 107,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-107-figure-01.jpg",
+      "bytes": 17444,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 107,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-107-figure-02.jpg",
+      "bytes": 18266,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 107,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-107.jpg",
+      "bytes": 181696,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-107-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-107-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 109,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-109-figure-01.jpg",
+      "bytes": 21591,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 109,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-109.jpg",
+      "bytes": 107894,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-109-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 110,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-110.jpg",
+      "bytes": 196937,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 111,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-111-figure-01.jpg",
+      "bytes": 15043,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 111,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-111-figure-02.jpg",
+      "bytes": 15232,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 111,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-111.jpg",
+      "bytes": 106179,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-111-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-111-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 112,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-112-figure-01.jpg",
+      "bytes": 17508,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 112,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-112-figure-02.jpg",
+      "bytes": 24095,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 112,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-112.jpg",
+      "bytes": 98665,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-112-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-112-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 129,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-129-figure-01.jpg",
+      "bytes": 26977,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 129,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-129.jpg",
+      "bytes": 148098,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-129-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 134,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-134-figure-01.jpg",
+      "bytes": 35959,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 134,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-134.jpg",
+      "bytes": 138944,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-134-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 139,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-139.jpg",
+      "bytes": 81921,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 147,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-147.jpg",
+      "bytes": 182804,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 156,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-156.jpg",
+      "bytes": 136321,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 162,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-162-figure-01.jpg",
+      "bytes": 36885,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 162,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-162-figure-02.jpg",
+      "bytes": 33934,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 162,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-162.jpg",
+      "bytes": 139168,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-162-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-162-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 167,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-167-figure-01.jpg",
+      "bytes": 58060,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 167,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-167-figure-02.jpg",
+      "bytes": 57839,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 167,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-167.jpg",
+      "bytes": 99585,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-167-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-167-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 176,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-176-figure-01.jpg",
+      "bytes": 61716,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 176,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-176.jpg",
+      "bytes": 106357,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-176-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 177,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-177-figure-01.jpg",
+      "bytes": 28630,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 177,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-177.jpg",
+      "bytes": 69418,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-177-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 178,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-178.jpg",
+      "bytes": 116191,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 179,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-179.jpg",
+      "bytes": 76010,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 181,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-181.jpg",
+      "bytes": 115179,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 185,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-185-figure-01.jpg",
+      "bytes": 39612,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 185,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-185.jpg",
+      "bytes": 117243,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-185-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 188,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-188-figure-01.jpg",
+      "bytes": 52727,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 188,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-188.jpg",
+      "bytes": 101582,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-188-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 190,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-190-figure-01.jpg",
+      "bytes": 25886,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 190,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-190.jpg",
+      "bytes": 124138,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-190-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 191,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-191-figure-01.jpg",
+      "bytes": 31090,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 191,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-191-figure-02.jpg",
+      "bytes": 29899,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 191,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-191.jpg",
+      "bytes": 164383,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-191-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-191-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 195,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-195-figure-01.jpg",
+      "bytes": 16057,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 195,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-195.jpg",
+      "bytes": 87802,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-195-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 202,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-202-figure-01.jpg",
+      "bytes": 45225,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 202,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-202.jpg",
+      "bytes": 168551,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-202-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 205,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-205-figure-01.jpg",
+      "bytes": 20967,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 205,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-205-figure-02.jpg",
+      "bytes": 31556,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 205,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-205.jpg",
+      "bytes": 118590,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-205-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-205-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 208,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-208-figure-01.jpg",
+      "bytes": 29445,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 208,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-208-figure-02.jpg",
+      "bytes": 18629,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 208,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-208.jpg",
+      "bytes": 122212,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-208-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-208-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 221,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-221-figure-01.jpg",
+      "bytes": 44863,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 221,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-221.jpg",
+      "bytes": 121374,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-221-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 223,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-223-figure-01.jpg",
+      "bytes": 39438,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 223,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-223-figure-02.jpg",
+      "bytes": 19393,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 223,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-223.jpg",
+      "bytes": 119307,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-223-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-223-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 231,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-231-figure-01.jpg",
+      "bytes": 40693,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 231,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-231.jpg",
+      "bytes": 84994,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-231-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 234,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-234-figure-01.jpg",
+      "bytes": 43823,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 234,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-234.jpg",
+      "bytes": 96181,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-234-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 235,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-235-figure-01.jpg",
+      "bytes": 38073,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 235,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-235.jpg",
+      "bytes": 89400,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-235-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 236,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-236-figure-01.jpg",
+      "bytes": 41080,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 236,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-236.jpg",
+      "bytes": 85678,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-236-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 238,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-238-figure-01.jpg",
+      "bytes": 33882,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 238,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-238-figure-02.jpg",
+      "bytes": 19229,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 238,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-238.jpg",
+      "bytes": 145858,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-238-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-238-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 242,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-242-figure-01.jpg",
+      "bytes": 38828,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 242,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-242-figure-02.jpg",
+      "bytes": 22018,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 242,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-242.jpg",
+      "bytes": 119944,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-242-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-242-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 249,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-249-figure-01.jpg",
+      "bytes": 37583,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 249,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-249.jpg",
+      "bytes": 86010,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-249-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 262,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-262-figure-01.jpg",
+      "bytes": 39311,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 262,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-262-figure-02.jpg",
+      "bytes": 23765,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 262,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-262.jpg",
+      "bytes": 91959,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-262-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-262-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 263,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-263-figure-01.jpg",
+      "bytes": 23738,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 263,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-263-figure-02.jpg",
+      "bytes": 29674,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 263,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-263.jpg",
+      "bytes": 76379,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-263-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-263-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 264,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-264-figure-01.jpg",
+      "bytes": 27044,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 264,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-264.jpg",
+      "bytes": 62084,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-264-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 266,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-266-figure-01.jpg",
+      "bytes": 46252,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 266,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-266.jpg",
+      "bytes": 116485,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-266-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 270,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-270-figure-01.jpg",
+      "bytes": 24516,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 270,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-270-figure-02.jpg",
+      "bytes": 29150,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 270,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-270.jpg",
+      "bytes": 180883,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-270-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-270-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 273,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-273-figure-01.jpg",
+      "bytes": 62949,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 273,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-273.jpg",
+      "bytes": 121931,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-273-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 274,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-274.jpg",
+      "bytes": 134001,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 277,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-277-figure-01.jpg",
+      "bytes": 31042,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 277,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-277.jpg",
+      "bytes": 73194,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-277-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 279,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-279-figure-01.jpg",
+      "bytes": 31143,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 279,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-279.jpg",
+      "bytes": 98708,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-279-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 280,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-280.jpg",
+      "bytes": 184453,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 281,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-281.jpg",
+      "bytes": 111043,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 282,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-282-figure-01.jpg",
+      "bytes": 19079,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 282,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-282-figure-02.jpg",
+      "bytes": 16979,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 282,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-282-figure-03.jpg",
+      "bytes": 17482,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 282,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-282.jpg",
+      "bytes": 120597,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-282-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-282-figure-02.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-282-figure-03.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 283,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-283-figure-01.jpg",
+      "bytes": 43862,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 283,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-283.jpg",
+      "bytes": 140330,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-283-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 288,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-288-figure-01.jpg",
+      "bytes": 68336,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 288,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-288.jpg",
+      "bytes": 113555,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-288-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 290,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-290-figure-01.jpg",
+      "bytes": 71061,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 290,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-290-figure-02.jpg",
+      "bytes": 65490,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 290,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-290.jpg",
+      "bytes": 102136,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-290-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-290-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 291,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-291-figure-01.jpg",
+      "bytes": 47717,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 291,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-291-figure-02.jpg",
+      "bytes": 58238,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 291,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-291.jpg",
+      "bytes": 115562,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-291-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-291-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 292,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-292-figure-01.jpg",
+      "bytes": 42198,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 292,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-292-figure-02.jpg",
+      "bytes": 44424,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 292,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-292.jpg",
+      "bytes": 156500,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-292-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-292-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 293,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-293-figure-01.jpg",
+      "bytes": 56239,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 293,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-293.jpg",
+      "bytes": 122038,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-293-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 298,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-298.jpg",
+      "bytes": 115279,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 310,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-310-figure-01.jpg",
+      "bytes": 51778,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 310,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-310.jpg",
+      "bytes": 104561,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-310-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 312,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-312-figure-01.jpg",
+      "bytes": 50971,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 312,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-312.jpg",
+      "bytes": 161811,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-312-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 315,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-315-figure-01.jpg",
+      "bytes": 61908,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 315,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-315.jpg",
+      "bytes": 163332,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-315-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 317,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-317-figure-01.jpg",
+      "bytes": 60008,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 317,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-317.jpg",
+      "bytes": 136532,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-317-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 319,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-319-figure-01.jpg",
+      "bytes": 61906,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 319,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-319.jpg",
+      "bytes": 102797,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-319-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 325,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-325-figure-01.jpg",
+      "bytes": 59434,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 325,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-325.jpg",
+      "bytes": 138862,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-325-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 327,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-327-figure-01.jpg",
+      "bytes": 25252,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 327,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-327.jpg",
+      "bytes": 134908,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-327-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 328,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-328-figure-01.jpg",
+      "bytes": 29163,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 328,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-328.jpg",
+      "bytes": 155045,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-328-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 329,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-329-figure-01.jpg",
+      "bytes": 25786,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 329,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-329.jpg",
+      "bytes": 70392,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-329-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 330,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-330-figure-01.jpg",
+      "bytes": 32567,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 330,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-330.jpg",
+      "bytes": 121477,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-330-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 331,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-331-figure-01.jpg",
+      "bytes": 38063,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 331,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-331.jpg",
+      "bytes": 71477,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-331-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 332,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-332-figure-01.jpg",
+      "bytes": 36049,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 332,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-332.jpg",
+      "bytes": 140002,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-332-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 334,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-334-figure-01.jpg",
+      "bytes": 22682,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 334,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-334.jpg",
+      "bytes": 131682,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-334-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 336,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-336-figure-01.jpg",
+      "bytes": 50038,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 336,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-336.jpg",
+      "bytes": 96375,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-336-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 405,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-405-figure-01.jpg",
+      "bytes": 17583,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 405,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-405-figure-02.jpg",
+      "bytes": 16463,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 405,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-405.jpg",
+      "bytes": 130164,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-405-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-405-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v213-legacy",
+      "page": 506,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-506-figure-01.jpg",
+      "bytes": 75098,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v213-legacy",
+      "page": 506,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/page-506.jpg",
+      "bytes": 115778,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v213-legacy/figures/page-506-figure-01.jpg"
+      ]
     }
   ],
   "failures": [
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=91",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=91"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=92",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=92"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=95",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=95"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=96",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=96"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=97",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=97"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=98",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=98"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=99",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=99"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=107",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=107"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=109",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=109"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=110",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=110"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=111",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=111"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=112",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=112"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=129",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=129"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=134",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=134"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=139",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=139"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=147",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=147"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=156",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=156"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=162",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=162"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=167",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=167"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=176",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=176"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=177",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=177"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=178",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=178"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=179",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=179"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=181",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=181"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=185",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=185"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=188",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=188"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=190",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=190"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=191",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=191"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=195",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=195"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=202",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=202"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=205",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=205"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=208",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=208"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=221",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=221"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=223",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=223"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=231",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=231"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=234",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=234"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=235",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=235"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=236",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=236"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=238",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=238"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=242",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=242"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=249",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=249"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=262",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=262"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=263",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=263"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=264",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=264"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=266",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=266"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=270",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=270"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=273",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=273"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=274",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=274"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=277",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=277"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=279",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=279"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=280",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=280"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=281",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=281"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=282",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=282"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=283",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=283"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=288",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=288"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=290",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=290"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=291",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=291"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=292",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=292"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=293",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=293"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=298",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=298"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=310",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=310"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=312",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=312"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=315",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=315"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=317",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=317"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=319",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=319"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=325",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=325"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=327",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=327"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=328",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=328"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=329",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=329"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=330",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=330"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=331",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=331"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=332",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=332"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=334",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=334"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=336",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=336"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=405",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=405"
+    },
+    {
+      "kind": "source-page-scan",
+      "source_url": "https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=506",
+      "status": "failed",
+      "error": "403 Client Error: Forbidden for url: https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html?page=506"
+    },
     {
       "kind": "source-page-scan",
       "source_url": "https://www.mpc-tutor.com/mpc-buyers-guide-mpc-one-vs-mpc-live-ii-vs-mpc-x/",
@@ -5261,168 +7809,6 @@
       "source_url": "https://www.mpc-tutor.com/how-to-set-custom-time-signatures-in-mpc-sequences/",
       "status": "failed",
       "error": "403 Client Error: Forbidden for url: https://www.mpc-tutor.com/how-to-set-custom-time-signatures-in-mpc-sequences/"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://heikkisiltala.net/wiki/en/music/akai_mpc_live_effects](https://heikkisiltala.net/wiki/en/music/akai_mpc_live_effects",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://heikkisiltala.net/wiki/en/music/akai_mpc_live_effects%5D(https://heikkisiltala.net/wiki/en/music/akai_mpc_live_effects"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://marronfieldsproduction.hatenablog.com/entry/2022/10/25/063000](https://marronfieldsproduction.hatenablog.com/entry/2022/10/25/063000",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://marronfieldsproduction.hatenablog.com/entry/2022/10/25/063000%5D(https://marronfieldsproduction.hatenablog.com/entry/2022/10/25/063000"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://marronfieldsproduction.hatenablog.com/entry/2022/10/28/063000](https://marronfieldsproduction.hatenablog.com/entry/2022/10/28/063000",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://marronfieldsproduction.hatenablog.com/entry/2022/10/28/063000%5D(https://marronfieldsproduction.hatenablog.com/entry/2022/10/28/063000"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://note.com/suitebossa/n/nde0f912fe4ce](https://note.com/suitebossa/n/nde0f912fe4ce",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://note.com/suitebossa/n/nde0f912fe4ce](https:/note.com/suitebossa/n/nde0f912fe4ce"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs](https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs%5D(https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000822965-akai-pro-mpc-series-adjusting-project-defaults](https://support.akaipro.com/en/support/solutions/articles/69000822965-akai-pro-mpc-series-adjusting-project-defaults",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000822965-akai-pro-mpc-series-adjusting-project-defaults%5D(https://support.akaipro.com/en/support/solutions/articles/69000822965-akai-pro-mpc-series-adjusting-project-defaults"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000838263-akai-pro-mpc-series-standalone-mode-sampler-overview](https://support.akaipro.com/en/support/solutions/articles/69000838263-akai-pro-mpc-series-standalone-mode-sampler-overview",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000838263-akai-pro-mpc-series-standalone-mode-sampler-overview%5D(https://support.akaipro.com/en/support/solutions/articles/69000838263-akai-pro-mpc-series-standalone-mode-sampler-overview"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000856004-mpc-series-creating-custom-arp-patterns](https://support.akaipro.com/en/support/solutions/articles/69000856004-mpc-series-creating-custom-arp-patterns",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000856004-mpc-series-creating-custom-arp-patterns%5D(https://support.akaipro.com/en/support/solutions/articles/69000856004-mpc-series-creating-custom-arp-patterns"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000857890-akai-pro-mpc-series-editing-the-count-in-and-metronome](https://support.akaipro.com/en/support/solutions/articles/69000857890-akai-pro-mpc-series-editing-the-count-in-and-metronome",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000857890-akai-pro-mpc-series-editing-the-count-in-and-metronome%5D(https://support.akaipro.com/en/support/solutions/articles/69000857890-akai-pro-mpc-series-editing-the-count-in-and-metronome"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000857945-akai-pro-mpc-series-new-project-dialog](https://support.akaipro.com/en/support/solutions/articles/69000857945-akai-pro-mpc-series-new-project-dialog",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000857945-akai-pro-mpc-series-new-project-dialog%5D(https://support.akaipro.com/en/support/solutions/articles/69000857945-akai-pro-mpc-series-new-project-dialog"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000860101-mpc-standalone-input-monitoring-explained](https://support.akaipro.com/en/support/solutions/articles/69000860101-mpc-standalone-input-monitoring-explained",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000860101-mpc-standalone-input-monitoring-explained%5D(https://support.akaipro.com/en/support/solutions/articles/69000860101-mpc-standalone-input-monitoring-explained"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000860953-mpc-standalone-the-best-way-to-save-and-back-up-projects-to-an-external-drive](https://support.akaipro.com/en/support/solutions/articles/69000860953-mpc-standalone-the-best-way-to-save-and-back-up-projects-to-an-external-drive",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000860953-mpc-standalone-the-best-way-to-save-and-back-up-projects-to-an-external-drive%5D(https://support.akaipro.com/en/support/solutions/articles/69000860953-mpc-standalone-the-best-way-to-save-and-back-up-projects-to-an-external-drive"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000863026-akai-pro-mpc-series-humanizing-your-tracks](https://support.akaipro.com/en/support/solutions/articles/69000863026-akai-pro-mpc-series-humanizing-your-tracks",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000863026-akai-pro-mpc-series-humanizing-your-tracks%5D(https://support.akaipro.com/en/support/solutions/articles/69000863026-akai-pro-mpc-series-humanizing-your-tracks"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000864104-akai-pro-mpc-series-how-to-delete-a-sequence-track-or-program](https://support.akaipro.com/en/support/solutions/articles/69000864104-akai-pro-mpc-series-how-to-delete-a-sequence-track-or-program",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000864104-akai-pro-mpc-series-how-to-delete-a-sequence-track-or-program%5D(https://support.akaipro.com/en/support/solutions/articles/69000864104-akai-pro-mpc-series-how-to-delete-a-sequence-track-or-program"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000864617-akai-pro-mpc-series-saving-projects-with-auto-save](https://support.akaipro.com/en/support/solutions/articles/69000864617-akai-pro-mpc-series-saving-projects-with-auto-save",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000864617-akai-pro-mpc-series-saving-projects-with-auto-save%5D(https://support.akaipro.com/en/support/solutions/articles/69000864617-akai-pro-mpc-series-saving-projects-with-auto-save"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000864879-akai-pro-mpc-series-setting-up-multiple-midi-controllers-in-a-project](https://support.akaipro.com/en/support/solutions/articles/69000864879-akai-pro-mpc-series-setting-up-multiple-midi-controllers-in-a-project",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000864879-akai-pro-mpc-series-setting-up-multiple-midi-controllers-in-a-project%5D(https://support.akaipro.com/en/support/solutions/articles/69000864879-akai-pro-mpc-series-setting-up-multiple-midi-controllers-in-a-project"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000867660-akai-pro-mpc-series-wireless-remote-midi-control-in-a-daw](https://support.akaipro.com/en/support/solutions/articles/69000867660-akai-pro-mpc-series-wireless-remote-midi-control-in-a-daw",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000867660-akai-pro-mpc-series-wireless-remote-midi-control-in-a-daw%5D(https://support.akaipro.com/en/support/solutions/articles/69000867660-akai-pro-mpc-series-wireless-remote-midi-control-in-a-daw"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000867733-akai-pro-mpc-series-how-to-remap-the-mpc-pads](https://support.akaipro.com/en/support/solutions/articles/69000867733-akai-pro-mpc-series-how-to-remap-the-mpc-pads",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000867733-akai-pro-mpc-series-how-to-remap-the-mpc-pads%5D(https://support.akaipro.com/en/support/solutions/articles/69000867733-akai-pro-mpc-series-how-to-remap-the-mpc-pads"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000868280-akai-pro-mpc-series-output-routing-basics](https://support.akaipro.com/en/support/solutions/articles/69000868280-akai-pro-mpc-series-output-routing-basics",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000868280-akai-pro-mpc-series-output-routing-basics%5D(https://support.akaipro.com/en/support/solutions/articles/69000868280-akai-pro-mpc-series-output-routing-basics"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000870813-mpc-3-standalone-how-do-i-turn-off-the-tap-tempo-light-](https://support.akaipro.com/en/support/solutions/articles/69000870813-mpc-3-standalone-how-do-i-turn-off-the-tap-tempo-light-",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000870813-mpc-3-standalone-how-do-i-turn-off-the-tap-tempo-light-%5D(https://support.akaipro.com/en/support/solutions/articles/69000870813-mpc-3-standalone-how-do-i-turn-off-the-tap-tempo-light-"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000871929-akai-pro-mpc-series-how-to-audition-expansions-and-samples](https://support.akaipro.com/en/support/solutions/articles/69000871929-akai-pro-mpc-series-how-to-audition-expansions-and-samples",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000871929-akai-pro-mpc-series-how-to-audition-expansions-and-samples%5D(https://support.akaipro.com/en/support/solutions/articles/69000871929-akai-pro-mpc-series-how-to-audition-expansions-and-samples"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000871930-akai-pro-mpc-series-understanding-the-mpc-s-browser](https://support.akaipro.com/en/support/solutions/articles/69000871930-akai-pro-mpc-series-understanding-the-mpc-s-browser",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000871930-akai-pro-mpc-series-understanding-the-mpc-s-browser%5D(https://support.akaipro.com/en/support/solutions/articles/69000871930-akai-pro-mpc-series-understanding-the-mpc-s-browser"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://support.akaipro.com/en/support/solutions/articles/69000874731/](https://support.akaipro.com/en/support/solutions/articles/69000874731/",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://support.akaipro.com/en/support/solutions/articles/69000874731/%5D(https://support.akaipro.com/en/support/solutions/articles/69000874731/"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://www.musicradar.com/how-to/10-ways-to-get-more-out-of-your-MPC](https://www.musicradar.com/how-to/10-ways-to-get-more-out-of-your-MPC",
-      "status": "failed",
-      "error": "404 Client Error: Not Found for url: https://www.musicradar.com/www.musicradar.com/how-to/10-ways-to-get-more-out-of-your-MPC"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://www.soundonsound.com/reviews/akai-mpc-live-iii](https://www.soundonsound.com/reviews/akai-mpc-live-iii",
-      "status": "failed",
-      "error": "410 Client Error: Gone for url: https://www.soundonsound.com/reviews/akai-mpc-live-iii%5D(https:/www.soundonsound.com/reviews/akai-mpc-live-iii"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://www.soundonsound.com/techniques/akai-mpc-basics](https://www.soundonsound.com/techniques/akai-mpc-basics",
-      "status": "failed",
-      "error": "410 Client Error: Gone for url: https://www.soundonsound.com/techniques/akai-mpc-basics%5D(https:/www.soundonsound.com/techniques/akai-mpc-basics"
-    },
-    {
-      "kind": "source-page-scan",
-      "source_url": "https://www.soundonsound.com/techniques/sample-slicing-beatmaking-hardware](https://www.soundonsound.com/techniques/sample-slicing-beatmaking-hardware",
-      "status": "failed",
-      "error": "410 Client Error: Gone for url: https://www.soundonsound.com/techniques/sample-slicing-beatmaking-hardware%5D(https:/www.soundonsound.com/techniques/sample-slicing-beatmaking-hardware"
     },
     {
       "kind": "extracted-source-image",
@@ -5591,12 +7977,6 @@
       "status": "failed",
       "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0074_CU.jpg",
       "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%いて"
-    },
-    {
-      "kind": "pdf",
-      "source_key": "mpc-v213-legacy",
-      "status": "failed",
-      "error": "failed after retries: 403 Client Error: Forbidden for url: https://manuals.plus/m/98138a9e32b84f6146aee38f6d2efd1ad8996d06f7ec4c5bf91ecb369b27a3c4"
     }
   ]
 }
