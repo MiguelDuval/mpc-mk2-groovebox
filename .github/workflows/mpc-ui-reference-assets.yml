@@ -34,7 +34,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install PDF and image tools
-        run: python -m pip install --disable-pip-version-check pymupdf requests pillow
+        run: python -m pip install --disable-pip-version-check pymupdf requests pillow beautifulsoup4
 
       - name: Download referenced images and render PDF page figures
         run: python tools/build_mpc_ui_reference_assets.py --root .
@@ -60,4 +60,6 @@ jobs:
             exit 0
           fi
           git commit -m "docs: vendor MPC UI reference screenshot assets [skip ci]"
+          git fetch origin "${GITHUB_REF_NAME}"
+          git rebase "origin/${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
