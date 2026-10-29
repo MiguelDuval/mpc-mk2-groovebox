@@ -438,7 +438,7 @@ def download_images(root, docs, include_manual_pages=False):
     mapping, manifest = {}, []
     entries=collect_images(docs)
     seen={item["url"] for item in entries}
-    for item in extract_source_page_images(docs, include_manual_pages)
+    for item in extract_source_page_images(docs, include_manual_pages):
         if item["url"] not in seen:
             entries.append(item)
             seen.add(item["url"])
