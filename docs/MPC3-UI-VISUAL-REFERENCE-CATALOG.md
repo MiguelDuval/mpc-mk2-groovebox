@@ -165,11 +165,11 @@ Source: [MPC-Tutor — MPC3 Slice Motion tutorial](https://www.mpc-tutor.com/mpc
 
 Source: [Akai support — Humanizing Your Tracks](https://support.akaipro.com/en/support/solutions/articles/69000863026-akai-pro-mpc-series-humanizing-your-tracks).
 
-**Current authoritative reference:** official [MPC Standalone OS v3.9 User Guide](https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf), section **Grid View**. Search the guide for “Grid View” and review the current drum-grid, note editing, velocity lane and event-selection screenshots. The official guide is authoritative where the embedded legacy image differs.
+**Current authoritative reference:** the official [MPC Standalone OS v3.9 User Guide, p.167](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=167) shows three current Grid layouts: Audio, Drum and piano-roll/event lane. See the full page-verified atlas in §8.25. The legacy inline image above remains only a visual history reference.
 
 ## 5.2 Step Sequencer
 
-**Manual-only in this catalog.** The official v3.9 guide is the authority: [MPC Standalone OS v3.9 User Guide](https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf), section **Step Sequencer**. It contains the 16-step workspace, timing/track fields, parameter lane and step controls. An independently hosted direct screenshot URL for the v3.9 Step Sequencer was not recovered in this research pass.
+**Current v3.9 figure found:** the [official guide, p.179](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=179) shows the current 16-step workspace and velocity steps. A standalone PNG URL is not exposed, but the actual screenshot is visible in the linked PDF. See §8.25 for the indexed page atlas.
 
 Do not treat a Step Sequencer screen as complete merely because 16 buttons are drawn: track length, bar/pad selection, time division and supported step parameters belong to the screen contract.
 
@@ -183,7 +183,7 @@ Do not treat a Step Sequencer screen as complete merely because 16 buttons are d
 
 Source: [Sound On Sound — Sample Slicing: Beatmaking With Hardware](https://www.soundonsound.com/techniques/sample-slicing-beatmaking-hardware).
 
-**Current authoritative reference:** official [MPC Standalone OS v3.9 User Guide](https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf), sections **Sampler** and **Sampling**. The screen must represent real record/stop/monitor/threshold and assignment state; a cosmetic recording panel is not functional acceptance.
+**Current authoritative reference:** the official [MPC Standalone OS v3.9 User Guide, pp.296–298](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=296) has current Sampler recording/input figures. These pages do not provide a complete independent screenshot for every Slice/Pad Tap/Pad Hold/Auto Sampler state; those remain explicitly tracked in §8.25. The screen must represent real record/stop/monitor/threshold and assignment state.
 
 ---
 
@@ -498,6 +498,114 @@ Sources: [Akai support — Tap Tempo Light preference](https://support.akaipro.c
 Source: [Akai support — Understanding and Loading Programs](https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs).
 
 
+
+## 8.25. Current MPC Standalone OS v3.9 screenshot atlas — page-verified
+
+This is the **current-version visual atlas** recovered from the official MPC Standalone OS v3.9 User Guide. The screenshots below are printed figures embedded in the guide, not independent PNG/JPEG files. Each link goes directly to the relevant printed page; the readable mirror is included as a second way to inspect the page when the official CDN viewer ignores the page fragment.
+
+- **Primary source:** [Official Akai/inMusic MPC Standalone OS v3.9 User Guide (PDF)](https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf).
+- **Page-readable mirror:** [MPC Standalone OS v3.9 User Guide — 530-page PDF mirror](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf). This is a mirror of the guide, not a separate Akai source.
+- Page numbers below are the printed page numbers. The mirror page anchors were individually opened/rendered during this research pass; where the guide contains descriptive text but no screenshot, that is explicitly noted.
+- **Version / hardware boundary:** these are current MPC OS 3.9 standalone-guide references. They are much stronger than pre-MPC-3 screenshots for labels and layout. They do not, by themselves, prove that every screenshot was captured on a Gen 1 MPC One rather than another supported standalone MPC; hardware-specific differences remain tagged below.
+
+### A. Shell, Main, global dialogs and preferences
+
+| Visual ID / context | v3.9 guide page | What the page actually shows | Confidence / limit |
+|---|---:|---|---|
+| VIS-001 Main workspace / overall shell | [p.15](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=15) | Main Mode map: Toolbar, Shortcuts, Mixer Strips, Sequence, Track/Arrangement and Function Buttons | Current OS 3.9 overview; canonical shell reference |
+| Main Mode expanded composition | [p.109](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=109) | Detailed Main Mode screen and labeled regions | Use alongside p.15; not a separate device-specific screenshot set |
+| VIS-002 Toolbar / project / transport | [p.57](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=57) | Toolbar and Sync/Undo History examples | Current guide screenshot |
+| VIS-003 Menu / mode launcher | [p.56](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=56) | Menu tile launcher plus lower Project / New Project / Save / Preferences actions | Current guide screenshot |
+| System Resources popup | [p.59](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=59) | System resource overlay / status detail | Useful modal reference |
+| VIS-065 Project overview | [p.60](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=60) | Project window, project contents and lower action row | Current Project context; does not replace every load/save picker state |
+| Preferences landing page | [p.61](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=61) | Preferences category sidebar and information/activation view | Screenshot exists for the landing page, not each preferences subpage |
+| VIS-075 Timing Correct | [p.75](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=75) | Timing Correct window including normal and pad-bank-oriented examples | Current OS 3.9 modal reference |
+| VIS-076 Metronome / Click | [p.77](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=77) | Click/Metro controls and options | Current OS 3.9 dialog |
+| VIS-077 Automation states | [p.78](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=78) | Automation-related control states and operating description | State/semantics reference; not a complete automation editor screenshot |
+| VIS-050 16 Levels | [p.80](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=80) | 16 Levels dialogs including Velocity and Tune variants | Current OS 3.9; supersedes the v3.7-only visual claim |
+| VIS-051 Pad Perform | [p.81](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=81) | Pad Perform Custom mapping example | Current OS 3.9; other modes are separately described |
+| VIS-052 Arpeggiator | [p.84](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=84) | Arpeggiator dialog / timing and latch options | Current guide page; dialog geometry reference |
+| VIS-053 Erase dialog | [p.87](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=87) | Erase dialog and pad-bank mask variants | Current OS 3.9; distinguish scope and confirmation state |
+
+### B. Sequence, Track, Browser, Arrangement and mixing
+
+| Visual ID / context | v3.9 guide page | What the page actually shows | Confidence / limit |
+|---|---:|---|---|
+| VIS-013 Sequence details / Time Signature | [p.112](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=112) | Sequence fields and Time Signature dialog | Current Main/sequence reference |
+| VIS-014 / VIS-081 Track fields and type | [p.117](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=117) | Track section examples, including differing track types | Use with official Main Track/Program images in §8.24; type-specific screens differ |
+| Track edit / duplicate / delete actions | [p.126](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=126) | Track editing entry and action popups | Current context for track menus/dialogs |
+| VIS-016 / VIS-019 / VIS-020 Arrangement | [p.129](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=129) | Arrangement view and its relationship to Main | Current guide; some editing states are on following pages |
+| VIS-005 / VIS-006 XL Channel Strips | [p.133](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=133) | Mixer-strip context on Main | Current shell/strip reference |
+| VIS-008 / VIS-009 Browser | [p.136](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=136) | Current Browser Places/Content workflow examples | Current guide; Browser Options subdialog has a separate direct official support image in §2.5 |
+| VIS-011 Sample Assign | [p.139](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=139) | Sample Assign view and pool/assignment context | Current guide screenshot |
+| VIS-044–VIS-047 Channel Mixer | [pp.140–144](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=140) | Mixer overview and Volume, Pan & Volume, Sends, Effects and I/O contexts across the page range | Current OS 3.9. Use individual pages 140, 141, 142, 143 and 144 when comparing each tab |
+| VIS-048 / VIS-049 Pad Mixer overview | [p.145](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=145) | Full Pad Mixer context and its tab organization | **Closes the earlier claim that no current full-screen Pad Mixer reference was found** |
+| Pad Mixer — Volume / Pan & Volume | [p.146](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=146) | Per-pad level and pan views | Current OS 3.9 |
+| Pad Mixer — Sends / Effects | [p.147](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=147) | Per-pad Sends and Effects contexts | Current OS 3.9 |
+| Pad Mixer — I/O | [p.148](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=148) | Per-pad I/O context | Current OS 3.9 |
+| VIS-064 Sounds Mode | [pp.149–150](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=149) | Sounds Mode and its favorites/setlist examples | Current guide; cloud/paid options remain intentionally out of product scope |
+| VIS-057 XYFX | [pp.151–153](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=151) | XYFX screen and different controlled-effect modes | Current OS 3.9 guide reference |
+| VIS-019 / VIS-020 Arrange tab and views | [p.154](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=154) | Arrange/Grid/List navigation and timeline context | Current guide; detailed Grid and List references follow |
+
+### C. Grid, Step, List Edit and all major Track Edit types
+
+| Visual ID / context | v3.9 guide page | What the page actually shows | Confidence / limit |
+|---|---:|---|---|
+| VIS-021 / VIS-022 / VIS-023 Grid View | [p.167](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=167) | Three Grid layouts: Audio waveform, Drum pad/event lane and piano-roll/event lane with velocity | **Closes the earlier current-version Grid screenshot gap** |
+| VIS-024 / VIS-025 Step Sequencer | [p.179](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=179) | 16-step sequencer and velocity step presentation | Current OS 3.9 |
+| VIS-026 / VIS-027 List Edit | [p.184](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=184) | Event table, event filtering and event/tempo workflow | **Closes the earlier current-version List Edit screenshot gap** |
+| VIS-028 Track Edit — Drum / Global | [p.190](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=190) | Current Drum Track Edit Global layout | Current OS 3.9 |
+| Track Edit — zones / stem dialogs | [p.191](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=191) | Edit Zones dialog and Create Stems window | Current dialogs; Create Stems applicability depends on device/software scope |
+| VIS-029 Track Edit — Samples / layer start-end | [pp.197, 203](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=197) | Sample-region editing, Samples/Oscs and velocity/layer context | Current OS 3.9; inspect both pages |
+| VIS-031 Track Edit — LFO | [p.212](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=212) | LFO editor with waveform/rate/destination controls | **Closes the earlier current-version LFO screenshot gap** |
+| VIS-032 Track Edit — Keygroup | [p.215](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=215) | Keygroup Track Edit context | Current OS 3.9; not interchangeable with Drum layout |
+| Keygroup sample/loop details | [p.221](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=221) | Keygroup sample region and loop context | Current OS 3.9 |
+| Filter detail | [p.230](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=230) | Filter parameters / velocity sensitivity context | One parameter view, not every filter variant |
+| VIS-033 Track Edit — Plugin | [p.254](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=254) | Plugin track instrument screen example | Current OS 3.9; specific plugin UI varies |
+| VIS-034 Track Edit — MIDI | [p.255](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=255) | MIDI track control / CC context | Current OS 3.9 |
+| VIS-035 Track Edit — CV | [p.256](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=256) | CV track screen context | Reference only where that hardware/backend context applies |
+| VIS-030 Track Edit — envelopes | [p.257](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=257) | Envelope editor variants | Current OS 3.9; parameter variants are separate states |
+
+### D. Track View, Mute, Sample Edit and Sampler
+
+| Visual ID / context | v3.9 guide page | What the page actually shows | Confidence / limit |
+|---|---:|---|---|
+| Track Mute | [p.260](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=260) | Track Mute context | Current OS 3.9 |
+| Track Groups | [p.261](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=261) | Track Group context/state | Current OS 3.9 |
+| Pad Mute | [p.264](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=264) | Pad Mute with the 4×4 pad matrix | Current OS 3.9; a dedicated workspace separate from Main |
+| VIS-017 / VIS-018 Track View | [p.266](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=266) | Track View overview | Current OS 3.9 |
+| VIS-036 / VIS-037 / VIS-038 Sample Edit | [p.269](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=269) | Sample Edit waveform / Trim context | Current OS 3.9; use the dedicated section for Chop/Slice-related references too |
+| VIS-039–VIS-043 Sampler family | [pp.296–298](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=296) | Sampler with input, recording/monitoring and record-time states; tabs include Sampler/Slice/Pad Tap/Pad Hold | Current guide; p.296–298 does **not** supply a separate full screenshot for every tab or Auto Sampler variant |
+
+### E. Performance, control, MIDI and Looper
+
+| Visual ID / context | v3.9 guide page | What the page actually shows | Confidence / limit |
+|---|---:|---|---|
+| VIS-058 Q-Link Edit | [p.306](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=306) | Q-Link Edit workflow | Current OS 3.9 |
+| Q-Link assignment categories | [p.314](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=314) | Several Q-Link assignment variants | Current guide; do not infer an available physical knob bank on MPC Studio MkII |
+| VIS-059 XY Pad / Crossfader | [p.316](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=316) | XY Pad macro editor and fullscreen XY canvas | Current OS 3.9 |
+| VIS-054 Next Sequence | [p.318](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=318) | Next Sequence performance map | Current OS 3.9 |
+| MIDI Learn | [p.320](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=320) | MIDI Learn target/type list | Current OS 3.9 |
+| VIS-055 Song Mode | [p.328](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=328) | Song Mode playlist and sequence arrangement | Current OS 3.9; separate from Next Sequence |
+| VIS-060–VIS-062 MIDI Control Mode | [pp.333–337](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=333) | MIDI Control overview and Pad/Button/Q-Link/XY pages | Current OS 3.9; check p.333, 334, 335, 336 and 337 individually |
+| VIS-063 Pad Color | [p.338](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=338) | Pad Color Mode | Current OS 3.9 |
+| VIS-056 Looper | [p.340](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=340) | Looper screen and operations | **Closes the earlier reliance on only a v3.6/v3.7 Looper figure** |
+
+### F. Preference and dialog coverage: what the v3.9 PDF does *not* visually show
+
+The guide's Preferences chapter spans **pp.61–68**. It provides the Preferences landing screenshot on p.61 and detailed descriptions of Audio Device, Audio/Export, MIDI/Sync, Hardware, Sequencer, Project Defaults, Project Load/Save and General settings across subsequent pages. However, most of those later pages are text-led; **they are not individual full-screen screenshots of every Preferences subpage**. Use the page links as a reliable label/control taxonomy, but do not use them as a screenshot-based geometry claim:
+
+- [Preferences overview, p.61](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=61)
+- [Audio Device settings, p.62](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=62)
+- [Audio / Export and MIDI / Sync settings, pp.63–64](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=63)
+- [Hardware and Sequencer settings, pp.64–65](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=64)
+- [Project Defaults, p.66](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=66)
+- [Project Load/Save and General settings, pp.67–68](https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf#page=67)
+
+**Remaining screenshot gaps to pursue from public material:** (1) direct screenshots of each current Preferences subpage listed above; (2) all Browser Options sub-dialogs and the full set of filter/favourite/audition option states; (3) individual full-screen Sampler Slice, Pad Tap, Pad Hold and Auto Sampler states, not just the tab bar and recording views; (4) current file-picker, overwrite/cancel/permission/error dialogs across project load/save and sample import; (5) exact Gen 1 MPC One OS 3.9 captures for screens whose public examples are MPC 3.x-family screenshots without explicit hardware provenance. For these, an official guide page with prose is **not** marked as a screenshot. Continue targeted searches for trustworthy standalone images/tutorials and add links only when the image can be identified and version-labeled.
+
+---
+
 # 9. Full screen/context coverage index
 
 This index covers 82 screen and sub-screen contexts from the MPC Standalone user-guide taxonomy and our repository contract. “Inline” means a remote screenshot image is embedded above; “official PDF figure link” means the guide's screenshot remains inside the linked PDF because no stable direct image URL was exposed; “guide link” is still a visual research task. The evidence column never says a screen is implemented merely because its original reference exists.
@@ -593,17 +701,27 @@ This index covers 82 screen and sub-screen contexts from the MPC Standalone user
 
 # 10. Exact-version screenshot gaps and fallback references
 
-The earlier version of this catalog incorrectly treated “no separately hosted PNG found” as “no screenshot found”. The recovered official guide figures in Section 8.21 correct that.
+The v3.9 PDF atlas in §8.25 corrects several former gaps. The catalogue now has **51 inline screenshot references** from public image hosts and an **82-context coverage index**; current-version PDF-page screenshot references are linked for most major MPC 3.x screens. “Linked in the guide” does not mean a PNG has been extracted or embedded in this Markdown.
 
-The catalog now has **49 inline screenshot references** and **82 indexed screen/sub-screen contexts**, plus page-linked images or guide references for all 82 rows. Remaining work is narrower and clearly defined:
+## Coverage now backed by current OS v3.9 page figures
 
-1. For **16 Levels, Grid View, List Edit, Looper and Track Edit LFO**, official screenshots do exist inside MPC Standalone OS 3.6/3.7 PDF guides. The catalog now links the exact guide and page for those figures. The direct image files are not separately exposed by Akai's document host; that is a hosting/extraction constraint, not a lack of source material.
-2. We still lack a clean **exact Gen 1 MPC One running OS 3.9 screenshot set for every screen and modal**. Legacy 2.x/3.6/3.7 screenshots remain useful for layout understanding but cannot establish exact 3.9 geometry or labels.
-3. For some Track Edit tabs, full Pad Mixer, current Preferences categories, some MIDI Control pages and several confirmation/error dialogs, the best available public references are manual sections or screenshots embedded in PDFs rather than standalone image URLs.
-4. Public image hosts may change URLs. Each reference therefore retains attribution and source links.
+Current guide figures have been located and page-rendered for Main / Menu / toolbar; Timing Correct, Metronome, 16 Levels, Pad Perform, Arpeggiator and Erase dialogs; Browser and Sample Assign; Channel Mixer and all major Pad Mixer tabs; Arrangement; Audio, Drum and piano-roll Grid layouts; Step Sequencer; List Edit; Drum / Keygroup / Plugin / MIDI / CV Track Edit contexts and LFO/envelope views; Track Mute, Pad Mute, Track Groups and Track View; Sample Edit / Sampler recording; Q-Link, XY Pad, Next Sequence, Song Mode, MIDI Control, Pad Color and Looper.
 
-The corrected rule is: where a source contains an actual screenshot figure, link the exact manual and page/section; where only textual instructions exist or no trustworthy screenshot source can be found, flag the precise gap. Do not report visual coverage as complete for exact 3.9 until version-matched screenshots exist and are checked.
- 
+This resolves the earlier statements that the current-version Grid, List Edit, Step Sequencer, Pad Mixer, 16 Levels, Arpeggiator, Erase, LFO and Looper figures were unavailable. Some earlier sections still link older manuals for historical comparison; §8.25 is the preferred current OS 3.9 reference where it supplies a page figure.
+
+## Genuine remaining visual gaps
+
+1. **Exact Gen 1 hardware provenance:** the v3.9 guide is authoritative for OS/labels and contains many current screenshots, but it does not state that every pictured screen was photographed on an MPC One Gen 1. Do not claim pixel-level exactness for a page unless hardware provenance is independently confirmed.
+2. **Preferences subpage images:** the v3.9 guide shows the Preferences landing screen on p.61, while most pages for Audio Device, Audio/Export, MIDI/Sync, Hardware, Sequencer, Project Defaults, Project Load/Save and General provide textual control descriptions rather than a dedicated screenshot of each subpage. Official support images add a few examples, but not the complete set.
+3. **Browser variants and modal states:** no verified complete set yet for Browser Options sub-dialogs, every filter/favourite/audition state, or all file/provider-empty/error cases.
+4. **Sampler variants:** the current guide shows the recorder and its tabs, but more distinct full-screen captures are still needed for Slice, Pad Tap, Pad Hold, Auto Sampler and their dialog states.
+5. **Project/file failure and confirmation paths:** direct references exist for New Project selectors and several destructive-operation dialogs, but not for every current OS 3.9 open/save overwrite, cancel, permission, media-missing and error variant.
+6. **Exact Gen 1 screenshots for every remaining mode:** an MPC 3-family shot without stated hardware provenance is useful for information hierarchy, but must not be silently labeled as an MPC One Gen 1 capture. Legacy 2.x/3.6/3.7 images remain historical supplementary references, not exact OS 3.9 layout authority.
+
+## Completion rule for future UI reconstruction
+
+Use §8.25 as the primary, version-matched visual map. Compare the Android implementation against each relevant manual figure and the direct Akai-support images already embedded above; log screenshot, route, geometry and state discrepancies against the corresponding VIS ID. For a missing screenshot, retain a specific gap label and source-search task rather than substituting a vaguely similar image or declaring the context complete. Do not mark visual fidelity complete just because a navigation route exists.
+
 ## Source and rights note
 
 Images are remotely embedded from their original public source URLs so the repository records readable references and attribution without bundling Akai screenshots or firmware-extracted artwork into the app. If a publisher changes/removes an image, use the source link and official v3.9 manual to refresh this catalog; do not silently substitute an unrelated MPC Desktop image.
