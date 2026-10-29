@@ -639,6 +639,14 @@ Source: [Akai support — Understanding the MPC Browser](https://support.akaipro
 
 Source: [Akai support — Wireless Remote MIDI Control in a DAW](https://support.akaipro.com/en/support/solutions/articles/69000867660-akai-pro-mpc-series-wireless-remote-midi-control-in-a-daw). The article explicitly includes MPC One/One+ among supported standalone hardware, but the embedded image is not identified as Gen 1 One specifically.
 
+### Project Defaults — supplementary settings screenshot
+
+**Evidence B, specialist MPC tutorial; exact hardware/firmware generation is not established.** This image exposes the New Project defaults taxonomy (tempo, sequence bars, time signature, pad slice, drum/keygroup filter and default plugin). Use it to inventory controls, not as a pixel-level MPC One OS 3.9 target. The current v3.9 manual's text at p.66 remains authoritative for behavior and labels.
+
+![MPC Project Defaults settings including tempo, sequence bars, time signature and new-project dialog](https://www.mpc-tutor.com/assets/mpcs-prefs2.png)
+
+Source: [MPC-Tutor — How to Set Custom Time Signatures in MPC Sequences](https://www.mpc-tutor.com/how-to-set-custom-time-signatures-in-mpc-sequences/).
+
 ### Project Load/Save — current settings, timeout menu and save progress
 
 **Evidence A, official Akai MPC 3 support screenshot.** The first image shows the Project Load/Save Preferences page with new-project behaviour, Auto Save and its timeout selector. It is a direct view into this settings family and complements the text-led pages in the v3.9 guide. It does not provide a separate image for every preferences category or every selector state.
@@ -752,7 +760,7 @@ This index covers 82 screen and sub-screen contexts from the MPC Standalone user
 
 # 10. Exact-version screenshot gaps and fallback references
 
-The v3.9 PDF atlas in §8.25 corrects several former gaps. The catalogue now has **58 inline screenshot references** from public image hosts and an **82-context coverage index**; current-version PDF-page screenshot references are linked for most major MPC 3.x screens. “Linked in the guide” does not mean a PNG has been extracted or embedded in this Markdown.
+The v3.9 PDF atlas in §8.25 corrects several former gaps. The catalogue now has **59 inline screenshot references** from public image hosts and an **82-context coverage index**; current-version PDF-page screenshot references are linked for most major MPC 3.x screens. “Linked in the guide” does not mean a PNG has been extracted or embedded in this Markdown.
 
 ## Coverage now backed by current OS v3.9 page figures
 
@@ -765,7 +773,7 @@ This resolves the earlier statements that the current-version Grid, List Edit, S
 ## Genuine remaining visual gaps
 
 1. **Exact Gen 1 hardware provenance:** the v3.9 guide is authoritative for OS/labels and contains many current screenshots, but it does not state that every pictured screen was photographed on an MPC One Gen 1. Do not claim pixel-level exactness for a page unless hardware provenance is independently confirmed.
-2. **Preferences subpage images:** the guide shows Preferences landing on p.61 and textual descriptions for the settings taxonomy. Direct images now exist for MIDI/Sync and Project Load/Save, and Akai support has a Hardware Preferences image earlier in the catalog. The complete set of current full-screen Audio Device, Audio/Export, Hardware, Sequencer, Project Defaults and General pages is still not covered by dedicated current screenshots.
+2. **Preferences subpage images:** the guide shows Preferences landing on p.61 and textual descriptions for the settings taxonomy. Direct images now exist for MIDI/Sync and Project Load/Save, and Akai support has a Hardware Preferences image earlier in the catalog. The complete set of current full-screen Audio Device, Audio/Export, Hardware, Sequencer and General pages is still not covered by dedicated current screenshots. Project Defaults has a supplementary MPC-series screenshot in §8.26, but its exact OS/hardware provenance is not confirmed.
 3. **Browser variants and modal states:** current references show the Options modal, audition popover, filter strip and five favourite shortcuts, but not every selected/unselected/filter/empty/error state or all Browser drive format/delete confirmation variants.
 4. **Sampler variants:** the current guide shows the recorder and its tabs, but more distinct full-screen captures are still needed for Slice, Pad Tap, Pad Hold, Auto Sampler and their dialog states.
 5. **Project/file failure and confirmation paths:** direct references exist for New Project selectors, Auto Save and several destructive-operation dialogs, but not for every current OS 3.9 open/save overwrite, cancel, permission, media-missing and error variant.
