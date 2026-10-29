@@ -20,6 +20,7 @@ IMG_RE = re.compile(r'!\[([^\]]*)\]\((https?://[^)\s]+)\)')
 PDF_LINK_RE = re.compile(r'https?://[^\s<>"\)]+?\.pdf(?:\?[^#\s<>"\)]+)?(?:#page=\d+)?', re.I)
 PAGE_RE = re.compile(r'#page=(\d+)', re.I)
 MD_LINK_RE = re.compile(r'\[[^\]]*\]\((https?://[^)\s]+)\)')
+RAW_URL_RE = re.compile(r'https?://[^\s<>"`]+', re.I)
 SOURCE_PAGE_LIMIT = 120
 SOURCE_PAGE_IMAGE_LIMIT = 300
 PDF_SOURCES = {
@@ -158,7 +159,7 @@ assign_legacy_pages("VIS-064", [506])
 assign_legacy_pages("VIS-065", [317])
 assign_legacy_pages("VIS-066", [92])
 assign_legacy_pages("VIS-067", [95])
-assign_legacy_pages("VIS-068", [95])
+assign_legacy_pages("VIS-068", [99])
 assign_legacy_pages("VIS-069", [96])
 assign_legacy_pages("VIS-070", [96])
 assign_legacy_pages("VIS-071", [97])
@@ -257,8 +258,10 @@ def collect_source_page_urls(docs):
     }
     found, seen = [], set()
     for text in docs.values():
-        for match in MD_LINK_RE.finditer(text):
-            url=match.group(1).strip().rstrip(".,;")
+        raw_urls=[m.group(1) for m in MD_LINK_RE.finditer(text)]
+        raw_urls.extend(m.group(0) for m in RAW_URL_RE.finditer(text))
+        for raw_url in raw_urls:
+            url=raw_url.strip().rstrip(".,;)]}")
             clean,_=urldefrag(url)
             parts=urlparse(clean)
             host=parts.netloc.lower().split(":")[0]
@@ -295,7 +298,7 @@ def is_probable_screenshot(url,alt="",width=0,height=0):
     text=(alt+" "+path).lower()
     if path.endswith((".svg",".ico")) and "screenshot" not in text:
         return False
-    if any(word in text for word in ("favicon","avatar","social-icon","twitter-icon","facebook-icon","linkedin-icon","author-photo","logo-small","play-button")):
+    if any(word in text for word in ("favicon","avatar","social-icon","twitter-icon","facebook-icon","linkedin-icon","author-photo","logo","play-button","icon-")):
         if "attachments/production/" not in path:
             return False
     is_attachment=("attachments/production/" in path or "helpdesk/attachments/" in path)
