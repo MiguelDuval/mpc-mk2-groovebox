@@ -67,6 +67,16 @@ Source: [Sound On Sound — Akai MPC Basics](https://www.soundonsound.com/techni
 
 ---
 
+## 1.6 Track View — full track overview
+
+**Evidence A.** Official Akai support screenshot of the standalone Track View, showing separate track rows, track type/program fields, MIDI routing, per-track Monitor state, level metering, Mute/Solo and the bottom contextual Function Bar. The screenshot uses a legacy MPC 3-family visual skin, so it is valid for information hierarchy and interaction semantics, not for copying its older colors or pixel geometry into our MPC One / OS 3.9 target.
+
+![Official MPC Standalone Track View — track rows, monitor, level, mute/solo and Function Bar](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69128760784/original/ZxmnIeI0mSiXFQy513lN30sfQ0ai0ObVWg.png?1726736736=)
+
+Source: [Akai support — Input Monitoring Explained](https://support.akaipro.com/en/support/solutions/articles/69000860101-mpc-standalone-input-monitoring-explained).
+
+**Implementation observations:** Track View is a real separate context (Shift+Main), not the Main Track region. Validate track selection, record-arm, Monitor IN/AUTO/MERGE, mute/solo availability, selected row, truthful Audio/Drum/MIDI/instrument semantics, and Back/Main return. Do not confuse controls in this capture with a claim that our current code supports every Track View capability.
+
 # 2. Browser — direct official screenshots
 
 The following images are from Akai support documentation. They show distinct Browser contexts; they must not be conflated into one screen or replaced with fake populated content.
@@ -208,7 +218,7 @@ This index mirrors the significant contexts in `MPC3-9-OS-KNOWLEDGE-BASE.md`. �
 | VIS-007 | Browser — Expansions | **Direct image — A** | Official support Browser article; obey this project's local-first/no upsell decision |
 | VIS-008 | Browser — Sample Assign / sample pool | **Direct image — A** | Official support Browser article; native sample assignment is a separate workflow |
 | VIS-009 | Browser — Options / filters / audition / favourites | **Direct image for Options; article links for the rest — A** | Official support Browser article; separate each preference and state |
-| VIS-010 | Track View | **Main/Track context image; no separate full-screen image** | Official v3.9 guide, Track View; verify entry via Shift+Main and return semantics |
+| VIS-010 | Track View | **Direct official image — A (legacy visual skin; use semantics/layout only)** | Official Akai Input Monitoring Explained; current v3.9 guide governs target geometry and labels |
 | VIS-011 | Arrangement / linear timeline | **Sibling-device MPC 3 image — B; Main preview image — A** | Official v3.9 guide, Arrangement; use Gen 1 One layout over wider-device geometry |
 | VIS-012 | Grid View | **Legacy direct image — C** | Official v3.9 guide, Grid View takes precedence |
 | VIS-013 | Step Sequencer | **Manual-only** | Official v3.9 guide, Step Sequencer |
