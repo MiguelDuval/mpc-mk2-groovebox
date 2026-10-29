@@ -253,7 +253,7 @@ def add_local_page_column(root,pages,pdf_ready):
             vis=re.search(r"VIS-(\d{3})",line)
             found.append(f"[local gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md#{vis.group(0).lower()})" if vis else "[local gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md)")
         lines[i]=line[:-1]+" "+"; ".join(found)+" |"
-    (root/CATALOG).write_text(text[:start]+"\n".join(lines)+text[end:],encoding="utf-8")
+    (root/CATALOG).write_text(text[:start]+"\n".join(lines)+"\n"+text[end:],encoding="utf-8")
 
 def build_gallery(root,image_manifest,pdf_manifest):
     assets=root/ASSET_REL; catalog=(root/CATALOG).read_text(encoding="utf-8")
