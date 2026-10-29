@@ -271,6 +271,9 @@ Current visible Main: Toolbar → five shortcuts → XL Strip region → central
 Do not store Akai screenshots, firmware resources, proprietary artwork or extracted UI assets in the app.
 Store source URL, manual section/page, observed geometry/relationship, and original annotated reconstructions.
 
+**Visual screenshot index (added 2026-10-29):** use [MPC3-UI-VISUAL-REFERENCE-CATALOG.md](MPC3-UI-VISUAL-REFERENCE-CATALOG.md) as the picture-led companion to this knowledge base. It contains source-linked, captioned images found in official Akai support articles and selected specialist sources, provenance/age labels, a 30-context coverage table, and explicit missing-image flags. The catalog distinguishes MPC 3.9/3.x references from legacy MPC2 images and screenshots of sibling hardware; those older or cross-device images are supplementary only. A row marked **manual-only** is a real open research gap, not evidence that a screen exists in our app or has been visually accepted. Do not report “all screens documented” or “UI complete” until these gaps are closed or explicitly accepted and the implemented screen is validated against the relevant reference.
+Do not use screenshot references as proof of implementation. The required acceptance chain remains: relevant reference → implementation status → real interaction/state verification → exact-SHA CI → inspected screenshot/evidence.
+
 | Reference | Source | Anchor | Extract |
 |---|---|---|---|
 | Main | S1 | p15 | Toolbar/Sequence/Shortcuts/Track-Arrangement/Mixer/Function regions |
