@@ -34,6 +34,9 @@ PDF_SOURCES = {
         "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
         "https://manuals.plus/m/98138a9e32b84f6146aee38f6d2efd1ad8996d06f7ec4c5bf91ecb369b27a3c4.pdf",
     ],
+    "mpc-v2112-legacy": [
+        "https://cdn.inmusicbrands.com/akai/MPC/2121_kdhebxog/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.11.12.pdf",
+    ],
     "mpc-v2117-legacy": ["https://device.report/m/99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0.pdf"],
 }
 # Printed pages whose figures were identified in the current v3.9 atlas.
@@ -197,6 +200,8 @@ def classify_pdf_url(url):
     if "/software/36/" in u or "v3.6.pdf" in u: return "mpc-v36"
     if "98138a9e32b84f6146aee38f6d2efd1ad8996d06f7ec4c5bf91ecb369b27a3c4" in u or ("v2.13.pdf" in u and "software" not in u):
         return "mpc-v213-legacy"
+    if "2121_kdhebxog" in u or "v2.11.12.pdf" in u:
+        return "mpc-v2112-legacy"
     if "99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0" in u:
         return "mpc-v2117-legacy"
     return None
@@ -461,7 +466,9 @@ def collect_pdf_pages(docs):
             if key and match: pages[key].add(int(match.group(1)))
     pages["mpc-v39"].update(V39_ATLAS_PAGES)
     pages["mpc-v39"].update(p for values in V39_CONTEXT_PAGES.values() for p in values)
-    pages["mpc-v213-legacy"].update(p for values in V213_CONTEXT_PAGES.values() for p in values)
+    legacy_page_numbers={p for values in V213_CONTEXT_PAGES.values() for p in values}
+    pages["mpc-v213-legacy"].update(legacy_page_numbers)
+    pages["mpc-v2112-legacy"].update(legacy_page_numbers)
     pages["mpc-v37"].update({75,161,184,203,332})
     pages["mpc-v36"].update({203,329})
     return pages
@@ -589,6 +596,7 @@ def add_local_page_column(root,pages,pdf_ready):
         candidates=[]
         candidates.extend(("mpc-v39",p) for p in V39_CONTEXT_PAGES.get(vis_id,[]))
         candidates.extend(("mpc-v213-legacy",p) for p in V213_CONTEXT_PAGES.get(vis_id,[]))
+        candidates.extend(("mpc-v2112-legacy",p) for p in V213_CONTEXT_PAGES.get(vis_id,[]))
         # Preserve useful page anchors from this row for non-mapped contexts.
         for url in PDF_LINK_RE.findall(line):
             key=classify_pdf_url(url)
@@ -643,6 +651,7 @@ def build_gallery(root,image_manifest,pdf_manifest,pdf_run_status):
         for key,select_pages,caption in [
             ("mpc-v39",current_pages,"Current MPC Standalone OS 3.9 manual page capture"),
             ("mpc-v213-legacy",legacy_pages,"Supplementary MPC standalone hardware guide v2.13 page capture — legacy visual only"),
+            ("mpc-v2112-legacy",legacy_pages,"Supplementary MPC standalone hardware guide v2.11.12 page capture — legacy visual only"),
         ]:
             for page_no in select_pages:
                 if not rendered.get((key,int(page_no))):
@@ -680,6 +689,7 @@ def build_gallery(root,image_manifest,pdf_manifest,pdf_run_status):
         "- pdf/mpc-v39/: current OS 3.9 manual page captures and detected embedded figure crops.\n"
         "- pdf/mpc-v213-legacy/: supplemental legacy standalone MPC hardware guide v2.13 page captures.\n"
         "- pdf/: other cited MPC manuals (v3.6/v3.7) used as secondary historical evidence.\n"
+        "- direct-image-source-index.json: original URLs for the 59 catalog-inline reference images after Markdown links have been rewritten locally.\n"
         "- manifest.json: source provenance, local paths, hashes, status, render inventory and failures.\n\n"
         "Original source links and firmware/device caveats remain in the catalog. A page capture is not described as a whole-screen UI screenshot unless the page actually shows that screen.\n",encoding="utf-8")
 
