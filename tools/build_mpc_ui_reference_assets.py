@@ -13,6 +13,12 @@ DOCS = [
     "docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md",
     "docs/MPC3-9-OS-KNOWLEDGE-BASE.md",
     "docs/MPC3-REFERENCE-INDEX.md",
+    "docs/MPC3-UI-SCREEN-BLUEPRINT.md",
+    "docs/MPC3-UI-MIGRATION-MASTER-SPEC.md",
+    "docs/MPC3-USER-ACTION-CATALOG.md",
+    "docs/MPC-UX-REFERENCE.md",
+    "docs/MPC-STYLE-UI-ROADMAP.md",
+    "docs/MPC3-FIRMWARE-UI-RESEARCH.md",
 ]
 CATALOG = DOCS[0]
 ASSET_REL = Path("docs/MPC3-UI-REFERENCE-ASSETS")
@@ -21,8 +27,8 @@ PDF_LINK_RE = re.compile(r'https?://[^\s<>"\)]+?\.pdf(?:\?[^#\s<>"\)]+)?(?:#page
 PAGE_RE = re.compile(r'#page=(\d+)', re.I)
 MD_LINK_RE = re.compile(r'\[[^\]]*\]\((https?://[^)\s]+)\)')
 RAW_URL_RE = re.compile(r'https?://[^\s<>"`]+', re.I)
-SOURCE_PAGE_LIMIT = 120
-SOURCE_PAGE_IMAGE_LIMIT = 300
+SOURCE_PAGE_LIMIT = 180
+SOURCE_PAGE_IMAGE_LIMIT = 500
 PDF_SOURCES = {
     "mpc-v39": [
         "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
@@ -329,7 +335,7 @@ def extract_source_page_images(docs):
     seen=set()
     for page_no,page_url in enumerate(pages,1):
         try:
-            response=SESSION.get(page_url,timeout=(8,22),allow_redirects=True)
+            response=SESSION.get(page_url,timeout=(4,8),allow_redirects=True)
             response.raise_for_status()
             ctype=response.headers.get("content-type","").lower()
             if "html" not in ctype and "xhtml" not in ctype:
@@ -647,7 +653,7 @@ def build_gallery(root,image_manifest,pdf_manifest,pdf_run_status):
     md=[
         "# MPC UI Reference Screenshot Index","",
         "Repository-local visual reference gallery. Every VIS entry is mapped to current OS 3.9 manual page captures and, where downloaded, supplementary older MPC standalone hardware manual captures. Full-page captures retain captions/context; large embedded figure crops are included when the PDF renderer detects them.","",
-        "- images/: local copies of screenshots cited by the catalog/knowledge base/reference index, plus images extracted from relevant cited support/tutorial pages.",
+        "- images/: local copies of screenshots cited by the catalog, MPC UI knowledge base, screen blueprint, migration spec, action catalog and related visual-reference docs, plus images extracted from linked support/tutorial/manual pages.",
         "- pdf/mpc-v39/page-NNN.jpg: current OS 3.9 guide page capture. Some pages contain screenshots; text-led pages are identified as manual-page captures, not falsely labelled whole-screen screenshots.",
         "- pdf/mpc-v213-legacy/page-NNN.jpg: older standalone hardware guide v2.13. Supplemental only; never overrides current MPC 3.9 visual evidence.",
         "- pdf/<source>/figures/: large image regions cropped from the relevant manual page where present.",
