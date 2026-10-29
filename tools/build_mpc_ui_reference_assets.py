@@ -642,6 +642,45 @@ def build_gallery(root,image_manifest,pdf_manifest,pdf_run_status):
         "- manifest.json: source provenance, local paths, hashes, status, render inventory and failures.\n\n"
         "Original source links and firmware/device caveats remain in the catalog. A page capture is not described as a whole-screen UI screenshot unless the page actually shows that screen.\n",encoding="utf-8")
 
+def append_extracted_images_to_catalog(root,image_manifest):
+    path=root/CATALOG
+    text=path.read_text(encoding="utf-8")
+    index_start=text.find("# 9. Full screen/context coverage index")
+    if index_start<0:
+        return
+    heading="## 8.28. Locally archived screenshots/images from cited source pages"
+    previous=text.find(heading)
+    if previous>=0 and previous<index_start:
+        text=text[:previous]+text[index_start:]
+        index_start=text.find("# 9. Full screen/context coverage index")
+    extracted=[x for x in image_manifest if x.get("kind")=="extracted-source-image" and x.get("status")=="downloaded" and x.get("local_path")]
+    failed=[x for x in image_manifest if x.get("kind")=="extracted-source-image" and x.get("status")=="failed"]
+    groups={}
+    for item in extracted:
+        groups.setdefault(item.get("parent_url","unknown source page"),[]).append(item)
+    md=[
+        heading,"",
+        "This section contains local image files discovered by scanning the support/tutorial/manual webpages already cited in the catalog, MPC3-9-OS-KNOWLEDGE-BASE.md and MPC3-REFERENCE-INDEX.md. The screenshots remain in docs/MPC3-UI-REFERENCE-ASSETS/images/ and are indexed individually. Source article links are retained so the context/version can be checked.",
+        "",
+        f"**Extraction result:** {len(extracted)} additional images saved from {len(groups)} cited source pages; {len(failed)} image-download failures. The same URL is stored only once even when it is used in multiple documents.",
+        "",
+    ]
+    if not extracted:
+        md.extend(["No additional source-page images were recovered in this run. Check the image manifest for article-fetch or image-download failures.",""])
+    for page_url,items in sorted(groups.items()):
+        page_label=page_url
+        md.extend([f"### Source page: [{page_label}]({page_url})",""])
+        for item in items:
+            alt=(item.get("alt") or "MPC reference image").replace("[","").replace("]","")
+            rel=Path(item["local_path"]).relative_to(Path("docs")).as_posix()
+            md.extend([f"**{alt}**","",f"![{alt}]({rel})","",f"Original image: {item['source_url']}",""])
+    if failed:
+        md.extend(["### Images discovered but not downloaded",""])
+        for item in failed:
+            md.extend([f"- {item.get('alt','Reference image')}: {item.get('source_url','')} — {item.get('error','download failed')}",""])
+    text=text[:index_start]+"\n".join(md)+"\n"+text[index_start:]
+    path.write_text(text,encoding="utf-8")
+
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--root",default=".")
