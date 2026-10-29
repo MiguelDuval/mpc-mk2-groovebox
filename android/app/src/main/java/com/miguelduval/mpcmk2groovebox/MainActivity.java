@@ -14887,7 +14887,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void awaitBrowserProjectDataFoldersEvidenceCapture() {
         if (!uiAuditSmokeMode) {
-            continueUiAuditAfterBrowserStoragePicker(false);
+            waitForBrowserStorageActionAfterProjectDataToggle(0);
             return;
         }
 
