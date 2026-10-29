@@ -3,7 +3,7 @@
 from __future__ import annotations
 import argparse, hashlib, html, json, os, re, sys, time, tempfile
 from pathlib import Path
-from urllib.parse import urldefrag, urlparse
+from urllib.parse import parse_qs, urldefrag, urlparse
 import fitz
 import requests
 from bs4 import BeautifulSoup
@@ -629,6 +629,21 @@ def build_gallery(root,image_manifest,pdf_manifest,pdf_run_status):
             crops_by_page.setdefault(key,[]).append(record)
     total_page_images=len(rendered)
     total_crops=sum(len(v) for v in crops_by_page.values())
+    manualslib_images={}
+    for item in image_manifest:
+        if item.get("kind")!="extracted-source-image" or item.get("status")!="downloaded":
+            continue
+        parent=item.get("parent_url","")
+        if "manualslib.com" not in parent.lower() or not item.get("local_path"):
+            continue
+        page_values=parse_qs(urlparse(parent).query).get("page",[])
+        if not page_values:
+            continue
+        try:
+            manual_page=int(page_values[0])
+        except (TypeError,ValueError):
+            continue
+        manualslib_images.setdefault(manual_page,[]).append(item)
     md=[
         "# MPC UI Reference Screenshot Index","",
         "Repository-local visual reference gallery. Every VIS entry is mapped to current OS 3.9 manual page captures and, where downloaded, supplementary older MPC standalone hardware manual captures. Full-page captures retain captions/context; large embedded figure crops are included when the PDF renderer detects them.","",
@@ -648,6 +663,13 @@ def build_gallery(root,image_manifest,pdf_manifest,pdf_run_status):
         md.extend([f'<a id="{vis.lower()}"></a>',f"### {vis} — {row['title']}","",
             f"Catalog evidence label: {row['evidence']}",""])
         found_any=False
+        # Associate page-indexed ManualsLib screenshots with each VIS context even when
+        # direct PDF downloads are denied by the host. These are legacy OS 2.x captures.
+        for page_no in legacy_pages:
+            for item in manualslib_images.get(int(page_no),[]):
+                found_any=True
+                local=Path(item["local_path"]).relative_to(ASSET_REL).as_posix()
+                md.extend([f"**Supplementary ManualsLib screenshot, manual p.{page_no}:** legacy visual only; verify current labels against OS 3.9.","",f"![{vis} ManualsLib page {page_no}]({local})",""])
         for key,select_pages,caption in [
             ("mpc-v39",current_pages,"Current MPC Standalone OS 3.9 manual page capture"),
             ("mpc-v213-legacy",legacy_pages,"Supplementary MPC standalone hardware guide v2.13 page capture — legacy visual only"),
@@ -687,7 +709,9 @@ def build_gallery(root,image_manifest,pdf_manifest,pdf_run_status):
         "- INDEX.md: gallery grouped by all VIS-001 through VIS-082 contexts and all downloaded/extracted source images.\n"
         "- images/: local copies of screenshots from the Markdown index and relevant cited pages.\n"
         "- pdf/mpc-v39/: current OS 3.9 manual page captures and detected embedded figure crops.\n"
-        "- pdf/mpc-v213-legacy/: supplemental legacy standalone MPC hardware guide v2.13 page captures.\n"
+        "- pdf/mpc-v213-legacy/: supplemental legacy standalone MPC hardware guide v2.13 page captures, if direct PDF retrieval succeeds.\n"
+        "- pdf/mpc-v2112-legacy/: supplemental legacy standalone MPC hardware guide v2.11.12 page captures, if direct PDF retrieval succeeds.\n"
+        "- images/: where available, page-specific legacy hardware screenshots recovered from the page-indexed ManualsLib viewer when direct PDF hosts deny retrieval.\n"
         "- pdf/: other cited MPC manuals (v3.6/v3.7) used as secondary historical evidence.\n"
         "- direct-image-source-index.json: original URLs for the 59 catalog-inline reference images after Markdown links have been rewritten locally.\n"
         "- manifest.json: source provenance, local paths, hashes, status, render inventory and failures.\n\n"
