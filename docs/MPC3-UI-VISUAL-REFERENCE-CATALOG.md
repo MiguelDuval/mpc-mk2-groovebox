@@ -649,6 +649,10 @@ Source: [Akai support — Wireless Remote MIDI Control in a DAW](https://support
 
 Source: [Akai support — Standalone Mode Sampler Overview](https://support.akaipro.com/en/support/solutions/articles/69000838263-akai-pro-mpc-series-standalone-mode-sampler-overview). The linked article describes Sample, Slice, Pad Hold and Pad Tap, including record-arm and signal-threshold behavior.
 
+**Sampler input / Monitor detail crop.** This official support figure isolates the Input Source selector, level meter/fader and Monitor On/Off control. It is an annotated explanatory crop—not a full-screen target—and its older visual styling is not the OS 3.9 pixel reference.
+
+![Akai MPC Sampler input-source and Monitor On Off controls](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69075165589/original/YFSMdgWyQKiv9I98J_Jl4nbGEHYgQBj7LA.png?1683841018=)
+
 ### Project Defaults — supplementary settings screenshot
 
 **Evidence B, specialist MPC tutorial; exact hardware/firmware generation is not established.** This image exposes the New Project defaults taxonomy (tempo, sequence bars, time signature, pad slice, drum/keygroup filter and default plugin). Use it to inventory controls, not as a pixel-level MPC One OS 3.9 target. The current v3.9 manual's text at p.66 remains authoritative for behavior and labels.
@@ -770,7 +774,7 @@ This index covers 82 screen and sub-screen contexts from the MPC Standalone user
 
 # 10. Exact-version screenshot gaps and fallback references
 
-The v3.9 PDF atlas in §8.25 corrects several former gaps. The catalogue now has **60 inline screenshot references** from public image hosts and an **82-context coverage index**; current-version PDF-page screenshot references are linked for most major MPC 3.x screens. “Linked in the guide” does not mean a PNG has been extracted or embedded in this Markdown.
+The v3.9 PDF atlas in §8.25 corrects several former gaps. The catalogue now has **61 inline screenshot references** from public image hosts and an **82-context coverage index**; current-version PDF-page screenshot references are linked for most major MPC 3.x screens. “Linked in the guide” does not mean a PNG has been extracted or embedded in this Markdown.
 
 ## Coverage now backed by current OS v3.9 page figures
 
