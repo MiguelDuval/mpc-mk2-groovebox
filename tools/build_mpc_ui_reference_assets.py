@@ -625,7 +625,26 @@ def add_local_page_column(root,pages,pdf_ready):
 def build_gallery(root,image_manifest,pdf_manifest,pdf_run_status):
     assets=root/ASSET_REL
     catalog=(root/CATALOG).read_text(encoding="utf-8")
-    _,_,_,rows=catalog_rows(catalog)
+    # Parse the screen table directly here as a defensive second path. The catalog
+    # table is the acceptance inventory and must not silently disappear from INDEX.md
+    # if Markdown cells or generated columns change shape.
+    table_start=catalog.find("# 9. Full screen/context coverage index")
+    table_end=catalog.find("# 10. Exact-version screenshot gaps and fallback references",table_start)
+    table_text=catalog[table_start:table_end if table_end>=0 else len(catalog)] if table_start>=0 else catalog
+    rows=[]
+    for line in table_text.splitlines():
+        match=re.match(r"^\s*\|\s*(VIS-\d{3})\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|",line)
+        if match:
+            rows.append({"id":match.group(1),"title":match.group(2),"evidence":match.group(3),"row":line})
+    if not rows:
+        # Last-resort table row scan preserves all named contexts even if headings move.
+        for line in catalog.splitlines():
+            match=re.match(r"^\s*\|\s*(VIS-\d{3})\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|",line)
+            if match:
+                rows.append({"id":match.group(1),"title":match.group(2),"evidence":match.group(3),"row":line})
+    if len(rows) != 82:
+        raise RuntimeError(f"Expected exactly 82 VIS screen rows in the reference catalog, found {len(rows)}")
+    print(f"[gallery] indexing {len(rows)} named VIS contexts")
     rendered={(x.get("source_key"),int(x.get("page"))):x for x in pdf_manifest
         if x.get("kind")=="pdf-page" and x.get("status")=="rendered"}
     crops_by_page={}
