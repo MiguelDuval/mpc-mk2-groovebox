@@ -388,6 +388,64 @@ Source: [Ragtime — Akai MPC One standalone sampler and sequencer](https://ragt
 This index covers 82 screen and sub-screen contexts from the MPC Standalone user-guide taxonomy and our repository contract. “Inline” means a remote screenshot image is embedded above; “official PDF figure link” means the guide's screenshot remains inside the linked PDF because no stable direct image URL was exposed; “guide link” is still a visual research task. The evidence column never says a screen is implemented merely because its original reference exists.
 
 **Page-linked screenshot sources:** the v3.9 guide below is the target reference for MPC 3.9 labels and composition. The additional **MPC 2.11.7 User Guide** links are an extensive visual reference source with screenshots of many older standalone MPC contexts; they are explicitly labelled as legacy, not pixel-perfect MPC 3.9. These two guides make it possible to inspect every context in the table even where a direct standalone image URL was not found.
+
+## 8.21 Additional recovered official screenshot references
+
+These screen references were found by searching the **contents of official MPC standalone user-guide PDFs**, not by looking only for standalone PNG files. The PDF itself contains the relevant screen figures, even when Akai does not expose those figures as separately addressable image URLs. This is why the earlier catalogue's "no image found" wording was too strong.
+
+### Grid View — note events / velocity lane
+
+**Evidence A, official Akai standalone guide.** Akai's MPC Standalone OS v3.7 User Guide includes distinct screenshot figures for Audio, Drum, and Keygroup/MIDI/CV Grid View layouts. The PDF's figures show the waveform-based audio grid, the drum pad lane plus note events, and the keyboard piano-roll plus velocity lane.
+
+[Open the official MPC Standalone OS v3.7 User Guide — Grid View figure (PDF page 161)](https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf#page=161).
+
+**Supplementary current MPC 3 screenshot:** a screenshot of Grid's piano-roll/events surface appears in Akai's official custom-arpeggiator article. It shows Grid, a piano keyboard, colored events, a velocity lane, automation and bottom edit controls. This article discusses both standalone and desktop workflows, so use it as a screen-layout reference and confirm version/hardware-specific details in the standalone manual.
+
+![MPC Grid with piano-roll events, velocity lane and bottom edit functions](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69194801033/original/NcJsWEGW4E8GKzQShSO1Ex2Ek7wkMdv6Cg.png?1782213213=)
+
+Source: [Akai support — Creating and Loading Custom Arp Patterns](https://support.akaipro.com/en/support/solutions/articles/69000856004-mpc-series-creating-custom-arp-patterns).
+
+### 16 Levels — Velocity and Tune dialogs
+
+**Evidence A, official standalone guide.** The MPC Standalone OS v3.7 User Guide contains two screenshot figures side by side: 16 Levels in Velocity mode and 16 Levels in Tune mode. The same dialog supports other mapped parameters such as Filter, Layer, Slice, Articulation, Attack, Decay, Probability and Ratchet.
+
+[Open the official MPC Standalone OS v3.7 User Guide — 16 Level figures (PDF page 75)](https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf#page=75).
+
+### List Edit — event table
+
+**Evidence A, official standalone guide.** MPC Standalone OS v3.7 documents a full List Edit screenshot with ARRANGE / GRID / LIST navigation, time counter, timing-correct selector, event-type filter, event rows and bottom EVENTS / TEMPO / INSERT / DELETE / PLAY / NUDGE controls. The guide is the source; the screenshot is embedded inside the PDF rather than exposed as a standalone PNG.
+
+[Open the official MPC Standalone OS v3.7 User Guide and search for “List Edit Mode”](https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf).
+
+### Looper — record, overdub, waveform and export
+
+**Evidence A, official standalone guide.** MPC Standalone OS v3.6 has a full Looper screenshot showing input/source, sync, bar count, Record To Play/Overdub, output gain, waveform, Export to Track, Clear, Reverse, Replace, Play and Overdub.
+
+[Open the official MPC Standalone OS v3.6 User Guide — Looper figure (PDF page 329)](https://cdn.inmusicbrands.com/Software/36/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.6.pdf#page=329).
+
+### Track Edit — LFO tab
+
+**Evidence A, official standalone guide.** MPC Standalone OS v3.6 includes a detailed LFO editor figure with LFO 1/LFO 2, waveform, destinations, reset, fade-in, delay, rate, level and the bottom MODS / EFFECTS / LFO / UTILITIES / MOD MATRIX navigation.
+
+[Open the official MPC Standalone OS v3.6 User Guide — LFO figure (PDF page 203)](https://cdn.inmusicbrands.com/Software/36/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.6.pdf#page=203).
+
+### Arpeggiator — standalone dialog and settings
+
+**Evidence A, official Akai support image.** The screenshot shows the Arpeggiator dialog with Enabled, Latch Notes, Time Division, Action, Note Length, Velocity, Swing, Pattern, Sustain Pedal Latches and Latch Mode.
+
+![MPC Arpeggiator dialog with timing, action, pattern and latch settings](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69117558608/original/9s1MRfk1vI0K_6ubpYauxjR2bCN_UBPCSQ.png?1718116566=)
+
+Source: [Akai support — Creating and Loading Custom Arp Patterns](https://support.akaipro.com/en/support/solutions/articles/69000856004-mpc-series-creating-custom-arp-patterns). The exact standalone/desktop context of this particular dialog must be verified against the current guide before using its geometry as an MPC One 3.9 target.
+
+### MIDI / Sync Preferences
+
+**Evidence B, specialist MPC screenshot.** The MIDI tutorial page has a direct image of the MIDI/Sync Preferences screen with input/output port lists and port enable controls.
+
+![MPC standalone MIDI Sync preferences with input and output ports](https://www.mpc-tutor.com/assets/preferences-midi-incoming-1024x640.png)
+
+Source: [MPC-Tutor — MIDI/Sync Preferences](https://www.mpc-tutor.com/mpc-midi-tutorial-connecting-midi-controllers/). This screenshot is from the older MPC 2.11-era visual skin and is for settings taxonomy only.
+
+
 # 9. Full screen/context coverage index
 
 This index covers 82 screen and sub-screen contexts from the MPC Standalone user-guide taxonomy and our repository contract. “Inline” means a remote screenshot image is embedded above; “official PDF figure link” means the guide's screenshot remains inside the linked PDF because no stable direct image URL was exposed; “guide link” is still a visual research task. The evidence column never says a screen is implemented merely because its original reference exists.
@@ -483,18 +541,17 @@ This index covers 82 screen and sub-screen contexts from the MPC Standalone user
 
 # 10. Exact-version screenshot gaps and fallback references
 
-The visual catalog now contains **38 inline remote screenshot references** and a **82-context index**. Every row in the index links to a relevant page in the legacy MPC hardware manual where that screen/context is documented, and current MPC 3.9 source links are provided wherever available. That provides a concrete place to inspect the screen rather than leaving the context undocumented.
+The earlier version of this catalog incorrectly treated “no separately hosted PNG found” as “no screenshot found”. The recovered official guide figures in Section 8.21 correct that.
 
-The remaining difference is between *a screenshot reference* and *a clean direct image of the exact target hardware/version*. The following still require a better source:
+The catalog now has **40 inline screenshot references** and **82 indexed screen/sub-screen contexts**, plus page-linked images or guide references for all 82 rows. Remaining work is narrower and clearly defined:
 
-1. **No stable standalone image URL** found for the 16 Levels and List Edit figures; the catalog links to the corresponding manual pages and the official v3.7 manual figures.
-2. **No stable standalone image URL** found for the Looper figure; the official v3.7 manual page is linked.
-3. **Exact Gen 1 MPC One running MPC 3.9** captures are not publicly embedded for every screen. The older MPC 2.11.7 user-guide screenshots fill visual-understanding gaps but are labelled as legacy and must not be used as pixel-perfect v3.9 references.
-4. Clean, version-matched images are still missing for some Track Edit parameter tabs, full Pad Mixer, all Preferences categories, Arpeggiator, Erase dialog, Keyboard Control/Touch Strip, and some MIDI Control pages. Use the exact guide links in the table until a direct official screenshot is located.
-5. The public images remain hosted by their sources and may change or disappear. Their source links and version notes are part of the reference; they are not repository-owned captures.
+1. For **16 Levels, Grid View, List Edit, Looper and Track Edit LFO**, official screenshots do exist inside MPC Standalone OS 3.6/3.7 PDF guides. The catalog now links the exact guide and page for those figures. The direct image files are not separately exposed by Akai's document host; that is a hosting/extraction constraint, not a lack of source material.
+2. We still lack a clean **exact Gen 1 MPC One running OS 3.9 screenshot set for every screen and modal**. Legacy 2.x/3.6/3.7 screenshots remain useful for layout understanding but cannot establish exact 3.9 geometry or labels.
+3. For some Track Edit tabs, full Pad Mixer, current Preferences categories, some MIDI Control pages and several confirmation/error dialogs, the best available public references are manual sections or screenshots embedded in PDFs rather than standalone image URLs.
+4. Public image hosts may change URLs. Each reference therefore retains attribution and source links.
 
-The research objective is to make every screen **addressable and inspectable**, while staying truthful about exact-version visual gaps. This catalog does not pretend an older UI screenshot is a current MPC 3.9 capture, and it does not claim that a screenshot proves our Android implementation exists or passes acceptance. Where a closer source is still missing, a future UI implementation/review must cite the relevant linked manual page and explicitly retain the version-confidence limitation.
-
+The corrected rule is: where a source contains an actual screenshot figure, link the exact manual and page/section; where only textual instructions exist or no trustworthy screenshot source can be found, flag the precise gap. Do not report visual coverage as complete for exact 3.9 until version-matched screenshots exist and are checked.
+ 
 ## Source and rights note
 
 Images are remotely embedded from their original public source URLs so the repository records readable references and attribution without bundling Akai screenshots or firmware-extracted artwork into the app. If a publisher changes/removes an image, use the source link and official v3.9 manual to refresh this catalog; do not silently substitute an unrelated MPC Desktop image.
