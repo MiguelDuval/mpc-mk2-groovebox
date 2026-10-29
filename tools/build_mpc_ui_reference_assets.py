@@ -862,7 +862,7 @@ def main():
         print("[source scan] legacy PDFs unavailable; falling back to page-indexed ManualsLib viewer")
     image_map,image_manifest=download_images(root,docs,include_manual_pages=include_manual_pages)
     preserve_catalog_inline_images(root,image_manifest)
-    rewrite_remote_images(docs,image_map,root)
+    rewrite_remote_images(root,docs,image_map)
     add_local_page_column(root,pages,pdf_ready)
     append_extracted_images_to_catalog(root,image_manifest)
     build_gallery(root,image_manifest,pdf_manifest,pdf_run_status)
