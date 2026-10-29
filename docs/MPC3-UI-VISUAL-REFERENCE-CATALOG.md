@@ -606,6 +606,57 @@ The guide's Preferences chapter spans **pp.61–68**. It provides the Preference
 
 ---
 
+
+## 8.26. Additional official support screenshots — Browser options, MIDI/Sync and Auto Save
+
+These official Akai support images add a few direct visual states beyond the PDF page atlas above. The Browser images are from Akai's MPC 3 Browser article; the Preferences images are from current-generation MPC 3 support workflows, but individual screenshots do not always disclose the exact hardware/OS build. Use the official v3.9 guide for labels and semantics where they differ.
+
+### Browser — live audition popover and filters
+
+**Evidence A, official Akai MPC Browser screenshot.** The first image shows the Audition popover open above the file list, including Auto, Sync, Warp and the audition level. This is a direct image—not merely a manual-page link—and is useful for matching the popover footprint and its relationship to the Browser Function Bar.
+
+![MPC Browser with the Audition Auto Sync Warp level popover open](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165715554/original/NWURoLiusABAG6rrubXbuxf-pmUkMGliKw.png?1754992557=)
+
+Source: [Akai support — How to Audition Expansions and Samples](https://support.akaipro.com/en/support/solutions/articles/69000871929-akai-pro-mpc-series-how-to-audition-expansions-and-samples). Firmware/device is not stated for this figure; use alongside the current v3.9 PDF atlas.
+
+**Browser filter strip.** This official crop shows the six file-type filters plus Options gear in a single horizontal strip. It does not show the full Browser workspace and is therefore a control-detail reference only.
+
+![MPC Browser search and six file-type filter icons](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165715626/original/ZgepHM1fsT3jM9N1rop6oSpx8F81swSJgQ.png?1754992624=)
+
+Source: [Akai support — Understanding the MPC Browser](https://support.akaipro.com/en/support/solutions/articles/69000871930-akai-pro-mpc-series-understanding-the-mpc-s-browser).
+
+**Favourite folder quick-access buttons.** This crop isolates the five numbered Browser favourite-folder buttons. It is an interaction-detail reference, not a whole-screen target.
+
+![MPC Browser favourite folder buttons 1 to 5](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165717538/original/03TYqionEXfsV6ARKxTlp1yoNQCUSEZXXQ.png?1754993997=)
+
+Source: [Akai support — Understanding the MPC Browser](https://support.akaipro.com/en/support/solutions/articles/69000871930-akai-pro-mpc-series-understanding-the-mpc-s-browser).
+
+### Preferences — MIDI / Sync
+
+**Evidence A, official Akai MPC 3 screenshot.** This is a current-generation Preferences → MIDI / Sync screen with input and output ports, Global/Control/Track and Sync/Track routing toggles, automatic port discovery and MIDI Control Mode Output. It materially improves the reference for VIS-069 and the MIDI-port part of VIS-060–VIS-062.
+
+![MPC 3 Preferences MIDI Sync port routing controls](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69151187913/original/qUWciG6cOb30KJXSUof5XWV_BAkPclk0yA.png?1743505244=)
+
+Source: [Akai support — Wireless Remote MIDI Control in a DAW](https://support.akaipro.com/en/support/solutions/articles/69000867660-akai-pro-mpc-series-wireless-remote-midi-control-in-a-daw). The article explicitly includes MPC One/One+ among supported standalone hardware, but the embedded image is not identified as Gen 1 One specifically.
+
+### Project Load/Save — current settings, timeout menu and save progress
+
+**Evidence A, official Akai MPC 3 support screenshot.** The first image shows the Project Load/Save Preferences page with new-project behaviour, Auto Save and its timeout selector. It is a direct view into this settings family and complements the text-led pages in the v3.9 guide. It does not provide a separate image for every preferences category or every selector state.
+
+![MPC Preferences Project Load Save Auto Save and timeout selector](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69155310481/original/UHQkJ3Q7dOCU3OYKqq7-M1tT736gXs-XMg.png?1746635795=)
+
+Source: [Akai support — Saving Projects with Auto Save](https://support.akaipro.com/en/support/solutions/articles/69000864617-akai-pro-mpc-series-saving-projects-with-auto-save).
+
+The following crop makes the Temporary File Location row legible; use it only as a detail reference for this setting.
+
+![MPC Project Load Save Temporary File Location row](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69155310100/original/Eje2-0LPl4-jsEQVNg9NQ3UiBxhAMjIW3A.png?1746635653=)
+
+**Auto Save progress modal.** This older-looking Akai support image documents the blocking save-progress state while Auto Save writes data. It is valid for the modal's purpose and progress feedback, **not** for copying its older red-header visual skin into the MPC 3.9 target.
+
+![MPC project auto-save progress modal](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69141762232/original/FtmdsIpb1y5Th0qupBLf7AvPPW5lb_td2A.png?1736425797=)
+
+Source: [Akai support — Saving Projects with Auto Save](https://support.akaipro.com/en/support/solutions/articles/69000864617-akai-pro-mpc-series-saving-projects-with-auto-save).
+
 # 9. Full screen/context coverage index
 
 This index covers 82 screen and sub-screen contexts from the MPC Standalone user-guide taxonomy and our repository contract. “Inline” means a remote screenshot image is embedded above; “official PDF figure link” means the guide's screenshot remains inside the linked PDF because no stable direct image URL was exposed; “guide link” is still a visual research task. The evidence column never says a screen is implemented merely because its original reference exists.
