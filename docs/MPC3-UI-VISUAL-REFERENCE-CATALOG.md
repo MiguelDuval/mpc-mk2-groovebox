@@ -481,18 +481,20 @@ This index covers 82 screen and sub-screen contexts from the MPC Standalone user
 
 ---
 
-# 10. Explicit remaining visual-research gaps
+# 10. Exact-version screenshot gaps and fallback references
 
-This catalog is substantially expanded, but the following screenshot **source gaps remain open**. They are visible here rather than being hidden behind a vague “all screens documented” claim:
+The visual catalog now contains **38 inline remote screenshot references** and a **82-context index**. Every row in the index links to a relevant page in the legacy MPC hardware manual where that screen/context is documented, and current MPC 3.9 source links are provided wherever available. That provides a concrete place to inspect the screen rather than leaving the context undocumented.
 
-1. **No stable direct image URL found** for 16 Levels and List Edit; the official MPC v3.7 PDF does contain figures for both, linked at PDF pages 75 and 184 above. These should be converted into separately hosted/embedded reference screenshots if a reliable, lawful source is found.
-2. **No stable direct image URL found** for the Looper screen; the official MPC v3.7 PDF figure is linked at page 332.
-3. **Current standalone Gen 1 MPC One / OS 3.9 exact images are still missing** for the full Step Sequencer, full Grid View, several Track Edit tabs, full Pad Mixer, full Preferences categories, Next Sequence without tutorial text overlays, and several dialogs.
-4. **No clean direct capture found** for Arpeggiator, Erase dialog, Keyboard Control/Touch Strip, some MIDI Control subpages and several per-track Track Edit variants.
-5. The browser page's remote screenshots may move or disappear; each embedded image is a source-linked remote reference, not a repository-owned asset. The source and current version must be revalidated before pixel-level acceptance.
+The remaining difference is between *a screenshot reference* and *a clean direct image of the exact target hardware/version*. The following still require a better source:
 
-The next action for any still-unillustrated context is explicit: locate an official/public image whose URL is usable, capture it from actual MPC One/One+ hardware with permission, or retain a named gap with a link to the exact page in the official manual. **Do not replace a missing screenshot with an invented mock-up and present it as an original MPC capture.** A separate exact-Gen1 hardware screenshot set is the only way to claim complete visual coverage of every current 3.9 screen and modal.
- 
+1. **No stable standalone image URL** found for the 16 Levels and List Edit figures; the catalog links to the corresponding manual pages and the official v3.7 manual figures.
+2. **No stable standalone image URL** found for the Looper figure; the official v3.7 manual page is linked.
+3. **Exact Gen 1 MPC One running MPC 3.9** captures are not publicly embedded for every screen. The older MPC 2.11.7 user-guide screenshots fill visual-understanding gaps but are labelled as legacy and must not be used as pixel-perfect v3.9 references.
+4. Clean, version-matched images are still missing for some Track Edit parameter tabs, full Pad Mixer, all Preferences categories, Arpeggiator, Erase dialog, Keyboard Control/Touch Strip, and some MIDI Control pages. Use the exact guide links in the table until a direct official screenshot is located.
+5. The public images remain hosted by their sources and may change or disappear. Their source links and version notes are part of the reference; they are not repository-owned captures.
+
+The research objective is to make every screen **addressable and inspectable**, while staying truthful about exact-version visual gaps. This catalog does not pretend an older UI screenshot is a current MPC 3.9 capture, and it does not claim that a screenshot proves our Android implementation exists or passes acceptance. Where a closer source is still missing, a future UI implementation/review must cite the relevant linked manual page and explicitly retain the version-confidence limitation.
+
 ## Source and rights note
 
 Images are remotely embedded from their original public source URLs so the repository records readable references and attribution without bundling Akai screenshots or firmware-extracted artwork into the app. If a publisher changes/removes an image, use the source link and official v3.9 manual to refresh this catalog; do not silently substitute an unrelated MPC Desktop image.
