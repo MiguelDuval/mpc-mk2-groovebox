@@ -25,6 +25,7 @@ PDF_SOURCES = {
     ],
     "mpc-v37": ["https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf"],
     "mpc-v36": ["https://cdn.inmusicbrands.com/Software/36/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.6.pdf"],
+    "mpc-v213-legacy": ["https://manuals.plus/m/98138a9e32b84f6146aee38f6d2efd1ad8996d06f7ec4c5bf91ecb369b27a3c4.pdf"],
     "mpc-v2117-legacy": ["https://device.report/m/99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0.pdf"],
 }
 # Printed pages whose figures were identified in the current v3.9 atlas.
@@ -35,6 +36,139 @@ V39_ATLAS_PAGES = {
     257,260,261,264,266,269,296,297,298,304,305,306,314,316,318,320,328,333,
     334,335,336,337,338,340,
 }
+# Current OS 3.9 manual pages mapped to the 82 named contexts. Pages are
+# rendered in full; large embedded figures are separately cropped when available.
+V39_CONTEXT_PAGES = {}
+def assign_pages(ids, pages):
+    for vis_id in ids.split():
+        V39_CONTEXT_PAGES[vis_id] = list(pages)
+
+assign_pages("VIS-001", [15, 109])
+assign_pages("VIS-002", [57])
+assign_pages("VIS-003", [56, 59])
+assign_pages("VIS-004", [15])
+assign_pages("VIS-005 VIS-006", [133])
+assign_pages("VIS-007", [56])
+assign_pages("VIS-008 VIS-009 VIS-010 VIS-012", [136])
+assign_pages("VIS-011", [139])
+assign_pages("VIS-013", [112])
+assign_pages("VIS-014 VIS-081", [117])
+assign_pages("VIS-015", [109, 197, 203])
+assign_pages("VIS-016 VIS-019 VIS-020", [129, 154])
+assign_pages("VIS-017", [266])
+assign_pages("VIS-018", [261, 266])
+assign_pages("VIS-021 VIS-022 VIS-023", [167])
+assign_pages("VIS-024 VIS-025", [179])
+assign_pages("VIS-026 VIS-027", [184])
+assign_pages("VIS-028", [190])
+assign_pages("VIS-029", [197, 203])
+assign_pages("VIS-030", [257])
+assign_pages("VIS-031", [212])
+assign_pages("VIS-032", [215])
+assign_pages("VIS-033", [254])
+assign_pages("VIS-034", [255])
+assign_pages("VIS-035", [256])
+assign_pages("VIS-036 VIS-037 VIS-038", [269])
+assign_pages("VIS-039 VIS-040 VIS-041 VIS-042", [296, 297, 298])
+assign_pages("VIS-043", [304, 305])
+assign_pages("VIS-044 VIS-045 VIS-046 VIS-047", [140, 141, 142, 143, 144])
+assign_pages("VIS-048 VIS-049", [145, 146, 147, 148])
+assign_pages("VIS-050", [80])
+assign_pages("VIS-051", [81])
+assign_pages("VIS-052", [84])
+assign_pages("VIS-053", [87])
+assign_pages("VIS-054", [318])
+assign_pages("VIS-055", [328])
+assign_pages("VIS-056", [340])
+assign_pages("VIS-057", [151, 152, 153])
+assign_pages("VIS-058", [306, 314])
+assign_pages("VIS-059", [316])
+assign_pages("VIS-060 VIS-061 VIS-062", [333, 334, 335, 336, 337])
+assign_pages("VIS-063", [338])
+assign_pages("VIS-064", [149, 150])
+assign_pages("VIS-065", [60])
+assign_pages("VIS-066", [69])
+assign_pages("VIS-067", [62])
+assign_pages("VIS-068", [63])
+assign_pages("VIS-069", [63, 64])
+assign_pages("VIS-070", [64])
+assign_pages("VIS-071", [65])
+assign_pages("VIS-072", [66])
+assign_pages("VIS-073", [67])
+assign_pages("VIS-074", [68])
+assign_pages("VIS-075", [75])
+assign_pages("VIS-076", [77])
+assign_pages("VIS-077", [78])
+assign_pages("VIS-078", [100])
+assign_pages("VIS-079", [339])
+assign_pages("VIS-080", [60, 69, 87])
+assign_pages("VIS-082", [56, 69, 87, 100])
+
+# Version 2.13 hardware guide: broad supplementary screenshots for actual MPC One
+# / One+ and sibling standalone devices. Never use this guide to override MPC 3.9.
+V213_CONTEXT_PAGES = {}
+def assign_legacy_pages(ids, pages):
+    for vis_id in ids.split():
+        V213_CONTEXT_PAGES[vis_id] = list(pages)
+
+assign_legacy_pages("VIS-001", [134, 139])
+assign_legacy_pages("VIS-002", [134])
+assign_legacy_pages("VIS-003 VIS-004 VIS-007", [91])
+assign_legacy_pages("VIS-005 VIS-006 VIS-044 VIS-045 VIS-046 VIS-047", [293, 298])
+assign_legacy_pages("VIS-008 VIS-009 VIS-010 VIS-012", [270])
+assign_legacy_pages("VIS-011", [273])
+assign_legacy_pages("VIS-013", [139])
+assign_legacy_pages("VIS-014 VIS-081", [147, 156])
+assign_legacy_pages("VIS-015", [156, 223])
+assign_legacy_pages("VIS-016 VIS-019 VIS-020", [134, 139])
+assign_legacy_pages("VIS-017 VIS-018", [176, 177, 178, 179])
+assign_legacy_pages("VIS-021 VIS-022 VIS-023", [162, 167])
+assign_legacy_pages("VIS-024 VIS-025", [181])
+assign_legacy_pages("VIS-026 VIS-027", [266])
+assign_legacy_pages("VIS-028", [221])
+assign_legacy_pages("VIS-029", [223])
+assign_legacy_pages("VIS-030", [231])
+assign_legacy_pages("VIS-031", [234, 235, 236])
+assign_legacy_pages("VIS-032", [238, 242, 249])
+assign_legacy_pages("VIS-033", [262])
+assign_legacy_pages("VIS-034", [263])
+assign_legacy_pages("VIS-035", [264])
+assign_legacy_pages("VIS-036 VIS-038", [188, 191, 195])
+assign_legacy_pages("VIS-037", [202, 205, 208])
+assign_legacy_pages("VIS-039 VIS-040 VIS-041 VIS-042", [274, 277, 279, 280, 281])
+assign_legacy_pages("VIS-043", [282])
+assign_legacy_pages("VIS-048 VIS-049", [288, 290, 291, 292])
+assign_legacy_pages("VIS-050", [111])
+assign_legacy_pages("VIS-051", [336])
+assign_legacy_pages("VIS-052", [405])
+assign_legacy_pages("VIS-053", [112])
+assign_legacy_pages("VIS-054", [310])
+assign_legacy_pages("VIS-055", [312])
+assign_legacy_pages("VIS-056", [283])
+assign_legacy_pages("VIS-057", [185])
+assign_legacy_pages("VIS-058", [315])
+assign_legacy_pages("VIS-059", [331])
+assign_legacy_pages("VIS-060 VIS-061 VIS-062", [327, 328, 329, 330, 331, 332])
+assign_legacy_pages("VIS-063", [325])
+assign_legacy_pages("VIS-064", [506])
+assign_legacy_pages("VIS-065", [317])
+assign_legacy_pages("VIS-066", [92])
+assign_legacy_pages("VIS-067", [95])
+assign_legacy_pages("VIS-068", [95])
+assign_legacy_pages("VIS-069", [96])
+assign_legacy_pages("VIS-070", [96])
+assign_legacy_pages("VIS-071", [97])
+assign_legacy_pages("VIS-072", [98])
+assign_legacy_pages("VIS-073", [99])
+assign_legacy_pages("VIS-074", [99])
+assign_legacy_pages("VIS-075", [107])
+assign_legacy_pages("VIS-076", [109])
+assign_legacy_pages("VIS-077", [110])
+assign_legacy_pages("VIS-078", [129])
+assign_legacy_pages("VIS-079", [334])
+assign_legacy_pages("VIS-080", [317, 319, 92, 99])
+assign_legacy_pages("VIS-082", [91, 92, 99, 112, 190])
+
 SESSION = requests.Session()
 SESSION.headers.update({"User-Agent":"Mozilla/5.0 (compatible; MPC-UI-reference-catalog/1.0)"})
 FAILURES = []
@@ -53,6 +187,8 @@ def classify_pdf_url(url):
         return "mpc-v39"
     if "/software/37/" in u or "v3.7.pdf" in u: return "mpc-v37"
     if "/software/36/" in u or "v3.6.pdf" in u: return "mpc-v36"
+    if "98138a9e32b84f6146aee38f6d2efd1ad8996d06f7ec4c5bf91ecb369b27a3c4" in u:
+        return "mpc-v213-legacy"
     if "99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0" in u:
         return "mpc-v2117-legacy"
     return None
@@ -128,6 +264,8 @@ def collect_pdf_pages(docs):
             key=classify_pdf_url(url); match=PAGE_RE.search(url)
             if key and match: pages[key].add(int(match.group(1)))
     pages["mpc-v39"].update(V39_ATLAS_PAGES)
+    pages["mpc-v39"].update(p for values in V39_CONTEXT_PAGES.values() for p in values)
+    pages["mpc-v213-legacy"].update(p for values in V213_CONTEXT_PAGES.values() for p in values)
     pages["mpc-v37"].update({75,161,184,203,332})
     pages["mpc-v36"].update({203,329})
     return pages
