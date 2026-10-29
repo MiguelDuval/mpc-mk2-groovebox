@@ -203,57 +203,256 @@ The [MPC 3 menu screenshot above](https://www.mpc-tutor.com/assets/mpc-menu-1024
 
 ---
 
-# 8. Full screen/context coverage index
 
-This index mirrors the significant contexts in `MPC3-9-OS-KNOWLEDGE-BASE.md`. “Direct image” means an inline image above shows that context. “Manual/reference only” means the context remains indexed to the official guide but this research did not find a suitable independently hosted direct screenshot for embedding. This is intentional: a missing image is recorded as a research gap rather than hidden.
+# 8. Additional screen captures: sequence, edit, mixer, and performance contexts
 
-| ID | Screen/context | Visual evidence in this catalog | Authoritative next reference / screen contract |
+The following references were found in this pass. Their provenance is explicit: an actual MPC One photograph is labelled as such; an older standalone/MPC2 look or a different MPC model is supplementary, not a pixel-accurate v3.9 target.
+
+## 8.1 Step Sequencer — actual MPC One hardware photo
+
+**Evidence B, photographed MPC One.** The touchscreen shows the 16-step/velocity editing context. The photo is from a public user video/thread and its visible UI is a legacy generation; use it for the screen's basic layout and step/velocity relationship only.
+
+![MPC One Step Sequencer photographed on the hardware](https://img.youtube.com/vi/uuNyLLg-cXs/maxresdefault.jpg)
+
+Source: [MPC One step sequencer video](https://www.youtube.com/watch?v=uuNyLLg-cXs).
+
+**MPC 3.9 reference:** [official v3.9 User Guide](https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf), Step Sequencer and Step Automation sections. The current guide takes precedence for labels, hierarchy, colors, function-bar controls, automation and current feature set.
+
+## 8.2 Sample Edit — Chop and slice editor
+
+**Evidence C, older UI appearance.** This is a real MPC waveform/chop page showing slice markers and the Chop/Program/Zoom action strip. It is useful for understanding the relationship between waveform, slice markers, threshold/manual modes, and lower actions; do not copy the legacy red skin.
+
+![MPC waveform Chop mode and slice markers](https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/M/MPCBasics_07-NswMBI0X4nQgTah8CIBrwSGbQ5xLHYQO.jpg)
+
+Source: [Sound On Sound — Akai MPC Basics, Sample Edit section](https://www.soundonsound.com/techniques/akai-mpc-basics?page=2).
+
+## 8.3 Sampler — record / input monitor
+
+**Evidence C, older UI appearance.** The screen shows an actual record workspace with a sample-length counter, RECORD action, “Waiting for signal” state and PAD TAP / PAD HOLD / CANCEL choices.
+
+![Standalone MPC Sampler — record waiting for signal](https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/S/SampleSlicing_02-on3yRqdzNYbySPlbD3x43Dr_yKlI1RKX.jpg)
+
+Source: [Sound On Sound — Sample Slicing: Beatmaking With Hardware](https://www.soundonsound.com/techniques/sample-slicing-beatmaking-hardware).
+
+## 8.4 Next Sequence — actual MPC One
+
+**Evidence B, actual MPC One photographed during a tutorial.** The screen shows the Next Sequence tile grid on hardware. Japanese instructional text overlays the photo and reduces clarity, so treat it as a workflow reference, not a clean design plate.
+
+![MPC One Next Sequence grid photographed on hardware](https://cdn-ak.f.st-hatena.com/images/fotolife/M/Marronfieldsproduction/20221025/20221025034745.jpg)
+
+Source: [Marronfieldsproduction — MPC One Next Seq & Song walkthrough](https://marronfieldsproduction.hatenablog.com/entry/2022/10/25/063000).
+
+**Current v3.9 reference:** use the official guide's Next Sequence section to verify current controls, pad assignments, selected/queued sequence state, Next Bar, Sudden and Hold.
+
+## 8.5 Song Mode — sequence playlist
+
+**Evidence C, older MPC UI.** This direct image shows the Song playlist at left and sequence tiles at right. Song Mode is a separate workflow from Next Sequence: it arranges sequences into a fixed song structure rather than queueing a live next sequence.
+
+![MPC Song Mode — sequence playlist and sequence tiles](https://www.mpc-tutor.com/assets/song-mode-playlist-1024x640.png)
+
+Source: [MPC-Tutor — MPC X, MPC One & MPC Live: essential tips](https://www.mpc-tutor.com/mpc-x-mpc-live-6-tips-shortcuts/).
+
+## 8.6 Channel Mixer — current MPC 3 I/O / monitoring panel
+
+**Evidence A, official Akai support screenshot for the MPC 3 family.** This screenshot shows the channel-strip grid and I/O-related track state: Monitor, MIDI input, Send To and audio output, with Volume, Pan & Volume, Sends, Effects, I/O and Settings tabs. It is the current-generation mixing reference, although the screenshot is not explicitly captured on Gen 1 MPC One.
+
+![MPC 3 Channel Mixer I/O, monitoring, sends and outputs](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69192726532/original/_w6tJ-s7R-DyxGc1avFs6s8caU_uAq9B7Q.png?1780034221=)
+
+Source: [Akai support — Multi MIDI controller workflow](https://support.akaipro.com/en/support/solutions/articles/69000864879-akai-pro-mpc-series-setting-up-multiple-midi-controllers-in-a-project).
+
+## 8.7 XL Channel Strip — I/O selector / output routing
+
+**Evidence A, official Akai support MPC 3 screenshot.** This image shows the Main Track/Arrangement surface together with the left XL Channel Strip region and an output selector dialog.
+
+![MPC 3 Main and XL Channel Strip output selector](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69154227724/original/W4p-2vkRxIavIh5ZOK9e8ZvP0fZ0iVPVxA.png?1745834845=)
+
+Source: [Akai support — Output Routing Basics](https://support.akaipro.com/en/support/solutions/articles/69000868280-akai-pro-mpc-series-output-routing-basics).
+
+## 8.8 Pad Mixer — pad routing matrix
+
+**Evidence C, older routing screen hosted by official Akai support.** This shows the pad grid with per-pad outputs and bottom tabs for Level, Pan, Mute, Send, Insert and Route. It is not the complete current MPC 3 Pad Mixer; use it only for the relationship between pad selection, route and per-pad mix parameters.
+
+![MPC pad mixer routing matrix — older visual, not MPC 3.9 geometry](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69136157082/original/dgGihnRKJXr_dvqLa512k-gmoref-QAe_Q.JPG?1732159501=)
+
+Source: [Akai support — Output Routing Basics](https://support.akaipro.com/en/support/solutions/articles/69000868280-akai-pro-mpc-series-output-routing-basics).
+
+## 8.9 MIDI / Sync Preferences
+
+**Evidence B, photographed MPC One.** This real hardware image shows Preferences → MIDI / Sync, with input/output ports and per-port enable flags. Its exact firmware appearance is older, but the settings taxonomy is relevant.
+
+![MPC One Preferences — MIDI / Sync ports](https://eu5.dh-cdn.net/uploads/db8181/original/3X/7/3/739f6d1d05b21c98e4cf4c2e8e8a9b23304aaad3.jpeg)
+
+Source: [Elektronauts — MPC One MIDI/SYNC Preferences discussion](https://www.elektronauts.com/t/mpc-thread-mpc-live-mpc-x-mpc-one-part-2/173139?page=142).
+
+A clean public screenshot of the same category is also available at [MPC-Tutor — MIDI/Sync preferences](https://www.mpc-tutor.com/mpc-midi-tutorial-connecting-midi-controllers/). The current v3.9 guide governs exact options and geometry.
+
+## 8.10 Metronome / Click dialog
+
+**Evidence A, official Akai MPC 3 screenshot.** The dialog shows Count-In, Enable, Rate, Sound, Level and Output. This is a dedicated modal dialog within the persistent shell and deserves an acceptance scenario independent of Main layout.
+
+![MPC 3 Click/Metro dialog](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69183338703/original/C9jY-JC1NZ48_45iDBSAU8uYXQh9eRCcMA.png?1770305858=)
+
+Source: [Akai support — Editing the Count-In and Metronome](https://support.akaipro.com/en/support/solutions/articles/69000857890-akai-pro-mpc-series-editing-the-count-in-and-metronome).
+
+## 8.11 XYFX
+
+**Evidence B, MPC Live photographed.** This shows the standalone XYFX touch grid with a movable XY position and effect-parameter context. It is another MPC model and an earlier OS appearance; use it for the interaction model (XY plane + destination + latch), not Gen 1 MPC One pixel geometry.
+
+![MPC standalone XYFX touch grid](https://heikkisiltala.net/wiki/_media/images/akai_mpc_live/effectsxypad02.jpg?tok=792f2b&w=800)
+
+Source: [Heikki Siltala — MPC Live effects and XY Pad](https://heikkisiltala.net/wiki/en/music/akai_mpc_live_effects).
+
+## 8.12 Program Edit — Samples / layer parameters
+
+**Evidence C, earlier MPC visual appearance.** These screenshots show the selected Pad and sample-layer editing area, including layer rows, semitone/fine tuning and the Samples tab. They are supplementary structure examples, not a complete current Track Edit contract.
+
+![MPC Program Edit Samples page — layer list](https://www.mpc-tutor.com/assets/prog5.png)
+
+![MPC Program Edit — per-pad sample-layer parameters](https://www.mpc-tutor.com/assets/offset2.png)
+
+Source: [MPC-Tutor — Creating the Clap from Hell](https://www.mpc-tutor.com/mpc-x-mpc-live-tutorial-clap-from-hell/) and [Standalone MPC Cycle Kit tutorial](https://www.mpc-tutor.com/mpc-cycle-kit-chopped-break/).
+
+## 8.13 Pad Color / pad assignment
+
+**Evidence B, real MPC One screen photo.** This reference shows a 4×4 pad assignment grid, pad names and a palette for selecting colors. It belongs to Pad Color / pad configuration workflows, not to the Main workspace.
+
+![MPC One pad color / sample assignment grid](https://cdn.mos.cms.futurecdn.net/oC9sLkM9L8r7nj9abQQTsj.jpg)
+
+Source: [MusicRadar — 10 ways to get more out of your MPC hardware](https://www.musicradar.com/how-to/10-ways-to-get-more-out-of-your-MPC).
+
+## 8.14 Q-Link / macro controls
+
+**Evidence C, legacy UI.** Useful to understand the matrix of assignable controls, displayed parameter names and a route to Q-Link Edit. Do not use its color treatment or exact panel arrangement as a current MPC 3.9 target.
+
+![MPC Q-Link parameter overview](https://www.mpc-tutor.com/assets/qlink-2.png)
+
+Source: [MPC-Tutor — MPC X, MPC One & MPC Live essential tips](https://www.mpc-tutor.com/mpc-x-mpc-live-6-tips-shortcuts/).
+
+## 8.15 Save dialog / project save options
+
+**Evidence C, legacy standalone UI.** The Save window shows Project, Project As, Drum Program, Program FX Rack, Sequence, Audio Mixdown and Ableton Live Set. It is a separate modal workflow, not a full representation of every file-picker or confirmation state.
+
+![MPC Save window — project, project as and other save formats](https://www.mpc-tutor.com/assets/save.png)
+
+Source: [MPC-Tutor — MPC Projects](https://www.mpc-tutor.com/mpc-x-mpc-live-projects-lowdown/).
+
+**Official support workflow:** [Saving projects with Auto Save](https://support.akaipro.com/en/support/solutions/articles/69000864617-akai-pro-mpc-series-saving-projects-with-auto-save) and [saving/backing up to external drive](https://support.akaipro.com/en/support/solutions/articles/69000860953-mpc-standalone-the-best-way-to-save-and-back-up-projects-to-an-external-drive).
+
+## 8.16 Official-manual figures for screens without an independent image URL
+
+For several contexts, the official MPC Standalone User Guide includes a screenshot figure, but the figure is bundled inside a PDF and no stable direct image URL was exposed by the public host. These are **linked visual references**, not embedded image files:
+
+- [16 Levels — official MPC Standalone OS v3.7 User Guide, PDF page 75](https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf#page=75). The PDF shows the 16 Levels dialog in Velocity and Tune variants; the guide describes current parameter options.
+- [List Edit — official MPC Standalone OS v3.7 User Guide, PDF page 184](https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf#page=184). The PDF figure shows Arrange/Grid/List navigation, event table, View filter, Timing Correct, Events/Tempo, Insert/Delete, Play and Nudge.
+- [Looper — official MPC Standalone OS v3.7 User Guide, PDF page 332](https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf#page=332). The PDF figure shows input/source, sync, Record To Play/Overdub, output gain, waveform, Export to Track, Clear, Reverse, Replace, Play and Overdub.
+- [Step Sequencer and Step Automation — official MPC Standalone OS v3.9 User Guide](https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf). Search within the official guide for “Step Sequencer” and “Step Automation”; the guide is the authority for the current version.
+- [Track Edit — official MPC Standalone OS v3.9 User Guide](https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf). See Drum Track, Keygroup, Plugin, MIDI, CV and Audio Track subsections; a single screenshot cannot represent all track-specific editor tabs.
+
+These PDF links are included because the screenshots are inside the manual; they are not a claim that those page images are duplicated inline in this Markdown document.
+
+# 9. Full screen/context coverage index
+
+This index covers 82 screen and sub-screen contexts from the MPC Standalone user-guide taxonomy and our repository contract. “Inline” means a remote screenshot image is embedded above; “official PDF figure link” means the guide's screenshot remains inside the linked PDF because no stable direct image URL was exposed; “guide link” is still a visual research task. The evidence column never says a screen is implemented merely because its original reference exists.
+
+| ID | Screen / sub-screen | Available visual reference | Target/version and acceptance note |
 |---|---|---|---|
-| VIS-001 | Main (Sequence + Track/Arrangement) | **Direct image — A** | Official v3.9 guide, Main Mode |
-| VIS-002 | Toolbar / transport status | **Visible in Main images — A/B** | Official v3.9 guide, Toolbar |
-| VIS-003 | XL Channel Strips / I-O | **Direct image — A** | Official support Output Routing Basics; v3.9 guide, Mixer Strips |
-| VIS-004 | Menu / mode launcher | **Direct image — B** | Official v3.9 guide, Menu |
-| VIS-005 | Browser — Places | **Direct image — A** | Official support Browser article; v3.9 guide, Browser |
-| VIS-006 | Browser — Content | **Direct image — A** | Official support Browser article; v3.9 guide, Browser |
-| VIS-007 | Browser — Expansions | **Direct image — A** | Official support Browser article; obey this project's local-first/no upsell decision |
-| VIS-008 | Browser — Sample Assign / sample pool | **Direct image — A** | Official support Browser article; native sample assignment is a separate workflow |
-| VIS-009 | Browser — Options / filters / audition / favourites | **Direct image for Options; article links for the rest — A** | Official support Browser article; separate each preference and state |
-| VIS-010 | Track View | **Direct official image — A (legacy visual skin; use semantics/layout only)** | Official Akai Input Monitoring Explained; current v3.9 guide governs target geometry and labels |
-| VIS-011 | Arrangement / linear timeline | **Sibling-device MPC 3 image — B; Main preview image — A** | Official v3.9 guide, Arrangement; use Gen 1 One layout over wider-device geometry |
-| VIS-012 | Grid View | **Legacy direct image — C** | Official v3.9 guide, Grid View takes precedence |
-| VIS-013 | Step Sequencer | **Manual-only** | Official v3.9 guide, Step Sequencer |
-| VIS-014 | Track Edit — Samples/Layers | **Direct image — A** | Official support Tuning Basics; official v3.9 guide, Track Edit |
-| VIS-015 | Track Edit — Plugin/Keygroup/instrument | **Program/track entry image plus article — A** | Official support Understanding and Loading Programs; v3.9 guide, Program Edit/Track Edit |
-| VIS-016 | Sample Edit — Trim/Chop/Process | **Direct image — B** | MPC-Tutor MPC3+ sample-edit example; official v3.9 guide is authoritative |
-| VIS-017 | Sampler — record/monitor/assign | **Legacy direct image — C** | Official v3.9 guide, Sampler/Sampling |
-| VIS-018 | Pad Mixer | **XL strip routing reference — A; not a full Pad Mixer screen** | Official v3.9 guide, Pad Mixer; confirm all controls have truthful native support |
-| VIS-019 | Channel Mixer | **XL strip/I-O direct image — A; not a full mixer screen** | Official v3.9 guide, Channel Mixer; don't imply full routing/FX capability where backend is reserved |
-| VIS-020 | 16 Levels | **Manual-only** | Official v3.9 guide, 16 Levels; requires its own source-pad/parameter/active-state behavior |
-| VIS-021 | Pad Perform | **Direct image — A** | Official support Remap the MPC Pads; dedicated context, not Main |
-| VIS-022 | Next Sequence | **Manual-only** | Official v3.9 guide, Next Sequence; verify current/queued sequence and launch-state behavior |
-| VIS-023 | List Edit | **Manual-only** | Official v3.9 guide, List Edit |
-| VIS-024 | Project / New / Open / Save / Save As | **Preferences image plus Menu reference — B** | Official v3.9 guide, Project; exact picker round-trip and cancellation states matter |
-| VIS-025 | Preferences | **Direct image — B (older layout)** | Official v3.9 guide, Preferences; use only as a category-map clue |
-| VIS-026 | MIDI / Control settings | **Manual-only** | Official v3.9 guide, Audio/MIDI/Sync and controller configuration sections |
-| VIS-027 | Looper | **Manual-only** | Official v3.9 guide, Looper |
-| VIS-028 | XY / XYFX / performance automation | **Automation visual — B; no direct current XYFX screen** | Official v3.9 guide, XY Pad/XYFX and automation; distinguish controller/macro controls from standalone desktop plugin UI |
-| VIS-029 | Sounds / preset browsing | **Track/Program entry image plus official loading guide — A** | Official support Understanding and Loading Programs; product decision still excludes branded cloud/subscription upsell destinations |
-| VIS-030 | Dialogs: track type, timing correct, project/file pickers, destructive confirmation | **Not one single screen; see official guide** | Capture/validate each dialog as a state of its owning context; never infer all dialogs from the parent screen |
+| VIS-001 | Main overview: Sequence + Track/Arrangement | Inline A/B images | Official v3.9 guide, Main Mode. Sequence and Track context must share the workspace. |
+| VIS-002 | Toolbar / project / counter / transport | Inline Main images A/B | Official v3.9 guide, Toolbar; keep transport state persistent through navigation. |
+| VIS-003 | Pull-Down Menu / status controls | Official guide reference | Official v3.9 guide, Pull-Down Menu. Exact current panel image still not separately embedded. |
+| VIS-004 | Five shortcut rail | Inline Main/XL images A | Exactly five configurable destinations; no retired persistent seven-page rail. |
+| VIS-005 | XL Channel Strip, Main context | Inline A | Main and XL strip must remain one coherent shell. |
+| VIS-006 | XL Channel Strip — I/O / output chooser | Inline A | Do not imply the full mixer/routing implementation is complete solely from this visual. |
+| VIS-007 | Menu / mode launcher | Inline B; additional mode-tile overview | Use current v3.9 guide for exact inventory, not legacy tile appearance. |
+| VIS-008 | Browser — Places | Inline A | Current local storage and provider states must be truthful. |
+| VIS-009 | Browser — Content | Inline A | Current categories and empty/error states need separate acceptance. |
+| VIS-010 | Browser — Expansions | Inline A | Product decision excludes subscription upsells/cloud service integration. |
+| VIS-011 | Browser — Sample Assign / Sample Pool | Inline A | Assignment is distinct from browsing and must update real Pad/Layer state. |
+| VIS-012 | Browser — Options / filters / favourites / audition | Inline Options + source links | Each preference/state needs its own test, not just dialog visibility. |
+| VIS-013 | Main Sequence Select / sequence fields | Inline Main A/B | Official v3.9 Main; Sequence changes must preserve selected Track and transport. |
+| VIS-014 | Main Track fields / Program Select | Inline Main + official Program article | Selected Track is authoritative; Program must belong to that Track. |
+| VIS-015 | Main Track sample / waveform / layer context | Inline Main A | No permanent Android 4×4 performance pad grid in canonical Main. |
+| VIS-016 | Main Arrangement preview / switch | Inline Main A and MPC 3-family B | Sibling view of same Sequence/Track, not a separate state machine. |
+| VIS-017 | Track View overview / I/O / Monitor | Inline official A (older appearance) | Shift+Main; Monitor/REC/selection/Back need functional verification. |
+| VIS-018 | Track View — group / track states | Official manual link | Exact current screenshot not separately hosted; use Track View chapter. |
+| VIS-019 | Arrangement — timeline / loop / playhead | Inline Main A and sibling MPC 3 B | Distinguish screen geometry for Gen 1 One from wider models. |
+| VIS-020 | Arrangement — editing placements / event menu | Official guide link + Main preview | Current project implements a subset; don't equate pattern-event editing with complete Linear Arranger coverage. |
+| VIS-021 | Grid View — Drum track / note editing | Legacy inline C | Official v3.9 Grid View is authority for full-color Drum Grid. |
+| VIS-022 | Grid View — Audio track | Official v3.9 guide link | Different visual/data contract from Drum grid. |
+| VIS-023 | Grid View — velocity / automation lanes | Legacy inline C / Chop visual as related context | Note editing and automation are separate lane states and require separate acceptance. |
+| VIS-024 | Step Sequencer — 16 steps / velocity | Inline B, actual One photo (legacy screen) | Official v3.9 guide supersedes old skin for current controls. |
+| VIS-025 | Step Sequencer — step automation | Official v3.9 guide link | Must expose actual parameter selection and step values. |
+| VIS-026 | List Edit — Events table | Official v3.7 PDF figure link | PDF p.184; screenshot is linked within the guide, not duplicated inline. |
+| VIS-027 | List Edit — Tempo events | Official manual link | Separate Tempo view and mutation semantics. |
+| VIS-028 | Track Edit — Drum / Global | Official guide + legacy Program Edit example | Verify current terminology and supported domain controls. |
+| VIS-029 | Track Edit — Drum / Samples / Layers | Inline official A + legacy inline C | Eight layer indicators, sample region and actual selected Layer state. |
+| VIS-030 | Track Edit — Drum / Envelopes | Official guide + related legacy Program Edit visual | ADSR changes must hit actual sampler state. |
+| VIS-031 | Track Edit — LFO / Modulations / Effects / Mod Matrix / Utilities | Official v3.9 guide link | Separate tabs; do not use a single Samples screenshot to claim these are complete. |
+| VIS-032 | Track Edit — Keygroup | Official v3.9 guide link | Keygroup has a different parameter layout from Drum Track. |
+| VIS-033 | Track Edit — Plugin | Official Program article / v3.9 guide | Only display real instrument parameters where supported. |
+| VIS-034 | Track Edit — MIDI | Official v3.9 guide link | Expose truthful port/channel data, not fake instrument controls. |
+| VIS-035 | Track Edit — CV | Official v3.9 guide link | Reference behavior; native implementation capability must be stated separately. |
+| VIS-036 | Sample Edit — Trim / region / loop | Inline B/C | Current v3.9 labels and boundaries override old visuals. |
+| VIS-037 | Sample Edit — Chop / slice / threshold | Inline C | Markers, slice assignment, threshold/manual and conversion are separate operations. |
+| VIS-038 | Sample Edit — Pad mode / assignments | Official manual link + actual One trim photo | Assignment must preserve true sample and pad identity. |
+| VIS-039 | Sampler — record / waiting for signal | Inline C | Record, Stop, Monitor, Threshold and destination are actual state, not decorative. |
+| VIS-040 | Sampler — Slice | Official v3.9 guide link | Distinct sampler workflow; verify its own controls. |
+| VIS-041 | Sampler — Pad Tap | Official v3.9 guide link | Separate record-trigger mode. |
+| VIS-042 | Sampler — Pad Hold | Official v3.9 guide link | Separate record-trigger mode. |
+| VIS-043 | Sampler — Auto Sampler | Official v3.9 guide link | Dedicated workflow; no direct screenshot found in this pass. |
+| VIS-044 | Channel Mixer — Volume / Pan & Volume | Inline official MPC 3 A | Exact channel categories and current selected strip matter. |
+| VIS-045 | Channel Mixer — Sends | Inline official MPC 3 A | Routing/effects capability remains limited by the project's actual backend. |
+| VIS-046 | Channel Mixer — Effects | Inline official MPC 3 A | Effects insert/return semantics must be genuine or clearly unavailable. |
+| VIS-047 | Channel Mixer — I/O / Monitoring / Route | Inline official MPC 3 A | Official screenshot includes Monitor, MIDI In, Send To and Audio Out fields. |
+| VIS-048 | Pad Mixer — Volume / Pan & Volume | Inline C (older) + official routing image | No exact full-screen v3.9 Pad Mixer capture located. |
+| VIS-049 | Pad Mixer — Sends / Effects / I/O | Inline C (older routing) | Do not imply complete per-pad FX/routing support from a routing-only screenshot. |
+| VIS-050 | 16 Levels — Velocity / Tune / Filter / Layer / etc. | Official v3.7 PDF figure link | PDF p.75 shows Velocity/Tune variants; current 3.9 guide is final authority. |
+| VIS-051 | Pad Perform — Notes / Chords / Chromatic Chords / Progressions / Custom | Inline official A + inline legacy C | A separate performance context, not part of Main. Current mapping must show how physical pads are interpreted. |
+| VIS-052 | Arpeggiator | Official v3.9 guide link | No clean direct screenshot found in this pass. |
+| VIS-053 | Erase context/dialog | Official v3.9 guide link | Destructive confirmation and target scope are separate modal states. |
+| VIS-054 | Next Sequence — sequence pad map / Next Bar / Sudden / Hold | Inline B actual One photo with overlay + official guide link | Screenshot quality is limited; current guide defines current state feedback. |
+| VIS-055 | Song Mode — playlist and sequence pads | Inline C | Separate from Next Sequence queueing. |
+| VIS-056 | Looper — waveform / Play / Overdub / Replace / Export | Official v3.7 PDF figure link | PDF p.332; not embedded independently because public host exposes the image only inside the PDF. |
+| VIS-057 | XYFX — XY plane / destination / latch | Inline B, MPC Live | Cross-device/older UI; current v3.9 controls remain authoritative. |
+| VIS-058 | Q-Link Edit — learn / edit assignment | Inline legacy Q-Link overview + official guide link | A macro overview does not replace the per-assignment editor reference. |
+| VIS-059 | XY Pad / Crossfader | Inline XYFX visual as related context; official guide link | Distinguish XY macro pad from standalone XYFX mode. |
+| VIS-060 | MIDI Control Mode — pads | Official v3.9 guide link | Controller-mapping context, not a DAW UI. |
+| VIS-061 | MIDI Control Mode — buttons | Official v3.9 guide link | Button mappings and feedback require separate validation. |
+| VIS-062 | MIDI Control Mode — Q-Link knobs / XY Pad | Official v3.9 guide link | Current assignments and feedback must reflect live state. |
+| VIS-063 | Pad Color / pad mapping | Inline B actual One photo + legacy pad-map table | Pad configuration view is distinct from Main's selected-pad waveform. |
+| VIS-064 | Sounds Mode — Favourites / Setlists | Official v3.9 guide link | Product scope excludes branded cloud/subscription upsell destinations. |
+| VIS-065 | Project — New Project / Open / Save / Save As | Inline legacy Save modal and Project Load/Save preferences | Current OS 3.9 file picker, cancellation and restore behavior must be independently accepted. |
+| VIS-066 | Save Window — project / project as / export formats | Inline C | Dialog is separate from project lifecycle logic. |
+| VIS-067 | Preferences — Audio Device | Official v3.9 guide link | Current settings and audio routing must be truthful to Android backend. |
+| VIS-068 | Preferences — Audio / Export | Official v3.9 guide link | Separate category; no direct image found. |
+| VIS-069 | Preferences — MIDI / Sync | Inline B actual One photo + clean third-party capture | Old appearance; current v3.9 option names/semantics prevail. |
+| VIS-070 | Preferences — Hardware | Official v3.9 guide link | No clean direct screenshot found. |
+| VIS-071 | Preferences — Sequencer | Official v3.9 guide link | No clean direct screenshot found. |
+| VIS-072 | Preferences — Project Defaults | Official v3.9 guide link | New-project defaults must remain consistent. |
+| VIS-073 | Preferences — Project Load/Save | Inline B older screenshot | Autosave, template, load and save settings are distinct. |
+| VIS-074 | Preferences — General / network / account-related entries | Official v3.9 guide link | Exclude subscription upsells as specified by product policy. |
+| VIS-075 | Timing Correct dialog | Official v3.9 guide link | Quantization dialog and global enable state must be separately represented. |
+| VIS-076 | Metronome / Click dialog | Inline official MPC 3 A | Count-In, Enable, Rate, Sound, Level and Output. |
+| VIS-077 | Automation — Global / Track / Program | Official guide + inline legacy Q-Link/XY related visual | Read/Write/off state is not the same as the parameter editor. |
+| VIS-078 | Audio Mixdown / export | Official v3.9 guide link | Export dialogs and result paths are separate from project Save. |
+| VIS-079 | Keyboard Control / Touch Strip | Official v3.9 guide link | Hardware-specific contexts; don't imply controller equivalence without evidence. |
+| VIS-080 | Project import dialog / Keep-or-Discard / destructive confirmations | Official v3.9 guide and support links | All modal exits must preserve the expected project/selection state. |
+| VIS-081 | Track Type selector / Program-specific Main sections | Inline Main and Program references | Current target track types must match official MPC 3.9 vocabulary. |
+| VIS-082 | Dialogs: selectors, numeric entry, routing, effects, picker errors | Related screenshots above; no single image represents this set | Treat as context-specific dialog inventory, not one generic modal. |
 
 ---
 
-# 9. Explicit remaining visual-research gaps
+# 10. Explicit remaining visual-research gaps
 
-These items are **not silently considered complete**. The research found official guide coverage, but did not find a directly embeddable, independently hosted screenshot for every one:
+This catalog is substantially expanded, but the following screenshot **source gaps remain open**. They are visible here rather than being hidden behind a vague “all screens documented” claim:
 
-- A standalone MPC One Gen 1 / OS 3.9 screenshot of the full Step Sequencer.
-- Exact OS 3.9 full-screen Grid View and Track View captures, separate from Main's preview.
-- Full-screen Pad Mixer and Channel Mixer captures with the complete parameter/tab surface.
-- Dedicated 16 Levels, Next Sequence, Looper, XYFX, List Edit and MIDI/Control screens.
-- Every modal/dialog state, including current Project picker and destructive-confirmation variants.
+1. **No stable direct image URL found** for 16 Levels and List Edit; the official MPC v3.7 PDF does contain figures for both, linked at PDF pages 75 and 184 above. These should be converted into separately hosted/embedded reference screenshots if a reliable, lawful source is found.
+2. **No stable direct image URL found** for the Looper screen; the official MPC v3.7 PDF figure is linked at page 332.
+3. **Current standalone Gen 1 MPC One / OS 3.9 exact images are still missing** for the full Step Sequencer, full Grid View, several Track Edit tabs, full Pad Mixer, full Preferences categories, Next Sequence without tutorial text overlays, and several dialogs.
+4. **No clean direct capture found** for Arpeggiator, Erase dialog, Keyboard Control/Touch Strip, some MIDI Control subpages and several per-track Track Edit variants.
+5. The browser page's remote screenshots may move or disappear; each embedded image is a source-linked remote reference, not a repository-owned asset. The source and current version must be revalidated before pixel-level acceptance.
 
-The official v3.9 PDF is linked at the start of this document for each manual-only row. These gaps should be closed by locating a direct official image, recording a screenshot from an actual MPC One/One+ with permission, or explicitly retaining a labelled reference gap. **Do not replace a missing screenshot with an invented mock-up and present it as an original MPC capture.**
-
+The next action for any still-unillustrated context is explicit: locate an official/public image whose URL is usable, capture it from actual MPC One/One+ hardware with permission, or retain a named gap with a link to the exact page in the official manual. **Do not replace a missing screenshot with an invented mock-up and present it as an original MPC capture.** A separate exact-Gen1 hardware screenshot set is the only way to claim complete visual coverage of every current 3.9 screen and modal.
+ 
 ## Source and rights note
 
 Images are remotely embedded from their original public source URLs so the repository records readable references and attribution without bundling Akai screenshots or firmware-extracted artwork into the app. If a publisher changes/removes an image, use the source link and official v3.9 manual to refresh this catalog; do not silently substitute an unrelated MPC Desktop image.
