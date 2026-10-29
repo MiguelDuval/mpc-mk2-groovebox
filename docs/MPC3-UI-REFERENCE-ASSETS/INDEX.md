@@ -9,7 +9,7 @@ Repository-local visual reference gallery. Every VIS entry is mapped to current 
 - manifest.json: source URLs, local paths, file hashes/sizes, extraction status and failures.
 - These are documentation/research references and are not packaged into Android app assets or APK.
 
-Materialized inventory: 346 source-image records; 325 downloaded; 21 failed; 167 PDF page captures; 195 embedded-figure crops.
+Materialized inventory: 335 source-image records; 314 downloaded; 21 failed; 242 PDF page captures; 271 embedded-figure crops.
 
 ## Screen and sub-screen gallery
 
@@ -1730,84 +1730,84 @@ Original image URL: https://support.akaipro.com/en/support/solutions/articles/69
 
 ![Thumbnail Image](images/thumbnail-image-f1ef03407081.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/dsp_1_6O7THqw62B.png?updatedAt=1628533399598
 
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-30f0d050ff3b.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/amp2_1_JBRjny5jw.png?updatedAt=1628533399612
 
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-c997546a45df.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/warm-compressor_fQVc6MIGa.png?updatedAt=1628533399135
 
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-096282178b36.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/preamp-min_76G1cxneI.png?updatedAt=1628533398305
 
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-bfd8b9b277e7.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/code_1_cRZ_zEVFyv_meGE8DnSz.webp
 
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-1ea68c4abaf6.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/stands_dWCqyqLVd.webp
 
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-9cb8d51c7da7.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/code_1_cRZ_zEVFyv.png
 
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-23ac2d7da4de.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/ispressor_SvLWmAgHQ.png?updatedAt=1628533398995
 
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-47a1432d9443.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/solution_1_uhmfUIET3.png
 
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-73ab78b4ba0f.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/computers_2_uE62GbIG3.png?updatedAt=1628533399034
 
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-000e23e39856.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/ed466kvsaa/BUNDLE-1_FQ3xewnFsk.webp
 
 ### Thumbnail Image
 
 ![Thumbnail Image](images/thumbnail-image-840f5265172e.png)
 
-Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
+Source page: https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html](https://ragtime.online/akai-professional-mpc-one-standalone-sampler-and-sequencer.html
 Original image URL: https://ik.imagekit.io/n5sapb3cshf/CATEGORIES/cla_0bS98IZfN.png
 
 ### Reference image from Akai Pro MPC Series | Understanding and Loading Programs : Akai Professional
@@ -1946,83 +1946,6 @@ Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/att
 
 Source page: https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions
 Original image URL: https://support.akaipro.com/en/support/solutions/articles/69000868537-akai-pro-mpc-live-iii-frequently-asked-questions/hit
-
-### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
-
-![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-7153486b8830.png)
-
-Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
-Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169450663/original/WW3G5zNXMiLOcRBnKNpCjBfLSguzcqnnlg.png?1758037366
-
-### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
-
-![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-e70bc142c754.png)
-
-Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
-Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451017/original/KpggymAm0m0NtrzLqpV8iqc3XBn2wtOtCg.png?1758037500
-
-### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
-
-![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-ffabddf80d7b.png)
-
-Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
-Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451259/original/I39i5fyZ9zYIUKtujLbmUjUivDOYoXVgDQ.png?1758037588
-
-### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
-
-![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-e80a6f544ecf.png)
-
-Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
-Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69177744398/original/R6fDSHLgtE4UVwxzJ4a_959gXIugZFEYaQ.png?1764773423
-
-### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
-
-![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-740dbbc827f4.png)
-
-Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
-Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69177744645/original/cwe8GrtmLxpgo6xIHlrpMK65eu7ujKv9Ig.png?1764773498
-
-### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
-
-![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-2ffd2d8036e0.png)
-
-Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
-Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451636/original/Sw--UACB1ghPEOXFz4riHAEixm53bct-Ww.png?1758037703
-
-### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
-
-![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-fda8befaaca0.png)
-
-Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
-Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169451634/original/w5Cnr0Q9y5eAG0FTFzEbsVAjP0qwQQmOag.png?1758037703
-
-### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
-
-![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-e6660bf04e84.png)
-
-Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
-Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169455151/original/wvOUFEjEUrBvJItqOJhsBUz_EXlYS4SlnQ.png?1758038820
-
-### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
-
-![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-92edea1f2475.png)
-
-Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
-Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169455183/original/nb5qBEsarsiJyCJtNlnxqibPzKjeAadUqw.png?1758038836
-
-### Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional
-
-![Reference image from MPC Series | Loading MPC2 Projects in MPC3 : Akai Professional](images/reference-image-from-mpc-series-loading-mpc2-projects-in-mpc-df82be8c0e16.jpg)
-
-Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
-Original image URL: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69169455500/original/PYGbNOWiEmqbzL42lX0uqbnHs_RAySoccw.jpeg?1758038937
-
-### Article views count
-
-![Article views count](images/article-views-count-238a69d06b46.gif)
-
-Source page: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3
-Original image URL: https://support.akaipro.com/en/support/solutions/articles/69000873048-mpc-series-loading-mpc2-projects-in-mpc3/hit
 
 ### MPC 3 Main — sequence, track, arrangement preview and function bar
 
