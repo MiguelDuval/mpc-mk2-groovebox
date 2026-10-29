@@ -1,10 +1,12 @@
 # MPC UI Reference Assets
 
-Documentation-only visual reference files for reconstructing the MPC UI. They are not copied into the Android app or APK.
+Repository-local reference images for reconstructing MPC One / MPC OS UI. This folder is documentation-only and is not copied into Android app assets or APK.
 
-- INDEX.md: gallery grouped by VIS-001 through VIS-082 and downloaded direct images.
-- images/: local copies of source URLs cited in project documentation.
-- pdf/: page captures and large figure crops from referenced manuals.
-- manifest.json: source provenance, file hashes, status and failures.
+- INDEX.md: gallery grouped by all VIS-001 through VIS-082 contexts and all downloaded/extracted source images.
+- images/: local copies of screenshots from the Markdown index and relevant cited pages.
+- pdf/mpc-v39/: current OS 3.9 manual page captures and detected embedded figure crops.
+- pdf/mpc-v213-legacy/: supplemental legacy standalone MPC hardware guide v2.13 page captures.
+- pdf/: other cited MPC manuals (v3.6/v3.7) used as secondary historical evidence.
+- manifest.json: source provenance, local paths, hashes, status, render inventory and failures.
 
-Original source links and device/version caveats remain in the catalog. A screenshot is not proof that a corresponding Android screen is implemented.
+Original source links and firmware/device caveats remain in the catalog. A page capture is not described as a whole-screen UI screenshot unless the page actually shows that screen.
