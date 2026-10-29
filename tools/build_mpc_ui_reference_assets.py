@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Vendor cited MPC UI screenshots and render relevant PDF pages for offline use."""
 from __future__ import annotations
-import argparse, hashlib, html, json, os, re, sys, time
+import argparse, hashlib, html, json, os, re, sys, time, tempfile
 from pathlib import Path
 from urllib.parse import urldefrag, urlparse
 import fitz
@@ -133,7 +133,7 @@ def collect_pdf_pages(docs):
     return pages
 
 def download_pdf(root, key):
-    folder=root/ASSET_REL/"_source_pdfs"; folder.mkdir(parents=True,exist_ok=True)
+    folder=Path(tempfile.gettempdir())/"mpc-ui-reference-source-pdfs"; folder.mkdir(parents=True,exist_ok=True)
     target=folder/f"{key}.pdf"
     if target.exists() and target.stat().st_size>100_000:
         try:
@@ -274,11 +274,11 @@ def build_gallery(root,image_manifest,pdf_manifest):
         md.extend([f'<a id="{vis.lower()}"></a>',f"### {vis} — {row['title']}","",f"**Evidence:** {row['evidence']}",""])
         found=[]
         for key,page in pages:
-            rel=(ASSET_REL/"pdf"/key/f"page-{int(page):03d}.jpg").as_posix()
+            rel=(Path("MPC3-UI-REFERENCE-ASSETS")/"pdf"/key/f"page-{int(page):03d}.jpg").as_posix()
             if rel in row["row"]: found.append((key,int(page),rel))
         if found:
             for key,page,rel in sorted(set(found)):
-                md.extend([f"**Stored page:** {key}, printed PDF page {page}.","",f"![{vis} PDF page {page}](../{rel})",""])
+                md.extend([f"**Stored page:** {key}, printed PDF page {page}.","",f"![{vis} PDF page {page}](pdf/{key}/page-{page:03d}.jpg)",""])
                 cropdir=assets/"pdf"/key/"figures"
                 if cropdir.exists():
                     for crop in sorted(cropdir.glob(f"page-{page:03d}-figure-*.jpg")):
