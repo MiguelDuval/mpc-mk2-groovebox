@@ -11,6 +11,8 @@ Canonical contract: docs/MPC3-UI-MIGRATION-MASTER-SPEC.md
 
 This is the durable research map for future sessions. It records published MPC3 information architecture, routes, control semantics, current implementation status and known gaps. It does not copy Akai artwork, firmware, source code or proprietary resources.
 
+**Visual screenshot archive:** [Open the local 82-context screenshot gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md), [image/PDF extraction manifest](MPC3-UI-REFERENCE-ASSETS/manifest.json), and [asset README](MPC3-UI-REFERENCE-ASSETS/README.md). These are repository-local research references only; they are not bundled into the Android application. The corresponding screen-by-screen source catalog is [MPC3-UI-VISUAL-REFERENCE-CATALOG.md](MPC3-UI-VISUAL-REFERENCE-CATALOG.md).
+
 ## Current implementation status override — 2026-10-18
 
 This dated addendum supersedes older Project rows below that say the Project UI/route is absent or RESERVED. The current branch source contains a user-facing Project SAVE, SAVE AS and OPEN route in `MainActivity.java`, wired to the v2 native serializer/loader in `NativeEngine.cpp` and Android Storage Access Framework document intents.
