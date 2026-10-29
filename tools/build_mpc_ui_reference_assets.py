@@ -592,28 +592,36 @@ def add_local_page_column(root,pages,pdf_ready):
     header_idx=next((i for i,line in enumerate(lines) if line.startswith("| ID | Screen / sub-screen |")),None)
     if header_idx is None:
         return
-    had_column="Stored screenshot asset(s)" in lines[header_idx]
-    if not had_column:
-        lines[header_idx]=lines[header_idx][:-1]+" | Stored screenshot asset(s) |"
-        if header_idx+1<len(lines) and lines[header_idx+1].startswith("|---"):
-            lines[header_idx+1]=lines[header_idx+1][:-1]+" |---|"
+
+    header_cells=[cell.strip() for cell in lines[header_idx].strip().strip("|").split("|")]
+    if "Stored screenshot asset(s)" not in header_cells:
+        header_cells.append("Stored screenshot asset(s)")
+    lines[header_idx]="| "+" | ".join(header_cells)+" |"
+    divider_idx=header_idx+1
+    if divider_idx<len(lines) and lines[divider_idx].startswith("|"):
+        lines[divider_idx]="| "+" | ".join("---" for _ in header_cells)+" |"
+
     for i,line in enumerate(lines):
-        if not re.match(r"\|\s*VIS-\d{3}",line):
+        if not re.match(r"\|\s*VIS-\d{3}\b",line):
             continue
-        vis_match=re.search(r"VIS-\d{3}",line)
+        cells=[cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells)<5:
+            # Fail closed: never replace or silently erase a screen name/evidence row.
+            print(f"[table] refusing malformed context row with {len(cells)} cells: {line[:120]}",file=sys.stderr)
+            continue
+        vis_match=re.match(r"(VIS-\d{3})\s*(.*)",cells[0])
         if not vis_match:
             continue
-        vis_id=vis_match.group(0)
-        # Remove the old generated column on repeat runs so updates stay idempotent.
-        if had_column:
-            line=line.rsplit("|",2)[0]+"|"
+        vis_id=vis_match.group(1)
+        # Keep precisely the five authoritative text columns before generating the
+        # local-assets column. This is idempotent and cannot drop screen names.
+        cells=cells[:5]
         found=[]
         candidates=[]
         candidates.extend(("mpc-v39",p) for p in V39_CONTEXT_PAGES.get(vis_id,[]))
         candidates.extend(("mpc-v213-legacy",p) for p in V213_CONTEXT_PAGES.get(vis_id,[]))
         candidates.extend(("mpc-v2112-legacy",p) for p in V213_CONTEXT_PAGES.get(vis_id,[]))
-        # Preserve useful page anchors from this row for non-mapped contexts.
-        for url in PDF_LINK_RE.findall(line):
+        for url in PDF_LINK_RE.findall(cells[4]):
             key=classify_pdf_url(url)
             pm=PAGE_RE.search(url)
             if key and pm:
@@ -628,7 +636,8 @@ def add_local_page_column(root,pages,pdf_ready):
                 found.append(f"[{key} p.{page_no}]({rel.as_posix()})")
         if not found:
             found.append(f"[local gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md#{vis_id.lower()})")
-        lines[i]=line[:-1]+" "+"; ".join(found)+" |"
+        cells.append("; ".join(found))
+        lines[i]="| "+" | ".join(cells)+" |"
     (root/CATALOG).write_text(text[:start]+"\n".join(lines)+"\n"+text[end:],encoding="utf-8")
 
 def build_gallery(root,image_manifest,pdf_manifest,pdf_run_status):
