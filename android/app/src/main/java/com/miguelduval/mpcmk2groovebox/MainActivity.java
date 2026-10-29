@@ -18600,6 +18600,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void runBrowserProjectDataFoldersAudit() {
         if (!uiAuditSmokeMode || destroyed || browserView == null) return;
 
+        // BROW-013 adds PROJECT DATA to the PLACES navigation list. The preceding
+        // Browser audit exercises CONTENT filters, so explicitly select PLACES
+        // before toggling the option and capturing its resulting navigation.
+        final View placesTab = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser PLACES tab");
+        if (placesTab == null || !placesTab.isShown() || !placesTab.isClickable()
+                || !placesTab.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: BROW-013 could not activate PLACES tab");
+            return;
+        }
+
         final View browserOptions = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC Browser Options");
         if (browserOptions == null || !browserOptions.isShown()
