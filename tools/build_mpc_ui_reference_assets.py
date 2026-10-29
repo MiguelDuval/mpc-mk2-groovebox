@@ -256,7 +256,7 @@ def collect_images(docs):
                 entries.append({"doc":doc,"alt":alt,"url":url,"kind":"inline-image"})
     return entries
 
-def collect_source_page_urls(docs):
+def collect_source_page_urls(docs, include_manual_pages=False):
     allow_hosts = {
         "support.akaipro.com", "akaipro.com", "www.akaipro.com",
         "mpc-tutor.com", "www.mpc-tutor.com",
@@ -282,6 +282,11 @@ def collect_source_page_urls(docs):
             host=parts.netloc.lower().split(":")[0]
             if host not in allow_hosts:
                 continue
+            # The 524-page legacy guide is preferred as one PDF when available.
+            # Crawl its individual ManualsLib web pages only as a fallback, because
+            # the page-viewer thumbnails are slow and lower quality than PDF renders.
+            if host in ("manualslib.com","www.manualslib.com") and not include_manual_pages:
+                continue
             if classify_pdf_url(clean) or parts.path.lower().endswith(".pdf"):
                 continue
             if parts.path.lower().endswith((".png",".jpg",".jpeg",".webp",".gif",".svg",".ico")):
@@ -290,11 +295,15 @@ def collect_source_page_urls(docs):
                 continue
             seen.add(clean)
             found.append(clean)
-    manual_base="https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html"
-    manual_pages=sorted({int(page) for page_list in V213_CONTEXT_PAGES.values() for page in page_list})
-    manual_urls=[f"{manual_base}?page={page}" for page in manual_pages]
     ordered=[]
-    for url in manual_urls+found:
+    if include_manual_pages:
+        manual_base="https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html"
+        manual_pages=sorted({int(page) for page_list in V213_CONTEXT_PAGES.values() for page in page_list})
+        manual_urls=[f"{manual_base}?page={page}" for page in manual_pages]
+        for url in manual_urls:
+            if url not in ordered:
+                ordered.append(url)
+    for url in found:
         if url not in ordered:
             ordered.append(url)
     return ordered[:SOURCE_PAGE_LIMIT]
@@ -329,9 +338,9 @@ def is_probable_screenshot(url,alt="",width=0,height=0):
     alt_suggests_visual=any(word in text for word in ("screen","screenshot","mpc","sampler","browser","mixer","sequencer","waveform","pad perform","track edit","preferences"))
     return is_attachment or has_image_suffix or dimension_ok or alt_suggests_visual
 
-def extract_source_page_images(docs):
+def extract_source_page_images(docs, include_manual_pages=False):
     entries=[]
-    pages=collect_source_page_urls(docs)
+    pages=collect_source_page_urls(docs, include_manual_pages)
     seen=set()
     for page_no,page_url in enumerate(pages,1):
         try:
@@ -423,13 +432,13 @@ def is_image_payload(data,ctype):
         return True
     return (ctype or "").lower().startswith("image/")
 
-def download_images(root, docs):
+def download_images(root, docs, include_manual_pages=False):
     outdir = root / ASSET_REL / "images"
     outdir.mkdir(parents=True, exist_ok=True)
     mapping, manifest = {}, []
     entries=collect_images(docs)
     seen={item["url"] for item in entries}
-    for item in extract_source_page_images(docs):
+    for item in extract_source_page_images(docs, include_manual_pages)
         if item["url"] not in seen:
             entries.append(item)
             seen.add(item["url"])
@@ -824,12 +833,13 @@ def main():
     parser.add_argument("--root",default=".")
     root=Path(parser.parse_args().root).resolve()
     docs=read_docs(root)
-    if CATALOG not in docs: raise SystemExit("Catalog missing: "+CATALOG)
+    if CATALOG not in docs:
+        raise SystemExit("Catalog missing: "+CATALOG)
     (root/ASSET_REL).mkdir(parents=True,exist_ok=True)
+
+    # Download/render PDF sources first. If the official/supplemental legacy PDF is
+    # available, do not waste the run crawling 76 low-resolution ManualSlb page pages.
     pages=collect_pdf_pages(docs)
-    image_map,image_manifest=download_images(root,docs)
-    preserve_catalog_inline_images(root,image_manifest)
-    rewrite_remote_images(root,docs,image_map)
     pdf_ready={}; pdf_manifest=[]; pdf_run_status={}
     for key in PDF_SOURCES:
         if not pages.get(key):
@@ -845,16 +855,31 @@ def main():
         used_url=PDF_SOURCES[key][0] if source_url=="cached" else source_url
         pdf_run_status[key]={"status":"downloaded","source_urls":PDF_SOURCES[key],"used_url":used_url,"pages_requested":len(pages[key])}
         pdf_manifest.extend(render_pdf(root,key,pdf_path,pages[key],used_url))
+
+    legacy_pdf_available=pdf_ready.get("mpc-v213-legacy",False) or pdf_ready.get("mpc-v2112-legacy",False)
+    include_manual_pages=not legacy_pdf_available
+    if include_manual_pages:
+        print("[source scan] legacy PDFs unavailable; falling back to page-indexed ManualsLib viewer")
+    image_map,image_manifest=download_images(root,docs,include_manual_pages=include_manual_pages)
+    preserve_catalog_inline_images(root,image_manifest)
+    rewrite_remote_images(docs,image_map,root)
     add_local_page_column(root,pages,pdf_ready)
     append_extracted_images_to_catalog(root,image_manifest)
     build_gallery(root,image_manifest,pdf_manifest,pdf_run_status)
-    report={"image_references_found":len(image_manifest),
+
+    report={
+        "documents":DOCS,
+        "image_references_found":len(image_manifest),
+        "catalog_direct_images_preserved":sum(x.get("kind")=="catalog-inline-image" and x.get("status")=="downloaded" for x in image_manifest),
         "inline_images_downloaded":sum(x.get("status")=="downloaded" for x in image_manifest),
         "inline_images_failed":sum(x.get("status")=="failed" for x in image_manifest),
         "pdf_sources_downloaded":[k for k,v in pdf_ready.items() if v],
         "pdf_sources_failed":[k for k,v in pdf_ready.items() if not v],
         "pdf_pages_rendered":sum(x.get("kind")=="pdf-page" and x.get("status")=="rendered" for x in pdf_manifest),
-        "pdf_figure_crops":sum(x.get("kind")=="pdf-figure-crop" for x in pdf_manifest),"failures":FAILURES}
+        "pdf_figure_crops":sum(x.get("kind")=="pdf-figure-crop" for x in pdf_manifest),
+        "manualslib_fallback_used":include_manual_pages,
+        "failures":FAILURES
+    }
     print("\nREFERENCE ASSET SUMMARY\n"+json.dumps(report,indent=2,ensure_ascii=False))
     return 0 if report["inline_images_downloaded"] or report["pdf_pages_rendered"] else 2
 
