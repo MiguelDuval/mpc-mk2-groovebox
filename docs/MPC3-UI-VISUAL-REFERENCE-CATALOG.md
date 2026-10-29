@@ -446,6 +446,58 @@ Source: [Akai support — Creating and Loading Custom Arp Patterns](https://supp
 Source: [MPC-Tutor — MIDI/Sync Preferences](https://www.mpc-tutor.com/mpc-midi-tutorial-connecting-midi-controllers/). This screenshot is from the older MPC 2.11-era visual skin and is for settings taxonomy only.
 
 
+
+## 8.22 Main / Sequence Edit and destructive-operation dialogs
+
+**Evidence A, official Akai MPC 3 standalone screenshots.** The Sequence Edit menu is not merely a generic confirmation dialog. It contains Erase, Clear All, Clear Events, Trim, Transpose, Delete Bars, Insert Bars, Half Length, Double Length, Copy Sequence, Copy Bars and Copy Events.
+
+![MPC 3 Sequence Edit menu with Erase, Clear All, Clear Events, Trim and other sequence operations](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171567821/original/Gn_oosMLkpAb2-Jd4S9CQs8fcCCtzKUJ0g.jpeg?1759738112=)
+
+**Erase — range, track, and event type.** The dedicated Erase modal exposes the Sequence, Track, start/end Bar/Beat/Tick range, and All / Automation / Note / Except Note modes.
+
+![MPC 3 Erase dialog with sequence, track, time range and event-type options](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568345/original/y9ooBl_93rautQ01WZCrR0X81Z86U1iGwg.png?1759738577=)
+
+**Erase — pad/bank mask.** In Note mode, the dialog exposes an eight-bank pad mask; this is a separate state and must not be collapsed into the parent Erase screenshot.
+
+![MPC 3 Erase Note mode with the eight-bank pad selection mask](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568606/original/TKMwaGq0Sqgh2kqcKpJd-Nzu3qgFJw4qaA.png?1759738674=)
+
+**Clear All confirmation.** The UI asks whether to clear everything in the Sequence and set it to unused, with separate Clear All and Cancel actions.
+
+![MPC 3 Clear Sequence destructive confirmation dialog](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568002/original/p4XyPOCyXsuXuyqyDqTpVf9cmkKEgnK2jg.png?1759738294=)
+
+Source for all four images: [Akai support — How to Delete a Sequence, Track or Program](https://support.akaipro.com/en/support/solutions/articles/69000864104-akai-pro-mpc-series-how-to-delete-a-sequence-track-or-program).
+
+## 8.23 Preferences — Hardware and Project Load/Save (MPC 3)
+
+**Evidence A, official MPC 3 standalone screenshot.** The Hardware page contains visible preferences such as Screen Brightness, Power On Screen, Tap Tempo behavior, Flash Tap Tempo Light, Bank Button Press and Shift + Q-Link Press. This screenshot demonstrates why Preferences needs multiple indexed states, not a single generic settings screenshot.
+
+![MPC 3 Preferences — Hardware tab with Tap Tempo, Bank Button and Q-Link settings](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69161763950/original/pWP6-5PdcH9pY2cA4pGmjd4H5xZz47NkEw.png?1751856629=)
+
+**Project Load/Save.** The official MPC 3 screen shows New Project Behaviour, User Auto Load File, New Project Dialog, Template File and Temporary File Location. These are not the same thing as the project-file picker or save-confirmation modal.
+
+![MPC 3 Preferences — Project Load/Save tab](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497633/original/losLbj-hGvLzhujOiTJoGEADHmkCLyMwlw.png?1757329912=)
+
+**New Project Behaviour selector.** The selector offers Empty Project, Factory Project and User Auto Load Project.
+
+![MPC 3 New Project Behaviour selector](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497555/original/1B5Ebe8l-fxKf8RUdYXAAru39U1WG5118Q.png?1757329862=)
+
+**New Project Dialog selector.** The preference supports Off, Demo, Recent and Demo/Template/Recent.
+
+![MPC 3 New Project Dialog selector](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497526/original/Go4z7ExFaEGKbgu1F2FPTXPQrara8DcZuQ.png?1757329832=)
+
+Sources: [Akai support — Tap Tempo Light preference](https://support.akaipro.com/en/support/solutions/articles/69000870813-mpc-3-standalone-how-do-i-turn-off-the-tap-tempo-light-) and [Akai support — New Project Dialog](https://support.akaipro.com/en/support/solutions/articles/69000857945-akai-pro-mpc-series-new-project-dialog).
+
+## 8.24 Track Type / Program fields on Main
+
+**Evidence A, official MPC 3 Main context.** These images document the selector affordance on the Track identity and the separate Program identity, and help prevent the Main screen from being treated as a generic pad grid.
+
+![MPC 3 Main Track Type selector affordance](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881223/original/OBU4OIPLsVppo0XE-rgOgxdwLUu5JvMD3Q.png?1732016692=)
+
+![MPC 3 Main Program context and Pad Perform entry](https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881533/original/Gpm2HcY9ynQCsjxFsSc7T8t0VoLS4_Ldng.png?1732016882=)
+
+Source: [Akai support — Understanding and Loading Programs](https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs).
+
+
 # 9. Full screen/context coverage index
 
 This index covers 82 screen and sub-screen contexts from the MPC Standalone user-guide taxonomy and our repository contract. “Inline” means a remote screenshot image is embedded above; “official PDF figure link” means the guide's screenshot remains inside the linked PDF because no stable direct image URL was exposed; “guide link” is still a visual research task. The evidence column never says a screen is implemented merely because its original reference exists.
@@ -543,7 +595,7 @@ This index covers 82 screen and sub-screen contexts from the MPC Standalone user
 
 The earlier version of this catalog incorrectly treated “no separately hosted PNG found” as “no screenshot found”. The recovered official guide figures in Section 8.21 correct that.
 
-The catalog now has **40 inline screenshot references** and **82 indexed screen/sub-screen contexts**, plus page-linked images or guide references for all 82 rows. Remaining work is narrower and clearly defined:
+The catalog now has **49 inline screenshot references** and **82 indexed screen/sub-screen contexts**, plus page-linked images or guide references for all 82 rows. Remaining work is narrower and clearly defined:
 
 1. For **16 Levels, Grid View, List Edit, Looper and Track Edit LFO**, official screenshots do exist inside MPC Standalone OS 3.6/3.7 PDF guides. The catalog now links the exact guide and page for those figures. The direct image files are not separately exposed by Akai's document host; that is a hosting/extraction constraint, not a lack of source material.
 2. We still lack a clean **exact Gen 1 MPC One running OS 3.9 screenshot set for every screen and modal**. Legacy 2.x/3.6/3.7 screenshots remain useful for layout understanding but cannot establish exact 3.9 geometry or labels.
