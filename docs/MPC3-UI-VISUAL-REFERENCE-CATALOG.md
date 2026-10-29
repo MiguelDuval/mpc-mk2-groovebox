@@ -4,7 +4,7 @@
 **Product target:** Akai MPC One (Gen 1) running MPC Standalone OS 3.9; this repository's Android landscape interface.  
 **Purpose:** a visual companion to `MPC3-9-OS-KNOWLEDGE-BASE.md`, `MPC3-UI-SCREEN-BLUEPRINT.md`, and `MPC3-UI-MIGRATION-MASTER-SPEC.md`. The catalog is meant to prevent implementation from being driven only by memory, source-code convenience, or isolated test cases.
 
-**Local screenshot archive:** [Open the 82-context screenshot gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md) · [Inspect image/PDF extraction manifest](MPC3-UI-REFERENCE-ASSETS/manifest.json) · [See archived image files](MPC3-UI-REFERENCE-ASSETS/README.md).
+**Local screenshot archive:** [Open the 82-context screenshot gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md) · [Inspect image/PDF extraction manifest](MPC3-UI-REFERENCE-ASSETS/manifest.json) · [Original URLs for the 59 direct catalog images](MPC3-UI-REFERENCE-ASSETS/direct-image-source-index.json) · [See archived image files](MPC3-UI-REFERENCE-ASSETS/README.md).
 
 ## How to use this catalog
 
@@ -681,16 +681,17 @@ The following crop makes the Temporary File Location row legible; use it only as
 
 Source: [Akai support — Saving Projects with Auto Save](https://support.akaipro.com/en/support/solutions/articles/69000864617-akai-pro-mpc-series-saving-projects-with-auto-save).
 
-## 8.27. Supplementary MPC One hardware guide — version 2.13
+## 8.27. Supplementary standalone MPC hardware guides — versions 2.13 and 2.11.12
 
-The primary layout authority remains the current [MPC Standalone OS v3.9 User Guide](https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf). For contexts whose v3.9 chapter is text-led, a further **standalone hardware guide, Manual Version 2.13**, covers the MPC One / One+ and sibling hardware and contains many additional screen figures. We have added it as a supplementary image source, and the local screenshot archive renders mapped pages from it wherever downloads succeed.
+The primary layout authority remains the current [MPC Standalone OS v3.9 User Guide](https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf). For v3.9 chapters that are text-led or lack dedicated screen captures, two older standalone hardware guides provide additional screenshot coverage. Both describe MPC One / One+ and related MPC hardware, but **their MPC 2.x visual skin is supplementary only and must not replace the current v3.9 layout reference**.
 
-- [MPC standalone hardware User Guide v2.13 — full PDF (524 pages)](https://manuals.plus/m/98138a9e32b84f6146aee38f6d2efd1ad8996d06f7ec4c5bf91ecb369b27a3c4.pdf).
-- This is an older MPC 2.x-era interface, not an MPC OS 3.9 target. Its role is to supply extra screen imagery and explain control/workspace structure where the current manual only describes behavior in prose.
-- Its contents include Main, Track, Program, Grid, Track View, Step Sequencer, List Edit, Browser, Sample Assign, Sampler modes (Sample/Slice/Pad Tap/Pad Hold/Auto Sampler), Looper, Pad/Channel Mixer, Pad/Track Mute, Next Sequence, Song Mode, Q-Link Edit, Project, Pad Color, MIDI Control, Pad Perform, Preferences and key dialogs.
-- The generated gallery labels these full-page images as **legacy manual-page captures**. Where a page actually includes a UI figure, the image/crop is a visual reference; a text-only page capture is not represented as a standalone UI screenshot and cannot establish exact OS 3.9 geometry.
+- [Official Akai/inMusic MPC hardware User Guide v2.13 — full PDF (524 pages)](https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf) · [ManualsLib page-indexed viewer for that v2.13 manual](https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html).
+- [Official Akai/inMusic standalone hardware User Guide v2.11.12 — full PDF](https://cdn.inmusicbrands.com/akai/MPC/2121_kdhebxog/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.11.12.pdf).
+- Older alternate copies of v2.13 and v2.11.7 are linked from the extraction manifest; if a PDF host denies direct downloads, the asset crawler also tries page-indexed ManualsLib captures for the per-context pages.
+- The older guides contain references for Main, Track/Program, Grid, Track View, Step Sequencer, List Edit, Browser, Sample Assign, all four primary Sampler modes, Auto Sampler, Looper, Pad/Channel Mixer, Mute, Next Sequence, Song Mode, Q-Link, Project, Pad Color, MIDI Control, Pad Perform, Preferences and dialogs.
+- The generated gallery labels these as **legacy manual-page captures**. Where a page includes a UI figure, its screenshot/crop is a visual reference; a text-only page capture is not represented as a standalone UI screenshot and cannot establish exact OS 3.9 geometry.
 
-**Archived images:** use [the local VIS-001–VIS-082 gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md) to open the stored page captures/crops. The source PDF is not bundled into the repo or APK; the render outputs are stored locally in the documentation assets folder.
+**Archived images:** use the [local VIS-001–VIS-082 gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md) to open the stored page captures/crops and the [manifest](MPC3-UI-REFERENCE-ASSETS/manifest.json) for source URL, extraction and download status. PDFs themselves are not bundled into the repo or APK; page renders/crops live under the documentation assets folder.
 
 ## 8.28. Locally archived screenshots/images from cited source pages
 
