@@ -273,8 +273,12 @@ def collect_source_page_urls(docs, include_manual_pages=False):
     }
     found, seen = [], set()
     for text in docs.values():
+        # Read Markdown links once, then scan only plain text for bare URLs.
+        # Scanning the raw Markdown itself makes the regex consume ") ](https://..."
+        # after a link URL and causes bogus 404 fetches.
         raw_urls=[m.group(1) for m in MD_LINK_RE.finditer(text)]
-        raw_urls.extend(m.group(0) for m in RAW_URL_RE.finditer(text))
+        plain_text=MD_LINK_RE.sub(" ", text)
+        raw_urls.extend(m.group(0) for m in RAW_URL_RE.finditer(plain_text))
         for raw_url in raw_urls:
             url=raw_url.strip().rstrip(".,;)]}")
             clean,_=urldefrag(url)
@@ -513,6 +517,37 @@ def download_pdf(root, key):
     fail={"kind":"pdf","source_key":key,"status":"failed","error":str(last)}
     FAILURES.append(fail)
     return None,None
+
+def recover_existing_pdf_assets(root,key,pages,source_url):
+    """Rebuild manifest records from already committed page captures when an upstream PDF is unavailable."""
+    outdir=root/ASSET_REL/"pdf"/key
+    cropdir=outdir/"figures"
+    records=[]
+    if not outdir.exists():
+        return records
+    for page_no in sorted(pages):
+        page_file=outdir/f"page-{page_no:03d}.jpg"
+        if not page_file.exists():
+            continue
+        crops=[]
+        if cropdir.exists():
+            for crop in sorted(cropdir.glob(f"page-{page_no:03d}-figure-*.jpg")):
+                crop_record={
+                    "kind":"pdf-figure-crop","source_key":key,"page":page_no,
+                    "local_path":crop.relative_to(root).as_posix(),"bytes":crop.stat().st_size,
+                    "status":"rendered-crop","reused_existing_asset":True
+                }
+                crops.append(crop_record)
+        records.extend(crops)
+        records.append({
+            "kind":"pdf-page","source_key":key,"page":page_no,
+            "local_path":page_file.relative_to(root).as_posix(),"bytes":page_file.stat().st_size,
+            "status":"rendered","source_url":source_url,
+            "figures":[x["local_path"] for x in crops],"reused_existing_asset":True
+        })
+    if records:
+        print(f"[pdf reuse] {key}: recovered {sum(x.get('kind')=='pdf-page' for x in records)} existing page captures and {sum(x.get('kind')=='pdf-figure-crop' for x in records)} crops")
+    return records
 
 def render_pdf(root,key,pdf_path,pages,source_url):
     outdir=root/ASSET_REL/"pdf"/key; cropdir=outdir/"figures"
@@ -857,8 +892,16 @@ def main():
             continue
         pdf_path,source_url=download_pdf(root,key)
         if not pdf_path:
-            pdf_ready[key]=False
-            pdf_run_status[key]={"status":"failed","source_urls":PDF_SOURCES[key],"pages_requested":len(pages[key])}
+            fallback_url=PDF_SOURCES[key][0]
+            recovered=recover_existing_pdf_assets(root,key,pages[key],fallback_url)
+            pdf_manifest.extend(recovered)
+            recovered_pages=sum(x.get("kind")=="pdf-page" for x in recovered)
+            pdf_ready[key]=recovered_pages>0
+            pdf_run_status[key]={
+                "status":"reused-local-captures-after-download-failure" if recovered_pages else "failed",
+                "source_urls":PDF_SOURCES[key],"pages_requested":len(pages[key]),
+                "local_pages_recovered":recovered_pages
+            }
             continue
         pdf_ready[key]=True
         used_url=PDF_SOURCES[key][0] if source_url=="cached" else source_url
