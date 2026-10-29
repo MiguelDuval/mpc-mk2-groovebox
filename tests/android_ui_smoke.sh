@@ -5695,7 +5695,7 @@ PY
       echo "ERROR: BROW-013 screenshot or accessibility hierarchy is empty"; exit 1
     fi
     if [ "$brow013_final_state" = "true" ]; then
-      if ! grep -Fq -- 'contentDescription="MPC Browser navigation PLACES PROJECT DATA"' \
+      if ! grep -Fq -- 'content-desc="MPC Browser navigation PLACES PROJECT DATA"' \
           /tmp/mpc-groovebox-brow013-uiautomator.xml; then
         echo "ERROR: BROW-013 PROJECT DATA navigation item missing after toggle on"
         cat /tmp/mpc-groovebox-brow013-uiautomator.xml
@@ -6679,7 +6679,7 @@ if [ ! -s /tmp/mpc-groovebox-brow013-uiautomator.xml ]; then
   exit 1
 fi
 if [ "$brow013_final_state" = "true" ]; then
-  if ! grep -Fq -- 'contentDescription="MPC Browser navigation PLACES PROJECT DATA"' \
+  if ! grep -Fq -- 'content-desc="MPC Browser navigation PLACES PROJECT DATA"' \
       /tmp/mpc-groovebox-brow013-uiautomator.xml; then
     echo "ERROR: BROW-013 PROJECT DATA navigation item missing after toggle on"
     cat /tmp/mpc-groovebox-brow013-uiautomator.xml
