@@ -30,7 +30,10 @@ PDF_SOURCES = {
     ],
     "mpc-v37": ["https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf"],
     "mpc-v36": ["https://cdn.inmusicbrands.com/Software/36/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.6.pdf"],
-    "mpc-v213-legacy": ["https://manuals.plus/m/98138a9e32b84f6146aee38f6d2efd1ad8996d06f7ec4c5bf91ecb369b27a3c4.pdf"],
+    "mpc-v213-legacy": [
+        "https://cdn.inmusicbrands.com/akai/attachments/MPC%20X%2C%20X%20SE%2C%20Live%2C%20Live%20II%2C%20One%2C%20One%2B%2C%20Key%2061%2C%20Key%2037%2C%20Studio%20mk2%2C%20Touch%20-%20User%20Guide%20-%20v2.13.pdf",
+        "https://manuals.plus/m/98138a9e32b84f6146aee38f6d2efd1ad8996d06f7ec4c5bf91ecb369b27a3c4.pdf",
+    ],
     "mpc-v2117-legacy": ["https://device.report/m/99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0.pdf"],
 }
 # Printed pages whose figures were identified in the current v3.9 atlas.
@@ -192,7 +195,7 @@ def classify_pdf_url(url):
         return "mpc-v39"
     if "/software/37/" in u or "v3.7.pdf" in u: return "mpc-v37"
     if "/software/36/" in u or "v3.6.pdf" in u: return "mpc-v36"
-    if "98138a9e32b84f6146aee38f6d2efd1ad8996d06f7ec4c5bf91ecb369b27a3c4" in u:
+    if "98138a9e32b84f6146aee38f6d2efd1ad8996d06f7ec4c5bf91ecb369b27a3c4" in u or ("v2.13.pdf" in u and "software" not in u):
         return "mpc-v213-legacy"
     if "99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0" in u:
         return "mpc-v2117-legacy"
@@ -252,6 +255,7 @@ def collect_source_page_urls(docs):
         "ragtime.online", "heikkisiltala.net",
         "marronfieldsproduction.hatenablog.com", "note.com", "www.note.com",
         "manuals.plus", "www.manuals.plus",
+        "manualslib.com", "www.manualslib.com",
         "manuals.co.uk", "www.manuals.co.uk", "manuals.ca", "www.manua.ls",
         "manualpdf.in", "www.manualpdf.in", "manual.nz", "www.manual.nz",
         "usermanuals.au", "www.usermanuals.au", "pdfmanualer.dk", "www.pdfmanualer.dk",
@@ -275,7 +279,14 @@ def collect_source_page_urls(docs):
                 continue
             seen.add(clean)
             found.append(clean)
-    return found[:SOURCE_PAGE_LIMIT]
+    manual_base="https://www.manualslib.com/manual/3930924/Akai-Mpc-Key-37.html"
+    manual_pages=sorted({int(page) for page_list in V213_CONTEXT_PAGES.values() for page in page_list})
+    manual_urls=[f"{manual_base}?page={page}" for page in manual_pages]
+    ordered=[]
+    for url in manual_urls+found:
+        if url not in ordered:
+            ordered.append(url)
+    return ordered[:SOURCE_PAGE_LIMIT]
 
 def largest_srcset(srcset):
     candidates=[]
@@ -320,6 +331,7 @@ def extract_source_page_images(docs):
                 continue
             soup=BeautifulSoup(response.text,"html.parser")
             page_title=(soup.title.get_text(" ",strip=True) if soup.title else urlparse(page_url).netloc)
+            is_manualslib="manualslib.com" in urlparse(response.url).netloc.lower()
             candidates=[]
             for img in soup.find_all("img"):
                 raw=(img.get("data-original") or img.get("data-src") or img.get("data-lazy-src")
@@ -330,30 +342,56 @@ def extract_source_page_images(docs):
                 if image_url.startswith("data:"):
                     continue
                 alt=(img.get("alt") or img.get("title") or "").strip()
+                classes=" ".join(img.get("class",[])).lower()
+                element_id=(img.get("id") or "").lower()
+                parent_classes=" ".join(img.parent.get("class",[])).lower() if img.parent else ""
+                combined=classes+" "+element_id+" "+parent_classes
                 try: width=int(re.sub(r"[^0-9]","",str(img.get("width",""))) or 0)
                 except ValueError: width=0
                 try: height=int(re.sub(r"[^0-9]","",str(img.get("height",""))) or 0)
                 except ValueError: height=0
+                if is_manualslib:
+                    # The page navigation contains hundreds of tiny page thumbnails.
+                    # Prefer the active full-page viewer and reject nav thumbnails.
+                    if any(word in combined for word in ("thumb","thumbnail","nav","carousel","related","recommend","logo","avatar")):
+                        continue
+                    page_specific=("page" in element_id or "page" in classes or "manual-page" in combined)
+                    large=(width>=500 or height>=600)
+                    # Manual page viewer is a portrait page scan; tiny horizontal
+                    # controls/icons are never a useful match for the referenced screen.
+                    if not (page_specific or large):
+                        continue
+                    if width and height and width<420 and height<550:
+                        continue
                 if not is_probable_screenshot(image_url,alt,width,height):
                     continue
-                candidates.append((image_url,alt or f"Reference image from {page_title}"))
-            for meta in soup.find_all("meta"):
-                prop=(meta.get("property") or meta.get("name") or "").lower()
-                if prop in ("og:image","twitter:image","twitter:image:src"):
-                    raw=meta.get("content")
-                    if raw:
-                        image_url=requests.compat.urljoin(response.url,raw.strip())
-                        if is_probable_screenshot(image_url,page_title,0,0):
-                            candidates.append((image_url,f"Article image: {page_title}"))
+                score=0
+                if is_manualslib:
+                    score += 100 if ("page" in element_id or "page" in classes or "manual-page" in combined) else 0
+                    score += 30 if width>=500 or height>=600 else 0
+                    score += min(width,1200)//40
+                    score += min(height,1600)//50
+                candidates.append((score,image_url,alt or f"Reference image from {page_title}"))
+            if not is_manualslib:
+                for meta in soup.find_all("meta"):
+                    prop=(meta.get("property") or meta.get("name") or "").lower()
+                    if prop in ("og:image","twitter:image","twitter:image:src"):
+                        raw=meta.get("content")
+                        if raw:
+                            image_url=requests.compat.urljoin(response.url,raw.strip())
+                            if is_probable_screenshot(image_url,page_title,0,0):
+                                candidates.append((0,image_url,f"Article image: {page_title}"))
+            candidates.sort(key=lambda x:x[0],reverse=True)
             page_count=0
-            for image_url,alt in candidates:
+            per_page_limit=1 if is_manualslib else 12
+            for _,image_url,alt in candidates:
                 if image_url in seen:
                     continue
                 seen.add(image_url)
                 entries.append({"doc":"source-page-extraction","alt":alt,"url":image_url,
                     "kind":"extracted-source-image","parent_url":page_url})
                 page_count+=1
-                if page_count>=12 or len(entries)>=SOURCE_PAGE_IMAGE_LIMIT:
+                if page_count>=per_page_limit or len(entries)>=SOURCE_PAGE_IMAGE_LIMIT:
                     break
             print(f"[source page {page_no}/{len(pages)}] scanned {page_url}; candidate screenshots/images: {page_count}")
             if len(entries)>=SOURCE_PAGE_IMAGE_LIMIT:
@@ -645,6 +683,44 @@ def build_gallery(root,image_manifest,pdf_manifest,pdf_run_status):
         "- manifest.json: source provenance, local paths, hashes, status, render inventory and failures.\n\n"
         "Original source links and firmware/device caveats remain in the catalog. A page capture is not described as a whole-screen UI screenshot unless the page actually shows that screen.\n",encoding="utf-8")
 
+def preserve_catalog_inline_images(root,image_manifest):
+    """Keep provenance for locally vendored catalog images after URLs are rewritten."""
+    source_index=root/ASSET_REL/"direct-image-source-index.json"
+    if not source_index.exists():
+        print("[source index] original direct image URL index is missing; nothing to preserve")
+        return
+    try:
+        payload=json.loads(source_index.read_text(encoding="utf-8"))
+    except Exception as exc:
+        FAILURES.append({"kind":"direct-image-source-index","status":"failed","error":str(exc)})
+        return
+    existing={item.get("source_url") for item in image_manifest if item.get("source_url")}
+    image_dir=root/ASSET_REL/"images"
+    preserved=0
+    for source in payload.get("images",[]):
+        url=source.get("source_url","")
+        if not url or url in existing:
+            continue
+        base=f"{slug(source.get('alt','reference'))}-{digest(url)[:12]}"
+        matches=sorted(image_dir.glob(base+".*"))
+        if not matches:
+            item={"kind":"catalog-inline-image","alt":source.get("alt","MPC reference image"),
+                "source_url":url,"status":"failed","error":"original local image file not found",
+                "referenced_from":source.get("source_doc")}
+            image_manifest.append(item)
+            existing.add(url)
+            continue
+        file=matches[0]
+        data=file.read_bytes()
+        record={"kind":"catalog-inline-image","alt":source.get("alt","MPC reference image"),
+            "source_url":url,"local_path":file.relative_to(root).as_posix(),
+            "bytes":len(data),"sha256":hashlib.sha256(data).hexdigest(),
+            "status":"downloaded","referenced_from":source.get("source_doc")}
+        image_manifest.append(record)
+        existing.add(url)
+        preserved+=1
+    print(f"[source index] preserved {preserved} original direct screenshot records")
+
 def append_extracted_images_to_catalog(root,image_manifest):
     path=root/CATALOG
     text=path.read_text(encoding="utf-8")
@@ -693,6 +769,7 @@ def main():
     (root/ASSET_REL).mkdir(parents=True,exist_ok=True)
     pages=collect_pdf_pages(docs)
     image_map,image_manifest=download_images(root,docs)
+    preserve_catalog_inline_images(root,image_manifest)
     rewrite_remote_images(root,docs,image_map)
     pdf_ready={}; pdf_manifest=[]; pdf_run_status={}
     for key in PDF_SOURCES:
