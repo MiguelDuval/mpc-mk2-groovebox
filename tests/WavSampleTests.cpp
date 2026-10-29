@@ -347,10 +347,18 @@ void testEncodeWavRoundTrip() {
     assert(exported[9] == 'A');
     assert(exported[10] == 'V');
     assert(exported[11] == 'E');
-    assert(exported[20] == 3);
-    assert(exported[21] == 0);
-    assert(exported[22] == 1);
-    assert(exported[23] == 0);
+    assert(exported[4] == 56 && exported[5] == 0
+            && exported[6] == 0 && exported[7] == 0);
+    assert(exported[20] == 3 && exported[21] == 0);
+    assert(exported[22] == 1 && exported[23] == 0);
+    assert(exported[24] == 0x80 && exported[25] == 0x3E
+            && exported[26] == 0 && exported[27] == 0);
+    assert(exported[28] == 0 && exported[29] == 0xFA
+            && exported[30] == 0 && exported[31] == 0);
+    assert(exported[32] == 4 && exported[33] == 0);
+    assert(exported[34] == 32 && exported[35] == 0);
+    assert(exported[40] == 20 && exported[41] == 0
+            && exported[42] == 0 && exported[43] == 0);
 
     // The first sample is -1.0f and must be serialized little-endian.
     assert(exported[44] == 0x00);
