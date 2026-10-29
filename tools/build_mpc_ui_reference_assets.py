@@ -1,0 +1,338 @@
+#!/usr/bin/env python3
+"""Vendor cited MPC UI screenshots and render relevant PDF pages for offline use."""
+from __future__ import annotations
+import argparse, hashlib, html, json, os, re, sys, time
+from pathlib import Path
+from urllib.parse import urldefrag, urlparse
+import fitz
+import requests
+from PIL import Image
+
+DOCS = [
+    "docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md",
+    "docs/MPC3-9-OS-KNOWLEDGE-BASE.md",
+    "docs/MPC3-REFERENCE-INDEX.md",
+]
+CATALOG = DOCS[0]
+ASSET_REL = Path("docs/MPC3-UI-REFERENCE-ASSETS")
+IMG_RE = re.compile(r'!\[([^\]]*)\]\((https?://[^)\s]+)\)')
+PDF_LINK_RE = re.compile(r'https?://[^\s<>"\)]+?\.pdf(?:\?[^#\s<>"\)]+)?(?:#page=\d+)?', re.I)
+PAGE_RE = re.compile(r'#page=(\d+)', re.I)
+PDF_SOURCES = {
+    "mpc-v39": [
+        "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+        "https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf",
+    ],
+    "mpc-v37": ["https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf"],
+    "mpc-v36": ["https://cdn.inmusicbrands.com/Software/36/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.6.pdf"],
+    "mpc-v2117-legacy": ["https://device.report/m/99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0.pdf"],
+}
+# Printed pages whose figures were identified in the current v3.9 atlas.
+V39_ATLAS_PAGES = {
+    15,56,57,59,60,61,62,63,64,65,66,67,68,69,75,77,78,80,81,84,87,100,109,
+    112,117,126,129,133,136,139,140,141,142,143,144,145,146,147,148,149,150,
+    151,152,153,154,167,179,184,190,191,197,203,212,215,221,230,254,255,256,
+    257,260,261,264,266,269,296,297,298,304,305,306,314,316,318,320,328,333,
+    334,335,336,337,338,340,
+}
+SESSION = requests.Session()
+SESSION.headers.update({"User-Agent":"Mozilla/5.0 (compatible; MPC-UI-reference-catalog/1.0)"})
+FAILURES = []
+
+def slug(s, max_len=60):
+    s = html.unescape(s or "").lower()
+    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    return (s[:max_len].strip("-") or "reference")
+
+def digest(s):
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+def classify_pdf_url(url):
+    u = url.lower()
+    if "b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b" in u or "15jm26psbc" in u or "v3.9.pdf" in u:
+        return "mpc-v39"
+    if "/software/37/" in u or "v3.7.pdf" in u: return "mpc-v37"
+    if "/software/36/" in u or "v3.6.pdf" in u: return "mpc-v36"
+    if "99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0" in u:
+        return "mpc-v2117-legacy"
+    return None
+
+def fetch_bytes(url, timeout=60):
+    last = None
+    for attempt in range(3):
+        try:
+            with SESSION.get(url, stream=True, timeout=timeout, allow_redirects=True) as response:
+                response.raise_for_status()
+                ctype = response.headers.get("content-type", "").split(";")[0].strip().lower()
+                chunks, total = [], 0
+                for chunk in response.iter_content(1024 * 1024):
+                    if not chunk: continue
+                    total += len(chunk)
+                    if total > 250 * 1024 * 1024: raise RuntimeError("source exceeds 250 MiB safety limit")
+                    chunks.append(chunk)
+                data = b"".join(chunks)
+                if not data: raise RuntimeError("empty response")
+                return data, ctype
+        except Exception as exc:
+            last = exc
+            time.sleep(attempt + 1)
+    raise RuntimeError(f"failed after retries: {last}")
+
+def ext_from_bytes(data, ctype, url):
+    if data.startswith(b"\x89PNG\r\n\x1a\n"): return ".png"
+    if data.startswith(b"\xff\xd8\xff"): return ".jpg"
+    if data.startswith((b"GIF87a",b"GIF89a")): return ".gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP": return ".webp"
+    if b"<svg" in data[:2048].lower() or "svg" in ctype: return ".svg"
+    suffix = Path(urlparse(url).path).suffix.lower()
+    if suffix in {".png",".jpg",".jpeg",".webp",".gif",".svg"}: return ".jpg" if suffix==".jpeg" else suffix
+    return ".bin"
+
+def read_docs(root):
+    return {p:(root/p).read_text(encoding="utf-8") for p in DOCS if (root/p).exists()}
+
+def collect_images(docs):
+    seen, entries = set(), []
+    for doc, text in docs.items():
+        for match in IMG_RE.finditer(text):
+            alt, url = match.group(1).strip(), match.group(2).strip()
+            if url not in seen:
+                seen.add(url); entries.append({"doc":doc,"alt":alt,"url":url})
+    return entries
+
+def download_images(root, docs):
+    outdir = root / ASSET_REL / "images"; outdir.mkdir(parents=True, exist_ok=True)
+    mapping, manifest = {}, []
+    entries = collect_images(docs)
+    for n, entry in enumerate(entries, 1):
+        url = entry["url"]; name = f"{slug(entry['alt'])}-{digest(url)[:12]}"
+        try:
+            data, ctype = fetch_bytes(url); ext = ext_from_bytes(data, ctype, url)
+            dest = outdir / f"{name}{ext}"
+            if not dest.exists() or dest.stat().st_size != len(data): dest.write_bytes(data)
+            mapping[url] = (ASSET_REL / "images" / dest.name).as_posix()
+            manifest.append({"kind":"inline-image","alt":entry["alt"],"source_url":url,
+                "local_path":dest.relative_to(root).as_posix(),"bytes":len(data),
+                "sha256":hashlib.sha256(data).hexdigest(),"status":"downloaded"})
+            print(f"[image {n}/{len(entries)}] saved {dest.name}, {len(data)} bytes")
+        except Exception as exc:
+            item={"kind":"inline-image","alt":entry["alt"],"source_url":url,"status":"failed","error":str(exc)}
+            manifest.append(item); FAILURES.append(item)
+            print(f"[image {n}/{len(entries)}] FAILED {url}: {exc}", file=sys.stderr)
+    return mapping, manifest
+
+def collect_pdf_pages(docs):
+    pages={k:set() for k in PDF_SOURCES}
+    for text in docs.values():
+        for url in PDF_LINK_RE.findall(text):
+            key=classify_pdf_url(url); match=PAGE_RE.search(url)
+            if key and match: pages[key].add(int(match.group(1)))
+    pages["mpc-v39"].update(V39_ATLAS_PAGES)
+    pages["mpc-v37"].update({75,161,184,203,332})
+    pages["mpc-v36"].update({203,329})
+    return pages
+
+def download_pdf(root, key):
+    folder=root/ASSET_REL/"_source_pdfs"; folder.mkdir(parents=True,exist_ok=True)
+    target=folder/f"{key}.pdf"
+    if target.exists() and target.stat().st_size>100_000:
+        try:
+            with fitz.open(target) as existing:
+                if existing.page_count: return target, "cached"
+        except Exception: pass
+    last=None
+    for url in PDF_SOURCES[key]:
+        try:
+            data,ctype=fetch_bytes(url,timeout=120)
+            if not data.startswith(b"%PDF") and "pdf" not in ctype:
+                raise RuntimeError(f"not a PDF: content-type={ctype}, prefix={data[:10]!r}")
+            target.write_bytes(data)
+            with fitz.open(target) as doc:
+                if doc.page_count<1: raise RuntimeError("PDF has zero pages")
+                count=doc.page_count
+            print(f"[pdf] {key}: downloaded {len(data)} bytes, {count} pages")
+            return target,url
+        except Exception as exc:
+            last=exc; print(f"[pdf] {key} failed {url}: {exc}",file=sys.stderr)
+    fail={"kind":"pdf","source_key":key,"status":"failed","error":str(last)}
+    FAILURES.append(fail)
+    return None,None
+
+def render_pdf(root,key,pdf_path,pages,source_url):
+    outdir=root/ASSET_REL/"pdf"/key; cropdir=outdir/"figures"
+    outdir.mkdir(parents=True,exist_ok=True); cropdir.mkdir(parents=True,exist_ok=True)
+    results=[]
+    with fitz.open(pdf_path) as doc:
+        for pos,page_no in enumerate(sorted(pages),1):
+            if page_no<1 or page_no>doc.page_count:
+                results.append({"kind":"pdf-page","source_key":key,"page":page_no,"status":"out-of-range","page_count":doc.page_count})
+                continue
+            page=doc[page_no-1]; dest=outdir/f"page-{page_no:03d}.jpg"
+            pix=page.get_pixmap(matrix=fitz.Matrix(1.45,1.45),alpha=False,colorspace=fitz.csRGB)
+            pix.save(str(dest),jpg_quality=78)
+            record={"kind":"pdf-page","source_key":key,"page":page_no,
+                "local_path":dest.relative_to(root).as_posix(),"bytes":dest.stat().st_size,
+                "status":"rendered","source_url":source_url,"figures":[]}
+            seen=set(); number=0
+            try: info_list=page.get_image_info(xrefs=True)
+            except Exception: info_list=[]
+            for info in info_list:
+                rect=fitz.Rect(info.get("bbox",(0,0,0,0)))
+                if rect.is_empty or rect.width<145 or rect.height<75 or rect.width*rect.height<18000: continue
+                coords=tuple(round(v,1) for v in (rect.x0,rect.y0,rect.x1,rect.y1))
+                if coords in seen: continue
+                seen.add(coords)
+                clip=fitz.Rect(max(page.rect.x0,rect.x0-2),max(page.rect.y0,rect.y0-2),
+                    min(page.rect.x1,rect.x1+2),min(page.rect.y1,rect.y1+2))
+                number+=1; crop=cropdir/f"page-{page_no:03d}-figure-{number:02d}.jpg"
+                try:
+                    cpix=page.get_pixmap(matrix=fitz.Matrix(2.0,2.0),clip=clip,alpha=False,colorspace=fitz.csRGB)
+                    cpix.save(str(crop),jpg_quality=88)
+                    rel=crop.relative_to(root).as_posix(); record["figures"].append(rel)
+                    results.append({"kind":"pdf-figure-crop","source_key":key,"page":page_no,
+                        "local_path":rel,"bytes":crop.stat().st_size,"status":"rendered-crop"})
+                except Exception as exc: print(f"[crop] {key} page {page_no}: {exc}",file=sys.stderr)
+            results.append(record)
+            print(f"[page {key} {pos}/{len(pages)}] p{page_no}: {len(record['figures'])} crop(s)")
+    return results
+
+def relative_asset_link(root, doc_path, asset_path):
+    return Path(os.path.relpath(root/asset_path,root/Path(doc_path).parent)).as_posix()
+
+def rewrite_remote_images(root, docs, mapping):
+    for doc_path, original in docs.items():
+        def replace(match):
+            alt,url=match.group(1),match.group(2)
+            if url not in mapping: return match.group(0)
+            return f"![{alt}]({relative_asset_link(root,doc_path,mapping[url])})"
+        text=IMG_RE.sub(replace,original)
+        if doc_path==CATALOG:
+            text=text.replace(
+                "These are externally hosted images embedded from their source pages, not copied into the application.",
+                "Where retrieval succeeded, reference images are vendored locally under MPC3-UI-REFERENCE-ASSETS; source URLs and provenance are recorded in the local gallery manifest. These are documentation-only and are not packaged into the Android app."
+            )
+        (root/doc_path).write_text(text,encoding="utf-8")
+
+def catalog_rows(text):
+    start=text.find("# 9. Full screen/context coverage index")
+    end=text.find("# 10. Exact-version screenshot gaps and fallback references",start)
+    section=text[start:end if end>=0 else len(text)] if start>=0 else ""
+    rows=[]
+    for line in section.splitlines():
+        if not re.match(r"\|\s*VIS-\d{3}",line): continue
+        cells=[x.strip() for x in line.strip().strip("|").split("|")]
+        if len(cells)>=3:
+            match=re.search(r"VIS-\d{3}",cells[0])
+            if match: rows.append({"id":match.group(0),"title":cells[1],"evidence":cells[2],"row":line})
+    return start,end,section,rows
+
+def add_local_page_column(root,pages,pdf_ready):
+    path=root/CATALOG; text=path.read_text(encoding="utf-8")
+    start,end,section,_=catalog_rows(text)
+    if start<0: return
+    lines=section.splitlines()
+    header_idx=next((i for i,line in enumerate(lines) if line.startswith("| ID | Screen / sub-screen |")),None)
+    if header_idx is None: return
+    if "Stored screenshot asset(s)" not in lines[header_idx]:
+        lines[header_idx]=lines[header_idx][:-1]+" | Stored screenshot asset(s) |"
+        if header_idx+1<len(lines) and lines[header_idx+1].startswith("|---"):
+            lines[header_idx+1]=lines[header_idx+1][:-1]+" |---|"
+    for i,line in enumerate(lines):
+        if not re.match(r"\|\s*VIS-\d{3}",line) or "Stored screenshot asset(s)" in line: continue
+        found=[]
+        for url in PDF_LINK_RE.findall(line):
+            key=classify_pdf_url(url); pm=PAGE_RE.search(url)
+            if not key or not pm or not pdf_ready.get(key): continue
+            page_no=int(pm.group(1))
+            if page_no not in pages.get(key,set()): continue
+            rel=Path("MPC3-UI-REFERENCE-ASSETS")/"pdf"/key/f"page-{page_no:03d}.jpg"
+            if (root/"docs"/rel).exists():
+                item=f"[{key} p.{page_no}]({rel.as_posix()})"
+                if item not in found: found.append(item)
+        if not found:
+            vis=re.search(r"VIS-(\d{3})",line)
+            found.append(f"[local gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md#{vis.group(0).lower()})" if vis else "[local gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md)")
+        lines[i]=line[:-1]+" "+"; ".join(found)+" |"
+    (root/CATALOG).write_text(text[:start]+"\n".join(lines)+text[end:],encoding="utf-8")
+
+def build_gallery(root,image_manifest,pdf_manifest):
+    assets=root/ASSET_REL; catalog=(root/CATALOG).read_text(encoding="utf-8")
+    _,_,_,rows=catalog_rows(catalog)
+    pages={(x.get("source_key"),x.get("page")):x for x in pdf_manifest
+        if x.get("kind")=="pdf-page" and x.get("status")=="rendered"}
+    md=["# MPC UI Reference Screenshot Index","",
+        "Repository-local visual reference gallery for MPC UI reconstruction. Full-page PDF images preserve the page caption and context; large raster figure crops are stored beside each source page where detected.","",
+        "- images/: downloaded copies of image URLs cited in the catalog and related knowledge-base docs.",
+        "- pdf/<source>/page-NNN.jpg: page render from the cited manual.",
+        "- pdf/<source>/figures/: large image regions cropped from relevant PDF pages.",
+        "- manifest.json: source URL, local path, file hash/size, extraction status and failures.",
+        "- These documentation references are not packaged into the Android app.","",
+        f"**Inventory:** {len(image_manifest)} image URLs; {sum(x.get('status')=='downloaded' for x in image_manifest)} downloaded; {sum(x.get('status')=='failed' for x in image_manifest)} failed; {len(pages)} PDF pages rendered; {sum(x.get('kind')=='pdf-figure-crop' for x in pdf_manifest)} figure crops.","",
+        "## Screen and sub-screen gallery",""]
+    for row in rows:
+        vis=row["id"]
+        md.extend([f'<a id="{vis.lower()}"></a>',f"### {vis} — {row['title']}","",f"**Evidence:** {row['evidence']}",""])
+        found=[]
+        for key,page in pages:
+            rel=(ASSET_REL/"pdf"/key/f"page-{int(page):03d}.jpg").as_posix()
+            if rel in row["row"]: found.append((key,int(page),rel))
+        if found:
+            for key,page,rel in sorted(set(found)):
+                md.extend([f"**Stored page:** {key}, printed PDF page {page}.","",f"![{vis} PDF page {page}](../{rel})",""])
+                cropdir=assets/"pdf"/key/"figures"
+                if cropdir.exists():
+                    for crop in sorted(cropdir.glob(f"page-{page:03d}-figure-*.jpg")):
+                        md.extend([f"![{vis} cropped PDF figure]({crop.relative_to(assets).as_posix()})",""])
+        else:
+            md.extend(["No linked PDF page render was associated with this row. Check the source-image manifest for available images and download/render failures.",""])
+    md.extend(["## Downloaded direct image references",""])
+    for item in image_manifest:
+        label=item.get("alt") or "MPC reference image"
+        md.extend([f"### {label}",""])
+        if item.get("status")=="downloaded":
+            local=Path(item["local_path"]).relative_to(ASSET_REL).as_posix()
+            md.extend([f"![{label}]({local})","",f"Source: {item['source_url']}",""])
+        else:
+            md.extend([f"**Download failed:** {item.get('error','unknown error')}","",f"Source: {item.get('source_url','')}",""])
+    (assets/"INDEX.md").write_text("\n".join(md)+"\n",encoding="utf-8")
+    manifest={"generated_by":"tools/build_mpc_ui_reference_assets.py","pdf_sources":PDF_SOURCES,
+        "inline_images":image_manifest,"pdf_pages_and_crops":pdf_manifest,"failures":FAILURES}
+    (assets/"manifest.json").write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+    (assets/"README.md").write_text(
+        "# MPC UI Reference Assets\n\nDocumentation-only visual reference files for reconstructing the MPC UI. They are not copied into the Android app or APK.\n\n"
+        "- INDEX.md: gallery grouped by VIS-001 through VIS-082 and downloaded direct images.\n"
+        "- images/: local copies of source URLs cited in project documentation.\n"
+        "- pdf/: page captures and large figure crops from referenced manuals.\n"
+        "- manifest.json: source provenance, file hashes, status and failures.\n\n"
+        "Original source links and device/version caveats remain in the catalog. A screenshot is not proof that a corresponding Android screen is implemented.\n",encoding="utf-8")
+
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--root",default=".")
+    root=Path(parser.parse_args().root).resolve()
+    docs=read_docs(root)
+    if CATALOG not in docs: raise SystemExit("Catalog missing: "+CATALOG)
+    (root/ASSET_REL).mkdir(parents=True,exist_ok=True)
+    pages=collect_pdf_pages(docs)
+    image_map,image_manifest=download_images(root,docs)
+    rewrite_remote_images(root,docs,image_map)
+    pdf_ready={}; pdf_manifest=[]
+    for key in PDF_SOURCES:
+        if not pages.get(key): pdf_ready[key]=False; continue
+        pdf_path,source_url=download_pdf(root,key)
+        if not pdf_path: pdf_ready[key]=False; continue
+        pdf_ready[key]=True
+        pdf_manifest.extend(render_pdf(root,key,pdf_path,pages[key],source_url))
+    add_local_page_column(root,pages,pdf_ready)
+    build_gallery(root,image_manifest,pdf_manifest)
+    report={"image_references_found":len(image_manifest),
+        "inline_images_downloaded":sum(x.get("status")=="downloaded" for x in image_manifest),
+        "inline_images_failed":sum(x.get("status")=="failed" for x in image_manifest),
+        "pdf_sources_downloaded":[k for k,v in pdf_ready.items() if v],
+        "pdf_sources_failed":[k for k,v in pdf_ready.items() if not v],
+        "pdf_pages_rendered":sum(x.get("kind")=="pdf-page" and x.get("status")=="rendered" for x in pdf_manifest),
+        "pdf_figure_crops":sum(x.get("kind")=="pdf-figure-crop" for x in pdf_manifest),"failures":FAILURES}
+    print("\nREFERENCE ASSET SUMMARY\n"+json.dumps(report,indent=2,ensure_ascii=False))
+    return 0 if report["inline_images_downloaded"] or report["pdf_pages_rendered"] else 2
+
+if __name__=="__main__": sys.exit(main())
