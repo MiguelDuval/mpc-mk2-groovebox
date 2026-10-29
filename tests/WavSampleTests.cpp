@@ -290,6 +290,45 @@ void testEncodeWavRejectsInvalidBuffers() {
     incompleteFrame.channelCount = 2;
     incompleteFrame.interleaved = {0.0f};
     assert(mpc::audio::encodeWav(incompleteFrame).empty());
+
+    // RIFF stores byteRate in 32 bits; reject rates whose channel/sample width
+    // would overflow that field instead of silently wrapping the header.
+    mpc::audio::SampleBuffer overflowingByteRate;
+    overflowingByteRate.sampleRate = UINT32_MAX;
+    overflowingByteRate.channelCount = 2;
+    overflowingByteRate.interleaved = {0.0f, 0.0f};
+    assert(mpc::audio::encodeWav(overflowingByteRate).empty());
+}
+
+void testEncodeWavStereoRoundTrip() {
+    mpc::audio::SampleBuffer source;
+    source.sampleRate = 48000;
+    source.channelCount = 2;
+    source.interleaved = {-1.0f, 0.25f, 0.5f, 1.0f};
+
+    const auto encoded = mpc::audio::encodeWav(source);
+    assert(encoded.size() == 44 + 4 * sizeof(float));
+
+    // Stereo IEEE-float header: 48 kHz, 384000 bytes/sec, 8-byte frames.
+    assert(encoded[20] == 3 && encoded[21] == 0);
+    assert(encoded[22] == 2 && encoded[23] == 0);
+    assert(encoded[24] == 0x80 && encoded[25] == 0xBB
+            && encoded[26] == 0 && encoded[27] == 0);
+    assert(encoded[28] == 0 && encoded[29] == 0xDC
+            && encoded[30] == 0x05 && encoded[31] == 0);
+    assert(encoded[32] == 8 && encoded[33] == 0);
+    assert(encoded[40] == 16 && encoded[41] == 0
+            && encoded[42] == 0 && encoded[43] == 0);
+
+    const auto decoded = mpc::audio::decodeWav(encoded);
+    assert(decoded.has_value());
+    assert(decoded->sampleRate == 48000);
+    assert(decoded->channelCount == 2);
+    assert(decoded->frameCount() == 2);
+    assert(decoded->sampleAt(0, 0) == -1.0f);
+    assert(decoded->sampleAt(0, 1) == 0.25f);
+    assert(decoded->sampleAt(1, 0) == 0.5f);
+    assert(decoded->sampleAt(1, 1) == 1.0f);
 }
 
 void testEncodeWavRoundTrip() {
@@ -341,6 +380,7 @@ int main() {
     testUnsupportedFormat();
     testSampleExportPolicy();
     testEncodeWavRejectsInvalidBuffers();
+    testEncodeWavStereoRoundTrip();
     testEncodeWavRoundTrip();
     return 0;
 }
