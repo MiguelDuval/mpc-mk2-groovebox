@@ -365,84 +365,127 @@ def catalog_rows(text):
     return start,end,section,rows
 
 def add_local_page_column(root,pages,pdf_ready):
-    path=root/CATALOG; text=path.read_text(encoding="utf-8")
+    path=root/CATALOG
+    text=path.read_text(encoding="utf-8")
     start,end,section,_=catalog_rows(text)
-    if start<0: return
+    if start<0:
+        return
     lines=section.splitlines()
     header_idx=next((i for i,line in enumerate(lines) if line.startswith("| ID | Screen / sub-screen |")),None)
-    if header_idx is None: return
-    if "Stored screenshot asset(s)" not in lines[header_idx]:
+    if header_idx is None:
+        return
+    had_column="Stored screenshot asset(s)" in lines[header_idx]
+    if not had_column:
         lines[header_idx]=lines[header_idx][:-1]+" | Stored screenshot asset(s) |"
         if header_idx+1<len(lines) and lines[header_idx+1].startswith("|---"):
             lines[header_idx+1]=lines[header_idx+1][:-1]+" |---|"
     for i,line in enumerate(lines):
-        if not re.match(r"\|\s*VIS-\d{3}",line) or "Stored screenshot asset(s)" in line: continue
+        if not re.match(r"\|\s*VIS-\d{3}",line):
+            continue
+        vis_match=re.search(r"VIS-\d{3}",line)
+        if not vis_match:
+            continue
+        vis_id=vis_match.group(0)
+        # Remove the old generated column on repeat runs so updates stay idempotent.
+        if had_column:
+            line=line.rsplit("|",2)[0]+"|"
         found=[]
+        candidates=[]
+        candidates.extend(("mpc-v39",p) for p in V39_CONTEXT_PAGES.get(vis_id,[]))
+        candidates.extend(("mpc-v213-legacy",p) for p in V213_CONTEXT_PAGES.get(vis_id,[]))
+        # Preserve useful page anchors from this row for non-mapped contexts.
         for url in PDF_LINK_RE.findall(line):
-            key=classify_pdf_url(url); pm=PAGE_RE.search(url)
-            if not key or not pm or not pdf_ready.get(key): continue
-            page_no=int(pm.group(1))
-            if page_no not in pages.get(key,set()): continue
+            key=classify_pdf_url(url)
+            pm=PAGE_RE.search(url)
+            if key and pm:
+                candidates.append((key,int(pm.group(1))))
+        seen=set()
+        for key,page_no in candidates:
+            if (key,page_no) in seen or not pdf_ready.get(key,False):
+                continue
+            seen.add((key,page_no))
             rel=Path("MPC3-UI-REFERENCE-ASSETS")/"pdf"/key/f"page-{page_no:03d}.jpg"
             if (root/"docs"/rel).exists():
-                item=f"[{key} p.{page_no}]({rel.as_posix()})"
-                if item not in found: found.append(item)
+                found.append(f"[{key} p.{page_no}]({rel.as_posix()})")
         if not found:
-            vis=re.search(r"VIS-(\d{3})",line)
-            found.append(f"[local gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md#{vis.group(0).lower()})" if vis else "[local gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md)")
+            found.append(f"[local gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md#{vis_id.lower()})")
         lines[i]=line[:-1]+" "+"; ".join(found)+" |"
     (root/CATALOG).write_text(text[:start]+"\n".join(lines)+"\n"+text[end:],encoding="utf-8")
 
-def build_gallery(root,image_manifest,pdf_manifest):
-    assets=root/ASSET_REL; catalog=(root/CATALOG).read_text(encoding="utf-8")
+def build_gallery(root,image_manifest,pdf_manifest,pdf_run_status):
+    assets=root/ASSET_REL
+    catalog=(root/CATALOG).read_text(encoding="utf-8")
     _,_,_,rows=catalog_rows(catalog)
-    pages={(x.get("source_key"),x.get("page")):x for x in pdf_manifest
+    rendered={(x.get("source_key"),int(x.get("page"))):x for x in pdf_manifest
         if x.get("kind")=="pdf-page" and x.get("status")=="rendered"}
-    md=["# MPC UI Reference Screenshot Index","",
-        "Repository-local visual reference gallery for MPC UI reconstruction. Full-page PDF images preserve the page caption and context; large raster figure crops are stored beside each source page where detected.","",
-        "- images/: downloaded copies of image URLs cited in the catalog and related knowledge-base docs.",
-        "- pdf/<source>/page-NNN.jpg: page render from the cited manual.",
-        "- pdf/<source>/figures/: large image regions cropped from relevant PDF pages.",
-        "- manifest.json: source URL, local path, file hash/size, extraction status and failures.",
-        "- These documentation references are not packaged into the Android app.","",
-        f"**Inventory:** {len(image_manifest)} image URLs; {sum(x.get('status')=='downloaded' for x in image_manifest)} downloaded; {sum(x.get('status')=='failed' for x in image_manifest)} failed; {len(pages)} PDF pages rendered; {sum(x.get('kind')=='pdf-figure-crop' for x in pdf_manifest)} figure crops.","",
-        "## Screen and sub-screen gallery",""]
+    crops_by_page={}
+    for record in pdf_manifest:
+        if record.get("kind")=="pdf-figure-crop" and record.get("status")=="rendered-crop":
+            key=(record.get("source_key"),int(record.get("page")))
+            crops_by_page.setdefault(key,[]).append(record)
+    total_page_images=len(rendered)
+    total_crops=sum(len(v) for v in crops_by_page.values())
+    md=[
+        "# MPC UI Reference Screenshot Index","",
+        "Repository-local visual reference gallery. Every VIS entry is mapped to current OS 3.9 manual page captures and, where downloaded, supplementary older MPC standalone hardware manual captures. Full-page captures retain captions/context; large embedded figure crops are included when the PDF renderer detects them.","",
+        "- images/: local copies of screenshots cited by the catalog/knowledge base/reference index, plus images extracted from relevant cited support/tutorial pages.",
+        "- pdf/mpc-v39/page-NNN.jpg: current OS 3.9 guide page capture. Some pages contain screenshots; text-led pages are identified as manual-page captures, not falsely labelled whole-screen screenshots.",
+        "- pdf/mpc-v213-legacy/page-NNN.jpg: older standalone hardware guide v2.13. Supplemental only; never overrides current MPC 3.9 visual evidence.",
+        "- pdf/<source>/figures/: large image regions cropped from the relevant manual page where present.",
+        "- manifest.json: source URLs, local paths, file hashes/sizes, extraction status and failures.",
+        "- These are documentation/research references and are not packaged into Android app assets or APK.","",
+        f"Materialized inventory: {len(image_manifest)} source-image records; {sum(x.get('status')=='downloaded' for x in image_manifest)} downloaded; {sum(x.get('status')=='failed' for x in image_manifest)} failed; {total_page_images} PDF page captures; {total_crops} embedded-figure crops.","",
+        "## Screen and sub-screen gallery","",
+    ]
     for row in rows:
         vis=row["id"]
-        md.extend([f'<a id="{vis.lower()}"></a>',f"### {vis} — {row['title']}","",f"**Evidence:** {row['evidence']}",""])
-        found=[]
-        for key,page in pages:
-            rel=(Path("MPC3-UI-REFERENCE-ASSETS")/"pdf"/key/f"page-{int(page):03d}.jpg").as_posix()
-            if rel in row["row"]: found.append((key,int(page),rel))
-        if found:
-            for key,page,rel in sorted(set(found)):
-                md.extend([f"**Stored page:** {key}, printed PDF page {page}.","",f"![{vis} PDF page {page}](pdf/{key}/page-{page:03d}.jpg)",""])
-                cropdir=assets/"pdf"/key/"figures"
-                if cropdir.exists():
-                    for crop in sorted(cropdir.glob(f"page-{page:03d}-figure-*.jpg")):
-                        md.extend([f"![{vis} cropped PDF figure]({crop.relative_to(assets).as_posix()})",""])
-        else:
-            md.extend(["No linked PDF page render was associated with this row. Check the source-image manifest for available images and download/render failures.",""])
-    md.extend(["## Downloaded direct image references",""])
+        current_pages=V39_CONTEXT_PAGES.get(vis,[])
+        legacy_pages=V213_CONTEXT_PAGES.get(vis,[])
+        md.extend([f'<a id="{vis.lower()}"></a>',f"### {vis} — {row['title']}","",
+            f"Catalog evidence label: {row['evidence']}",""])
+        found_any=False
+        for key,select_pages,caption in [
+            ("mpc-v39",current_pages,"Current MPC Standalone OS 3.9 manual page capture"),
+            ("mpc-v213-legacy",legacy_pages,"Supplementary MPC standalone hardware guide v2.13 page capture — legacy visual only"),
+        ]:
+            for page_no in select_pages:
+                if not rendered.get((key,int(page_no))):
+                    continue
+                found_any=True
+                md.extend([f"**{caption}:** page {page_no}. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.","",f"![{vis} {key} page {page_no}](pdf/{key}/page-{page_no:03d}.jpg)",""])
+                for crop in crops_by_page.get((key,int(page_no)),[]):
+                    crop_rel=Path(crop["local_path"]).relative_to(ASSET_REL).as_posix()
+                    md.extend([f"![{vis} extracted figure from {key} page {page_no}]({crop_rel})",""])
+        if not found_any:
+            md.extend(["Capture status: no mapped local PDF page render was produced for this VIS entry. Consult the direct-image manifest below for images and retrieval failures.",""])
+    md.extend(["## Downloaded/extracted direct image references",""])
     for item in image_manifest:
         label=item.get("alt") or "MPC reference image"
         md.extend([f"### {label}",""])
         if item.get("status")=="downloaded":
             local=Path(item["local_path"]).relative_to(ASSET_REL).as_posix()
-            md.extend([f"![{label}]({local})","",f"Source: {item['source_url']}",""])
+            md.extend([f"![{label}]({local})","",f"Source page: {item.get('parent_url','direct image URL')}",f"Original image URL: {item['source_url']}",""])
         else:
-            md.extend([f"**Download failed:** {item.get('error','unknown error')}","",f"Source: {item.get('source_url','')}",""])
+            md.extend([f"Download failed: {item.get('error','unknown error')}","",f"Source image/page: {item.get('parent_url',item.get('source_url',''))}",""])
     (assets/"INDEX.md").write_text("\n".join(md)+"\n",encoding="utf-8")
-    manifest={"generated_by":"tools/build_mpc_ui_reference_assets.py","pdf_sources":PDF_SOURCES,
-        "inline_images":image_manifest,"pdf_pages_and_crops":pdf_manifest,"failures":FAILURES}
+    manifest={
+        "generated_by":"tools/build_mpc_ui_reference_assets.py",
+        "sources":pdf_run_status,
+        "inline_and_extracted_images":image_manifest,
+        "pdf_pages_and_crops":pdf_manifest,
+        "failures":FAILURES
+    }
     (assets/"manifest.json").write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
     (assets/"README.md").write_text(
-        "# MPC UI Reference Assets\n\nDocumentation-only visual reference files for reconstructing the MPC UI. They are not copied into the Android app or APK.\n\n"
-        "- INDEX.md: gallery grouped by VIS-001 through VIS-082 and downloaded direct images.\n"
-        "- images/: local copies of source URLs cited in project documentation.\n"
-        "- pdf/: page captures and large figure crops from referenced manuals.\n"
-        "- manifest.json: source provenance, file hashes, status and failures.\n\n"
-        "Original source links and device/version caveats remain in the catalog. A screenshot is not proof that a corresponding Android screen is implemented.\n",encoding="utf-8")
+        "# MPC UI Reference Assets\n\n"
+        "Repository-local reference images for reconstructing MPC One / MPC OS UI. This folder is documentation-only and is not copied into Android app assets or APK.\n\n"
+        "- INDEX.md: gallery grouped by all VIS-001 through VIS-082 contexts and all downloaded/extracted source images.\n"
+        "- images/: local copies of screenshots from the Markdown index and relevant cited pages.\n"
+        "- pdf/mpc-v39/: current OS 3.9 manual page captures and detected embedded figure crops.\n"
+        "- pdf/mpc-v213-legacy/: supplemental legacy standalone MPC hardware guide v2.13 page captures.\n"
+        "- pdf/: other cited MPC manuals (v3.6/v3.7) used as secondary historical evidence.\n"
+        "- manifest.json: source provenance, local paths, hashes, status, render inventory and failures.\n\n"
+        "Original source links and firmware/device caveats remain in the catalog. A page capture is not described as a whole-screen UI screenshot unless the page actually shows that screen.\n",encoding="utf-8")
 
 def main():
     parser=argparse.ArgumentParser()
@@ -462,7 +505,7 @@ def main():
         pdf_ready[key]=True
         pdf_manifest.extend(render_pdf(root,key,pdf_path,pages[key],source_url))
     add_local_page_column(root,pages,pdf_ready)
-    build_gallery(root,image_manifest,pdf_manifest)
+    build_gallery(root,image_manifest,pdf_manifest,pdf_run_status)
     report={"image_references_found":len(image_manifest),
         "inline_images_downloaded":sum(x.get("status")=="downloaded" for x in image_manifest),
         "inline_images_failed":sum(x.get("status")=="failed" for x in image_manifest),
