@@ -1,0 +1,2741 @@
+{
+  "generated_by": "tools/build_mpc_ui_reference_assets.py",
+  "pdf_sources": {
+    "mpc-v39": [
+      "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "https://device.report/m/b0630c574556ed080cb5fb3133352cca4e1dcc92282f78317c0c8f88f9f0090b_optim.pdf"
+    ],
+    "mpc-v37": [
+      "https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf"
+    ],
+    "mpc-v36": [
+      "https://cdn.inmusicbrands.com/Software/36/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.6.pdf"
+    ],
+    "mpc-v2117-legacy": [
+      "https://device.report/m/99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0.pdf"
+    ]
+  },
+  "inline_images": [
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Main — sequence, track, arrangement preview and function bar",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69176903713/original/tG8Q7SJWSKww5E-BtgLHjff7Z1Y0EL7Jkw.png?1764065208=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-main-sequence-track-arrangement-preview-and-function-b-f147ffbaae13.png",
+      "bytes": 177665,
+      "sha256": "9797660fdcbf481fcc42c9ccb927711c430feffedef2fc40ea5ef86495e61da2",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3-family Main arrangement example on MPC Live III",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/A/AkaiMPCLiveIII_04-ajv0NghfxDb0Qn7EjFNP6tIDITCeULIC.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-family-main-arrangement-example-on-mpc-live-iii-08350244657b.jpg",
+      "bytes": 219107,
+      "sha256": "2016da268a0121e6fb8978714af8b906b23971a8fc9df0a7c679a4743d69a26f",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 XL Channel Strip and I-O routing",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69154227724/original/W4p-2vkRxIavIh5ZOK9e8ZvP0fZ0iVPVxA.png?1745834845=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-xl-channel-strip-and-i-o-routing-e97042beaa09.png",
+      "bytes": 290457,
+      "sha256": "b9703645873d15294bf7f2609c60079fcac02956e765d59a5f951131fe4442cf",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 mode menu",
+      "source_url": "https://www.mpc-tutor.com/assets/mpc-menu-1024x639.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-mode-menu-c6cc42242737.png",
+      "bytes": 125457,
+      "sha256": "04868414d0a5a766a1dc9361507772ac127f2c58d38d76d2a2869ad46f932eac",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "Legacy MPC Main screen — comparison only, not MPC 3.9 target",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/M/MPCBasics_02-1eS.kAqGJkEsbEBcA_yfgeJUvXCMWXIi.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/legacy-mpc-main-screen-comparison-only-not-mpc-3-9-target-8ff5381cc7f4.jpg",
+      "bytes": 219344,
+      "sha256": "4f40dfccbf429e3ff7df0faa0394e5ea7cc9d04cba343dd3b13735fa4fa280ec",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "Official MPC Standalone Track View — track rows, monitor, level, mute/solo and Function Bar",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69128760784/original/ZxmnIeI0mSiXFQy513lN30sfQ0ai0ObVWg.png?1726736736=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/official-mpc-standalone-track-view-track-rows-monitor-level-44e1b1d212c5.png",
+      "bytes": 392044,
+      "sha256": "4b7b90a3457d5f92f94a65a25bcdd2580f8c883d8bf89741cb0905772511a7d8",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Browser — Places tab and local storage locations",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69177984964/original/iLqdSWSEhgtkBJkc5rRpi5_3L-xx41uWXg.png?1764935456=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-places-tab-and-local-storage-locations-9a871e38dc98.png",
+      "bytes": 116563,
+      "sha256": "6323d7dab518d588d08b3b391304616c43235899cd75b989fe37ff3f8d92fc54",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Browser — Content categories",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165719905/original/-BBHK1y9CkqUgmPuiShYZjuXKQpaFT1gFw.png?1754995552=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-content-categories-58ff6709c4c7.png",
+      "bytes": 155458,
+      "sha256": "c09baed5bfc539f4fb99427a4e975cdda1ae2f8ae2c7792171f3519848b21f42",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Browser — Expansions tab",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165719916/original/LpsBnLwwLU5Antxb5wdSSQK_9pafduji-Q.png?1754995559=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-expansions-tab-2c49d5c06e47.png",
+      "bytes": 522197,
+      "sha256": "e7500387a7042b971b06082782c959a7c91d1af466e4128a16477c7d95323a06",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Browser — Sample Assign and sample pool",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165722181/original/w67qMx9X5NaS3yf3_Efh5FUtSujKqosltQ.png?1754997241=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-sample-assign-and-sample-pool-cdd94eae8477.png",
+      "bytes": 210838,
+      "sha256": "b65cc6125b91390bd8c2907de22a30875263b2d69e710f59bd27bf81b3c544e0",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Browser Options dialog",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165716730/original/_c1kISWJxQzR99bZd8JmlBS0S0gVwNyBOg.png?1754993450=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-options-dialog-df0c8fcf44f3.png",
+      "bytes": 99539,
+      "sha256": "099319dbec3d7c49c8eca156bd5535fa3d22e689c4a6a5d13b684c8fec67e405",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "Pad Perform — custom note map and 4×4 pad interpretation",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69166324277/original/6NjC6-cRea38vgWsZYANVNmmRnv9QbtgLw.png?1755523845=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/pad-perform-custom-note-map-and-4-4-pad-interpretation-c523ff4e337b.png",
+      "bytes": 90347,
+      "sha256": "a0c34010d64520114c1eacc60f5cefb3b98d396b5dbffb652ffc1cf0f70defca",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "Track Edit — sample layers and waveform",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69176903727/original/-0xrv1nhFLQ1XfkWCRFkoCgZQe0zfjr4LA.png?1764065223=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/track-edit-sample-layers-and-waveform-259bac67e5a1.png",
+      "bytes": 98306,
+      "sha256": "940692c8775d9655c1a63f198e9402ea0ab70467a42f272102d94a634a9b38cc",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Sample Edit — waveform, slice and process controls",
+      "source_url": "https://www.mpc-tutor.com/assets/slicemotion/slice05.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-sample-edit-waveform-slice-and-process-controls-10ef314bb22a.png",
+      "bytes": 40894,
+      "sha256": "601fe474d5e95df13e5a1aa21e9dfb664fc1f1abfc9600b7cf8329a07b0af03d",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 envelope automation and performance status",
+      "source_url": "https://www.mpc-tutor.com/assets/slicemotion/slice24.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-envelope-automation-and-performance-status-dec6f11c0f82.png",
+      "bytes": 32682,
+      "sha256": "d97cdd1799c544943522a429041e567d602093a2c84cd35cee63e42984b6e6ed",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "Legacy Grid View — note grid with velocity lane; visual structure only",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69137425072/original/UbA7URmBzaEGtijRhATbUeKqQJQobByonw.png?1733155392=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/legacy-grid-view-note-grid-with-velocity-lane-visual-structu-d909300d6d41.png",
+      "bytes": 333348,
+      "sha256": "c13463f4a95ee14e5de0f37c0fe903175ba71c49712113ea54cbffbb703abf44",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "Legacy standalone MPC Sampler recording screen — interaction reference only",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/S/SampleSlicing_02-on3yRqdzNYbySPlbD3x43Dr_yKlI1RKX.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/legacy-standalone-mpc-sampler-recording-screen-interaction-r-09b6ee494081.jpg",
+      "bytes": 172566,
+      "sha256": "c9a75b67db574f5aed3ba613e6668dd300cbcfb1af0fbbfe799994c696b6a317",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "Preferences — project load/save and autosave",
+      "source_url": "https://www.mpc-tutor.com/assets/autosave.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/preferences-project-load-save-and-autosave-61d56b95926b.jpg",
+      "bytes": 67171,
+      "sha256": "8fa97e9ce1a7236942285d3e85d84a8b4e338fde9ad0c5233e2633f1228867a5",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC One Step Sequencer photographed on the hardware",
+      "source_url": "https://img.youtube.com/vi/uuNyLLg-cXs/maxresdefault.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-one-step-sequencer-photographed-on-the-hardware-c2831dc25a58.jpg",
+      "bytes": 234638,
+      "sha256": "f502cc9204a03e78e7a4c61c54a65e72306e6a94756cff6d82e6e87fa8f0e528",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC waveform Chop mode and slice markers",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/M/MPCBasics_07-NswMBI0X4nQgTah8CIBrwSGbQ5xLHYQO.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-waveform-chop-mode-and-slice-markers-4f464ebf5b5c.jpg",
+      "bytes": 294373,
+      "sha256": "fb90eb46be3085d2d0e87422b0fbc72a078d7af8400c683f333f25ab1a4f5f11",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC One Next Sequence grid photographed on hardware",
+      "source_url": "https://cdn-ak.f.st-hatena.com/images/fotolife/M/Marronfieldsproduction/20221025/20221025034745.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-one-next-sequence-grid-photographed-on-hardware-a484f614d5e5.jpg",
+      "bytes": 48911,
+      "sha256": "71bb78bc35894e599c5b345b9c88908a85acbf50511628b5f38bb543c1432f5f",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Song Mode — sequence playlist and sequence tiles",
+      "source_url": "https://www.mpc-tutor.com/assets/song-mode-playlist-1024x640.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-song-mode-sequence-playlist-and-sequence-tiles-55a35ec6a52c.png",
+      "bytes": 36083,
+      "sha256": "46a78bfa601525d47f32fb06886d70e76496c213a246067fedc25bfe5214a3c3",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Channel Mixer I/O, monitoring, sends and outputs",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69192726532/original/_w6tJ-s7R-DyxGc1avFs6s8caU_uAq9B7Q.png?1780034221=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-channel-mixer-i-o-monitoring-sends-and-outputs-0d37b279b37e.png",
+      "bytes": 251993,
+      "sha256": "e09f25a5f2c930893e39c3a8d1785086cb3ddad8a5e8c32baa0fe82c3eb26ffc",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC pad mixer routing matrix — older visual, not MPC 3.9 geometry",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69136157082/original/dgGihnRKJXr_dvqLa512k-gmoref-QAe_Q.JPG?1732159501=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-pad-mixer-routing-matrix-older-visual-not-mpc-3-9-geomet-d095d6c025c0.jpg",
+      "bytes": 2347547,
+      "sha256": "214f62b3c5c4b88885c5ca6bca14dd1e47b08965a95fb932b4bc6cae1edd9133",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC One Preferences — MIDI / Sync ports",
+      "source_url": "https://eu5.dh-cdn.net/uploads/db8181/original/3X/7/3/739f6d1d05b21c98e4cf4c2e8e8a9b23304aaad3.jpeg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-one-preferences-midi-sync-ports-539cacc26b3a.jpg",
+      "bytes": 2186420,
+      "sha256": "b30afba51cbcacbc3199cb50c7e9d1fbf6c66d8f586119347be6d008d6076c3e",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Click/Metro dialog",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69183338703/original/C9jY-JC1NZ48_45iDBSAU8uYXQh9eRCcMA.png?1770305858=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-click-metro-dialog-b9112d55a543.png",
+      "bytes": 121785,
+      "sha256": "a016131d19175c3a251e60b4c96e02a97f3b7ffb5b333781669b0f673964aa13",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC standalone XYFX touch grid",
+      "source_url": "https://heikkisiltala.net/wiki/_media/images/akai_mpc_live/effectsxypad02.jpg?tok=792f2b&w=800",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-standalone-xyfx-touch-grid-d943bc106424.jpg",
+      "bytes": 340596,
+      "sha256": "1453578a62ca16d3645e968b50d5f85879bbb22289a1f439f41c545a8603c85f",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Program Edit Samples page — layer list",
+      "source_url": "https://www.mpc-tutor.com/assets/prog5.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-program-edit-samples-page-layer-list-f88c7df9c650.png",
+      "bytes": 31726,
+      "sha256": "1816001fbb6e2855e2934ab462b896da03968357baca639643456e6431c4a169",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Program Edit — per-pad sample-layer parameters",
+      "source_url": "https://www.mpc-tutor.com/assets/offset2.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-program-edit-per-pad-sample-layer-parameters-0570d70052d8.png",
+      "bytes": 30204,
+      "sha256": "4dd27e2431c1fd022e30343f0ae2feb2c2f6d02dc06fdf370469952df93ceda6",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC One pad color / sample assignment grid",
+      "source_url": "https://cdn.mos.cms.futurecdn.net/oC9sLkM9L8r7nj9abQQTsj.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-one-pad-color-sample-assignment-grid-07ac001a859b.jpg",
+      "bytes": 3479886,
+      "sha256": "2be48e66e2e58eab4605ce3aea2ac3239c8fd3c8cf9135af2905b035f49ce32b",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Q-Link parameter overview",
+      "source_url": "https://www.mpc-tutor.com/assets/qlink-2.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-q-link-parameter-overview-ba262bc8ab91.png",
+      "bytes": 37609,
+      "sha256": "5186cc71b53daec19b843f3a76ee0d8dd68f808d018320bd624ccfed5abc087b",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Save window — project, project as and other save formats",
+      "source_url": "https://www.mpc-tutor.com/assets/save.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-save-window-project-project-as-and-other-save-formats-44af233c0765.png",
+      "bytes": 46710,
+      "sha256": "27299109807dd0de905cf8448ddb81871f235f66df9e765d45b7047a58afee29",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC One Browser shown on the physical hardware",
+      "source_url": "https://cdn.mos.cms.futurecdn.net/pFYHKeyGe33zd8ypBvFKoi.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-one-browser-shown-on-the-physical-hardware-9d3f4d676642.jpg",
+      "bytes": 1860246,
+      "sha256": "b6ba8151fc153547cb8bdd2c3c8adcc73b33280dd3adb23105ab19e9eb01330d",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC One Sample Edit Trim screen photographed on the hardware",
+      "source_url": "https://cdn-ak.f.st-hatena.com/images/fotolife/M/Marronfieldsproduction/20221028/20221028035306.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-one-sample-edit-trim-screen-photographed-on-the-hardware-4f5d9b339bab.jpg",
+      "bytes": 54100,
+      "sha256": "f96d3a1172ba9bf72ee1d44328062b895fc98ef4032a37023a1f086ce4f1175e",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC One Sample Assign with sample pool and 4x4 pad assignment",
+      "source_url": "https://assets.st-note.com/img/1714572254880-afLUx6An8g.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-one-sample-assign-with-sample-pool-and-4x4-pad-assignmen-dd8a4b575ad3.jpg",
+      "bytes": 446622,
+      "sha256": "0bdb995df0b962594f5be997bf13047f9e2b468b9930d19e9ffb0e6170c29670",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "Legacy MPC waveform editor with automation lane and bottom actions",
+      "source_url": "https://ragtime.online/media/catalog/product/6/b/6bc500-crop-af798e-mpcone.jpg.auto.jpg",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/legacy-mpc-waveform-editor-with-automation-lane-and-bottom-a-4874dacff8fb.jpg",
+      "bytes": 76877,
+      "sha256": "7a64e30479097c94e9ad97525a8ce35b2994d90eb1616d62830bc473d73482bc",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Grid with piano-roll events, velocity lane and bottom edit functions",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69194801033/original/NcJsWEGW4E8GKzQShSO1Ex2Ek7wkMdv6Cg.png?1782213213=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-grid-with-piano-roll-events-velocity-lane-and-bottom-edi-cc323c849b57.png",
+      "bytes": 52501,
+      "sha256": "7824e14c243bc1ce9bc038b784ddb271be4e01d1804b4dbaa9b0d694ac6f5174",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Arpeggiator dialog with timing, action, pattern and latch settings",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69117558608/original/9s1MRfk1vI0K_6ubpYauxjR2bCN_UBPCSQ.png?1718116566=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-arpeggiator-dialog-with-timing-action-pattern-and-latch-ffbb8f3d1d49.png",
+      "bytes": 114502,
+      "sha256": "dcc191712da38f2b314373d0dab001ceb201869579ba6e2b77c62f22b713fe77",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC standalone MIDI Sync preferences with input and output ports",
+      "source_url": "https://www.mpc-tutor.com/assets/preferences-midi-incoming-1024x640.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-standalone-midi-sync-preferences-with-input-and-output-p-86295292ded6.png",
+      "bytes": 101089,
+      "sha256": "b493c3c6128d6401f713740b05025fa324e134c92c90900e8dbcdc0396ffc2d8",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Sequence Edit menu with Erase, Clear All, Clear Events, Trim and other sequence operations",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171567821/original/Gn_oosMLkpAb2-Jd4S9CQs8fcCCtzKUJ0g.jpeg?1759738112=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-sequence-edit-menu-with-erase-clear-all-clear-events-t-b8feae20d5c0.jpg",
+      "bytes": 80726,
+      "sha256": "0c58c175077a990c73a0d4c0d0f6872dc38d8ba4c60d32b4e0c8d67b6716a2f6",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Erase dialog with sequence, track, time range and event-type options",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568345/original/y9ooBl_93rautQ01WZCrR0X81Z86U1iGwg.png?1759738577=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-erase-dialog-with-sequence-track-time-range-and-event-2c9917019641.png",
+      "bytes": 38478,
+      "sha256": "56f4d8f20d8d80d86ee3c0c8224e39a22c750a8378a910057989687bcdef6913",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Erase Note mode with the eight-bank pad selection mask",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568606/original/TKMwaGq0Sqgh2kqcKpJd-Nzu3qgFJw4qaA.png?1759738674=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-erase-note-mode-with-the-eight-bank-pad-selection-mask-519b44b92828.png",
+      "bytes": 58249,
+      "sha256": "542898e2a340e78dc89654fe204b67976f57acc31f567201761147aa51a3bb5c",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Clear Sequence destructive confirmation dialog",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568002/original/p4XyPOCyXsuXuyqyDqTpVf9cmkKEgnK2jg.png?1759738294=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-clear-sequence-destructive-confirmation-dialog-c38dc8416680.png",
+      "bytes": 53603,
+      "sha256": "48f0e369fdf93c5abaa0404a7b1aa5353323e147d77708906558e91b681bf858",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Preferences — Hardware tab with Tap Tempo, Bank Button and Q-Link settings",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69161763950/original/pWP6-5PdcH9pY2cA4pGmjd4H5xZz47NkEw.png?1751856629=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-preferences-hardware-tab-with-tap-tempo-bank-button-an-5c75684d6f80.png",
+      "bytes": 118950,
+      "sha256": "55138debc199e17ea48cb302b6ddefede59bfb2511cf9b435e85d5851db7959b",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Preferences — Project Load/Save tab",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497633/original/losLbj-hGvLzhujOiTJoGEADHmkCLyMwlw.png?1757329912=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-preferences-project-load-save-tab-d4eb28c2459b.png",
+      "bytes": 82522,
+      "sha256": "5910b3e171b02b607e39feb9c730ecc17ebf1dd0900f0f0f307981f9996eed1f",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 New Project Behaviour selector",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497555/original/1B5Ebe8l-fxKf8RUdYXAAru39U1WG5118Q.png?1757329862=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-new-project-behaviour-selector-2c470b0aab21.png",
+      "bytes": 88830,
+      "sha256": "0e313417874a40deca31e0b471105272a774426e1b1e7697e03d71ecdf1b1781",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 New Project Dialog selector",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497526/original/Go4z7ExFaEGKbgu1F2FPTXPQrara8DcZuQ.png?1757329832=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-new-project-dialog-selector-e4d1be9a8cc1.png",
+      "bytes": 87301,
+      "sha256": "71aca72fef60be04f2849d633e1fa13423f053ace4fff69046f6e5e7ebaea0c1",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Main Track Type selector affordance",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881223/original/OBU4OIPLsVppo0XE-rgOgxdwLUu5JvMD3Q.png?1732016692=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-main-track-type-selector-affordance-cd86da325d66.png",
+      "bytes": 26894,
+      "sha256": "8837c29ce7480fb88f42feb0f56451ad15b18335549879050d879268a4592f04",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Main Program context and Pad Perform entry",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881533/original/Gpm2HcY9ynQCsjxFsSc7T8t0VoLS4_Ldng.png?1732016882=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-main-program-context-and-pad-perform-entry-15b124a1caee.png",
+      "bytes": 24367,
+      "sha256": "c999accbec253abfca7bab355aa4b7352cac5fe57740ef4287660da997d21add",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Browser with the Audition Auto Sync Warp level popover open",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165715554/original/NWURoLiusABAG6rrubXbuxf-pmUkMGliKw.png?1754992557=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-with-the-audition-auto-sync-warp-level-popover-o-20bbc5cef83e.png",
+      "bytes": 598407,
+      "sha256": "8270f192ca2bec3cdd541f83b51aa16798db8d589be03a1f7b7ce0bb092a4182",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Browser search and six file-type filter icons",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165715626/original/ZgepHM1fsT3jM9N1rop6oSpx8F81swSJgQ.png?1754992624=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-search-and-six-file-type-filter-icons-7bf79c7b2e9e.png",
+      "bytes": 8347,
+      "sha256": "d2b89e1ae638fae3c5df7774a9383b625da3b9b6966b81b030af893a3247adae",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Browser favourite folder buttons 1 to 5",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165717538/original/03TYqionEXfsV6ARKxTlp1yoNQCUSEZXXQ.png?1754993997=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-browser-favourite-folder-buttons-1-to-5-76fac09c8950.png",
+      "bytes": 7808,
+      "sha256": "9fb53677e15132b5aebcdcfa11468ce2670c5f6fc1e936ae3b79e8d0154c4256",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC 3 Preferences MIDI Sync port routing controls",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69151187913/original/qUWciG6cOb30KJXSUof5XWV_BAkPclk0yA.png?1743505244=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-3-preferences-midi-sync-port-routing-controls-39f024016216.png",
+      "bytes": 107600,
+      "sha256": "51a0255849926e1caf229ea3a2db09127a01d9b183a73101966de9353b3482a3",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Standalone Sampler screen with input source, Arm, sample counter and Sample Slice Pad Tap Pad Hold tabs",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69075163375/original/tP8Gznhoc4AujoPV18pa0M4lGw_Fi4F1pQ.png?1683839460=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-standalone-sampler-screen-with-input-source-arm-sample-c-f05873886bbf.png",
+      "bytes": 147844,
+      "sha256": "f7999fb01cdcb276b0be4d109b2d6bfa8c11ba55e555452460a793afa55bd26b",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "Akai MPC Sampler input-source and Monitor On Off controls",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69075165589/original/YFSMdgWyQKiv9I98J_Jl4nbGEHYgQBj7LA.png?1683841018=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/akai-mpc-sampler-input-source-and-monitor-on-off-controls-7f4281c61ce5.png",
+      "bytes": 130415,
+      "sha256": "562a3b6b9b1abc6fde79240c2ec3b15330eeedf7893685e13e7231044b604529",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Project Defaults settings including tempo, sequence bars, time signature and new-project dialog",
+      "source_url": "https://www.mpc-tutor.com/assets/mpcs-prefs2.png",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-project-defaults-settings-including-tempo-sequence-bars-f1aad95c6ba7.png",
+      "bytes": 244082,
+      "sha256": "2dac910015f5f6bc0d5e1744898b681b8722dca1f28273b9a556c2e8684a13c7",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Preferences Project Load Save Auto Save and timeout selector",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69155310481/original/UHQkJ3Q7dOCU3OYKqq7-M1tT736gXs-XMg.png?1746635795=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-preferences-project-load-save-auto-save-and-timeout-sele-48ed794ec671.png",
+      "bytes": 163581,
+      "sha256": "c03b0a39d50a0753d7f96ccc53faddbed366bfc6eb87f01b90c9cac74071e143",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC Project Load Save Temporary File Location row",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69155310100/original/Eje2-0LPl4-jsEQVNg9NQ3UiBxhAMjIW3A.png?1746635653=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-project-load-save-temporary-file-location-row-92d4b4620bb0.png",
+      "bytes": 24200,
+      "sha256": "4c6ea6b613602055114b2dae1dba08ff81b40d6ca33d7f12046ea8f3a0ba7403",
+      "status": "downloaded"
+    },
+    {
+      "kind": "inline-image",
+      "alt": "MPC project auto-save progress modal",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69141762232/original/FtmdsIpb1y5Th0qupBLf7AvPPW5lb_td2A.png?1736425797=",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/mpc-project-auto-save-progress-modal-1b777b813aac.png",
+      "bytes": 87532,
+      "sha256": "78fa16e780ed545c29a55e4309594df6791f21eb62998c9aa1f9b8463a2752a8",
+      "status": "downloaded"
+    }
+  ],
+  "pdf_pages_and_crops": [
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 15,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-015-figure-01.jpg",
+      "bytes": 84728,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 15,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-015.jpg",
+      "bytes": 134008,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-015-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 20,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-020-figure-01.jpg",
+      "bytes": 26523,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 20,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-020-figure-02.jpg",
+      "bytes": 16893,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 20,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-020-figure-03.jpg",
+      "bytes": 24578,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 20,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-020.jpg",
+      "bytes": 169139,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-020-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-020-figure-02.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-020-figure-03.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 21,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-021-figure-01.jpg",
+      "bytes": 27819,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 21,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-021-figure-02.jpg",
+      "bytes": 33140,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 21,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-021-figure-03.jpg",
+      "bytes": 31467,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 21,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-021-figure-04.jpg",
+      "bytes": 29252,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 21,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-021.jpg",
+      "bytes": 149824,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-021-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-021-figure-02.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-021-figure-03.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-021-figure-04.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 29,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-029-figure-01.jpg",
+      "bytes": 36700,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 29,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-029.jpg",
+      "bytes": 151248,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-029-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 36,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-036-figure-01.jpg",
+      "bytes": 43869,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 36,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-036.jpg",
+      "bytes": 102427,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-036-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 38,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-038-figure-01.jpg",
+      "bytes": 39770,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 38,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-038.jpg",
+      "bytes": 153537,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-038-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 45,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-045.jpg",
+      "bytes": 110896,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 56,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-056-figure-01.jpg",
+      "bytes": 30508,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 56,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-056-figure-02.jpg",
+      "bytes": 17536,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 56,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-056.jpg",
+      "bytes": 96949,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-056-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-056-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 57,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-057-figure-01.jpg",
+      "bytes": 27161,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 57,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-057.jpg",
+      "bytes": 105087,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-057-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 59,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-059-figure-01.jpg",
+      "bytes": 25452,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 59,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-059-figure-02.jpg",
+      "bytes": 14306,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 59,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-059.jpg",
+      "bytes": 187943,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-059-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-059-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 60,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-060-figure-01.jpg",
+      "bytes": 33577,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 60,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-060.jpg",
+      "bytes": 203326,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-060-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 61,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-061-figure-01.jpg",
+      "bytes": 14546,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 61,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-061.jpg",
+      "bytes": 188922,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-061-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 62,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-062.jpg",
+      "bytes": 232379,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 63,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-063.jpg",
+      "bytes": 291589,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 64,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-064.jpg",
+      "bytes": 249480,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 65,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-065.jpg",
+      "bytes": 272537,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 66,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-066.jpg",
+      "bytes": 253987,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 67,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-067.jpg",
+      "bytes": 276910,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 68,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-068.jpg",
+      "bytes": 169074,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 69,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-069-figure-01.jpg",
+      "bytes": 30456,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 69,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-069.jpg",
+      "bytes": 133462,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-069-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 75,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-075-figure-01.jpg",
+      "bytes": 16738,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 75,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-075-figure-02.jpg",
+      "bytes": 20900,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 75,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-075-figure-03.jpg",
+      "bytes": 27946,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 75,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-075.jpg",
+      "bytes": 157359,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-075-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-075-figure-02.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-075-figure-03.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 77,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-077-figure-01.jpg",
+      "bytes": 23607,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 77,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-077.jpg",
+      "bytes": 109417,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-077-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 78,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-078.jpg",
+      "bytes": 183124,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 80,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-080-figure-01.jpg",
+      "bytes": 12319,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 80,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-080-figure-02.jpg",
+      "bytes": 12635,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 80,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-080.jpg",
+      "bytes": 124095,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-080-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-080-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 81,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-081-figure-01.jpg",
+      "bytes": 33607,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 81,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-081.jpg",
+      "bytes": 162716,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-081-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 84,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-084-figure-01.jpg",
+      "bytes": 24472,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 84,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-084-figure-02.jpg",
+      "bytes": 10183,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 84,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-084.jpg",
+      "bytes": 116450,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-084-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-084-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 87,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-087-figure-01.jpg",
+      "bytes": 15176,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 87,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-087-figure-02.jpg",
+      "bytes": 21112,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 87,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-087.jpg",
+      "bytes": 103318,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-087-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-087-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 100,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-100-figure-01.jpg",
+      "bytes": 21835,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 100,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-100.jpg",
+      "bytes": 134924,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-100-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 109,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-109-figure-01.jpg",
+      "bytes": 90292,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 109,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-109.jpg",
+      "bytes": 86297,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-109-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 112,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-112-figure-01.jpg",
+      "bytes": 10286,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 112,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-112.jpg",
+      "bytes": 115500,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-112-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 117,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-117-figure-01.jpg",
+      "bytes": 21536,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 117,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-117-figure-02.jpg",
+      "bytes": 27287,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 117,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-117.jpg",
+      "bytes": 88897,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-117-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-117-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 126,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-126-figure-01.jpg",
+      "bytes": 46399,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 126,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-126-figure-02.jpg",
+      "bytes": 9593,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 126,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-126.jpg",
+      "bytes": 94956,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-126-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-126-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 129,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-129-figure-01.jpg",
+      "bytes": 44870,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 129,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-129.jpg",
+      "bytes": 74773,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-129-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 133,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-133-figure-01.jpg",
+      "bytes": 47207,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 133,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-133-figure-02.jpg",
+      "bytes": 45850,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 133,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-133.jpg",
+      "bytes": 116840,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-133-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-133-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 136,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-136-figure-01.jpg",
+      "bytes": 22203,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 136,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-136-figure-02.jpg",
+      "bytes": 26800,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 136,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-136.jpg",
+      "bytes": 159358,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-136-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-136-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 139,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-139-figure-01.jpg",
+      "bytes": 44932,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 139,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-139.jpg",
+      "bytes": 170329,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-139-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 140,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-140-figure-01.jpg",
+      "bytes": 35593,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 140,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-140.jpg",
+      "bytes": 113372,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-140-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 141,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-141-figure-01.jpg",
+      "bytes": 31729,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 141,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-141-figure-02.jpg",
+      "bytes": 35569,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 141,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-141.jpg",
+      "bytes": 98359,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-141-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-141-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 142,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-142-figure-01.jpg",
+      "bytes": 40195,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 142,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-142.jpg",
+      "bytes": 67976,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-142-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 143,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-143-figure-01.jpg",
+      "bytes": 41749,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 143,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-143.jpg",
+      "bytes": 71017,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-143-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 144,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-144-figure-01.jpg",
+      "bytes": 45733,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 144,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-144.jpg",
+      "bytes": 132636,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-144-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 145,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-145-figure-01.jpg",
+      "bytes": 36815,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 145,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-145.jpg",
+      "bytes": 85824,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-145-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 146,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-146-figure-01.jpg",
+      "bytes": 36815,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 146,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-146-figure-02.jpg",
+      "bytes": 40525,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 146,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-146.jpg",
+      "bytes": 81445,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-146-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-146-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 147,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-147-figure-01.jpg",
+      "bytes": 39204,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 147,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-147-figure-02.jpg",
+      "bytes": 47525,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 147,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-147.jpg",
+      "bytes": 82948,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-147-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-147-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 148,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-148-figure-01.jpg",
+      "bytes": 39040,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 148,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-148.jpg",
+      "bytes": 66331,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-148-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 149,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-149-figure-01.jpg",
+      "bytes": 67443,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 149,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-149-figure-02.jpg",
+      "bytes": 13891,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 149,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-149.jpg",
+      "bytes": 132311,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-149-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-149-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 150,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-150-figure-01.jpg",
+      "bytes": 21296,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 150,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-150-figure-02.jpg",
+      "bytes": 15478,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 150,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-150-figure-03.jpg",
+      "bytes": 21301,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 150,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-150.jpg",
+      "bytes": 144099,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-150-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-150-figure-02.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-150-figure-03.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 151,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-151-figure-01.jpg",
+      "bytes": 38704,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 151,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-151.jpg",
+      "bytes": 101926,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-151-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 152,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-152-figure-01.jpg",
+      "bytes": 38779,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 152,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-152.jpg",
+      "bytes": 81090,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-152-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 153,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-153-figure-01.jpg",
+      "bytes": 38748,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 153,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-153.jpg",
+      "bytes": 65917,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-153-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 154,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-154-figure-01.jpg",
+      "bytes": 56205,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 154,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-154.jpg",
+      "bytes": 121570,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-154-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 167,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-167-figure-01.jpg",
+      "bytes": 27082,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 167,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-167-figure-02.jpg",
+      "bytes": 27194,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 167,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-167-figure-03.jpg",
+      "bytes": 24918,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 167,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-167.jpg",
+      "bytes": 95700,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-167-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-167-figure-02.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-167-figure-03.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 179,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-179-figure-01.jpg",
+      "bytes": 36700,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 179,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-179.jpg",
+      "bytes": 114875,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-179-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 184,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-184-figure-01.jpg",
+      "bytes": 40624,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 184,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-184.jpg",
+      "bytes": 116919,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-184-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 190,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-190-figure-01.jpg",
+      "bytes": 32253,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 190,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-190.jpg",
+      "bytes": 108093,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-190-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 191,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-191-figure-01.jpg",
+      "bytes": 15655,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 191,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-191-figure-02.jpg",
+      "bytes": 16128,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 191,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-191-figure-03.jpg",
+      "bytes": 18111,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 191,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-191.jpg",
+      "bytes": 147674,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-191-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-191-figure-02.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-191-figure-03.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 197,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-197-figure-01.jpg",
+      "bytes": 42901,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 197,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-197.jpg",
+      "bytes": 145487,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-197-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 203,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-203-figure-01.jpg",
+      "bytes": 33771,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 203,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-203.jpg",
+      "bytes": 110165,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-203-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 212,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-212-figure-01.jpg",
+      "bytes": 35471,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 212,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-212.jpg",
+      "bytes": 140747,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-212-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 215,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-215-figure-01.jpg",
+      "bytes": 30482,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 215,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-215.jpg",
+      "bytes": 109501,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-215-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 221,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-221-figure-01.jpg",
+      "bytes": 41517,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 221,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-221.jpg",
+      "bytes": 142263,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-221-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 230,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-230-figure-01.jpg",
+      "bytes": 26401,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 230,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-230.jpg",
+      "bytes": 40024,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-230-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 254,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-254-figure-01.jpg",
+      "bytes": 55219,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 254,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-254.jpg",
+      "bytes": 63548,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-254-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 255,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-255-figure-01.jpg",
+      "bytes": 24879,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 255,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-255-figure-02.jpg",
+      "bytes": 33762,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 255,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-255.jpg",
+      "bytes": 80944,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-255-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-255-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 256,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-256-figure-01.jpg",
+      "bytes": 20366,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 256,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-256.jpg",
+      "bytes": 31123,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-256-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 257,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-257-figure-01.jpg",
+      "bytes": 11365,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 257,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-257-figure-02.jpg",
+      "bytes": 11341,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 257,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-257-figure-03.jpg",
+      "bytes": 10613,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 257,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-257.jpg",
+      "bytes": 147529,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-257-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-257-figure-02.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-257-figure-03.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 260,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-260-figure-01.jpg",
+      "bytes": 44488,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 260,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-260.jpg",
+      "bytes": 115325,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-260-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 261,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-261-figure-01.jpg",
+      "bytes": 38022,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 261,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-261.jpg",
+      "bytes": 90779,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-261-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 264,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-264-figure-01.jpg",
+      "bytes": 34187,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 264,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-264-figure-02.jpg",
+      "bytes": 35675,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 264,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-264.jpg",
+      "bytes": 100065,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-264-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-264-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 266,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-266-figure-01.jpg",
+      "bytes": 59703,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 266,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-266.jpg",
+      "bytes": 84761,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-266-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 269,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-269-figure-01.jpg",
+      "bytes": 62142,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 269,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-269.jpg",
+      "bytes": 105570,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-269-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 296,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-296-figure-01.jpg",
+      "bytes": 24684,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 296,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-296.jpg",
+      "bytes": 112710,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-296-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 297,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-297.jpg",
+      "bytes": 138568,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": []
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 298,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-298-figure-01.jpg",
+      "bytes": 11905,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 298,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-298.jpg",
+      "bytes": 56838,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-298-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 304,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-304-figure-01.jpg",
+      "bytes": 10638,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 304,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-304.jpg",
+      "bytes": 115593,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-304-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 305,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-305-figure-01.jpg",
+      "bytes": 10453,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 305,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-305.jpg",
+      "bytes": 86658,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-305-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 306,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-306-figure-01.jpg",
+      "bytes": 34166,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 306,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-306.jpg",
+      "bytes": 112819,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-306-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 314,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-314-figure-01.jpg",
+      "bytes": 19921,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 314,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-314-figure-02.jpg",
+      "bytes": 22253,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 314,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-314-figure-03.jpg",
+      "bytes": 26415,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 314,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-314-figure-04.jpg",
+      "bytes": 18583,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 314,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-314-figure-05.jpg",
+      "bytes": 17506,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 314,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-314.jpg",
+      "bytes": 130997,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-314-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-314-figure-02.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-314-figure-03.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-314-figure-04.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-314-figure-05.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 316,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-316-figure-01.jpg",
+      "bytes": 35998,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 316,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-316-figure-02.jpg",
+      "bytes": 38370,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 316,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-316.jpg",
+      "bytes": 80526,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-316-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-316-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 318,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-318-figure-01.jpg",
+      "bytes": 32183,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 318,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-318-figure-02.jpg",
+      "bytes": 16116,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 318,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-318.jpg",
+      "bytes": 118507,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-318-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-318-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 320,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-320-figure-01.jpg",
+      "bytes": 24675,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 320,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-320.jpg",
+      "bytes": 151821,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-320-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 328,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-328-figure-01.jpg",
+      "bytes": 40746,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 328,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-328.jpg",
+      "bytes": 93198,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-328-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 333,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-333-figure-01.jpg",
+      "bytes": 21577,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 333,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-333.jpg",
+      "bytes": 116529,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-333-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 334,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-334-figure-01.jpg",
+      "bytes": 21380,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 334,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-334.jpg",
+      "bytes": 151330,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-334-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 335,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-335-figure-01.jpg",
+      "bytes": 18466,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 335,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-335.jpg",
+      "bytes": 68246,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-335-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 336,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-336-figure-01.jpg",
+      "bytes": 24450,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 336,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-336.jpg",
+      "bytes": 126998,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-336-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 337,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-337-figure-01.jpg",
+      "bytes": 25301,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 337,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-337-figure-02.jpg",
+      "bytes": 14842,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 337,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-337.jpg",
+      "bytes": 72171,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-337-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-337-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 338,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-338-figure-01.jpg",
+      "bytes": 52476,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 338,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-338.jpg",
+      "bytes": 139540,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-338-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v39",
+      "page": 340,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-340-figure-01.jpg",
+      "bytes": 31933,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v39",
+      "page": 340,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-340.jpg",
+      "bytes": 154066,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/figures/page-340-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v37",
+      "page": 75,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-075-figure-01.jpg",
+      "bytes": 12319,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v37",
+      "page": 75,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-075-figure-02.jpg",
+      "bytes": 12635,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v37",
+      "page": 75,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/page-075.jpg",
+      "bytes": 124155,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-075-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-075-figure-02.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v37",
+      "page": 161,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-161-figure-01.jpg",
+      "bytes": 25870,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v37",
+      "page": 161,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-161-figure-02.jpg",
+      "bytes": 27459,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v37",
+      "page": 161,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-161-figure-03.jpg",
+      "bytes": 27670,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v37",
+      "page": 161,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/page-161.jpg",
+      "bytes": 88936,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-161-figure-01.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-161-figure-02.jpg",
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-161-figure-03.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v37",
+      "page": 184,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-184-figure-01.jpg",
+      "bytes": 31701,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v37",
+      "page": 184,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/page-184.jpg",
+      "bytes": 104929,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-184-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v37",
+      "page": 203,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-203-figure-01.jpg",
+      "bytes": 38380,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v37",
+      "page": 203,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/page-203.jpg",
+      "bytes": 117630,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-203-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v37",
+      "page": 332,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-332-figure-01.jpg",
+      "bytes": 32147,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v37",
+      "page": 332,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/page-332.jpg",
+      "bytes": 102311,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/37/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.7.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v37/figures/page-332-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v36",
+      "page": 203,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v36/figures/page-203-figure-01.jpg",
+      "bytes": 38644,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v36",
+      "page": 203,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v36/page-203.jpg",
+      "bytes": 144276,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/36/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.6.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v36/figures/page-203-figure-01.jpg"
+      ]
+    },
+    {
+      "kind": "pdf-figure-crop",
+      "source_key": "mpc-v36",
+      "page": 329,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v36/figures/page-329-figure-01.jpg",
+      "bytes": 31933,
+      "status": "rendered-crop"
+    },
+    {
+      "kind": "pdf-page",
+      "source_key": "mpc-v36",
+      "page": 329,
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v36/page-329.jpg",
+      "bytes": 154068,
+      "status": "rendered",
+      "source_url": "https://cdn.inmusicbrands.com/Software/36/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.6.pdf",
+      "figures": [
+        "docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v36/figures/page-329-figure-01.jpg"
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "kind": "pdf",
+      "source_key": "mpc-v2117-legacy",
+      "status": "failed",
+      "error": "failed after retries: 403 Client Error: Forbidden for url: https://device.report/m/99853061e82566b0521a203feda6a5cd2e1fcceecd6882726f8c9f11f27ddde0.pdf"
+    }
+  ]
+}
