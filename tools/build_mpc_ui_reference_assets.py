@@ -497,14 +497,23 @@ def main():
     pages=collect_pdf_pages(docs)
     image_map,image_manifest=download_images(root,docs)
     rewrite_remote_images(root,docs,image_map)
-    pdf_ready={}; pdf_manifest=[]
+    pdf_ready={}; pdf_manifest=[]; pdf_run_status={}
     for key in PDF_SOURCES:
-        if not pages.get(key): pdf_ready[key]=False; continue
+        if not pages.get(key):
+            pdf_ready[key]=False
+            pdf_run_status[key]={"status":"not-needed","source_urls":PDF_SOURCES[key],"pages_requested":0}
+            continue
         pdf_path,source_url=download_pdf(root,key)
-        if not pdf_path: pdf_ready[key]=False; continue
+        if not pdf_path:
+            pdf_ready[key]=False
+            pdf_run_status[key]={"status":"failed","source_urls":PDF_SOURCES[key],"pages_requested":len(pages[key])}
+            continue
         pdf_ready[key]=True
-        pdf_manifest.extend(render_pdf(root,key,pdf_path,pages[key],source_url))
+        used_url=PDF_SOURCES[key][0] if source_url=="cached" else source_url
+        pdf_run_status[key]={"status":"downloaded","source_urls":PDF_SOURCES[key],"used_url":used_url,"pages_requested":len(pages[key])}
+        pdf_manifest.extend(render_pdf(root,key,pdf_path,pages[key],used_url))
     add_local_page_column(root,pages,pdf_ready)
+    append_extracted_images_to_catalog(root,image_manifest)
     build_gallery(root,image_manifest,pdf_manifest,pdf_run_status)
     report={"image_references_found":len(image_manifest),
         "inline_images_downloaded":sum(x.get("status")=="downloaded" for x in image_manifest),
