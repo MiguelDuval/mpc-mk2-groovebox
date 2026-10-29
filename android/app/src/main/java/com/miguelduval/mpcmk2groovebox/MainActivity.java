@@ -14878,32 +14878,100 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        // BROW-013 acceptance: exercise the Show project-data folders toggle
-        // through the real Browser Options dialog and log markers so the
-        // emulator smoke test can verify the navigation hierarchy changes.
+        // BROW-013 temporarily switches Browser to PLACES. In smoke mode,
+        // keep that state stable until the external screenshot and hierarchy
+        // are captured, then restore CONTENT/SAMPLES before the picker round trip.
         runBrowserProjectDataFoldersAudit();
+        awaitBrowserProjectDataFoldersEvidenceCapture();
+    }
 
+    private void awaitBrowserProjectDataFoldersEvidenceCapture() {
+        if (!uiAuditSmokeMode) {
+            continueUiAuditAfterBrowserStoragePicker(false);
+            return;
+        }
+
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-browser-brow013-capture-release");
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                restoreBrowserContentAfterProjectDataAudit();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: BROW-013 external screenshot/hierarchy capture handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.post(poll[0]);
+    }
+
+    private void restoreBrowserContentAfterProjectDataAudit() {
+        if (destroyed) return;
+        final View contentTab = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser CONTENT tab");
+        if (contentTab == null || !contentTab.isShown() || !contentTab.isClickable()
+                || !contentTab.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: BROW-013 could not restore Browser CONTENT tab"
+                    + " | tab=" + describeAuditView(contentTab));
+            return;
+        }
+        waitForBrowserStorageActionAfterProjectDataToggle(0);
+    }
+
+    private void waitForBrowserStorageActionAfterProjectDataToggle(int attempt) {
+        if (destroyed) return;
+        final MpcUiState browserState = navigationController == null
+                ? null : navigationController.state();
+        final View contentTab = findViewWithContentDescription(
+                getWindow().getDecorView(), "Browser CONTENT tab");
+        final View samplesFilter = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Browser filter SAMPLES");
         final View browserStorageAction = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC Browser open Android storage picker");
-        if (browserStorageAction == null || !browserStorageAction.isShown()
-                || !browserStorageAction.isClickable()
-                || browserStorageAction.getWidth() <= dp(200)
-                || browserStorageAction.getHeight() <= dp(36)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action not hittable"
+                getWindow().getDecorView(), "MPC Browser open Android storage picker");
+        final boolean contextReady = browserState != null
+                && browserState.mode() == MpcUiState.Mode.BROWSER
+                && "CONTENT".equals(browserState.browserLocation())
+                && "SAMPLES".equals(browserState.browserFilter())
+                && browserState.browserSearch().isEmpty()
+                && browserView != null && browserView.isShown()
+                && browserView.searchQuery().isEmpty()
+                && contentTab != null && contentTab.isShown() && contentTab.isSelected()
+                && samplesFilter != null && samplesFilter.isShown() && samplesFilter.isSelected();
+        if (contextReady
+                && browserStorageAction != null
+                && browserStorageAction.isShown()
+                && browserStorageAction.isClickable()
+                && browserStorageAction.getWidth() > dp(200)
+                && browserStorageAction.getHeight() > dp(36)) {
+            if (uiAuditSmokeMode) {
+                uiAuditAwaitingBrowserStoragePickerResult = true;
+                Log.i(TAG, "UI_STORAGE_PICKER_LAUNCH_REQUESTED");
+                if (!browserStorageAction.performClick()) {
+                    uiAuditAwaitingBrowserStoragePickerResult = false;
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action click");
+                }
+                return;
+            }
+            continueUiAuditAfterBrowserStoragePicker(false);
+            return;
+        }
+        if (attempt >= 90) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser CONTENT/SAMPLES context or storage action did not settle after BROW-013"
+                    + " | state=" + browserState
+                    + " | contentTab=" + describeAuditView(contentTab)
+                    + " | samples=" + describeAuditView(samplesFilter)
                     + " | action=" + describeAuditView(browserStorageAction));
             return;
         }
-        if (uiAuditSmokeMode) {
-            uiAuditAwaitingBrowserStoragePickerResult = true;
-            Log.i(TAG, "UI_STORAGE_PICKER_LAUNCH_REQUESTED");
-            if (!browserStorageAction.performClick()) {
-                uiAuditAwaitingBrowserStoragePickerResult = false;
-                Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action click");
-            }
-            return;
-        }
-        continueUiAuditAfterBrowserStoragePicker(false);
+        waveformUiHandler.postDelayed(
+                () -> waitForBrowserStorageActionAfterProjectDataToggle(attempt + 1),
+                16L);
     }
 
     private void continueUiAuditAfterBrowserStoragePicker(boolean pickerReturned) {
@@ -18599,6 +18667,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
      */
     private void runBrowserProjectDataFoldersAudit() {
         if (!uiAuditSmokeMode || destroyed || browserView == null) return;
+        new java.io.File(getCacheDir(), "mpc-browser-brow013-capture-release").delete();
 
         // BROW-013 adds PROJECT DATA to the PLACES navigation list. The preceding
         // Browser audit exercises CONTENT filters, so explicitly select PLACES

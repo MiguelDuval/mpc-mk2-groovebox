@@ -1988,6 +1988,7 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Browser BACK to previous wo
 
 echo "Running MPC Browser project-data folders contract preflight (BROW-013)..."
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'PREF_SHOW_PROJECT_DATA_FOLDERS'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'mpc-browser-brow013-capture-release'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'getBoolean(PREF_SHOW_PROJECT_DATA_FOLDERS'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'putBoolean(PREF_SHOW_PROJECT_DATA_FOLDERS'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'browserView.navigateUp()'
@@ -5702,6 +5703,10 @@ PY
         exit 1
       fi
       echo "BROW-013 PROJECT DATA navigation item visible after toggle on."
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-browser-brow013-capture-release; then
+      echo "ERROR: could not release BROW-013 screenshot/hierarchy capture checkpoint"
+      exit 1
     fi
     brow013_capture_done=1
   fi
