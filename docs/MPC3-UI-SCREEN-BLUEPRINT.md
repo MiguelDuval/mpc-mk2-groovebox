@@ -7,6 +7,10 @@
 
 This is the implementation blueprint beneath MPC3-UI-MIGRATION-MASTER-SPEC.md.
 
+### Mandatory reference-first implementation rule
+
+Every screen/workspace/dialog/control change must start from the matching context(s) in [MPC3-UI-VISUAL-REFERENCE-CATALOG.md](MPC3-UI-VISUAL-REFERENCE-CATALOG.md). Open the actual local reference image/page capture through [the screenshot gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md); do not rely on memory, a URL alone, or textual interpretation only. Use official OS 3.9 evidence first, cite VIS IDs and local paths in the implementation/PR notes, and compare before/after evidence. When the exact screen is not pictured, document the closest reference and the gap. This gate is mandatory for implementation and acceptance.
+
 Each screen is specified by:
 
 - shell regions;
