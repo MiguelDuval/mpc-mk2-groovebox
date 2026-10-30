@@ -1,5 +1,9 @@
 # Implementation Roadmap
 
+## Non-negotiable UI acceptance gate
+
+Every UI-facing task must inspect the relevant `VIS-001`–`VIS-082` entries in `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md` and open the associated local visual assets through `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md`. Use MPC OS 3.9 as the primary visual authority, record VIS ID(s) and source paths, and compare current/after evidence. Missing exact screenshots must be reported as an explicit gap. This requirement applies to implementation, review, and acceptance; green CI alone is insufficient.
+
 ## CURRENT EXECUTION QUEUE — 2026-10-27 (live exact-SHA evidence governs)
 
 ### Latest accepted primary checkpoint — PR #23
