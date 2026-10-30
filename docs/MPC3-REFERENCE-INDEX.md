@@ -1,5 +1,9 @@
 # MPC 3.9 Reference Index and Research Notebook
 
+## Mandatory screen-reference workflow
+
+For any user-visible MPC-style work, read [MPC3-UI-VISUAL-REFERENCE-CATALOG.md](MPC3-UI-VISUAL-REFERENCE-CATALOG.md), choose the matching `VIS-001`–`VIS-082` ID(s), then open and inspect the actual local picture/page capture in [MPC3-UI-REFERENCE-ASSETS/INDEX.md](MPC3-UI-REFERENCE-ASSETS/INDEX.md). Cite the reference ID and local path when specifying, implementing, reviewing, and accepting the screen. Use current OS 3.9 evidence first; identify older/third-party references as supplementary. Explicitly record gaps where no direct screen image is available. Do not skip this step because tests pass or because a previous implementation exists.
+
 ## Purpose
 
 Search this file before making any substantial UI decision.
